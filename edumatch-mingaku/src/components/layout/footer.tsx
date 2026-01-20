@@ -25,9 +25,9 @@ export function Footer() {
           {/* Logo & Description */}
           <div className="space-y-4">
             <Link href="/" className="flex items-center space-x-2">
-              <span className="text-xl font-bold text-primary">Edumatch</span>
+              <span className="absolute left-[17px] text-xl font-bold text-primary">Edumatch</span>
             </Link>
-            <p className="text-sm text-muted-foreground">
+            <p className="absolute left-[17px] text-sm text-muted-foreground">
               教育の未来を見つける、つながる
             </p>
           </div>

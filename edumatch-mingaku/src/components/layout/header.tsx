@@ -22,8 +22,8 @@ export function Header() {
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
-          <span className="text-2xl font-bold text-primary">Edumatch</span>
-          <span className="text-xs text-muted-foreground hidden sm:inline">（ホーム）</span>
+          <span className="absolute left-[17px] text-2xl font-bold text-primary">Edumatch</span>
+          <span className="absolute left-[145px] top-[26px] text-xs text-muted-foreground hidden sm:inline">（ホーム）</span>
         </Link>
 
         {/* Desktop Navigation */}
