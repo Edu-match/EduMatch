@@ -13,7 +13,6 @@ import {
   MessageSquare,
   FileText,
   Award,
-  ExternalLink,
 } from "lucide-react";
 
 // ダミーデータ（実際にはAPIから取得）

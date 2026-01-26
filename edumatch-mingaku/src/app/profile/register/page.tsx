@@ -18,8 +18,6 @@ import {
   User,
   Building2,
   GraduationCap,
-  Briefcase,
-  MapPin,
   ArrowLeft,
   ArrowRight,
   Check,

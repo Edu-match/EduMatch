@@ -3,142 +3,50 @@ import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Calendar, Tag, ArrowLeft, Share2 } from "lucide-react";
+import { Calendar, ArrowLeft, Share2, Eye, User, Play } from "lucide-react";
+import { getPostById, getLatestPosts } from "@/app/_actions";
+import { notFound } from "next/navigation";
+import { YouTubeEmbed } from "@/components/ui/youtube-embed";
 
-// ダミーデータ（実際にはAPIやデータベースから取得）
-const articles: Record<
-  string,
-  {
-    id: number;
-    title: string;
-    content: string;
-    image: string;
-    category: string;
-    date: string;
-    tags: string[];
-    author: string;
+function formatDate(date: Date): string {
+  return new Intl.DateTimeFormat("ja-JP", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  }).format(date);
+}
+
+// カテゴリを推測（将来的にはDBにカテゴリカラムを追加）
+function getCategory(content: string): string {
+  if (content.includes("ICT") || content.includes("デジタル") || content.includes("AI")) {
+    return "教育ICT";
   }
-> = {
-  "1": {
-    id: 1,
-    title: "EdTechツール選びの完全ガイド",
-    content: `
-# EdTechツール選びの完全ガイド
+  if (content.includes("事例") || content.includes("実践") || content.includes("導入")) {
+    return "導入事例";
+  }
+  if (content.includes("運営") || content.includes("保護者") || content.includes("働き方")) {
+    return "学校運営";
+  }
+  return "教育ICT";
+}
 
-教育現場でEdTechツールを導入する際、数多くの選択肢から最適なものを選ぶのは簡単ではありません。本記事では、実践的な選び方のポイントを解説します。
-
-## 1. 導入目的を明確にする
-
-まず、なぜEdTechツールを導入するのか、その目的を明確にすることが重要です。
-
-- 学習管理の効率化
-- 保護者とのコミュニケーション改善
-- データ分析による教育改善
-- 業務の自動化
-
-目的が明確になれば、必要な機能も自然と見えてきます。
-
-## 2. 予算とコストを検討する
-
-EdTechツールには、初期費用や月額費用がかかります。予算を事前に決めておくことで、選択肢を絞り込めます。
-
-### コストの内訳
-
-- 初期導入費用
-- 月額・年額の利用料
-- 追加機能のオプション費用
-- サポート費用
-- 研修・トレーニング費用
-
-## 3. 機能と使いやすさを比較する
-
-同じカテゴリのツールでも、機能や使いやすさは大きく異なります。
-
-### チェックポイント
-
-- 必要な機能が揃っているか
-- 直感的に使えるUIか
-- モバイル対応しているか
-- 既存システムとの連携は可能か
-
-## 4. サポート体制を確認する
-
-導入後のサポート体制も重要なポイントです。
-
-- 問い合わせ対応の方法
-- サポートの対応時間
-- マニュアルやドキュメントの充実度
-- コミュニティやフォーラムの有無
-
-## 5. 無料トライアルを活用する
-
-多くのEdTechツールは無料トライアルを提供しています。実際に使ってみることで、使いやすさや機能を確認できます。
-
-## まとめ
-
-EdTechツール選びは、目的の明確化から始まり、予算・機能・サポート体制を総合的に判断することが重要です。無料トライアルを積極的に活用し、実際の使用感を確認してから導入を決めることをおすすめします。
-    `,
-    image: "https://placehold.co/800x450/fef3c7/ca8a04?text=Article+1",
-    category: "教育ICT",
-    date: "2024-01-15",
-    tags: ["EdTech", "選び方", "導入"],
-    author: "Edumatch編集部",
-  },
-  "2": {
-    id: 2,
-    title: "学校DX推進のためのステップ",
-    content: `
-# 学校DX推進のためのステップ
-
-デジタル変革（DX）は、教育現場でも重要なテーマとなっています。本記事では、学校DXを成功させるための具体的なステップを解説します。
-
-## ステップ1: 現状分析
-
-まず、現在の業務プロセスや課題を整理します。
-
-## ステップ2: 目標設定
-
-DXによって実現したい目標を明確にします。
-
-## ステップ3: ツール選定
-
-目標達成に必要なツールを選定します。
-
-## ステップ4: 段階的導入
-
-一度にすべてを変えるのではなく、段階的に導入を進めます。
-
-## ステップ5: 効果測定
-
-導入後の効果を測定し、改善を続けます。
-    `,
-    image: "https://placehold.co/800x450/fed7aa/ea580c?text=Article+2",
-    category: "導入事例",
-    date: "2024-01-15",
-    tags: ["DX", "導入事例", "変革"],
-    author: "Edumatch編集部",
-  },
-};
-
-export default function ArticleDetailPage({
+export default async function ArticleDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const article = articles[params.id];
+  const { id } = await params;
+  const post = await getPostById(id);
 
-  if (!article) {
-    return (
-      <div className="container py-8">
-        <div className="text-center py-12">
-          <h1 className="text-2xl font-bold mb-4">記事が見つかりません</h1>
-          <Button asChild>
-            <Link href="/articles">記事一覧に戻る</Link>
-          </Button>
-        </div>
-      </div>
-    );
+  if (!post) {
+    notFound();
   }
+
+  // 関連記事を取得
+  const relatedPosts = await getLatestPosts(4);
+  const filteredRelatedPosts = relatedPosts.filter((p) => p.id !== post.id).slice(0, 3);
+
+  const category = getCategory(post.content);
 
   return (
     <div className="container py-8">
@@ -154,20 +62,40 @@ export default function ArticleDetailPage({
       <article className="max-w-4xl mx-auto">
         {/* ヘッダー */}
         <div className="mb-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Badge variant="secondary">{article.category}</Badge>
+          <div className="flex items-center gap-2 mb-4 flex-wrap">
+            <Badge variant="secondary">{category}</Badge>
             <div className="flex items-center gap-1 text-sm text-muted-foreground">
               <Calendar className="h-4 w-4" />
-              {new Date(article.date).toLocaleDateString("ja-JP")}
+              {formatDate(post.created_at)}
+            </div>
+            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+              <Eye className="h-4 w-4" />
+              {post.view_count.toLocaleString()}回閲覧
             </div>
           </div>
           <h1 className="text-3xl md:text-4xl font-bold mb-4">
-            {article.title}
+            {post.title}
           </h1>
           <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              執筆者: {article.author}
-            </p>
+            <div className="flex items-center gap-2">
+              {post.provider?.avatar_url ? (
+                <Image
+                  src={post.provider.avatar_url}
+                  alt={post.provider.name || "投稿者"}
+                  width={32}
+                  height={32}
+                  className="rounded-full"
+                  unoptimized
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                  <User className="h-4 w-4 text-primary" />
+                </div>
+              )}
+              <p className="text-sm text-muted-foreground">
+                {post.provider?.name || "投稿者"}
+              </p>
+            </div>
             <Button variant="outline" size="sm">
               <Share2 className="h-4 w-4 mr-2" />
               共有
@@ -176,61 +104,123 @@ export default function ArticleDetailPage({
         </div>
 
         {/* メイン画像 */}
-        <div className="relative h-96 w-full mb-8 rounded-lg overflow-hidden">
+        <div className="relative h-64 md:h-96 w-full mb-8 rounded-lg overflow-hidden bg-muted">
           <Image
-            src={article.image}
-            alt={article.title}
+            src={post.thumbnail_url || "https://placehold.co/800x450/e0f2fe/0369a1?text=Article"}
+            alt={post.title}
             fill
             className="object-cover"
             unoptimized
           />
         </div>
 
-        {/* タグ */}
-        <div className="flex flex-wrap gap-2 mb-8">
-          {article.tags.map((tag) => (
-            <Badge key={tag} variant="outline" className="flex items-center gap-1">
-              <Tag className="h-3 w-3" />
-              {tag}
-            </Badge>
-          ))}
-        </div>
+        {/* YouTube動画 */}
+        {post.youtube_url && (
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <Play className="h-5 w-5 text-red-500" />
+              <h2 className="text-lg font-semibold">関連動画</h2>
+            </div>
+            <YouTubeEmbed url={post.youtube_url} title={post.title} />
+          </div>
+        )}
+
+        {/* 追加画像ギャラリー */}
+        {post.images && post.images.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-lg font-semibold mb-4">画像ギャラリー</h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {post.images.map((imageUrl, index) => (
+                <div
+                  key={index}
+                  className="relative aspect-video rounded-lg overflow-hidden bg-muted"
+                >
+                  <Image
+                    src={imageUrl}
+                    alt={`${post.title} - 画像${index + 1}`}
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* 本文 */}
         <div className="prose prose-slate max-w-none mb-8">
           <div className="whitespace-pre-wrap text-foreground leading-relaxed">
-            {article.content}
+            {post.content}
           </div>
         </div>
 
-        {/* 関連記事 */}
-        <Card className="mt-12">
+        {/* 提供者情報 */}
+        <Card className="mb-8">
           <CardContent className="p-6">
-            <h2 className="text-xl font-bold mb-4">関連記事</h2>
-            <div className="space-y-4">
-              {Object.values(articles)
-                .filter((a) => a.id !== article.id)
-                .slice(0, 3)
-                .map((relatedArticle) => (
-                  <Link
-                    key={relatedArticle.id}
-                    href={`/articles/${relatedArticle.id}`}
-                    className="block p-4 border rounded-lg hover:bg-muted transition-colors"
-                  >
-                    <h3 className="font-semibold mb-2">
-                      {relatedArticle.title}
-                    </h3>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Calendar className="h-3 w-3" />
-                      {new Date(relatedArticle.date).toLocaleDateString(
-                        "ja-JP"
-                      )}
-                    </div>
-                  </Link>
-                ))}
+            <div className="flex items-center gap-4">
+              {post.provider.avatar_url ? (
+                <Image
+                  src={post.provider.avatar_url}
+                  alt={post.provider.name}
+                  width={64}
+                  height={64}
+                  className="rounded-full"
+                  unoptimized
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                  <User className="h-8 w-8 text-primary" />
+                </div>
+              )}
+              <div>
+                <p className="font-semibold text-lg">{post.provider.name}</p>
+                <p className="text-sm text-muted-foreground">
+                  この記事の執筆者
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
+
+        {/* 関連記事 */}
+        {filteredRelatedPosts.length > 0 && (
+          <Card className="mt-12">
+            <CardContent className="p-6">
+              <h2 className="text-xl font-bold mb-4">関連記事</h2>
+              <div className="space-y-4">
+                {filteredRelatedPosts.map((relatedPost) => (
+                  <Link
+                    key={relatedPost.id}
+                    href={`/articles/${relatedPost.id}`}
+                    className="block p-4 border rounded-lg hover:bg-muted transition-colors"
+                  >
+                    <div className="flex gap-4">
+                      <div className="relative h-16 w-24 flex-shrink-0 rounded overflow-hidden bg-muted">
+                        <Image
+                          src={relatedPost.thumbnail_url || "https://placehold.co/120x80/e0f2fe/0369a1?text=Article"}
+                          alt={relatedPost.title}
+                          fill
+                          className="object-cover"
+                          unoptimized
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold mb-2 line-clamp-2">
+                          {relatedPost.title}
+                        </h3>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Calendar className="h-3 w-3" />
+                          {formatDate(relatedPost.created_at)}
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </article>
     </div>
   );

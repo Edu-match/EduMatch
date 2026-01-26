@@ -64,9 +64,9 @@ export function ChatbotWidget() {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50">
+    <div className="fixed bottom-4 right-4 sm:right-4 z-50">
       {open ? (
-        <div className="w-[380px] max-w-[calc(100vw-2rem)] h-[500px] max-h-[calc(100vh-8rem)] overflow-hidden rounded-xl border bg-background shadow-xl flex flex-col">
+        <div className="w-[calc(100vw-2rem)] sm:w-[380px] max-w-[400px] h-[calc(100vh-6rem)] sm:h-[500px] max-h-[600px] overflow-hidden rounded-xl border bg-background shadow-xl flex flex-col">
           <div className="flex items-center justify-between border-b px-4 py-3 flex-shrink-0">
             <div className="flex items-center gap-2">
               <div className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-primary/10">

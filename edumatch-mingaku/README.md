@@ -65,7 +65,59 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 ```
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+DATABASE_URL=your_database_url
+DIRECT_URL=your_direct_database_url
 ```
+
+## 認証機能の設定
+
+### Google OAuthの設定
+
+1. **Google Cloud ConsoleでOAuth認証情報を作成**
+   - [Google Cloud Console](https://console.cloud.google.com/)にアクセス
+   - プロジェクトを作成または選択
+   - 「APIとサービス」→「認証情報」に移動
+   - 「認証情報を作成」→「OAuth 2.0 クライアント ID」を選択
+   - アプリケーションの種類を「ウェブアプリケーション」に設定
+   - 承認済みのリダイレクト URIに以下を追加：
+     ```
+     https://[YOUR-PROJECT-REF].supabase.co/auth/v1/callback
+     ```
+   - クライアントIDとクライアントシークレットをコピー
+
+2. **SupabaseでGoogleプロバイダーを有効化**
+   - Supabaseダッシュボードにアクセス
+   - 「Authentication」→「Providers」に移動
+   - 「Google」を有効化
+   - Google Cloud Consoleで取得したクライアントIDとシークレットを入力
+   - 「Save」をクリック
+
+3. **リダイレクトURLの設定**
+   - Supabaseダッシュボードの「Authentication」→「URL Configuration」に移動
+   - 「Redirect URLs」に以下を追加：
+     ```
+     http://localhost:3000/api/auth/callback
+     https://your-domain.com/api/auth/callback
+     ```
+
+### メール認証の設定
+
+1. **Supabaseでメール認証を有効化**
+   - Supabaseダッシュボードの「Authentication」→「Providers」に移動
+   - 「Email」が有効になっていることを確認
+
+2. **メールテンプレートの設定（オプション）**
+   - 「Authentication」→「Email Templates」で確認メールのテンプレートをカスタマイズ可能
+
+### データベース設定
+
+認証機能を使用するには、Prismaマイグレーションが適用されている必要があります：
+
+```bash
+npx prisma migrate dev
+```
+
+これにより、`Profile`テーブルが作成され、認証後のユーザー情報が自動的に保存されます。
 
 ### 注意事項
 

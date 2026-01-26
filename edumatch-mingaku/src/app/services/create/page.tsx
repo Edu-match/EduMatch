@@ -1,0 +1,291 @@
+"use client";
+
+import { useRef, useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { BlockEditor, ContentBlock } from "@/components/editor/block-editor";
+import { createService, uploadImage } from "@/app/_actions";
+import { Image as ImageIcon, Loader2, Save, Send, Building2, School } from "lucide-react";
+import { getCurrentUserProfile } from "@/app/_actions/user";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+export default function ServiceCreatePage() {
+  const router = useRouter();
+
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("学習管理");
+  const [priceInfo, setPriceInfo] = useState("");
+  const [youtubeUrl, setYoutubeUrl] = useState("");
+  const [thumbnailUrl, setThumbnailUrl] = useState("");
+  const [blocks, setBlocks] = useState<ContentBlock[]>([]);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [thumbnailUploading, setThumbnailUploading] = useState(false);
+  const thumbnailFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [userProfile, setUserProfile] = useState<{ name: string; avatar_url: string | null; email: string } | null>(null);
+
+  const wordCount =
+    blocks.reduce((acc, b) => acc + (b.content?.length || 0) + (b.items?.join("").length || 0), 0) +
+    title.length +
+    description.length;
+
+  // ユーザープロフィールを取得
+  useEffect(() => {
+    async function fetchProfile() {
+      try {
+        const profile = await getCurrentUserProfile();
+        if (profile) {
+          setUserProfile(profile);
+        }
+      } catch (error) {
+        console.error("Failed to fetch profile:", error);
+      }
+    }
+    fetchProfile();
+  }, []);
+
+  async function submit(publishType: "draft" | "submit") {
+    if (!title.trim()) {
+      toast.error("サービス名を入力してください");
+      return;
+    }
+    if (!description.trim()) {
+      toast.error("概要を入力してください");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const result = await createService({
+        title: title.trim(),
+        description: description.trim(),
+        category,
+        priceInfo: priceInfo.trim() || "お問い合わせ",
+        youtubeUrl: youtubeUrl.trim() || undefined,
+        thumbnailUrl,
+        blocks: blocks as unknown as Parameters<typeof createService>[0]["blocks"],
+        publishType,
+      });
+
+      if (result.success && result.serviceId) {
+        toast.success(
+          publishType === "submit" ? "投稿申請を受け付けました" : "下書きを保存しました",
+          { description: publishType === "submit" ? "管理者の承認後に公開されます。" : undefined }
+        );
+        router.push(`/services/${result.serviceId}`);
+      } else {
+        toast.error(publishType === "submit" ? "申請に失敗しました" : "保存に失敗しました", {
+          description: result.error || "もう一度お試しください",
+        });
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error("処理に失敗しました");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="sticky top-0 z-40 bg-white border-b shadow-sm">
+        <div className="container flex items-center justify-between h-16">
+          <div className="flex items-center gap-4">
+            <h1 className="text-lg font-semibold">サービスを投稿</h1>
+            <Badge variant="outline" className="text-xs">
+              {wordCount.toLocaleString()} 文字
+            </Badge>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => submit("draft")}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4 mr-2" />
+              )}
+              下書き保存
+            </Button>
+            <Button size="sm" onClick={() => submit("submit")} disabled={isSubmitting}>
+              {isSubmitting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4 mr-2" />
+              )}
+              申請する
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <div className="container py-8 space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">サムネイル</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {thumbnailUrl ? (
+              <div className="relative group">
+                <img
+                  src={thumbnailUrl}
+                  alt="サムネイル"
+                  className="w-full h-[200px] object-cover rounded-lg"
+                />
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-4">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      thumbnailFileInputRef.current?.click();
+                    }}
+                  >
+                    変更
+                  </Button>
+                  <Button variant="destructive" size="sm" onClick={() => setThumbnailUrl("")}>
+                    削除
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                <ImageIcon className="h-10 w-10 mx-auto text-gray-400 mb-3" />
+                <p className="font-medium">クリックして画像をアップロード</p>
+                <p className="text-sm text-muted-foreground mt-1">JPG/PNG/GIF/WebP（最大5MB）</p>
+              </div>
+            )}
+
+            <input
+              ref={thumbnailFileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={async (e) => {
+                const input = e.currentTarget;
+                const file = input.files?.[0];
+                if (!file) return;
+                setThumbnailUploading(true);
+                try {
+                  const formData = new FormData();
+                  formData.append("file", file);
+                  const result = await uploadImage(formData);
+                  if (result.success && result.url) {
+                    setThumbnailUrl(result.url);
+                    toast.success("サムネイルをアップロードしました");
+                  } else {
+                    toast.error("サムネイルのアップロードに失敗しました", {
+                      description: result.error || "もう一度お試しください",
+                    });
+                  }
+                } finally {
+                  setThumbnailUploading(false);
+                  input.value = "";
+                }
+              }}
+            />
+
+            <Button
+              variant="outline"
+              onClick={() => thumbnailFileInputRef.current?.click()}
+              disabled={thumbnailUploading}
+            >
+              {thumbnailUploading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  アップロード中...
+                </>
+              ) : (
+                "画像を選択"
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">基本情報</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="サービス名"
+            />
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="概要（短い説明）"
+              rows={3}
+            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <Input
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                placeholder="カテゴリ"
+              />
+              <Input
+                value={priceInfo}
+                onChange={(e) => setPriceInfo(e.target.value)}
+                placeholder="料金情報（例: 月額〜 / お問い合わせ）"
+              />
+            </div>
+            <Input
+              value={youtubeUrl}
+              onChange={(e) => setYoutubeUrl(e.target.value)}
+              placeholder="YouTube URL（任意）"
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">詳細（本文）</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <BlockEditor blocks={blocks} onChange={setBlocks} />
+          </CardContent>
+        </Card>
+
+        {/* 投稿者情報 */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Building2 className="h-4 w-4" />
+              投稿者情報
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-3">
+              {userProfile?.avatar_url ? (
+                <img
+                  src={userProfile.avatar_url}
+                  alt={userProfile.name}
+                  className="w-12 h-12 rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                  <School className="h-6 w-6 text-primary" />
+                </div>
+              )}
+              <div>
+                <p className="font-medium">{userProfile?.name || "ユーザー"}</p>
+                <p className="text-sm text-muted-foreground">{userProfile?.email || ""}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+

@@ -1,10 +1,15 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Search, Home, ArrowLeft, FileQuestion } from "lucide-react";
 
 export default function NotFound() {
+  const router = useRouter();
+  
   return (
     <div className="container py-16">
       <div className="max-w-2xl mx-auto text-center">
@@ -46,11 +51,14 @@ export default function NotFound() {
               トップページへ
             </Link>
           </Button>
-          <Button asChild variant="outline" size="lg" className="gap-2">
-            <Link href="javascript:history.back()">
-              <ArrowLeft className="h-5 w-5" />
-              前のページに戻る
-            </Link>
+          <Button 
+            variant="outline" 
+            size="lg" 
+            className="gap-2"
+            onClick={() => router.back()}
+          >
+            <ArrowLeft className="h-5 w-5" />
+            前のページに戻る
           </Button>
         </div>
 

@@ -5,6 +5,7 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { SideMenu } from "@/components/layout/side-menu";
 import { ChatbotWidget } from "@/components/layout/chatbot-widget";
+import { Toaster } from "sonner";
 
 const notoSansJP = Noto_Sans_JP({
   variable: "--font-noto-sans-jp",
@@ -52,6 +53,7 @@ export default function RootLayout({
           <Footer />
         </div>
         <ChatbotWidget />
+        <Toaster position="top-right" richColors closeButton />
       </body>
     </html>
   );

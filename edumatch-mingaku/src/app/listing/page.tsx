@@ -9,7 +9,6 @@ import {
   TrendingUp,
   Star,
   MessageSquare,
-  FileText,
   ArrowRight,
   Zap,
 } from "lucide-react";

@@ -2,39 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Crown } from "lucide-react";
-
-const popularServices = [
-  {
-    id: 1,
-    name: "ClassTech Pro - 授業管理と学習進捗の一元管理",
-    views: "12,500",
-    image: "https://placehold.co/120x120/fef3c7/ca8a04?text=1",
-  },
-  {
-    id: 2,
-    name: "EduCollabo - 学校と保護者のコミュニケーション",
-    views: "9,800",
-    image: "https://placehold.co/120x120/fed7aa/ea580c?text=2",
-  },
-  {
-    id: 3,
-    name: "SmartAssess - AIを活用した自動採点システム",
-    views: "8,500",
-    image: "https://placehold.co/120x120/fecaca/dc2626?text=3",
-  },
-  {
-    id: 4,
-    name: "LearnSpace - オンライン・オフライン統合学習",
-    views: "7,200",
-    image: "https://placehold.co/120x120/d9f99d/65a30d?text=4",
-  },
-  {
-    id: 5,
-    name: "TeamEdu - 協働学習支援プラットフォーム",
-    views: "6,500",
-    image: "https://placehold.co/120x120/bfdbfe/2563eb?text=5",
-  },
-];
+import { getPopularServices } from "@/app/_actions";
 
 const rankColors = [
   "bg-[#ef4444] text-white", // 1位: 赤
@@ -44,7 +12,9 @@ const rankColors = [
   "bg-muted text-foreground", // 5位: グレー
 ];
 
-export function RightSidebar() {
+export async function RightSidebar() {
+  const services = await getPopularServices(5);
+
   return (
     <aside className="space-y-4">
       {/* ログイン・登録エリア */}
@@ -55,7 +25,7 @@ export function RightSidebar() {
         </p>
         <div className="flex flex-col gap-2">
           <Button asChild size="sm" className="w-full">
-            <Link href="/signup">新規登録（無料）</Link>
+            <Link href="/login">新規登録（無料）</Link>
           </Button>
           <Button asChild size="sm" variant="outline" className="w-full">
             <Link href="/login">ログイン</Link>
@@ -70,33 +40,37 @@ export function RightSidebar() {
           <h3 className="text-sm font-bold">人気サービスランキング</h3>
         </div>
         <div className="p-3">
-          <ul className="space-y-2.5">
-            {popularServices.map((service, index) => (
-              <li key={service.id} className="flex items-center gap-2.5 text-sm">
-                <span
-                  className={`flex-shrink-0 h-6 w-6 flex items-center justify-center rounded text-xs font-bold ${rankColors[index]}`}
-                >
-                  {index + 1}
-                </span>
-                <div className="relative h-12 w-12 flex-shrink-0 rounded overflow-hidden border bg-muted">
-                  <Image
-                    src={service.image}
-                    alt={service.name}
-                    fill
-                    className="object-cover"
-                    sizes="48px"
-                    unoptimized
-                  />
-                </div>
-                <Link
-                  href={`/services/${service.id}`}
-                  className="flex-1 hover:text-[#1d4ed8] transition-colors line-clamp-2"
-                >
-                  {service.name}
-                </Link>
-              </li>
-            ))}
-          </ul>
+          {services.length > 0 ? (
+            <ul className="space-y-2.5">
+              {services.map((service, index) => (
+                <li key={service.id} className="flex items-center gap-2.5 text-sm">
+                  <span
+                    className={`flex-shrink-0 h-6 w-6 flex items-center justify-center rounded text-xs font-bold ${rankColors[index] || rankColors[4]}`}
+                  >
+                    {index + 1}
+                  </span>
+                  <div className="relative h-12 w-12 flex-shrink-0 rounded overflow-hidden border bg-muted">
+                    <Image
+                      src={service.thumbnail_url || "https://placehold.co/120x120/e0f2fe/0369a1?text=No"}
+                      alt={service.title}
+                      fill
+                      className="object-cover"
+                      sizes="48px"
+                      unoptimized
+                    />
+                  </div>
+                  <Link
+                    href={`/services/${service.id}`}
+                    className="flex-1 hover:text-[#1d4ed8] transition-colors line-clamp-2"
+                  >
+                    {service.title}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-center text-muted-foreground py-4">サービスがありません</p>
+          )}
         </div>
         <div className="border-t p-3 text-center">
           <Link

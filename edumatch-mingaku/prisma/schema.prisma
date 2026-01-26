@@ -1,0 +1,87 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  PROVIDER
+  VIEWER
+}
+
+enum PublishStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Profile {
+  id                  String   @id @db.Uuid
+  role                Role     @default(VIEWER)
+  name                String
+  email               String   @unique
+  avatar_url          String?
+  subscription_status String   @default("INACTIVE")
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  services Service[]
+  posts    Post[]
+
+  @@index([email])
+}
+
+model Service {
+  id            String   @id @default(cuid())
+  provider_id   String   @db.Uuid
+  provider      Profile  @relation(fields: [provider_id], references: [id], onDelete: Cascade)
+  title         String
+  description   String
+  content       String   @db.Text
+  thumbnail_url String?
+  youtube_url   String?  // YouTube動画のURL
+  images        String[] // 追加画像のURL配列
+  category      String
+  price_info    String
+  is_published  Boolean  @default(false)
+  status        PublishStatus @default(DRAFT)
+  submitted_at  DateTime?
+  approved_at   DateTime?
+  rejected_at   DateTime?
+  rejection_reason String?
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@index([provider_id])
+  @@index([category])
+  @@index([status])
+}
+
+model Post {
+  id            String   @id @default(cuid())
+  provider_id   String   @db.Uuid
+  provider      Profile  @relation(fields: [provider_id], references: [id], onDelete: Cascade)
+  title         String
+  content       String   @db.Text
+  thumbnail_url String?
+  youtube_url   String?  // YouTube動画のURL
+  images        String[] // 追加画像のURL配列
+  view_count    Int      @default(0)
+  is_published  Boolean  @default(false)
+  status        PublishStatus @default(DRAFT)
+  submitted_at  DateTime?
+  approved_at   DateTime?
+  rejected_at   DateTime?
+  rejection_reason String?
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@index([provider_id])
+  @@index([status])
+}

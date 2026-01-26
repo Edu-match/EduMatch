@@ -1,21 +1,114 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { Mail, Lock, User, Building2, Chrome } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Mail, Lock, User, Building2, Chrome, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
-export default function LoginPage() {
+function AuthLoginForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [registerName, setRegisterName] = useState("");
   const [registerEmail, setRegisterEmail] = useState("");
   const [registerPassword, setRegisterPassword] = useState("");
   const [registerOrg, setRegisterOrg] = useState("");
+  const [registerAgreed, setRegisterAgreed] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // 初期化時にエラーパラメータをチェック
+  const errorFromUrl = searchParams.get("error");
+  const initialError = errorFromUrl ? "認証に失敗しました。もう一度お試しください。" : null;
+  const [error, setError] = useState<string | null>(initialError);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: loginEmail,
+          password: loginPassword,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "ログインに失敗しました");
+        setIsLoading(false);
+        return;
+      }
+
+      // ログイン成功 - ページをリロードしてセッションを更新
+      toast.success("ログインしました");
+      router.push("/dashboard");
+      router.refresh();
+    } catch {
+      setError("ログインに失敗しました。もう一度お試しください。");
+      setIsLoading(false);
+    }
+  };
+
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+
+    if (!registerAgreed) {
+      setError("利用規約とプライバシーポリシーに同意してください");
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: registerEmail,
+          password: registerPassword,
+          name: registerName,
+          organization: registerOrg || null,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "会員登録に失敗しました");
+        setIsLoading(false);
+        return;
+      }
+
+      // 登録成功
+      toast.success("登録が完了しました");
+      router.push("/auth/register-complete");
+    } catch {
+      setError("会員登録に失敗しました。もう一度お試しください。");
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleAuth = (isSignup: boolean = false) => {
+    setIsLoading(true);
+    setError(null);
+
+    const redirectTo = isSignup ? "/auth/register-complete" : "/dashboard";
+    window.location.href = `/api/auth/google?redirect_to=${encodeURIComponent(redirectTo)}`;
+  };
 
   return (
     <div className="container py-8">
@@ -34,9 +127,16 @@ export default function LoginPage() {
                 <TabsTrigger value="register">新規登録</TabsTrigger>
               </TabsList>
 
+              {/* エラーメッセージ */}
+              {error && (
+                <div className="mt-4 p-3 rounded-md bg-red-50 border border-red-200 text-red-700 text-sm">
+                  {error}
+                </div>
+              )}
+
               {/* ログインタブ */}
               <TabsContent value="login" className="space-y-4 mt-4">
-                <div className="space-y-4">
+                <form onSubmit={handleLogin} className="space-y-4">
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -45,6 +145,8 @@ export default function LoginPage() {
                       value={loginEmail}
                       onChange={(e) => setLoginEmail(e.target.value)}
                       className="pl-10"
+                      required
+                      disabled={isLoading}
                     />
                   </div>
                   <div className="relative">
@@ -55,6 +157,8 @@ export default function LoginPage() {
                       value={loginPassword}
                       onChange={(e) => setLoginPassword(e.target.value)}
                       className="pl-10"
+                      required
+                      disabled={isLoading}
                     />
                   </div>
                   <div className="flex items-center justify-between text-sm">
@@ -69,10 +173,17 @@ export default function LoginPage() {
                       パスワードを忘れた方
                     </Link>
                   </div>
-                  <Button className="w-full" asChild>
-                    <Link href="/dashboard">ログイン</Link>
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ログイン中...
+                      </>
+                    ) : (
+                      "ログイン"
+                    )}
                   </Button>
-                </div>
+                </form>
 
                 <div className="relative">
                   <Separator className="my-4" />
@@ -82,22 +193,21 @@ export default function LoginPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Button variant="outline" className="w-full gap-2">
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={() => handleGoogleAuth(false)}
+                    disabled={isLoading}
+                  >
                     <Chrome className="h-4 w-4" />
                     Googleでログイン
-                  </Button>
-                  <Button variant="outline" className="w-full gap-2">
-                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 2C6.477 2 2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.989C18.343 21.129 22 16.99 22 12c0-5.523-4.477-10-10-10z" />
-                    </svg>
-                    Facebookでログイン
                   </Button>
                 </div>
               </TabsContent>
 
               {/* 新規登録タブ */}
               <TabsContent value="register" className="space-y-4 mt-4">
-                <div className="space-y-4">
+                <form onSubmit={handleSignup} className="space-y-4">
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -105,6 +215,8 @@ export default function LoginPage() {
                       value={registerName}
                       onChange={(e) => setRegisterName(e.target.value)}
                       className="pl-10"
+                      required
+                      disabled={isLoading}
                     />
                   </div>
                   <div className="relative">
@@ -115,6 +227,8 @@ export default function LoginPage() {
                       value={registerEmail}
                       onChange={(e) => setRegisterEmail(e.target.value)}
                       className="pl-10"
+                      required
+                      disabled={isLoading}
                     />
                   </div>
                   <div className="relative">
@@ -125,6 +239,9 @@ export default function LoginPage() {
                       value={registerPassword}
                       onChange={(e) => setRegisterPassword(e.target.value)}
                       className="pl-10"
+                      required
+                      minLength={8}
+                      disabled={isLoading}
                     />
                   </div>
                   <div className="relative">
@@ -134,11 +251,18 @@ export default function LoginPage() {
                       value={registerOrg}
                       onChange={(e) => setRegisterOrg(e.target.value)}
                       className="pl-10"
+                      disabled={isLoading}
                     />
                   </div>
                   <div className="text-sm">
                     <label className="flex items-start gap-2 cursor-pointer">
-                      <input type="checkbox" className="rounded mt-1" />
+                      <input
+                        type="checkbox"
+                        className="rounded mt-1"
+                        checked={registerAgreed}
+                        onChange={(e) => setRegisterAgreed(e.target.checked)}
+                        disabled={isLoading}
+                      />
                       <span className="text-muted-foreground">
                         <Link href="/terms" className="text-primary hover:underline">
                           利用規約
@@ -151,10 +275,17 @@ export default function LoginPage() {
                       </span>
                     </label>
                   </div>
-                  <Button className="w-full" asChild>
-                    <Link href="/auth/register-complete">無料会員登録</Link>
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        登録中...
+                      </>
+                    ) : (
+                      "無料会員登録"
+                    )}
                   </Button>
-                </div>
+                </form>
 
                 <div className="relative">
                   <Separator className="my-4" />
@@ -164,15 +295,14 @@ export default function LoginPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Button variant="outline" className="w-full gap-2">
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={() => handleGoogleAuth(true)}
+                    disabled={isLoading}
+                  >
                     <Chrome className="h-4 w-4" />
                     Googleで登録
-                  </Button>
-                  <Button variant="outline" className="w-full gap-2">
-                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 2C6.477 2 2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.989C18.343 21.129 22 16.99 22 12c0-5.523-4.477-10-10-10z" />
-                    </svg>
-                    Facebookで登録
                   </Button>
                 </div>
               </TabsContent>
@@ -181,5 +311,33 @@ export default function LoginPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+function AuthLoginFallback() {
+  return (
+    <div className="container py-8">
+      <div className="max-w-md mx-auto">
+        <Card>
+          <CardHeader className="text-center">
+            <Skeleton className="h-8 w-48 mx-auto mb-2" />
+            <Skeleton className="h-4 w-40 mx-auto" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+export default function AuthLoginPage() {
+  return (
+    <Suspense fallback={<AuthLoginFallback />}>
+      <AuthLoginForm />
+    </Suspense>
   );
 }
