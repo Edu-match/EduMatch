@@ -28,28 +28,69 @@ model Profile {
   email               String   @unique
   avatar_url          String?
   subscription_status String   @default("INACTIVE")
+  phone               String?
+  postal_code         String?
+  prefecture          String?
+  city                String?
+  address             String?  // 町名・番地（資料請求用）
   created_at          DateTime @default(now())
   updated_at          DateTime @updatedAt
 
-  services Service[]
-  posts    Post[]
+  services       Service[]
+  posts          Post[]
+  view_histories ViewHistory[]
+  material_requests MaterialRequest[]
 
   @@index([email])
 }
 
+model MaterialRequest {
+  id                  String   @id @default(cuid())
+  user_id             String   @db.Uuid
+  user                Profile  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  service_id          String
+  service             Service  @relation(fields: [service_id], references: [id], onDelete: Cascade)
+  use_account_address Boolean  // true=登録住所で請求
+  delivery_name      String
+  delivery_phone      String?
+  delivery_postal_code String?
+  delivery_prefecture String?
+  delivery_city       String?
+  delivery_address    String?
+  delivery_email     String   // 請求者メール（資料送付先）
+  message            String?
+  created_at         DateTime @default(now())
+
+  @@index([user_id])
+  @@index([service_id])
+}
+
+model ViewHistory {
+  id           String   @id @default(cuid())
+  user_id      String   @db.Uuid
+  user         Profile  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  content_type String   // "ARTICLE" | "SERVICE"
+  content_id   String
+  viewed_at    DateTime @default(now())
+
+  @@unique([user_id, content_type, content_id])
+  @@index([user_id])
+}
+
 model Service {
-  id            String   @id @default(cuid())
-  provider_id   String   @db.Uuid
-  provider      Profile  @relation(fields: [provider_id], references: [id], onDelete: Cascade)
-  title         String
-  description   String
-  content       String   @db.Text
-  thumbnail_url String?
+  id             String   @id @default(cuid())
+  provider_id    String   @db.Uuid
+  provider       Profile  @relation(fields: [provider_id], references: [id], onDelete: Cascade)
+  title          String
+  description    String
+  content        String   @db.Text
+  thumbnail_url  String?
   youtube_url   String?  // YouTube動画のURL
   images        String[] // 追加画像のURL配列
-  category      String
+  category       String
   price_info    String
-  is_published  Boolean  @default(false)
+  is_published   Boolean  @default(false)
+  is_member_only Boolean @default(false) // true=会員限定
   status        PublishStatus @default(DRAFT)
   submitted_at  DateTime?
   approved_at   DateTime?
@@ -57,6 +98,7 @@ model Service {
   rejection_reason String?
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
+  material_requests MaterialRequest[]
 
   @@index([provider_id])
   @@index([category])
@@ -74,6 +116,7 @@ model Post {
   images        String[] // 追加画像のURL配列
   view_count    Int      @default(0)
   is_published  Boolean  @default(false)
+  is_member_only Boolean @default(false) // true=会員限定
   status        PublishStatus @default(DRAFT)
   submitted_at  DateTime?
   approved_at   DateTime?

@@ -1,5 +1,8 @@
+import { unstable_noStore } from "next/cache";
 import { getLatestPosts } from "@/app/_actions";
 import { ArticlesClient } from "./articles-client";
+
+export const dynamic = "force-dynamic";
 
 // カテゴリを推測（日本語ラベルを返す）
 function getCategory(content: string): string {
@@ -29,6 +32,7 @@ export type ArticleForList = {
 };
 
 export default async function ArticlesPage() {
+  unstable_noStore();
   const posts = await getLatestPosts(20);
   
   // サーバー側で現在時刻を取得して「新着」判定に使用

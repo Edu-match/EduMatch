@@ -1,20 +1,40 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
   Mail, Lock, User, Building2, Loader2, AlertCircle, CheckCircle,
-  BookOpen, School
+  BookOpen, School, Chrome, MapPin
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
+import { getPasswordErrors } from "@/lib/password";
+import { createSupabaseBrowserClient } from "@/utils/supabase/client";
 
 type UserType = "viewer" | "provider";
+
+const PREFECTURES = [
+  "北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県",
+  "茨城県", "栃木県", "群馬県", "埼玉県", "千葉県", "東京都", "神奈川県",
+  "新潟県", "富山県", "石川県", "福井県", "山梨県", "長野県", "岐阜県",
+  "静岡県", "愛知県", "三重県", "滋賀県", "京都府", "大阪府", "兵庫県",
+  "奈良県", "和歌山県", "鳥取県", "島根県", "岡山県", "広島県", "山口県",
+  "徳島県", "香川県", "愛媛県", "高知県", "福岡県", "佐賀県", "長崎県",
+  "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県",
+];
 
 function LoginForm() {
   const router = useRouter();
@@ -35,10 +55,36 @@ function LoginForm() {
   const [registerPassword, setRegisterPassword] = useState("");
   const [registerOrg, setRegisterOrg] = useState("");
   const [registerAgreed, setRegisterAgreed] = useState(false);
+  const [registerSkipAddress, setRegisterSkipAddress] = useState(true);
+  const [registerPhone, setRegisterPhone] = useState("");
+  const [registerPostalCode, setRegisterPostalCode] = useState("");
+  const [registerPrefecture, setRegisterPrefecture] = useState("");
+  const [registerCity, setRegisterCity] = useState("");
+  const [registerAddress, setRegisterAddress] = useState("");
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // URLパラメータからエラーを取得
+  useEffect(() => {
+    const errorParam = searchParams.get("error");
+    if (errorParam === "oauth_error") {
+      setError("Googleログインに失敗しました。もう一度お試しください。");
+    } else if (errorParam === "role_mismatch") {
+      const expected = searchParams.get("expected");
+      const actual = searchParams.get("actual");
+      if (expected === "PROVIDER" && actual === "VIEWER") {
+        setError("このアカウントは閲覧者アカウントです。閲覧者として利用を選択してください。");
+      } else if (expected === "VIEWER" && actual === "PROVIDER") {
+        setError("このアカウントは投稿者アカウントです。投稿者として利用を選択してください。");
+      } else {
+        setError("アカウントタイプが一致しません。正しいアカウントタイプでログインしてください。");
+      }
+    } else if (errorParam === "profile_creation_failed") {
+      setError("プロフィールの作成に失敗しました。もう一度お試しください。");
+    }
+  }, [searchParams]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,6 +96,13 @@ function LoginForm() {
 
     setIsLoading(true);
     setError(null);
+
+    const loginPwErrors = getPasswordErrors(loginPassword);
+    if (loginPwErrors.length > 0) {
+      setError("パスワードが間違っています。");
+      setIsLoading(false);
+      return;
+    }
 
     try {
       const response = await fetch("/api/auth/login", {
@@ -65,21 +118,23 @@ function LoginForm() {
       const data = await response.json();
 
       if (!response.ok) {
-        if (data.error.includes("Invalid login credentials") || data.error.includes("メールアドレス")) {
-          setError("メールアドレスまたはパスワードが正しくありません");
-        } else if (data.error.includes("Email not confirmed")) {
-          setError("メールアドレスの確認が完了していません。確認メールをご確認ください。");
-        } else {
-          setError(data.error || "ログインに失敗しました");
-        }
+        setError(data.error || "ログインに失敗しました");
         setIsLoading(false);
         return;
       }
 
-      // ログイン成功
+      // ログイン成功：セッションをクライアントに設定
+      if (data.session) {
+        const supabase = createSupabaseBrowserClient();
+        await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        });
+      }
+
+      // フルリロードでヘッダーの認証表示を更新
       toast.success("ログインしました");
-      router.push(redirectTo);
-      router.refresh();
+      window.location.href = redirectTo;
     } catch {
       setError("ログインに失敗しました。もう一度お試しください。");
       toast.error("ログインに失敗しました");
@@ -105,8 +160,9 @@ function LoginForm() {
       return;
     }
 
-    if (registerPassword.length < 8) {
-      setError("パスワードは8文字以上で入力してください");
+    const signupPwErrors = getPasswordErrors(registerPassword);
+    if (signupPwErrors.length > 0) {
+      setError("パスワードが間違っています。");
       setIsLoading(false);
       return;
     }
@@ -119,37 +175,37 @@ function LoginForm() {
     }
 
     try {
+      const body: Record<string, unknown> = {
+        email: registerEmail,
+        password: registerPassword,
+        name: registerName,
+        organization: registerOrg || null,
+        userType,
+      };
+      if (!registerSkipAddress) {
+        body.phone = registerPhone || null;
+        body.postal_code = registerPostalCode || null;
+        body.prefecture = registerPrefecture || null;
+        body.city = registerCity || null;
+        body.address = registerAddress || null;
+      }
       const response = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: registerEmail,
-          password: registerPassword,
-          name: registerName,
-          organization: registerOrg || null,
-          userType,
-        }),
+        body: JSON.stringify(body),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        if (data.error.includes("User already registered") || data.error.includes("既に登録")) {
-          setError("このメールアドレスは既に登録されています");
-        } else {
-          setError(data.error || "会員登録に失敗しました");
-        }
+        setError(data.error || "会員登録に失敗しました");
         setIsLoading(false);
         return;
       }
 
-      // 登録成功
-      setSuccess("確認メールを送信しました。メール内のリンクをクリックして登録を完了してください。");
-      setRegisterEmail("");
-      setRegisterPassword("");
-      setRegisterName("");
-      setRegisterOrg("");
-      setRegisterAgreed(false);
+      // 登録成功 → ログイン後プロフィール設定へ（メール登録はここでセッションが付かないため一旦ログインへ）
+      toast.success("登録が完了しました。ログインしてプロフィール（名前・住所など）を設定してください。");
+      router.push("/login?message=登録が完了しました。ログインしてプロフィール（名前・住所など）を設定してください。&redirect_to=" + encodeURIComponent("/profile/register?first=1"));
     } catch {
       setError("会員登録に失敗しました。もう一度お試しください。");
     } finally {
@@ -241,9 +297,9 @@ function LoginForm() {
 
             {/* エラーメッセージ */}
             {error && (
-              <div className="mb-4 p-3 rounded-md bg-red-50 border border-red-200 text-red-700 text-sm flex items-center gap-2">
-                <AlertCircle className="h-4 w-4" />
-                {error}
+              <div className="mb-4 p-3 rounded-md bg-red-50 border border-red-200 text-red-700 text-sm flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                <span className="whitespace-pre-line">{error}</span>
               </div>
             )}
 
@@ -307,6 +363,29 @@ function LoginForm() {
                     )}
                   </Button>
                 </form>
+
+                <div className="relative">
+                  <Separator className="my-4" />
+                  <span className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-background px-2 text-sm text-muted-foreground">
+                    または
+                  </span>
+                </div>
+
+                <Button
+                  variant="outline"
+                  className="w-full gap-2"
+                  onClick={() => {
+                    if (!userType) {
+                      setError("アカウントタイプを選択してください");
+                      return;
+                    }
+                    window.location.href = `/api/auth/google?redirect_to=${encodeURIComponent(redirectTo)}&userType=${userType}`;
+                  }}
+                  disabled={isLoading}
+                >
+                  <Chrome className="h-4 w-4" />
+                  Googleでログイン
+                </Button>
               </TabsContent>
 
               {/* 新規登録タブ */}
@@ -364,6 +443,85 @@ function LoginForm() {
                       disabled={isLoading}
                     />
                   </div>
+                  <div className="rounded-md border border-muted bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+                    <p className="font-medium text-foreground mb-1">パスワードの条件</p>
+                    <ul className="list-disc list-inside space-y-0.5 text-xs">
+                      <li>8文字以上</li>
+                      <li>大文字を含む</li>
+                      <li>小文字を含む</li>
+                      <li>数字を含む</li>
+                    </ul>
+                  </div>
+
+                  {/* 住所・連絡先（任意） */}
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
+                      住所・連絡先（任意）
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant={registerSkipAddress ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setRegisterSkipAddress(true)}
+                        disabled={isLoading}
+                      >
+                        今はスキップ
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={!registerSkipAddress ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setRegisterSkipAddress(false)}
+                        disabled={isLoading}
+                      >
+                        住所を登録する
+                      </Button>
+                    </div>
+                    {!registerSkipAddress && (
+                      <div className="space-y-3 pt-2 border-t">
+                        <Input
+                          placeholder="電話番号"
+                          value={registerPhone}
+                          onChange={(e) => setRegisterPhone(e.target.value)}
+                          disabled={isLoading}
+                          className="pl-3"
+                        />
+                        <Input
+                          placeholder="郵便番号（例: 100-0001）"
+                          value={registerPostalCode}
+                          onChange={(e) => setRegisterPostalCode(e.target.value)}
+                          disabled={isLoading}
+                          className="pl-3"
+                        />
+                        <Select value={registerPrefecture} onValueChange={setRegisterPrefecture} disabled={isLoading}>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="都道府県を選択" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {PREFECTURES.map((p) => (
+                              <SelectItem key={p} value={p}>{p}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Input
+                          placeholder="市区町村"
+                          value={registerCity}
+                          onChange={(e) => setRegisterCity(e.target.value)}
+                          disabled={isLoading}
+                          className="pl-3"
+                        />
+                        <Input
+                          placeholder="町名・番地・建物名"
+                          value={registerAddress}
+                          onChange={(e) => setRegisterAddress(e.target.value)}
+                          disabled={isLoading}
+                          className="pl-3"
+                        />
+                      </div>
+                    )}
+                  </div>
 
                   {/* 閲覧者の場合のみ組織名は任意 */}
                   {userType === "viewer" && (
@@ -412,16 +570,29 @@ function LoginForm() {
                   </Button>
                 </form>
 
-                {userType === "provider" && (
-                  <div className="mt-4 p-3 rounded-md bg-blue-50 border border-blue-200 text-blue-700 text-sm">
-                    <p className="font-medium mb-1">企業・学校アカウントの特典</p>
-                    <ul className="text-xs space-y-1">
-                      <li>• サービス・記事の掲載</li>
-                      <li>• 閲覧数・問い合わせの分析</li>
-                      <li>• 資料請求の管理</li>
-                    </ul>
-                  </div>
-                )}
+                <div className="relative">
+                  <Separator className="my-4" />
+                  <span className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-background px-2 text-sm text-muted-foreground">
+                    または
+                  </span>
+                </div>
+
+                <Button
+                  variant="outline"
+                  className="w-full gap-2"
+                  onClick={() => {
+                    if (!userType) {
+                      setError("アカウントタイプを選択してください");
+                      return;
+                    }
+                    window.location.href = `/api/auth/google?redirect_to=${encodeURIComponent(redirectTo)}&userType=${userType}`;
+                  }}
+                  disabled={isLoading}
+                >
+                  <Chrome className="h-4 w-4" />
+                  Googleで登録
+                </Button>
+
               </TabsContent>
             </Tabs>
           </CardContent>

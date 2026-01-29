@@ -4,6 +4,7 @@ import { type NextRequest, NextResponse } from "next/server";
 // 認証が必要なパス（これらのパス配下は全て保護される）
 const protectedPaths = [
   "/dashboard",
+  "/history",
   "/keep-list",
   "/notifications",
   "/profile/register",
@@ -16,6 +17,7 @@ const protectedPaths = [
   "/services/new",
   "/services/create",
   "/payment",
+  "/request-info",
 ];
 
 // 認証済みユーザーがアクセスすべきでないパス

@@ -5,7 +5,7 @@ import { createClient } from "@/utils/supabase/server";
 import type { Service, Profile, Role } from "@prisma/client";
 
 export type ServiceWithProvider = Service & {
-  provider: Pick<Profile, "id" | "name" | "avatar_url">;
+  provider: Pick<Profile, "id" | "name" | "email" | "avatar_url">;
 };
 
 export type ContentBlock = {
@@ -125,6 +125,7 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     category: "学習管理",
     price_info: "月額500円/生徒〜",
     is_published: true,
+    is_member_only: false,
     status: "APPROVED",
     submitted_at: new Date(Date.now() - 1000 * 60 * 60 * 25),
     approved_at: new Date(Date.now() - 1000 * 60 * 60 * 24),
@@ -132,7 +133,7 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     rejection_reason: null,
     created_at: new Date(Date.now() - 1000 * 60 * 60 * 24),
     updated_at: new Date(),
-    provider: { id: "demo-provider", name: "スタディプラス株式会社", avatar_url: null },
+    provider: { id: "demo-provider", name: "スタディプラス株式会社", email: "demo@example.com", avatar_url: null },
   },
   {
     id: "demo-service-2",
@@ -146,6 +147,7 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     category: "校務支援",
     price_info: "お問い合わせ",
     is_published: true,
+    is_member_only: false,
     status: "APPROVED",
     submitted_at: new Date(Date.now() - 1000 * 60 * 60 * 49),
     approved_at: new Date(Date.now() - 1000 * 60 * 60 * 48),
@@ -167,6 +169,7 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     category: "AI教材",
     price_info: "月額3,000円〜",
     is_published: true,
+    is_member_only: false,
     status: "APPROVED",
     submitted_at: new Date(Date.now() - 1000 * 60 * 60 * 73),
     approved_at: new Date(Date.now() - 1000 * 60 * 60 * 72),
@@ -188,6 +191,7 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     category: "グループウェア",
     price_info: "Education版は無料",
     is_published: true,
+    is_member_only: false,
     status: "APPROVED",
     submitted_at: new Date(Date.now() - 1000 * 60 * 60 * 97),
     approved_at: new Date(Date.now() - 1000 * 60 * 60 * 96),
@@ -209,6 +213,7 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     category: "授業支援",
     price_info: "年額6,600円/教員",
     is_published: true,
+    is_member_only: false,
     status: "APPROVED",
     submitted_at: new Date(Date.now() - 1000 * 60 * 60 * 121),
     approved_at: new Date(Date.now() - 1000 * 60 * 60 * 120),
@@ -222,18 +227,28 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
 
 /**
  * 全てのサービスを取得（公開済みのみ）
+ * 未ログイン時は会員限定サービスを除外する
  */
 export async function getAllServices(): Promise<ServiceWithProvider[]> {
   try {
+    const { user } = await requireAuthedUser();
+    const where = !user
+      ? {
+          AND: [
+            { OR: [{ status: "APPROVED" as const }, { is_published: true }] },
+            { is_member_only: false },
+          ],
+        }
+      : { OR: [{ status: "APPROVED" as const }, { is_published: true }] };
+
     const services = await prisma.service.findMany({
-      where: {
-        OR: [{ status: "APPROVED" }, { is_published: true }],
-      },
+      where,
       include: {
         provider: {
           select: {
             id: true,
             name: true,
+            email: true,
             avatar_url: true,
           },
         },
@@ -245,7 +260,7 @@ export async function getAllServices(): Promise<ServiceWithProvider[]> {
 
     return services.map((s) => ({
       ...s,
-      provider: s.provider || { id: s.provider_id, name: "提供者", avatar_url: null },
+      provider: s.provider || { id: s.provider_id, name: "提供者", email: "", avatar_url: null },
     }));
   } catch (error) {
     if (isDbUnavailable(error)) {
@@ -261,19 +276,29 @@ export async function getAllServices(): Promise<ServiceWithProvider[]> {
 
 /**
  * 人気のサービスを取得（作成日順、将来的にはview_count等で並び替え）
+ * 未ログイン時は会員限定サービスを除外する
  * @param limit 取得件数（デフォルト: 5）
  */
 export async function getPopularServices(limit: number = 5): Promise<ServiceWithProvider[]> {
   try {
+    const { user } = await requireAuthedUser();
+    const where = !user
+      ? {
+          AND: [
+            { OR: [{ status: "APPROVED" as const }, { is_published: true }] },
+            { is_member_only: false },
+          ],
+        }
+      : { OR: [{ status: "APPROVED" as const }, { is_published: true }] };
+
     const services = await prisma.service.findMany({
-      where: {
-        OR: [{ status: "APPROVED" }, { is_published: true }],
-      },
+      where,
       include: {
         provider: {
           select: {
             id: true,
             name: true,
+            email: true,
             avatar_url: true,
           },
         },
@@ -286,7 +311,7 @@ export async function getPopularServices(limit: number = 5): Promise<ServiceWith
 
     return services.map((s) => ({
       ...s,
-      provider: s.provider || { id: s.provider_id, name: "提供者", avatar_url: null },
+      provider: s.provider || { id: s.provider_id, name: "提供者", email: "", avatar_url: null },
     }));
   } catch (error) {
     if (isDbUnavailable(error)) {
@@ -313,6 +338,7 @@ export async function getServiceById(id: string): Promise<ServiceWithProvider | 
           select: {
             id: true,
             name: true,
+            email: true,
             avatar_url: true,
           },
         },
@@ -338,6 +364,12 @@ export async function getServiceById(id: string): Promise<ServiceWithProvider | 
       }
     }
 
+    // 会員限定サービスは未ログインなら非公開
+    if (service.is_member_only) {
+      const { user } = await requireAuthedUser();
+      if (!user) return null;
+    }
+
     return {
       ...service,
       provider: service.provider || { id: service.provider_id, name: "提供者", avatar_url: null },
@@ -356,20 +388,33 @@ export async function getServiceById(id: string): Promise<ServiceWithProvider | 
 
 /**
  * カテゴリ別にサービスを取得
+ * 未ログイン時は会員限定サービスを除外する
  * @param category カテゴリ名
  */
 export async function getServicesByCategory(category: string): Promise<ServiceWithProvider[]> {
   try {
+    const { user } = await requireAuthedUser();
+    const where = !user
+      ? {
+          AND: [
+            { OR: [{ status: "APPROVED" as const }, { is_published: true }] },
+            { category },
+            { is_member_only: false },
+          ],
+        }
+      : {
+          OR: [{ status: "APPROVED" as const }, { is_published: true }],
+          category,
+        };
+
     const services = await prisma.service.findMany({
-      where: {
-        OR: [{ status: "APPROVED" }, { is_published: true }],
-        category,
-      },
+      where,
       include: {
         provider: {
           select: {
             id: true,
             name: true,
+            email: true,
             avatar_url: true,
           },
         },
@@ -381,7 +426,7 @@ export async function getServicesByCategory(category: string): Promise<ServiceWi
 
     return services.map((s) => ({
       ...s,
-      provider: s.provider || { id: s.provider_id, name: "提供者", avatar_url: null },
+      provider: s.provider || { id: s.provider_id, name: "提供者", email: "", avatar_url: null },
     }));
   } catch (error) {
     if (isDbUnavailable(error)) {
@@ -473,14 +518,14 @@ export async function getPendingServices(): Promise<ServiceWithProvider[]> {
   try {
     const services = await prisma.service.findMany({
       where: { status: "PENDING" },
-      include: { provider: { select: { id: true, name: true, avatar_url: true } } },
+      include: { provider: { select: { id: true, name: true, email: true, avatar_url: true } } },
       orderBy: { submitted_at: "asc" },
       take: 100,
     });
 
     return services.map((s) => ({
       ...s,
-      provider: s.provider || { id: s.provider_id, name: "提供者", avatar_url: null },
+      provider: s.provider || { id: s.provider_id, name: "提供者", email: "", avatar_url: null },
     }));
   } catch (e) {
     console.error("Error fetching pending services:", e);

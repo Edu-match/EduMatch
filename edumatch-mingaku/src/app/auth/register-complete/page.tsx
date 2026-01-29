@@ -18,8 +18,8 @@ const nextSteps = [
   },
   {
     icon: User,
-    title: "プロファイルを設定",
-    description: "関心のあるカテゴリや学校種を設定すると、より適切なおすすめが表示されます。",
+    title: "プロファイルを設定（名前・住所など）",
+    description: "お名前・電話番号・住所（資料請求の送付先）などを登録すると、資料請求がスムーズになります。関心カテゴリも設定できます。",
   },
   {
     icon: Sparkles,
@@ -96,7 +96,7 @@ export default function RegisterCompletePage() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button asChild size="lg" className="gap-2">
                 <Link href="/profile/register">
-                  プロファイルを設定する
+                  プロファイルを設定する（名前・住所など）
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>

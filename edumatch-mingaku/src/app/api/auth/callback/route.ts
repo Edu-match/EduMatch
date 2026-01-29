@@ -7,10 +7,11 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get("code");
     const redirectTo = searchParams.get("redirect_to") || "/dashboard";
+    const userType = searchParams.get("userType") || "viewer"; // viewer or provider
 
     if (!code) {
       return NextResponse.redirect(
-        new URL("/auth/login?error=oauth_error", request.url)
+        new URL("/login?error=oauth_error", request.url)
       );
     }
 
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
 
     if (error || !data.user) {
       return NextResponse.redirect(
-        new URL("/auth/login?error=oauth_error", request.url)
+        new URL("/login?error=oauth_error", request.url)
       );
     }
 
@@ -36,30 +37,49 @@ export async function GET(request: NextRequest) {
       // DB接続エラーでも続行（Profileなしとして扱う）
     }
 
-    // Profileが存在しない場合は作成
+    // ロールを決定
+    const expectedRole = userType === "provider" ? "PROVIDER" : "VIEWER";
+
+    const origin = new URL(request.url).origin;
+
+    // Profileが存在しない場合は作成し、新規はプロフィール設定（住所含む）へ
     if (!existingProfile) {
       const userMetadata = data.user.user_metadata || {};
       const name = userMetadata.name || userMetadata.full_name || data.user.email?.split("@")[0] || "ユーザー";
 
       try {
-        await prisma.profile.create({
+        existingProfile = await prisma.profile.create({
           data: {
             id: data.user.id,
             name,
             email: data.user.email || "",
-            role: "VIEWER",
+            role: expectedRole,
             subscription_status: "INACTIVE",
             avatar_url: userMetadata.avatar_url || userMetadata.picture || null,
           },
         });
       } catch (profileError) {
         console.error("Profile creation error:", profileError);
-        // Profile作成に失敗しても続行
+        return NextResponse.redirect(
+          new URL("/auth/login?error=profile_creation_failed", request.url)
+        );
       }
+
+      // 初回登録（Googleなど）はプロフィール設定へ（名前・住所などを登録）
+      if (expectedRole !== "PROVIDER") {
+        return NextResponse.redirect(new URL("/profile/register?first=1", origin));
+      }
+      return NextResponse.redirect(new URL("/company/dashboard", origin));
     }
 
-    // リダイレクト先に移動
-    return NextResponse.redirect(new URL(redirectTo, request.url));
+    // 既存のProfileがある場合、ロールチェック
+    if (existingProfile.role !== expectedRole) {
+      return NextResponse.redirect(
+        new URL(`/auth/login?error=role_mismatch`, origin)
+      );
+    }
+
+    return NextResponse.redirect(new URL(redirectTo, origin));
   } catch (error) {
     console.error("Callback error:", error);
     return NextResponse.redirect(

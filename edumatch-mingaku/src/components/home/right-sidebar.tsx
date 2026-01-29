@@ -3,6 +3,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Crown } from "lucide-react";
 import { getPopularServices } from "@/app/_actions";
+import { createClient } from "@/utils/supabase/server";
 
 const rankColors = [
   "bg-[#ef4444] text-white", // 1位: 赤
@@ -14,24 +15,33 @@ const rankColors = [
 
 export async function RightSidebar() {
   const services = await getPopularServices(5);
+  
+  // 認証状態をチェック
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const isAuthenticated = !!user;
 
   return (
     <aside className="space-y-4">
-      {/* ログイン・登録エリア */}
-      <div className="border rounded-lg bg-card p-4">
-        <h3 className="text-sm font-bold mb-3">会員登録・ログイン</h3>
-        <p className="text-xs text-muted-foreground mb-3">
-          お気に入り登録やブックマーク機能が使えます
-        </p>
-        <div className="flex flex-col gap-2">
-          <Button asChild size="sm" className="w-full">
-            <Link href="/login">新規登録（無料）</Link>
-          </Button>
-          <Button asChild size="sm" variant="outline" className="w-full">
-            <Link href="/login">ログイン</Link>
-          </Button>
+      {/* ログイン・登録エリア（未ログイン時のみ表示） */}
+      {!isAuthenticated && (
+        <div className="border rounded-lg bg-card p-4">
+          <h3 className="text-sm font-bold mb-3">会員登録・ログイン</h3>
+          <p className="text-xs text-muted-foreground mb-3">
+            お気に入り登録やブックマーク機能が使えます
+          </p>
+          <div className="flex flex-col gap-2">
+            <Button asChild size="sm" className="w-full">
+              <Link href="/login">新規登録（無料）</Link>
+            </Button>
+            <Button asChild size="sm" variant="outline" className="w-full">
+              <Link href="/login">ログイン</Link>
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* 人気サービスランキング */}
       <div className="border rounded-lg bg-card">

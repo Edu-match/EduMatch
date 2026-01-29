@@ -14,74 +14,37 @@ import {
   FileText,
   TrendingUp,
 } from "lucide-react";
+import { requireAuth, getCurrentProfile } from "@/lib/auth";
+import { getRecentViewHistory } from "@/app/_actions";
 
-const recentlyViewed = [
-  {
-    id: 1,
-    title: "ClassTech Pro",
-    type: "service",
-    image: "https://placehold.co/100x60/fef3c7/ca8a04?text=CT",
-    date: "2024-01-15",
-  },
-  {
-    id: 2,
-    title: "EdTechツール選びの完全ガイド",
-    type: "article",
-    image: "https://placehold.co/100x60/e2e8f0/334155?text=Article",
-    date: "2024-01-14",
-  },
-  {
-    id: 3,
-    title: "SmartAssess",
-    type: "service",
-    image: "https://placehold.co/100x60/fecaca/dc2626?text=SA",
-    date: "2024-01-14",
-  },
-];
+// 閲覧時刻を「ついさっき」「〇分前」などで表示
+function formatViewedAt(viewedAt: Date): string {
+  const now = new Date();
+  const diffMs = now.getTime() - viewedAt.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffSec < 60) return "ついさっき";
+  if (diffMin < 60) return `${diffMin}分前`;
+  if (diffHour < 24) return `${diffHour}時間前`;
+  return viewedAt.toLocaleDateString("ja-JP", {
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
-const keepList = [
-  {
-    id: 1,
-    title: "ClassTech Pro",
-    type: "service",
-    status: "検討中",
-  },
-  {
-    id: 2,
-    title: "EduCollabo",
-    type: "service",
-    status: "資料請求済",
-  },
-  {
-    id: 3,
-    title: "導入事例：タブレット活用",
-    type: "article",
-    status: null,
-  },
-];
+export default async function DashboardPage() {
+  const user = await requireAuth();
+  const profile = await getCurrentProfile();
+  const displayName = profile?.name ?? user.email?.split("@")[0] ?? "ユーザー";
 
-const notifications = [
-  {
-    id: 1,
-    title: "新着記事：AI活用の最新トレンド",
-    date: "2024-01-15",
-    read: false,
-  },
-  {
-    id: 2,
-    title: "キープしたサービスがキャンペーン中",
-    date: "2024-01-14",
-    read: false,
-  },
-  {
-    id: 3,
-    title: "資料請求の回答が届きました",
-    date: "2024-01-13",
-    read: true,
-  },
-];
+  const recentlyViewed = await getRecentViewHistory(user.id, 5);
 
-export default function DashboardPage() {
+  const keepList: { id: string; title: string; type: "service" | "article"; status: string | null }[] = [];
+  const notifications: { id: string; title: string; date: string; read: boolean }[] = [];
+
   return (
     <div className="container py-8">
       <div className="mb-8">
@@ -89,7 +52,7 @@ export default function DashboardPage() {
           <div>
             <h1 className="text-3xl font-bold mb-2">マイダッシュボード</h1>
             <p className="text-muted-foreground">
-              こんにちは、山田太郎さん
+              こんにちは、{displayName}さん
             </p>
           </div>
           <Button variant="outline" asChild>
@@ -120,20 +83,29 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {recentlyViewed.map((item) => (
+                {recentlyViewed.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4">まだ閲覧履歴はありません。記事やサービスを見るとここに表示されます。</p>
+                ) : (
+                  recentlyViewed.map((item) => (
                   <Link
-                    key={item.id}
-                    href={`/${item.type === "service" ? "services" : "articles"}/${item.id}`}
+                    key={`${item.type}-${item.id}`}
+                    href={item.type === "service" ? `/services/${item.id}` : `/articles/${item.id}`}
                     className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted transition-colors"
                   >
-                    <div className="relative h-12 w-20 flex-shrink-0">
-                      <Image
-                        src={item.image}
-                        alt={item.title}
-                        fill
-                        className="object-cover rounded"
-                        unoptimized
-                      />
+                    <div className="relative h-12 w-20 flex-shrink-0 bg-muted rounded overflow-hidden">
+                      {item.image ? (
+                        <Image
+                          src={item.image}
+                          alt={item.title}
+                          fill
+                          className="object-cover"
+                          unoptimized
+                        />
+                      ) : (
+                        <span className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
+                          {item.type === "service" ? "S" : "A"}
+                        </span>
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
@@ -143,12 +115,13 @@ export default function DashboardPage() {
                       </div>
                       <p className="font-medium truncate">{item.title}</p>
                       <p className="text-xs text-muted-foreground">
-                        {new Date(item.date).toLocaleDateString("ja-JP")}
+                        {formatViewedAt(item.viewedAt)}
                       </p>
                     </div>
                     <Eye className="h-4 w-4 text-muted-foreground" />
                   </Link>
-                ))}
+                ))
+                )}
               </div>
             </CardContent>
           </Card>
@@ -169,7 +142,10 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {keepList.map((item) => (
+                {keepList.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4">キープした記事・サービスはまだありません。</p>
+                ) : (
+                  keepList.map((item) => (
                   <div
                     key={item.id}
                     className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
@@ -193,7 +169,8 @@ export default function DashboardPage() {
                       </Badge>
                     )}
                   </div>
-                ))}
+                ))
+                )}
               </div>
             </CardContent>
           </Card>
@@ -207,26 +184,7 @@ export default function DashboardPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">ClassTech Pro</span>
-                  <div className="flex items-center gap-2">
-                    <div className="w-32 h-2 bg-muted rounded-full overflow-hidden">
-                      <div className="w-3/4 h-full bg-primary rounded-full" />
-                    </div>
-                    <span className="text-sm text-muted-foreground">75%</span>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">EduCollabo</span>
-                  <div className="flex items-center gap-2">
-                    <div className="w-32 h-2 bg-muted rounded-full overflow-hidden">
-                      <div className="w-1/2 h-full bg-primary rounded-full" />
-                    </div>
-                    <span className="text-sm text-muted-foreground">50%</span>
-                  </div>
-                </div>
-              </div>
+              <p className="text-sm text-muted-foreground py-2">準備中です。今後、検討中のサービス・進捗がここに表示されます。</p>
             </CardContent>
           </Card>
         </div>
@@ -246,7 +204,10 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {notifications.map((notification) => (
+                {notifications.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4">通知はまだありません。</p>
+                ) : (
+                  notifications.map((notification) => (
                   <div
                     key={notification.id}
                     className={`p-3 rounded-lg ${
@@ -260,7 +221,8 @@ export default function DashboardPage() {
                       {new Date(notification.date).toLocaleDateString("ja-JP")}
                     </p>
                   </div>
-                ))}
+                ))
+                )}
               </div>
             </CardContent>
           </Card>

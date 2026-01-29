@@ -6,11 +6,16 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient();
     const { searchParams } = new URL(request.url);
     const redirectTo = searchParams.get("redirect_to") || "/dashboard";
+    const userType = searchParams.get("userType") || "viewer"; // viewer or provider
 
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${request.nextUrl.origin}/api/auth/callback?redirect_to=${encodeURIComponent(redirectTo)}`,
+        redirectTo: `${request.nextUrl.origin}/api/auth/callback?redirect_to=${encodeURIComponent(redirectTo)}&userType=${encodeURIComponent(userType)}`,
+        queryParams: {
+          access_type: "offline",
+          prompt: "consent",
+        },
       },
     });
 

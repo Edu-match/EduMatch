@@ -215,6 +215,7 @@ export async function createPost(input: CreatePostInput): Promise<CreatePostResu
         youtube_url: youtubeUrl,
         images: images,
         is_published: false,
+        is_member_only: input.publishType === "member",
         status,
         submitted_at: isDraft ? null : now,
         approved_at: null,
@@ -290,6 +291,7 @@ export async function updatePost(
     if (input.publishType !== undefined) {
       const isDraft = input.publishType === "draft";
       updateData.is_published = false;
+      updateData.is_member_only = input.publishType === "member";
       updateData.status = isDraft ? "DRAFT" : "PENDING";
       updateData.submitted_at = isDraft ? null : new Date();
       updateData.approved_at = null;
@@ -497,14 +499,23 @@ const DEMO_POSTS: PostWithProvider[] = [
 
 /**
  * 最新の公開記事を取得
+ * 未ログイン時は会員限定記事を除外する
  * @param limit 取得件数（デフォルト: 10）
  */
 export async function getLatestPosts(limit: number = 10): Promise<PostWithProvider[]> {
   try {
+    const { user } = await requireAuthedUser();
+    const where = !user
+      ? {
+          AND: [
+            { OR: [{ status: "APPROVED" as const }, { is_published: true }] },
+            { is_member_only: false },
+          ],
+        }
+      : { OR: [{ status: "APPROVED" as const }, { is_published: true }] };
+
     const posts = await prisma.post.findMany({
-      where: {
-        OR: [{ status: "APPROVED" }, { is_published: true }],
-      },
+      where,
       include: {
         provider: {
           select: {
@@ -543,14 +554,23 @@ export async function getLatestPosts(limit: number = 10): Promise<PostWithProvid
 
 /**
  * 人気の記事を取得（view_count順）
+ * 未ログイン時は会員限定記事を除外する
  * @param limit 取得件数（デフォルト: 5）
  */
 export async function getPopularPosts(limit: number = 5): Promise<PostWithProvider[]> {
   try {
+    const { user } = await requireAuthedUser();
+    const where = !user
+      ? {
+          AND: [
+            { OR: [{ status: "APPROVED" as const }, { is_published: true }] },
+            { is_member_only: false },
+          ],
+        }
+      : { OR: [{ status: "APPROVED" as const }, { is_published: true }] };
+
     const posts = await prisma.post.findMany({
-      where: {
-        OR: [{ status: "APPROVED" }, { is_published: true }],
-      },
+      where,
       include: {
         provider: {
           select: {
@@ -623,6 +643,12 @@ export async function getPostById(id: string): Promise<PostWithProvider | null> 
           return null;
         }
       }
+    }
+
+    // 会員限定記事は未ログインなら非公開
+    if (post.is_member_only) {
+      const { user } = await requireAuthedUser();
+      if (!user) return null;
     }
 
     // providerがnullの場合はデフォルト値を設定

@@ -48,6 +48,15 @@ export async function GET(request: NextRequest) {
               avatar_url: userMetadata.avatar_url || null,
             },
           });
+
+          // 初回登録時はプロフィール設定（名前・住所など）へ誘導
+          const userMetadataForRedirect = data.user.user_metadata || {};
+          if (redirectTo === "/dashboard" && userMetadataForRedirect.role !== "PROVIDER") {
+            return NextResponse.redirect(new URL("/profile/register?first=1", origin));
+          }
+          if (redirectTo === "/dashboard" && userMetadataForRedirect.role === "PROVIDER") {
+            return NextResponse.redirect(new URL("/company/dashboard", origin));
+          }
         }
       } catch (profileError) {
         console.error("Profile creation error:", profileError);
@@ -55,7 +64,6 @@ export async function GET(request: NextRequest) {
       }
 
       // リダイレクト先を決定
-      // PROVIDERの場合は企業ダッシュボードへ
       const userMetadata = data.user.user_metadata || {};
       let finalRedirect = redirectTo;
       if (userMetadata.role === "PROVIDER" && redirectTo === "/dashboard") {

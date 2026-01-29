@@ -1,6 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { getPasswordErrors } from "@/lib/password";
+
+function authErrorMessage(en: string): string {
+  const map: Record<string, string> = {
+    "Invalid login credentials": "メールアドレスまたはパスワードが正しくありません",
+    "Email not confirmed": "メールアドレスの確認が完了していません。確認メールのリンクをクリックしてください。",
+    "Invalid email or password": "メールアドレスまたはパスワードが正しくありません",
+    "User not found": "このメールアドレスは登録されていません",
+    "Too many requests": "リクエストが多すぎます。しばらく待ってから再度お試しください",
+    "Invalid OTP": "認証コードが正しくありません",
+    "otp_expired": "認証コードの有効期限が切れています",
+  };
+  const lower = en.toLowerCase();
+  for (const [key, ja] of Object.entries(map)) {
+    if (lower.includes(key.toLowerCase())) return ja;
+  }
+  return "エラーが発生しました。入力内容を確認してもう一度お試しください。";
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,6 +27,14 @@ export async function POST(request: NextRequest) {
     if (!email || !password) {
       return NextResponse.json(
         { error: "メールアドレスとパスワードを入力してください" },
+        { status: 400 }
+      );
+    }
+
+    const passwordErrors = getPasswordErrors(password);
+    if (passwordErrors.length > 0) {
+      return NextResponse.json(
+        { error: "パスワードが間違っています。" },
         { status: 400 }
       );
     }
@@ -29,7 +55,7 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       return NextResponse.json(
-        { error: error.message },
+        { error: authErrorMessage(error.message) },
         { status: 401 }
       );
     }

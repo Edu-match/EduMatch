@@ -1,8 +1,12 @@
+import { unstable_noStore } from "next/cache";
 import { HeroNews } from "@/components/home/hero-news";
 import { TopicsSection } from "@/components/home/topics-section";
 import { RightSidebar } from "@/components/home/right-sidebar";
 
+export const dynamic = "force-dynamic";
+
 export default function HomePage() {
+  unstable_noStore();
   return (
     <div className="bg-muted/30">
       <div className="container py-6">

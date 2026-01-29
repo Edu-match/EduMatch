@@ -4,9 +4,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, ExternalLink, Building2, Calendar, Play } from "lucide-react";
-import { getServiceById, getPopularServices } from "@/app/_actions";
+import { unstable_noStore } from "next/cache";
+import { getServiceById, getPopularServices, recordView } from "@/app/_actions";
+import { getCurrentUser } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import { YouTubeEmbed } from "@/components/ui/youtube-embed";
+
+export const dynamic = "force-dynamic";
 
 function formatDate(date: Date): string {
   return new Intl.DateTimeFormat("ja-JP", {
@@ -21,11 +25,17 @@ export default async function ServiceDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  unstable_noStore();
   const { id } = await params;
   const service = await getServiceById(id);
 
   if (!service) {
     notFound();
+  }
+
+  const user = await getCurrentUser();
+  if (user) {
+    await recordView(user.id, "SERVICE", id);
   }
 
   // 関連サービスを取得
@@ -174,7 +184,7 @@ export default async function ServiceDetailPage({
                 {service.price_info}
               </p>
               <Button asChild className="w-full" size="lg">
-                <Link href="/request-info">
+                <Link href={`/request-info?serviceId=${service.id}`}>
                   <ExternalLink className="h-4 w-4 mr-2" />
                   資料請求する
                 </Link>

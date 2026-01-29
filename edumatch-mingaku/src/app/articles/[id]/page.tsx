@@ -4,9 +4,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar, ArrowLeft, Share2, Eye, User, Play } from "lucide-react";
-import { getPostById, getLatestPosts } from "@/app/_actions";
+import { unstable_noStore } from "next/cache";
+import { getPostById, getLatestPosts, recordView } from "@/app/_actions";
+import { getCurrentUser } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import { YouTubeEmbed } from "@/components/ui/youtube-embed";
+
+export const dynamic = "force-dynamic";
 
 function formatDate(date: Date): string {
   return new Intl.DateTimeFormat("ja-JP", {
@@ -35,11 +39,17 @@ export default async function ArticleDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  unstable_noStore();
   const { id } = await params;
   const post = await getPostById(id);
 
   if (!post) {
     notFound();
+  }
+
+  const user = await getCurrentUser();
+  if (user) {
+    await recordView(user.id, "ARTICLE", id);
   }
 
   // 関連記事を取得

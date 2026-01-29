@@ -1,5 +1,8 @@
+import { unstable_noStore } from "next/cache";
 import { getAllServices } from "@/app/_actions";
 import { ServicesClient } from "./services-client";
+
+export const dynamic = "force-dynamic";
 
 export type ServiceForList = {
   id: string;
@@ -11,6 +14,7 @@ export type ServiceForList = {
 };
 
 export default async function ServicesPage() {
+  unstable_noStore();
   const services = await getAllServices();
 
   const serviceList: ServiceForList[] = services.map((service) => ({
