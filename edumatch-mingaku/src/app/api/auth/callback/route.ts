@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
 
     const origin = new URL(request.url).origin;
 
-    // Profileが存在しない場合は作成し、新規はプロフィール設定（住所含む）へ
+    // Profileが存在しない場合は作成し、初回は必ずプロフィール設定（住所など）へ
     if (!existingProfile) {
       const userMetadata = data.user.user_metadata || {};
       const name = userMetadata.name || userMetadata.full_name || data.user.email?.split("@")[0] || "ユーザー";
@@ -65,11 +65,15 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      // 初回登録（Googleなど）はプロフィール設定へ（名前・住所などを登録）
-      if (expectedRole !== "PROVIDER") {
-        return NextResponse.redirect(new URL("/profile/register?first=1", origin));
+      // 初回登録（Google・メール問わず）は必ずプロフィール設定へ（名前・住所などを登録）
+      const registerUrl = new URL("/profile/register", origin);
+      registerUrl.searchParams.set("first", "1");
+      if (expectedRole === "PROVIDER") {
+        registerUrl.searchParams.set("next", "/company/dashboard");
+      } else if (redirectTo && redirectTo !== "/dashboard") {
+        registerUrl.searchParams.set("next", redirectTo);
       }
-      return NextResponse.redirect(new URL("/company/dashboard", origin));
+      return NextResponse.redirect(registerUrl);
     }
 
     // 既存のProfileがある場合、ロールチェック

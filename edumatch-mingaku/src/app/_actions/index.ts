@@ -44,15 +44,22 @@ export {
 export {
   getCurrentUserRole,
   getCurrentUserProfile,
+  getProfileById,
+  getProfileWithContents,
   updateProfile,
   type UpdateProfileInput,
+  type PublicProfile,
+  type PublicProfileWithContents,
 } from "./user";
 
 // Material request (資料請求)
 export {
   submitMaterialRequest,
+  submitMaterialRequestBatch,
   getMaterialRequestById,
   type SubmitMaterialRequestInput,
   type SubmitMaterialRequestResult,
+  type SubmitMaterialRequestBatchInput,
+  type SubmitMaterialRequestBatchResult,
   type MaterialRequestWithService,
 } from "./request-info";

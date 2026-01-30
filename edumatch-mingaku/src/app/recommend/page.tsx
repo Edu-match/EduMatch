@@ -245,7 +245,7 @@ export default function RecommendPage() {
 
         {/* サイドバー */}
         <div className="space-y-6">
-          {/* あなたのプロファイル */}
+          {/* あなたのプロフィール */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">あなたの関心</CardTitle>
@@ -308,10 +308,10 @@ export default function RecommendPage() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground mb-4">
-                プロファイルを充実させると、より精度の高いおすすめを表示できます。
+                プロフィールを充実させると、より精度の高いおすすめを表示できます。
               </p>
               <Button asChild size="sm" className="w-full">
-                <Link href="/profile/register">プロファイルを編集</Link>
+                <Link href="/profile/register">プロフィールを編集</Link>
               </Button>
             </CardContent>
           </Card>

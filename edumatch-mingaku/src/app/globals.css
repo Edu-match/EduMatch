@@ -123,3 +123,26 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  .container {
+    @apply w-full mx-auto px-4 sm:px-6 lg:px-8;
+  }
+}
+
+@layer components {
+  /* ボタングループの統一スタイル */
+  .button-group {
+    @apply flex flex-wrap items-center gap-2;
+  }
+  
+  /* フォームアクション（送信ボタンエリア）の統一 */
+  .form-actions {
+    @apply flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:justify-end mt-6;
+  }
+  
+  /* モバイル対応カード */
+  .responsive-card {
+    @apply w-full max-w-full overflow-hidden;
+  }
+}

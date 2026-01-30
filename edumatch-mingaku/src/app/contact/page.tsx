@@ -119,9 +119,11 @@ export default function ContactPage() {
               </p>
             </div>
 
-            <Button className="w-full" size="lg" asChild>
-              <Link href="/contact/complete">送信する</Link>
-            </Button>
+            <div className="form-actions">
+              <Button className="w-full sm:w-auto sm:min-w-[200px]" size="lg" asChild>
+                <Link href="/contact/complete">送信する</Link>
+              </Button>
+            </div>
           </CardContent>
         </Card>
 

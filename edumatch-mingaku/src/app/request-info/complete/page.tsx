@@ -14,11 +14,13 @@ import { getMaterialRequestById } from "@/app/_actions";
 
 export const dynamic = "force-dynamic";
 
-type Props = { searchParams: Promise<{ requestId?: string }> };
+type Props = { searchParams: Promise<{ requestId?: string; batch?: string }> };
 
 export default async function RequestInfoCompletePage({ searchParams }: Props) {
   await requireAuth();
-  const { requestId } = await searchParams;
+  const { requestId, batch } = await searchParams;
+  const batchCount = batch ? parseInt(batch, 10) : 0;
+  const isBatch = batchCount > 1;
 
   const request = requestId ? await getMaterialRequestById(requestId) : null;
 
@@ -32,7 +34,9 @@ export default async function RequestInfoCompletePage({ searchParams }: Props) {
             </div>
 
             <h1 className="text-3xl font-bold mb-4">
-              資料請求を受け付けました
+              {isBatch
+                ? `${batchCount}件の資料請求を受け付けました`
+                : "資料請求を受け付けました"}
             </h1>
 
             <p className="text-lg text-muted-foreground mb-8">
@@ -108,6 +112,14 @@ export default async function RequestInfoCompletePage({ searchParams }: Props) {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              {isBatch && (
+                <Button asChild size="lg" className="gap-2">
+                  <Link href="/request-info/list">
+                    <FileText className="h-4 w-4" />
+                    資料請求リストを見る
+                  </Link>
+                </Button>
+              )}
               <Button asChild size="lg" className="gap-2">
                 <Link href="/services">
                   他のサービスを見る

@@ -24,6 +24,26 @@ export type SubmitMaterialRequestResult = {
   error?: string;
 };
 
+export type SubmitMaterialRequestBatchInput = {
+  serviceIds: string[];
+  useAccountAddress: boolean;
+  deliveryName?: string;
+  deliveryPhone?: string | null;
+  deliveryPostalCode?: string | null;
+  deliveryPrefecture?: string | null;
+  deliveryCity?: string | null;
+  deliveryAddress?: string | null;
+  deliveryEmail?: string;
+  message?: string | null;
+};
+
+export type SubmitMaterialRequestBatchResult = {
+  success: boolean;
+  requestIds?: string[];
+  successCount: number;
+  error?: string;
+};
+
 /**
  * 資料請求を送信し、サービス提供者にメール通知する
  */
@@ -107,6 +127,33 @@ export async function submitMaterialRequest(
     console.error("submitMaterialRequest error:", e);
     return { success: false, error: "送信に失敗しました" };
   }
+}
+
+/**
+ * 複数サービスにまとめて資料請求を送信する
+ */
+export async function submitMaterialRequestBatch(
+  input: SubmitMaterialRequestBatchInput
+): Promise<SubmitMaterialRequestBatchResult> {
+  const requestIds: string[] = [];
+  for (const serviceId of input.serviceIds) {
+    const result = await submitMaterialRequest({
+      ...input,
+      serviceId,
+    });
+    if (result.success && result.requestId) {
+      requestIds.push(result.requestId);
+    }
+  }
+  return {
+    success: requestIds.length > 0,
+    requestIds,
+    successCount: requestIds.length,
+    error:
+      requestIds.length < input.serviceIds.length
+        ? `${requestIds.length}件送信しました。${input.serviceIds.length - requestIds.length}件は送信に失敗しました。`
+        : undefined,
+  };
 }
 
 export type MaterialRequestWithService = {

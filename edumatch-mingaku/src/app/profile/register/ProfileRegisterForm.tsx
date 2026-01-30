@@ -34,6 +34,8 @@ export type InitialProfile = {
   prefecture: string | null;
   city: string | null;
   address: string | null;
+  bio?: string | null;
+  website?: string | null;
 };
 
 const PREFECTURES = [
@@ -77,9 +79,18 @@ const roles = [
   { value: "other", label: "その他" },
 ];
 
-type Props = { initialProfile: InitialProfile | null; isFirstTime?: boolean };
+type Props = {
+  initialProfile: InitialProfile | null;
+  isFirstTime?: boolean;
+  /** 保存後のリダイレクト先（Googleログイン後など） */
+  nextUrl?: string;
+};
 
-export function ProfileRegisterForm({ initialProfile, isFirstTime }: Props) {
+export function ProfileRegisterForm({
+  initialProfile,
+  isFirstTime,
+  nextUrl,
+}: Props) {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const [name, setName] = useState(initialProfile?.name ?? "");
@@ -94,8 +105,10 @@ export function ProfileRegisterForm({ initialProfile, isFirstTime }: Props) {
   const [city, setCity] = useState(initialProfile?.city ?? "");
   const [address, setAddress] = useState(initialProfile?.address ?? "");
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
-  const [bio, setBio] = useState("");
+  const [bio, setBio] = useState(initialProfile?.bio ?? "");
+  const [website, setWebsite] = useState(initialProfile?.website ?? "");
   const [saving, setSaving] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   const toggleInterest = (interest: string) => {
     if (selectedInterests.includes(interest)) {
@@ -285,10 +298,21 @@ export function ProfileRegisterForm({ initialProfile, isFirstTime }: Props) {
                 自己紹介・活動内容（任意）
               </label>
               <Textarea
-                placeholder="EdTechに関する取り組みや、関心事について教えてください"
+                placeholder="EdTechに関する取り組みや、関心事について教えてください。投稿者として表示されるプロフィール文です。"
                 rows={5}
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                公式サイト・SNS（任意）
+              </label>
+              <Input
+                type="url"
+                placeholder="https://example.com"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
               />
             </div>
           </div>
@@ -398,7 +422,15 @@ export function ProfileRegisterForm({ initialProfile, isFirstTime }: Props) {
                     <span className="text-muted-foreground block mb-1">
                       自己紹介
                     </span>
-                    <p>{bio}</p>
+                    <p className="whitespace-pre-wrap">{bio}</p>
+                  </div>
+                )}
+                {website && (
+                  <div>
+                    <span className="text-muted-foreground block mb-1">
+                      公式サイト・SNS
+                    </span>
+                    <a href={website} target="_blank" rel="noopener noreferrer" className="text-primary underline break-all">{website}</a>
                   </div>
                 )}
               </div>
@@ -411,12 +443,58 @@ export function ProfileRegisterForm({ initialProfile, isFirstTime }: Props) {
     }
   };
 
+  const handleNext = () => {
+    setValidationError(null);
+    if (currentStep === 1) {
+      if (!name.trim()) {
+        setValidationError("お名前を入力してください。");
+        return;
+      }
+    } else if (currentStep === 2) {
+      if (!organization.trim()) {
+        setValidationError("所属組織を入力してください。");
+        return;
+      }
+      if (!schoolType) {
+        setValidationError("組織の種類を選択してください。");
+        return;
+      }
+    }
+    setCurrentStep(currentStep + 1);
+  };
+
+  const handleBack = () => {
+    setValidationError(null);
+    setCurrentStep(currentStep - 1);
+  };
+
+  const handleSave = async () => {
+    setValidationError(null);
+    if (!name.trim()) {
+      setValidationError("お名前を入力してください。");
+      return;
+    }
+    setSaving(true);
+    const { success } = await updateProfile({
+      name: name || undefined,
+      phone: phone || null,
+      postal_code: postalCode || null,
+      prefecture: prefecture || null,
+      city: city || null,
+      address: address || null,
+      bio: bio || null,
+      website: website || null,
+    });
+    setSaving(false);
+    if (success) router.push(nextUrl ?? "/dashboard");
+  };
+
   return (
     <div className="container py-8">
       <Button variant="ghost" asChild className="mb-4">
         <Link href="/dashboard">
           <ArrowLeft className="h-4 w-4 mr-2" />
-          ダッシュボードに戻る
+          マイページに戻る
         </Link>
       </Button>
 
@@ -424,14 +502,17 @@ export function ProfileRegisterForm({ initialProfile, isFirstTime }: Props) {
         {isFirstTime && (
           <div className="mb-6 p-4 rounded-lg bg-primary/10 border border-primary/20 text-center">
             <p className="font-medium text-primary">
-              初回登録ありがとうございます。お名前・住所（資料請求の送付先）などを登録すると便利です。
+              ログインが完了しました。次に名前・住所（資料請求の送付先）などを登録してください。
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              スキップして後から設定することもできます。
             </p>
           </div>
         )}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">プロファイル設定</h1>
+          <h1 className="text-3xl font-bold mb-2">プロフィール設定</h1>
           <p className="text-muted-foreground">
-            あなたに最適な情報をお届けするために、プロファイルを設定してください
+            あなたに最適な情報をお届けするために、プロフィールを設定してください
           </p>
         </div>
 
@@ -468,36 +549,34 @@ export function ProfileRegisterForm({ initialProfile, isFirstTime }: Props) {
           <CardContent>
             {renderStep()}
 
-            <div className="flex justify-between mt-8">
+            {validationError && (
+              <div className="mt-4 p-3 rounded-md bg-destructive/10 border border-destructive/20">
+                <p className="text-sm text-destructive font-medium" role="alert">
+                  {validationError}
+                </p>
+              </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row justify-between gap-3 mt-8">
               <Button
+                type="button"
                 variant="outline"
-                onClick={() => setCurrentStep(currentStep - 1)}
+                onClick={handleBack}
                 disabled={currentStep === 1}
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 戻る
               </Button>
               {currentStep < 5 ? (
-                <Button onClick={() => setCurrentStep(currentStep + 1)}>
+                <Button type="button" onClick={handleNext}>
                   次へ
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
               ) : (
                 <Button
+                  type="button"
                   disabled={saving}
-                  onClick={async () => {
-                    setSaving(true);
-                    const { success } = await updateProfile({
-                      name: name || undefined,
-                      phone: phone || null,
-                      postal_code: postalCode || null,
-                      prefecture: prefecture || null,
-                      city: city || null,
-                      address: address || null,
-                    });
-                    setSaving(false);
-                    if (success) router.push("/dashboard");
-                  }}
+                  onClick={handleSave}
                 >
                   {saving ? "保存中…" : "保存して完了"}
                   <Check className="h-4 w-4 ml-2" />

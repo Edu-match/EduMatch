@@ -4,11 +4,11 @@ import { ProfileRegisterForm } from "./ProfileRegisterForm";
 
 export const dynamic = "force-dynamic";
 
-type Props = { searchParams: Promise<{ first?: string }> };
+type Props = { searchParams: Promise<{ first?: string; next?: string }> };
 
 export default async function ProfileRegisterPage({ searchParams }: Props) {
   await requireAuth();
-  const { first } = await searchParams;
+  const { first, next } = await searchParams;
   const profile = await getCurrentUserProfile();
 
   const initialProfile = profile
@@ -20,6 +20,8 @@ export default async function ProfileRegisterPage({ searchParams }: Props) {
         prefecture: profile.prefecture ?? null,
         city: profile.city ?? null,
         address: profile.address ?? null,
+        bio: profile.bio ?? null,
+        website: profile.website ?? null,
       }
     : null;
 
@@ -27,6 +29,7 @@ export default async function ProfileRegisterPage({ searchParams }: Props) {
     <ProfileRegisterForm
       initialProfile={initialProfile}
       isFirstTime={first === "1"}
+      nextUrl={next ?? undefined}
     />
   );
 }

@@ -21,7 +21,80 @@ export async function getCurrentUserProfile() {
     prefecture: profile.prefecture,
     city: profile.city,
     address: profile.address,
+    bio: profile.bio,
+    website: profile.website,
   };
+}
+
+/** 公開用プロフィール（投稿者詳細表示用・メールは返さない） */
+export type PublicProfile = {
+  id: string;
+  name: string;
+  avatar_url: string | null;
+  bio: string | null;
+  website: string | null;
+  prefecture: string | null;
+};
+
+export async function getProfileById(id: string): Promise<PublicProfile | null> {
+  const profile = await prisma.profile.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      name: true,
+      avatar_url: true,
+      bio: true,
+      website: true,
+      prefecture: true,
+    },
+  });
+  return profile;
+}
+
+/** 公開用プロフィール＋投稿一覧（投稿者詳細ページ用） */
+export type PublicProfileWithContents = PublicProfile & {
+  services: { id: string; title: string; thumbnail_url: string | null; category: string }[];
+  posts: { id: string; title: string; thumbnail_url: string | null; created_at: Date }[];
+};
+
+export async function getProfileWithContents(
+  id: string
+): Promise<PublicProfileWithContents | null> {
+  const profile = await prisma.profile.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      name: true,
+      avatar_url: true,
+      bio: true,
+      website: true,
+      prefecture: true,
+      services: {
+        where: {
+          OR: [
+            { status: "APPROVED" as const },
+            { is_published: true },
+          ],
+        },
+        select: { id: true, title: true, thumbnail_url: true, category: true },
+        orderBy: { created_at: "desc" },
+        take: 24,
+      },
+      posts: {
+        where: {
+          OR: [
+            { status: "APPROVED" as const },
+            { is_published: true },
+          ],
+        },
+        select: { id: true, title: true, thumbnail_url: true, created_at: true },
+        orderBy: { created_at: "desc" },
+        take: 24,
+      },
+    },
+  });
+  if (!profile) return null;
+  return profile as PublicProfileWithContents;
 }
 
 export type UpdateProfileInput = {
@@ -31,6 +104,8 @@ export type UpdateProfileInput = {
   prefecture?: string | null;
   city?: string | null;
   address?: string | null;
+  bio?: string | null;
+  website?: string | null;
 };
 
 export async function updateProfile(input: UpdateProfileInput): Promise<{ success: boolean; error?: string }> {
@@ -45,6 +120,8 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
         ...(input.prefecture !== undefined && { prefecture: input.prefecture || null }),
         ...(input.city !== undefined && { city: input.city || null }),
         ...(input.address !== undefined && { address: input.address || null }),
+        ...(input.bio !== undefined && { bio: input.bio || null }),
+        ...(input.website !== undefined && { website: input.website || null }),
       },
     });
     return { success: true };

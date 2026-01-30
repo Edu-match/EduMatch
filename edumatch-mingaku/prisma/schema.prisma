@@ -33,6 +33,8 @@ model Profile {
   prefecture          String?
   city                String?
   address             String?  // 町名・番地（資料請求用）
+  bio                 String?  @db.Text // 自己紹介（SNS風プロフィール）
+  website             String?  // 公式サイト・SNS等
   created_at          DateTime @default(now())
   updated_at          DateTime @updatedAt
 

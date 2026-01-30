@@ -40,7 +40,7 @@ const categories = [
     icon: Users,
     articles: [
       { title: "会員登録の手順", href: "#" },
-      { title: "プロファイルの設定方法", href: "#" },
+      { title: "プロフィールの設定方法", href: "#" },
       { title: "パスワードの変更方法", href: "#" },
       { title: "退会の手続き", href: "#" },
     ],

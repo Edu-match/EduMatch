@@ -9,6 +9,7 @@ import { getPostById, getLatestPosts, recordView } from "@/app/_actions";
 import { getCurrentUser } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import { YouTubeEmbed } from "@/components/ui/youtube-embed";
+import { ArticleDetailActions } from "./article-detail-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -87,7 +88,10 @@ export default async function ArticleDetailPage({
             {post.title}
           </h1>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+            <Link
+              href={post.provider?.id ? `/profile/${post.provider.id}` : "#"}
+              className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+            >
               {post.provider?.avatar_url ? (
                 <Image
                   src={post.provider.avatar_url}
@@ -102,14 +106,23 @@ export default async function ArticleDetailPage({
                   <User className="h-4 w-4 text-primary" />
                 </div>
               )}
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground hover:text-primary transition-colors">
                 {post.provider?.name || "投稿者"}
               </p>
+              <span className="text-xs text-primary">プロフィールを見る →</span>
+            </Link>
+            <div className="flex items-center gap-2">
+              <ArticleDetailActions
+                articleId={post.id}
+                title={post.title}
+                thumbnailUrl={post.thumbnail_url}
+                category={category}
+              />
+              <Button variant="outline" size="sm">
+                <Share2 className="h-4 w-4 mr-2" />
+                共有
+              </Button>
             </div>
-            <Button variant="outline" size="sm">
-              <Share2 className="h-4 w-4 mr-2" />
-              共有
-            </Button>
           </div>
         </div>
 

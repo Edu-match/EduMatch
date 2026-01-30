@@ -6,6 +6,8 @@ import { Footer } from "@/components/layout/footer";
 import { SideMenu } from "@/components/layout/side-menu";
 import { ChatbotWidget } from "@/components/layout/chatbot-widget";
 import { Toaster } from "sonner";
+import { RequestListProvider } from "@/components/request-list/request-list-context";
+import { FavoritesProvider } from "@/components/favorites/favorites-context";
 
 const notoSansJP = Noto_Sans_JP({
   variable: "--font-noto-sans-jp",
@@ -36,6 +38,8 @@ export default function RootLayout({
       <body
         className={`${notoSansJP.variable} ${geistMono.variable} antialiased font-sans`}
       >
+        <RequestListProvider>
+        <FavoritesProvider>
         <div className="flex min-h-screen flex-col">
           <Header />
           <div className="flex-1 flex">
@@ -47,13 +51,15 @@ export default function RootLayout({
             </aside>
 
             <main className="flex-1">
-              <div className="px-0 lg:px-4">{children}</div>
+              <div className="w-full">{children}</div>
             </main>
           </div>
           <Footer />
         </div>
         <ChatbotWidget />
         <Toaster position="top-right" richColors closeButton />
+        </FavoritesProvider>
+        </RequestListProvider>
       </body>
     </html>
   );

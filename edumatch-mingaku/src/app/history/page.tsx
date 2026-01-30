@@ -36,7 +36,7 @@ export default async function HistoryPage() {
         <Button variant="ghost" asChild>
           <Link href="/dashboard">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            ダッシュボードに戻る
+            マイページに戻る
           </Link>
         </Button>
       </div>

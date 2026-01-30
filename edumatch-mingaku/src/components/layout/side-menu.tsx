@@ -13,18 +13,18 @@ import {
   Users,
   FileBadge2,
   PenSquare,
+  Heart,
 } from "lucide-react";
 import { getCurrentUserRole } from "@/app/_actions/user";
 
 const items = [
   { href: "/", label: "ホーム", icon: Home },
-  { href: "/services", label: "サービスを探す", icon: Search },
+  { href: "/services", label: "サービス一覧", icon: Search },
   { href: "/articles", label: "記事一覧", icon: Newspaper },
   { href: "/articles/create", label: "記事を投稿", icon: PenSquare, roles: ["PROVIDER", "ADMIN"] },
   { href: "/services/create", label: "サービスを投稿", icon: PenSquare, roles: ["PROVIDER", "ADMIN"] },
   { href: "/companies", label: "掲載企業一覧", icon: Building2 },
   { href: "/compare", label: "サービス比較", icon: Scale },
-  { href: "/request-info", label: "資料請求", icon: FileBadge2 },
   { href: "/help", label: "ヘルプ", icon: HelpCircle },
 ];
 

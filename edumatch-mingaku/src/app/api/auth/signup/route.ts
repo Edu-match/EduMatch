@@ -27,18 +27,7 @@ function authErrorMessage(en: string): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const {
-      email,
-      password,
-      name,
-      organization,
-      userType,
-      phone,
-      postal_code,
-      prefecture,
-      city,
-      address,
-    } = await request.json();
+    const { email, password, name, organization, userType } = await request.json();
 
     if (!email || !password || !name) {
       return NextResponse.json(
@@ -99,7 +88,7 @@ export async function POST(request: NextRequest) {
       // サービスロール未設定等でも登録は完了しているので続行
     }
 
-    // Profileテーブルにレコードを作成（住所・電話は任意で受け取る）
+    // Profileテーブルにレコードを作成（住所・電話はプロフィール登録ページで入力）
     const role = userType === "provider" ? "PROVIDER" : "VIEWER";
     try {
       await prisma.profile.create({
@@ -109,11 +98,6 @@ export async function POST(request: NextRequest) {
           email,
           role,
           subscription_status: "INACTIVE",
-          phone: phone || null,
-          postal_code: postal_code || null,
-          prefecture: prefecture || null,
-          city: city || null,
-          address: address || null,
         },
       });
     } catch (profileError) {

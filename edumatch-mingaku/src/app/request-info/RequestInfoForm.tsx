@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FileText, ArrowLeft } from "lucide-react";
-import { submitMaterialRequest } from "@/app/_actions";
+import { submitMaterialRequest, submitMaterialRequestBatch } from "@/app/_actions";
 import type { ServiceWithProvider } from "@/app/_actions";
 
 const PREFECTURES = [
@@ -38,14 +38,32 @@ type ProfileAddress = {
   address: string | null;
 };
 
-type Props = {
+type PropsSingle = {
   serviceId: string;
   service: ServiceWithProvider;
   profile: ProfileAddress | null;
 };
 
-export function RequestInfoForm({ serviceId, service, profile }: Props) {
+type PropsBatch = {
+  serviceIds: string[];
+  services: ServiceWithProvider[];
+  profile: ProfileAddress | null;
+};
+
+type Props = PropsSingle | PropsBatch;
+
+function isBatch(props: Props): props is PropsBatch {
+  return "serviceIds" in props && Array.isArray(props.serviceIds);
+}
+
+export function RequestInfoForm(props: Props) {
   const router = useRouter();
+  const isBatchMode = isBatch(props);
+  const serviceId = !isBatchMode ? props.serviceId : undefined;
+  const service = !isBatchMode ? props.service : undefined;
+  const services = isBatchMode ? props.services : undefined;
+  const profile = props.profile;
+
   const [useAccountAddress, setUseAccountAddress] = useState(true);
   const [deliveryName, setDeliveryName] = useState(profile?.name ?? "");
   const [deliveryEmail, setDeliveryEmail] = useState(profile?.email ?? "");
@@ -69,8 +87,7 @@ export function RequestInfoForm({ serviceId, service, profile }: Props) {
     e.preventDefault();
     setError("");
     setSubmitting(true);
-    const result = await submitMaterialRequest({
-      serviceId,
+    const base = {
       useAccountAddress,
       deliveryName: useAccountAddress ? undefined : deliveryName,
       deliveryEmail: useAccountAddress ? undefined : deliveryEmail,
@@ -80,7 +97,30 @@ export function RequestInfoForm({ serviceId, service, profile }: Props) {
       deliveryCity: useAccountAddress ? null : (deliveryCity || null),
       deliveryAddress: useAccountAddress ? null : (deliveryAddress || null),
       message: message || null,
-    });
+    };
+    if (isBatchMode && props.serviceIds.length > 0) {
+      const result = await submitMaterialRequestBatch({
+        ...base,
+        serviceIds: props.serviceIds,
+      });
+      setSubmitting(false);
+      if (result.success && result.requestIds?.length) {
+        const first = result.requestIds[0];
+        const batch = result.requestIds.length;
+        router.push(
+          `/request-info/complete?requestId=${first}${batch > 1 ? `&batch=${batch}` : ""}`
+        );
+        return;
+      }
+      setError(result.error ?? "送信に失敗しました");
+      return;
+    }
+    if (!serviceId) {
+      setSubmitting(false);
+      setError("サービスを選択してください");
+      return;
+    }
+    const result = await submitMaterialRequest({ ...base, serviceId });
     setSubmitting(false);
     if (result.success && result.requestId) {
       router.push(`/request-info/complete?requestId=${result.requestId}`);
@@ -92,17 +132,28 @@ export function RequestInfoForm({ serviceId, service, profile }: Props) {
   return (
     <div className="container py-8 space-y-6">
       <Button variant="ghost" asChild className="mb-2">
-        <Link href={`/services/${serviceId}`}>
+        <Link href={isBatchMode ? "/request-info/list" : `/services/${serviceId}`}>
           <ArrowLeft className="h-4 w-4 mr-2" />
-          サービスに戻る
+          {isBatchMode ? "資料請求リストに戻る" : "サービスに戻る"}
         </Link>
       </Button>
 
       <div>
         <h1 className="text-3xl font-bold mb-2">資料請求</h1>
         <p className="text-muted-foreground">
-          「{service.title}」の資料を請求します
+          {isBatchMode && services
+            ? `${services.length}件のサービスに同じ送付先で資料を請求します`
+            : service
+              ? `「${service.title}」の資料を請求します`
+              : ""}
         </p>
+        {isBatchMode && services && services.length > 0 && (
+          <ul className="mt-3 list-disc list-inside text-sm text-muted-foreground space-y-1">
+            {services.map((s) => (
+              <li key={s.id}>{s.title}</li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <Card className="lg:max-w-2xl">
@@ -150,7 +201,7 @@ export function RequestInfoForm({ serviceId, service, profile }: Props) {
                     </p>
                   ) : (
                     <p className="text-muted-foreground">
-                      登録住所が未設定です。<Link href="/profile/register" className="text-primary underline">プロファイル設定</Link>で住所を登録してください。
+                      登録住所が未設定です。<Link href="/profile/register" className="text-primary underline">プロフィール設定</Link>で住所を登録してください。
                     </p>
                   )}
                 </div>
@@ -238,11 +289,26 @@ export function RequestInfoForm({ serviceId, service, profile }: Props) {
               />
             </div>
 
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && (
+              <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20">
+                <p className="text-sm text-destructive font-medium">{error}</p>
+              </div>
+            )}
 
-            <Button type="submit" className="w-full" disabled={submitting || (useAccountAddress && !hasAccountAddress)}>
-              {submitting ? "送信中…" : "資料請求を送信"}
-            </Button>
+            <div className="form-actions">
+              <Button
+                type="submit"
+                className="w-full sm:w-auto sm:min-w-[240px]"
+                size="lg"
+                disabled={submitting || (useAccountAddress && !hasAccountAddress)}
+              >
+                {submitting
+                  ? "送信中…"
+                  : isBatchMode && services
+                    ? `${services.length}件に資料請求を送信`
+                    : "資料請求を送信"}
+              </Button>
+            </div>
           </form>
         </CardContent>
       </Card>

@@ -5,8 +5,9 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { 
   Menu, LogOut, User, LayoutDashboard, Settings, 
-  ChevronDown, UserPlus, LogIn 
+  ChevronDown, UserPlus, LogIn, FileText
 } from "lucide-react";
+import { useRequestList } from "@/components/request-list/request-list-context";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -28,6 +29,7 @@ import { createSupabaseBrowserClient } from "@/utils/supabase/client";
 export function Header() {
   const router = useRouter();
   const pathname = usePathname();
+  const { count: requestListCount } = useRequestList();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
@@ -77,14 +79,14 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center justify-between">
+      <div className="container flex h-16 items-center justify-between gap-4">
         {/* Logo */}
         <Link href="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
           <span className="text-2xl font-bold text-primary">Edumatch</span>
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center space-x-6">
+        <nav className="hidden md:flex items-center gap-4 lg:gap-6 flex-wrap">
           {navLinks.map((link) => (
             <Link
               key={link.href}
@@ -94,6 +96,18 @@ export function Header() {
               {link.label}
             </Link>
           ))}
+          <Link
+            href="/request-info/list"
+            className="relative flex items-center gap-1.5 text-sm font-medium text-foreground/60 transition-colors hover:text-foreground"
+          >
+            <FileText className="h-4 w-4" />
+            資料請求リスト
+            {requestListCount > 0 && (
+              <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold px-1">
+                {requestListCount > 99 ? "99+" : requestListCount}
+              </span>
+            )}
+          </Link>
           
           {isLoading ? (
             <div className="w-24 h-9 bg-muted animate-pulse rounded-md" />
@@ -124,7 +138,7 @@ export function Header() {
                 <DropdownMenuItem asChild>
                   <Link href="/dashboard" className="cursor-pointer">
                     <LayoutDashboard className="mr-2 h-4 w-4" />
-                    ダッシュボード
+                    マイページ
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
@@ -170,11 +184,11 @@ export function Header() {
               <span className="sr-only">メニューを開く</span>
             </Button>
           </SheetTrigger>
-          <SheetContent side="right">
+          <SheetContent side="right" className="w-[85vw] sm:w-[350px] overflow-y-auto">
             <SheetHeader>
               <SheetTitle>メニュー</SheetTitle>
             </SheetHeader>
-            <nav className="flex flex-col space-y-4 mt-6">
+            <nav className="flex flex-col space-y-4 mt-6 pb-6">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
@@ -184,6 +198,18 @@ export function Header() {
                   {link.label}
                 </Link>
               ))}
+              <Link
+                href="/request-info/list"
+                className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground"
+              >
+                <FileText className="h-4 w-4" />
+                資料請求リスト
+                {requestListCount > 0 && (
+                  <span className="rounded-full bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5">
+                    {requestListCount}
+                  </span>
+                )}
+              </Link>
               
               <div className="border-t pt-4 mt-4">
                 {isLoading ? (
@@ -208,7 +234,7 @@ export function Header() {
                       className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground"
                     >
                       <LayoutDashboard className="h-4 w-4" />
-                      ダッシュボード
+                      マイページ
                     </Link>
                     <Link
                       href="/profile/register"

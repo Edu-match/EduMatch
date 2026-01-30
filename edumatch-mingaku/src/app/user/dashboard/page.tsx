@@ -89,7 +89,7 @@ export default function UserDashboardPage() {
             <Button variant="outline" asChild>
               <Link href="/profile/register">
                 <Settings className="h-4 w-4 mr-2" />
-                プロファイル編集
+                プロフィール編集
               </Link>
             </Button>
             <Button asChild>

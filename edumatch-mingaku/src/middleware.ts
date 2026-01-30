@@ -5,7 +5,7 @@ import { type NextRequest, NextResponse } from "next/server";
 const protectedPaths = [
   "/dashboard",
   "/history",
-  "/keep-list",
+  "/favorites",
   "/notifications",
   "/profile/register",
   "/profile/edit",
@@ -54,10 +54,13 @@ export async function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
-  // 認証が必要なパスへのアクセスをチェック
-  const isProtectedPath = protectedPaths.some(
-    (path) => pathname === path || pathname.startsWith(`${path}/`)
-  );
+  // 認証が必要なパスへのアクセスをチェック（/request-info/list は未ログインでも閲覧可）
+  const isRequestListPage = pathname === "/request-info/list";
+  const isProtectedPath =
+    !isRequestListPage &&
+    protectedPaths.some(
+      (path) => pathname === path || pathname.startsWith(`${path}/`)
+    );
 
   if (isProtectedPath && !user) {
     // 未認証ユーザーはログインページにリダイレクト
@@ -83,7 +86,7 @@ export async function middleware(request: NextRequest) {
   );
 
   if (isAuthPath && user) {
-    // 認証済みユーザーはダッシュボードにリダイレクト
+    // 認証済みユーザーはマイページにリダイレクト
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 

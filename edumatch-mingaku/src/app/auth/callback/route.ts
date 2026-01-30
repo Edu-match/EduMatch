@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
           where: { id: data.user.id },
         });
 
-        // Profileが存在しない場合は作成
+        // Profileが存在しない場合は作成し、初回は必ずプロフィール設定へ
         if (!existingProfile) {
           const userMetadata = data.user.user_metadata || {};
           const name =
@@ -41,22 +41,23 @@ export async function GET(request: NextRequest) {
           await prisma.profile.create({
             data: {
               id: data.user.id,
-              name: userMetadata.organization || name, // 企業の場合は組織名を名前として使用
+              name: userMetadata.organization || name,
               email: data.user.email || "",
               role,
               subscription_status: "INACTIVE",
-              avatar_url: userMetadata.avatar_url || null,
+              avatar_url: userMetadata.avatar_url || userMetadata.picture || null,
             },
           });
 
-          // 初回登録時はプロフィール設定（名前・住所など）へ誘導
-          const userMetadataForRedirect = data.user.user_metadata || {};
-          if (redirectTo === "/dashboard" && userMetadataForRedirect.role !== "PROVIDER") {
-            return NextResponse.redirect(new URL("/profile/register?first=1", origin));
+          // 初回登録時は必ずプロフィール設定（名前・住所など）へ誘導
+          const registerUrl = new URL("/profile/register", origin);
+          registerUrl.searchParams.set("first", "1");
+          if (role === Role.PROVIDER) {
+            registerUrl.searchParams.set("next", "/company/dashboard");
+          } else if (redirectTo && redirectTo !== "/dashboard") {
+            registerUrl.searchParams.set("next", redirectTo);
           }
-          if (redirectTo === "/dashboard" && userMetadataForRedirect.role === "PROVIDER") {
-            return NextResponse.redirect(new URL("/company/dashboard", origin));
-          }
+          return NextResponse.redirect(registerUrl);
         }
       } catch (profileError) {
         console.error("Profile creation error:", profileError);
