@@ -3,6 +3,8 @@ import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { getPasswordErrors } from "@/lib/password";
 
+export const dynamic = "force-dynamic";
+
 function authErrorMessage(en: string): string {
   const map: Record<string, string> = {
     "Invalid login credentials": "メールアドレスまたはパスワードが正しくありません",

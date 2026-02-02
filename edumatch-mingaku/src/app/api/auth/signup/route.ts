@@ -4,6 +4,8 @@ import { createServiceRoleClient } from "@/utils/supabase/server-admin";
 import { prisma } from "@/lib/prisma";
 import { getPasswordErrors } from "@/lib/password";
 
+export const dynamic = "force-dynamic";
+
 function authErrorMessage(en: string): string {
   const map: Record<string, string> = {
     "Password should be at least 6 characters": "パスワードは6文字以上で入力してください",
