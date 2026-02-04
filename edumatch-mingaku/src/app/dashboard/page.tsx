@@ -16,9 +16,10 @@ import {
   Heart,
 } from "lucide-react";
 import { requireAuth, getCurrentProfile } from "@/lib/auth";
-import { getRecentViewHistory } from "@/app/_actions";
+import { getRecentViewHistory, getAllServices, getLatestPosts } from "@/app/_actions";
 import { RequestListCompact } from "@/components/dashboard/request-list-compact";
 import { FavoritesCompact } from "@/components/dashboard/favorites-compact";
+import { RecommendationsSection } from "@/components/dashboard/recommendations-section";
 
 // 閲覧時刻を「ついさっき」「〇分前」などで表示
 function formatViewedAt(viewedAt: Date): string {
@@ -45,6 +46,27 @@ export default async function DashboardPage() {
 
   const recentlyViewed = await getRecentViewHistory(user.id, 5);
 
+  // おすすめ用のデータを取得
+  const allServices = await getAllServices();
+  const allArticles = await getLatestPosts(50);
+
+  // カテゴリー情報を抽出（簡易的な実装）
+  const servicesWithCategory = allServices.map((service) => ({
+    id: service.id,
+    title: service.title,
+    thumbnail_url: service.thumbnail_url,
+    category: service.category,
+  }));
+
+  const articlesWithCategory = allArticles.map((article) => ({
+    id: article.id,
+    title: article.title,
+    thumbnail_url: article.thumbnail_url,
+    category: article.content.includes("ICT") || article.content.includes("デジタル") ? "教育ICT" :
+              article.content.includes("事例") || article.content.includes("実践") ? "導入事例" :
+              article.content.includes("運営") || article.content.includes("保護者") ? "学校運営" : "教育ICT",
+  }));
+
   const notifications: { id: string; title: string; date: string; read: boolean }[] = [];
 
   return (
@@ -64,6 +86,14 @@ export default async function DashboardPage() {
             </Link>
           </Button>
         </div>
+      </div>
+
+      {/* おすすめセクション */}
+      <div className="mb-6">
+        <RecommendationsSection 
+          services={servicesWithCategory}
+          articles={articlesWithCategory}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
