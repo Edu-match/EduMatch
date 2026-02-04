@@ -1,10 +1,12 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Bookmark, BookmarkCheck } from "lucide-react";
 import { useRequestList } from "./request-list-context";
 import type { RequestListItem } from "@/lib/request-list";
 import { toast } from "sonner";
+import { createBrowserClient } from "@supabase/ssr";
 
 type Props = {
   item: RequestListItem;
@@ -21,10 +23,39 @@ export function AddToRequestListButton({
 }: Props) {
   const { has, toggle } = useRequestList();
   const inList = has(item.id);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
-  const handleClick = (e: React.MouseEvent) => {
+  useEffect(() => {
+    const checkAuth = async () => {
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      const { data: { user } } = await supabase.auth.getUser();
+      setIsAuthenticated(!!user);
+    };
+    checkAuth();
+  }, []);
+
+  const handleClick = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    // 認証チェック
+    if (isAuthenticated === null) {
+      toast.error("読み込み中です。もう一度お試しください。");
+      return;
+    }
+
+    if (!isAuthenticated) {
+      toast.error("この機能を使うにはログインが必要です");
+      setTimeout(() => {
+        const currentPath = window.location.pathname;
+        window.location.href = `/login?redirect_to=${encodeURIComponent(currentPath)}&message=${encodeURIComponent("資料請求リストを利用するにはログインが必要です")}`;
+      }, 1000);
+      return;
+    }
+
     const added = toggle(item);
     toast.success(
       added

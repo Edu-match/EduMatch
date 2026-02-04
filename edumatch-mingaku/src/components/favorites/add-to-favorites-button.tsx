@@ -1,11 +1,13 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useFavorites } from "./favorites-context";
 import type { FavoriteItem } from "@/lib/favorites";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { createBrowserClient } from "@supabase/ssr";
 
 type Props = {
   item: {
@@ -28,10 +30,38 @@ export function AddToFavoritesButton({
 }: Props) {
   const { hasFavorite, toggleFavorite } = useFavorites();
   const isFavorite = hasFavorite(item.id, item.type);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
-  const handleClick = (e: React.MouseEvent) => {
+  useEffect(() => {
+    const checkAuth = async () => {
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      const { data: { user } } = await supabase.auth.getUser();
+      setIsAuthenticated(!!user);
+    };
+    checkAuth();
+  }, []);
+
+  const handleClick = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    // 認証チェック
+    if (isAuthenticated === null) {
+      toast.error("読み込み中です。もう一度お試しください。");
+      return;
+    }
+
+    if (!isAuthenticated) {
+      toast.error("この機能を使うにはログインが必要です");
+      setTimeout(() => {
+        const currentPath = window.location.pathname;
+        window.location.href = `/login?redirect_to=${encodeURIComponent(currentPath)}&message=${encodeURIComponent("お気に入り機能を利用するにはログインが必要です")}`;
+      }, 1000);
+      return;
+    }
 
     const favoriteItem: FavoriteItem = {
       id: item.id,
