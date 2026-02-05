@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getLatestPosts } from "@/app/_actions";
+import { getPopularArticlesByEngagement } from "@/app/_actions/popularity";
 import { TopicsTabs } from "./topics-tabs";
 
 function formatShortDate(date: Date): string {
@@ -42,7 +42,8 @@ export type ArticleItem = {
 };
 
 export async function TopicsSection() {
-  const posts = await getLatestPosts(10);
+  // お気に入り数でソートされた人気記事を取得
+  const posts = await getPopularArticlesByEngagement(10);
 
   const articles: ArticleItem[] = posts.map((post) => ({
     id: post.id,

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
-import { getLatestPosts } from "@/app/_actions";
+import { getPopularArticlesByEngagement } from "@/app/_actions/popularity";
 
 function formatDate(date: Date): string {
   return new Intl.DateTimeFormat("ja-JP", {
@@ -14,7 +14,8 @@ function formatDate(date: Date): string {
 }
 
 export async function HeroNews() {
-  const posts = await getLatestPosts(4);
+  // お気に入り数でソートされた人気記事を取得
+  const posts = await getPopularArticlesByEngagement(4);
 
   if (posts.length === 0) {
     return (

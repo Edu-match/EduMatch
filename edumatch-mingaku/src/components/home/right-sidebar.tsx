@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Crown } from "lucide-react";
-import { getPopularServices } from "@/app/_actions";
+import { getPopularServicesByEngagement } from "@/app/_actions/popularity";
 import { createClient } from "@/utils/supabase/server";
 
 const rankColors = [
@@ -14,7 +14,8 @@ const rankColors = [
 ];
 
 export async function RightSidebar() {
-  const services = await getPopularServices(5);
+  // お気に入り数 + 資料請求数でソートされた人気サービスを取得
+  const services = await getPopularServicesByEngagement(5);
   
   // 認証状態をチェック
   const supabase = await createClient();

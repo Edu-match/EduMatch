@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
 
 /**
  * サービスのお気に入り数をインクリメント
@@ -88,32 +89,50 @@ export async function decrementServiceRequestCount(serviceId: string) {
 
 /**
  * 人気のサービスを取得（お気に入り数 + 資料請求数の合計でソート）
+ * 未ログイン時は会員限定サービスを除外
  */
 export async function getPopularServicesByEngagement(limit: number = 10) {
   try {
+    // 認証状態をチェック（会員限定サービスのフィルタリング用）
+    const user = await getCurrentUser();
+
+    const where = !user
+      ? {
+          AND: [
+            { OR: [{ status: "APPROVED" as const }, { is_published: true }] },
+            { is_member_only: false },
+          ],
+        }
+      : { OR: [{ status: "APPROVED" as const }, { is_published: true }] };
+
     const services = await prisma.service.findMany({
-      where: {
-        OR: [{ status: "APPROVED" }, { is_published: true }],
-      },
-      select: {
-        id: true,
-        title: true,
-        thumbnail_url: true,
-        category: true,
-        favorite_count: true,
-        request_count: true,
+      where,
+      include: {
+        provider: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatar_url: true,
+          },
+        },
       },
       take: limit * 2, // 多めに取得してソート
     });
 
     // お気に入り数 + 資料請求数でソート
-    return services
+    const sortedServices = services
       .sort((a, b) => {
         const scoreA = a.favorite_count + a.request_count;
         const scoreB = b.favorite_count + b.request_count;
         return scoreB - scoreA;
       })
       .slice(0, limit);
+
+    return sortedServices.map((s) => ({
+      ...s,
+      provider: s.provider || { id: s.provider_id, name: "提供者", email: "", avatar_url: null },
+    }));
   } catch (error) {
     console.error("Failed to get popular services:", error);
     return [];
@@ -122,19 +141,32 @@ export async function getPopularServicesByEngagement(limit: number = 10) {
 
 /**
  * 人気の記事を取得（お気に入り数でソート）
+ * 未ログイン時は会員限定記事を除外
  */
 export async function getPopularArticlesByEngagement(limit: number = 10) {
   try {
+    // 認証状態をチェック（会員限定記事のフィルタリング用）
+    const user = await getCurrentUser();
+
+    const where = !user
+      ? {
+          AND: [
+            { OR: [{ status: "APPROVED" as const }, { is_published: true }] },
+            { is_member_only: false },
+          ],
+        }
+      : { OR: [{ status: "APPROVED" as const }, { is_published: true }] };
+
     const articles = await prisma.post.findMany({
-      where: {
-        OR: [{ status: "APPROVED" }, { is_published: true }],
-      },
-      select: {
-        id: true,
-        title: true,
-        thumbnail_url: true,
-        content: true,
-        favorite_count: true,
+      where,
+      include: {
+        provider: {
+          select: {
+            id: true,
+            name: true,
+            avatar_url: true,
+          },
+        },
       },
       orderBy: {
         favorite_count: "desc",
@@ -143,12 +175,8 @@ export async function getPopularArticlesByEngagement(limit: number = 10) {
     });
 
     return articles.map((article) => ({
-      id: article.id,
-      title: article.title,
-      thumbnail_url: article.thumbnail_url,
-      category: article.content.includes("ICT") || article.content.includes("デジタル") ? "教育ICT" :
-                article.content.includes("事例") || article.content.includes("実践") ? "導入事例" :
-                article.content.includes("運営") || article.content.includes("保護者") ? "学校運営" : "教育ICT",
+      ...article,
+      provider: article.provider || { id: article.provider_id, name: "投稿者", avatar_url: null },
     }));
   } catch (error) {
     console.error("Failed to get popular articles:", error);

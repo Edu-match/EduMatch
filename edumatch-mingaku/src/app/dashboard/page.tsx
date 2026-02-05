@@ -51,8 +51,25 @@ export default async function DashboardPage() {
   const recentlyViewed = await getRecentViewHistory(user.id, 5);
 
   // 人気のサービスと記事を取得（お気に入り数・資料請求数順）
-  const popularServices = await getPopularServicesByEngagement(50);
-  const popularArticles = await getPopularArticlesByEngagement(50);
+  const popularServicesRaw = await getPopularServicesByEngagement(50);
+  const popularArticlesRaw = await getPopularArticlesByEngagement(50);
+
+  // RecommendationsSection用に変換
+  const popularServices = popularServicesRaw.map((service) => ({
+    id: service.id,
+    title: service.title,
+    thumbnail_url: service.thumbnail_url,
+    category: service.category,
+  }));
+
+  const popularArticles = popularArticlesRaw.map((article) => ({
+    id: article.id,
+    title: article.title,
+    thumbnail_url: article.thumbnail_url,
+    category: article.content.includes("ICT") || article.content.includes("デジタル") ? "教育ICT" :
+              article.content.includes("事例") || article.content.includes("実践") ? "導入事例" :
+              article.content.includes("運営") || article.content.includes("保護者") ? "学校運営" : "教育ICT",
+  }));
 
   const notifications: { id: string; title: string; date: string; read: boolean }[] = [];
 
