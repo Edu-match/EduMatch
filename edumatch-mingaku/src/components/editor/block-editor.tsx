@@ -92,6 +92,17 @@ export function BlockEditor({ blocks, onChange, maxLength }: BlockEditorProps) {
       return acc;
     }, 0);
   }, []);
+  
+  // 個別ブロックの文字数を計算
+  const getBlockLength = useCallback((block: ContentBlock) => {
+    if (block.content) {
+      return block.content.length;
+    }
+    if (block.items) {
+      return block.items.join("").length;
+    }
+    return 0;
+  }, []);
 
   const addBlock = useCallback(
     (type: BlockType, index: number) => {
@@ -168,49 +179,71 @@ export function BlockEditor({ blocks, onChange, maxLength }: BlockEditorProps) {
   };
 
   const renderBlockContent = (block: ContentBlock) => {
+    const blockLength = getBlockLength(block);
+    
     switch (block.type) {
       case "heading1":
         return (
-          <input
-            type="text"
-            value={block.content}
-            onChange={(e) => updateBlock(block.id, { content: e.target.value })}
-            placeholder="大見出しを入力..."
-            className={`w-full bg-transparent text-4xl font-bold outline-none border-none text-${block.align}`}
-            style={{ textAlign: block.align }}
-          />
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={block.content}
+              onChange={(e) => updateBlock(block.id, { content: e.target.value })}
+              placeholder="大見出しを入力..."
+              className={`flex-1 bg-transparent text-4xl font-bold outline-none border-none text-${block.align}`}
+              style={{ textAlign: block.align }}
+            />
+            <span className="text-xs text-muted-foreground whitespace-nowrap">
+              {blockLength} 文字
+            </span>
+          </div>
         );
       case "heading2":
         return (
-          <input
-            type="text"
-            value={block.content}
-            onChange={(e) => updateBlock(block.id, { content: e.target.value })}
-            placeholder="中見出しを入力..."
-            className={`w-full bg-transparent text-2xl font-bold outline-none border-none`}
-            style={{ textAlign: block.align }}
-          />
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={block.content}
+              onChange={(e) => updateBlock(block.id, { content: e.target.value })}
+              placeholder="中見出しを入力..."
+              className={`flex-1 bg-transparent text-2xl font-bold outline-none border-none`}
+              style={{ textAlign: block.align }}
+            />
+            <span className="text-xs text-muted-foreground whitespace-nowrap">
+              {blockLength} 文字
+            </span>
+          </div>
         );
       case "heading3":
         return (
-          <input
-            type="text"
-            value={block.content}
-            onChange={(e) => updateBlock(block.id, { content: e.target.value })}
-            placeholder="小見出しを入力..."
-            className={`w-full bg-transparent text-xl font-semibold outline-none border-none`}
-            style={{ textAlign: block.align }}
-          />
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={block.content}
+              onChange={(e) => updateBlock(block.id, { content: e.target.value })}
+              placeholder="小見出しを入力..."
+              className={`flex-1 bg-transparent text-xl font-semibold outline-none border-none`}
+              style={{ textAlign: block.align }}
+            />
+            <span className="text-xs text-muted-foreground whitespace-nowrap">
+              {blockLength} 文字
+            </span>
+          </div>
         );
       case "paragraph":
         return (
-          <Textarea
-            value={block.content}
-            onChange={(e) => updateBlock(block.id, { content: e.target.value })}
-            placeholder="本文を入力..."
-            className={`w-full min-h-[100px] bg-transparent resize-none border-none shadow-none focus-visible:ring-0`}
-            style={{ textAlign: block.align }}
-          />
+          <div className="relative">
+            <Textarea
+              value={block.content}
+              onChange={(e) => updateBlock(block.id, { content: e.target.value })}
+              placeholder="本文を入力..."
+              className={`w-full min-h-[100px] bg-transparent resize-none border-none shadow-none focus-visible:ring-0 pr-16`}
+              style={{ textAlign: block.align }}
+            />
+            <span className="absolute top-2 right-2 text-xs text-muted-foreground">
+              {blockLength} 文字
+            </span>
+          </div>
         );
       case "image":
         return (
@@ -382,13 +415,18 @@ export function BlockEditor({ blocks, onChange, maxLength }: BlockEditorProps) {
       case "quote":
         return (
           <div className="border-l-4 border-primary pl-4 py-2">
-            <Textarea
-              value={block.content}
-              onChange={(e) => updateBlock(block.id, { content: e.target.value })}
-              onClick={(e) => e.stopPropagation()}
-              placeholder="引用文を入力..."
-              className="w-full min-h-[80px] bg-transparent resize-none border-none shadow-none focus-visible:ring-0 italic text-lg"
-            />
+            <div className="relative">
+              <Textarea
+                value={block.content}
+                onChange={(e) => updateBlock(block.id, { content: e.target.value })}
+                onClick={(e) => e.stopPropagation()}
+                placeholder="引用文を入力..."
+                className="w-full min-h-[80px] bg-transparent resize-none border-none shadow-none focus-visible:ring-0 italic text-lg pr-16"
+              />
+              <span className="absolute top-2 right-2 text-xs text-muted-foreground">
+                {block.content?.length || 0} 文字
+              </span>
+            </div>
             <Input
               value={block.caption || ""}
               onChange={(e) => updateBlock(block.id, { caption: e.target.value })}
@@ -436,6 +474,11 @@ export function BlockEditor({ blocks, onChange, maxLength }: BlockEditorProps) {
                 />
               </div>
             ))}
+            <div className="flex justify-end mt-2">
+              <span className="text-xs text-muted-foreground">
+                合計: {blockLength} 文字
+              </span>
+            </div>
           </div>
         );
       default:

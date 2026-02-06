@@ -240,53 +240,53 @@ export default function ServiceCreatePage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Input
-                value={title}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  if (value.length <= TITLE_MAX_LENGTH) {
-                    setTitle(value);
-                  }
-                }}
-                placeholder="サービス名"
-                maxLength={TITLE_MAX_LENGTH}
-                className={!isTitleValid ? "border-destructive" : ""}
-              />
-              <div className="flex items-center justify-between text-sm">
-                <span className={isTitleValid ? "text-muted-foreground" : "text-destructive"}>
-                  {titleLength} / {TITLE_MAX_LENGTH} 文字
+              <div className="flex items-center gap-3">
+                <Input
+                  value={title}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value.length <= TITLE_MAX_LENGTH) {
+                      setTitle(value);
+                    }
+                  }}
+                  placeholder="サービス名"
+                  maxLength={TITLE_MAX_LENGTH}
+                  className={`flex-1 ${!isTitleValid ? "border-destructive" : ""}`}
+                />
+                <span className={`text-sm whitespace-nowrap ${isTitleValid ? "text-muted-foreground" : "text-destructive"}`}>
+                  {titleLength} / {TITLE_MAX_LENGTH}
                 </span>
-                {!isTitleValid && (
-                  <span className="text-destructive text-xs">
-                    タイトルは{TITLE_MAX_LENGTH}文字以内で入力してください
-                  </span>
-                )}
               </div>
+              {!isTitleValid && (
+                <p className="text-destructive text-xs">
+                  タイトルは{TITLE_MAX_LENGTH}文字以内で入力してください
+                </p>
+              )}
             </div>
             <div className="space-y-2">
-              <Textarea
-                value={description}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  if (value.length <= DESCRIPTION_MAX_LENGTH) {
-                    setDescription(value);
-                  }
-                }}
-                placeholder="概要（短い説明）"
-                rows={3}
-                maxLength={DESCRIPTION_MAX_LENGTH}
-                className={!isDescriptionValid ? "border-destructive" : ""}
-              />
-              <div className="flex items-center justify-between text-sm">
-                <span className={isDescriptionValid ? "text-muted-foreground" : "text-destructive"}>
-                  {descriptionLength} / {DESCRIPTION_MAX_LENGTH} 文字
+              <div className="relative">
+                <Textarea
+                  value={description}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value.length <= DESCRIPTION_MAX_LENGTH) {
+                      setDescription(value);
+                    }
+                  }}
+                  placeholder="概要（短い説明）"
+                  rows={3}
+                  maxLength={DESCRIPTION_MAX_LENGTH}
+                  className={`pr-20 ${!isDescriptionValid ? "border-destructive" : ""}`}
+                />
+                <span className={`absolute top-2 right-2 text-sm ${isDescriptionValid ? "text-muted-foreground" : "text-destructive"}`}>
+                  {descriptionLength} / {DESCRIPTION_MAX_LENGTH}
                 </span>
-                {!isDescriptionValid && (
-                  <span className="text-destructive text-xs">
-                    概要は{DESCRIPTION_MAX_LENGTH}文字以内で入力してください
-                  </span>
-                )}
               </div>
+              {!isDescriptionValid && (
+                <p className="text-destructive text-xs">
+                  概要は{DESCRIPTION_MAX_LENGTH}文字以内で入力してください
+                </p>
+              )}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <Input

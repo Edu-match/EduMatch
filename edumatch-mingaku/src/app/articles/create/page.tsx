@@ -652,7 +652,7 @@ export default function ArticleCreatePage() {
                 {/* Title */}
                 <Card>
                   <CardContent className="pt-6">
-                    <div className="space-y-2">
+                    <div className="flex items-center gap-3">
                       <input
                         type="text"
                         value={title}
@@ -663,39 +663,37 @@ export default function ArticleCreatePage() {
                           }
                         }}
                         placeholder="記事タイトルを入力..."
-                        className={`w-full text-3xl font-bold bg-transparent outline-none border-none ${
+                        className={`flex-1 text-3xl font-bold bg-transparent outline-none border-none ${
                           !isTitleValid ? "text-destructive" : ""
                         }`}
                         maxLength={TITLE_MAX_LENGTH}
                       />
-                      <div className="flex items-center justify-between text-sm">
-                        <span className={isTitleValid ? "text-muted-foreground" : "text-destructive"}>
-                          {titleLength} / {TITLE_MAX_LENGTH} 文字
-                        </span>
-                        {!isTitleValid && (
-                          <span className="text-destructive text-xs">
-                            タイトルは{TITLE_MAX_LENGTH}文字以内で入力してください
-                          </span>
-                        )}
-                      </div>
+                      <span className={`text-sm whitespace-nowrap ${isTitleValid ? "text-muted-foreground" : "text-destructive"}`}>
+                        {titleLength} / {TITLE_MAX_LENGTH}
+                      </span>
                     </div>
+                    {!isTitleValid && (
+                      <p className="text-destructive text-xs mt-2">
+                        タイトルは{TITLE_MAX_LENGTH}文字以内で入力してください
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
 
                 {/* Lead text */}
                 <Card>
                   <CardContent className="pt-6">
-                    <div className="space-y-2">
+                    <div className="relative">
                       <Textarea
                         value={leadText}
                         onChange={(e) => setLeadText(e.target.value)}
                         placeholder="リード文（概要）を入力..."
-                        className="border-none shadow-none resize-none text-lg text-muted-foreground focus-visible:ring-0"
+                        className="border-none shadow-none resize-none text-lg text-muted-foreground focus-visible:ring-0 pr-20"
                         rows={3}
                       />
-                      <div className="text-sm text-muted-foreground">
+                      <span className="absolute top-2 right-2 text-sm text-muted-foreground">
                         {leadTextLength.toLocaleString()} 文字
-                      </div>
+                      </span>
                     </div>
                   </CardContent>
                 </Card>

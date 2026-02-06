@@ -70,9 +70,7 @@ export async function GET(request: NextRequest) {
       // 初回登録（Google・メール問わず）は必ずプロフィール設定へ（名前・住所などを登録）
       const registerUrl = new URL("/profile/register", origin);
       registerUrl.searchParams.set("first", "1");
-      if (expectedRole === "PROVIDER") {
-        registerUrl.searchParams.set("next", "/company/dashboard");
-      } else if (redirectTo && redirectTo !== "/dashboard") {
+      if (redirectTo && redirectTo !== "/dashboard") {
         registerUrl.searchParams.set("next", redirectTo);
       }
       return NextResponse.redirect(registerUrl);

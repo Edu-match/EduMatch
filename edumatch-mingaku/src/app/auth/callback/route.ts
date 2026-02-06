@@ -57,9 +57,7 @@ export async function GET(request: NextRequest) {
           // 初回登録時は必ずプロフィール設定（名前・住所など）へ誘導
           const registerUrl = new URL("/profile/register", origin);
           registerUrl.searchParams.set("first", "1");
-          if (role === Role.PROVIDER) {
-            registerUrl.searchParams.set("next", "/company/dashboard");
-          } else if (redirectTo && redirectTo !== "/dashboard") {
+          if (redirectTo && redirectTo !== "/dashboard") {
             registerUrl.searchParams.set("next", redirectTo);
           }
           return NextResponse.redirect(registerUrl);
@@ -70,13 +68,7 @@ export async function GET(request: NextRequest) {
       }
 
       // リダイレクト先を決定
-      const userMetadata = data.user.user_metadata || {};
-      let finalRedirect = redirectTo;
-      if (userMetadata.role === "PROVIDER" && redirectTo === "/dashboard") {
-        finalRedirect = "/company/dashboard";
-      }
-
-      return NextResponse.redirect(new URL(finalRedirect, origin));
+      return NextResponse.redirect(new URL(redirectTo, origin));
     }
   }
 

@@ -78,10 +78,7 @@ export function SignupForm({ onSuccess, redirectTo = "/dashboard" }: Props) {
       }
 
       toast.success("登録が完了しました。次に住所などを登録してください。");
-      const profileUrl =
-        userType === "provider"
-          ? "/profile/register?first=1&next=/company/dashboard"
-          : "/profile/register?first=1";
+      const profileUrl = "/profile/register?first=1";
       window.location.href = profileUrl;
     } catch {
       setGlobalError("会員登録に失敗しました。もう一度お試しください。");
