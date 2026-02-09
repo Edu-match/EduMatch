@@ -27,7 +27,11 @@ model Profile {
   name                String
   email               String   @unique
   avatar_url          String?
-  subscription_status String   @default("INACTIVE")
+  subscription_status String   @default("INACTIVE") // INACTIVE, ACTIVE, CANCELED, PAST_DUE
+  subscription_plan   String?  // FREE, STANDARD, PREMIUM
+  stripe_customer_id  String?  @unique // Stripe顧客ID
+  stripe_subscription_id String? // StripeサブスクリプションID
+  subscription_current_period_end DateTime? // 現在の請求期間終了日
   phone               String?
   postal_code         String?
   prefecture          String?
@@ -44,6 +48,7 @@ model Profile {
   material_requests MaterialRequest[]
 
   @@index([email])
+  @@index([stripe_customer_id])
 }
 
 model MaterialRequest {

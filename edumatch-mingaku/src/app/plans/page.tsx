@@ -1,11 +1,14 @@
-import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Check, X, HelpCircle, ArrowRight } from "lucide-react";
+import Link from "next/link";
+import { getCurrentSubscription } from "@/app/_actions/subscription";
+import { PlanSelectButton } from "./plan-select-button";
 
 const plans = [
   {
+    id: "FREE",
     name: "フリー",
     price: "¥0",
     period: "永久無料",
@@ -19,12 +22,10 @@ const plans = [
       { name: "優先サポート", included: false },
       { name: "API連携", included: false },
     ],
-    cta: "現在のプラン",
-    ctaVariant: "outline" as const,
     popular: false,
-    current: true,
   },
   {
+    id: "STANDARD",
     name: "スタンダード",
     price: "¥2,980",
     period: "月額",
@@ -38,12 +39,10 @@ const plans = [
       { name: "優先サポート", included: false },
       { name: "API連携", included: false },
     ],
-    cta: "このプランを選択",
-    ctaVariant: "default" as const,
     popular: true,
-    current: false,
   },
   {
+    id: "PREMIUM",
     name: "プレミアム",
     price: "¥9,800",
     period: "月額",
@@ -57,10 +56,7 @@ const plans = [
       { name: "優先サポート", included: true },
       { name: "API連携", included: true },
     ],
-    cta: "このプランを選択",
-    ctaVariant: "outline" as const,
     popular: false,
-    current: false,
   },
 ];
 
@@ -80,9 +76,17 @@ const faqs = [
     answer:
       "はい、法人向けの一括契約プランをご用意しています。詳細はお問い合わせください。",
   },
+  {
+    question: "支払い方法は何がありますか？",
+    answer:
+      "クレジットカード（VISA, Mastercard, JCB, American Express）に対応しています。Stripeによる安全な決済処理を採用しています。",
+  },
 ];
 
-export default function PlansPage() {
+export default async function PlansPage() {
+  const subscription = await getCurrentSubscription();
+  const currentPlanId = subscription?.plan || "FREE";
+
   return (
     <div className="container py-8">
       <div className="text-center mb-12">
@@ -94,63 +98,110 @@ export default function PlansPage() {
 
       {/* プラン比較 */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-        {plans.map((plan) => (
-          <Card
-            key={plan.name}
-            className={`relative ${
-              plan.popular ? "border-2 border-primary shadow-lg" : ""
-            }`}
-          >
-            {plan.popular && (
-              <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                人気No.1
-              </Badge>
-            )}
-            <CardHeader className="text-center pb-2">
-              <CardTitle className="text-xl">{plan.name}</CardTitle>
-              <div className="mt-4">
-                <span className="text-4xl font-bold">{plan.price}</span>
-                <span className="text-muted-foreground">/{plan.period}</span>
-              </div>
-              <p className="text-sm text-muted-foreground mt-2">
-                {plan.description}
-              </p>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-3 mb-6">
-                {plan.features.map((feature) => (
-                  <li key={feature.name} className="flex items-center gap-2">
-                    {feature.included ? (
-                      <Check className="h-5 w-5 text-green-500 flex-shrink-0" />
-                    ) : (
-                      <X className="h-5 w-5 text-muted-foreground/30 flex-shrink-0" />
-                    )}
-                    <span
-                      className={
-                        feature.included ? "" : "text-muted-foreground/50"
-                      }
-                    >
-                      {feature.name}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <Button
-                className="w-full"
-                variant={plan.ctaVariant}
-                disabled={plan.current}
-                asChild={!plan.current}
-              >
-                {plan.current ? (
-                  <span>{plan.cta}</span>
+        {plans.map((plan) => {
+          const isCurrent = plan.id === currentPlanId;
+
+          return (
+            <Card
+              key={plan.name}
+              className={`relative ${
+                plan.popular ? "border-2 border-primary shadow-lg" : ""
+              }`}
+            >
+              {plan.popular && (
+                <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                  人気No.1
+                </Badge>
+              )}
+              <CardHeader className="text-center pb-2">
+                <CardTitle className="text-xl">{plan.name}</CardTitle>
+                <div className="mt-4">
+                  <span className="text-4xl font-bold">{plan.price}</span>
+                  <span className="text-muted-foreground">/{plan.period}</span>
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  {plan.description}
+                </p>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-3 mb-6">
+                  {plan.features.map((feature) => (
+                    <li key={feature.name} className="flex items-center gap-2">
+                      {feature.included ? (
+                        <Check className="h-5 w-5 text-green-500 flex-shrink-0" />
+                      ) : (
+                        <X className="h-5 w-5 text-muted-foreground/30 flex-shrink-0" />
+                      )}
+                      <span
+                        className={
+                          feature.included ? "" : "text-muted-foreground/50"
+                        }
+                      >
+                        {feature.name}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+
+                {isCurrent ? (
+                  <Button className="w-full" variant="outline" disabled>
+                    現在のプラン
+                  </Button>
+                ) : plan.id === "FREE" ? (
+                  subscription?.isActive ? (
+                    <Button className="w-full" variant="outline" asChild>
+                      <Link href="/dashboard/subscription">
+                        ダウングレード
+                      </Link>
+                    </Button>
+                  ) : (
+                    <Button className="w-full" variant="outline" disabled>
+                      現在のプラン
+                    </Button>
+                  )
                 ) : (
-                  <Link href="/payment">{plan.cta}</Link>
+                  <PlanSelectButton
+                    planId={plan.id}
+                    planName={plan.name}
+                    hasSubscription={!!subscription?.stripeSubscriptionId}
+                    popular={plan.popular}
+                  />
                 )}
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
+
+      {/* 現在のサブスクリプション情報 */}
+      {subscription && subscription.isActive && (
+        <Card className="mb-12 bg-gradient-to-r from-green-50 to-green-100/50 border-green-200">
+          <CardContent className="p-6">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-bold mb-2">
+                  現在のプラン: {subscription.planName}
+                </h3>
+                {subscription.currentPeriodEnd && (
+                  <p className="text-muted-foreground">
+                    次回請求日:{" "}
+                    {new Date(subscription.currentPeriodEnd).toLocaleDateString(
+                      "ja-JP",
+                      { year: "numeric", month: "long", day: "numeric" }
+                    )}
+                  </p>
+                )}
+              </div>
+              <Button variant="outline" asChild>
+                <Link href="/dashboard/subscription">
+                  サブスクリプション管理
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* 年間契約の案内 */}
       <Card className="mb-12 bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">

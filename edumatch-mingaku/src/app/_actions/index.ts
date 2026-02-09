@@ -63,3 +63,12 @@ export {
   type SubmitMaterialRequestBatchResult,
   type MaterialRequestWithService,
 } from "./request-info";
+
+// Subscription (サブスクリプション)
+export {
+  getCurrentSubscription,
+  createCheckoutSession,
+  cancelSubscription,
+  updateSubscription,
+  type SubscriptionInfo,
+} from "./subscription";

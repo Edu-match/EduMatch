@@ -14,6 +14,7 @@ import {
   FileText,
   TrendingUp,
   Heart,
+  CreditCard,
 } from "lucide-react";
 import { requireAuth, getCurrentProfile } from "@/lib/auth";
 import { getRecentViewHistory } from "@/app/_actions";
@@ -24,6 +25,7 @@ import {
   getPopularServicesByEngagement,
   getPopularArticlesByEngagement,
 } from "@/app/_actions/popularity";
+import { getCurrentSubscription } from "@/app/_actions/subscription";
 
 // 閲覧時刻を「ついさっき」「〇分前」などで表示
 function formatViewedAt(viewedAt: Date): string {
@@ -72,6 +74,7 @@ export default async function DashboardPage() {
   }));
 
   const notifications: { id: string; title: string; date: string; read: boolean }[] = [];
+  const subscription = await getCurrentSubscription();
 
   return (
     <div className="container py-8">
@@ -282,19 +285,61 @@ export default async function DashboardPage() {
           {/* プラン情報 */}
           <Card className="border-primary/20 bg-primary/5">
             <CardHeader>
-              <CardTitle className="text-lg">ご利用プラン</CardTitle>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                ご利用プラン
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="mb-4">
-                <Badge>フリープラン</Badge>
+              <div className="mb-4 flex items-center gap-2">
+                <Badge
+                  className={
+                    subscription?.isActive
+                      ? "bg-green-100 text-green-800 hover:bg-green-100"
+                      : ""
+                  }
+                >
+                  {subscription?.planName || "フリー"}プラン
+                </Badge>
+                {subscription?.isActive && (
+                  <Badge variant="outline" className="text-green-600 border-green-300">
+                    有効
+                  </Badge>
+                )}
+                {subscription?.isCanceled && (
+                  <Badge variant="outline" className="text-orange-600 border-orange-300">
+                    キャンセル予定
+                  </Badge>
+                )}
               </div>
-              <p className="text-sm text-muted-foreground mb-4">
-                プレミアムプランにアップグレードすると、
-                すべての機能が利用できます。
-              </p>
-              <Button className="w-full" asChild>
-                <Link href="/plans">プランを見る</Link>
-              </Button>
+              {subscription?.currentPeriodEnd && (
+                <p className="text-xs text-muted-foreground mb-2">
+                  {subscription.isCanceled ? "利用可能期限" : "次回請求日"}:{" "}
+                  {new Date(subscription.currentPeriodEnd).toLocaleDateString("ja-JP")}
+                </p>
+              )}
+              {(!subscription || subscription.plan === "FREE" || !subscription.isActive) ? (
+                <>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    アップグレードすると、すべての機能が利用できます。
+                  </p>
+                  <Button className="w-full" asChild>
+                    <Link href="/plans">プランを見る</Link>
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    プランの変更・キャンセルは管理ページから行えます。
+                  </p>
+                  <Button className="w-full" variant="outline" asChild>
+                    <Link href="/dashboard/subscription">
+                      サブスクリプション管理
+                      <ArrowRight className="h-4 w-4 ml-2" />
+                    </Link>
+                  </Button>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>
