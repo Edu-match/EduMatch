@@ -22,10 +22,10 @@ export function FavoritesClient() {
           <div className="text-center">
             <Heart className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-xl font-semibold mb-2">
-              お気に入りはまだありません
+              いいねはまだありません
             </h3>
             <p className="text-muted-foreground mb-6">
-              記事やサービス詳細ページからお気に入りに追加すると、ここに一覧表示されます。
+              記事やサービス詳細ページからいいねすると、ここに一覧表示されます。
             </p>
             <div className="flex gap-2 justify-center flex-wrap">
               <Button asChild>
@@ -43,7 +43,7 @@ export function FavoritesClient() {
 
   return (
     <div className="space-y-8">
-      {/* 記事のお気に入り */}
+      {/* 記事のいいね */}
       {articles.length > 0 && (
         <div>
           <div className="flex items-center gap-2 mb-4">
@@ -105,7 +105,7 @@ export function FavoritesClient() {
         </div>
       )}
 
-      {/* サービスのお気に入り */}
+      {/* サービスのいいね */}
       {services.length > 0 && (
         <div>
           <div className="flex items-center gap-2 mb-4">

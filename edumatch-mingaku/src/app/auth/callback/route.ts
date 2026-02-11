@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const { searchParams } = requestUrl;
   const code = searchParams.get("code");
-  const redirectTo = searchParams.get("redirect_to") || "/dashboard";
+    const redirectTo = searchParams.get("redirect_to") || "/";
   const origin = getSiteOrigin(requestUrl.origin);
 
   if (code) {
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
           // 初回登録時は必ずプロフィール設定（名前・住所など）へ誘導
           const registerUrl = new URL("/profile/register", origin);
           registerUrl.searchParams.set("first", "1");
-          if (redirectTo && redirectTo !== "/dashboard") {
+          if (redirectTo && redirectTo !== "/") {
             registerUrl.searchParams.set("next", redirectTo);
           }
           return NextResponse.redirect(registerUrl);

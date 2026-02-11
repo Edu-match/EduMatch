@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 
 /**
- * サービスのお気に入り数をインクリメント
+ * サービスのいいね数をインクリメント
  */
 export async function incrementServiceFavoriteCount(serviceId: string) {
   try {
@@ -18,7 +18,7 @@ export async function incrementServiceFavoriteCount(serviceId: string) {
 }
 
 /**
- * サービスのお気に入り数をデクリメント
+ * サービスのいいね数をデクリメント
  */
 export async function decrementServiceFavoriteCount(serviceId: string) {
   try {
@@ -32,7 +32,7 @@ export async function decrementServiceFavoriteCount(serviceId: string) {
 }
 
 /**
- * 記事のお気に入り数をインクリメント
+ * 記事のいいね数をインクリメント
  */
 export async function incrementArticleFavoriteCount(articleId: string) {
   try {
@@ -46,7 +46,7 @@ export async function incrementArticleFavoriteCount(articleId: string) {
 }
 
 /**
- * 記事のお気に入り数をデクリメント
+ * 記事のいいね数をデクリメント
  */
 export async function decrementArticleFavoriteCount(articleId: string) {
   try {
@@ -88,7 +88,7 @@ export async function decrementServiceRequestCount(serviceId: string) {
 }
 
 /**
- * 人気のサービスを取得（お気に入り数 + 資料請求数の合計でソート）
+ * 人気のサービスを取得（いいね数でソート）
  * 未ログイン時は会員限定サービスを除外
  */
 export async function getPopularServicesByEngagement(limit: number = 10) {
@@ -120,12 +120,10 @@ export async function getPopularServicesByEngagement(limit: number = 10) {
       take: limit * 2, // 多めに取得してソート
     });
 
-    // お気に入り数 + 資料請求数でソート
+    // いいね数でソート
     const sortedServices = services
       .sort((a, b) => {
-        const scoreA = a.favorite_count + a.request_count;
-        const scoreB = b.favorite_count + b.request_count;
-        return scoreB - scoreA;
+        return b.favorite_count - a.favorite_count;
       })
       .slice(0, limit);
 
@@ -140,7 +138,7 @@ export async function getPopularServicesByEngagement(limit: number = 10) {
 }
 
 /**
- * 人気の記事を取得（お気に入り数でソート）
+ * 人気の記事を取得（いいね数でソート）
  * 未ログイン時は会員限定記事を除外
  */
 export async function getPopularArticlesByEngagement(limit: number = 10) {

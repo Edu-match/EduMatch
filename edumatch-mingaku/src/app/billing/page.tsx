@@ -13,7 +13,7 @@ const plans = [
   },
   {
     name: "プロ",
-    price: "¥2,980/月",
+    price: "¥29,800/月",
     description: "教育現場向けの標準プラン",
     features: [
       "すべてのスターター機能",

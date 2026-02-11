@@ -96,8 +96,8 @@ export async function middleware(request: NextRequest) {
   );
 
   if (isAuthPath && user) {
-    // 認証済みユーザーはマイページにリダイレクト
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    // 認証済みユーザーはトップページにリダイレクト
+    return NextResponse.redirect(new URL("/", request.url));
   }
 
   return response;

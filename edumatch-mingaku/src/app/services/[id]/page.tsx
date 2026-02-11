@@ -11,6 +11,7 @@ import { notFound } from "next/navigation";
 import { YouTubeEmbed } from "@/components/ui/youtube-embed";
 import { AddToRequestListServiceButton } from "./service-detail-actions";
 import { ContentRenderer } from "@/components/ui/content-renderer";
+import { ShareButton } from "@/components/ui/share-button";
 
 export const dynamic = "force-dynamic";
 
@@ -70,9 +71,19 @@ export default async function ServiceDetailPage({
                   {formatDate(service.created_at)}
                 </div>
               </div>
-              <h1 className="text-4xl md:text-5xl font-bold mb-6 leading-tight">
-                {service.title}
-              </h1>
+              <div className="flex items-start justify-between gap-4 mb-6">
+                <h1 className="text-4xl md:text-5xl font-bold leading-tight flex-1">
+                  {service.title}
+                </h1>
+                <ShareButton
+                  url={`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/services/${service.id}`}
+                  title={service.title}
+                  text={`${service.title} - EduMatch`}
+                  variant="outline"
+                  size="sm"
+                  className="flex-shrink-0"
+                />
+              </div>
               <p className="text-xl text-muted-foreground leading-relaxed">
                 {service.description}
               </p>
@@ -264,6 +275,14 @@ export default async function ServiceDetailPage({
                       thumbnailUrl={service.thumbnail_url}
                       category={service.category}
                       variant="button"
+                      className="w-full"
+                    />
+                    <ShareButton
+                      url={`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/services/${service.id}`}
+                      title={service.title}
+                      text={`${service.title} - EduMatch`}
+                      variant="outline"
+                      size="lg"
                       className="w-full"
                     />
                     <Button asChild variant="outline" className="w-full" size="lg">

@@ -52,7 +52,7 @@ export default async function DashboardPage() {
 
   const recentlyViewed = await getRecentViewHistory(user.id, 5);
 
-  // 人気のサービスと記事を取得（お気に入り数・資料請求数順）
+  // 人気のサービスと記事を取得（いいね数順）
   const popularServicesRaw = await getPopularServicesByEngagement(50);
   const popularArticlesRaw = await getPopularArticlesByEngagement(50);
 
@@ -184,12 +184,12 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
 
-          {/* お気に入りリスト */}
+          {/* いいねリスト */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <Heart className="h-5 w-5 text-red-500 fill-red-500" />
-                お気に入りリスト
+                いいねリスト
               </CardTitle>
               <Button variant="ghost" size="sm" asChild>
                 <Link href="/favorites">

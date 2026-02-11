@@ -20,7 +20,7 @@ type Props = {
   redirectTo?: string;
 };
 
-export function SignupForm({ onSuccess, redirectTo = "/dashboard" }: Props) {
+export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
   const [userType, setUserType] = useState<UserType | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);

@@ -237,7 +237,7 @@ export default function UserDashboardPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">月額</span>
-                  <span className="font-medium">¥2,980</span>
+                  <span className="font-medium">¥29,800</span>
                 </div>
               </div>
               <Button className="w-full mt-4" asChild>

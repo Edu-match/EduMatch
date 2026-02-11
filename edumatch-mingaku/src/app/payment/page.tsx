@@ -15,8 +15,8 @@ import {
 } from "lucide-react";
 
 const PLAN_DETAILS: Record<string, { name: string; price: number; period: string }> = {
-  STANDARD: { name: "スタンダード", price: 2980, period: "月額" },
-  PREMIUM: { name: "プレミアム", price: 9800, period: "月額" },
+  STANDARD: { name: "スタンダード", price: 29800, period: "月額" },
+  PREMIUM: { name: "プレミアム", price: 50000, period: "月額" },
 };
 
 function PaymentContent() {

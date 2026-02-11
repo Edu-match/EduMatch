@@ -11,6 +11,8 @@ import {
   incrementServiceRequestCount,
   decrementServiceRequestCount,
 } from "@/app/_actions/popularity";
+import { getCurrentSubscription } from "@/app/_actions/subscription";
+import { PLANS } from "@/lib/stripe";
 
 type Props = {
   item: RequestListItem;
@@ -25,9 +27,10 @@ export function AddToRequestListButton({
   size = "sm",
   className,
 }: Props) {
-  const { has, toggle } = useRequestList();
+  const { has, toggle, count } = useRequestList();
   const inList = has(item.id);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [requestListLimit, setRequestListLimit] = useState<number | null>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -37,6 +40,19 @@ export function AddToRequestListButton({
       );
       const { data: { user } } = await supabase.auth.getUser();
       setIsAuthenticated(!!user);
+      
+      // 認証済みの場合はプラン情報を取得して制限を設定
+      if (user) {
+        try {
+          const subscription = await getCurrentSubscription();
+          const planId = subscription?.plan || "FREE";
+          const plan = PLANS[planId as keyof typeof PLANS] || PLANS.FREE;
+          setRequestListLimit(plan.requestListLimit || 2);
+        } catch (error) {
+          console.error("Failed to get subscription:", error);
+          setRequestListLimit(2); // デフォルトはフリープランの制限
+        }
+      }
     };
     checkAuth();
   }, []);
@@ -57,6 +73,21 @@ export function AddToRequestListButton({
         const currentPath = window.location.pathname;
         window.location.href = `/login?redirect_to=${encodeURIComponent(currentPath)}&message=${encodeURIComponent("資料請求リストを利用するにはログインが必要です")}`;
       }, 1000);
+      return;
+    }
+
+    // 制限チェック（追加時のみ）
+    if (!inList && requestListLimit !== null && count >= requestListLimit) {
+      const plan = requestListLimit === 2 ? "フリー" : requestListLimit === 5 ? "スタンダード" : "プレミアム";
+      toast.error(`資料請求リストの上限（${requestListLimit}件）に達しています。プランをアップグレードしてください。`, {
+        duration: 5000,
+        action: {
+          label: "プランを見る",
+          onClick: () => {
+            window.location.href = "/plans";
+          },
+        },
+      });
       return;
     }
 

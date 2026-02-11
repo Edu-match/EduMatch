@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/utils/supabase/server";
+import { getCurrentUser } from "@/lib/auth";
 import type { Service, Profile, Role } from "@prisma/client";
 
 export type ServiceWithProvider = Service & {
@@ -246,7 +247,7 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
  */
 export async function getAllServices(): Promise<ServiceWithProvider[]> {
   try {
-    const { user } = await requireAuthedUser();
+    const user = await getCurrentUser();
     const where = !user
       ? {
           AND: [
@@ -296,7 +297,7 @@ export async function getAllServices(): Promise<ServiceWithProvider[]> {
  */
 export async function getPopularServices(limit: number = 5): Promise<ServiceWithProvider[]> {
   try {
-    const { user } = await requireAuthedUser();
+    const user = await getCurrentUser();
     const where = !user
       ? {
           AND: [

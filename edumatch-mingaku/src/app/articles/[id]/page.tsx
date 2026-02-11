@@ -11,6 +11,7 @@ import { notFound } from "next/navigation";
 import { YouTubeEmbed } from "@/components/ui/youtube-embed";
 import { ArticleDetailActions } from "./article-detail-actions";
 import { ContentRenderer } from "@/components/ui/content-renderer";
+import { ShareButton } from "@/components/ui/share-button";
 
 export const dynamic = "force-dynamic";
 
@@ -119,10 +120,13 @@ export default async function ArticleDetailPage({
                 thumbnailUrl={post.thumbnail_url}
                 category={category}
               />
-              <Button variant="outline" size="sm">
-                <Share2 className="h-4 w-4 mr-2" />
-                共有
-              </Button>
+              <ShareButton
+                url={`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/articles/${post.id}`}
+                title={post.title}
+                text={`${post.title} - EduMatch`}
+                variant="outline"
+                size="sm"
+              />
             </div>
           </div>
         </div>

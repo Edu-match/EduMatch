@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get("code");
-    const redirectTo = searchParams.get("redirect_to") || "/dashboard";
+    const redirectTo = searchParams.get("redirect_to") || "/";
     const userType = searchParams.get("userType") || "viewer"; // viewer or provider
 
     if (!code) {
@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
       // 初回登録（Google・メール問わず）は必ずプロフィール設定へ（名前・住所などを登録）
       const registerUrl = new URL("/profile/register", origin);
       registerUrl.searchParams.set("first", "1");
-      if (redirectTo && redirectTo !== "/dashboard") {
+      if (redirectTo && redirectTo !== "/") {
         registerUrl.searchParams.set("next", redirectTo);
       }
       return NextResponse.redirect(registerUrl);

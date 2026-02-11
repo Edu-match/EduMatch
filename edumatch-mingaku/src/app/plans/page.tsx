@@ -16,45 +16,39 @@ const plans = [
     features: [
       { name: "記事閲覧（一部制限あり）", included: true },
       { name: "サービス検索", included: true },
-      { name: "お気に入り登録（10件まで）", included: true },
+      { name: "いいね機能", included: true },
+      { name: "資料請求リスト（2件まで）", included: true },
       { name: "会員限定記事", included: false },
-      { name: "詳細レポート", included: false },
-      { name: "優先サポート", included: false },
-      { name: "API連携", included: false },
     ],
     popular: false,
   },
   {
     id: "STANDARD",
     name: "スタンダード",
-    price: "¥2,980",
+    price: "¥29,800",
     period: "月額",
     description: "すべての機能を利用できる標準プラン",
     features: [
       { name: "記事閲覧（無制限）", included: true },
       { name: "サービス検索", included: true },
-      { name: "お気に入り登録（無制限）", included: true },
+      { name: "いいね機能", included: true },
+      { name: "資料請求リスト（5件まで）", included: true },
       { name: "会員限定記事", included: true },
-      { name: "詳細レポート", included: true },
-      { name: "優先サポート", included: false },
-      { name: "API連携", included: false },
     ],
     popular: true,
   },
   {
     id: "PREMIUM",
     name: "プレミアム",
-    price: "¥9,800",
+    price: "¥50,000",
     period: "月額",
     description: "大規模導入や高度な機能が必要な方へ",
     features: [
       { name: "記事閲覧（無制限）", included: true },
       { name: "サービス検索", included: true },
-      { name: "お気に入り登録（無制限）", included: true },
+      { name: "いいね機能", included: true },
+      { name: "資料請求リスト（10件まで）", included: true },
       { name: "会員限定記事", included: true },
-      { name: "詳細レポート", included: true },
-      { name: "優先サポート", included: true },
-      { name: "API連携", included: true },
     ],
     popular: false,
   },
@@ -203,25 +197,6 @@ export default async function PlansPage() {
         </Card>
       )}
 
-      {/* 年間契約の案内 */}
-      <Card className="mb-12 bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
-        <CardContent className="p-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div>
-              <h3 className="text-xl font-bold mb-2">
-                年間契約で2ヶ月分お得に！
-              </h3>
-              <p className="text-muted-foreground">
-                年間契約にすると、月額換算で約17%お得になります。
-              </p>
-            </div>
-            <Button size="lg" className="gap-2">
-              年間契約を見る
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* FAQ */}
       <div className="max-w-2xl mx-auto">

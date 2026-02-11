@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
     const { searchParams } = new URL(request.url);
-    const redirectTo = searchParams.get("redirect_to") || "/dashboard";
+    const redirectTo = searchParams.get("redirect_to") || "/";
     const userType = searchParams.get("userType") || "viewer"; // viewer or provider
 
     // 本番ではNEXT_PUBLIC_SITE_URLを使用（localhostへ飛ばないようにする）

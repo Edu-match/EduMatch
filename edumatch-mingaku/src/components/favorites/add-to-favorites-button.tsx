@@ -64,7 +64,7 @@ export function AddToFavoritesButton({
       toast.error("この機能を使うにはログインが必要です");
       setTimeout(() => {
         const currentPath = window.location.pathname;
-        window.location.href = `/login?redirect_to=${encodeURIComponent(currentPath)}&message=${encodeURIComponent("お気に入り機能を利用するにはログインが必要です")}`;
+        window.location.href = `/login?redirect_to=${encodeURIComponent(currentPath)}&message=${encodeURIComponent("いいね機能を利用するにはログインが必要です")}`;
       }, 1000);
       return;
     }
@@ -99,9 +99,9 @@ export function AddToFavoritesButton({
     }
 
     if (added) {
-      toast.success("お気に入りに追加しました");
+      toast.success("いいねしました");
     } else {
-      toast.info("お気に入りから削除しました");
+      toast.info("いいねを取り消しました");
     }
   };
 
@@ -142,7 +142,7 @@ export function AddToFavoritesButton({
           isFavorite ? "fill-current" : ""
         )}
       />
-      {isFavorite ? "お気に入り済み" : "お気に入りに追加"}
+      {isFavorite ? "いいね済み" : "いいね"}
     </Button>
   );
 }
