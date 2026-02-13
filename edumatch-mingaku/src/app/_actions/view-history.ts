@@ -67,7 +67,7 @@ export async function getRecentViewHistory(
 
       if (row.content_type === "ARTICLE") {
         const post = await prisma.post.findUnique({
-          where: { id: row.content_id },
+          where: { id: row.content_id, is_deleted: false },
           select: { id: true, title: true, thumbnail_url: true },
         });
         if (post) {
@@ -81,7 +81,7 @@ export async function getRecentViewHistory(
         }
       } else {
         const service = await prisma.service.findUnique({
-          where: { id: row.content_id },
+          where: { id: row.content_id, is_deleted: false },
           select: { id: true, title: true, thumbnail_url: true },
         });
         if (service) {

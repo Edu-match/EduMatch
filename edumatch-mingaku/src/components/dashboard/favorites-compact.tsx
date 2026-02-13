@@ -4,16 +4,55 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { useFavorites } from "@/components/favorites/favorites-context";
-import { Heart, ArrowRight, Newspaper, Building2 } from "lucide-react";
+import { Heart, ArrowRight, Newspaper, Building2, Loader2 } from "lucide-react";
 import { AddToFavoritesButton } from "@/components/favorites/add-to-favorites-button";
 import { Badge } from "@/components/ui/badge";
+import { useEffect, useState } from "react";
+import { validateFavorites, type ValidatedFavoriteItem } from "@/app/_actions/favorites";
 
 export function FavoritesCompact() {
-  const { favorites } = useFavorites();
+  const { favorites, removeFavorite } = useFavorites();
+  const [validatedFavorites, setValidatedFavorites] = useState<ValidatedFavoriteItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const articles = favorites.filter((f) => f.type === "article").slice(0, 3);
-  const services = favorites.filter((f) => f.type === "service").slice(0, 3);
-  const totalCount = favorites.length;
+  useEffect(() => {
+    async function validate() {
+      if (favorites.length === 0) {
+        setIsLoading(false);
+        return;
+      }
+
+      const articleIds = favorites.filter(f => f.type === "article").map(f => f.id);
+      const serviceIds = favorites.filter(f => f.type === "service").map(f => f.id);
+
+      const validated = await validateFavorites(articleIds, serviceIds);
+      setValidatedFavorites(validated);
+
+      // 削除されたアイテムをlocalStorageから削除
+      const validIds = new Set(validated.map(v => v.id));
+      favorites.forEach(fav => {
+        if (!validIds.has(fav.id)) {
+          removeFavorite(fav.id, fav.type);
+        }
+      });
+
+      setIsLoading(false);
+    }
+
+    validate();
+  }, [favorites.length]); // favorites自体を依存配列に入れると無限ループになるのでlengthのみ
+
+  const articles = validatedFavorites.filter((f) => f.type === "article").slice(0, 3);
+  const services = validatedFavorites.filter((f) => f.type === "service").slice(0, 3);
+  const totalCount = validatedFavorites.length;
+
+  if (isLoading) {
+    return (
+      <div className="py-4 text-center">
+        <Loader2 className="h-6 w-6 text-muted-foreground mx-auto animate-spin" />
+      </div>
+    );
+  }
 
   if (totalCount === 0) {
     return (
@@ -78,8 +117,8 @@ export function FavoritesCompact() {
                   item={{
                     id: article.id,
                     title: article.title,
-                    thumbnail: article.thumbnail,
-                    category: article.category,
+                    thumbnail: article.thumbnail ?? undefined,
+                    category: article.category ?? undefined,
                     type: "article",
                   }}
                   variant="icon"
@@ -136,8 +175,8 @@ export function FavoritesCompact() {
                   item={{
                     id: service.id,
                     title: service.title,
-                    thumbnail: service.thumbnail,
-                    category: service.category,
+                    thumbnail: service.thumbnail ?? undefined,
+                    category: service.category ?? undefined,
                     type: "service",
                   }}
                   variant="icon"

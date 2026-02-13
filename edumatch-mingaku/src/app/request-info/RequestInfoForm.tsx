@@ -86,16 +86,31 @@ export function RequestInfoForm(props: Props) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    // 別住所で請求のときは住所必須
+    if (!useAccountAddress) {
+      const nameOk = deliveryName.trim().length > 0;
+      const emailOk = deliveryEmail.trim().length > 0;
+      const postalOk = deliveryPostalCode.trim().length > 0;
+      const prefectureOk = deliveryPrefecture.trim().length > 0;
+      const cityOk = deliveryCity.trim().length > 0;
+      const addressOk = deliveryAddress.trim().length > 0;
+      if (!nameOk || !emailOk || !postalOk || !prefectureOk || !cityOk || !addressOk) {
+        setError("別住所で請求の場合は、お名前・メールアドレス・郵便番号・都道府県・市区町村・町名・番地・建物名をすべて入力してください。");
+        return;
+      }
+    }
+
     setSubmitting(true);
     const base = {
       useAccountAddress,
-      deliveryName: useAccountAddress ? undefined : deliveryName,
-      deliveryEmail: useAccountAddress ? undefined : deliveryEmail,
+      deliveryName: useAccountAddress ? undefined : deliveryName.trim(),
+      deliveryEmail: useAccountAddress ? undefined : deliveryEmail.trim(),
       deliveryPhone: useAccountAddress ? null : (deliveryPhone || null),
-      deliveryPostalCode: useAccountAddress ? null : (deliveryPostalCode || null),
-      deliveryPrefecture: useAccountAddress ? null : (deliveryPrefecture || null),
-      deliveryCity: useAccountAddress ? null : (deliveryCity || null),
-      deliveryAddress: useAccountAddress ? null : (deliveryAddress || null),
+      deliveryPostalCode: useAccountAddress ? null : (deliveryPostalCode?.trim() || null),
+      deliveryPrefecture: useAccountAddress ? null : (deliveryPrefecture?.trim() || null),
+      deliveryCity: useAccountAddress ? null : (deliveryCity?.trim() || null),
+      deliveryAddress: useAccountAddress ? null : (deliveryAddress?.trim() || null),
       message: message || null,
     };
     if (isBatchMode && props.serviceIds.length > 0) {
@@ -240,18 +255,19 @@ export function RequestInfoForm(props: Props) {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium mb-2">郵便番号</label>
+                  <label className="block text-sm font-medium mb-2">郵便番号 <span className="text-red-500">*</span></label>
                   <Input
+                    required={!useAccountAddress}
                     value={deliveryPostalCode}
                     onChange={(e) => setDeliveryPostalCode(e.target.value)}
                     placeholder="123-4567"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium mb-2">都道府県</label>
+                  <label className="block text-sm font-medium mb-2">都道府県 <span className="text-red-500">*</span></label>
                   <Select value={deliveryPrefecture} onValueChange={setDeliveryPrefecture}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="選択" />
+                    <SelectTrigger aria-required={!useAccountAddress}>
+                      <SelectValue placeholder="選択してください" />
                     </SelectTrigger>
                     <SelectContent>
                       {PREFECTURES.map((p) => (
@@ -261,16 +277,18 @@ export function RequestInfoForm(props: Props) {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium mb-2">市区町村</label>
+                  <label className="block text-sm font-medium mb-2">市区町村 <span className="text-red-500">*</span></label>
                   <Input
+                    required={!useAccountAddress}
                     value={deliveryCity}
                     onChange={(e) => setDeliveryCity(e.target.value)}
                     placeholder="渋谷区"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium mb-2">町名・番地・建物名</label>
+                  <label className="block text-sm font-medium mb-2">町名・番地・建物名 <span className="text-red-500">*</span></label>
                   <Input
+                    required={!useAccountAddress}
                     value={deliveryAddress}
                     onChange={(e) => setDeliveryAddress(e.target.value)}
                     placeholder="道玄坂1-2-3"

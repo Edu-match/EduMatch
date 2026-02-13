@@ -71,13 +71,25 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
       // セッションを設定してプロフィール登録ページへ
       if (result.session) {
         const supabase = createSupabaseBrowserClient();
-        await supabase.auth.setSession({
+        const { error: sessionError } = await supabase.auth.setSession({
           access_token: result.session.access_token,
           refresh_token: result.session.refresh_token,
         });
+        
+        if (sessionError) {
+          console.error("Session set error:", sessionError);
+          setGlobalError("ログインセッションの設定に失敗しました。もう一度ログインしてください。");
+          setIsSubmitting(false);
+          return;
+        }
+
+        // セッションが正しく設定されるまで少し待つ
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
 
       toast.success("登録が完了しました。次に住所などを登録してください。");
+      
+      // クライアントサイドでリダイレクト（セッションCookieが確実に設定されるように）
       const profileUrl = "/profile/register?first=1";
       window.location.href = profileUrl;
     } catch {

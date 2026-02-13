@@ -69,6 +69,15 @@ export async function submitMaterialRequest(
 
     if (!deliveryEmail) return { success: false, error: "送信先メールアドレスを入力してください" };
 
+    // 別住所で請求の場合は住所必須
+    if (!useAccount) {
+      if (!deliveryName?.trim()) return { success: false, error: "お名前を入力してください" };
+      if (!deliveryPostalCode?.trim()) return { success: false, error: "郵便番号を入力してください" };
+      if (!deliveryPrefecture?.trim()) return { success: false, error: "都道府県を選択してください" };
+      if (!deliveryCity?.trim()) return { success: false, error: "市区町村を入力してください" };
+      if (!deliveryAddress?.trim()) return { success: false, error: "町名・番地・建物名を入力してください" };
+    }
+
     const req = await prisma.materialRequest.create({
       data: {
         user_id: user.id,
@@ -87,7 +96,8 @@ export async function submitMaterialRequest(
 
     const providerEmail = service.provider?.email;
     const apiKey = process.env.RESEND_API_KEY;
-    if (providerEmail && apiKey) {
+    
+    if (apiKey) {
       try {
         const resend = new Resend(apiKey);
         const from = process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
@@ -98,28 +108,66 @@ export async function submitMaterialRequest(
         ]
           .filter(Boolean)
           .join("");
+
+        // 1. サービス提供者へのメール通知
+        if (providerEmail) {
+          await resend.emails.send({
+            from,
+            to: providerEmail,
+            subject: `【エデュマッチ】資料請求がありました - ${service.title}`,
+            html: `
+              <h2>エデュマッチで資料請求の依頼がありました</h2>
+              <p>以下の内容で資料請求が届いています。</p>
+              <hr />
+              <p><strong>対象サービス：</strong> ${service.title}</p>
+              <p><strong>請求者名：</strong> ${deliveryName}</p>
+              <p><strong>メールアドレス：</strong> ${deliveryEmail}</p>
+              <p><strong>電話番号：</strong> ${deliveryPhone ?? "未入力"}</p>
+              <p><strong>送付先住所：</strong><br />〒${deliveryPostalCode ?? ""}<br />${addr || "未入力"}</p>
+              ${input.message ? `<p><strong>備考：</strong><br />${input.message.replace(/\n/g, "<br />")}</p>` : ""}
+              <hr />
+              <p style="color:#666;font-size:12px;">このメールはエデュマッチから自動送信されています。</p>
+            `,
+          });
+        }
+
+        // 2. ユーザーへの確認メール
         await resend.emails.send({
           from,
-          to: providerEmail,
-          subject: `【エデュマッチ】資料請求がありました - ${service.title}`,
+          to: deliveryEmail,
+          subject: `【エデュマッチ】資料請求を受け付けました - ${service.title}`,
           html: `
-            <h2>エデュマッチで資料請求の依頼がありました</h2>
-            <p>以下の内容で資料請求が届いています。</p>
+            <h2>資料請求を受け付けました</h2>
+            <p>${deliveryName} 様</p>
+            <p>エデュマッチをご利用いただきありがとうございます。<br />以下の内容で資料請求を受け付けました。</p>
             <hr />
-            <p><strong>対象サービス：</strong> ${service.title}</p>
-            <p><strong>請求者名：</strong> ${deliveryName}</p>
+            <p><strong>サービス名：</strong> ${service.title}</p>
+            <p><strong>提供者：</strong> ${service.provider?.name ?? "未設定"}</p>
+            <p><strong>お名前：</strong> ${deliveryName}</p>
             <p><strong>メールアドレス：</strong> ${deliveryEmail}</p>
             <p><strong>電話番号：</strong> ${deliveryPhone ?? "未入力"}</p>
             <p><strong>送付先住所：</strong><br />〒${deliveryPostalCode ?? ""}<br />${addr || "未入力"}</p>
-            ${input.message ? `<p><strong>備考：</strong><br />${input.message.replace(/\n/g, "<br />")}</p>` : ""}
+            ${input.message ? `<p><strong>ご要望：</strong><br />${input.message.replace(/\n/g, "<br />")}</p>` : ""}
             <hr />
-            <p style="color:#666;font-size:12px;">このメールはエデュマッチから自動送信されています。</p>
+            <p>サービス提供者から、ご登録のメールアドレスまたは住所宛てに資料が届きます。<br />しばらくお待ちください。</p>
+            <p style="color:#666;font-size:12px;margin-top:20px;">このメールはエデュマッチから自動送信されています。</p>
           `,
         });
+
+        console.log(`[SUCCESS] Material request emails sent for service: ${service.title}, to provider: ${providerEmail}, to user: ${deliveryEmail}`);
       } catch (mailErr) {
-        console.error("Failed to send material request email to provider:", mailErr);
+        console.error("[ERROR] Failed to send material request emails:", mailErr);
+        console.error("Details:", {
+          serviceTitle: service.title,
+          providerEmail,
+          deliveryEmail,
+          apiKeyPresent: !!apiKey,
+          fromEmail: from,
+        });
         // 資料請求の保存は完了しているので success のまま返す
       }
+    } else {
+      console.warn("[WARN] Skipping email sending - RESEND_API_KEY not set");
     }
 
     return { success: true, requestId: req.id };

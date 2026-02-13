@@ -85,8 +85,17 @@ export async function POST(request: NextRequest) {
     // メール確認をスキップ：サービスロールで即時確認（確認メールが送られてもログイン可能に）
     try {
       const admin = createServiceRoleClient();
-      await admin.auth.admin.updateUserById(authData.user.id, { email_confirm: true });
-    } catch {
+      const { error: confirmError } = await admin.auth.admin.updateUserById(authData.user.id, { 
+        email_confirm: true 
+      });
+      
+      if (confirmError) {
+        console.error("Email confirmation error:", confirmError);
+      } else {
+        console.log("Email confirmed for user:", authData.user.id);
+      }
+    } catch (confirmErr) {
+      console.error("Service role client error:", confirmErr);
       // サービスロール未設定等でも登録は完了しているので続行
     }
 
@@ -106,6 +115,12 @@ export async function POST(request: NextRequest) {
       console.error("Profile creation error:", profileError);
       // Profile作成に失敗しても、Authユーザーは作成されているので続行
     }
+
+    console.log("Signup successful:", {
+      userId: authData.user.id,
+      email: authData.user.email,
+      hasSession: !!authData.session,
+    });
 
     return NextResponse.json({
       user: authData.user,

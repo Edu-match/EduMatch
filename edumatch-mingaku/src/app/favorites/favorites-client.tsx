@@ -5,17 +5,61 @@ import { AddToFavoritesButton } from "@/components/favorites/add-to-favorites-bu
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Heart, Newspaper, Building2, ExternalLink } from "lucide-react";
+import { Heart, Newspaper, Building2, ExternalLink, Loader2 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { useEffect, useState } from "react";
+import { validateFavorites, type ValidatedFavoriteItem } from "@/app/_actions/favorites";
 
 export function FavoritesClient() {
-  const { favorites } = useFavorites();
+  const { favorites, removeFavorite } = useFavorites();
+  const [validatedFavorites, setValidatedFavorites] = useState<ValidatedFavoriteItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const articles = favorites.filter((f) => f.type === "article");
-  const services = favorites.filter((f) => f.type === "service");
+  useEffect(() => {
+    async function validate() {
+      if (favorites.length === 0) {
+        setIsLoading(false);
+        return;
+      }
 
-  if (favorites.length === 0) {
+      const articleIds = favorites.filter(f => f.type === "article").map(f => f.id);
+      const serviceIds = favorites.filter(f => f.type === "service").map(f => f.id);
+
+      const validated = await validateFavorites(articleIds, serviceIds);
+      setValidatedFavorites(validated);
+
+      // 削除されたアイテムをlocalStorageから削除
+      const validIds = new Set(validated.map(v => v.id));
+      favorites.forEach(fav => {
+        if (!validIds.has(fav.id)) {
+          removeFavorite(fav.id, fav.type);
+        }
+      });
+
+      setIsLoading(false);
+    }
+
+    validate();
+  }, [favorites.length]); // favorites自体を依存配列に入れると無限ループになるのでlengthのみ
+
+  const articles = validatedFavorites.filter((f) => f.type === "article");
+  const services = validatedFavorites.filter((f) => f.type === "service");
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="py-16">
+          <div className="text-center">
+            <Loader2 className="h-12 w-12 text-muted-foreground mx-auto mb-4 animate-spin" />
+            <p className="text-muted-foreground">読み込み中...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (validatedFavorites.length === 0) {
     return (
       <Card>
         <CardContent className="py-16">
@@ -84,8 +128,8 @@ export function FavoritesClient() {
                       item={{
                         id: article.id,
                         title: article.title,
-                        thumbnail: article.thumbnail,
-                        category: article.category,
+                        thumbnail: article.thumbnail ?? undefined,
+                        category: article.category ?? undefined,
                         type: "article",
                       }}
                       variant="icon"
@@ -146,8 +190,8 @@ export function FavoritesClient() {
                       item={{
                         id: service.id,
                         title: service.title,
-                        thumbnail: service.thumbnail,
-                        category: service.category,
+                        thumbnail: service.thumbnail ?? undefined,
+                        category: service.category ?? undefined,
                         type: "service",
                       }}
                       variant="icon"
