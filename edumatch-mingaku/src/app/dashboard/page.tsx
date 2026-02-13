@@ -20,7 +20,6 @@ import { requireAuth, getCurrentProfile } from "@/lib/auth";
 import { getRecentViewHistory } from "@/app/_actions";
 import { RequestListCompact } from "@/components/dashboard/request-list-compact";
 import { FavoritesCompact } from "@/components/dashboard/favorites-compact";
-import { RecommendationsSection } from "@/components/dashboard/recommendations-section";
 import {
   getPopularServicesByEngagement,
   getPopularArticlesByEngagement,
@@ -52,27 +51,6 @@ export default async function DashboardPage() {
 
   const recentlyViewed = await getRecentViewHistory(user.id, 5);
 
-  // 人気のサービスと記事を取得（いいね数順）
-  const popularServicesRaw = await getPopularServicesByEngagement(50);
-  const popularArticlesRaw = await getPopularArticlesByEngagement(50);
-
-  // RecommendationsSection用に変換
-  const popularServices = popularServicesRaw.map((service) => ({
-    id: service.id,
-    title: service.title,
-    thumbnail_url: service.thumbnail_url,
-    category: service.category,
-  }));
-
-  const popularArticles = popularArticlesRaw.map((article) => ({
-    id: article.id,
-    title: article.title,
-    thumbnail_url: article.thumbnail_url,
-    category: article.content.includes("ICT") || article.content.includes("デジタル") ? "教育ICT" :
-              article.content.includes("事例") || article.content.includes("実践") ? "導入事例" :
-              article.content.includes("運営") || article.content.includes("保護者") ? "学校運営" : "教育ICT",
-  }));
-
   const notifications: { id: string; title: string; date: string; read: boolean }[] = [];
   const subscription = await getCurrentSubscription();
 
@@ -93,14 +71,6 @@ export default async function DashboardPage() {
             </Link>
           </Button>
         </div>
-      </div>
-
-      {/* おすすめセクション（人気順） */}
-      <div className="mb-6">
-        <RecommendationsSection 
-          services={popularServices}
-          articles={popularArticles}
-        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
