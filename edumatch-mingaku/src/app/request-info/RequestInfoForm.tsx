@@ -87,16 +87,17 @@ export function RequestInfoForm(props: Props) {
     e.preventDefault();
     setError("");
 
-    // 別住所で請求のときは住所必須
+    // 別住所で請求のときは全項目必須（送信前に必ずチェック）
     if (!useAccountAddress) {
-      const nameOk = deliveryName.trim().length > 0;
-      const emailOk = deliveryEmail.trim().length > 0;
-      const postalOk = deliveryPostalCode.trim().length > 0;
-      const prefectureOk = deliveryPrefecture.trim().length > 0;
-      const cityOk = deliveryCity.trim().length > 0;
-      const addressOk = deliveryAddress.trim().length > 0;
-      if (!nameOk || !emailOk || !postalOk || !prefectureOk || !cityOk || !addressOk) {
-        setError("別住所で請求の場合は、お名前・メールアドレス・郵便番号・都道府県・市区町村・町名・番地・建物名をすべて入力してください。");
+      const missing: string[] = [];
+      if (!deliveryName.trim()) missing.push("お名前");
+      if (!deliveryEmail.trim()) missing.push("メールアドレス");
+      if (!deliveryPostalCode.trim()) missing.push("郵便番号");
+      if (!deliveryPrefecture.trim()) missing.push("都道府県");
+      if (!deliveryCity.trim()) missing.push("市区町村");
+      if (!deliveryAddress.trim()) missing.push("町名・番地・建物名");
+      if (missing.length > 0) {
+        setError(`別の住所で請求する場合は、次の項目をすべて入力してください：${missing.join("、")}`);
         return;
       }
     }
@@ -179,7 +180,7 @@ export function RequestInfoForm(props: Props) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6" noValidate>
             <div className="space-y-3">
               <label className="block text-sm font-medium mb-2">送付先の住所</label>
               <div className="flex gap-4">
@@ -198,7 +199,14 @@ export function RequestInfoForm(props: Props) {
                     type="radio"
                     name="addressType"
                     checked={!useAccountAddress}
-                    onChange={() => setUseAccountAddress(false)}
+                    onChange={() => {
+                      setUseAccountAddress(false);
+                      // 別住所選択時は住所フィールドを空にして必須入力を促す
+                      setDeliveryPostalCode("");
+                      setDeliveryPrefecture("");
+                      setDeliveryCity("");
+                      setDeliveryAddress("");
+                    }}
                     className="rounded-full"
                   />
                   別の住所で請求

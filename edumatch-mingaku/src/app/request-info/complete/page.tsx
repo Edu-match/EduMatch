@@ -35,36 +35,37 @@ export default async function RequestInfoCompletePage({ searchParams }: Props) {
 
             <h1 className="text-3xl font-bold mb-4">
               {isBatch
-                ? `${batchCount}件の資料請求を受け付けました`
-                : "資料請求を受け付けました"}
+                ? `${batchCount}件の資料請求を送信しました`
+                : "資料請求を送信しました"}
             </h1>
 
             <p className="text-lg text-muted-foreground mb-8">
-              ご請求いただいた資料は、サービス提供元より
-              <br />
+              ご入力いただいた
               {request ? (
-                <strong>{request.delivery_email}</strong>
+                <>メールアドレス（<strong>{request.delivery_email}</strong>）</>
               ) : (
-                "ご登録のメールアドレス"
+                "メールアドレス"
               )}
-              にお送りします。
+              に、受付完了のご案内メールをお送りしています。
+              <br />
+              資料の送付はサービス提供元より、ご登録の送付先（メールまたはご住所）宛てに行われます。
             </p>
 
             {request && (
               <Card className="text-left mb-8">
                 <CardContent className="p-6">
-                  <h2 className="font-bold mb-4">ご請求内容</h2>
+                  <h2 className="font-bold mb-4">送信内容の確認</h2>
                   <div className="space-y-3">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">受付番号</span>
-                      <span className="font-mono">{request.id}</span>
+                      <span className="font-mono text-sm">{request.id}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">サービス名</span>
                       <span>{request.service.title}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">請求日時</span>
+                      <span className="text-muted-foreground">送信日時</span>
                       <span>
                         {request.created_at.toLocaleDateString("ja-JP", {
                           year: "numeric",
@@ -76,13 +77,13 @@ export default async function RequestInfoCompletePage({ searchParams }: Props) {
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">送信先</span>
+                      <span className="text-muted-foreground">送付先メール</span>
                       <span>{request.delivery_email}</span>
                     </div>
                     <div className="border-t pt-3 flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-primary" />
-                      <span className="text-muted-foreground">
-                        サービス提供元に資料請求の旨を通知しました。
+                      <FileText className="h-4 w-4 text-primary flex-shrink-0" />
+                      <span className="text-muted-foreground text-sm">
+                        サービス提供元には、資料請求の内容を自動でお知らせしています。
                       </span>
                     </div>
                   </div>
@@ -94,19 +95,19 @@ export default async function RequestInfoCompletePage({ searchParams }: Props) {
               <div className="p-4 rounded-lg bg-muted/50 text-left">
                 <div className="flex items-center gap-2 mb-2">
                   <Mail className="h-5 w-5 text-primary" />
-                  <p className="font-medium">メールをご確認ください</p>
+                  <p className="font-medium">受付完了メールを送信しました</p>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  資料はサービス提供元よりメールでお届けします。届かない場合は迷惑メールフォルダをご確認ください。
+                  ご登録のメールアドレスに受付完了のご案内をお送りしています。届いていない場合は迷惑メールフォルダをご確認ください。
                 </p>
               </div>
               <div className="p-4 rounded-lg bg-muted/50 text-left">
                 <div className="flex items-center gap-2 mb-2">
                   <Clock className="h-5 w-5 text-primary" />
-                  <p className="font-medium">通常1〜3営業日以内</p>
+                  <p className="font-medium">資料の到着について</p>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  資料の送付には1〜3営業日かかる場合があります。お急ぎの場合はサービス提供元へお問い合わせください。
+                  資料の送付はサービス提供元が行います。目安として1〜3営業日以内に届く場合が多く、お急ぎの場合は提供元へ直接お問い合わせください。
                 </p>
               </div>
             </div>

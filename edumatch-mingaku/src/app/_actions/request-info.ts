@@ -100,7 +100,11 @@ export async function submitMaterialRequest(
     if (apiKey) {
       try {
         const resend = new Resend(apiKey);
-        const from = process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
+        // Resendのfromは "表示名 <メール>" 形式を推奨。未設定時はテスト用ドメインを使用
+        const fromRaw = process.env.RESEND_FROM_EMAIL?.trim();
+        const from = fromRaw
+          ? (fromRaw.includes("<") ? fromRaw : `EduMatch <${fromRaw}>`)
+          : "EduMatch <onboarding@resend.dev>";
         const addr = [
           deliveryPrefecture,
           deliveryCity,
@@ -111,7 +115,7 @@ export async function submitMaterialRequest(
 
         // 1. サービス提供者へのメール通知
         if (providerEmail) {
-          await resend.emails.send({
+          const providerResult = await resend.emails.send({
             from,
             to: providerEmail,
             subject: `【エデュマッチ】資料請求がありました - ${service.title}`,
@@ -129,10 +133,13 @@ export async function submitMaterialRequest(
               <p style="color:#666;font-size:12px;">このメールはエデュマッチから自動送信されています。</p>
             `,
           });
+          if (providerResult.error) {
+            console.error("[RESEND] Provider email error:", JSON.stringify(providerResult.error));
+          }
         }
 
         // 2. ユーザーへの確認メール
-        await resend.emails.send({
+        const userResult = await resend.emails.send({
           from,
           to: deliveryEmail,
           subject: `【エデュマッチ】資料請求を受け付けました - ${service.title}`,
@@ -154,15 +161,21 @@ export async function submitMaterialRequest(
           `,
         });
 
-        console.log(`[SUCCESS] Material request emails sent for service: ${service.title}, to provider: ${providerEmail}, to user: ${deliveryEmail}`);
+        if (userResult.error) {
+          console.error("[RESEND] User confirmation email error:", JSON.stringify(userResult.error));
+        } else {
+          console.log(`[SUCCESS] Material request emails sent for service: ${service.title}, to provider: ${providerEmail ?? "n/a"}, to user: ${deliveryEmail}`);
+        }
       } catch (mailErr) {
-        console.error("[ERROR] Failed to send material request emails:", mailErr);
+        const err = mailErr as { message?: string; response?: unknown };
+        console.error("[ERROR] Failed to send material request emails:", err?.message ?? mailErr);
+        if (err?.response) console.error("[ERROR] Resend response:", JSON.stringify(err.response));
         console.error("Details:", {
           serviceTitle: service.title,
           providerEmail,
           deliveryEmail,
           apiKeyPresent: !!apiKey,
-          fromEmail: process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev",
+          fromEmail: process.env.RESEND_FROM_EMAIL ?? "EduMatch <onboarding@resend.dev>",
         });
         // 資料請求の保存は完了しているので success のまま返す
       }
