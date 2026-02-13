@@ -66,8 +66,14 @@ export async function getRecentViewHistory(
       if (result.length >= limit) break;
 
       if (row.content_type === "ARTICLE") {
-        const post = await prisma.post.findUnique({
-          where: { id: row.content_id, is_deleted: false },
+        const post = await prisma.post.findFirst({
+          where: {
+            id: row.content_id,
+            OR: [
+              { status: "APPROVED" },
+              { is_published: true },
+            ],
+          },
           select: { id: true, title: true, thumbnail_url: true },
         });
         if (post) {
@@ -80,8 +86,14 @@ export async function getRecentViewHistory(
           });
         }
       } else {
-        const service = await prisma.service.findUnique({
-          where: { id: row.content_id, is_deleted: false },
+        const service = await prisma.service.findFirst({
+          where: {
+            id: row.content_id,
+            OR: [
+              { status: "APPROVED" },
+              { is_published: true },
+            ],
+          },
           select: { id: true, title: true, thumbnail_url: true },
         });
         if (service) {

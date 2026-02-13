@@ -20,18 +20,20 @@ export async function validateFavorites(
 ): Promise<ValidatedFavoriteItem[]> {
   const results: ValidatedFavoriteItem[] = [];
 
-  // 記事を取得（削除済みでないもの）
+  // 記事を取得（公開済みのもの）
   if (articleIds.length > 0) {
     const articles = await prisma.post.findMany({
       where: {
         id: { in: articleIds },
-        is_deleted: false,
+        OR: [
+          { status: "APPROVED" },
+          { is_published: true },
+        ],
       },
       select: {
         id: true,
         title: true,
         thumbnail_url: true,
-        category: true,
       },
     });
 
@@ -40,19 +42,22 @@ export async function validateFavorites(
         id: article.id,
         title: article.title,
         thumbnail: article.thumbnail_url,
-        category: article.category,
+        category: null, // Post モデルには category フィールドがない
         type: "article",
         isDeleted: false,
       });
     }
   }
 
-  // サービスを取得（削除済みでないもの）
+  // サービスを取得（公開済みのもの）
   if (serviceIds.length > 0) {
     const services = await prisma.service.findMany({
       where: {
         id: { in: serviceIds },
-        is_deleted: false,
+        OR: [
+          { status: "APPROVED" },
+          { is_published: true },
+        ],
       },
       select: {
         id: true,
