@@ -162,7 +162,7 @@ export async function submitMaterialRequest(
           providerEmail,
           deliveryEmail,
           apiKeyPresent: !!apiKey,
-          fromEmail: from,
+          fromEmail: process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev",
         });
         // 資料請求の保存は完了しているので success のまま返す
       }
