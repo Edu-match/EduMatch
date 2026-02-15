@@ -33,6 +33,7 @@ export function Header() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -45,6 +46,21 @@ export function Header() {
       setIsAuthenticated(!!user);
       setUserEmail(user?.email || null);
       setUserName(user?.user_metadata?.name || null);
+
+      // ユーザーのroleを取得（API経由でPrismaから取得。Supabase RLSの影響を受けない）
+      if (user) {
+        try {
+          const res = await fetch("/api/auth/me", { credentials: "include" });
+          const data = await res.json();
+          setUserRole(data?.profile?.role || null);
+          if (data?.profile?.name) setUserName(data.profile.name);
+        } catch {
+          setUserRole(null);
+        }
+      } else {
+        setUserRole(null);
+      }
+
       setIsLoading(false);
     };
 
@@ -135,17 +151,28 @@ export function Header() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/dashboard" className="cursor-pointer">
-                    <LayoutDashboard className="mr-2 h-4 w-4" />
-                    マイページ
-                  </Link>
+                <DropdownMenuItem 
+                  className="cursor-pointer"
+                  onSelect={() => router.push("/dashboard")}
+                >
+                  <User className="mr-2 h-4 w-4" />
+                  マイページ
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/profile/register" className="cursor-pointer">
-                    <Settings className="mr-2 h-4 w-4" />
-                    プロフィール編集
-                  </Link>
+                {userRole === "PROVIDER" && (
+                  <DropdownMenuItem 
+                    className="cursor-pointer"
+                    onSelect={() => router.push("/provider-dashboard")}
+                  >
+                    <LayoutDashboard className="mr-2 h-4 w-4" />
+                    投稿者ダッシュボード
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem 
+                  className="cursor-pointer"
+                  onSelect={() => router.push("/profile/register")}
+                >
+                  <Settings className="mr-2 h-4 w-4" />
+                  プロフィール編集
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
@@ -233,9 +260,18 @@ export function Header() {
                       href="/dashboard"
                       className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground"
                     >
-                      <LayoutDashboard className="h-4 w-4" />
+                      <User className="h-4 w-4" />
                       マイページ
                     </Link>
+                    {userRole === "PROVIDER" && (
+                      <Link
+                        href="/provider-dashboard"
+                        className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground"
+                      >
+                        <LayoutDashboard className="h-4 w-4" />
+                        投稿者ダッシュボード
+                      </Link>
+                    )}
                     <Link
                       href="/profile/register"
                       className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground"

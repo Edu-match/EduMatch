@@ -4,6 +4,8 @@ import { type NextRequest, NextResponse } from "next/server";
 // 認証が必要なパス（これらのパス配下は全て保護される）
 const protectedPaths = [
   "/dashboard",
+  "/provider-dashboard",
+  "/mypage",
   "/history",
   "/favorites",
   "/notifications",

@@ -1,5 +1,26 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## ⚠️ 重要: 初回セットアップ
+
+### 1. データベーストリガーの設定（必須）
+
+新規ユーザー登録時にProfileテーブルが自動作成されるよう、Supabaseトリガーを設定してください。
+
+**手順:**
+1. [Supabaseダッシュボード](https://supabase.com/dashboard) → プロジェクト選択 → SQL Editor
+2. `supabase/migrations/20260126_create_profile_trigger.sql` の内容をコピー&ペースト
+3. 「Run」をクリック
+
+詳細は [PROFILE_FIX_GUIDE.md](./PROFILE_FIX_GUIDE.md) を参照してください。
+
+### 2. 既存ユーザーのProfile修正（必要に応じて）
+
+トリガー設定前に作成されたユーザーのProfileを修正：
+
+```bash
+npm run fix:profiles
+```
+
 ## Getting Started
 
 First, run the development server:

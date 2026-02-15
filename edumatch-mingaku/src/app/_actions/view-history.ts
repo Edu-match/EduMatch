@@ -23,6 +23,17 @@ export async function recordView(
   contentId: string
 ): Promise<void> {
   try {
+    // ユーザー存在チェック
+    const userExists = await prisma.profile.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    });
+
+    if (!userExists) {
+      console.error(`recordView: User ${userId} does not exist`);
+      return;
+    }
+
     await prisma.viewHistory.upsert({
       where: {
         user_id_content_type_content_id: {

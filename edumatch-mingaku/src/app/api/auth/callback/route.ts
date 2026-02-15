@@ -44,11 +44,11 @@ export async function GET(request: NextRequest) {
     // 本番ではNEXT_PUBLIC_SITE_URLを使用（localhostへ飛ばないようにする）
     const origin = getSiteOrigin(new URL(request.url).origin);
 
-    // Profileが存在しない場合は作成し、初回は必ずプロフィール設定（住所など）へ
-    if (!existingProfile) {
-      const userMetadata = data.user.user_metadata || {};
-      const name = userMetadata.name || userMetadata.full_name || data.user.email?.split("@")[0] || "ユーザー";
+    const userMetadata = data.user.user_metadata || {};
+    const name = userMetadata.name || userMetadata.full_name || data.user.email?.split("@")[0] || "ユーザー";
 
+    // Profileが存在しない場合は作成
+    if (!existingProfile) {
       try {
         existingProfile = await prisma.profile.create({
           data: {
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      // 初回登録（Google・メール問わず）は必ずプロフィール設定へ（名前・住所などを登録）
+      // 初回登録は必ずプロフィール設定へ（名前・住所などを登録）
       const registerUrl = new URL("/profile/register", origin);
       registerUrl.searchParams.set("first", "1");
       if (redirectTo && redirectTo !== "/") {
@@ -76,11 +76,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(registerUrl);
     }
 
-    // 既存のProfileがある場合、ロールチェック
+    // 既存Profileのroleが今回選択したuserTypeと異なる場合は更新（トリガーがVIEWERで作った場合の修正）
     if (existingProfile.role !== expectedRole) {
-      return NextResponse.redirect(
-        new URL("/auth/login?error=role_mismatch", origin)
-      );
+      try {
+        await prisma.profile.update({
+          where: { id: data.user.id },
+          data: { role: expectedRole },
+        });
+      } catch (updateError) {
+        console.error("Profile role update error:", updateError);
+      }
     }
 
     return NextResponse.redirect(new URL(redirectTo, origin));

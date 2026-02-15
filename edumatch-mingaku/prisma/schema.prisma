@@ -122,6 +122,9 @@ model Post {
   provider_id   String   @db.Uuid
   provider      Profile  @relation(fields: [provider_id], references: [id], onDelete: Cascade)
   title         String
+  category      String   @default("教育ICT") // カテゴリ
+  tags          String[] // タグ配列
+  summary       String?  @db.Text // 概要・リード文
   content       String   @db.Text
   thumbnail_url String?
   youtube_url   String?  // YouTube動画のURL
@@ -139,6 +142,7 @@ model Post {
   updated_at    DateTime @updatedAt
 
   @@index([provider_id])
+  @@index([category])
   @@index([status])
   @@index([favorite_count])
 }

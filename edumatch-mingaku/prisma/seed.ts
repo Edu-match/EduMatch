@@ -7,6 +7,8 @@ async function main() {
   console.log("🌱 シードデータの投入を開始します...");
 
   // 既存のデータを削除（開発環境用）
+  // 外部キー制約のため、ViewHistoryを先に削除
+  await prisma.viewHistory.deleteMany();
   await prisma.post.deleteMany();
   await prisma.service.deleteMany();
   await prisma.profile.deleteMany();
@@ -280,6 +282,38 @@ AIテクノロジーで採点業務を効率化。
       price_info: "生徒1人あたり月額500円〜",
       is_published: true,
     },
+    {
+      provider_id: providers[3].id,
+      title: "VideoLearn Pro - 動画教材作成プラットフォーム",
+      description: "YouTube動画を活用した効果的な教材作成をサポート。",
+      content: `
+## VideoLearn Proの特徴
+
+動画を活用した教育コンテンツ作成をサポートします。
+
+https://www.youtube.com/watch?v=jNQXAC9IVRw
+
+上の動画は、教育現場での動画活用事例を紹介しています。
+
+### 主な機能
+
+- YouTube動画の簡単埋め込み
+- タイムスタンプ付きメモ機能
+- 小テスト挿入機能
+- 視聴データ分析
+
+### 活用シーン
+
+- 反転授業の事前学習
+- 補習教材として
+- 家庭学習のサポート
+      `,
+      thumbnail_url: "https://placehold.co/400x300/fce7f3/db2777?text=VideoLearn",
+      youtube_url: "https://www.youtube.com/watch?v=jNQXAC9IVRw",
+      category: "教材作成",
+      price_info: "月額15,000円〜",
+      is_published: true,
+    },
   ];
 
   for (const service of services) {
@@ -292,6 +326,9 @@ AIテクノロジーで採点業務を効率化。
     {
       provider_id: providers[0].id,
       title: "2024年度、教育現場で注目のICTツール5選を徹底解説",
+      category: "教育ICT",
+      tags: ["EdTech", "ICTツール", "2024年度"],
+      summary: "2024年度に特に注目すべき教育ICTツール5選を紹介。AI学習管理、クラウド校務支援、VR/AR教材など、最新のテクノロジーを活用した教育改革の実践方法を解説します。",
       content: `
 ## はじめに
 
@@ -328,6 +365,9 @@ AIを活用した個別最適化学習が主流になりつつあります...
     {
       provider_id: providers[1].id,
       title: "GIGAスクール構想の最新動向と今後の展望",
+      category: "政策・制度",
+      tags: ["GIGAスクール", "文部科学省", "1人1台端末"],
+      summary: "GIGAスクール構想の現状と今後の展望を徹底解説。全国の成功事例、直面する課題と対策、2025年度以降のロードマップまで、最新の動向をお届けします。",
       content: `
 ## GIGAスクール構想の現状
 
@@ -358,6 +398,9 @@ AIを活用した個別最適化学習が主流になりつつあります...
     {
       provider_id: providers[2].id,
       title: "オンライン授業を効果的にする3つのポイント",
+      category: "教育ICT",
+      tags: ["オンライン授業", "遠隔教育", "授業改善"],
+      summary: "オンライン授業を成功させる3つの重要ポイントを解説。インタラクティブな要素、適切なツール選択、評価方法の工夫など、実践的なノウハウをお伝えします。",
       content: `
 ## オンライン授業の課題
 
@@ -386,6 +429,9 @@ AIを活用した個別最適化学習が主流になりつつあります...
     {
       provider_id: providers[3].id,
       title: "小学校プログラミング教育の実践例",
+      category: "教育ICT",
+      tags: ["プログラミング", "Scratch", "小学校"],
+      summary: "2020年度から必修化された小学校プログラミング教育の実践例を紹介。算数・理科との教科横断的な取り組みや、Scratch、micro:bitなどの具体的なツール活用法を解説します。",
       content: `
 ## プログラミング教育の必修化
 
@@ -416,6 +462,9 @@ AIを活用した個別最適化学習が主流になりつつあります...
     {
       provider_id: providers[4].id,
       title: "EdTechツール選びの完全ガイド",
+      category: "教育ICT",
+      tags: ["EdTech", "ツール選定", "導入ガイド"],
+      summary: "EdTechツール選定の完全ガイド。費用対効果、使いやすさ、サポート体制、セキュリティなど、4つの重要な選定ポイントとトライアル活用法を詳しく解説します。",
       content: `
 ## EdTechツール導入の前に
 
@@ -446,6 +495,9 @@ AIを活用した個別最適化学習が主流になりつつあります...
     {
       provider_id: providers[0].id,
       title: "学校DX推進のためのステップ",
+      category: "教育ICT",
+      tags: ["DX", "デジタル化", "学校改革"],
+      summary: "学校のデジタルトランスフォーメーション（DX）を推進するための5つのステップを解説。現状分析からビジョン策定、ツール選定、研修、評価・改善まで、実践的な手順を紹介します。",
       content: `
 ## 学校DXとは
 
@@ -475,6 +527,9 @@ PDCAサイクルの実践...
     {
       provider_id: providers[1].id,
       title: "保護者とのコミュニケーション改善術",
+      category: "学校運営",
+      tags: ["保護者連携", "コミュニケーション", "ICT活用"],
+      summary: "デジタルツールを活用した保護者との効果的なコミュニケーション方法を紹介。配信タイミングの工夫、双方向コミュニケーションの促進など、実践的な改善術をお届けします。",
       content: `
 ## デジタルツールで変わる保護者連携
 
@@ -497,6 +552,9 @@ C小学校での取り組みと成果を紹介...
     {
       provider_id: providers[2].id,
       title: "クラウド活用で実現する働き方改革",
+      category: "学校運営",
+      tags: ["働き方改革", "クラウド", "業務効率化"],
+      summary: "教員の働き方改革を支援するクラウドツールの活用方法を紹介。長時間労働の削減、業務の効率化、ワークライフバランスの改善につながる実践例を解説します。",
       content: `
 ## 教員の働き方改革
 
@@ -519,6 +577,9 @@ C小学校での取り組みと成果を紹介...
     {
       provider_id: providers[3].id,
       title: "データドリブンな教育改善の実践",
+      category: "教育ICT",
+      tags: ["データ分析", "教育改善", "学習データ"],
+      summary: "学習データを活用した教育改善の実践方法を解説。データ収集のポイント、分析手法、プライバシー配慮など、データドリブンな教育実践の具体的なアプローチを紹介します。",
       content: `
 ## 教育データの活用
 
@@ -543,6 +604,9 @@ C小学校での取り組みと成果を紹介...
     {
       provider_id: providers[4].id,
       title: "セキュリティ対策のベストプラクティス",
+      category: "学校運営",
+      tags: ["セキュリティ", "情報モラル", "サイバー攻撃対策"],
+      summary: "教育機関におけるセキュリティ対策の実践ガイド。パスワード管理、ソフトウェア更新、バックアップなどの基本対策から、児童生徒への情報モラル教育まで網羅的に解説します。",
       content: `
 ## 教育機関を狙うサイバー攻撃
 
@@ -560,6 +624,36 @@ C小学校での取り組みと成果を紹介...
       `,
       thumbnail_url: "https://placehold.co/800x450/fee2e2/b91c1c?text=Security",
       view_count: 3800,
+      is_published: true,
+    },
+    {
+      provider_id: providers[0].id,
+      title: "YouTube動画で学ぶ教育ICT活用術",
+      category: "教育ICT",
+      tags: ["YouTube", "動画教材", "ICT活用"],
+      summary: "YouTube動画を活用した教育ICT実践方法を紹介。動画埋め込み機能の使い方、効果的な動画教材の作成方法、レスポンシブ対応など、実践的なノウハウを解説します。",
+      content: `
+## YouTube動画埋め込みテスト
+
+この記事では、YouTube動画の埋め込み機能をテストします。
+
+https://www.youtube.com/watch?v=dQw4w9WgXcQ
+
+上の動画が正しく埋め込まれて表示されることを確認します。
+
+## 確認ポイント
+
+- 動画プレイヤーが表示されるか
+- 再生ボタンが機能するか
+- レスポンシブ対応しているか
+
+## 追加のテキストコンテンツ
+
+動画の後にもテキストが正しく表示されることを確認します。
+      `,
+      thumbnail_url: "https://placehold.co/800x450/dbeafe/3b82f6?text=YouTube",
+      youtube_url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      view_count: 0,
       is_published: true,
     },
   ];

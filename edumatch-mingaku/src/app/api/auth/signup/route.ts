@@ -82,11 +82,47 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // メール確認をスキップ：サービスロールで即時確認（確認メールが送られてもログイン可能に）
+    // Profileテーブルにレコードを作成（signUp直後に実行し、roleを確実に設定）
+    // トリガーより先にAPI側で作成/更新することで、正しいroleを保証する
+    const role = userType === "provider" ? "PROVIDER" : "VIEWER";
+    try {
+      await prisma.profile.upsert({
+        where: {
+          id: authData.user.id,
+        },
+        create: {
+          id: authData.user.id,
+          name,
+          email,
+          role,
+          subscription_status: "INACTIVE",
+        },
+        update: {
+          name,
+          role,
+        },
+      });
+      console.log("Profile created/updated successfully:", authData.user.id, "role:", role);
+    } catch (profileError) {
+      console.error("Profile creation error:", profileError);
+      return NextResponse.json(
+        { error: "プロフィールの作成に失敗しました。しばらく経ってから再度お試しください。" },
+        { status: 500 }
+      );
+    }
+
+    // メール確認をスキップ：サービスロールで即時確認
+    // user_metadataを明示的に渡して、roleが上書きされないようにする
     try {
       const admin = createServiceRoleClient();
       const { error: confirmError } = await admin.auth.admin.updateUserById(authData.user.id, { 
-        email_confirm: true 
+        email_confirm: true,
+        user_metadata: {
+          ...authData.user.user_metadata,
+          role,
+          name,
+          organization: organization || null,
+        },
       });
       
       if (confirmError) {
@@ -97,23 +133,6 @@ export async function POST(request: NextRequest) {
     } catch (confirmErr) {
       console.error("Service role client error:", confirmErr);
       // サービスロール未設定等でも登録は完了しているので続行
-    }
-
-    // Profileテーブルにレコードを作成（住所・電話はプロフィール登録ページで入力）
-    const role = userType === "provider" ? "PROVIDER" : "VIEWER";
-    try {
-      await prisma.profile.create({
-        data: {
-          id: authData.user.id,
-          name,
-          email,
-          role,
-          subscription_status: "INACTIVE",
-        },
-      });
-    } catch (profileError) {
-      console.error("Profile creation error:", profileError);
-      // Profile作成に失敗しても、Authユーザーは作成されているので続行
     }
 
     console.log("Signup successful:", {

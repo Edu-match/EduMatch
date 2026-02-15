@@ -7,7 +7,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Mail, Lock, User, Building2, Loader2, Chrome, BookOpen, School } from "lucide-react";
+import { Mail, Lock, User, Building2, Loader2, Chrome, BookOpen, School, AlertCircle } from "lucide-react";
 import { RoleSelectionCard } from "./role-selection-card";
 import { signupSchema, signupProviderSchema, type SignupInput, type SignupProviderInput } from "@/lib/validations/auth";
 import { toast } from "sonner";
@@ -113,13 +113,15 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
       {/* ロール選択 */}
       {!userType && (
         <div>
-          <p className="text-center font-medium mb-4">まず、ご利用目的を選択してください</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <p className="text-center text-sm font-medium text-muted-foreground mb-4">
+            まず、ご利用目的を選択してください
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <RoleSelectionCard
               type="viewer"
               icon={BookOpen}
               title="閲覧者として利用"
-              description="教育関係者やEdTechに関心のある方。最新情報の閲覧、サービス資料請求が可能です。"
+              description="記事の閲覧・資料請求ができます。"
               isSelected={userType === "viewer"}
               onClick={() => setUserType("viewer")}
             />
@@ -127,7 +129,7 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
               type="provider"
               icon={School}
               title="投稿者として利用"
-              description="企業・学校・団体向け。サービス・記事を投稿し、多くの教育関係者にアプローチできます。"
+              description="サービス・記事を投稿できます。"
               isSelected={userType === "provider"}
               onClick={() => setUserType("provider")}
             />
@@ -137,22 +139,22 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
 
       {userType && (
         <>
-          {/* Googleログイン */}
-          <div>
+          {/* Google登録 */}
+          <div className="space-y-5">
             <Button
               type="button"
               variant="outline"
-              className="w-full"
+              className="w-full h-11 font-medium border-input hover:bg-muted/50 transition-colors"
               onClick={handleGoogleSignup}
               disabled={isSubmitting}
             >
               <Chrome className="h-4 w-4 mr-2" />
               Googleで登録
             </Button>
-            <div className="relative my-6">
+            <div className="relative my-5">
               <Separator />
-              <span className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-background px-3 text-sm text-muted-foreground">
-                または
+              <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-3 text-xs font-medium text-muted-foreground">
+                またはメールで登録
               </span>
             </div>
           </div>
@@ -160,43 +162,51 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
           {/* メール登録フォーム */}
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">
-                表示名（会社名または活動名） <span className="text-red-500">*</span>
+              <label htmlFor="signup-name" className="text-sm font-medium text-foreground">
+                表示名（会社名または活動名） <span className="text-destructive">*</span>
               </label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 <Input
+                  id="signup-name"
                   {...register("name")}
                   placeholder={
                     userType === "provider"
                       ? "例: 株式会社Edumatch / 教育太郎"
                       : "例: 山田太郎"
                   }
-                  className="pl-10"
+                  autoComplete="name"
+                  className="pl-10 h-11 rounded-lg"
                   disabled={isSubmitting}
+                  aria-invalid={!!errors.name}
                 />
               </div>
               {errors.name && (
-                <p className="text-sm text-destructive">{errors.name.message}</p>
+                <p className="text-sm text-destructive" role="alert">
+                  {errors.name.message}
+                </p>
               )}
             </div>
 
             {userType === "provider" && (
               <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  企業名・学校名 <span className="text-red-500">*</span>
+                <label htmlFor="signup-org" className="text-sm font-medium text-foreground">
+                  企業名・学校名 <span className="text-destructive">*</span>
                 </label>
                 <div className="relative">
-                  <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                   <Input
+                    id="signup-org"
                     {...register("organization")}
                     placeholder="例: 株式会社Edumatch / ○○高等学校"
-                    className="pl-10"
+                    autoComplete="organization"
+                    className="pl-10 h-11 rounded-lg"
                     disabled={isSubmitting}
+                    aria-invalid={!!errors.organization}
                   />
                 </div>
                 {errors.organization && (
-                  <p className="text-sm text-destructive">
+                  <p className="text-sm text-destructive" role="alert">
                     {errors.organization.message}
                   </p>
                 )}
@@ -204,85 +214,107 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
             )}
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">
-                メールアドレス <span className="text-red-500">*</span>
+              <label htmlFor="signup-email" className="text-sm font-medium text-foreground">
+                メールアドレス <span className="text-destructive">*</span>
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 <Input
+                  id="signup-email"
                   {...register("email")}
                   type="email"
                   placeholder="example@email.com"
-                  className="pl-10"
+                  autoComplete="email"
+                  className="pl-10 h-11 rounded-lg"
                   disabled={isSubmitting}
+                  aria-invalid={!!errors.email}
                 />
               </div>
               {errors.email && (
-                <p className="text-sm text-destructive">{errors.email.message}</p>
+                <p className="text-sm text-destructive" role="alert">
+                  {errors.email.message}
+                </p>
               )}
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">
-                パスワード <span className="text-red-500">*</span>
+              <label htmlFor="signup-password" className="text-sm font-medium text-foreground">
+                パスワード <span className="text-destructive">*</span>
               </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 <Input
+                  id="signup-password"
                   {...register("password")}
                   type="password"
                   placeholder="8文字以上、大文字・小文字・数字を含む"
-                  className="pl-10"
+                  autoComplete="new-password"
+                  className="pl-10 h-11 rounded-lg"
                   disabled={isSubmitting}
+                  aria-invalid={!!errors.password}
                 />
               </div>
               {errors.password && (
-                <p className="text-sm text-destructive">{errors.password.message}</p>
+                <p className="text-sm text-destructive" role="alert">
+                  {errors.password.message}
+                </p>
               )}
               {watch("password") && !errors.password && (
-                <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
-                  <p className="font-medium mb-1">✓ パスワードの条件を満たしています</p>
+                <div className="rounded-lg border border-green-200 bg-green-50 dark:bg-green-950/30 dark:border-green-800 px-3 py-2 text-sm text-green-700 dark:text-green-400">
+                  <p className="font-medium">✓ パスワードの条件を満たしています</p>
                 </div>
               )}
             </div>
 
-            <div className="space-y-2 text-sm">
-              <label className="flex items-start gap-2 cursor-pointer">
+            <div className="space-y-2">
+              <label className="flex items-start gap-3 cursor-pointer text-sm">
                 <input
                   {...register("agreedToTerms")}
                   type="checkbox"
-                  className="rounded mt-1"
+                  className="mt-1 h-4 w-4 rounded border-input text-primary focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50"
                   disabled={isSubmitting}
+                  aria-invalid={!!errors.agreedToTerms}
                 />
-                <span className="text-muted-foreground">
-                  <Link href="/terms" className="text-primary hover:underline">
+                <span className="text-muted-foreground leading-relaxed">
+                  <Link
+                    href="/terms"
+                    className="text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
+                  >
                     利用規約
                   </Link>
                   および
-                  <Link href="/privacy" className="text-primary hover:underline">
+                  <Link
+                    href="/privacy"
+                    className="text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
+                  >
                     プライバシーポリシー
                   </Link>
                   に同意します
                 </span>
               </label>
               {errors.agreedToTerms && (
-                <p className="text-sm text-destructive ml-6">
+                <p className="text-sm text-destructive pl-7" role="alert">
                   {errors.agreedToTerms.message}
                 </p>
               )}
             </div>
 
-            <p className="text-xs text-muted-foreground bg-muted/30 p-3 rounded-md">
-              💡 登録後、次のページで住所・連絡先・自己紹介などを登録できます（スキップ可）。
-            </p>
-
             {globalError && (
-              <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20">
-                <p className="text-sm text-destructive font-medium">{globalError}</p>
+              <div
+                className="flex gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive"
+                role="alert"
+              >
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                <p className="text-sm font-medium">{globalError}</p>
               </div>
             )}
 
-            <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
+            <Button
+              type="submit"
+              className="w-full h-11 font-medium rounded-lg"
+              size="lg"
+              disabled={isSubmitting}
+            >
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -296,16 +328,14 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
             </Button>
           </form>
 
-          <Button
+          <button
             type="button"
-            variant="ghost"
-            size="sm"
-            className="w-full"
             onClick={() => setUserType(null)}
             disabled={isSubmitting}
+            className="w-full py-2 text-sm text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
           >
             ← アカウントタイプを変更
-          </Button>
+          </button>
         </>
       )}
     </div>

@@ -20,10 +20,6 @@ import { requireAuth, getCurrentProfile } from "@/lib/auth";
 import { getRecentViewHistory } from "@/app/_actions";
 import { RequestListCompact } from "@/components/dashboard/request-list-compact";
 import { FavoritesCompact } from "@/components/dashboard/favorites-compact";
-import {
-  getPopularServicesByEngagement,
-  getPopularArticlesByEngagement,
-} from "@/app/_actions/popularity";
 import { getCurrentSubscription } from "@/app/_actions/subscription";
 
 // 閲覧時刻を「ついさっき」「〇分前」などで表示
@@ -44,12 +40,11 @@ function formatViewedAt(viewedAt: Date): string {
   });
 }
 
-export default async function DashboardPage() {
+export default async function MyPage() {
   const user = await requireAuth();
   const profile = await getCurrentProfile();
   const displayName = profile?.name ?? user.email?.split("@")[0] ?? "ユーザー";
 
-  // 全ユーザー共通のマイページを表示
   const recentlyViewed = await getRecentViewHistory(user.id, 5);
 
   const notifications: { id: string; title: string; date: string; read: boolean }[] = [];
