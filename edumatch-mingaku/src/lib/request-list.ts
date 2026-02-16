@@ -59,3 +59,8 @@ export function toggleRequestList(item: RequestListItem): boolean {
 export function getRequestListIds(): string[] {
   return getStored().map((i) => i.id);
 }
+
+/** リストをクリア（未ログイン時など） */
+export function clearRequestList(): void {
+  setStored([]);
+}

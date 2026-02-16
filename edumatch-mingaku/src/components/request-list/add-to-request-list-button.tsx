@@ -6,7 +6,6 @@ import { Bookmark, BookmarkCheck } from "lucide-react";
 import { useRequestList } from "./request-list-context";
 import type { RequestListItem } from "@/lib/request-list";
 import { toast } from "sonner";
-import { createBrowserClient } from "@supabase/ssr";
 import {
   incrementServiceRequestCount,
   decrementServiceRequestCount,
@@ -27,35 +26,25 @@ export function AddToRequestListButton({
   size = "sm",
   className,
 }: Props) {
-  const { has, toggle, count } = useRequestList();
+  const { has, toggle, count, isAuthenticated } = useRequestList();
   const inList = has(item.id);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [requestListLimit, setRequestListLimit] = useState<number | null>(null);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
-      const { data: { user } } = await supabase.auth.getUser();
-      setIsAuthenticated(!!user);
-      
-      // 認証済みの場合はプラン情報を取得して制限を設定
-      if (user) {
-        try {
-          const subscription = await getCurrentSubscription();
-          const planId = subscription?.plan || "FREE";
-          const plan = PLANS[planId as keyof typeof PLANS] || PLANS.FREE;
-          setRequestListLimit(plan.requestListLimit || 2);
-        } catch (error) {
-          console.error("Failed to get subscription:", error);
-          setRequestListLimit(2); // デフォルトはフリープランの制限
-        }
+    if (isAuthenticated !== true) return;
+    const loadLimit = async () => {
+      try {
+        const subscription = await getCurrentSubscription();
+        const planId = subscription?.plan || "FREE";
+        const plan = PLANS[planId as keyof typeof PLANS] || PLANS.FREE;
+        setRequestListLimit(plan.requestListLimit || 2);
+      } catch (error) {
+        console.error("Failed to get subscription:", error);
+        setRequestListLimit(2);
       }
     };
-    checkAuth();
-  }, []);
+    loadLimit();
+  }, [isAuthenticated]);
 
   const handleClick = async (e: React.MouseEvent) => {
     e.preventDefault();
