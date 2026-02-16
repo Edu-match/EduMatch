@@ -46,3 +46,15 @@ export async function getCurrentProfile() {
     return null;
   }
 }
+
+/**
+ * 投稿者（PROVIDER）専用ページ用。認証済みかつ role が PROVIDER でない場合は /dashboard へリダイレクトします。
+ */
+export async function requireProvider() {
+  const user = await requireAuth();
+  const profile = await getCurrentProfile();
+  if (profile?.role !== "PROVIDER") {
+    redirect("/dashboard?message=" + encodeURIComponent("投稿者として利用するには、新規登録時に「投稿者として利用」を選択して登録する必要があります。"));
+  }
+  return { user, profile };
+}

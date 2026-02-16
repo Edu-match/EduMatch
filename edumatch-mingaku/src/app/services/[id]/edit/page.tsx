@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { requireAuth, getCurrentProfile } from "@/lib/auth";
+import { requireProvider } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ServiceEditForm } from "./service-edit-form";
 
@@ -10,13 +10,8 @@ type PageProps = {
 };
 
 export default async function ServiceEditPage({ params }: PageProps) {
-  // 認証チェック
-  await requireAuth();
-  const profile = await getCurrentProfile();
-
-  if (!profile || profile.role !== "PROVIDER") {
-    redirect("/dashboard");
-  }
+  const { profile } = await requireProvider();
+  if (!profile) redirect("/dashboard");
 
   // サービスを取得
   const service = await prisma.service.findUnique({

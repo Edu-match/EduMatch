@@ -76,17 +76,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(registerUrl);
     }
 
-    // 既存Profileのroleが今回選択したuserTypeと異なる場合は更新（トリガーがVIEWERで作った場合の修正）
-    if (existingProfile.role !== expectedRole) {
-      try {
-        await prisma.profile.update({
-          where: { id: data.user.id },
-          data: { role: expectedRole },
-        });
-      } catch (updateError) {
-        console.error("Profile role update error:", updateError);
-      }
-    }
+    // 既存ユーザーは登録時のroleを維持する（ログイン画面で選んだ「閲覧者/投稿者」では上書きしない）
+    // 新規登録時のみ expectedRole で Profile を作成している
 
     return NextResponse.redirect(new URL(redirectTo, origin));
   } catch (error) {
