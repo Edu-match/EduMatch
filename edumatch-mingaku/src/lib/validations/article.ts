@@ -36,7 +36,7 @@ export const articleSchema = z.object({
     .optional()
     .or(z.literal("")),
   
-  status: z.enum(["DRAFT", "PENDING", "APPROVED", "REJECTED"]).default("PENDING"),
+  status: z.enum(["DRAFT", "PENDING", "APPROVED", "REJECTED"]),
 });
 
 export type ArticleFormData = z.infer<typeof articleSchema>;

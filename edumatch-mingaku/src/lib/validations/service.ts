@@ -37,7 +37,7 @@ export const serviceSchema = z.object({
     .optional()
     .or(z.literal("")),
   
-  status: z.enum(["DRAFT", "PENDING", "APPROVED", "REJECTED"]).default("PENDING"),
+  status: z.enum(["DRAFT", "PENDING", "APPROVED", "REJECTED"]),
 });
 
 export type ServiceFormData = z.infer<typeof serviceSchema>;
