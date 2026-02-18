@@ -28,16 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 import { createServiceManagement } from "@/app/_actions";
 import { serviceSchema, type ServiceFormData } from "@/lib/validations/service";
-
-const categories = [
-  { value: "授業管理", label: "授業管理" },
-  { value: "AI学習", label: "AI学習" },
-  { value: "セキュリティ", label: "セキュリティ" },
-  { value: "教材作成", label: "教材作成" },
-  { value: "校務支援", label: "校務支援" },
-  { value: "コミュニケーション", label: "コミュニケーション" },
-  { value: "その他", label: "その他" },
-];
+import { SHARED_CATEGORIES } from "@/lib/categories";
 
 const guidelines = [
   "サービスの特徴や導入効果を具体的に記載してください。",
@@ -173,7 +164,7 @@ export function ServiceForm() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {categories.map((cat) => (
+                          {SHARED_CATEGORIES.map((cat) => (
                             <SelectItem key={cat.value} value={cat.value}>
                               {cat.label}
                             </SelectItem>

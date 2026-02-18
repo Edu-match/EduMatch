@@ -38,7 +38,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { createPost, uploadImage } from "@/app/_actions";
-import { getCurrentUserProfile } from "@/app/_actions/user";
+import { SHARED_CATEGORIES } from "@/lib/categories";
 
 const STORAGE_KEY = "edumatch-article-draft";
 
@@ -115,9 +115,15 @@ export default function ArticleCreatePage() {
   useEffect(() => {
     async function fetchProfile() {
       try {
-        const profile = await getCurrentUserProfile();
-        if (profile) {
-          setUserProfile(profile);
+        const res = await fetch("/api/auth/me", { credentials: "include" });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data?.profile) {
+          setUserProfile({
+            name: data.profile.name ?? "ユーザー",
+            avatar_url: data.profile.avatar_url ?? null,
+            email: data.profile.email ?? "",
+          });
         }
       } catch (error) {
         console.error("Failed to fetch profile:", error);
@@ -828,12 +834,11 @@ export default function ArticleCreatePage() {
                       <SelectValue placeholder="カテゴリを選択" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="導入事例">導入事例</SelectItem>
-                      <SelectItem value="製品紹介">製品紹介</SelectItem>
-                      <SelectItem value="教育ICT">教育ICT</SelectItem>
-                      <SelectItem value="学校運営">学校運営</SelectItem>
-                      <SelectItem value="イベント">イベント</SelectItem>
-                      <SelectItem value="お知らせ">お知らせ</SelectItem>
+                      {SHARED_CATEGORIES.map((cat) => (
+                        <SelectItem key={cat.value} value={cat.value}>
+                          {cat.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>

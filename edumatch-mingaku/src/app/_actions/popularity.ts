@@ -181,3 +181,48 @@ export async function getPopularArticlesByEngagement(limit: number = 10) {
     return [];
   }
 }
+
+/**
+ * ホットトピック：直近1ヶ月の記事をいいね数でランキング
+ */
+export async function getHotTopicsLastMonth(limit: number = 10) {
+  try {
+    const user = await getCurrentUser();
+    const oneMonthAgo = new Date();
+    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+
+    const where = !user
+      ? {
+          AND: [
+            { OR: [{ status: "APPROVED" as const }, { is_published: true }] },
+            { is_member_only: false },
+            { created_at: { gte: oneMonthAgo } },
+          ],
+        }
+      : {
+          AND: [
+            { OR: [{ status: "APPROVED" as const }, { is_published: true }] },
+            { created_at: { gte: oneMonthAgo } },
+          ],
+        };
+
+    const articles = await prisma.post.findMany({
+      where,
+      include: {
+        provider: {
+          select: { id: true, name: true, avatar_url: true },
+        },
+      },
+      orderBy: { favorite_count: "desc" },
+      take: limit,
+    });
+
+    return articles.map((a) => ({
+      ...a,
+      provider: a.provider || { id: a.provider_id, name: "投稿者", avatar_url: null },
+    }));
+  } catch (error) {
+    console.error("Failed to get hot topics:", error);
+    return [];
+  }
+}

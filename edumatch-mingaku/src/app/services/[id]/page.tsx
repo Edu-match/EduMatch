@@ -3,7 +3,7 @@ import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, ExternalLink, Building2, Calendar, Play, FileText, Mail, Check, Star } from "lucide-react";
+import { ArrowLeft, ExternalLink, Building2, Calendar, Play, FileText, Mail, Check, Star, Pencil } from "lucide-react";
 import { unstable_noStore } from "next/cache";
 import { getServiceById, getPopularServices, recordView } from "@/app/_actions";
 import { getCurrentUser } from "@/lib/auth";
@@ -66,6 +66,15 @@ export default async function ServiceDetailPage({
             <div className="lg:col-span-3">
               <div className="flex items-center gap-3 mb-4 flex-wrap">
                 <Badge className="text-sm px-3 py-1">{service.category}</Badge>
+                {service.tags?.length ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {service.tags.map((tag) => (
+                      <Badge key={tag} variant="secondary" className="text-xs font-normal">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : null}
                 <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                   <Calendar className="h-4 w-4" />
                   {formatDate(service.created_at)}
@@ -75,14 +84,23 @@ export default async function ServiceDetailPage({
                 <h1 className="text-4xl md:text-5xl font-bold leading-tight flex-1">
                   {service.title}
                 </h1>
-                <ShareButton
-                  url={`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/services/${service.id}`}
-                  title={service.title}
-                  text={`${service.title} - EduMatch`}
-                  variant="outline"
-                  size="sm"
-                  className="flex-shrink-0"
-                />
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {user?.id === service.provider_id && (
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href={`/services/${service.id}/edit`}>
+                        <Pencil className="h-4 w-4 mr-1" />
+                        編集
+                      </Link>
+                    </Button>
+                  )}
+                  <ShareButton
+                    url={`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/services/${service.id}`}
+                    title={service.title}
+                    text={`${service.title} - EduMatch`}
+                    variant="outline"
+                    size="sm"
+                  />
+                </div>
               </div>
               <p className="text-xl text-muted-foreground leading-relaxed">
                 {service.description}
@@ -114,12 +132,12 @@ export default async function ServiceDetailPage({
 
             {/* サムネイル画像（デスクトップ） */}
             <div className="lg:col-span-2 hidden lg:block">
-              <div className="relative aspect-[4/3] w-full rounded-xl overflow-hidden shadow-2xl border-4 border-white/50">
+              <div className="relative aspect-[4/3] w-full rounded-xl overflow-hidden shadow-2xl border-4 border-white/50 bg-muted flex items-center justify-center">
                 <Image
                   src={service.thumbnail_url || "https://placehold.co/800x600/e0f2fe/0369a1?text=Service"}
                   alt={service.title}
                   fill
-                  className="object-cover"
+                  className="object-contain"
                   unoptimized
                 />
               </div>
@@ -133,12 +151,12 @@ export default async function ServiceDetailPage({
           {/* メインコンテンツ */}
           <div className="lg:col-span-2 space-y-8">
             {/* メイン画像（モバイル） */}
-            <div className="lg:hidden relative aspect-video w-full rounded-xl overflow-hidden shadow-xl border-2">
+            <div className="lg:hidden relative aspect-video w-full rounded-xl overflow-hidden shadow-xl border-2 bg-muted flex items-center justify-center">
               <Image
                 src={service.thumbnail_url || "https://placehold.co/800x450/e0f2fe/0369a1?text=Service"}
                 alt={service.title}
                 fill
-                className="object-cover"
+                className="object-contain"
                 unoptimized
               />
             </div>
@@ -402,12 +420,12 @@ export default async function ServiceDetailPage({
                     className="group block"
                   >
                     <Card className="h-full overflow-hidden border-2 hover:border-primary/50 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
-                      <div className="relative h-40 w-full overflow-hidden bg-gradient-to-br from-primary/5 to-primary/10">
+                      <div className="relative h-28 w-full overflow-hidden bg-muted flex items-center justify-center">
                         <Image
                           src={relatedService.thumbnail_url || "https://placehold.co/300x200/e0f2fe/0369a1?text=Service"}
                           alt={relatedService.title}
                           fill
-                          className="object-cover transition-transform duration-300 group-hover:scale-110"
+                          className="object-contain transition-transform duration-300 group-hover:scale-105"
                           unoptimized
                         />
                       </div>

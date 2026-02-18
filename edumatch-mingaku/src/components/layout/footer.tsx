@@ -7,6 +7,7 @@ export function Footer() {
     product: [
       { href: "/articles", label: "記事一覧" },
       { href: "/services", label: "サービス一覧" },
+      { href: "/events", label: "セミナー・イベント情報" },
     ],
     company: [
       { href: "/about", label: "運営について" },

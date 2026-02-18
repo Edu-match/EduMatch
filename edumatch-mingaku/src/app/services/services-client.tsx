@@ -1,35 +1,26 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, Filter, ExternalLink } from "lucide-react";
+import { Search, ExternalLink } from "lucide-react";
 import { AddToRequestListButton } from "@/components/request-list/add-to-request-list-button";
 import type { ServiceForList } from "./page";
 
-export function ServicesClient({ services }: { services: ServiceForList[] }) {
+/** 公開一覧: 件数が1件以上のカテゴリのみ表示（投稿者ページでは全カテゴリ表示） */
+export function ServicesClient({
+  services,
+  categoriesWithCount,
+}: {
+  services: ServiceForList[];
+  categoriesWithCount: string[];
+}) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
-
-  // DBから取得したサービスのカテゴリを動的に生成
-  const categories = useMemo(() => {
-    const uniqueCategories = Array.from(new Set(services.map((s) => s.category)));
-    return [
-      { value: "all", label: "すべて" },
-      ...uniqueCategories.map((cat) => ({ value: cat, label: cat })),
-    ];
-  }, [services]);
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
   const filteredServices = services.filter((service) => {
     const matchesSearch =
@@ -72,24 +63,30 @@ export function ServicesClient({ services }: { services: ServiceForList[] }) {
                 />
               </div>
 
-              {/* カテゴリフィルター（タブ形式） */}
-              <div className="flex items-center gap-2 pb-2 overflow-x-auto">
+              {/* カテゴリフィルター: 件数1件以上のカテゴリのみボタン表示 */}
+              <div className="flex items-center gap-2 pb-2 overflow-x-auto flex-wrap">
                 <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">
                   カテゴリ:
                 </span>
-                <div className="flex gap-2 flex-wrap">
-                  {categories.map((category) => (
-                    <Button
-                      key={category.value}
-                      variant={selectedCategory === category.value ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setSelectedCategory(category.value)}
-                      className="transition-all hover:scale-105"
-                    >
-                      {category.label}
-                    </Button>
-                  ))}
-                </div>
+                <Button
+                  variant={selectedCategory === "all" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectedCategory("all")}
+                  className="transition-all hover:scale-105"
+                >
+                  すべて
+                </Button>
+                {categoriesWithCount.map((category) => (
+                  <Button
+                    key={category}
+                    variant={selectedCategory === category ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSelectedCategory(category)}
+                    className="transition-all hover:scale-105"
+                  >
+                    {category}
+                  </Button>
+                ))}
               </div>
 
               {/* 検索結果件数 */}
@@ -119,17 +116,18 @@ export function ServicesClient({ services }: { services: ServiceForList[] }) {
             <Link
               key={service.id}
               href={`/services/${service.id}`}
+              prefetch={false}
               className="group block h-full"
               style={{ animationDelay: `${index * 0.05}s` }}
             >
               <Card className="h-full overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 border-2 hover:border-primary/50 bg-card">
                 {/* 画像エリア */}
-                <div className="relative h-48 w-full overflow-hidden bg-gradient-to-br from-primary/5 to-primary/10">
+                <div className="relative h-32 w-full overflow-hidden bg-muted flex items-center justify-center">
                   <Image
                     src={service.image}
                     alt={service.name}
                     fill
-                    className="object-cover transition-transform duration-500 group-hover:scale-110"
+                    className="object-contain transition-transform duration-500 group-hover:scale-105"
                     unoptimized
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />

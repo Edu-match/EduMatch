@@ -26,7 +26,7 @@ export default function ArticleDetailLoading() {
         </div>
 
         {/* メイン画像 */}
-        <Skeleton className="h-64 md:h-96 w-full mb-8 rounded-lg" />
+        <Skeleton className="h-48 md:h-60 w-full mb-8 rounded-lg" />
 
         {/* 本文 */}
         <div className="space-y-4 mb-8">

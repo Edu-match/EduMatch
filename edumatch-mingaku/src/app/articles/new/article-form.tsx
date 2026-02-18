@@ -28,13 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Upload, Image as ImageIcon } from "lucide-react";
 import { createArticle } from "@/app/_actions";
 import { articleSchema, type ArticleFormData } from "@/lib/validations/article";
-
-const categories = [
-  { value: "教育ICT", label: "教育ICT" },
-  { value: "導入事例", label: "導入事例" },
-  { value: "学校運営", label: "学校運営" },
-  { value: "政策・制度", label: "政策・制度" },
-];
+import { SHARED_CATEGORIES } from "@/lib/categories";
 
 const guidelines = [
   "記事の内容は教育現場に役立つ実践的な情報にしてください。",
@@ -150,7 +144,7 @@ export function ArticleForm() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {categories.map((cat) => (
+                          {SHARED_CATEGORIES.map((cat) => (
                             <SelectItem key={cat.value} value={cat.value}>
                               {cat.label}
                             </SelectItem>

@@ -20,6 +20,33 @@ type Props = {
   className?: string;
 };
 
+let cachedRequestListLimit: number | null = null;
+let requestListLimitPromise: Promise<number> | null = null;
+
+async function getRequestListLimitCached(): Promise<number> {
+  if (cachedRequestListLimit !== null) return cachedRequestListLimit;
+  if (requestListLimitPromise) return requestListLimitPromise;
+
+  requestListLimitPromise = (async () => {
+    try {
+      const subscription = await getCurrentSubscription();
+      const planId = subscription?.plan || "FREE";
+      const plan = PLANS[planId as keyof typeof PLANS] || PLANS.FREE;
+      const limit = plan.requestListLimit || 2;
+      cachedRequestListLimit = limit;
+      return limit;
+    } catch (error) {
+      console.error("Failed to get subscription:", error);
+      cachedRequestListLimit = 2;
+      return 2;
+    } finally {
+      requestListLimitPromise = null;
+    }
+  })();
+
+  return requestListLimitPromise;
+}
+
 export function AddToRequestListButton({
   item,
   variant = "icon",
@@ -31,19 +58,19 @@ export function AddToRequestListButton({
   const [requestListLimit, setRequestListLimit] = useState<number | null>(null);
 
   useEffect(() => {
-    if (isAuthenticated !== true) return;
-    const loadLimit = async () => {
-      try {
-        const subscription = await getCurrentSubscription();
-        const planId = subscription?.plan || "FREE";
-        const plan = PLANS[planId as keyof typeof PLANS] || PLANS.FREE;
-        setRequestListLimit(plan.requestListLimit || 2);
-      } catch (error) {
-        console.error("Failed to get subscription:", error);
-        setRequestListLimit(2);
-      }
+    if (isAuthenticated !== true) {
+      setRequestListLimit(null);
+      return;
+    }
+
+    let cancelled = false;
+    getRequestListLimitCached().then((limit) => {
+      if (!cancelled) setRequestListLimit(limit);
+    });
+
+    return () => {
+      cancelled = true;
     };
-    loadLimit();
   }, [isAuthenticated]);
 
   const handleClick = async (e: React.MouseEvent) => {

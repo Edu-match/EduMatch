@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
@@ -11,17 +11,16 @@ import { Search, Calendar, ExternalLink, FileText } from "lucide-react";
 import { AddToFavoritesButton } from "@/components/favorites/add-to-favorites-button";
 import type { ArticleForList } from "./page";
 
-const categories = [
-  { value: "all", label: "すべて" },
-  { value: "教育ICT", label: "教育ICT" },
-  { value: "導入事例", label: "導入事例" },
-  { value: "学校運営", label: "学校運営" },
-  { value: "政策・制度", label: "政策・制度" },
-];
-
-export function ArticlesClient({ articles }: { articles: ArticleForList[] }) {
+/** 公開一覧: 件数が1件以上のカテゴリのみ表示（投稿者ページでは全カテゴリ表示） */
+export function ArticlesClient({
+  articles,
+  categoriesWithCount,
+}: {
+  articles: ArticleForList[];
+  categoriesWithCount: string[];
+}) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
   const filteredArticles = articles.filter((article) => {
     const matchesSearch =
@@ -64,24 +63,30 @@ export function ArticlesClient({ articles }: { articles: ArticleForList[] }) {
                 />
               </div>
 
-              {/* カテゴリフィルター（タブ形式） */}
-              <div className="flex items-center gap-2 pb-2 overflow-x-auto">
+              {/* カテゴリフィルター: サービス一覧と同じボタン表示 */}
+              <div className="flex items-center gap-2 pb-2 overflow-x-auto flex-wrap">
                 <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">
                   カテゴリ:
                 </span>
-                <div className="flex gap-2 flex-wrap">
-                  {categories.map((category) => (
-                    <Button
-                      key={category.value}
-                      variant={selectedCategory === category.value ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setSelectedCategory(category.value)}
-                      className="transition-all hover:scale-105"
-                    >
-                      {category.label}
-                    </Button>
-                  ))}
-                </div>
+                <Button
+                  variant={selectedCategory === "all" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectedCategory("all")}
+                  className="transition-all hover:scale-105"
+                >
+                  すべて
+                </Button>
+                {categoriesWithCount.map((category) => (
+                  <Button
+                    key={category}
+                    variant={selectedCategory === category ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSelectedCategory(category)}
+                    className="transition-all hover:scale-105"
+                  >
+                    {category}
+                  </Button>
+                ))}
               </div>
 
               {/* 検索結果件数 */}
@@ -116,12 +121,12 @@ export function ArticlesClient({ articles }: { articles: ArticleForList[] }) {
             >
               <Card className="h-full overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 border-2 hover:border-primary/50 bg-card">
                 {/* 画像エリア */}
-                <div className="relative h-48 w-full overflow-hidden bg-gradient-to-br from-primary/5 to-primary/10">
+                <div className="relative h-32 w-full overflow-hidden bg-muted flex items-center justify-center">
                   <Image
                     src={article.image}
                     alt={article.title}
                     fill
-                    className="object-cover transition-transform duration-500 group-hover:scale-110"
+                    className="object-contain transition-transform duration-500 group-hover:scale-105"
                     unoptimized
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />

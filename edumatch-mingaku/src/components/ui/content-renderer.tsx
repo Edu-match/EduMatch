@@ -120,6 +120,106 @@ function parseContent(content: string): ContentBlock[] {
   return blocks;
 }
 
+/**
+ * 簡易マークダウン風（# ## ###）のテキストを見出し・段落で表示
+ */
+function MarkdownLikeContent({ text }: { text: string }) {
+  const lines = text.split(/\r?\n/);
+  const nodes: React.ReactNode[] = [];
+  let i = 0;
+  let keyIndex = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+    const trimmed = line.trimEnd();
+
+    if (trimmed.startsWith("### ")) {
+      nodes.push(
+        <h3
+          key={`md-${keyIndex++}`}
+          className="mt-6 mb-2 text-lg font-semibold text-foreground scroll-mt-20"
+        >
+          {trimmed.slice(4)}
+        </h3>
+      );
+      i += 1;
+      continue;
+    }
+    if (trimmed.startsWith("## ")) {
+      nodes.push(
+        <h2
+          key={`md-${keyIndex++}`}
+          className="mt-8 mb-3 text-xl font-semibold text-foreground scroll-mt-20 border-b border-border/60 pb-1"
+        >
+          {trimmed.slice(3)}
+        </h2>
+      );
+      i += 1;
+      continue;
+    }
+    if (trimmed.startsWith("# ")) {
+      nodes.push(
+        <h1
+          key={`md-${keyIndex++}`}
+          className="mt-8 mb-3 text-2xl font-bold text-foreground scroll-mt-20"
+        >
+          {trimmed.slice(2)}
+        </h1>
+      );
+      i += 1;
+      continue;
+    }
+
+    // 空行はスキップ
+    if (trimmed === "") {
+      i += 1;
+      continue;
+    }
+
+    // 連続する通常行を1つの段落に（# / ## / ### で始まる行は見出しなので区切る）
+    const isHeadingLine = (s: string) =>
+      s.startsWith("# ") || s.startsWith("## ") || s.startsWith("### ");
+    const paragraphLines: string[] = [];
+    while (i < lines.length) {
+      const ln = lines[i];
+      const t = ln.trimEnd();
+      if (t === "" || isHeadingLine(t)) break;
+      paragraphLines.push(ln);
+      i += 1;
+    }
+    if (paragraphLines.length > 0) {
+      const singleLine = paragraphLines.length === 1 ? paragraphLines[0].trim() : "";
+      // # を使っていない本文向け：短い単独行（目安 45 文字以下）を見出し風に表示
+      const looksLikeHeading =
+        singleLine &&
+        singleLine.length <= 45 &&
+        !singleLine.endsWith("。") &&
+        !singleLine.endsWith("、");
+      if (looksLikeHeading) {
+        nodes.push(
+          <h3
+            key={`md-${keyIndex++}`}
+            className="mt-6 mb-2 text-lg font-semibold text-foreground scroll-mt-20"
+          >
+            {singleLine}
+          </h3>
+        );
+      } else {
+        nodes.push(
+          <p
+            key={`md-${keyIndex++}`}
+            className="text-base text-foreground leading-relaxed mb-4 last:mb-0"
+          >
+            {paragraphLines.join("\n")}
+          </p>
+        );
+      }
+    }
+  }
+
+  return <>{nodes}</>;
+}
+
 type ContentRendererProps = {
   content: string;
   className?: string;
@@ -163,11 +263,8 @@ export function ContentRenderer({ content, className }: ContentRendererProps) {
         }
         
         return (
-          <div
-            key={index}
-            className="whitespace-pre-wrap text-foreground leading-relaxed"
-          >
-            {block.content}
+          <div key={index} className="content-body">
+            <MarkdownLikeContent text={block.content} />
           </div>
         );
       })}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { 
   Menu, LogOut, User, LayoutDashboard, Settings, 
@@ -28,7 +28,6 @@ import { createSupabaseBrowserClient } from "@/utils/supabase/client";
 
 export function Header() {
   const router = useRouter();
-  const pathname = usePathname();
   const { count: requestListCount } = useRequestList();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -76,7 +75,7 @@ export function Header() {
     return () => {
       subscription.unsubscribe();
     };
-  }, [pathname]); // ルート変更時も再チェック（ログイン後のフルリロードで正しく表示）
+  }, []); // onAuthStateChange で認証変化を監視するため、pathname 依存は不要
 
   const handleLogout = async () => {
     const supabase = createSupabaseBrowserClient();
@@ -88,6 +87,7 @@ export function Header() {
   const navLinks = [
     { href: "/articles", label: "記事一覧" },
     { href: "/services", label: "サービス一覧" },
+    { href: "/events", label: "セミナー・イベント情報" },
     { href: "/companies", label: "掲載企業" },
   ];
 

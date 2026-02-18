@@ -1,6 +1,7 @@
 // Posts actions
 export {
   getLatestPosts,
+  getArticleCategoryCounts,
   getPopularPosts,
   getPostById,
   createPost,

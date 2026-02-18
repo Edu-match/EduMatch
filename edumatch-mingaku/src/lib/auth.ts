@@ -1,17 +1,18 @@
+import { cache } from "react";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 
 /**
- * 現在のユーザーを取得します
+ * 現在のユーザーを取得します（同一リクエスト内で1回だけ実行）
  * 未認証の場合はnullを返します
  */
-export async function getCurrentUser() {
+export const getCurrentUser = cache(async () => {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   return user;
-}
+});
 
 /**
  * 認証が必要なページで使用します
@@ -26,9 +27,9 @@ export async function requireAuth() {
 }
 
 /**
- * 認証済みユーザーのProfileを取得します
+ * 認証済みユーザーのProfileを取得します（同一リクエスト内で1回だけ実行）
  */
-export async function getCurrentProfile() {
+export const getCurrentProfile = cache(async () => {
   const user = await getCurrentUser();
   if (!user) {
     return null;
@@ -45,7 +46,7 @@ export async function getCurrentProfile() {
     console.error("Error fetching profile:", error);
     return null;
   }
-}
+});
 
 /**
  * 投稿者（PROVIDER）専用ページ用。認証済みかつ role が PROVIDER でない場合は /dashboard へリダイレクトします。

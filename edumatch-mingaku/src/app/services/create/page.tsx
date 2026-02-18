@@ -11,14 +11,13 @@ import { Badge } from "@/components/ui/badge";
 import { BlockEditor, ContentBlock } from "@/components/editor/block-editor";
 import { createService, uploadImage } from "@/app/_actions";
 import { Image as ImageIcon, Loader2, Save, Send, Building2, School } from "lucide-react";
-import { getCurrentUserProfile } from "@/app/_actions/user";
 
 export default function ServiceCreatePage() {
   const router = useRouter();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("学習管理");
+  const [category, setCategory] = useState("学習");
   const [priceInfo, setPriceInfo] = useState("");
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [thumbnailUrl, setThumbnailUrl] = useState("");
@@ -50,9 +49,15 @@ export default function ServiceCreatePage() {
   useEffect(() => {
     async function fetchProfile() {
       try {
-        const profile = await getCurrentUserProfile();
-        if (profile) {
-          setUserProfile(profile);
+        const res = await fetch("/api/auth/me", { credentials: "include" });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data?.profile) {
+          setUserProfile({
+            name: data.profile.name ?? "ユーザー",
+            avatar_url: data.profile.avatar_url ?? null,
+            email: data.profile.email ?? "",
+          });
         }
       } catch (error) {
         console.error("Failed to fetch profile:", error);

@@ -422,11 +422,12 @@ const DEMO_POSTS: PostWithProvider[] = [
     created_at: new Date(Date.now() - 1000 * 60 * 60 * 2),
     updated_at: new Date(),
     is_member_only: false,
-    provider: { id: "demo-provider", name: "Edumatch編集部", avatar_url: null },
+    wp_post_id: null,
+    provider: { id: "demo-provider-1", name: "教育ICTニュース", avatar_url: null },
   },
   {
     id: "demo-2",
-    provider_id: "demo-provider",
+    provider_id: "demo-provider-2",
     title: "AI教材が変える学習体験 - 個別最適化学習の実践事例",
     content: "人工知能（AI）を活用した教材が教育現場に浸透しつつあります。生徒一人ひとりの理解度に合わせて問題を出題するアダプティブラーニングは、従来の一斉授業では難しかった個別対応を可能にしています。\n\n本記事では、実際にAI教材を導入した学校の事例を紹介し、その効果と課題について考察します。",
     thumbnail_url: "https://placehold.co/800x450/10b981/white?text=AI+Learning",
@@ -446,11 +447,12 @@ const DEMO_POSTS: PostWithProvider[] = [
     created_at: new Date(Date.now() - 1000 * 60 * 60 * 24),
     updated_at: new Date(),
     is_member_only: false,
-    provider: { id: "demo-provider", name: "Edumatch編集部", avatar_url: null },
+    wp_post_id: null,
+    provider: { id: "demo-provider-2", name: "EdTech研究所", avatar_url: null },
   },
   {
     id: "demo-3",
-    provider_id: "demo-provider",
+    provider_id: "demo-provider-3",
     title: "教員の働き方改革 - ICTで実現する業務効率化",
     content: "教員の長時間労働が社会問題となる中、ICTを活用した業務効率化の取り組みが各地で進んでいます。校務支援システムの導入、保護者連絡のデジタル化、採点業務の自動化など、様々なツールが教員の負担軽減に貢献しています。\n\n本記事では、実際に働き方改革に成功した学校の事例と、導入のポイントを紹介します。",
     thumbnail_url: "https://placehold.co/800x450/8b5cf6/white?text=Work+Reform",
@@ -470,11 +472,12 @@ const DEMO_POSTS: PostWithProvider[] = [
     created_at: new Date(Date.now() - 1000 * 60 * 60 * 48),
     updated_at: new Date(),
     is_member_only: false,
-    provider: { id: "demo-provider", name: "Edumatch編集部", avatar_url: null },
+    wp_post_id: null,
+    provider: { id: "demo-provider-3", name: "学校運営サポート", avatar_url: null },
   },
   {
     id: "demo-4",
-    provider_id: "demo-provider",
+    provider_id: "demo-provider-4",
     title: "プログラミング教育必修化から3年 - 現場の声と今後の展望",
     content: "2020年に小学校で必修化されたプログラミング教育。導入から3年が経過し、各学校での実践が蓄積されてきました。\n\nScratchやViscuitなどのビジュアルプログラミングから、micro:bitやRaspberry Piを使った実践まで、多様な取り組みが行われています。",
     thumbnail_url: "https://placehold.co/800x450/f59e0b/white?text=Programming",
@@ -494,11 +497,12 @@ const DEMO_POSTS: PostWithProvider[] = [
     created_at: new Date(Date.now() - 1000 * 60 * 60 * 72),
     updated_at: new Date(),
     is_member_only: false,
-    provider: { id: "demo-provider", name: "Edumatch編集部", avatar_url: null },
+    wp_post_id: null,
+    provider: { id: "demo-provider-4", name: "プログラミング教育推進室", avatar_url: null },
   },
   {
     id: "demo-5",
-    provider_id: "demo-provider",
+    provider_id: "demo-provider-5",
     title: "オンライン授業の質を高める - 双方向コミュニケーションの工夫",
     content: "コロナ禍を経て定着したオンライン授業。対面授業との併用が一般的になる中、オンラインならではの強みを活かした授業設計が求められています。\n\nブレイクアウトルームの活用、デジタルホワイトボードの活用、チャット機能の効果的な使い方など、実践的なテクニックを紹介します。",
     thumbnail_url: "https://placehold.co/800x450/ec4899/white?text=Online+Class",
@@ -518,7 +522,8 @@ const DEMO_POSTS: PostWithProvider[] = [
     created_at: new Date(Date.now() - 1000 * 60 * 60 * 96),
     updated_at: new Date(),
     is_member_only: false,
-    provider: { id: "demo-provider", name: "Edumatch編集部", avatar_url: null },
+    wp_post_id: null,
+    provider: { id: "demo-provider-5", name: "オンライン教育ラボ", avatar_url: null },
   },
 ];
 
@@ -574,6 +579,38 @@ export async function getLatestPosts(limit: number = 10): Promise<PostWithProvid
     }
     console.error("Error fetching latest posts:", error);
     return DEMO_POSTS.slice(0, limit);
+  }
+}
+
+/**
+ * 公開記事のカテゴリ別件数（一覧で0件のカテゴリを非表示にするために使用）
+ */
+export async function getArticleCategoryCounts(): Promise<Record<string, number>> {
+  try {
+    const { user } = await requireAuthedUser();
+    const where = !user
+      ? {
+          AND: [
+            { OR: [{ status: "APPROVED" as const }, { is_published: true }] },
+            { is_member_only: false },
+          ],
+        }
+      : { OR: [{ status: "APPROVED" as const }, { is_published: true }] };
+
+    const result = await prisma.post.groupBy({
+      by: ["category"],
+      where,
+      _count: true,
+    });
+    const map: Record<string, number> = {};
+    for (const r of result) {
+      if (r.category) map[r.category] = r._count;
+    }
+    return map;
+  } catch (error) {
+    if (isDbUnavailable(error)) return {};
+    console.error("Error fetching article category counts:", error);
+    return {};
   }
 }
 

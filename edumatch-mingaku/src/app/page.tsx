@@ -1,32 +1,40 @@
 import { unstable_noStore } from "next/cache";
-import { HeroNews } from "@/components/home/hero-news";
-import { TopicsSection } from "@/components/home/topics-section";
+import { getHomeSliderItems } from "@/app/_actions/home";
+import { HeroSlider } from "@/components/home/hero-slider";
+import { SiteUpdateSection } from "@/components/home/site-update-section";
+import { VisualShowcaseSection } from "@/components/home/visual-showcase-section";
 import { RightSidebar } from "@/components/home/right-sidebar";
 
 export const dynamic = "force-dynamic";
 
-export default function HomePage() {
+export default async function HomePage() {
   unstable_noStore();
+  const sliderItems = await getHomeSliderItems(8);
+
   return (
-    <div className="bg-muted/30">
-      <div className="container py-6">
-        {/* レイアウトの左メニューは共通表示（layout.tsx） */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+    <div className="bg-muted/20">
+      <div className="container py-8">
+        {/* 1枚目: 記事・サービスの自動スライダー（全幅） */}
+        <section className="mb-8">
+          <HeroSlider items={sliderItems} />
+        </section>
+
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
           {/* メイン（中央） */}
-          <main className="lg:col-span-8 space-y-4">
-            {/* トップニュース */}
+          <main className="space-y-6 lg:col-span-8">
+            {/* 運営からのお知らせ */}
             <section>
-              <HeroNews />
+              <SiteUpdateSection />
             </section>
 
-            {/* トピックス */}
+            {/* 画像中心の注目記事・サービス */}
             <section>
-              <TopicsSection />
+              <VisualShowcaseSection />
             </section>
           </main>
 
           {/* 右サイドバー */}
-          <aside className="lg:col-span-4 hidden lg:block">
+          <aside className="hidden lg:col-span-4 lg:block">
             <RightSidebar />
           </aside>
         </div>

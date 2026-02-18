@@ -8,6 +8,167 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+model Profile {
+  id                              String            @id @db.Uuid
+  role                            Role              @default(VIEWER)
+  name                            String
+  email                           String            @unique
+  avatar_url                      String?
+  subscription_status             String            @default("INACTIVE")
+  created_at                      DateTime          @default(now())
+  updated_at                      DateTime          @updatedAt
+  address                         String?
+  city                            String?
+  phone                           String?
+  postal_code                     String?
+  prefecture                      String?
+  bio                             String?
+  website                         String?
+  subscription_plan               String?
+  stripe_customer_id              String?           @unique
+  stripe_subscription_id          String?
+  subscription_current_period_end DateTime?
+  material_requests               MaterialRequest[]
+  posts                           Post[]
+  services                        Service[]
+  view_histories                  ViewHistory[]
+
+  @@index([email])
+  @@index([stripe_customer_id])
+}
+
+model MaterialRequest {
+  id                   String   @id @default(cuid())
+  user_id              String   @db.Uuid
+  service_id           String
+  use_account_address  Boolean
+  delivery_name        String
+  delivery_phone       String?
+  delivery_postal_code String?
+  delivery_prefecture  String?
+  delivery_city        String?
+  delivery_address     String?
+  delivery_email       String
+  message              String?
+  created_at           DateTime @default(now())
+  service              Service  @relation(fields: [service_id], references: [id], onDelete: Cascade)
+  user                 Profile  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([service_id])
+}
+
+model ViewHistory {
+  id           String   @id @default(cuid())
+  user_id      String   @db.Uuid
+  content_type String
+  content_id   String
+  viewed_at    DateTime @default(now())
+  user         Profile  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, content_type, content_id])
+  @@index([user_id])
+}
+
+model Service {
+  id                String            @id @default(cuid())
+  provider_id       String            @db.Uuid
+  title             String
+  description       String
+  content           String
+  thumbnail_url     String?
+  category          String
+  price_info        String
+  tags              String[]          @default([])
+  is_published      Boolean           @default(false)
+  created_at        DateTime          @default(now())
+  updated_at        DateTime          @updatedAt
+  images            String[]
+  youtube_url       String?
+  approved_at       DateTime?
+  rejected_at       DateTime?
+  rejection_reason  String?
+  status            PublishStatus     @default(DRAFT)
+  submitted_at      DateTime?
+  is_member_only    Boolean           @default(false)
+  view_count        Int               @default(0)
+  favorite_count    Int               @default(0)
+  request_count     Int               @default(0)
+  material_requests MaterialRequest[]
+  provider          Profile           @relation(fields: [provider_id], references: [id], onDelete: Cascade)
+
+  @@index([provider_id])
+  @@index([category])
+  @@index([status])
+  @@index([favorite_count])
+  @@index([request_count])
+}
+
+model Post {
+  id               String        @id @default(cuid())
+  provider_id      String        @db.Uuid
+  title            String
+  content          String
+  thumbnail_url    String?
+  view_count       Int           @default(0)
+  is_published     Boolean       @default(false)
+  created_at       DateTime      @default(now())
+  updated_at       DateTime      @updatedAt
+  images           String[]
+  youtube_url      String?
+  approved_at      DateTime?
+  rejected_at      DateTime?
+  rejection_reason String?
+  status           PublishStatus @default(DRAFT)
+  submitted_at     DateTime?
+  is_member_only   Boolean       @default(false)
+  favorite_count   Int           @default(0)
+  category         String        @default("教育ICT")
+  summary          String?
+  tags             String[]
+  wp_post_id       Int?          @unique /// WordPress post_id。再インポート時にマッチし、favorite_count を引き継ぐ
+  provider         Profile       @relation(fields: [provider_id], references: [id], onDelete: Cascade)
+
+  @@index([provider_id])
+  @@index([category])
+  @@index([status])
+  @@index([favorite_count])
+  @@index([wp_post_id])
+}
+
+/// 運営情報（サイト更新情報）。WordPress インポートまたは手動登録。
+model SiteUpdate {
+  id            String   @id @default(uuid()) @db.Uuid
+  title         String
+  body          String   @default("")
+  excerpt       String?
+  published_at  DateTime
+  link          String?
+  wp_post_id    Int?     @unique
+  thumbnail_url String?
+  category      String?
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@index([published_at(sort: Desc)])
+  @@index([wp_post_id])
+}
+
+/// 記事・サービスの固定カテゴリマスター（22個の大カテゴリ）
+/// Post.category / Service.category はこのテーブルの name を参照
+/// タグ（Post.tags / Service.tags）は別途自由入力の配列として管理
+model ArticleCategory {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  slug      String?  @unique
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([sortOrder])
+  @@index([name])
+}
+
 enum Role {
   ADMIN
   PROVIDER
@@ -19,130 +180,4 @@ enum PublishStatus {
   PENDING
   APPROVED
   REJECTED
-}
-
-model Profile {
-  id                  String   @id @db.Uuid
-  role                Role     @default(VIEWER)
-  name                String
-  email               String   @unique
-  avatar_url          String?
-  subscription_status String   @default("INACTIVE") // INACTIVE, ACTIVE, CANCELED, PAST_DUE
-  subscription_plan   String?  // FREE, STANDARD, PREMIUM
-  stripe_customer_id  String?  @unique // Stripe顧客ID
-  stripe_subscription_id String? // StripeサブスクリプションID
-  subscription_current_period_end DateTime? // 現在の請求期間終了日
-  phone               String?
-  postal_code         String?
-  prefecture          String?
-  city                String?
-  address             String?  // 町名・番地（資料請求用）
-  bio                 String?  @db.Text // 自己紹介（SNS風プロフィール）
-  website             String?  // 公式サイト・SNS等
-  created_at          DateTime @default(now())
-  updated_at          DateTime @updatedAt
-
-  services       Service[]
-  posts          Post[]
-  view_histories ViewHistory[]
-  material_requests MaterialRequest[]
-
-  @@index([email])
-  @@index([stripe_customer_id])
-}
-
-model MaterialRequest {
-  id                  String   @id @default(cuid())
-  user_id             String   @db.Uuid
-  user                Profile  @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  service_id          String
-  service             Service  @relation(fields: [service_id], references: [id], onDelete: Cascade)
-  use_account_address Boolean  // true=登録住所で請求
-  delivery_name      String
-  delivery_phone      String?
-  delivery_postal_code String?
-  delivery_prefecture String?
-  delivery_city       String?
-  delivery_address    String?
-  delivery_email     String   // 請求者メール（資料送付先）
-  message            String?
-  created_at         DateTime @default(now())
-
-  @@index([user_id])
-  @@index([service_id])
-}
-
-model ViewHistory {
-  id           String   @id @default(cuid())
-  user_id      String   @db.Uuid
-  user         Profile  @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  content_type String   // "ARTICLE" | "SERVICE"
-  content_id   String
-  viewed_at    DateTime @default(now())
-
-  @@unique([user_id, content_type, content_id])
-  @@index([user_id])
-}
-
-model Service {
-  id             String   @id @default(cuid())
-  provider_id    String   @db.Uuid
-  provider       Profile  @relation(fields: [provider_id], references: [id], onDelete: Cascade)
-  title          String
-  description    String
-  content        String   @db.Text
-  thumbnail_url  String?
-  youtube_url   String?  // YouTube動画のURL
-  images        String[] // 追加画像のURL配列
-  category       String
-  price_info    String
-  is_published   Boolean  @default(false)
-  is_member_only Boolean @default(false) // true=会員限定
-  status        PublishStatus @default(DRAFT)
-  submitted_at  DateTime?
-  approved_at   DateTime?
-  rejected_at   DateTime?
-  rejection_reason String?
-  view_count    Int      @default(0) // 閲覧数
-  favorite_count Int     @default(0) // お気に入り数
-  request_count Int      @default(0) // 資料請求リスト追加数
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
-  material_requests MaterialRequest[]
-
-  @@index([provider_id])
-  @@index([category])
-  @@index([status])
-  @@index([favorite_count])
-  @@index([request_count])
-}
-
-model Post {
-  id            String   @id @default(cuid())
-  provider_id   String   @db.Uuid
-  provider      Profile  @relation(fields: [provider_id], references: [id], onDelete: Cascade)
-  title         String
-  category      String   @default("教育ICT") // カテゴリ
-  tags          String[] // タグ配列
-  summary       String?  @db.Text // 概要・リード文
-  content       String   @db.Text
-  thumbnail_url String?
-  youtube_url   String?  // YouTube動画のURL
-  images        String[] // 追加画像のURL配列
-  view_count    Int      @default(0) // 閲覧数
-  favorite_count Int     @default(0) // お気に入り数
-  is_published  Boolean  @default(false)
-  is_member_only Boolean @default(false) // true=会員限定
-  status        PublishStatus @default(DRAFT)
-  submitted_at  DateTime?
-  approved_at   DateTime?
-  rejected_at   DateTime?
-  rejection_reason String?
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
-
-  @@index([provider_id])
-  @@index([category])
-  @@index([status])
-  @@index([favorite_count])
 }

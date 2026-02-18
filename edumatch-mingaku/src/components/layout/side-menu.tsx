@@ -6,23 +6,21 @@ import {
   Home,
   Search,
   Newspaper,
+  Calendar,
   Building2,
   HelpCircle,
-  Briefcase,
   Scale,
-  Users,
-  FileBadge2,
   PenSquare,
-  Heart,
 } from "lucide-react";
-import { getCurrentUserRole } from "@/app/_actions/user";
 
 const items = [
   { href: "/", label: "ホーム", icon: Home },
   { href: "/services", label: "サービス一覧", icon: Search },
   { href: "/articles", label: "記事一覧", icon: Newspaper },
+  { href: "/events", label: "セミナー・イベント情報", icon: Calendar },
   { href: "/articles/create", label: "記事を投稿", icon: PenSquare, roles: ["PROVIDER", "ADMIN"] },
   { href: "/services/create", label: "サービスを投稿", icon: PenSquare, roles: ["PROVIDER", "ADMIN"] },
+  { href: "/admin/site-updates", label: "運営記事を書く", icon: PenSquare, roles: ["ADMIN"] },
   { href: "/companies", label: "掲載企業一覧", icon: Building2 },
   { href: "/compare", label: "サービス比較", icon: Scale },
   { href: "/help", label: "ヘルプ", icon: HelpCircle },
@@ -30,21 +28,17 @@ const items = [
 
 export function SideMenu() {
   const [role, setRole] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchRole() {
-      try {
-        const r = await getCurrentUserRole();
-        setRole(r);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchRole();
-  }, []);
+    // マウント時に1回だけ /api/auth/me から role を取得
+    // Header と同じエンドポイントを使用
+    fetch("/api/auth/me", { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        setRole(data?.profile?.role ?? null);
+      })
+      .catch(() => setRole(null));
+  }, []); // [] = マウント時のみ（pathname変更時は再取得しない）
 
   return (
     <aside className="border rounded-lg bg-card overflow-hidden">
@@ -63,6 +57,7 @@ export function SideMenu() {
             <Link
               key={item.href}
               href={item.href}
+              prefetch={false}
               className={`flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-muted transition-colors ${
                 index !== items.length - 1 ? "border-b" : ""
               }`}

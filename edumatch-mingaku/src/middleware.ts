@@ -20,6 +20,7 @@ const protectedPaths = [
   "/services/create",
   "/payment",
   "/request-info",
+  "/admin", // /admin 配下はログイン必須。ADMIN 判定は各ページで DB の Profile.role を使用
 ];
 
 // 認証済みユーザーがアクセスすべきでないパス
@@ -82,15 +83,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  // /admin 配下は ADMIN のみ許可（メタデータroleで判定）
-  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
-    const role = (user?.user_metadata as { role?: string } | null | undefined)?.role;
-    if (!user || role !== "ADMIN") {
-      const redirectUrl = new URL("/dashboard", request.url);
-      redirectUrl.searchParams.set("message", "管理者権限が必要です");
-      return NextResponse.redirect(redirectUrl);
-    }
-  }
+  // /admin 配下の ADMIN 判定は各ページで DB の Profile.role にて実施（メニュー表示と統一）
 
   // 認証済みユーザーがログインページにアクセスした場合
   const isAuthPath = authPaths.some(

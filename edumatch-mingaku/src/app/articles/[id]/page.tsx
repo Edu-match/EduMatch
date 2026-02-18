@@ -3,7 +3,7 @@ import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Calendar, ArrowLeft, Share2, Eye, User, Play } from "lucide-react";
+import { Calendar, ArrowLeft, Share2, Eye, User, Play, Pencil } from "lucide-react";
 import { unstable_noStore } from "next/cache";
 import { getPostById, getLatestPosts, recordView } from "@/app/_actions";
 import { getCurrentUser } from "@/lib/auth";
@@ -21,20 +21,6 @@ function formatDate(date: Date): string {
     month: "long",
     day: "numeric",
   }).format(date);
-}
-
-// カテゴリを推測（将来的にはDBにカテゴリカラムを追加）
-function getCategory(content: string): string {
-  if (content.includes("ICT") || content.includes("デジタル") || content.includes("AI")) {
-    return "教育ICT";
-  }
-  if (content.includes("事例") || content.includes("実践") || content.includes("導入")) {
-    return "導入事例";
-  }
-  if (content.includes("運営") || content.includes("保護者") || content.includes("働き方")) {
-    return "学校運営";
-  }
-  return "教育ICT";
 }
 
 export default async function ArticleDetailPage({
@@ -59,7 +45,7 @@ export default async function ArticleDetailPage({
   const relatedPosts = await getLatestPosts(4);
   const filteredRelatedPosts = relatedPosts.filter((p) => p.id !== post.id).slice(0, 3);
 
-  const category = getCategory(post.content);
+  const category = post.category || "未分類";
 
   return (
     <div className="container py-8">
@@ -114,6 +100,14 @@ export default async function ArticleDetailPage({
               <span className="text-xs text-primary">プロフィールを見る →</span>
             </Link>
             <div className="flex items-center gap-2">
+              {user?.id === post.provider_id && (
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/articles/${post.id}/edit`}>
+                    <Pencil className="h-4 w-4 mr-1" />
+                    編集
+                  </Link>
+                </Button>
+              )}
               <ArticleDetailActions
                 articleId={post.id}
                 title={post.title}
@@ -132,12 +126,12 @@ export default async function ArticleDetailPage({
         </div>
 
         {/* メイン画像 */}
-        <div className="relative h-64 md:h-96 w-full mb-8 rounded-lg overflow-hidden bg-muted">
+        <div className="relative h-48 md:h-60 w-full mb-8 rounded-lg overflow-hidden bg-muted flex items-center justify-center">
           <Image
             src={post.thumbnail_url || "https://placehold.co/800x450/e0f2fe/0369a1?text=Article"}
             alt={post.title}
             fill
-            className="object-cover"
+            className="object-contain"
             unoptimized
           />
         </div>
@@ -161,13 +155,13 @@ export default async function ArticleDetailPage({
               {post.images.map((imageUrl, index) => (
                 <div
                   key={index}
-                  className="relative aspect-video rounded-lg overflow-hidden bg-muted"
+                  className="relative aspect-video rounded-lg overflow-hidden bg-muted flex items-center justify-center"
                 >
                   <Image
                     src={imageUrl}
                     alt={`${post.title} - 画像${index + 1}`}
                     fill
-                    className="object-cover"
+                    className="object-contain"
                     unoptimized
                   />
                 </div>
@@ -222,12 +216,12 @@ export default async function ArticleDetailPage({
                     className="block p-4 border rounded-lg hover:bg-muted transition-colors"
                   >
                     <div className="flex gap-4">
-                      <div className="relative h-16 w-24 flex-shrink-0 rounded overflow-hidden bg-muted">
+                      <div className="relative h-16 w-24 flex-shrink-0 rounded overflow-hidden bg-muted flex items-center justify-center">
                         <Image
                           src={relatedPost.thumbnail_url || "https://placehold.co/120x80/e0f2fe/0369a1?text=Article"}
                           alt={relatedPost.title}
                           fill
-                          className="object-cover"
+                          className="object-contain"
                           unoptimized
                         />
                       </div>
