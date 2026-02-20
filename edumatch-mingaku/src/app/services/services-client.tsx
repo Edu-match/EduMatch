@@ -1,28 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Pagination } from "@/components/ui/pagination";
 import { Search, ExternalLink } from "lucide-react";
 import { AddToRequestListButton } from "@/components/request-list/add-to-request-list-button";
 import type { ServiceForList } from "./page";
+
+const PAGE_SIZE = 30;
 
 /** 公開一覧: 件数が1件以上のカテゴリのみ表示（投稿者ページでは全カテゴリ表示） */
 export function ServicesClient({
   services,
   categoriesWithCount,
+  displayOrderIds,
 }: {
   services: ServiceForList[];
   categoriesWithCount: string[];
+  displayOrderIds: string[];
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
 
-  const filteredServices = services.filter((service) => {
+  const filtered = services.filter((service) => {
     const matchesSearch =
       service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       service.description.toLowerCase().includes(searchQuery.toLowerCase());
@@ -30,6 +36,35 @@ export function ServicesClient({
       selectedCategory === "all" || service.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
+
+  // カテゴリ「すべて」のときのみ指定順でソート（displayOrderIds の並びに従う）
+  const filteredServices =
+    selectedCategory === "all" && displayOrderIds.length > 0
+      ? [...filtered].sort((a, b) => {
+          const ia = displayOrderIds.indexOf(a.id);
+          const ib = displayOrderIds.indexOf(b.id);
+          const ai = ia === -1 ? 9999 : ia;
+          const bi = ib === -1 ? 9999 : ib;
+          return ai - bi;
+        })
+      : filtered;
+
+  const totalPages = Math.ceil(filteredServices.length / PAGE_SIZE);
+  const paginatedServices = filteredServices.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+
+  // 検索・カテゴリ変更時に1ページ目に戻る
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedCategory]);
+
+  // ページ変更時にページトップへスクロール
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
@@ -41,7 +76,7 @@ export function ServicesClient({
               EdTechサービス一覧
             </h1>
             <p className="text-lg text-muted-foreground">
-              {services.length}以上のEdTechツールから、あなたに最適なサービスを見つけましょう
+              {services.length}件のEdTechツールから、あなたに最適なサービスを見つけましょう
             </p>
           </div>
         </div>
@@ -49,7 +84,7 @@ export function ServicesClient({
 
       <div className="container py-8">
         {/* 検索・フィルターエリア */}
-        <Card className="mb-8 shadow-lg border-2">
+        <Card className="mb-6 shadow-lg border-2">
           <CardContent className="p-6">
             <div className="space-y-4">
               {/* 検索バー */}
@@ -63,7 +98,7 @@ export function ServicesClient({
                 />
               </div>
 
-              {/* カテゴリフィルター: 件数1件以上のカテゴリのみボタン表示 */}
+              {/* カテゴリフィルター */}
               <div className="flex items-center gap-2 pb-2 overflow-x-auto flex-wrap">
                 <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">
                   カテゴリ:
@@ -110,9 +145,18 @@ export function ServicesClient({
           </CardContent>
         </Card>
 
+        {/* ページネーション（上部） */}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+          totalItems={filteredServices.length}
+          pageSize={PAGE_SIZE}
+        />
+
         {/* サービス一覧グリッド */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {filteredServices.map((service, index) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6 mb-8">
+          {paginatedServices.map((service, index) => (
             <Link
               key={service.id}
               href={`/services/${service.id}`}
@@ -122,7 +166,7 @@ export function ServicesClient({
             >
               <Card className="h-full overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 border-2 hover:border-primary/50 bg-card">
                 {/* 画像エリア */}
-                <div className="relative h-32 w-full overflow-hidden bg-muted flex items-center justify-center">
+                <div className="relative w-full aspect-video overflow-hidden bg-muted flex items-center justify-center">
                   <Image
                     src={service.image}
                     alt={service.name}
@@ -131,8 +175,8 @@ export function ServicesClient({
                     unoptimized
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  
-                  {/* 資料請求リストに追加（マーク） */}
+
+                  {/* サービスのお気に入りに追加 */}
                   <div className="absolute top-3 left-3 z-10">
                     <AddToRequestListButton
                       item={{
@@ -145,6 +189,7 @@ export function ServicesClient({
                       className="bg-white/95 hover:bg-white shadow-lg border-0"
                     />
                   </div>
+
                   {/* カテゴリバッジ（画像上） */}
                   <div className="absolute top-3 right-3">
                     <Badge className="bg-white/95 text-foreground border shadow-lg">
@@ -216,6 +261,15 @@ export function ServicesClient({
             </CardContent>
           </Card>
         )}
+
+        {/* ページネーション（下部） */}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+          totalItems={filteredServices.length}
+          pageSize={PAGE_SIZE}
+        />
       </div>
     </div>
   );

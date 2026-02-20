@@ -26,7 +26,7 @@ export function Footer() {
           {/* Logo & Description */}
           <div className="space-y-4">
             <Link href="/" className="flex items-center space-x-2">
-              <span className="absolute left-[17px] text-xl font-bold text-primary">Edumatch</span>
+              <span className="absolute left-[17px] text-xl font-bold text-primary">エデュマッチ</span>
             </Link>
             <p className="absolute left-[17px] text-sm text-muted-foreground">
               教育の未来を見つける、つながる
@@ -88,7 +88,7 @@ export function Footer() {
         {/* Copyright */}
         <div className="mt-12 border-t pt-8">
           <p className="text-center text-sm text-muted-foreground">
-            © {currentYear} Edumatch. All rights reserved.
+            © {currentYear} エデュマッチ（株式会社スタディパーク）. All rights reserved.
           </p>
         </div>
       </div>

@@ -87,7 +87,7 @@ export function AddToRequestListButton({
       toast.error("この機能を使うにはログインが必要です");
       setTimeout(() => {
         const currentPath = window.location.pathname;
-        window.location.href = `/login?redirect_to=${encodeURIComponent(currentPath)}&message=${encodeURIComponent("資料請求リストを利用するにはログインが必要です")}`;
+        window.location.href = `/login?redirect_to=${encodeURIComponent(currentPath)}&message=${encodeURIComponent("サービスのお気に入りを利用するにはログインが必要です")}`;
       }, 1000);
       return;
     }
@@ -95,7 +95,7 @@ export function AddToRequestListButton({
     // 制限チェック（追加時のみ）
     if (!inList && requestListLimit !== null && count >= requestListLimit) {
       const plan = requestListLimit === 2 ? "フリー" : requestListLimit === 5 ? "スタンダード" : "プレミアム";
-      toast.error(`資料請求リストの上限（${requestListLimit}件）に達しています。プランをアップグレードしてください。`, {
+      toast.error(`サービスのお気に入りの上限（${requestListLimit}件）に達しています。プランをアップグレードしてください。`, {
         duration: 5000,
         action: {
           label: "プランを見る",
@@ -122,8 +122,8 @@ export function AddToRequestListButton({
 
     toast.success(
       added
-        ? "資料請求リストに追加しました"
-        : "資料請求リストから外しました"
+        ? "お気に入りに追加しました"
+        : "お気に入りから外しました"
     );
   };
 
@@ -135,8 +135,8 @@ export function AddToRequestListButton({
         size="icon"
         className={`rounded-full ${className ?? ""}`}
         onClick={handleClick}
-        aria-label={inList ? "資料請求リストから外す" : "資料請求リストに追加"}
-        title={inList ? "資料請求リストから外す" : "後でまとめて資料請求に追加"}
+        aria-label={inList ? "お気に入りから外す" : "お気に入りに追加"}
+        title={inList ? "お気に入りから外す" : "お気に入りに追加（まとめて資料請求可）"}
       >
         {inList ? (
           <BookmarkCheck className="h-5 w-5 text-primary fill-primary" />
@@ -163,7 +163,7 @@ export function AddToRequestListButton({
       ) : (
         <>
           <Bookmark className="h-4 w-4 mr-2" />
-          後で資料請求に追加
+          お気に入りに追加
         </>
       )}
     </Button>

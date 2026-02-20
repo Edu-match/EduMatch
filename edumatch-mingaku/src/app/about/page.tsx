@@ -65,7 +65,7 @@ export default function AboutPage() {
         <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
           教育の未来を見つける、つながる
           <br />
-          Edumatchは教育現場とEdTechをつなぐプラットフォームです
+          エデュマッチは教育現場とEdTechをつなぐプラットフォームです
         </p>
       </div>
 
@@ -118,7 +118,10 @@ export default function AboutPage() {
                   <div>
                     <p className="font-medium">会社名</p>
                     <p className="text-muted-foreground">
-                      株式会社エデュマッチ
+                      株式会社スタディパーク
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      （運営サービス：エデュマッチ）
                     </p>
                   </div>
                 </div>
@@ -127,11 +130,11 @@ export default function AboutPage() {
                   <div>
                     <p className="font-medium">所在地</p>
                     <p className="text-muted-foreground">
-                      〒100-0001
+                      〒105-0004
                       <br />
-                      東京都千代田区千代田1-1-1
+                      東京都港区新橋2-20-15
                       <br />
-                      エデュマッチビル 10F
+                      新橋駅前ビル1号館6階
                     </p>
                   </div>
                 </div>
@@ -148,7 +151,7 @@ export default function AboutPage() {
                   <Mail className="h-5 w-5 text-primary mt-0.5" />
                   <div>
                     <p className="font-medium">メールアドレス</p>
-                    <p className="text-muted-foreground">info@edumatch.jp</p>
+                    <p className="text-muted-foreground">info@edu-match.com</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
@@ -208,8 +211,7 @@ export default function AboutPage() {
           </CardContent>
         </Card>
         <div className="mt-4 text-center text-muted-foreground">
-          <p>東京メトロ千代田線「○○駅」A1出口より徒歩3分</p>
-          <p>JR「○○駅」丸の内北口より徒歩8分</p>
+          <p>JR各線・東京メトロ銀座線・都営浅草線「新橋駅」より徒歩1分</p>
         </div>
       </section>
 

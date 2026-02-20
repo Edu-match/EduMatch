@@ -1,6 +1,7 @@
-import { getPublicServicesFromSupabase } from "@/lib/supabase-services";
+import { getAllServices } from "@/app/_actions";
+import { sortServicesByDisplayOrder, getDisplayOrderIds } from "@/lib/service-display-order";
 import { ServicesClient } from "./services-client";
-import { ARTICLE_CATEGORIES } from "@/lib/categories";
+import { SERVICE_CATEGORY_LIST } from "@/lib/categories";
 
 export const dynamic = "force-dynamic";
 
@@ -14,35 +15,43 @@ export type ServiceForList = {
 };
 
 export default async function ServicesPage() {
-  const services = await getPublicServicesFromSupabase();
+  const services = await getAllServices();
 
-  const serviceList: ServiceForList[] = services.map((service) => ({
+  // カテゴリ「すべて」のときの表示順: 指定リスト順（プレミアム→スタンダード→ベーシック→その他）
+  const sorted = sortServicesByDisplayOrder(services);
+  const displayOrderIds = getDisplayOrderIds(services);
+
+  const serviceList: ServiceForList[] = sorted.map((service) => ({
     id: service.id,
     name: service.title,
-    description: service.description,
-    category: service.category,
+    description: service.description ?? "",
+    category: service.category ?? "",
     image: service.thumbnail_url || "https://placehold.co/300x200/e0f2fe/0369a1?text=Service",
-    price: service.price_info,
+    price: service.price_info ?? "",
   }));
 
-  // 公開一覧用: 記事/サービスが1件以上あるカテゴリのみ表示（0件は非表示）
+  // サービスカテゴリ一覧（1件以上あるものだけ表示）
   const categoryCounts = new Map<string, number>();
-  for (const c of ARTICLE_CATEGORIES) categoryCounts.set(c, 0);
+  for (const c of SERVICE_CATEGORY_LIST) categoryCounts.set(c, 0);
   for (const s of serviceList) {
-    if (s.category && categoryCounts.has(s.category)) {
+    if (s.category) {
       categoryCounts.set(s.category, (categoryCounts.get(s.category) ?? 0) + 1);
     }
   }
-  let categoriesWithCount = ARTICLE_CATEGORIES.filter((c) => (categoryCounts.get(c) ?? 0) > 0);
-  // 既存データが旧カテゴリの場合は1件もマッチせず空になるため、そのときは全カテゴリを表示
+  // SERVICE_CATEGORY_LIST の順を維持しつつ1件以上のものを表示
+  let categoriesWithCount = [...SERVICE_CATEGORY_LIST].filter(
+    (c) => (categoryCounts.get(c) ?? 0) > 0
+  );
+  // カテゴリが1件もない場合は全カテゴリを表示
   if (categoriesWithCount.length === 0) {
-    categoriesWithCount = [...ARTICLE_CATEGORIES];
+    categoriesWithCount = [...SERVICE_CATEGORY_LIST];
   }
 
   return (
     <ServicesClient
       services={serviceList}
       categoriesWithCount={categoriesWithCount}
+      displayOrderIds={displayOrderIds}
     />
   );
 }

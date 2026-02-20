@@ -41,7 +41,7 @@ export default function RegisterCompletePage() {
             <h1 className="text-3xl font-bold mb-4">会員登録が完了しました</h1>
 
             <p className="text-lg text-muted-foreground mb-2">
-              Edumatchへようこそ！
+              エデュマッチへようこそ！
             </p>
             <p className="text-muted-foreground mb-8">
               ご登録いただいたメールアドレスに確認メールを送信しました。

@@ -62,12 +62,12 @@ export async function VisualShowcaseSection() {
                 href={`/articles/${articles[0].id}`}
                 className="group block overflow-hidden rounded-xl border bg-card"
               >
-                <div className="relative h-60 w-full md:h-72">
+                <div className="relative w-full aspect-video overflow-hidden">
                   <Image
                     src={articles[0].thumbnail_url || "https://placehold.co/1200x675/e0f2fe/0369a1?text=Article"}
                     alt={articles[0].title}
                     fill
-                    className="object-cover transition-transform duration-500 group-hover:scale-105"
+                    className="object-contain transition-transform duration-500 group-hover:scale-105"
                     sizes="(max-width: 1280px) 100vw, 66vw"
                     priority
                     unoptimized
@@ -88,12 +88,12 @@ export async function VisualShowcaseSection() {
                     href={`/articles/${article.id}`}
                     className="group overflow-hidden rounded-xl border bg-card transition-shadow hover:shadow-md"
                   >
-                    <div className="relative h-44 w-full">
+                    <div className="relative w-full aspect-video overflow-hidden">
                       <Image
                         src={article.thumbnail_url || "https://placehold.co/800x450/e0f2fe/0369a1?text=Article"}
                         alt={article.title}
                         fill
-                        className="object-cover transition-transform duration-500 group-hover:scale-105"
+                        className="object-contain transition-transform duration-500 group-hover:scale-105"
                         sizes="(max-width: 768px) 100vw, 50vw"
                         unoptimized
                       />
@@ -129,12 +129,12 @@ export async function VisualShowcaseSection() {
                   href={`/services/${service.id}`}
                   className="group block overflow-hidden rounded-xl border bg-card transition-shadow hover:shadow-md"
                 >
-                  <div className="relative h-36 w-full">
+                  <div className="relative w-full aspect-video overflow-hidden">
                     <Image
                       src={service.thumbnail_url || "https://placehold.co/800x450/e0f2fe/0369a1?text=Service"}
                       alt={service.title}
                       fill
-                      className="object-cover transition-transform duration-500 group-hover:scale-105"
+                      className="object-contain transition-transform duration-500 group-hover:scale-105"
                       sizes="(max-width: 1280px) 100vw, 33vw"
                       unoptimized
                     />

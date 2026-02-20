@@ -46,6 +46,7 @@ export default async function ArticleDetailPage({
   const filteredRelatedPosts = relatedPosts.filter((p) => p.id !== post.id).slice(0, 3);
 
   const category = post.category || "未分類";
+  const authorName = post.author_display_name ?? post.provider?.name ?? "エデュマッチ事務局";
 
   return (
     <div className="container py-8">
@@ -83,7 +84,7 @@ export default async function ArticleDetailPage({
               {post.provider?.avatar_url ? (
                 <Image
                   src={post.provider.avatar_url}
-                  alt={post.provider.name || "投稿者"}
+                  alt={authorName}
                   width={32}
                   height={32}
                   className="rounded-full"
@@ -95,7 +96,7 @@ export default async function ArticleDetailPage({
                 </div>
               )}
               <p className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                {post.provider?.name || "投稿者"}
+                {authorName}
               </p>
               <span className="text-xs text-primary">プロフィールを見る →</span>
             </Link>
@@ -117,7 +118,7 @@ export default async function ArticleDetailPage({
               <ShareButton
                 url={`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/articles/${post.id}`}
                 title={post.title}
-                text={`${post.title} - EduMatch`}
+                text={`${post.title} - エデュマッチ`}
                 variant="outline"
                 size="sm"
               />
@@ -126,7 +127,7 @@ export default async function ArticleDetailPage({
         </div>
 
         {/* メイン画像 */}
-        <div className="relative h-48 md:h-60 w-full mb-8 rounded-lg overflow-hidden bg-muted flex items-center justify-center">
+        <div className="relative w-full aspect-video mb-8 rounded-lg overflow-hidden bg-muted flex items-center justify-center">
           <Image
             src={post.thumbnail_url || "https://placehold.co/800x450/e0f2fe/0369a1?text=Article"}
             alt={post.title}
@@ -182,7 +183,7 @@ export default async function ArticleDetailPage({
               {post.provider.avatar_url ? (
                 <Image
                   src={post.provider.avatar_url}
-                  alt={post.provider.name}
+                  alt={authorName}
                   width={64}
                   height={64}
                   className="rounded-full"
@@ -194,7 +195,7 @@ export default async function ArticleDetailPage({
                 </div>
               )}
               <div>
-                <p className="font-semibold text-lg">{post.provider.name}</p>
+                <p className="font-semibold text-lg">{authorName}</p>
                 <p className="text-sm text-muted-foreground">
                   この記事の執筆者
                 </p>
@@ -216,7 +217,7 @@ export default async function ArticleDetailPage({
                     className="block p-4 border rounded-lg hover:bg-muted transition-colors"
                   >
                     <div className="flex gap-4">
-                      <div className="relative h-16 w-24 flex-shrink-0 rounded overflow-hidden bg-muted flex items-center justify-center">
+                      <div className="relative w-24 flex-shrink-0 overflow-hidden rounded bg-muted aspect-video flex items-center justify-center">
                         <Image
                           src={relatedPost.thumbnail_url || "https://placehold.co/120x80/e0f2fe/0369a1?text=Article"}
                           alt={relatedPost.title}

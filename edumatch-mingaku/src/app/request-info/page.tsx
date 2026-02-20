@@ -25,9 +25,11 @@ export default async function RequestInfoPage({ searchParams }: Props) {
       }
     : null;
 
-  const serviceIds = serviceIdsParam
+  const BATCH_REQUEST_MAX = 5;
+  const rawIds = serviceIdsParam
     ? serviceIdsParam.split(",").map((s) => s.trim()).filter(Boolean)
     : null;
+  const serviceIds = rawIds ? rawIds.slice(0, BATCH_REQUEST_MAX) : null;
 
   if (!serviceId && !serviceIds?.length) {
     return (
@@ -35,11 +37,11 @@ export default async function RequestInfoPage({ searchParams }: Props) {
         <div className="max-w-md mx-auto text-center space-y-4">
           <h1 className="text-2xl font-bold">資料請求</h1>
           <p className="text-muted-foreground">
-            資料請求するサービスを選択してください。サービス詳細ページの「資料請求する」からお進みください。リストに追加したサービスはまとめて請求できます。
+            資料請求するサービスを選択してください。サービス詳細で「お気に入りに追加」したサービスは、マイページから一斉に資料請求（最大5件）できます。
           </p>
           <div className="flex flex-col sm:flex-row gap-2 justify-center">
             <Button asChild>
-              <Link href="/request-info/list">資料請求リストを見る</Link>
+              <Link href="/request-info/list">サービスのお気に入りを見る</Link>
             </Button>
             <Button asChild variant="outline">
               <Link href="/services">サービス一覧へ</Link>
@@ -61,7 +63,7 @@ export default async function RequestInfoPage({ searchParams }: Props) {
           <div className="max-w-md mx-auto text-center space-y-4">
             <h1 className="text-2xl font-bold">サービスが見つかりません</h1>
             <Button asChild>
-              <Link href="/request-info/list">資料請求リストへ</Link>
+              <Link href="/request-info/list">サービスのお気に入りへ</Link>
             </Button>
           </div>
         </div>

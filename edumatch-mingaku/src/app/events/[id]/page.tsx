@@ -1,47 +1,46 @@
 import Link from "next/link";
-import Image from "next/image";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Calendar,
-  MapPin,
-  Users,
-  Clock,
-  Video,
-  Building,
-  ArrowLeft,
-  ExternalLink,
-} from "lucide-react";
-import { getEventById } from "@/lib/events-data";
-import { eventTypes, formats } from "@/lib/events-data";
+import { Calendar, MapPin, Building2, ArrowLeft, ExternalLink } from "lucide-react";
+import { getEventById } from "@/app/_actions/events";
 
 type PageProps = {
   params: Promise<{ id: string }>;
 };
 
+function formatEventDate(dateStr: string | null): string {
+  if (!dateStr) return "日程未定";
+  try {
+    return new Date(dateStr + "T00:00:00").toLocaleDateString("ja-JP", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      weekday: "short",
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
 export default async function EventDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const eventId = parseInt(id, 10);
-  if (Number.isNaN(eventId)) notFound();
 
-  const event = getEventById(eventId);
+  const event = await getEventById(id);
   if (!event) notFound();
 
-  const typeLabel = eventTypes.find((t) => t.value === event.type)?.label ?? event.type;
-  const formatLabel = formats.find((f) => f.value === event.format)?.label ?? event.format;
-  const FormatIcon = event.format === "offline" ? Building : Video;
+  // 外部URLがある場合はリダイレクト（直接外部に飛ばす）
+  if (event.external_url) {
+    redirect(event.external_url);
+  }
 
-  const dateFormatted = new Date(event.date + "T12:00:00").toLocaleDateString("ja-JP", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    weekday: "short",
-  });
+  const isUpcoming = event.event_date
+    ? new Date(event.event_date) >= new Date()
+    : false;
 
   return (
-    <div className="container py-8 max-w-3xl">
+    <div className="container py-8 max-w-2xl">
       <Button variant="ghost" asChild className="mb-6 -ml-2">
         <Link href="/events" className="flex items-center gap-2">
           <ArrowLeft className="h-4 w-4" />
@@ -49,82 +48,51 @@ export default async function EventDetailPage({ params }: PageProps) {
         </Link>
       </Button>
 
-      <Card className="overflow-hidden">
-        <div className="relative h-48 sm:h-64">
-          <Image
-            src={event.image}
-            alt={event.title}
-            fill
-            className="object-cover"
-            priority
-            unoptimized
-          />
-          <div className="absolute top-3 left-3 flex flex-wrap gap-2">
-            {event.featured && (
-              <Badge className="bg-amber-500 hover:bg-amber-600">注目</Badge>
-            )}
-            <Badge>{typeLabel}</Badge>
-            <Badge variant="secondary" className="flex items-center gap-1">
-              <FormatIcon className="h-3 w-3" />
-              {formatLabel}
-            </Badge>
-          </div>
-        </div>
+      <Card>
         <CardContent className="p-6 sm:p-8">
-          <h1 className="text-2xl sm:text-3xl font-bold mb-4">{event.title}</h1>
+          <div className="flex flex-wrap gap-2 mb-4">
+            {isUpcoming ? (
+              <Badge className="bg-green-500 hover:bg-green-600 text-white">開催予定</Badge>
+            ) : event.event_date ? (
+              <Badge variant="secondary">終了</Badge>
+            ) : (
+              <Badge variant="outline">日程未定</Badge>
+            )}
+          </div>
 
-          <div className="grid gap-3 mb-6 text-sm text-muted-foreground">
+          <h1 className="text-2xl font-bold mb-6 leading-snug">{event.title}</h1>
+
+          <div className="space-y-3 mb-6 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 flex-shrink-0" />
-              {dateFormatted} {event.time}
+              {formatEventDate(event.event_date)}
             </div>
-            <div className="flex items-center gap-2">
-              <MapPin className="h-4 w-4 flex-shrink-0" />
-              {event.location}
-            </div>
-            <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 flex-shrink-0" />
-              {event.registered}/{event.capacity}名
-            </div>
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 flex-shrink-0" />
-              登壇: {event.speaker}
-            </div>
-          </div>
-
-          <p className="text-muted-foreground leading-relaxed mb-6 whitespace-pre-line">
-            {event.description}
-          </p>
-
-          <div className="flex flex-wrap gap-1 mb-6">
-            {event.tags.map((tag) => (
-              <Badge key={tag} variant="outline" className="text-xs">
-                {tag}
-              </Badge>
-            ))}
-          </div>
-
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-4 border-t">
-            <span className="font-semibold text-primary text-lg">{event.price}</span>
-            {event.externalUrl ? (
-              <Button asChild>
-                <a
-                  href={event.externalUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2"
-                >
-                  詳細・申込はこちら
-                  <ExternalLink className="h-4 w-4" />
-                </a>
-              </Button>
-            ) : (
-              <Button asChild>
-                <Link href="/contact?subject=イベント申込" className="inline-flex items-center gap-2">
-                  お問い合わせで申し込む
-                </Link>
-              </Button>
+            {event.venue && (
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 flex-shrink-0" />
+                {event.venue}
+              </div>
             )}
+            {event.company && (
+              <div className="flex items-center gap-2">
+                <Building2 className="h-4 w-4 flex-shrink-0" />
+                {event.company}
+              </div>
+            )}
+          </div>
+
+          {event.description && (
+            <p className="text-muted-foreground leading-relaxed mb-6 whitespace-pre-line">
+              {event.description}
+            </p>
+          )}
+
+          <div className="pt-4 border-t">
+            <Button asChild>
+              <Link href="/contact?subject=イベント問い合わせ" className="inline-flex items-center gap-2">
+                お問い合わせで申し込む
+              </Link>
+            </Button>
           </div>
         </CardContent>
       </Card>

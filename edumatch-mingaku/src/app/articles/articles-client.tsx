@@ -1,15 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Pagination } from "@/components/ui/pagination";
 import { Search, Calendar, ExternalLink, FileText } from "lucide-react";
 import { AddToFavoritesButton } from "@/components/favorites/add-to-favorites-button";
 import type { ArticleForList } from "./page";
+
+const PAGE_SIZE = 30;
 
 /** 公開一覧: 件数が1件以上のカテゴリのみ表示（投稿者ページでは全カテゴリ表示） */
 export function ArticlesClient({
@@ -21,6 +24,7 @@ export function ArticlesClient({
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
 
   const filteredArticles = articles.filter((article) => {
     const matchesSearch =
@@ -30,6 +34,23 @@ export function ArticlesClient({
       selectedCategory === "all" || article.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
+
+  const totalPages = Math.ceil(filteredArticles.length / PAGE_SIZE);
+  const paginatedArticles = filteredArticles.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+
+  // 検索・カテゴリ変更時に1ページ目に戻る
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedCategory]);
+
+  // ページ変更時にページトップへスクロール
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
@@ -41,7 +62,7 @@ export function ArticlesClient({
               教育記事一覧
             </h1>
             <p className="text-lg text-muted-foreground">
-              {articles.length}以上の記事から、教育現場の最新情報や実践事例をお届けします
+              {articles.length}件の記事から、教育現場の最新情報や実践事例をお届けします
             </p>
           </div>
         </div>
@@ -49,7 +70,7 @@ export function ArticlesClient({
 
       <div className="container py-8">
         {/* 検索・フィルターエリア */}
-        <Card className="mb-8 shadow-lg border-2">
+        <Card className="mb-6 shadow-lg border-2">
           <CardContent className="p-6">
             <div className="space-y-4">
               {/* 検索バー */}
@@ -63,7 +84,7 @@ export function ArticlesClient({
                 />
               </div>
 
-              {/* カテゴリフィルター: サービス一覧と同じボタン表示 */}
+              {/* カテゴリフィルター */}
               <div className="flex items-center gap-2 pb-2 overflow-x-auto flex-wrap">
                 <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">
                   カテゴリ:
@@ -110,9 +131,18 @@ export function ArticlesClient({
           </CardContent>
         </Card>
 
+        {/* ページネーション（上部） */}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+          totalItems={filteredArticles.length}
+          pageSize={PAGE_SIZE}
+        />
+
         {/* 記事一覧グリッド */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {filteredArticles.map((article, index) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6 mb-8">
+          {paginatedArticles.map((article, index) => (
             <Link
               key={article.id}
               href={`/articles/${article.id}`}
@@ -121,7 +151,7 @@ export function ArticlesClient({
             >
               <Card className="h-full overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 border-2 hover:border-primary/50 bg-card">
                 {/* 画像エリア */}
-                <div className="relative h-32 w-full overflow-hidden bg-muted flex items-center justify-center">
+                <div className="relative w-full aspect-video overflow-hidden bg-muted flex items-center justify-center">
                   <Image
                     src={article.image}
                     alt={article.title}
@@ -130,7 +160,7 @@ export function ArticlesClient({
                     unoptimized
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  
+
                   {/* お気に入りボタン */}
                   <div className="absolute top-3 left-3 z-10">
                     <AddToFavoritesButton
@@ -224,6 +254,15 @@ export function ArticlesClient({
             </CardContent>
           </Card>
         )}
+
+        {/* ページネーション（下部） */}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+          totalItems={filteredArticles.length}
+          pageSize={PAGE_SIZE}
+        />
       </div>
     </div>
   );

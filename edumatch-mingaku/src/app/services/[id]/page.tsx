@@ -12,6 +12,8 @@ import { YouTubeEmbed } from "@/components/ui/youtube-embed";
 import { AddToRequestListServiceButton } from "./service-detail-actions";
 import { ContentRenderer } from "@/components/ui/content-renderer";
 import { ShareButton } from "@/components/ui/share-button";
+import { ReviewSection } from "@/components/ui/review-section";
+import { getServiceReviews } from "@/app/_actions/reviews";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +42,9 @@ export default async function ServiceDetailPage({
   if (user) {
     await recordView(user.id, "SERVICE", id);
   }
+
+  // 口コミを取得
+  const reviews = await getServiceReviews(id);
 
   // 関連サービスを取得
   const relatedServices = await getPopularServices(4);
@@ -96,7 +101,7 @@ export default async function ServiceDetailPage({
                   <ShareButton
                     url={`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/services/${service.id}`}
                     title={service.title}
-                    text={`${service.title} - EduMatch`}
+                    text={`${service.title} - エデュマッチ`}
                     variant="outline"
                     size="sm"
                   />
@@ -132,7 +137,7 @@ export default async function ServiceDetailPage({
 
             {/* サムネイル画像（デスクトップ） */}
             <div className="lg:col-span-2 hidden lg:block">
-              <div className="relative aspect-[4/3] w-full rounded-xl overflow-hidden shadow-2xl border-4 border-white/50 bg-muted flex items-center justify-center">
+              <div className="relative aspect-video w-full rounded-xl overflow-hidden shadow-2xl border-4 border-white/50 bg-muted flex items-center justify-center">
                 <Image
                   src={service.thumbnail_url || "https://placehold.co/800x600/e0f2fe/0369a1?text=Service"}
                   alt={service.title}
@@ -212,7 +217,7 @@ export default async function ServiceDetailPage({
                           src={imageUrl}
                           alt={`${service.title} - 画像${index + 1}`}
                           fill
-                          className="object-cover transition-transform duration-300 group-hover:scale-110"
+                          className="object-contain transition-transform duration-300 group-hover:scale-110"
                           unoptimized
                         />
                       </div>
@@ -240,7 +245,7 @@ export default async function ServiceDetailPage({
                   {service.provider.avatar_url ? (
                     <Image
                       src={service.provider.avatar_url}
-                      alt={service.provider.name}
+                      alt={service.provider_display_name ?? service.provider.name}
                       width={80}
                       height={80}
                       className="rounded-xl border-2 shadow-md group-hover:opacity-90 transition-opacity"
@@ -253,7 +258,7 @@ export default async function ServiceDetailPage({
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="font-bold text-xl mb-1 group-hover:text-primary transition-colors">
-                      {service.provider.name}
+                      {service.provider_display_name ?? service.provider.name}
                     </p>
                     <p className="text-sm text-muted-foreground mb-2">
                       教育サービス提供企業
@@ -265,7 +270,27 @@ export default async function ServiceDetailPage({
                 </Link>
               </CardContent>
             </Card>
-        </div>
+
+            {/* 口コミセクション */}
+            <Card className="border-2 shadow-lg">
+              <CardHeader className="bg-gradient-to-r from-yellow-50 to-background">
+                <CardTitle className="flex items-center gap-2">
+                  <div className="p-2 bg-yellow-100 rounded-lg">
+                    <Star className="h-5 w-5 text-yellow-600" />
+                  </div>
+                  口コミ・レビュー
+                  {reviews.length > 0 && (
+                    <span className="ml-1 text-sm font-normal text-muted-foreground">
+                      （{reviews.length} 件）
+                    </span>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <ReviewSection serviceId={service.id} initialReviews={reviews} isLoggedIn={!!user} />
+              </CardContent>
+            </Card>
+          </div>
 
           {/* サイドバー（スティッキー） */}
           <div className="space-y-6 hidden lg:block">
@@ -298,7 +323,7 @@ export default async function ServiceDetailPage({
                     <ShareButton
                       url={`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/services/${service.id}`}
                       title={service.title}
-                      text={`${service.title} - EduMatch`}
+                      text={`${service.title} - エデュマッチ`}
                       variant="outline"
                       size="lg"
                       className="w-full"
@@ -347,20 +372,6 @@ export default async function ServiceDetailPage({
                 </CardContent>
               </Card>
 
-              {/* 信頼性バッジ */}
-              <Card className="border-2 shadow-lg bg-gradient-to-br from-amber-50 to-background">
-                <CardContent className="p-6">
-                  <div className="text-center">
-                    <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-amber-100 flex items-center justify-center">
-                      <Star className="h-8 w-8 text-amber-500" />
-                    </div>
-                    <p className="font-semibold mb-1">安心のサポート体制</p>
-                    <p className="text-xs text-muted-foreground">
-                      導入前のご相談から運用サポートまで
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
             </div>
 
             {/* モバイル用CTAセクション */}
@@ -420,7 +431,7 @@ export default async function ServiceDetailPage({
                     className="group block"
                   >
                     <Card className="h-full overflow-hidden border-2 hover:border-primary/50 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
-                      <div className="relative h-28 w-full overflow-hidden bg-muted flex items-center justify-center">
+                      <div className="relative w-full aspect-video overflow-hidden bg-muted flex items-center justify-center">
                         <Image
                           src={relatedService.thumbnail_url || "https://placehold.co/300x200/e0f2fe/0369a1?text=Service"}
                           alt={relatedService.title}

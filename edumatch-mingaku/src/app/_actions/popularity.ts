@@ -117,15 +117,15 @@ export async function getPopularServicesByEngagement(limit: number = 10) {
           },
         },
       },
-      take: limit * 2, // 多めに取得してソート
+      orderBy: [
+        { review_count: "desc" },
+        { favorite_count: "desc" },
+      ],
+      take: limit,
     });
 
-    // いいね数でソート
-    const sortedServices = services
-      .sort((a, b) => {
-        return b.favorite_count - a.favorite_count;
-      })
-      .slice(0, limit);
+    // ソート済み（DB側で処理）
+    const sortedServices = services;
 
     return sortedServices.map((s) => ({
       ...s,

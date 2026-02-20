@@ -114,12 +114,12 @@ export default function RecommendPage() {
               {recommendedServices.map((service) => (
                 <Link key={service.id} href={`/services/${service.id}`}>
                   <Card className="h-full hover:shadow-lg transition-shadow">
-                    <div className="relative h-32 w-full">
+                    <div className="relative w-full aspect-video overflow-hidden">
                       <Image
                         src={service.image}
                         alt={service.name}
                         fill
-                        className="object-cover rounded-t-lg"
+                        className="object-contain rounded-t-lg"
                         unoptimized
                       />
                       <Badge className="absolute top-2 right-2 bg-primary">
@@ -168,12 +168,12 @@ export default function RecommendPage() {
                   <Card className="hover:shadow-lg transition-shadow">
                     <CardContent className="p-4">
                       <div className="flex gap-4">
-                        <div className="relative h-24 w-36 flex-shrink-0">
+                        <div className="relative w-36 flex-shrink-0 aspect-video overflow-hidden">
                           <Image
                             src={article.image}
                             alt={article.title}
                             fill
-                            className="object-cover rounded-lg"
+                            className="object-contain rounded-lg"
                             unoptimized
                           />
                         </div>

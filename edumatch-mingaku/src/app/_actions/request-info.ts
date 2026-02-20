@@ -103,8 +103,8 @@ export async function submitMaterialRequest(
         // Resendのfromは "表示名 <メール>" 形式を推奨。未設定時はテスト用ドメインを使用
         const fromRaw = process.env.RESEND_FROM_EMAIL?.trim();
         const from = fromRaw
-          ? (fromRaw.includes("<") ? fromRaw : `EduMatch <${fromRaw}>`)
-          : "EduMatch <onboarding@resend.dev>";
+          ? (fromRaw.includes("<") ? fromRaw : `エデュマッチ <${fromRaw}>`)
+          : "エデュマッチ <onboarding@resend.dev>";
         const addr = [
           deliveryPrefecture,
           deliveryCity,
@@ -175,7 +175,7 @@ export async function submitMaterialRequest(
           providerEmail,
           deliveryEmail,
           apiKeyPresent: !!apiKey,
-          fromEmail: process.env.RESEND_FROM_EMAIL ?? "EduMatch <onboarding@resend.dev>",
+          fromEmail: process.env.RESEND_FROM_EMAIL ?? "エデュマッチ <onboarding@resend.dev>",
         });
         // 資料請求の保存は完了しているので success のまま返す
       }

@@ -36,7 +36,7 @@ export default function ContactPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">お問い合わせ</h1>
         <p className="text-muted-foreground">
-          Edumatch運営へのお問い合わせはこちらから
+          エデュマッチ運営へのお問い合わせはこちらから
         </p>
       </div>
 
@@ -154,7 +154,7 @@ export default function ContactPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="font-mono text-primary">contact@edumatch.jp</p>
+              <p className="font-mono text-primary">info@edu-match.com</p>
             </CardContent>
           </Card>
 
@@ -177,15 +177,15 @@ export default function ContactPage() {
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <MessageCircle className="h-5 w-5" />
-                チャットサポート
+                AIチャットサポート
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground mb-4">
-                画面右下のチャットアイコンからもお問い合わせいただけます。
+                画面右下のAIチャットアイコンからもお問い合わせいただけます（AIによる自動応答です）。
               </p>
               <Button variant="outline" className="w-full">
-                チャットを開く
+                AIチャットを開く
               </Button>
             </CardContent>
           </Card>

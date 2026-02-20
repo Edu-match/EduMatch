@@ -313,7 +313,7 @@ export default function ArticleCreatePage() {
             <img
               src={thumbnailUrl}
               alt={title}
-              className="w-full h-[300px] object-cover"
+              className="w-full h-[300px] object-contain"
             />
           </div>
         )}
@@ -569,7 +569,7 @@ export default function ArticleCreatePage() {
                         <img
                           src={thumbnailUrl}
                           alt="サムネイル"
-                          className="w-full h-[200px] object-cover rounded-lg"
+                          className="w-full h-[200px] object-contain rounded-lg"
                         />
                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-4">
                           <Button

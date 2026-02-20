@@ -1,3 +1,4 @@
+import { FEATURES } from "@/lib/features";
 import Link from "next/link";
 import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,12 +8,9 @@ import {
   Clock,
   FileBadge2,
   Star,
-  Bell,
   Settings,
   ArrowRight,
   Eye,
-  FileText,
-  TrendingUp,
   Heart,
   CreditCard,
 } from "lucide-react";
@@ -20,11 +18,13 @@ import { requireAuth, getCurrentProfile } from "@/lib/auth";
 import { getRecentViewHistory } from "@/app/_actions";
 import { RequestListCompact } from "@/components/dashboard/request-list-compact";
 import { FavoritesCompact } from "@/components/dashboard/favorites-compact";
+import { MyReviewsCompact } from "@/components/dashboard/my-reviews-compact";
 import {
   getPopularServicesByEngagement,
   getPopularArticlesByEngagement,
 } from "@/app/_actions/popularity";
 import { getCurrentSubscription } from "@/app/_actions/subscription";
+import { getMyReviews } from "@/app/_actions/reviews";
 
 // 閲覧時刻を「ついさっき」「〇分前」などで表示
 function formatViewedAt(viewedAt: Date): string {
@@ -51,8 +51,8 @@ export default async function DashboardPage() {
 
   // 全ユーザー共通のマイページを表示
   const recentlyViewed = await getRecentViewHistory(user.id, 5);
+  const myReviews = await getMyReviews();
 
-  const notifications: { id: string; title: string; date: string; read: boolean }[] = [];
   const subscription = await getCurrentSubscription();
 
   return (
@@ -74,9 +74,9 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className={FEATURES.PAID_PLANS ? "grid grid-cols-1 lg:grid-cols-3 gap-6" : "space-y-6"}>
         {/* メインコンテンツ */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className={FEATURES.PAID_PLANS ? "lg:col-span-2 space-y-6" : "space-y-6"}>
           {/* 閲覧履歴 */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -102,13 +102,13 @@ export default async function DashboardPage() {
                     href={item.type === "service" ? `/services/${item.id}` : `/articles/${item.id}`}
                     className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted transition-colors"
                   >
-                    <div className="relative h-12 w-20 flex-shrink-0 bg-muted rounded overflow-hidden">
+                    <div className="relative w-20 flex-shrink-0 overflow-hidden rounded bg-muted aspect-video">
                       {item.image ? (
                         <Image
                           src={item.image}
                           alt={item.title}
                           fill
-                          className="object-cover"
+                          className="object-contain"
                           unoptimized
                         />
                       ) : (
@@ -136,12 +136,12 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
 
-          {/* 資料請求リスト */}
+          {/* サービスのお気に入り（最大5件まで一斉に資料請求可能） */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <FileBadge2 className="h-5 w-5" />
-                資料請求リスト
+                サービスのお気に入り
               </CardTitle>
               <Button variant="ghost" size="sm" asChild>
                 <Link href="/request-info/list">
@@ -151,16 +151,16 @@ export default async function DashboardPage() {
               </Button>
             </CardHeader>
             <CardContent>
-              <RequestListCompact />
+              <RequestListCompact maxBatchRequest={5} />
             </CardContent>
           </Card>
 
-          {/* いいねリスト */}
+          {/* 記事のお気に入り */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <Heart className="h-5 w-5 text-red-500 fill-red-500" />
-                いいねリスト
+                記事のお気に入り
               </CardTitle>
               <Button variant="ghost" size="sm" asChild>
                 <Link href="/favorites">
@@ -170,150 +170,91 @@ export default async function DashboardPage() {
               </Button>
             </CardHeader>
             <CardContent>
-              <FavoritesCompact />
+              <FavoritesCompact articleOnly />
             </CardContent>
           </Card>
 
-          {/* 導入検討進捗 */}
+          {/* 自分の口コミ（確認・削除のみ） */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" />
-                導入検討の進捗
+                <Star className="h-5 w-5 text-yellow-500" />
+                自分の口コミ
               </CardTitle>
+              <p className="text-xs text-muted-foreground">
+                投稿した口コミの確認・削除ができます（編集はできません）
+              </p>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground py-2">準備中です。今後、検討中のサービス・進捗がここに表示されます。</p>
+              <MyReviewsCompact reviews={myReviews} />
             </CardContent>
           </Card>
         </div>
 
-        {/* サイドバー */}
+        {/* サイドバー（プラン情報のみ・FEATURES.PAID_PLANS が true の場合のみ表示） */}
+        {FEATURES.PAID_PLANS && (
         <div className="space-y-6">
-          {/* 通知 */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Bell className="h-5 w-5" />
-                通知
-              </CardTitle>
-              <Button variant="ghost" size="sm" asChild>
-                <Link href="/notifications">すべて</Link>
-              </Button>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {notifications.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-4">通知はまだありません。</p>
-                ) : (
-                  notifications.map((notification) => (
-                  <div
-                    key={notification.id}
-                    className={`p-3 rounded-lg ${
-                      notification.read ? "bg-muted/30" : "bg-primary/5 border border-primary/20"
-                    }`}
-                  >
-                    <p className={`text-sm ${notification.read ? "" : "font-medium"}`}>
-                      {notification.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {new Date(notification.date).toLocaleDateString("ja-JP")}
-                    </p>
-                  </div>
-                ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* クイックアクション */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">クイックアクション</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Button variant="outline" className="w-full justify-start" asChild>
-                <Link href="/request-info">
-                  <FileText className="h-4 w-4 mr-2" />
-                  資料請求
-                </Link>
-              </Button>
-              <Button variant="outline" className="w-full justify-start" asChild>
-                <Link href="/reviews/write">
-                  <Star className="h-4 w-4 mr-2" />
-                  レビューを書く
-                </Link>
-              </Button>
-              <Button variant="outline" className="w-full justify-start" asChild>
-                <Link href="/consultation">
-                  <Bell className="h-4 w-4 mr-2" />
-                  無料相談予約
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* プラン情報 */}
           <Card className="border-primary/20 bg-primary/5">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <CreditCard className="h-5 w-5" />
-                ご利用プラン
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="mb-4 flex items-center gap-2">
-                <Badge
-                  className={
-                    subscription?.isActive
-                      ? "bg-green-100 text-green-800 hover:bg-green-100"
-                      : ""
-                  }
-                >
-                  {subscription?.planName || "フリー"}プラン
-                </Badge>
-                {subscription?.isActive && (
-                  <Badge variant="outline" className="text-green-600 border-green-300">
-                    有効
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <CreditCard className="h-5 w-5" />
+                  ご利用プラン
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="mb-4 flex items-center gap-2">
+                  <Badge
+                    className={
+                      subscription?.isActive
+                        ? "bg-green-100 text-green-800 hover:bg-green-100"
+                        : ""
+                    }
+                  >
+                    {subscription?.planName || "フリー"}プラン
                   </Badge>
-                )}
-                {subscription?.isCanceled && (
-                  <Badge variant="outline" className="text-orange-600 border-orange-300">
-                    キャンセル予定
-                  </Badge>
-                )}
-              </div>
-              {subscription?.currentPeriodEnd && (
-                <p className="text-xs text-muted-foreground mb-2">
-                  {subscription.isCanceled ? "利用可能期限" : "次回請求日"}:{" "}
-                  {new Date(subscription.currentPeriodEnd).toLocaleDateString("ja-JP")}
-                </p>
-              )}
-              {(!subscription || subscription.plan === "FREE" || !subscription.isActive) ? (
-                <>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    アップグレードすると、すべての機能が利用できます。
+                  {subscription?.isActive && (
+                    <Badge variant="outline" className="text-green-600 border-green-300">
+                      有効
+                    </Badge>
+                  )}
+                  {subscription?.isCanceled && (
+                    <Badge variant="outline" className="text-orange-600 border-orange-300">
+                      キャンセル予定
+                    </Badge>
+                  )}
+                </div>
+                {subscription?.currentPeriodEnd && (
+                  <p className="text-xs text-muted-foreground mb-2">
+                    {subscription.isCanceled ? "利用可能期限" : "次回請求日"}:{" "}
+                    {new Date(subscription.currentPeriodEnd).toLocaleDateString("ja-JP")}
                   </p>
-                  <Button className="w-full" asChild>
-                    <Link href="/plans">プランを見る</Link>
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    プランの変更・キャンセルは管理ページから行えます。
-                  </p>
-                  <Button className="w-full" variant="outline" asChild>
-                    <Link href="/dashboard/subscription">
-                      サブスクリプション管理
-                      <ArrowRight className="h-4 w-4 ml-2" />
-                    </Link>
-                  </Button>
-                </>
-              )}
-            </CardContent>
-          </Card>
+                )}
+                {(!subscription || subscription.plan === "FREE" || !subscription.isActive) ? (
+                  <>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      アップグレードすると、すべての機能が利用できます。
+                    </p>
+                    <Button className="w-full" asChild>
+                      <Link href="/plans">プランを見る</Link>
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      プランの変更・キャンセルは管理ページから行えます。
+                    </p>
+                    <Button className="w-full" variant="outline" asChild>
+                      <Link href="/dashboard/subscription">
+                        サブスクリプション管理
+                        <ArrowRight className="h-4 w-4 ml-2" />
+                      </Link>
+                    </Button>
+                  </>
+                )}
+              </CardContent>
+            </Card>
         </div>
+        )}
       </div>
     </div>
   );

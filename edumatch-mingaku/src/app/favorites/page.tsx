@@ -24,10 +24,10 @@ export default async function FavoritesPage() {
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-2">
           <Heart className="h-6 w-6 text-red-500 fill-red-500" />
-          <h1 className="text-3xl font-bold">いいねリスト</h1>
+          <h1 className="text-3xl font-bold">記事のお気に入り</h1>
         </div>
         <p className="text-muted-foreground">
-          いいねした記事やサービスを管理
+          お気に入りに追加した記事を管理
         </p>
       </div>
 

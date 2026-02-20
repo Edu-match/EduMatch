@@ -28,7 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 import { updateServiceManagement, deleteServiceManagement } from "@/app/_actions";
 import { serviceSchema, type ServiceFormData } from "@/lib/validations/service";
-import { SHARED_CATEGORIES } from "@/lib/categories";
+import { SERVICE_CATEGORIES } from "@/lib/categories";
 
 const guidelines = [
   "サービスの特徴や導入効果を具体的に記載してください。",
@@ -201,7 +201,7 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {SHARED_CATEGORIES.map((cat) => (
+                          {SERVICE_CATEGORIES.map((cat) => (
                             <SelectItem key={cat.value} value={cat.value}>
                               {cat.label}
                             </SelectItem>
@@ -248,11 +248,11 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
                           }}
                         />
                         {thumbnailPreview && (
-                          <div className="relative w-full h-48 border rounded-lg overflow-hidden bg-muted">
+                          <div className="relative w-full aspect-video border rounded-lg overflow-hidden bg-muted">
                             <img
                               src={thumbnailPreview}
                               alt="サムネイルプレビュー"
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-contain"
                               onError={() => setThumbnailPreview(null)}
                             />
                           </div>

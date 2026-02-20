@@ -40,12 +40,12 @@ export function MainVisual() {
         {featuredItems.slice(0, 4).map((item) => (
           <Link key={item.id} href={`/articles/${item.id}`}>
             <Card className="overflow-hidden hover:shadow-lg transition-shadow">
-              <div className="relative h-48 w-full">
+              <div className="relative w-full aspect-video overflow-hidden">
                 <Image
                   src={item.image}
                   alt={item.title}
                   fill
-                  className="object-cover"
+                  className="object-contain"
                 />
               </div>
               <CardContent className="p-4">

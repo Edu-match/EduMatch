@@ -15,7 +15,7 @@ function LoginPageContent() {
             href="/"
             className="inline-block mb-6 transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-md"
           >
-            <span className="text-4xl font-bold text-primary tracking-tight">Edumatch</span>
+            <span className="text-4xl font-bold text-primary tracking-tight">エデュマッチ</span>
           </Link>
           <h1 className="text-2xl font-bold mb-2 text-foreground">教育の未来をつなぐ</h1>
           <p className="text-muted-foreground text-sm leading-relaxed">

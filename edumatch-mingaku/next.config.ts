@@ -14,6 +14,18 @@ const nextConfig: NextConfig = {
         port: "",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "lyoesgwecpcoaylsyiys.supabase.co",
+        port: "",
+        pathname: "/storage/v1/object/public/**",
+      },
+      {
+        protocol: "https",
+        hostname: "edu-match.com",
+        port: "",
+        pathname: "/wp-content/uploads/**",
+      },
     ],
   },
 };

@@ -60,12 +60,12 @@ export async function RightSidebar() {
                   >
                     {index + 1}
                   </span>
-                  <div className="relative h-12 w-12 flex-shrink-0 rounded overflow-hidden border bg-muted">
+                  <div className="relative w-12 flex-shrink-0 overflow-hidden rounded border bg-muted aspect-video">
                     <Image
-                      src={service.thumbnail_url || "https://placehold.co/120x120/e0f2fe/0369a1?text=No"}
+                      src={service.thumbnail_url || "https://placehold.co/120x68/e0f2fe/0369a1?text=No"}
                       alt={service.title}
                       fill
-                      className="object-cover"
+                      className="object-contain"
                       sizes="48px"
                       unoptimized
                     />
@@ -120,7 +120,7 @@ export async function RightSidebar() {
             href="/about"
             className="block px-3 py-2.5 text-sm hover:bg-muted transition-colors"
           >
-            Edumatchについて
+            エデュマッチについて
           </Link>
           <Link
             href="/terms"

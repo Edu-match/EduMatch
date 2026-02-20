@@ -83,13 +83,13 @@ export function RecommendationsSection({ services, articles }: RecommendationsSe
               href={item.type === "service" ? `/services/${item.id}` : `/articles/${item.id}`}
               className="group block border rounded-lg overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
             >
-              <div className="relative h-40 bg-muted">
+              <div className="relative w-full aspect-video overflow-hidden bg-muted">
                 {item.thumbnail ? (
                   <Image
                     src={item.thumbnail}
                     alt={item.title}
                     fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-300"
+                    className="object-contain group-hover:scale-105 transition-transform duration-300"
                     unoptimized
                   />
                 ) : (
@@ -120,7 +120,7 @@ export function RecommendationsSection({ services, articles }: RecommendationsSe
         </div>
         <div className="mt-4 pt-4 border-t text-center">
           <p className="text-sm text-muted-foreground mb-3">
-            お気に入り数・資料請求リスト追加数が多い人気のコンテンツを表示しています
+            お気に入り数が多い人気のコンテンツを表示しています
           </p>
           <div className="flex gap-2 justify-center">
             <Button variant="outline" size="sm" asChild>

@@ -13,10 +13,12 @@ export function RequestListClient() {
   const router = useRouter();
   const { items, count, isAuthenticated } = useRequestList();
 
+  const BATCH_REQUEST_MAX = 5;
   const handleBatchRequest = () => {
-    const ids = items.map((i) => i.id).join(",");
+    const ids = items.slice(0, BATCH_REQUEST_MAX).map((i) => i.id).join(",");
     router.push(`/request-info?serviceIds=${encodeURIComponent(ids)}`);
   };
+  const batchCount = Math.min(items.length, BATCH_REQUEST_MAX);
 
   if (count === 0) {
     return (
@@ -26,11 +28,11 @@ export function RequestListClient() {
             <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-5 rounded-full bg-primary/10 flex items-center justify-center">
               <FileText className="h-8 w-8 sm:h-10 sm:w-10 text-primary" />
             </div>
-            <h2 className="text-lg sm:text-xl font-bold mb-2">資料請求リストは空です</h2>
+            <h2 className="text-lg sm:text-xl font-bold mb-2">サービスのお気に入りは空です</h2>
             <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto leading-relaxed">
               {isAuthenticated === false
-                ? "ログインすると、サービスをリストに追加してまとめて資料請求できます。"
-                : "サービス一覧や詳細ページから「後で資料請求に追加」でマークすると、ここに表示されます。"}
+                ? "ログインすると、サービスをお気に入りに追加してまとめて資料請求できます（最大5件まで）。"
+                : "サービス一覧や詳細ページから「お気に入りに追加」すると、ここに表示されます。"}
             </p>
             <Button asChild size="lg" className="min-h-11">
               <Link href="/services">サービスを探す</Link>
@@ -47,10 +49,10 @@ export function RequestListClient() {
         <div>
           <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
             <FileText className="h-6 w-6 sm:h-7 sm:w-7 text-primary flex-shrink-0" />
-            資料請求リスト
+            サービスのお気に入り
           </h1>
           <p className="text-muted-foreground mt-1 text-sm sm:text-base">
-            {count}件のサービスをまとめて資料請求できます
+            {count}件のお気に入り（最大{batchCount}件まで一斉に資料請求可能）
           </p>
         </div>
         <Button
@@ -59,7 +61,7 @@ export function RequestListClient() {
           className="shadow-lg w-full sm:w-auto min-h-12 sm:min-h-10 text-base"
         >
           <FileText className="h-5 w-5 mr-2 flex-shrink-0" />
-          まとめて資料請求する
+          一斉に資料請求する（最大{batchCount}件）
           <ArrowRight className="h-4 w-4 ml-2 flex-shrink-0" />
         </Button>
       </div>
@@ -72,12 +74,12 @@ export function RequestListClient() {
                 href={`/services/${item.id}`}
                 className="flex gap-3 min-w-0 flex-1 sm:flex-[1_1_0]"
               >
-                <div className="relative w-20 h-14 sm:w-28 sm:h-20 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                <div className="relative w-20 sm:w-28 flex-shrink-0 overflow-hidden rounded-lg bg-muted aspect-video">
                   <Image
                     src={item.thumbnail || "https://placehold.co/200x120/e0f2fe/0369a1?text=Service"}
                     alt={item.title}
                     fill
-                    className="object-cover"
+                    className="object-contain"
                     sizes="(max-width: 640px) 80px, 112px"
                     unoptimized
                   />
@@ -114,7 +116,7 @@ export function RequestListClient() {
           <p className="text-sm text-muted-foreground mb-4">
             {isAuthenticated === true
               ? "同じ送付先でまとめて送信できます。各サービス提供者に通知が届きます。"
-              : "ログインすると、同じ送付先でまとめて資料請求できます。"}
+              : "ログインすると、同じ送付先でまとめて資料請求できます（最大5件まで）。"}
           </p>
           <Button
             size="lg"
@@ -122,7 +124,7 @@ export function RequestListClient() {
             className="w-full sm:w-auto min-h-12 sm:min-h-10 text-base"
           >
             <FileText className="h-5 w-5 mr-2" />
-            まとめて資料請求する（{count}件）
+            一斉に資料請求する（最大{batchCount}件）
           </Button>
         </CardContent>
       </Card>

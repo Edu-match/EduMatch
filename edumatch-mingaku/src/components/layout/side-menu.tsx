@@ -11,6 +11,7 @@ import {
   HelpCircle,
   Scale,
   PenSquare,
+  SlidersHorizontal,
 } from "lucide-react";
 
 const items = [
@@ -21,6 +22,7 @@ const items = [
   { href: "/articles/create", label: "記事を投稿", icon: PenSquare, roles: ["PROVIDER", "ADMIN"] },
   { href: "/services/create", label: "サービスを投稿", icon: PenSquare, roles: ["PROVIDER", "ADMIN"] },
   { href: "/admin/site-updates", label: "運営記事を書く", icon: PenSquare, roles: ["ADMIN"] },
+  { href: "/admin/home-slider", label: "スライダー記事を選択", icon: SlidersHorizontal, roles: ["ADMIN"] },
   { href: "/companies", label: "掲載企業一覧", icon: Building2 },
   { href: "/compare", label: "サービス比較", icon: Scale },
   { href: "/help", label: "ヘルプ", icon: HelpCircle },

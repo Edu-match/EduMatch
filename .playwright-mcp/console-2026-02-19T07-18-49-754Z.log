@@ -1,0 +1,68 @@
+[    1008ms] [ERROR] %c%s%c Failed to get popular services: background: #e6e6e6;background: light-dark(rgba(0,0,0,0.1), rgba(255,255,255,0.25));color: #000000;color: light-dark(#000000, #ffffff);border-radius: 2px  Server   PrismaClientValidationError: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$EduMatch$2f$EduMatch$2f$edumatch$2d$mingaku$2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["prisma"].service.findMany()` invocation in
+/Users/Ryo/EduMatch/EduMatch/edumatch-mingaku/.next/dev/server/chunks/ssr/EduMatch_EduMatch_edumatch-mingaku_f7ce5d51._.js:639:214
+
+  636         }
+  637     ]
+  638 };
+→ 639 const services = await __TURBOPACK__imported__module__$5b$project$5d2f$EduMatch$2f$EduMatch$2f$edumatch$2d$mingaku$2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["prisma"].service.findMany({
+        where: {
+          AND: [
+            {
+              OR: [
+                {
+                  status: "APPROVED"
+                },
+                {
+                  is_published: true
+                }
+              ]
+            },
+            {
+              is_member_only: false
+            }
+          ]
+        },
+        include: {
+          provider: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              avatar_url: true
+            }
+          }
+        },
+        orderBy: [
+          {
+            review_count: "desc"
+          },
+          {
+            favorite_count: "desc"
+          }
+        ],
+        take: 10
+      })
+
+Unknown argument `review_count`. Did you mean `view_count`? Available options are marked with ?.
+    at getPopularServicesByEngagement (about://React/Server/file:///Users/Ryo/EduMatch/EduMatch/edumatch-mingaku/.next/dev/server/chunks/ssr/EduMatch_EduMatch_edumatch-mingaku_f7ce5d51._.js?58:639:26)
+    at RightRankingSidebar (about://React/Server/file:///Users/Ryo/EduMatch/EduMatch/edumatch-mingaku/.next/dev/server/chunks/ssr/%5Broot-of-the-server%5D__15d42649._.js?59:90:22)
+    at resolveErrorDev (http://localhost:3000/_next/static/chunks/25d37_next_dist_compiled_react-server-dom-turbopack_c43cbdc7._.js:1881:106)
+    at getOutlinedModel (http://localhost:3000/_next/static/chunks/25d37_next_dist_compiled_react-server-dom-turbopack_c43cbdc7._.js:1434:28)
+    at parseModelString (http://localhost:3000/_next/static/chunks/25d37_next_dist_compiled_react-server-dom-turbopack_c43cbdc7._.js:1548:50)
+    at Object.<anonymous> (http://localhost:3000/_next/static/chunks/25d37_next_dist_compiled_react-server-dom-turbopack_c43cbdc7._.js:2472:51)
+    at JSON.parse (<anonymous>)
+    at initializeModelChunk (http://localhost:3000/_next/static/chunks/25d37_next_dist_compiled_react-server-dom-turbopack_c43cbdc7._.js:1053:30)
+    at getOutlinedModel (http://localhost:3000/_next/static/chunks/25d37_next_dist_compiled_react-server-dom-turbopack_c43cbdc7._.js:1372:17)
+    at parseModelString (http://localhost:3000/_next/static/chunks/25d37_next_dist_compiled_react-server-dom-turbopack_c43cbdc7._.js:1602:50)
+    at Array.<anonymous> (http://localhost:3000/_next/static/chunks/25d37_next_dist_compiled_react-server-dom-turbopack_c43cbdc7._.js:2472:51)
+    at JSON.parse (<anonymous>)
+    at initializeModelChunk (http://localhost:3000/_next/static/chunks/25d37_next_dist_compiled_react-server-dom-turbopack_c43cbdc7._.js:1053:30)
+    at resolveConsoleEntry (http://localhost:3000/_next/static/chunks/25d37_next_dist_compiled_react-server-dom-turbopack_c43cbdc7._.js:2007:96)
+    at processFullStringRow (http://localhost:3000/_next/static/chunks/25d37_next_dist_compiled_react-server-dom-turbopack_c43cbdc7._.js:2408:17)
+    at processFullBinaryRow (http://localhost:3000/_next/static/chunks/25d37_next_dist_compiled_react-server-dom-turbopack_c43cbdc7._.js:2348:9)
+    at processBinaryChunk (http://localhost:3000/_next/static/chunks/25d37_next_dist_compiled_react-server-dom-turbopack_c43cbdc7._.js:2457:221)
+    at progress (http://localhost:3000/_next/static/chunks/25d37_next_dist_compiled_react-server-dom-turbopack_c43cbdc7._.js:2625:13) @ http://localhost:3000/_next/static/chunks/25d37_next_dist_fb8f6445._.js:3127
+[   37161ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=hjYwh19dJdgKIzLypN0QG' failed:  @ http://localhost:3000/_next/static/chunks/25d37_next_dist_client_77eba68d._.js:10876
+[   38166ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=hjYwh19dJdgKIzLypN0QG' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/_next/static/chunks/25d37_next_dist_client_77eba68d._.js:10876
+[   39168ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=hjYwh19dJdgKIzLypN0QG' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/_next/static/chunks/25d37_next_dist_client_77eba68d._.js:10876

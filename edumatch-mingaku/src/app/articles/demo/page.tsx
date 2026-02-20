@@ -73,14 +73,14 @@ EdTechツールには、初期費用や月額費用がかかります。予算�
 
 EdTechツール選びは、目的の明確化から始まり、予算・機能・サポート体制を総合的に判断することが重要です。無料トライアルを積極的に活用し、実際の使用感を確認してから導入を決めることをおすすめします。
 
-Edumatchでは、500以上のEdTechサービスを比較・検討できます。ぜひご活用ください。
+エデュマッチでは、500以上のEdTechサービスを比較・検討できます。ぜひご活用ください。
     `,
     image: "https://placehold.co/800x450/fef3c7/ca8a04?text=EdTech+Guide+2024",
     category: "教育ICT",
     date: "2024-01-15",
     readTime: "10分",
     tags: ["EdTech", "選び方", "導入", "ガイド"],
-    author: "Edumatch編集部",
+    author: "エデュマッチ編集部",
   };
 
   return (
@@ -124,12 +124,12 @@ Edumatchでは、500以上のEdTechサービスを比較・検討できます。
         </div>
 
         {/* メイン画像 */}
-        <div className="relative h-96 w-full mb-8 rounded-lg overflow-hidden">
+        <div className="relative w-full aspect-video mb-8 rounded-lg overflow-hidden">
           <Image
             src={article.image}
             alt={article.title}
             fill
-            className="object-cover"
+            className="object-contain"
             unoptimized
           />
         </div>

@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -5,6 +6,7 @@ import { Check, X, HelpCircle, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { getCurrentSubscription } from "@/app/_actions/subscription";
 import { PlanSelectButton } from "./plan-select-button";
+import { FEATURES } from "@/lib/features";
 
 const plans = [
   {
@@ -78,6 +80,10 @@ const faqs = [
 ];
 
 export default async function PlansPage() {
+  if (!FEATURES.PAID_PLANS) {
+    redirect("/");
+  }
+
   const subscription = await getCurrentSubscription();
   const currentPlanId = subscription?.plan || "FREE";
 

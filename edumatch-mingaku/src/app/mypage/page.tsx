@@ -15,12 +15,16 @@ import {
   TrendingUp,
   Heart,
   CreditCard,
+  Bot,
 } from "lucide-react";
+import { ChatHistoryCompact } from "@/components/dashboard/chat-history-compact";
 import { requireAuth, getCurrentProfile } from "@/lib/auth";
 import { getRecentViewHistory } from "@/app/_actions";
 import { RequestListCompact } from "@/components/dashboard/request-list-compact";
 import { FavoritesCompact } from "@/components/dashboard/favorites-compact";
+import { MyReviewsCompact } from "@/components/dashboard/my-reviews-compact";
 import { getCurrentSubscription } from "@/app/_actions/subscription";
+import { getMyReviews } from "@/app/_actions/reviews";
 
 // 閲覧時刻を「ついさっき」「〇分前」などで表示
 function formatViewedAt(viewedAt: Date): string {
@@ -46,6 +50,7 @@ export default async function MyPage() {
   const displayName = profile?.name ?? user.email?.split("@")[0] ?? "ユーザー";
 
   const recentlyViewed = await getRecentViewHistory(user.id, 5);
+  const myReviews = await getMyReviews();
 
   const notifications: { id: string; title: string; date: string; read: boolean }[] = [];
   const subscription = await getCurrentSubscription();
@@ -97,13 +102,13 @@ export default async function MyPage() {
                     href={item.type === "service" ? `/services/${item.id}` : `/articles/${item.id}`}
                     className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted transition-colors"
                   >
-                    <div className="relative h-12 w-20 flex-shrink-0 bg-muted rounded overflow-hidden">
+                    <div className="relative w-20 flex-shrink-0 overflow-hidden rounded bg-muted aspect-video">
                       {item.image ? (
                         <Image
                           src={item.image}
                           alt={item.title}
                           fill
-                          className="object-cover"
+                          className="object-contain"
                           unoptimized
                         />
                       ) : (
@@ -131,12 +136,12 @@ export default async function MyPage() {
             </CardContent>
           </Card>
 
-          {/* 資料請求リスト */}
+          {/* サービスのお気に入り */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <FileBadge2 className="h-5 w-5" />
-                資料請求リスト
+                サービスのお気に入り
               </CardTitle>
               <Button variant="ghost" size="sm" asChild>
                 <Link href="/request-info/list">
@@ -146,16 +151,16 @@ export default async function MyPage() {
               </Button>
             </CardHeader>
             <CardContent>
-              <RequestListCompact />
+              <RequestListCompact maxBatchRequest={5} />
             </CardContent>
           </Card>
 
-          {/* いいねリスト */}
+          {/* 記事のお気に入り */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <Heart className="h-5 w-5 text-red-500 fill-red-500" />
-                いいねリスト
+                記事のお気に入り
               </CardTitle>
               <Button variant="ghost" size="sm" asChild>
                 <Link href="/favorites">
@@ -165,7 +170,39 @@ export default async function MyPage() {
               </Button>
             </CardHeader>
             <CardContent>
-              <FavoritesCompact />
+              <FavoritesCompact articleOnly />
+            </CardContent>
+          </Card>
+
+          {/* 自分の口コミ */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Star className="h-5 w-5 text-yellow-500" />
+                自分の口コミ
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">
+                投稿した口コミの確認・削除ができます（編集はできません）
+              </p>
+            </CardHeader>
+            <CardContent>
+              <MyReviewsCompact reviews={myReviews} />
+            </CardContent>
+          </Card>
+
+          {/* AIチャット履歴 */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bot className="h-5 w-5" />
+                AIチャット履歴
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">
+                過去の会話を確認・削除できます
+              </p>
+            </CardHeader>
+            <CardContent>
+              <ChatHistoryCompact />
             </CardContent>
           </Card>
 
@@ -231,12 +268,6 @@ export default async function MyPage() {
                 <Link href="/request-info">
                   <FileText className="h-4 w-4 mr-2" />
                   資料請求
-                </Link>
-              </Button>
-              <Button variant="outline" className="w-full justify-start" asChild>
-                <Link href="/reviews/write">
-                  <Star className="h-4 w-4 mr-2" />
-                  レビューを書く
                 </Link>
               </Button>
               <Button variant="outline" className="w-full justify-start" asChild>

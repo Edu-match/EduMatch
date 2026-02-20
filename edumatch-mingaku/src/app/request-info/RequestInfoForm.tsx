@@ -150,7 +150,7 @@ export function RequestInfoForm(props: Props) {
       <Button variant="ghost" asChild className="mb-2">
         <Link href={isBatchMode ? "/request-info/list" : `/services/${serviceId}`}>
           <ArrowLeft className="h-4 w-4 mr-2" />
-          {isBatchMode ? "資料請求リストに戻る" : "サービスに戻る"}
+          {isBatchMode ? "サービスのお気に入りに戻る" : "サービスに戻る"}
         </Link>
       </Button>
 

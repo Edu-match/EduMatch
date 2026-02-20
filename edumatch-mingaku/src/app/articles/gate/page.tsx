@@ -14,7 +14,7 @@ export default function ArticleGatePage() {
     category: "教育ICT",
     date: "2024-01-15",
     tags: ["EdTech", "選び方", "導入"],
-    author: "Edumatch編集部",
+    author: "エデュマッチ編集部",
     previewContent: `
 # EdTechツール選びの完全ガイド
 
@@ -58,12 +58,12 @@ export default function ArticleGatePage() {
         </div>
 
         {/* メイン画像 */}
-        <div className="relative h-64 md:h-96 w-full mb-8 rounded-lg overflow-hidden">
+        <div className="relative w-full aspect-video mb-8 rounded-lg overflow-hidden">
           <Image
             src={article.image}
             alt={article.title}
             fill
-            className="object-cover"
+            className="object-contain"
             unoptimized
           />
         </div>
@@ -102,7 +102,7 @@ export default function ArticleGatePage() {
               </h2>
 
               <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                Edumatchに無料会員登録すると、この記事の全文や、会員限定の教育コンテンツ、
+                エデュマッチに無料会員登録すると、この記事の全文や、会員限定の教育コンテンツ、
                 お気に入り機能などをご利用いただけます。
               </p>
 

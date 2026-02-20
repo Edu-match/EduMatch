@@ -19,6 +19,7 @@ export type ServiceWithProviderFromSupabase = {
   is_published: boolean;
   provider_id: string;
   created_at: string;
+  provider_display_name: string | null;
   provider: {
     id: string;
     name: string;
@@ -49,10 +50,12 @@ async function fetchPublicServicesUncached(
       is_published,
       provider_id,
       created_at,
+      provider_display_name,
       Profile!provider_id ( id, name, email, avatar_url )
     `
     )
     .or("status.eq.APPROVED,is_published.eq.true")
+    .order("sort_order", { ascending: true })
     .order("created_at", { ascending: false });
 
   if (!isLoggedIn) {

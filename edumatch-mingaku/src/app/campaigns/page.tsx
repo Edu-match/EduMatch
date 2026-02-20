@@ -112,12 +112,12 @@ export default function CampaignsPage() {
                 key={campaign.id}
                 className="overflow-hidden border-2 border-primary/20"
               >
-                <div className="relative h-48 w-full">
+                <div className="relative w-full aspect-video overflow-hidden">
                   <Image
                     src={campaign.image}
                     alt={campaign.title}
                     fill
-                    className="object-cover"
+                    className="object-contain"
                     unoptimized
                   />
                   <Badge className="absolute top-3 left-3 bg-red-500 hover:bg-red-600">
@@ -200,12 +200,12 @@ export default function CampaignsPage() {
             <Card key={campaign.id}>
               <CardContent className="p-5">
                 <div className="flex flex-col md:flex-row gap-4">
-                  <div className="relative h-32 md:w-48 flex-shrink-0">
+                  <div className="relative w-full md:w-48 flex-shrink-0 aspect-video overflow-hidden">
                     <Image
                       src={campaign.image}
                       alt={campaign.title}
                       fill
-                      className="object-cover rounded-lg"
+                      className="object-contain rounded-lg"
                       unoptimized
                     />
                   </div>

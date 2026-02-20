@@ -423,6 +423,7 @@ const DEMO_POSTS: PostWithProvider[] = [
     updated_at: new Date(),
     is_member_only: false,
     wp_post_id: null,
+    author_display_name: null,
     provider: { id: "demo-provider-1", name: "教育ICTニュース", avatar_url: null },
   },
   {
@@ -448,6 +449,7 @@ const DEMO_POSTS: PostWithProvider[] = [
     updated_at: new Date(),
     is_member_only: false,
     wp_post_id: null,
+    author_display_name: null,
     provider: { id: "demo-provider-2", name: "EdTech研究所", avatar_url: null },
   },
   {
@@ -473,6 +475,7 @@ const DEMO_POSTS: PostWithProvider[] = [
     updated_at: new Date(),
     is_member_only: false,
     wp_post_id: null,
+    author_display_name: null,
     provider: { id: "demo-provider-3", name: "学校運営サポート", avatar_url: null },
   },
   {
@@ -498,6 +501,7 @@ const DEMO_POSTS: PostWithProvider[] = [
     updated_at: new Date(),
     is_member_only: false,
     wp_post_id: null,
+    author_display_name: null,
     provider: { id: "demo-provider-4", name: "プログラミング教育推進室", avatar_url: null },
   },
   {
@@ -523,6 +527,7 @@ const DEMO_POSTS: PostWithProvider[] = [
     updated_at: new Date(),
     is_member_only: false,
     wp_post_id: null,
+    author_display_name: null,
     provider: { id: "demo-provider-5", name: "オンライン教育ラボ", avatar_url: null },
   },
 ];

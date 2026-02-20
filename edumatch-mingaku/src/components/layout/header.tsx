@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { 
   Menu, LogOut, User, LayoutDashboard, Settings, 
   ChevronDown, UserPlus, LogIn, FileText
@@ -94,15 +95,23 @@ export function Header() {
   const displayName = userName || (userEmail ? userEmail.split("@")[0] : "ユーザー");
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center justify-between gap-4">
+    <header className="sticky top-0 z-50 w-full max-w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container flex h-16 items-center justify-between gap-2 overflow-hidden">
         {/* Logo */}
-        <Link href="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
-          <span className="text-2xl font-bold text-primary">Edumatch</span>
+        <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
+          <Image
+            src="/logo.png"
+            alt="エデュマッチ"
+            width={180}
+            height={44}
+            className="h-9 w-auto object-contain"
+            priority
+            unoptimized
+          />
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-4 lg:gap-6 flex-wrap">
+        <nav className="hidden md:flex items-center gap-3 lg:gap-5 flex-wrap min-w-0">
           {navLinks.map((link) => (
             <Link
               key={link.href}
@@ -117,7 +126,7 @@ export function Header() {
             className="relative flex items-center gap-1.5 text-sm font-medium text-foreground/60 transition-colors hover:text-foreground"
           >
             <FileText className="h-4 w-4" />
-            資料請求リスト
+            サービスのお気に入り
             {requestListCount > 0 && (
               <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold px-1">
                 {requestListCount > 99 ? "99+" : requestListCount}
@@ -230,7 +239,7 @@ export function Header() {
                 className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground"
               >
                 <FileText className="h-4 w-4" />
-                資料請求リスト
+                サービスのお気に入り
                 {requestListCount > 0 && (
                   <span className="rounded-full bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5">
                     {requestListCount}

@@ -9,9 +9,15 @@ import type { HomeSliderItem } from "@/app/_actions/home";
 const PLACEHOLDER = "https://placehold.co/1200x500/e0f2fe/0369a1?text=No+Image";
 const INTERVAL_MS = 5000;
 
-type Props = { items: HomeSliderItem[] };
+function typeLabel(item: HomeSliderItem): string {
+  if (item.type === "site_update") return "お知らせ";
+  if (item.type === "article") return "記事";
+  return "サービス";
+}
 
-export function HeroSlider({ items }: Props) {
+type Props = { items: HomeSliderItem[]; isAdmin?: boolean };
+
+export function HeroSlider({ items, isAdmin }: Props) {
   const [index, setIndex] = useState(0);
   const len = items.length;
 
@@ -40,13 +46,13 @@ export function HeroSlider({ items }: Props) {
   if (items.length === 1) {
     const item = items[0];
     return (
-      <section className="rounded-xl overflow-hidden border mb-6">
-        <Link href={item.url} className="block relative w-full aspect-[1200/500] max-h-[320px] bg-muted">
+      <section className="rounded-xl overflow-hidden border mb-6 relative">
+        <Link href={item.url} className="block relative w-full aspect-video overflow-hidden bg-muted">
           <Image
             src={item.thumbnailUrl || PLACEHOLDER}
             alt={item.title}
             fill
-            className="object-cover"
+            className="object-contain"
             sizes="(max-width: 768px) 100vw, 80vw"
             priority
             unoptimized
@@ -54,12 +60,20 @@ export function HeroSlider({ items }: Props) {
           <div className="absolute inset-0 bg-black/30 flex items-end p-6">
             <div>
               <span className="text-xs font-medium text-white/90 bg-primary/80 px-2 py-0.5 rounded">
-                {item.type === "article" ? "記事" : "サービス"}
+                {typeLabel(item)}
               </span>
               <h2 className="text-xl sm:text-2xl font-bold text-white mt-2 line-clamp-2">{item.title}</h2>
             </div>
           </div>
         </Link>
+        {isAdmin && (
+          <Link
+            href="/admin/home-slider"
+            className="absolute bottom-3 right-3 z-20 rounded bg-black/60 px-3 py-1.5 text-xs font-medium text-white hover:bg-black/80 transition-colors"
+          >
+            記事を選択する
+          </Link>
+        )}
       </section>
     );
   }
@@ -68,7 +82,7 @@ export function HeroSlider({ items }: Props) {
 
   return (
     <section className="rounded-xl overflow-hidden border mb-6 relative group">
-      <div className="relative w-full aspect-[1200/500] max-h-[320px] bg-muted">
+      <div className="relative w-full aspect-video overflow-hidden bg-muted">
         {items.map((item, i) => (
           <Link
             key={`${item.type}-${item.id}`}
@@ -82,7 +96,7 @@ export function HeroSlider({ items }: Props) {
               src={item.thumbnailUrl || PLACEHOLDER}
               alt={item.title}
               fill
-              className="object-cover"
+              className="object-contain"
               sizes="(max-width: 768px) 100vw, 80vw"
               priority={i === 0}
               unoptimized
@@ -90,7 +104,7 @@ export function HeroSlider({ items }: Props) {
             <div className="absolute inset-0 bg-black/35 flex items-end p-6">
               <div>
                 <span className="text-xs font-medium text-white/90 bg-primary/80 px-2 py-0.5 rounded">
-                  {item.type === "article" ? "記事" : "サービス"}
+                  {typeLabel(item)}
                 </span>
                 <h2 className="text-xl sm:text-2xl font-bold text-white mt-2 line-clamp-2">{item.title}</h2>
               </div>
@@ -131,6 +145,16 @@ export function HeroSlider({ items }: Props) {
           />
         ))}
       </div>
+
+      {/* ADMIN用: 記事を選択する（右下） */}
+      {isAdmin && (
+        <Link
+          href="/admin/home-slider"
+          className="absolute bottom-3 right-3 z-20 rounded bg-black/60 px-3 py-1.5 text-xs font-medium text-white hover:bg-black/80 transition-colors"
+        >
+          記事を選択する
+        </Link>
+      )}
     </section>
   );
 }

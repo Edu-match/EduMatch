@@ -156,7 +156,7 @@ export default function CompareClientPage({ initialServices }: CompareClientPage
                               src={service.thumbnail_url}
                               alt={service.title}
                               fill
-                              className="object-cover"
+                              className="object-contain"
                               unoptimized
                             />
                           </div>

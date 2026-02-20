@@ -129,6 +129,10 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     view_count: 850,
     favorite_count: 38,
     request_count: 52,
+    sort_order: 9999,
+    wp_product_id: null,
+    provider_display_name: null,
+    review_count: 0,
     is_published: true,
     is_member_only: false,
     status: "APPROVED",
@@ -155,6 +159,10 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     view_count: 720,
     favorite_count: 29,
     request_count: 44,
+    sort_order: 9999,
+    wp_product_id: null,
+    provider_display_name: null,
+    review_count: 0,
     is_published: true,
     is_member_only: false,
     status: "APPROVED",
@@ -181,6 +189,10 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     view_count: 650,
     favorite_count: 35,
     request_count: 38,
+    sort_order: 9999,
+    wp_product_id: null,
+    provider_display_name: null,
+    review_count: 0,
     is_published: true,
     is_member_only: false,
     status: "APPROVED",
@@ -207,6 +219,10 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     view_count: 980,
     favorite_count: 42,
     request_count: 61,
+    sort_order: 9999,
+    wp_product_id: null,
+    provider_display_name: null,
+    review_count: 0,
     is_published: true,
     is_member_only: false,
     status: "APPROVED",
@@ -233,6 +249,10 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     view_count: 790,
     favorite_count: 33,
     request_count: 47,
+    sort_order: 9999,
+    wp_product_id: null,
+    provider_display_name: null,
+    review_count: 0,
     is_published: true,
     is_member_only: false,
     status: "APPROVED",
@@ -274,12 +294,19 @@ export async function getAllServices(): Promise<ServiceWithProvider[]> {
           },
         },
       },
-      orderBy: {
-        created_at: "desc",
-      },
+      orderBy: [
+        { sort_order: "asc" },
+        { created_at: "desc" },
+      ],
     });
 
-    return services.map((s) => ({
+    // pinned services (sort_order < 9999) first, then services with images, then without images
+    const pinned = services.filter((s) => s.sort_order < 9999);
+    const withImage = services.filter((s) => s.sort_order === 9999 && s.thumbnail_url);
+    const withoutImage = services.filter((s) => s.sort_order === 9999 && !s.thumbnail_url);
+    const sorted = [...pinned, ...withImage, ...withoutImage];
+
+    return sorted.map((s) => ({
       ...s,
       provider: s.provider || { id: s.provider_id, name: "提供者", email: "", avatar_url: null },
     }));

@@ -7,43 +7,34 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Mail, Lock, User, Building2, Loader2, Chrome, BookOpen, School, AlertCircle } from "lucide-react";
-import { RoleSelectionCard } from "./role-selection-card";
-import { signupSchema, signupProviderSchema, type SignupInput, type SignupProviderInput } from "@/lib/validations/auth";
+import { Mail, Lock, User, Loader2, Chrome, AlertCircle } from "lucide-react";
+import { signupSchema, type SignupInput } from "@/lib/validations/auth";
 import { toast } from "sonner";
 import { createSupabaseBrowserClient } from "@/utils/supabase/client";
-
-type UserType = "viewer" | "provider";
 
 type Props = {
   onSuccess?: () => void;
   redirectTo?: string;
 };
 
+/** 新規登録は閲覧者のみ。投稿者登録はオフのため常に viewer で送信 */
+const SIGNUP_USER_TYPE = "viewer" as const;
+
 export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
-  const [userType, setUserType] = useState<UserType | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
 
-  // react-hook-formのセットアップ - userTypeによってスキーマを切り替え
-  const schema = userType === "provider" ? signupProviderSchema : signupSchema;
-  
   const {
     register,
     handleSubmit,
     formState: { errors },
     watch,
-  } = useForm<SignupInput | SignupProviderInput>({
-    resolver: zodResolver(schema),
+  } = useForm<SignupInput>({
+    resolver: zodResolver(signupSchema),
     mode: "onChange",
   });
 
-  const onSubmit = async (data: SignupInput | SignupProviderInput) => {
-    if (!userType) {
-      setGlobalError("アカウントタイプを選択してください");
-      return;
-    }
-
+  const onSubmit = async (data: SignupInput) => {
     setIsSubmitting(true);
     setGlobalError(null);
 
@@ -55,8 +46,8 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
           email: data.email,
           password: data.password,
           name: data.name,
-          organization: "organization" in data ? data.organization : null,
-          userType,
+          organization: null,
+          userType: SIGNUP_USER_TYPE,
         }),
       });
 
@@ -99,70 +90,37 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
   };
 
   const handleGoogleSignup = () => {
-    if (!userType) {
-      setGlobalError("アカウントタイプを選択してください");
-      return;
-    }
     window.location.href = `/api/auth/google?redirect_to=${encodeURIComponent(
       redirectTo
-    )}&userType=${userType}`;
+    )}&userType=${SIGNUP_USER_TYPE}`;
   };
 
   return (
     <div className="space-y-6">
-      {/* ロール選択 */}
-      {!userType && (
-        <div>
-          <p className="text-center text-sm font-medium text-muted-foreground mb-4">
-            まず、ご利用目的を選択してください
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            <RoleSelectionCard
-              type="viewer"
-              icon={BookOpen}
-              title="閲覧者として利用"
-              description="記事の閲覧・資料請求ができます。"
-              isSelected={userType === "viewer"}
-              onClick={() => setUserType("viewer")}
-            />
-            <RoleSelectionCard
-              type="provider"
-              icon={School}
-              title="投稿者として利用"
-              description="サービス・記事を投稿できます。"
-              isSelected={userType === "provider"}
-              onClick={() => setUserType("provider")}
-            />
-          </div>
+      {/* Google登録 */}
+      <div className="space-y-5">
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full h-11 font-medium border-input hover:bg-muted/50 transition-colors"
+          onClick={handleGoogleSignup}
+          disabled={isSubmitting}
+        >
+          <Chrome className="h-4 w-4 mr-2" />
+          Googleで登録
+        </Button>
+        <div className="relative my-5">
+          <Separator />
+          <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-3 text-xs font-medium text-muted-foreground">
+            またはメールで登録
+          </span>
         </div>
-      )}
+      </div>
 
-      {userType && (
-        <>
-          {/* Google登録 */}
-          <div className="space-y-5">
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full h-11 font-medium border-input hover:bg-muted/50 transition-colors"
-              onClick={handleGoogleSignup}
-              disabled={isSubmitting}
-            >
-              <Chrome className="h-4 w-4 mr-2" />
-              Googleで登録
-            </Button>
-            <div className="relative my-5">
-              <Separator />
-              <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-3 text-xs font-medium text-muted-foreground">
-                またはメールで登録
-              </span>
-            </div>
-          </div>
-
-          {/* メール登録フォーム */}
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="space-y-2">
-              <label htmlFor="signup-name" className="text-sm font-medium text-foreground">
+      {/* メール登録フォーム */}
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <div className="space-y-2">
+          <label htmlFor="signup-name" className="text-sm font-medium text-foreground">
                 表示名（会社名または活動名） <span className="text-destructive">*</span>
               </label>
               <div className="relative">
@@ -170,11 +128,7 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
                 <Input
                   id="signup-name"
                   {...register("name")}
-                  placeholder={
-                    userType === "provider"
-                      ? "例: 株式会社Edumatch / 教育太郎"
-                      : "例: 山田太郎"
-                  }
+                  placeholder="例: 山田太郎"
                   autoComplete="name"
                   className="pl-10 h-11 rounded-lg"
                   disabled={isSubmitting}
@@ -187,31 +141,6 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
                 </p>
               )}
             </div>
-
-            {userType === "provider" && (
-              <div className="space-y-2">
-                <label htmlFor="signup-org" className="text-sm font-medium text-foreground">
-                  企業名・学校名 <span className="text-destructive">*</span>
-                </label>
-                <div className="relative">
-                  <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                  <Input
-                    id="signup-org"
-                    {...register("organization")}
-                    placeholder="例: 株式会社Edumatch / ○○高等学校"
-                    autoComplete="organization"
-                    className="pl-10 h-11 rounded-lg"
-                    disabled={isSubmitting}
-                    aria-invalid={!!errors.organization}
-                  />
-                </div>
-                {errors.organization && (
-                  <p className="text-sm text-destructive" role="alert">
-                    {errors.organization.message}
-                  </p>
-                )}
-              </div>
-            )}
 
             <div className="space-y-2">
               <label htmlFor="signup-email" className="text-sm font-medium text-foreground">
@@ -320,24 +249,11 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   登録中...
                 </>
-              ) : userType === "provider" ? (
-                "投稿者として登録"
               ) : (
                 "無料会員登録"
               )}
             </Button>
           </form>
-
-          <button
-            type="button"
-            onClick={() => setUserType(null)}
-            disabled={isSubmitting}
-            className="w-full py-2 text-sm text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
-          >
-            ← アカウントタイプを変更
-          </button>
-        </>
-      )}
     </div>
   );
 }

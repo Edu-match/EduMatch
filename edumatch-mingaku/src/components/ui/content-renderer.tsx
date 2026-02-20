@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useMemo } from "react";
+import { sanitizeHtml, looksLikeHtml } from "@/lib/sanitize-html";
 import { YouTubeEmbed } from "./youtube-embed";
 
 type ContentBlock = {
@@ -10,24 +11,52 @@ type ContentBlock = {
   alt?: string;
 };
 
+/** YouTube URL のみ抽出してプレースホルダーに置換（HTML本文用） */
+function extractYoutubeOnly(content: string): ContentBlock[] {
+  const youtubePattern = /(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})(?:[^\s"'<>]*))/gi;
+  const blocks: ContentBlock[] = [];
+  const matches: Array<{ index: number; length: number; url: string }> = [];
+  let m: RegExpExecArray | null;
+  while ((m = youtubePattern.exec(content)) !== null) {
+    matches.push({ index: m.index, length: m[0].length, url: m[0] });
+  }
+  matches.reverse();
+  let processed = content;
+  for (const match of matches) {
+    processed =
+      processed.substring(0, match.index) +
+      `__YOUTUBE__${match.url}__` +
+      processed.substring(match.index + match.length);
+  }
+  const parts = processed.split(/(__YOUTUBE__[^_]+__)/);
+  for (const part of parts) {
+    if (part.startsWith("__YOUTUBE__")) {
+      const url = part.match(/__YOUTUBE__([^_]+)__/)?.[1];
+      if (url) blocks.push({ type: "youtube", content: url });
+    } else if (part.trim()) {
+      blocks.push({ type: "text", content: part });
+    }
+  }
+  if (blocks.length === 0) blocks.push({ type: "text", content });
+  return blocks;
+}
+
 /**
  * 本文コンテンツをパースして、画像URL、YouTube URL、Markdown画像を検出
+ * HTML本文の場合は画像置換を行わず、YouTubeのみ抽出する
  */
 function parseContent(content: string): ContentBlock[] {
+  if (looksLikeHtml(content)) {
+    return extractYoutubeOnly(content);
+  }
+
   const blocks: ContentBlock[] = [];
-  
-  // YouTube URL パターン
   const youtubePattern = /(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})(?:[^\s]*))/gi;
-  
-  // Markdown画像記法: ![alt](url)
   const markdownImagePattern = /!\[([^\]]*)\]\((https?:\/\/[^\s)]+\.(?:jpg|jpeg|png|gif|webp|svg)(?:\?[^\s)]*)?)\)/gi;
-  
-  // 通常の画像URL（http/httpsで始まり、画像拡張子で終わる）
   const plainImageUrlPattern = /(https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif|webp|svg)(?:\?[^\s]*)?)/gi;
-  
+
   let processedContent = content;
-  
-  // まずYouTube URLを処理（最優先）
+
   const youtubeMatches: Array<{ index: number; length: number; url: string }> = [];
   let youtubeMatch;
   const youtubeRegex = new RegExp(youtubePattern);
@@ -38,8 +67,6 @@ function parseContent(content: string): ContentBlock[] {
       url: youtubeMatch[0],
     });
   }
-  
-  // マッチを逆順で処理（インデックスがずれないように）
   youtubeMatches.reverse();
   for (const match of youtubeMatches) {
     processedContent =
@@ -47,8 +74,7 @@ function parseContent(content: string): ContentBlock[] {
       `__YOUTUBE__${match.url}__` +
       processedContent.substring(match.index + match.length);
   }
-  
-  // 次にMarkdown記法の画像を処理
+
   const markdownMatches: Array<{ index: number; length: number; url: string; alt: string }> = [];
   let markdownMatch;
   const markdownRegex = new RegExp(markdownImagePattern);
@@ -60,7 +86,6 @@ function parseContent(content: string): ContentBlock[] {
       alt: markdownMatch[1] || "画像",
     });
   }
-  
   markdownMatches.reverse();
   for (const match of markdownMatches) {
     processedContent =
@@ -68,13 +93,11 @@ function parseContent(content: string): ContentBlock[] {
       `__IMAGE__${match.url}__ALT__${match.alt}__` +
       processedContent.substring(match.index + match.length);
   }
-  
-  // 最後に通常の画像URLを処理
+
   const plainMatches: Array<{ index: number; length: number; url: string }> = [];
   let plainMatch;
   const plainRegex = new RegExp(plainImageUrlPattern);
   while ((plainMatch = plainRegex.exec(processedContent)) !== null) {
-    // __IMAGE__や__YOUTUBE__タグの中にある場合はスキップ
     const beforeText = processedContent.substring(Math.max(0, plainMatch.index - 15), plainMatch.index);
     if (!beforeText.includes("__IMAGE__") && !beforeText.includes("__YOUTUBE__")) {
       plainMatches.push({
@@ -84,7 +107,6 @@ function parseContent(content: string): ContentBlock[] {
       });
     }
   }
-  
   plainMatches.reverse();
   for (const match of plainMatches) {
     processedContent =
@@ -92,31 +114,22 @@ function parseContent(content: string): ContentBlock[] {
       `__IMAGE__${match.url}__ALT__画像__` +
       processedContent.substring(match.index + match.length);
   }
-  
-  // 最終的にブロックに分割
+
   const parts = processedContent.split(/(__YOUTUBE__[^_]+__|__IMAGE__[^_]+__ALT__[^_]+__)/);
-  
   for (const part of parts) {
     if (part.startsWith("__YOUTUBE__")) {
       const url = part.match(/__YOUTUBE__([^_]+)__/)?.[1];
-      if (url) {
-        blocks.push({ type: "youtube", content: url });
-      }
+      if (url) blocks.push({ type: "youtube", content: url });
     } else if (part.startsWith("__IMAGE__")) {
       const [, url, alt] = part.match(/__IMAGE__([^_]+)__ALT__([^_]+)__/) || [];
-      if (url) {
-        blocks.push({ type: "image", content: url, alt: alt || "画像" });
-      }
+      if (url) blocks.push({ type: "image", content: url, alt: alt || "画像" });
     } else if (part.trim()) {
       blocks.push({ type: "text", content: part });
     }
   }
-  
-  // ブロックが見つからなかった場合は、全体をテキストとして扱う
   if (blocks.length === 0) {
     blocks.push({ type: "text", content });
   }
-  
   return blocks;
 }
 
@@ -249,7 +262,7 @@ export function ContentRenderer({ content, className }: ContentRendererProps) {
               key={index}
               className="my-6 relative w-full rounded-lg overflow-hidden bg-muted"
             >
-              <div className="relative aspect-video w-full">
+              <div className="relative aspect-video w-full overflow-hidden">
                 <Image
                   src={block.content}
                   alt={block.alt || `コンテンツ画像 ${index + 1}`}
@@ -264,7 +277,16 @@ export function ContentRenderer({ content, className }: ContentRendererProps) {
         
         return (
           <div key={index} className="content-body">
-            <MarkdownLikeContent text={block.content} />
+            {looksLikeHtml(block.content) ? (
+              <div
+                className="article-html prose prose-neutral dark:prose-invert max-w-none break-words"
+                dangerouslySetInnerHTML={{
+                  __html: sanitizeHtml(block.content),
+                }}
+              />
+            ) : (
+              <MarkdownLikeContent text={block.content} />
+            )}
           </div>
         );
       })}

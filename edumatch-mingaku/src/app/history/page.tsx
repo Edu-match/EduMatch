@@ -62,13 +62,13 @@ export default async function HistoryPage() {
                   href={item.type === "service" ? `/services/${item.id}` : `/articles/${item.id}`}
                   className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted transition-colors"
                 >
-                  <div className="relative h-12 w-20 flex-shrink-0 bg-muted rounded overflow-hidden">
+                  <div className="relative w-20 flex-shrink-0 overflow-hidden rounded bg-muted aspect-video">
                     {item.image ? (
                       <Image
                         src={item.image}
                         alt={item.title}
                         fill
-                        className="object-cover"
+                        className="object-contain"
                         unoptimized
                       />
                     ) : (

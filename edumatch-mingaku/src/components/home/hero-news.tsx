@@ -32,12 +32,12 @@ export async function HeroNews() {
     <div className="border rounded-lg bg-card overflow-hidden">
       {/* メインニュース */}
       <Link href={`/articles/${heroPost.id}`} className="block group">
-        <div className="relative h-64 w-full bg-muted">
+        <div className="relative w-full aspect-video overflow-hidden bg-muted">
           <Image
             src={heroPost.thumbnail_url || "https://placehold.co/800x450/e0f2fe/0369a1?text=No+Image"}
             alt={heroPost.title}
             fill
-            className="object-cover"
+            className="object-contain"
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 55vw"
             priority
             unoptimized

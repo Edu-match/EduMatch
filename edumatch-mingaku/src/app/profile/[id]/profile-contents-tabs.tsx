@@ -89,7 +89,7 @@ export function ProfileContentsTabs({
                       href={`/articles/${p.id}`}
                       className="flex gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
                     >
-                      <div className="relative w-24 h-16 rounded overflow-hidden bg-muted flex-shrink-0">
+                      <div className="relative w-24 flex-shrink-0 overflow-hidden rounded bg-muted aspect-video">
                         <Image
                           src={
                             p.thumbnail_url ||
@@ -97,7 +97,7 @@ export function ProfileContentsTabs({
                           }
                           alt={p.title}
                           fill
-                          className="object-cover"
+                          className="object-contain"
                           unoptimized
                         />
                       </div>
@@ -135,7 +135,7 @@ export function ProfileContentsTabs({
                         }
                         alt={s.title}
                         fill
-                        className="object-cover"
+                        className="object-contain"
                         unoptimized
                       />
                     </div>

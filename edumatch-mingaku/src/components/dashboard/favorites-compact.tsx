@@ -10,7 +10,12 @@ import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
 import { validateFavorites, type ValidatedFavoriteItem } from "@/app/_actions/favorites";
 
-export function FavoritesCompact() {
+type Props = {
+  /** true のとき記事のみ表示（マイページの「記事のお気に入り」ブロック用） */
+  articleOnly?: boolean;
+};
+
+export function FavoritesCompact({ articleOnly = false }: Props) {
   const { favorites, removeFavorite } = useFavorites();
   const [validatedFavorites, setValidatedFavorites] = useState<ValidatedFavoriteItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -23,7 +28,7 @@ export function FavoritesCompact() {
       }
 
       const articleIds = favorites.filter(f => f.type === "article").map(f => f.id);
-      const serviceIds = favorites.filter(f => f.type === "service").map(f => f.id);
+      const serviceIds = articleOnly ? [] : favorites.filter(f => f.type === "service").map(f => f.id);
 
       const validated = await validateFavorites(articleIds, serviceIds);
       setValidatedFavorites(validated);
@@ -40,11 +45,11 @@ export function FavoritesCompact() {
     }
 
     validate();
-  }, [favorites.length]); // favorites自体を依存配列に入れると無限ループになるのでlengthのみ
+  }, [favorites.length, articleOnly]); // favorites自体を依存配列に入れると無限ループになるのでlengthのみ
 
-  const articles = validatedFavorites.filter((f) => f.type === "article").slice(0, 3);
-  const services = validatedFavorites.filter((f) => f.type === "service").slice(0, 3);
-  const totalCount = validatedFavorites.length;
+  const articles = validatedFavorites.filter((f) => f.type === "article").slice(0, articleOnly ? 5 : 3);
+  const services = articleOnly ? [] : validatedFavorites.filter((f) => f.type === "service").slice(0, 3);
+  const totalCount = articleOnly ? validatedFavorites.filter((f) => f.type === "article").length : validatedFavorites.length;
 
   if (isLoading) {
     return (
@@ -58,7 +63,9 @@ export function FavoritesCompact() {
     return (
       <div className="space-y-3">
         <p className="text-sm text-muted-foreground py-4">
-          気になる記事やサービスをお気に入りに追加すると、ここに表示されます。
+          {articleOnly
+            ? "記事をお気に入りに追加すると、ここに表示されます。"
+            : "気になる記事をお気に入りに追加すると、ここに表示されます。"}
         </p>
         <Button variant="outline" size="sm" asChild>
           <Link href="/articles">
@@ -89,13 +96,13 @@ export function FavoritesCompact() {
                   href={`/articles/${article.id}`}
                   className="flex flex-1 gap-2 min-w-0"
                 >
-                  <div className="relative w-12 h-8 rounded overflow-hidden bg-muted flex-shrink-0">
+                  <div className="relative w-12 flex-shrink-0 overflow-hidden rounded bg-muted aspect-video">
                     {article.thumbnail ? (
                       <Image
                         src={article.thumbnail}
                         alt={article.title}
                         fill
-                        className="object-cover"
+                        className="object-contain"
                         unoptimized
                       />
                     ) : (
@@ -147,13 +154,13 @@ export function FavoritesCompact() {
                   href={`/services/${service.id}`}
                   className="flex flex-1 gap-2 min-w-0"
                 >
-                  <div className="relative w-12 h-8 rounded overflow-hidden bg-muted flex-shrink-0">
+                  <div className="relative w-12 flex-shrink-0 overflow-hidden rounded bg-muted aspect-video">
                     {service.thumbnail ? (
                       <Image
                         src={service.thumbnail}
                         alt={service.title}
                         fill
-                        className="object-cover"
+                        className="object-contain"
                         unoptimized
                       />
                     ) : (
@@ -188,10 +195,17 @@ export function FavoritesCompact() {
         </div>
       )}
 
-      {totalCount > 6 && (
+      {!articleOnly && totalCount > 6 && (
         <div className="pt-2 border-t">
           <p className="text-xs text-muted-foreground mb-2">
             他 {totalCount - 6} 件のお気に入りがあります
+          </p>
+        </div>
+      )}
+      {articleOnly && validatedFavorites.filter((f) => f.type === "article").length > 5 && (
+        <div className="pt-2 border-t">
+          <p className="text-xs text-muted-foreground mb-2">
+            他 {validatedFavorites.filter((f) => f.type === "article").length - 5} 件のお気に入りがあります
           </p>
         </div>
       )}

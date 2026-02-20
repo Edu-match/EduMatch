@@ -212,11 +212,11 @@ export function ArticleForm() {
                           }}
                         />
                         {thumbnailPreview && (
-                          <div className="relative w-full h-48 border rounded-lg overflow-hidden bg-muted">
+                          <div className="relative w-full aspect-video border rounded-lg overflow-hidden bg-muted">
                             <img
                               src={thumbnailPreview}
                               alt="サムネイルプレビュー"
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-contain"
                               onError={() => setThumbnailPreview(null)}
                             />
                           </div>

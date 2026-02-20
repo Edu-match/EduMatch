@@ -58,12 +58,12 @@ export default function AssessmentPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="relative h-64 w-full rounded-md overflow-hidden border">
+          <div className="relative w-full aspect-video rounded-md overflow-hidden border">
             <Image
               src="https://placehold.co/800x400/e2e8f0/334155?text=Score+Distribution"
               alt="成績分布グラフ"
               fill
-              className="object-cover"
+              className="object-contain"
               unoptimized
             />
           </div>
@@ -79,12 +79,12 @@ export default function AssessmentPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="relative h-40 w-full rounded-md overflow-hidden border">
+            <div className="relative w-full aspect-video rounded-md overflow-hidden border">
               <Image
                 src="https://placehold.co/600x300/e2e8f0/334155?text=Trend+Analysis"
                 alt="推移分析"
                 fill
-                className="object-cover"
+                className="object-contain"
                 unoptimized
               />
             </div>

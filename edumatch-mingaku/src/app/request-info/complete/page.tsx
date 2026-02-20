@@ -117,7 +117,7 @@ export default async function RequestInfoCompletePage({ searchParams }: Props) {
                 <Button asChild size="lg" className="gap-2">
                   <Link href="/request-info/list">
                     <FileText className="h-4 w-4" />
-                    資料請求リストを見る
+                    サービスのお気に入りを見る
                   </Link>
                 </Button>
               )}

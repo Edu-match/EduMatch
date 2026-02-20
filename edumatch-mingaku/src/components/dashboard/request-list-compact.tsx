@@ -7,22 +7,30 @@ import { Button } from "@/components/ui/button";
 import { useRequestList } from "@/components/request-list/request-list-context";
 import { FileText, ArrowRight } from "lucide-react";
 import { AddToRequestListButton } from "@/components/request-list/add-to-request-list-button";
-import { Badge } from "@/components/ui/badge";
 
-export function RequestListCompact() {
+const DEFAULT_MAX_BATCH = 5;
+
+type Props = {
+  /** マイページから一斉に資料請求できる最大件数（未指定時は5件） */
+  maxBatchRequest?: number;
+};
+
+export function RequestListCompact({ maxBatchRequest = DEFAULT_MAX_BATCH }: Props) {
   const router = useRouter();
   const { items, count } = useRequestList();
+  const batchIds = items.slice(0, maxBatchRequest).map((i) => i.id);
+  const batchCount = batchIds.length;
 
   const handleBatchRequest = () => {
-    const ids = items.map((i) => i.id).join(",");
-    router.push(`/request-info?serviceIds=${encodeURIComponent(ids)}`);
+    if (batchCount === 0) return;
+    router.push(`/request-info?serviceIds=${encodeURIComponent(batchIds.join(","))}`);
   };
 
   if (count === 0) {
     return (
       <div className="space-y-3">
         <p className="text-sm text-muted-foreground py-4">
-          サービス一覧や詳細ページから「後で資料請求に追加」でマークすると、ここに表示されます。まとめて資料請求できます。
+          サービス一覧や詳細ページから「お気に入りに追加」すると、ここに表示されます。最大{maxBatchRequest}件まで一斉に資料請求できます。
         </p>
         <Button variant="outline" size="sm" asChild>
           <Link href="/services">
@@ -36,7 +44,7 @@ export function RequestListCompact() {
 
   return (
     <div className="space-y-3">
-      {items.slice(0, 5).map((item) => (
+      {items.slice(0, maxBatchRequest).map((item) => (
         <div
           key={item.id}
           className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
@@ -45,12 +53,12 @@ export function RequestListCompact() {
             href={`/services/${item.id}`}
             className="flex flex-1 gap-3 min-w-0"
           >
-            <div className="relative w-16 h-12 rounded overflow-hidden bg-muted flex-shrink-0">
+            <div className="relative w-16 flex-shrink-0 overflow-hidden rounded bg-muted aspect-video">
               <Image
                 src={item.thumbnail || "https://placehold.co/200x120/e0f2fe/0369a1?text=Service"}
                 alt={item.title}
                 fill
-                className="object-cover"
+                className="object-contain"
                 unoptimized
               />
             </div>
@@ -68,10 +76,10 @@ export function RequestListCompact() {
           />
         </div>
       ))}
-      {count > 5 && (
+      {count > maxBatchRequest && (
         <div className="pt-2 border-t">
           <p className="text-xs text-muted-foreground mb-2">
-            他 {count - 5} 件のサービスがリストにあります
+            他 {count - maxBatchRequest} 件のお気に入りがあります（一斉資料請求は最大{maxBatchRequest}件まで）
           </p>
         </div>
       )}
@@ -81,7 +89,7 @@ export function RequestListCompact() {
         className="w-full mt-2"
       >
         <FileText className="h-4 w-4 mr-2" />
-        まとめて資料請求する ({count}件)
+        一斉に資料請求する（最大{batchCount}件）
       </Button>
     </div>
   );

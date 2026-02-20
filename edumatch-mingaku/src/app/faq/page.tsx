@@ -28,9 +28,9 @@ const categories = [
     icon: HelpCircle,
     faqs: [
       {
-        question: "Edumatchとは何ですか？",
+        question: "エデュマッチとは何ですか？",
         answer:
-          "Edumatchは、教育現場とEdTechをつなぐマッチングプラットフォームです。最新の教育事例やEdTechツールを検索・比較し、最適なサービスを見つけることができます。",
+          "エデュマッチは、教育現場とEdTechをつなぐマッチングプラットフォームです。最新の教育事例やEdTechツールを検索・比較し、最適なサービスを見つけることができます。",
       },
       {
         question: "サービスは無料で利用できますか？",

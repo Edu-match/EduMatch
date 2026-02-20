@@ -111,12 +111,12 @@ ClassTech Proは、教育現場のデジタル変革を支援する総合的な�
           </div>
 
           {/* メイン画像 */}
-          <div className="relative h-96 w-full rounded-lg overflow-hidden">
+          <div className="relative w-full aspect-video rounded-lg overflow-hidden">
             <Image
               src={service.image}
               alt={service.name}
               fill
-              className="object-cover"
+              className="object-contain"
               unoptimized
             />
           </div>

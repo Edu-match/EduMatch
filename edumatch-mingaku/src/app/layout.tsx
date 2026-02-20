@@ -21,8 +21,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Edumatch - 教育の未来を見つける、つながる",
-    template: "%s | Edumatch",
+    default: "エデュマッチ - 教育の未来を見つける、つながる",
+    template: "%s | エデュマッチ",
   },
   description:
     "教育現場とEdTechをつなぐマッチングプラットフォーム。最新の教育事例やEdTechツールを探せます。",
@@ -40,9 +40,9 @@ export default function RootLayout({
       >
         <RequestListProvider>
         <FavoritesProvider>
-        <div className="flex min-h-screen flex-col">
+        <div className="flex min-h-screen flex-col w-full">
           <Header />
-          <div className="flex-1 flex">
+          <div className="flex-1 flex min-w-0">
             {/* Desktop: left menu (not fixed) */}
             <aside className="hidden lg:block lg:w-64 lg:p-4 lg:pt-6 lg:flex-shrink-0">
               <div className="sticky top-20">
@@ -50,7 +50,7 @@ export default function RootLayout({
               </div>
             </aside>
 
-            <main className="flex-1">
+            <main className="flex-1 min-w-0 overflow-x-hidden">
               <div className="w-full">{children}</div>
             </main>
           </div>

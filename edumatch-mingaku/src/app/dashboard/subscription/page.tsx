@@ -3,8 +3,13 @@ import { requireAuth } from "@/lib/auth";
 import { getCurrentSubscription } from "@/app/_actions/subscription";
 import { PLANS } from "@/lib/stripe";
 import { SubscriptionManagement } from "./subscription-management";
+import { FEATURES } from "@/lib/features";
 
 export default async function SubscriptionPage() {
+  if (!FEATURES.PAID_PLANS) {
+    redirect("/dashboard");
+  }
+
   await requireAuth();
   const subscription = await getCurrentSubscription();
 

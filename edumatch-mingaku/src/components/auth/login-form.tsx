@@ -7,12 +7,12 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Mail, Lock, Loader2, Chrome, BookOpen, School, AlertCircle } from "lucide-react";
-import { RoleSelectionCard } from "./role-selection-card";
+import { Mail, Lock, Loader2, Chrome, AlertCircle } from "lucide-react";
 import { loginSchema, type LoginInput } from "@/lib/validations/auth";
 import { createSupabaseBrowserClient } from "@/utils/supabase/client";
 
-type UserType = "viewer" | "provider";
+/** ログインは閲覧者のみ。投稿者選択はオフのため常に viewer で送信 */
+const LOGIN_USER_TYPE = "viewer" as const;
 
 type Props = {
   onSuccess?: () => void;
@@ -20,7 +20,6 @@ type Props = {
 };
 
 export function LoginForm({ onSuccess, redirectTo = "/" }: Props) {
-  const [userType, setUserType] = useState<UserType | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
 
@@ -34,11 +33,6 @@ export function LoginForm({ onSuccess, redirectTo = "/" }: Props) {
   });
 
   const onSubmit = async (data: LoginInput) => {
-    if (!userType) {
-      setGlobalError("アカウントタイプを選択してください");
-      return;
-    }
-
     setIsSubmitting(true);
     setGlobalError(null);
 
@@ -49,7 +43,7 @@ export function LoginForm({ onSuccess, redirectTo = "/" }: Props) {
         body: JSON.stringify({
           email: data.email,
           password: data.password,
-          userType,
+          userType: LOGIN_USER_TYPE,
         }),
       });
 
@@ -77,47 +71,14 @@ export function LoginForm({ onSuccess, redirectTo = "/" }: Props) {
   };
 
   const handleGoogleLogin = () => {
-    if (!userType) {
-      setGlobalError("アカウントタイプを選択してください");
-      return;
-    }
     window.location.href = `/api/auth/google?redirect_to=${encodeURIComponent(
       redirectTo
-    )}&userType=${userType}`;
+    )}&userType=${LOGIN_USER_TYPE}`;
   };
 
   return (
     <div className="space-y-6">
-      {/* ロール選択 */}
-      {!userType && (
-        <div>
-          <p className="text-center text-sm font-medium text-muted-foreground mb-4">
-            ご利用目的を選択してください
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            <RoleSelectionCard
-              type="viewer"
-              icon={BookOpen}
-              title="閲覧者として利用"
-              description="記事の閲覧・資料請求ができます。"
-              isSelected={userType === "viewer"}
-              onClick={() => setUserType("viewer")}
-            />
-            <RoleSelectionCard
-              type="provider"
-              icon={School}
-              title="投稿者として利用"
-              description="サービス・記事を投稿できます。"
-              isSelected={userType === "provider"}
-              onClick={() => setUserType("provider")}
-            />
-          </div>
-        </div>
-      )}
-
-      {userType && (
-        <>
-          {/* Googleログイン */}
+      {/* Googleログイン */}
           <div className="space-y-5">
             <Button
               type="button"
@@ -222,17 +183,6 @@ export function LoginForm({ onSuccess, redirectTo = "/" }: Props) {
               )}
             </Button>
           </form>
-
-          <button
-            type="button"
-            onClick={() => setUserType(null)}
-            disabled={isSubmitting}
-            className="w-full py-2 text-sm text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
-          >
-            ← アカウントタイプを変更
-          </button>
-        </>
-      )}
     </div>
   );
 }

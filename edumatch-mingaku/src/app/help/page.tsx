@@ -14,19 +14,19 @@ const faqCategories = [
     title: "サービスについて",
     items: [
       {
-        question: "Edumatchとは何ですか？",
+        question: "エデュマッチとは何ですか？",
         answer:
-          "Edumatchは、教育現場とEdTechをつなぐマッチングプラットフォームです。最新の教育事例やEdTechツールを検索・比較し、最適なサービスを見つけることができます。",
+          "エデュマッチは、教育現場とEdTechをつなぐマッチングプラットフォームです。最新の教育事例やEdTechツールを検索・比較し、最適なサービスを見つけることができます。",
       },
       {
         question: "会員登録は必要ですか？",
         answer:
-          "記事の閲覧は会員登録なしで可能です。お気に入り登録やブックマーク機能、詳細情報の閲覧には会員登録（無料）が必要です。",
+          "記事の閲覧は会員登録なしで可能です。お気に入り登録・ブックマーク機能・資料請求・詳細情報の閲覧には会員登録（無料）が必要です。",
       },
       {
         question: "サービスを利用するにはどうすればいいですか？",
         answer:
-          "各サービスの詳細ページから、提供元企業の公式サイトへアクセスできます。サービスへのお問い合わせや申し込みは、各企業の公式サイトで行ってください。",
+          "エデュマッチのサービス詳細ページから、各サービスへの資料請求が可能です（会員登録が必要です）。また、提供元企業の公式サイトへアクセスして、お問い合わせや申し込みを直接行うこともできます。",
       },
     ],
   },
@@ -86,7 +86,7 @@ const faqCategories = [
       {
         question: "お問い合わせ方法を教えてください",
         answer:
-          "お問い合わせは、お問い合わせフォームまたはメール（contact@edumatch.jp）からお願いいたします。",
+          "お問い合わせは、お問い合わせフォームまたはメール（info@edu-match.com）からお願いいたします。",
       },
     ],
   },
@@ -163,7 +163,7 @@ export default function HelpPage() {
                 className="flex items-center gap-2 text-sm hover:text-primary transition-colors"
               >
                 <BookOpen className="h-4 w-4" />
-                Edumatchについて
+                エデュマッチについて
               </Link>
               <Link
                 href="/terms"
@@ -184,15 +184,15 @@ export default function HelpPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">サポートチャット</CardTitle>
+              <CardTitle className="text-lg">AIチャットサポート</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground mb-4">
-                チャットで直接サポートを受けることができます。
+                AIチャットで質問・サポートを受けることができます（AIによる自動応答です）。
               </p>
               <Button variant="outline" className="w-full">
                 <MessageCircle className="h-4 w-4 mr-2" />
-                チャットを開く
+                AIチャットを開く
               </Button>
             </CardContent>
           </Card>
