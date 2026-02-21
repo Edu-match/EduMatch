@@ -35,10 +35,6 @@ model Profile {
   reviews                         Review[]
   services                        Service[]
   view_histories                  ViewHistory[]
-  chat_usages                     ChatUsage[]
-  advanced_chat_usages            AdvancedChatUsage[]
-  chat_usage_weekly               ChatUsageWeekly[]
-  chat_usage_daily                ChatUsageDaily[]
   chat_sessions                   ChatSession[]
 
   @@index([email])
@@ -78,43 +74,6 @@ model ViewHistory {
   @@index([user_id])
 }
 
-/// AIチャットの1日あたりの利用回数（会員限定・1日30回まで）
-model ChatUsage {
-  id         String   @id @default(cuid())
-  user_id    String   @db.Uuid
-  usage_date String   /// YYYY-MM-DD (Asia/Tokyo)
-  count      Int      @default(0)
-  user       Profile  @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
-  @@unique([user_id, usage_date])
-  @@index([user_id])
-}
-
-/// 高度な議論（GPT-5.2 Thinking）の週あたりの利用回数（1週間で3回まで）
-model AdvancedChatUsage {
-  id         String   @id @default(cuid())
-  user_id    String   @db.Uuid
-  week_start String   /// YYYY-MM-DD (月曜日, Asia/Tokyo)
-  count      Int      @default(0)
-  user       Profile  @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
-  @@unique([user_id, week_start])
-  @@index([user_id])
-}
-
-/// チャット利用回数（週次・モード別） fast=30/週, balance=20/週, thinking=3/週
-model ChatUsageWeekly {
-  id         String   @id @default(cuid())
-  user_id    String   @db.Uuid
-  week_start String   /// YYYY-MM-DD (月曜日, Asia/Tokyo)
-  mode       String   /// "fast" | "balance" | "thinking"
-  count      Int      @default(0)
-  user       Profile  @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
-  @@unique([user_id, week_start, mode])
-  @@index([user_id])
-}
-
 /// AIチャットの会話セッション（履歴保存用）
 model ChatSession {
   id         String   @id @default(cuid())
@@ -131,19 +90,6 @@ model ChatSession {
 
   @@index([user_id])
   @@index([user_id, created_at(sort: Desc)])
-}
-
-/// チャット利用回数（日次・モード別） 高速20/日, バランス20/日, 思考3/日
-model ChatUsageDaily {
-  id         String   @id @default(cuid())
-  user_id    String   @db.Uuid
-  usage_date String   /// YYYY-MM-DD (Asia/Tokyo)
-  mode       String   /// "fast" | "balance" | "thinking"
-  count      Int      @default(0)
-  user       Profile  @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
-  @@unique([user_id, usage_date, mode])
-  @@index([user_id])
 }
 
 model Service {
