@@ -1,13 +1,10 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
-import { Header } from "@/components/layout/header";
-import { Footer } from "@/components/layout/footer";
-import { SideMenu } from "@/components/layout/side-menu";
-import { ChatbotWidget } from "@/components/layout/chatbot-widget";
 import { Toaster } from "sonner";
 import { RequestListProvider } from "@/components/request-list/request-list-context";
 import { FavoritesProvider } from "@/components/favorites/favorites-context";
+import { MaintenanceAwareLayout } from "@/components/layout/maintenance-aware-layout";
 
 const notoSansJP = Noto_Sans_JP({
   variable: "--font-noto-sans-jp",
@@ -40,23 +37,7 @@ export default function RootLayout({
       >
         <RequestListProvider>
         <FavoritesProvider>
-        <div className="flex min-h-screen flex-col w-full">
-          <Header />
-          <div className="flex-1 flex min-w-0">
-            {/* Desktop: left menu (not fixed) */}
-            <aside className="hidden lg:block lg:w-64 lg:p-4 lg:pt-6 lg:flex-shrink-0">
-              <div className="sticky top-20">
-                <SideMenu />
-              </div>
-            </aside>
-
-            <main className="flex-1 min-w-0 overflow-x-hidden">
-              <div className="w-full">{children}</div>
-            </main>
-          </div>
-          <Footer />
-        </div>
-        <ChatbotWidget />
+        <MaintenanceAwareLayout>{children}</MaintenanceAwareLayout>
         <Toaster position="top-right" richColors closeButton />
         </FavoritesProvider>
         </RequestListProvider>

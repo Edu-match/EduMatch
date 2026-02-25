@@ -1,6 +1,60 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
+// --- Basic認証（本番公開前テスト用）---
+const BASIC_AUTH_ENABLED = process.env.NEXT_PUBLIC_IS_RELEASED !== "true";
+const BASIC_AUTH_USER = process.env.BASIC_AUTH_USER ?? "preview";
+const BASIC_AUTH_PASSWORD = process.env.BASIC_AUTH_PASSWORD ?? "preview2025";
+const MAINTENANCE_BYPASS_COOKIE = "edumatch_maintenance_bypass";
+
+const AUTH_REQUIRED_MSG = "Basic authentication required.";
+const AUTH_REALM = "EduMatch";
+
+function checkBasicAuth(request: NextRequest): NextResponse | null {
+  if (!BASIC_AUTH_ENABLED) return null; // 認証スキップ
+
+  const authHeader = request.headers.get("authorization");
+  if (!authHeader?.startsWith("Basic ")) {
+    return new NextResponse(AUTH_REQUIRED_MSG, {
+      status: 401,
+      headers: {
+        "WWW-Authenticate": `Basic realm="${AUTH_REALM}", charset="UTF-8"`,
+      },
+    });
+  }
+
+  try {
+    const base64 = authHeader.slice(6);
+    const decoded = atob(base64);
+    const [user, password] = decoded.split(":", 2);
+    if (user === BASIC_AUTH_USER && password === BASIC_AUTH_PASSWORD) {
+      return null; // 認証OK
+    }
+  } catch {
+    // デコード失敗
+  }
+
+  return new NextResponse(AUTH_REQUIRED_MSG, {
+    status: 401,
+    headers: {
+      "WWW-Authenticate": `Basic realm="${AUTH_REALM}", charset="UTF-8"`,
+    },
+  });
+}
+
+function validateBasicAuth(request: NextRequest): boolean {
+  const authHeader = request.headers.get("authorization");
+  if (!authHeader?.startsWith("Basic ")) return false;
+  try {
+    const base64 = authHeader.slice(6);
+    const decoded = atob(base64);
+    const [user, password] = decoded.split(":", 2);
+    return user === BASIC_AUTH_USER && password === BASIC_AUTH_PASSWORD;
+  } catch {
+    return false;
+  }
+}
+
 // 認証が必要なパス（これらのパス配下は全て保護される）
 const protectedPaths = [
   "/dashboard",
@@ -27,6 +81,45 @@ const protectedPaths = [
 const authPaths = ["/login", "/auth/login"];
 
 export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+  const hasBypassCookie = request.cookies.get(MAINTENANCE_BYPASS_COOKIE)?.value === "1";
+
+  // ダウンタイム時: メンテナンスページ公開・管理者は Basic 認証で入場
+  if (BASIC_AUTH_ENABLED) {
+    if (pathname === "/maintenance") {
+      return NextResponse.next();
+    }
+    if (pathname === "/admin-entry") {
+      if (!validateBasicAuth(request)) {
+        const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="3;url=/maintenance"></head><body style="font-family:sans-serif;text-align:center;padding:2rem;"><p>Authentication cancelled.</p><p><a href="/maintenance">Return to maintenance page</a></p><p><small>Redirecting in 3 seconds...</small></p></body></html>`;
+        return new NextResponse(html, {
+          status: 401,
+          headers: {
+            "WWW-Authenticate": `Basic realm="${AUTH_REALM}", charset="UTF-8"`,
+            "Content-Type": "text/html; charset=UTF-8",
+          },
+        });
+      }
+      const redirect = NextResponse.redirect(new URL("/", request.url));
+      redirect.cookies.set(MAINTENANCE_BYPASS_COOKIE, "1", {
+        path: "/",
+        httpOnly: true,
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 7, // 7日
+      });
+      return redirect;
+    }
+    if (!hasBypassCookie) {
+      return NextResponse.redirect(new URL("/maintenance", request.url));
+    }
+    // 管理者として入場済み → Basic認証チェックはスキップ
+  } else {
+    // リリース後は Basic 認証なし
+  }
+
+  const basicAuthResponse = BASIC_AUTH_ENABLED && hasBypassCookie ? null : checkBasicAuth(request);
+  if (basicAuthResponse) return basicAuthResponse;
+
   const response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -64,8 +157,6 @@ export async function middleware(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  const pathname = request.nextUrl.pathname;
 
   // 認証が必要なパスへのアクセスをチェック（/request-info/list は未ログインでも閲覧可）
   const isRequestListPage = pathname === "/request-info/list";
