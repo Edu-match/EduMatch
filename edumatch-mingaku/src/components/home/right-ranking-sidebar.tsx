@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Crown, Calendar, ChevronRight } from "lucide-react";
 import { getPopularServicesByEngagement } from "@/app/_actions/popularity";
 import { getUpcomingEvents } from "@/app/_actions/events";
+import { RankingServiceImage } from "./ranking-service-image";
 
 const rankColors = [
   "bg-[#ef4444] text-white",
@@ -36,13 +37,9 @@ export async function RightRankingSidebar() {
                   >
                     {index + 1}
                   </span>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={service.thumbnail_url || "https://placehold.co/120x68/e0f2fe/0369a1?text=No"}
+                  <RankingServiceImage
+                    src={service.thumbnail_url}
                     alt={service.title}
-                    width={80}
-                    height={45}
-                    className="w-20 h-[45px] flex-shrink-0 rounded-md border bg-muted object-contain"
                   />
                   <Link
                     href={`/services/${service.id}`}

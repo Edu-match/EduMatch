@@ -30,6 +30,8 @@ model Profile {
   subscription_current_period_end DateTime?
   /// チャット利用履歴（24時間ローリング） [{ mode, at }] at は ISO 文字列
   chat_usage_events                Json?
+  /// AIナビゲーター利用規約に同意した日時（null = 未同意）
+  ai_navigator_agreed_at           DateTime?
   material_requests               MaterialRequest[]
   posts                           Post[]
   reviews                         Review[]
