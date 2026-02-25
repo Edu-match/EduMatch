@@ -19,14 +19,19 @@ export default function MaintenancePage() {
       <div className="flex-1 flex items-center justify-center px-4">
         <div className="max-w-xl w-full space-y-6 text-center">
           <p className="text-xl font-medium leading-relaxed">
-            【リニュアルに向けてメンテナンス作業中　復旧まで今しばらくお待ちください】
+            【リニュアルに向けてメンテナンス作業中】
+            <br />
+            【復旧まで今しばらくお待ちください】
           </p>
           <div className="space-y-2 text-muted-foreground">
             <p>
-              なお、急ぎ確認が必要な場合は、緊急特設サーバー上で確認いただくことができます。
+              なお、急ぎ確認が必要な場合は、
+              <br />
+              緊急特設サーバー上で確認いただくことができます。
             </p>
             <p>
               緊急特設サーバー上でのアクセスを希望の場合は、
+              <br />
               <a
                 href="mailto:info@edu-match.com"
                 className="text-primary underline hover:no-underline"

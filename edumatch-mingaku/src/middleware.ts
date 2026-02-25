@@ -7,40 +7,7 @@ const BASIC_AUTH_USER = process.env.BASIC_AUTH_USER ?? "preview";
 const BASIC_AUTH_PASSWORD = process.env.BASIC_AUTH_PASSWORD ?? "preview2025";
 const MAINTENANCE_BYPASS_COOKIE = "edumatch_maintenance_bypass";
 
-const AUTH_REQUIRED_MSG = "Basic authentication required.";
 const AUTH_REALM = "EduMatch";
-
-function checkBasicAuth(request: NextRequest): NextResponse | null {
-  if (!BASIC_AUTH_ENABLED) return null; // 認証スキップ
-
-  const authHeader = request.headers.get("authorization");
-  if (!authHeader?.startsWith("Basic ")) {
-    return new NextResponse(AUTH_REQUIRED_MSG, {
-      status: 401,
-      headers: {
-        "WWW-Authenticate": `Basic realm="${AUTH_REALM}", charset="UTF-8"`,
-      },
-    });
-  }
-
-  try {
-    const base64 = authHeader.slice(6);
-    const decoded = atob(base64);
-    const [user, password] = decoded.split(":", 2);
-    if (user === BASIC_AUTH_USER && password === BASIC_AUTH_PASSWORD) {
-      return null; // 認証OK
-    }
-  } catch {
-    // デコード失敗
-  }
-
-  return new NextResponse(AUTH_REQUIRED_MSG, {
-    status: 401,
-    headers: {
-      "WWW-Authenticate": `Basic realm="${AUTH_REALM}", charset="UTF-8"`,
-    },
-  });
-}
 
 function validateBasicAuth(request: NextRequest): boolean {
   const authHeader = request.headers.get("authorization");
@@ -82,9 +49,8 @@ const authPaths = ["/login", "/auth/login"];
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
-  const hasBypassCookie = request.cookies.get(MAINTENANCE_BYPASS_COOKIE)?.value === "1";
 
-  // ダウンタイム時: メンテナンスページ公開・管理者は Basic 認証で入場
+  // NEXT_PUBLIC_IS_RELEASED が false のとき: 最初の画面は常にメンテナンス。管理者は「管理者」から Basic 認証で入場
   if (BASIC_AUTH_ENABLED) {
     if (pathname === "/maintenance") {
       return NextResponse.next();
@@ -105,20 +71,16 @@ export async function middleware(request: NextRequest) {
         path: "/",
         httpOnly: true,
         sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 7, // 7日
+        // maxAge を指定せずセッションCookieに。ブラウザを閉じると消える
       });
       return redirect;
     }
+    // 管理者入場用 Cookie が無い場合は常にメンテナンスへ（ルートやどのURLでもまずメンテナンス）
+    const hasBypassCookie = request.cookies.get(MAINTENANCE_BYPASS_COOKIE)?.value === "1";
     if (!hasBypassCookie) {
       return NextResponse.redirect(new URL("/maintenance", request.url));
     }
-    // 管理者として入場済み → Basic認証チェックはスキップ
-  } else {
-    // リリース後は Basic 認証なし
   }
-
-  const basicAuthResponse = BASIC_AUTH_ENABLED && hasBypassCookie ? null : checkBasicAuth(request);
-  if (basicAuthResponse) return basicAuthResponse;
 
   const response = NextResponse.next({
     request: {
@@ -191,14 +153,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     * - api routes (let them handle their own auth)
-     */
+    "/",
     "/((?!_next/static|_next/image|favicon.ico|api/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
