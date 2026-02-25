@@ -66,6 +66,84 @@ function parsePageContext(pathname: string): PageContext {
   return null;
 }
 
+function AgreementScreen({
+  onAgree,
+  agreeLoading,
+  disclaimerPath,
+}: {
+  onAgree: () => void;
+  agreeLoading: boolean;
+  disclaimerPath: string;
+}) {
+  const [checked, setChecked] = useState(false);
+  return (
+    <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+      {/* タイトル */}
+      <div className="px-4 pt-4 pb-2 border-b shrink-0">
+        <p className="text-sm font-semibold">AIナビゲーターご利用上の留意点</p>
+        <p className="text-xs text-muted-foreground mt-0.5">以下をご確認のうえ、同意してからご利用ください。</p>
+      </div>
+
+      {/* 留意点本文（スクロール可能） */}
+      <div className="flex-1 overflow-y-auto px-4 py-3 min-h-0 text-sm text-muted-foreground space-y-3 leading-relaxed">
+        <p>
+          本サイトのAIナビゲーターは、エデュマッチが提供する教育サービス・ICTツール等の情報検索・相談支援の補助機能です。
+        </p>
+        <p>
+          本AIによる応答は、教育サービス選びや情報整理の参考を目的に自動生成されたものであり、内容の正確性・最新性・完全性を保証するものではありません。
+        </p>
+        <p>
+          回答内容に基づく最終的な判断（資料請求・契約・導入等）は、必ず各サービス提供元の公式情報・担当者への確認を行ってください。
+        </p>
+        <p>
+          本AIの回答や解析内容により利用者または第三者に発生した損害について、当サイトおよび運営者は一切責任を負いません。
+        </p>
+        <p>
+          本AIはすべての利用ケースに対応するものではなく、AIが誤った情報を生成する可能性（いわゆる「ハルシネーション」）をご了承ください。
+        </p>
+        <div className="pt-1">
+          <Link
+            href={disclaimerPath}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-primary underline hover:no-underline"
+          >
+            留意点の全文を確認する →
+          </Link>
+        </div>
+      </div>
+
+      {/* チェックボックス＋同意ボタン */}
+      <div className="border-t px-4 py-3 shrink-0 space-y-3">
+        <label className="flex items-start gap-2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={checked}
+            onChange={(e) => setChecked(e.target.checked)}
+            className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-primary cursor-pointer"
+          />
+          <span className="text-xs text-foreground leading-relaxed">
+            上記の留意点を確認しました
+          </span>
+        </label>
+        <Button
+          onClick={onAgree}
+          size="sm"
+          className="w-full"
+          disabled={!checked || agreeLoading}
+        >
+          {agreeLoading ? (
+            <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+          ) : (
+            <Check className="h-3.5 w-3.5 mr-1.5" />
+          )}
+          {agreeLoading ? "保存中…" : "同意してチャットを開始する"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function MarkdownContent({ text }: { text: string }) {
   const html = useMemo(() => {
     let result = text
@@ -525,43 +603,11 @@ export function ChatbotWidget() {
       )}
 
       {view === "chat" && userId && !hasAgreed && (
-        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          <div className="flex-1 overflow-y-auto px-4 py-5 text-left">
-            <p className="text-sm font-medium text-foreground mb-3">
-              ご利用前に必ずお読みください
-            </p>
-            <p className="text-xs text-muted-foreground leading-relaxed mb-4">
-              本AIナビゲーターは教育サービス・ICTツール等の情報検索・相談支援の補助機能です。回答は自動生成され、正確性・最新性を保証しません。資料請求・契約・導入等の判断は各サービス提供元の公式情報・担当者確認をお願いします。当サイトは回答内容に基づく損害について責任を負いません。AIの誤った情報生成（ハルシネーション）の可能性をご了承ください。
-            </p>
-            <Link
-              href={AI_NAV_DISCLAIMER_PATH}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-primary underline hover:no-underline font-medium"
-            >
-              利用上の留意点（詳細）を開く →
-            </Link>
-          </div>
-          <div className="border-t px-4 py-3 bg-muted/20 flex flex-col gap-2">
-            <p className="text-[11px] text-muted-foreground">
-              上記を確認し、同意する場合のみ下のボタンを押してください。
-            </p>
-            <Button
-              onClick={() => handleAgree()}
-              variant="secondary"
-              size="sm"
-              className="w-full"
-              disabled={agreeLoading}
-            >
-              {agreeLoading ? (
-                <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-              ) : (
-                <Check className="h-3.5 w-3.5 mr-1.5" />
-              )}
-              {agreeLoading ? "保存中…" : "同意して利用する"}
-            </Button>
-          </div>
-        </div>
+        <AgreementScreen
+          onAgree={() => handleAgree()}
+          agreeLoading={agreeLoading}
+          disclaimerPath={AI_NAV_DISCLAIMER_PATH}
+        />
       )}
 
       {view === "chat" && userId && hasAgreed && (

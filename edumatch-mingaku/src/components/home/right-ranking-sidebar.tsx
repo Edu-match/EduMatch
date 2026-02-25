@@ -36,16 +36,14 @@ export async function RightRankingSidebar() {
                   >
                     {index + 1}
                   </span>
-                  <div className="relative w-20 flex-shrink-0 overflow-hidden rounded-md border bg-muted aspect-video">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={service.thumbnail_url || "https://placehold.co/120x68/e0f2fe/0369a1?text=No"}
-                      alt={service.title}
-                      className="w-full h-full object-contain"
-                      width={80}
-                      height={45}
-                    />
-                  </div>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={service.thumbnail_url || "https://placehold.co/120x68/e0f2fe/0369a1?text=No"}
+                    alt={service.title}
+                    width={80}
+                    height={45}
+                    className="w-20 h-[45px] flex-shrink-0 rounded-md border bg-muted object-contain"
+                  />
                   <Link
                     href={`/services/${service.id}`}
                     className="flex-1 hover:text-[#1d4ed8] transition-colors line-clamp-2 min-w-0 text-sm font-medium"
