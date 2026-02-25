@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import { Crown, Calendar, ChevronRight } from "lucide-react";
 import { getPopularServicesByEngagement } from "@/app/_actions/popularity";
 import { getUpcomingEvents } from "@/app/_actions/events";
@@ -38,13 +37,13 @@ export async function RightRankingSidebar() {
                     {index + 1}
                   </span>
                   <div className="relative w-20 flex-shrink-0 overflow-hidden rounded-md border bg-muted aspect-video">
-                    <Image
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
                       src={service.thumbnail_url || "https://placehold.co/120x68/e0f2fe/0369a1?text=No"}
                       alt={service.title}
-                      fill
-                      className="object-contain"
-                      sizes="80px"
-                      unoptimized
+                      className="w-full h-full object-contain"
+                      width={80}
+                      height={45}
                     />
                   </div>
                   <Link

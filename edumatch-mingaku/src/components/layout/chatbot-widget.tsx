@@ -525,35 +525,42 @@ export function ChatbotWidget() {
       )}
 
       {view === "chat" && userId && !hasAgreed && (
-        <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 min-h-0 text-center">
-          <p className="text-sm text-foreground mb-2">
-            今日は何を話しましょうか？
-          </p>
-          <p className="text-sm text-muted-foreground mb-6">
-            ご利用の際は必ず
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <div className="flex-1 overflow-y-auto px-4 py-5 text-left">
+            <p className="text-sm font-medium text-foreground mb-3">
+              ご利用前に必ずお読みください
+            </p>
+            <p className="text-xs text-muted-foreground leading-relaxed mb-4">
+              本AIナビゲーターは教育サービス・ICTツール等の情報検索・相談支援の補助機能です。回答は自動生成され、正確性・最新性を保証しません。資料請求・契約・導入等の判断は各サービス提供元の公式情報・担当者確認をお願いします。当サイトは回答内容に基づく損害について責任を負いません。AIの誤った情報生成（ハルシネーション）の可能性をご了承ください。
+            </p>
             <Link
               href={AI_NAV_DISCLAIMER_PATH}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary underline hover:no-underline font-medium mx-1"
+              className="text-xs text-primary underline hover:no-underline font-medium"
             >
-              こちら
+              利用上の留意点（詳細）を開く →
             </Link>
-            をご確認ください。
-          </p>
-          <Button
-            onClick={() => handleAgree()}
-            size="lg"
-            className="min-w-[180px]"
-            disabled={agreeLoading}
-          >
-            {agreeLoading ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Check className="h-4 w-4 mr-2" />
-            )}
-            {agreeLoading ? "保存中…" : "同意する"}
-          </Button>
+          </div>
+          <div className="border-t px-4 py-3 bg-muted/20 flex flex-col gap-2">
+            <p className="text-[11px] text-muted-foreground">
+              上記を確認し、同意する場合のみ下のボタンを押してください。
+            </p>
+            <Button
+              onClick={() => handleAgree()}
+              variant="secondary"
+              size="sm"
+              className="w-full"
+              disabled={agreeLoading}
+            >
+              {agreeLoading ? (
+                <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+              ) : (
+                <Check className="h-3.5 w-3.5 mr-1.5" />
+              )}
+              {agreeLoading ? "保存中…" : "同意して利用する"}
+            </Button>
+          </div>
         </div>
       )}
 
