@@ -8,8 +8,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { BlockEditor, ContentBlock } from "@/components/editor/block-editor";
 import { createService, uploadImage } from "@/app/_actions";
+import { SERVICE_CATEGORIES } from "@/lib/categories";
 import { Image as ImageIcon, Loader2, Save, Send, Building2, School } from "lucide-react";
 
 export default function ServiceCreatePage() {
@@ -17,7 +25,7 @@ export default function ServiceCreatePage() {
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("学習");
+  const [category, setCategory] = useState("");
   const [priceInfo, setPriceInfo] = useState("");
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [thumbnailUrl, setThumbnailUrl] = useState("");
@@ -43,7 +51,7 @@ export default function ServiceCreatePage() {
   const isTitleValid = titleLength <= TITLE_MAX_LENGTH;
   const isDescriptionValid = descriptionLength <= DESCRIPTION_MAX_LENGTH;
   const isContentValid = contentLength <= CONTENT_MAX_LENGTH;
-  const canSubmit = isTitleValid && isDescriptionValid && isContentValid && title.trim().length > 0 && description.trim().length > 0;
+  const canSubmit = isTitleValid && isDescriptionValid && isContentValid && title.trim().length > 0 && description.trim().length > 0 && category.trim().length > 0;
 
   // ユーザープロフィールを取得
   useEffect(() => {
@@ -294,16 +302,29 @@ export default function ServiceCreatePage() {
               )}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Input
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                placeholder="カテゴリ"
-              />
-              <Input
-                value={priceInfo}
-                onChange={(e) => setPriceInfo(e.target.value)}
-                placeholder="料金情報（例: 月額〜 / お問い合わせ）"
-              />
+              <div className="space-y-2">
+                <label className="text-sm font-medium">カテゴリ</label>
+                <Select value={category || undefined} onValueChange={setCategory}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="カテゴリを選択" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SERVICE_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat.value} value={cat.value}>
+                        {cat.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">料金情報</label>
+                <Input
+                  value={priceInfo}
+                  onChange={(e) => setPriceInfo(e.target.value)}
+                  placeholder="例: 月額〜 / お問い合わせ"
+                />
+              </div>
             </div>
             <Input
               value={youtubeUrl}
