@@ -73,6 +73,32 @@ export async function getEvents(options?: {
   return { events, total, perPage };
 }
 
+export type UpcomingEventItem = {
+  id: string;
+  title: string;
+  dateLabel: string;
+};
+
+/** サイドバー用：直近のイベントを取得 */
+export async function getUpcomingEvents(limit: number = 5): Promise<UpcomingEventItem[]> {
+  try {
+    const today = todayString();
+    const events = await prisma.seminarEvent.findMany({
+      where: { event_date: { not: null, gte: today } },
+      select: { id: true, title: true, event_date: true },
+      orderBy: { event_date: "asc" },
+      take: limit,
+    });
+    return events.map((e) => ({
+      id: e.id,
+      title: e.title,
+      dateLabel: e.event_date ?? "",
+    }));
+  } catch {
+    return [];
+  }
+}
+
 /** IDでイベントを1件取得 */
 export async function getEventById(id: string): Promise<SeminarEventData | null> {
   return prisma.seminarEvent.findUnique({

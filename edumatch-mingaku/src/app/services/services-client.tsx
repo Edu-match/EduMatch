@@ -73,10 +73,10 @@ export function ServicesClient({
         <div className="container py-12">
           <div className="max-w-3xl">
             <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-              EdTechサービス一覧
+              サービス一覧
             </h1>
             <p className="text-lg text-muted-foreground">
-              {services.length}件のEdTechツールから、あなたに最適なサービスを見つけましょう
+              {services.length}件のサービスから、あなたに最適なサービスを見つけましょう
             </p>
           </div>
         </div>

@@ -13,7 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Mail, Phone, MessageCircle, Clock, HelpCircle } from "lucide-react";
+import { Mail, MessageCircle, Clock, HelpCircle } from "lucide-react";
+import { OpenAiChatButton } from "@/components/ui/open-ai-chat-button";
 
 const categories = [
   { value: "general", label: "一般的なお問い合わせ" },
@@ -161,32 +162,17 @@ export default function ContactPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
-                <Phone className="h-5 w-5" />
-                お電話でのお問い合わせ
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="font-bold text-lg">03-1234-5678</p>
-              <p className="text-sm text-muted-foreground">
-                平日 9:00 - 18:00
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
                 <MessageCircle className="h-5 w-5" />
                 AIチャットサポート
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground mb-4">
-                画面右下のAIチャットアイコンからもお問い合わせいただけます（AIによる自動応答です）。
+                画面右下のAIナビゲーターからもお問い合わせいただけます（AIによる自動応答です）。
               </p>
-              <Button variant="outline" className="w-full">
+              <OpenAiChatButton variant="outline" className="w-full">
                 AIチャットを開く
-              </Button>
+              </OpenAiChatButton>
             </CardContent>
           </Card>
 

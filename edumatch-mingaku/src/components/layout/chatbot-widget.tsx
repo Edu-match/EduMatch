@@ -36,6 +36,7 @@ import type { RecentViewItem } from "@/app/_actions/view-history";
 const CONTEXT_MAX = 10;
 const CHAT_WIDTH = 420;
 const CHAT_HEIGHT = 700;
+const AI_NAV_DISCLAIMER_PATH = "/help/ai-navigator-disclaimer";
 
 type ChatMsg = {
   id: string;
@@ -162,6 +163,8 @@ export function ChatbotWidget() {
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [hasAgreed, setHasAgreed] = useState(false);
+  const [agreeLoading, setAgreeLoading] = useState(false);
 
   const listRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -169,14 +172,28 @@ export function ChatbotWidget() {
 
   const pageContext = useMemo(() => parsePageContext(pathname), [pathname]);
 
-  useEffect(() => {
-    fetch("/api/auth/me")
+  const fetchAuth = useCallback(() => {
+    fetch("/api/auth/me", { credentials: "include" })
       .then((r) => r.json())
       .then((d) => {
-        if (d.profile?.id) setUserId(d.profile.id);
+        if (d.profile?.id) {
+          setUserId(d.profile.id);
+          setHasAgreed(!!d.ai_navigator_agreed);
+        } else {
+          setUserId(null);
+          setHasAgreed(false);
+        }
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    fetchAuth();
+  }, [fetchAuth]);
+
+  useEffect(() => {
+    if (open) fetchAuth();
+  }, [open, fetchAuth]);
 
   const scrollToBottom = useCallback(() => {
     requestAnimationFrame(() => {
@@ -213,7 +230,34 @@ export function ChatbotWidget() {
     };
   }, [open]);
 
-  const welcomeMessage = "こんにちは！エデュマッチのAIアシスタントです。\n教育ICTやサービスについて何でもお聞きください。";
+  // 問い合わせフォーム等の「AIチャットを開く」ボタンから開けるようにする
+  useEffect(() => {
+    const handler = () => setOpen(true);
+    window.addEventListener("open-ai-chat", handler);
+    return () => window.removeEventListener("open-ai-chat", handler);
+  }, []);
+
+  const welcomeMessage = "今日は何を話しましょうか？教育ICTやサービスについて何でもお聞きください。";
+
+  async function handleAgree() {
+    setAgreeLoading(true);
+    try {
+      const res = await fetch("/api/auth/ai-navigator-agree", {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && !data.error) {
+        setHasAgreed(true);
+      } else {
+        console.error("同意の保存に失敗:", data.error || res.statusText);
+      }
+    } catch (e) {
+      console.error("同意の保存に失敗:", e);
+    } finally {
+      setAgreeLoading(false);
+    }
+  }
 
   async function fetchHistory() {
     if (!userId) return;
@@ -446,7 +490,7 @@ export function ChatbotWidget() {
         </div>
         <div className="min-w-0 flex-1">
           <div className="text-sm font-semibold truncate">
-            {view === "chat" ? "AIアシスタント" : view === "context-select" ? "コンテキスト選択" : "閲覧履歴から選択"}
+            {view === "chat" ? "AIナビゲーター（ベータ版）" : view === "context-select" ? "コンテキスト選択" : "閲覧履歴から選択"}
           </div>
         </div>
         <div className="flex items-center gap-0.5 shrink-0">
@@ -461,7 +505,7 @@ export function ChatbotWidget() {
         </div>
       </div>
 
-      {view === "chat" && userId && (
+      {view === "chat" && userId && hasAgreed && (
         <div className="px-3 py-2 border-b bg-muted/20 flex items-center justify-end">
           <span className="text-[11px] text-muted-foreground">
             {usage ? `${usage.used}/${usage.limit}` : "0/30"} 回
@@ -480,7 +524,40 @@ export function ChatbotWidget() {
         </div>
       )}
 
-      {view === "chat" && userId && (
+      {view === "chat" && userId && !hasAgreed && (
+        <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 min-h-0 text-center">
+          <p className="text-sm text-foreground mb-2">
+            今日は何を話しましょうか？
+          </p>
+          <p className="text-sm text-muted-foreground mb-6">
+            ご利用の際は必ず
+            <Link
+              href={AI_NAV_DISCLAIMER_PATH}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary underline hover:no-underline font-medium mx-1"
+            >
+              こちら
+            </Link>
+            をご確認ください。
+          </p>
+          <Button
+            onClick={() => handleAgree()}
+            size="lg"
+            className="min-w-[180px]"
+            disabled={agreeLoading}
+          >
+            {agreeLoading ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Check className="h-4 w-4 mr-2" />
+            )}
+            {agreeLoading ? "保存中…" : "同意する"}
+          </Button>
+        </div>
+      )}
+
+      {view === "chat" && userId && hasAgreed && (
         <>
           <div ref={listRef} className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 min-h-0">
             <div className="space-y-4">
@@ -741,16 +818,24 @@ export function ChatbotWidget() {
       {open ? (
         panelContent
       ) : (
-        <div className="fixed bottom-4 right-4 z-50 flex flex-col items-center gap-2">
+        <div className="fixed bottom-5 right-5 z-50 flex flex-col items-center gap-1">
           <Button
             onClick={() => setOpen(true)}
-            className="h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105 bg-primary hover:bg-primary/90"
-            aria-label="AIチャットを開く"
+            className="h-20 w-20 rounded-full shadow-xl hover:shadow-2xl transition-all hover:scale-110 bg-orange-500 hover:bg-orange-400 border-4 border-orange-300"
+            aria-label="AIナビゲーターを開く"
             size="icon"
           >
-            <Bot className="h-6 w-6 text-primary-foreground" />
+            <Bot className="h-10 w-10 text-white" />
           </Button>
-          <span className="text-[10px] text-muted-foreground hidden sm:inline">AIチャット</span>
+          <span className="text-xs font-semibold text-orange-600 hidden sm:inline bg-white/90 px-2 py-1 rounded-full shadow-sm">AIナビゲーター</span>
+          <Link
+            href={AI_NAV_DISCLAIMER_PATH}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[10px] text-muted-foreground hover:text-foreground underline hidden sm:inline"
+          >
+            利用上の注意
+          </Link>
         </div>
       )}
     </>

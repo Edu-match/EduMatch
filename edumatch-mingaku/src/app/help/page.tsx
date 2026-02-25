@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { MessageCircle, Mail, BookOpen, HelpCircle } from "lucide-react";
+import { OpenAiChatButton } from "@/components/ui/open-ai-chat-button";
 
 const faqCategories = [
   {
@@ -184,16 +185,23 @@ export default function HelpPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">AIチャットサポート</CardTitle>
+              <CardTitle className="text-lg">AIナビゲーター（チャットサポート）</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground mb-4">
-                AIチャットで質問・サポートを受けることができます（AIによる自動応答です）。
+              <p className="text-sm text-muted-foreground mb-2">
+                AIナビゲーターで質問・サポートを受けることができます（AIによる自動応答です）。
               </p>
-              <Button variant="outline" className="w-full">
+              <p className="text-sm text-muted-foreground mb-4">
+                ご利用の際は
+                <Link href="/help/ai-navigator-disclaimer" className="text-primary underline hover:no-underline">
+                  利用上の注意
+                </Link>
+                をご確認ください。
+              </p>
+              <OpenAiChatButton variant="outline" className="w-full">
                 <MessageCircle className="h-4 w-4 mr-2" />
                 AIチャットを開く
-              </Button>
+              </OpenAiChatButton>
             </CardContent>
           </Card>
         </div>

@@ -67,7 +67,14 @@ export async function getHomeSliderItems(limit: number = 12): Promise<HomeSlider
       category: e.post.category ?? undefined,
     }));
 
-    return [...siteUpdateItems, ...articleItems].slice(0, limit);
+    const combined = [...siteUpdateItems, ...articleItems];
+    const seenUrls = new Set<string>();
+    const deduplicated = combined.filter((item) => {
+      if (seenUrls.has(item.url)) return false;
+      seenUrls.add(item.url);
+      return true;
+    });
+    return deduplicated.slice(0, limit);
   } catch (error) {
     console.error("Failed to get home slider items:", error);
     return [];

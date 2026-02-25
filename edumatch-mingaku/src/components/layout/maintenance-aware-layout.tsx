@@ -22,7 +22,7 @@ export function MaintenanceAwareLayout({
     <>
       <div className="flex min-h-screen flex-col w-full">
         <Header />
-        <div className="flex-1 flex min-w-0">
+        <div className="flex-1 flex min-w-0 pt-16">
           <aside className="hidden lg:block lg:w-64 lg:p-4 lg:pt-6 lg:flex-shrink-0">
             <div className="sticky top-20">
               <SideMenu />
