@@ -42,12 +42,6 @@ function ArticleListItem({ article }: { article: ArticleItem }) {
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span>{article.date}</span>
-          {article.category && (
-            <>
-              <span>•</span>
-              <span className="text-[#ef4444]">{article.category}</span>
-            </>
-          )}
         </div>
       </div>
     </Link>
@@ -74,9 +68,6 @@ function ServiceListItem({ service }: { service: ServiceItem }) {
         <h3 className="font-medium text-sm hover:text-[#1d4ed8] transition-colors line-clamp-2">
           {service.title}
         </h3>
-        {service.category && (
-          <p className="text-xs text-muted-foreground mt-1">{service.category}</p>
-        )}
       </div>
     </Link>
   );
@@ -136,7 +127,7 @@ export function TopicsTabs({ articles, services, videos }: Props) {
       <div className="border-b">
         <TabsList className="w-full justify-start rounded-none h-auto bg-transparent p-0">
           <TabsTrigger value="all" className={triggerClass}>すべて</TabsTrigger>
-          <TabsTrigger value="ai" className={triggerClass}>教育×AI</TabsTrigger>
+          <TabsTrigger value="ai" className={triggerClass}>記事</TabsTrigger>
           <TabsTrigger value="services" className={triggerClass}>サービス紹介</TabsTrigger>
           <TabsTrigger value="videos" className={triggerClass}>動画</TabsTrigger>
         </TabsList>
