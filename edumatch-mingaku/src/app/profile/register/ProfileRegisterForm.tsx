@@ -36,6 +36,8 @@ export type InitialProfile = {
   address: string | null;
   bio?: string | null;
   website?: string | null;
+  notification_email_2?: string | null;
+  notification_email_3?: string | null;
 };
 
 const PREFECTURES = [
@@ -107,6 +109,8 @@ export function ProfileRegisterForm({
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [bio, setBio] = useState(initialProfile?.bio ?? "");
   const [website, setWebsite] = useState(initialProfile?.website ?? "");
+  const [notificationEmail2, setNotificationEmail2] = useState(initialProfile?.notification_email_2 ?? "");
+  const [notificationEmail3, setNotificationEmail3] = useState(initialProfile?.notification_email_3 ?? "");
   const [saving, setSaving] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
@@ -258,6 +262,28 @@ export function ProfileRegisterForm({
                 onChange={(e) => setAddress(e.target.value)}
               />
             </div>
+            <p className="text-sm font-medium mt-6 mb-2">資料請求の通知先（任意）</p>
+            <p className="text-xs text-muted-foreground mb-3">
+              サービス提供者として登録している場合、資料請求があった際に通知を送るメールアドレスを追加できます。最大3件まで送信されます（1件目はログイン用メールアドレス）。
+            </p>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">通知用メールアドレス2</label>
+              <Input
+                type="email"
+                placeholder="例: info@example.com"
+                value={notificationEmail2}
+                onChange={(e) => setNotificationEmail2(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">通知用メールアドレス3</label>
+              <Input
+                type="email"
+                placeholder="例: sales@example.com"
+                value={notificationEmail3}
+                onChange={(e) => setNotificationEmail3(e.target.value)}
+              />
+            </div>
             <Button
               type="button"
               variant="ghost"
@@ -392,6 +418,18 @@ export function ProfileRegisterForm({
                     {[prefecture, city, address].filter(Boolean).join(" ") || "未入力（スキップ）"}
                   </span>
                 </div>
+                {(notificationEmail2 || notificationEmail3) && (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">通知用メール2</span>
+                      <span>{notificationEmail2 || "—"}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">通知用メール3</span>
+                      <span>{notificationEmail3 || "—"}</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -484,6 +522,8 @@ export function ProfileRegisterForm({
       address: address || null,
       bio: bio || null,
       website: website || null,
+      notification_email_2: notificationEmail2.trim() || null,
+      notification_email_3: notificationEmail3.trim() || null,
     });
     setSaving(false);
     if (success) router.push(nextUrl ?? "/dashboard");

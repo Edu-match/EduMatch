@@ -3,8 +3,8 @@ import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentUserRole } from "@/app/_actions/user";
-import { getSiteUpdatesForAdmin } from "@/app/_actions/site-updates";
-import { Plus, Pencil, ExternalLink } from "lucide-react";
+import { getSiteUpdatesForAdmin, deleteSiteUpdateAction } from "@/app/_actions/site-updates";
+import { Plus, Pencil, ExternalLink, Trash2 } from "lucide-react";
 
 function formatDate(date: Date): string {
   return new Intl.DateTimeFormat("ja-JP", {
@@ -67,6 +67,13 @@ export default async function AdminSiteUpdatesPage() {
                         編集
                       </Link>
                     </Button>
+                    <form action={deleteSiteUpdateAction} className="inline">
+                      <input type="hidden" name="id" value={item.id} />
+                      <Button type="submit" variant="outline" size="sm" className="text-destructive hover:text-destructive">
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        削除
+                      </Button>
+                    </form>
                   </div>
                 </li>
               ))}

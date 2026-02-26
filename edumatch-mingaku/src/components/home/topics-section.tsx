@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getPopularArticlesByEngagement } from "@/app/_actions/popularity";
 import { getAllServices } from "@/app/_actions/services";
 import { TopicsTabs } from "./topics-tabs";
+import { serviceThumbnailPlaceholder } from "@/lib/utils";
 
 function formatShortDate(date: Date): string {
   return new Intl.DateTimeFormat("ja-JP", {
@@ -97,7 +98,7 @@ export async function TopicsSection() {
   const serviceItems: ServiceItem[] = services.slice(0, 10).map((s) => ({
     id: s.id,
     title: s.title,
-    image: s.thumbnail_url || "https://placehold.co/80x45/e0f2fe/0369a1?text=No",
+    image: s.thumbnail_url || serviceThumbnailPlaceholder(s.title, 80, 45),
     category: s.category ?? "",
   }));
 

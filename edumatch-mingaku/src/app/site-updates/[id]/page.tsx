@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
 import { unstable_noStore } from "next/cache";
-import { getSiteUpdateById } from "@/app/_actions/site-updates";
+import { getSiteUpdateById, deleteSiteUpdateAction } from "@/app/_actions/site-updates";
+import { getCurrentUserRole } from "@/app/_actions/user";
 import { notFound } from "next/navigation";
 import { ContentRenderer } from "@/components/ui/content-renderer";
 
@@ -23,7 +24,8 @@ export default async function SiteUpdateDetailPage({
 }) {
   unstable_noStore();
   const { id } = await params;
-  const item = await getSiteUpdateById(id);
+  const [item, role] = await Promise.all([getSiteUpdateById(id), getCurrentUserRole()]);
+  const isAdmin = role === "ADMIN";
 
   if (!item) {
     notFound();
@@ -31,13 +33,31 @@ export default async function SiteUpdateDetailPage({
 
   return (
     <div className="container py-8">
-      <div className="mb-6">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
         <Button variant="ghost" asChild>
           <Link href="/">
             <ArrowLeft className="h-4 w-4 mr-2" />
             トップに戻る
           </Link>
         </Button>
+        {isAdmin && (
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/admin/site-updates/${id}/edit`}>
+                <Pencil className="h-4 w-4 mr-1" />
+                編集
+              </Link>
+            </Button>
+            <form action={deleteSiteUpdateAction}>
+              <input type="hidden" name="id" value={id} />
+              <input type="hidden" name="redirectTo" value="/admin/site-updates" />
+              <Button type="submit" variant="outline" size="sm" className="text-destructive hover:text-destructive">
+                <Trash2 className="h-4 w-4 mr-1" />
+                削除
+              </Button>
+            </form>
+          </div>
+        )}
       </div>
 
       <article className="max-w-3xl mx-auto">

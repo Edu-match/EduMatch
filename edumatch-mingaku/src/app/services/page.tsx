@@ -2,6 +2,7 @@ import { getAllServices } from "@/app/_actions";
 import { sortServicesByDisplayOrder, getDisplayOrderIds } from "@/lib/service-display-order";
 import { ServicesClient } from "./services-client";
 import { SERVICE_CATEGORY_LIST } from "@/lib/categories";
+import { serviceThumbnailPlaceholder } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +27,7 @@ export default async function ServicesPage() {
     name: service.title,
     description: service.description ?? "",
     category: service.category ?? "",
-    image: service.thumbnail_url || "https://placehold.co/300x200/e0f2fe/0369a1?text=Service",
+    image: service.thumbnail_url || serviceThumbnailPlaceholder(service.title, 300, 200),
     price: service.price_info ?? "",
   }));
 

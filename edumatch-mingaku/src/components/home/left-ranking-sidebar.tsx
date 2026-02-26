@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Crown } from "lucide-react";
 import { getPopularServicesByEngagement } from "@/app/_actions/popularity";
+import { serviceThumbnailPlaceholder } from "@/lib/utils";
 
 const rankColors = [
   "bg-[#ef4444] text-white",
@@ -38,7 +39,7 @@ export async function LeftRankingSidebar() {
                 </span>
                 <div className="relative w-12 flex-shrink-0 overflow-hidden rounded border bg-muted aspect-video">
                   <Image
-                    src={service.thumbnail_url || "https://placehold.co/120x68/e0f2fe/0369a1?text=No"}
+                    src={service.thumbnail_url || serviceThumbnailPlaceholder(service.title, 120, 68)}
                     alt={service.title}
                     fill
                     className="object-contain"

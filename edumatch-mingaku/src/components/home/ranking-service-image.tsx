@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-
-const PLACEHOLDER = "https://placehold.co/120x68/e0f2fe/0369a1?text=No+Image";
+import { serviceThumbnailPlaceholder } from "@/lib/utils";
 
 export function RankingServiceImage({
   src,
@@ -11,14 +10,15 @@ export function RankingServiceImage({
   src: string | null;
   alt: string;
 }) {
-  const [imgSrc, setImgSrc] = useState<string>(src || PLACEHOLDER);
+  const placeholder = serviceThumbnailPlaceholder(alt, 120, 68);
+  const [imgSrc, setImgSrc] = useState<string>(src || placeholder);
 
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
       src={imgSrc}
       alt={alt}
-      onError={() => setImgSrc(PLACEHOLDER)}
+      onError={() => setImgSrc(placeholder)}
       className="w-20 h-[45px] flex-shrink-0 rounded-md border bg-muted object-contain"
     />
   );

@@ -1,5 +1,6 @@
 "use server";
 
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserRole } from "@/app/_actions/user";
 import type { SiteUpdateContentBlock } from "@/lib/site-update-blocks";
@@ -209,6 +210,17 @@ export async function deleteSiteUpdate(id: string): Promise<{ success: boolean; 
     console.error("Failed to delete site update:", error);
     return { success: false, error: "削除に失敗しました" };
   }
+}
+
+/**
+ * フォーム用：運営情報を削除してからリダイレクト
+ */
+export async function deleteSiteUpdateAction(formData: FormData) {
+  const id = formData.get("id") as string | null;
+  const redirectTo = (formData.get("redirectTo") as string) || "/admin/site-updates";
+  if (!id) return;
+  const result = await deleteSiteUpdate(id);
+  if (result.success) redirect(redirectTo);
 }
 
 function isDbUnavailable(error: unknown): boolean {

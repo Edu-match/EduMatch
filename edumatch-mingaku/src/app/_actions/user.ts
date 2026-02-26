@@ -23,6 +23,8 @@ export async function getCurrentUserProfile() {
     address: profile.address,
     bio: profile.bio,
     website: profile.website,
+    notification_email_2: profile.notification_email_2 ?? null,
+    notification_email_3: profile.notification_email_3 ?? null,
   };
 }
 
@@ -106,6 +108,8 @@ export type UpdateProfileInput = {
   address?: string | null;
   bio?: string | null;
   website?: string | null;
+  notification_email_2?: string | null;
+  notification_email_3?: string | null;
 };
 
 export async function updateProfile(input: UpdateProfileInput): Promise<{ success: boolean; error?: string }> {
@@ -122,6 +126,8 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
         ...(input.address !== undefined && { address: input.address || null }),
         ...(input.bio !== undefined && { bio: input.bio || null }),
         ...(input.website !== undefined && { website: input.website || null }),
+        ...(input.notification_email_2 !== undefined && { notification_email_2: input.notification_email_2?.trim() || null }),
+        ...(input.notification_email_3 !== undefined && { notification_email_3: input.notification_email_3?.trim() || null }),
       },
     });
     return { success: true };

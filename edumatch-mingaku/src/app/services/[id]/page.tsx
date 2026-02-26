@@ -14,6 +14,7 @@ import { ContentRenderer } from "@/components/ui/content-renderer";
 import { ShareButton } from "@/components/ui/share-button";
 import { ReviewSection } from "@/components/ui/review-section";
 import { getServiceReviews } from "@/app/_actions/reviews";
+import { serviceThumbnailPlaceholder } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -101,7 +102,7 @@ export default async function ServiceDetailPage({
                   <ShareButton
                     url={`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/services/${service.id}`}
                     title={service.title}
-                    text={`${service.title} - エデュマッチ`}
+                    text={service.title}
                     variant="outline"
                     size="sm"
                   />
@@ -139,7 +140,7 @@ export default async function ServiceDetailPage({
             <div className="lg:col-span-2 hidden lg:block">
               <div className="relative aspect-video w-full rounded-xl overflow-hidden shadow-2xl border-4 border-white/50 bg-muted flex items-center justify-center">
                 <Image
-                  src={service.thumbnail_url || "https://placehold.co/800x600/e0f2fe/0369a1?text=Service"}
+                  src={service.thumbnail_url || serviceThumbnailPlaceholder(service.title, 800, 600)}
                   alt={service.title}
                   fill
                   className="object-contain"
@@ -158,7 +159,7 @@ export default async function ServiceDetailPage({
             {/* メイン画像（モバイル） */}
             <div className="lg:hidden relative aspect-video w-full rounded-xl overflow-hidden shadow-xl border-2 bg-muted flex items-center justify-center">
               <Image
-                src={service.thumbnail_url || "https://placehold.co/800x450/e0f2fe/0369a1?text=Service"}
+                src={service.thumbnail_url || serviceThumbnailPlaceholder(service.title, 800, 450)}
                 alt={service.title}
                 fill
                 className="object-contain"
@@ -323,7 +324,7 @@ export default async function ServiceDetailPage({
                     <ShareButton
                       url={`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/services/${service.id}`}
                       title={service.title}
-                      text={`${service.title} - エデュマッチ`}
+                      text={service.title}
                       variant="outline"
                       size="lg"
                       className="w-full"
@@ -433,7 +434,7 @@ export default async function ServiceDetailPage({
                     <Card className="h-full overflow-hidden border-2 hover:border-primary/50 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
                       <div className="relative w-full aspect-video overflow-hidden bg-muted flex items-center justify-center">
                         <Image
-                          src={relatedService.thumbnail_url || "https://placehold.co/300x200/e0f2fe/0369a1?text=Service"}
+                          src={relatedService.thumbnail_url || serviceThumbnailPlaceholder(relatedService.title, 300, 200)}
                           alt={relatedService.title}
                           fill
                           className="object-contain transition-transform duration-300 group-hover:scale-105"

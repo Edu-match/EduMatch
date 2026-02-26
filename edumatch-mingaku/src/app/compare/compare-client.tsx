@@ -23,6 +23,7 @@ import {
   Trash2,
 } from "lucide-react";
 import type { ServiceWithProvider } from "@/app/_actions/services";
+import { serviceThumbnailPlaceholder } from "@/lib/utils";
 
 type CompareClientPageProps = {
   initialServices: ServiceWithProvider[];
@@ -150,21 +151,15 @@ export default function CompareClientPage({ initialServices }: CompareClientPage
                   {selectedServices.map((service) => (
                     <th key={service.id} className="p-4 text-center min-w-[180px]">
                       <div className="flex flex-col items-center gap-2">
-                        {service.thumbnail_url ? (
-                          <div className="relative w-[100px] h-[60px] rounded overflow-hidden">
+                        <div className="relative w-[100px] h-[60px] rounded overflow-hidden">
                             <Image
-                              src={service.thumbnail_url}
+                              src={service.thumbnail_url || serviceThumbnailPlaceholder(service.title, 100, 60)}
                               alt={service.title}
                               fill
                               className="object-contain"
                               unoptimized
                             />
                           </div>
-                        ) : (
-                          <div className="w-[100px] h-[60px] bg-muted rounded flex items-center justify-center text-xs text-muted-foreground">
-                            No Image
-                          </div>
-                        )}
                         <span className="font-bold line-clamp-2 h-[3rem] flex items-center">
                           {service.title}
                         </span>

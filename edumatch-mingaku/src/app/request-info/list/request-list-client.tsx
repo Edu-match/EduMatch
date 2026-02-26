@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useRequestList } from "@/components/request-list/request-list-context";
 import { FileText, ArrowRight } from "lucide-react";
 import { AddToRequestListButton } from "@/components/request-list/add-to-request-list-button";
+import { serviceThumbnailPlaceholder } from "@/lib/utils";
 
 export function RequestListClient() {
   const router = useRouter();
@@ -76,7 +77,7 @@ export function RequestListClient() {
               >
                 <div className="relative w-20 sm:w-28 flex-shrink-0 overflow-hidden rounded-lg bg-muted aspect-video">
                   <Image
-                    src={item.thumbnail || "https://placehold.co/200x120/e0f2fe/0369a1?text=Service"}
+                    src={item.thumbnail || serviceThumbnailPlaceholder(item.title, 200, 120)}
                     alt={item.title}
                     fill
                     className="object-contain"

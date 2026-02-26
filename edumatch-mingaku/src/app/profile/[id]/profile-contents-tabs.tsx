@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Building2, Newspaper } from "lucide-react";
+import { serviceThumbnailPlaceholder } from "@/lib/utils";
 
 function formatDate(date: Date): string {
   return new Intl.DateTimeFormat("ja-JP", {
@@ -131,7 +132,7 @@ export function ProfileContentsTabs({
                       <Image
                         src={
                           s.thumbnail_url ||
-                          "https://placehold.co/400x225/e0f2fe/0369a1?text=Service"
+                          serviceThumbnailPlaceholder(s.title, 400, 225)
                         }
                         alt={s.title}
                         fill

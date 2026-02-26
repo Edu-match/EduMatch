@@ -9,6 +9,7 @@ export type SubmitMaterialRequestInput = {
   serviceId: string;
   useAccountAddress: boolean;
   deliveryName?: string;
+  deliveryOrganization?: string | null;
   deliveryPhone?: string | null;
   deliveryPostalCode?: string | null;
   deliveryPrefecture?: string | null;
@@ -28,6 +29,7 @@ export type SubmitMaterialRequestBatchInput = {
   serviceIds: string[];
   useAccountAddress: boolean;
   deliveryName?: string;
+  deliveryOrganization?: string | null;
   deliveryPhone?: string | null;
   deliveryPostalCode?: string | null;
   deliveryPrefecture?: string | null;
@@ -61,6 +63,7 @@ export async function submitMaterialRequest(
     const useAccount = input.useAccountAddress;
     const deliveryName = useAccount ? profile.name : (input.deliveryName ?? profile.name);
     const deliveryEmail = (input.deliveryEmail ?? profile.email).trim();
+    const deliveryOrganization = useAccount ? null : (input.deliveryOrganization?.trim() || null);
     const deliveryPhone = useAccount ? profile.phone : input.deliveryPhone;
     const deliveryPostalCode = useAccount ? profile.postal_code : input.deliveryPostalCode;
     const deliveryPrefecture = useAccount ? profile.prefecture : input.deliveryPrefecture;
@@ -84,6 +87,7 @@ export async function submitMaterialRequest(
         service_id: input.serviceId,
         use_account_address: useAccount,
         delivery_name: deliveryName,
+        delivery_organization: deliveryOrganization ?? null,
         delivery_phone: deliveryPhone ?? null,
         delivery_postal_code: deliveryPostalCode ?? null,
         delivery_prefecture: deliveryPrefecture ?? null,
@@ -94,13 +98,20 @@ export async function submitMaterialRequest(
       },
     });
 
-    const providerEmail = service.provider?.email;
+    const provider = service.provider;
+    const providerEmails: string[] = [
+      provider?.email,
+      (provider as { notification_email_2?: string | null } | undefined)?.notification_email_2,
+      (provider as { notification_email_3?: string | null } | undefined)?.notification_email_3,
+    ]
+      .filter((e): e is string => typeof e === "string" && e.trim().length > 0);
+    const uniqueProviderEmails = [...new Set(providerEmails)];
+
     const apiKey = process.env.RESEND_API_KEY;
     
     if (apiKey) {
       try {
         const resend = new Resend(apiKey);
-        // Resendのfromは "表示名 <メール>" 形式を推奨。未設定時はテスト用ドメインを使用
         const fromRaw = process.env.RESEND_FROM_EMAIL?.trim();
         const from = fromRaw
           ? (fromRaw.includes("<") ? fromRaw : `エデュマッチ <${fromRaw}>`)
@@ -113,28 +124,31 @@ export async function submitMaterialRequest(
           .filter(Boolean)
           .join("");
 
-        // 1. サービス提供者へのメール通知
-        if (providerEmail) {
+        const providerHtml = `
+          <h2>エデュマッチで資料請求の依頼がありました</h2>
+          <p>以下の内容で資料請求が届いています。</p>
+          <hr />
+          <p><strong>対象サービス：</strong> ${service.title}</p>
+          <p><strong>メールアドレス：</strong> ${deliveryEmail}</p>
+          <p><strong>お名前：</strong> ${deliveryName}</p>
+          <p><strong>塾名・学校名：</strong> ${deliveryOrganization ?? "未入力"}</p>
+          <p><strong>電話番号：</strong> ${deliveryPhone ?? "未入力"}</p>
+          <p><strong>送付先住所：</strong><br />〒${deliveryPostalCode ?? ""}<br />${addr || "未入力"}</p>
+          ${input.message ? `<p><strong>備考：</strong><br />${input.message.replace(/\n/g, "<br />")}</p>` : ""}
+          <hr />
+          <p style="color:#666;font-size:12px;">このメールはエデュマッチから自動送信されています。</p>
+        `;
+
+        // 1. サービス提供者へのメール通知（登録された最大3件のアドレスに送信）
+        for (const to of uniqueProviderEmails) {
           const providerResult = await resend.emails.send({
             from,
-            to: providerEmail,
+            to,
             subject: `【エデュマッチ】資料請求がありました - ${service.title}`,
-            html: `
-              <h2>エデュマッチで資料請求の依頼がありました</h2>
-              <p>以下の内容で資料請求が届いています。</p>
-              <hr />
-              <p><strong>対象サービス：</strong> ${service.title}</p>
-              <p><strong>請求者名：</strong> ${deliveryName}</p>
-              <p><strong>メールアドレス：</strong> ${deliveryEmail}</p>
-              <p><strong>電話番号：</strong> ${deliveryPhone ?? "未入力"}</p>
-              <p><strong>送付先住所：</strong><br />〒${deliveryPostalCode ?? ""}<br />${addr || "未入力"}</p>
-              ${input.message ? `<p><strong>備考：</strong><br />${input.message.replace(/\n/g, "<br />")}</p>` : ""}
-              <hr />
-              <p style="color:#666;font-size:12px;">このメールはエデュマッチから自動送信されています。</p>
-            `,
+            html: providerHtml,
           });
           if (providerResult.error) {
-            console.error("[RESEND] Provider email error:", JSON.stringify(providerResult.error));
+            console.error("[RESEND] Provider email error:", to, JSON.stringify(providerResult.error));
           }
         }
 
@@ -150,8 +164,9 @@ export async function submitMaterialRequest(
             <hr />
             <p><strong>サービス名：</strong> ${service.title}</p>
             <p><strong>提供者：</strong> ${service.provider?.name ?? "未設定"}</p>
-            <p><strong>お名前：</strong> ${deliveryName}</p>
             <p><strong>メールアドレス：</strong> ${deliveryEmail}</p>
+            <p><strong>お名前：</strong> ${deliveryName}</p>
+            <p><strong>塾名・学校名：</strong> ${deliveryOrganization ?? "未入力"}</p>
             <p><strong>電話番号：</strong> ${deliveryPhone ?? "未入力"}</p>
             <p><strong>送付先住所：</strong><br />〒${deliveryPostalCode ?? ""}<br />${addr || "未入力"}</p>
             ${input.message ? `<p><strong>ご要望：</strong><br />${input.message.replace(/\n/g, "<br />")}</p>` : ""}
@@ -164,7 +179,7 @@ export async function submitMaterialRequest(
         if (userResult.error) {
           console.error("[RESEND] User confirmation email error:", JSON.stringify(userResult.error));
         } else {
-          console.log(`[SUCCESS] Material request emails sent for service: ${service.title}, to provider: ${providerEmail ?? "n/a"}, to user: ${deliveryEmail}`);
+          console.log(`[SUCCESS] Material request emails sent for service: ${service.title}, to provider: ${uniqueProviderEmails.join(", ") || "n/a"}, to user: ${deliveryEmail}`);
         }
       } catch (mailErr) {
         const err = mailErr as { message?: string; response?: unknown };
@@ -172,7 +187,7 @@ export async function submitMaterialRequest(
         if (err?.response) console.error("[ERROR] Resend response:", JSON.stringify(err.response));
         console.error("Details:", {
           serviceTitle: service.title,
-          providerEmail,
+          providerEmails: uniqueProviderEmails,
           deliveryEmail,
           apiKeyPresent: !!apiKey,
           fromEmail: process.env.RESEND_FROM_EMAIL ?? "エデュマッチ <onboarding@resend.dev>",

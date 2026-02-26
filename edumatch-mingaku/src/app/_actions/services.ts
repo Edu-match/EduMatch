@@ -7,7 +7,7 @@ import { sortServicesByDisplayOrder } from "@/lib/service-display-order";
 import type { Service, Profile, Role } from "@prisma/client";
 
 export type ServiceWithProvider = Service & {
-  provider: Pick<Profile, "id" | "name" | "email" | "avatar_url">;
+  provider: Pick<Profile, "id" | "name" | "email" | "avatar_url" | "notification_email_2" | "notification_email_3">;
 };
 
 export type ContentBlock = {
@@ -143,7 +143,7 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     rejection_reason: null,
     created_at: new Date(Date.now() - 1000 * 60 * 60 * 24),
     updated_at: new Date(),
-    provider: { id: "demo-provider", name: "スタディプラス株式会社", email: "demo@example.com", avatar_url: null },
+    provider: { id: "demo-provider", name: "スタディプラス株式会社", email: "demo@example.com", avatar_url: null, notification_email_2: null, notification_email_3: null },
   },
   {
     id: "demo-service-2",
@@ -173,7 +173,7 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     rejection_reason: null,
     created_at: new Date(Date.now() - 1000 * 60 * 60 * 48),
     updated_at: new Date(),
-    provider: { id: "demo-provider", name: "Classi株式会社", email: "demo@example.com", avatar_url: null },
+    provider: { id: "demo-provider", name: "Classi株式会社", email: "demo@example.com", avatar_url: null, notification_email_2: null, notification_email_3: null },
   },
   {
     id: "demo-service-3",
@@ -203,7 +203,7 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     rejection_reason: null,
     created_at: new Date(Date.now() - 1000 * 60 * 60 * 72),
     updated_at: new Date(),
-    provider: { id: "demo-provider", name: "atama plus株式会社", email: "demo@example.com", avatar_url: null },
+    provider: { id: "demo-provider", name: "atama plus株式会社", email: "demo@example.com", avatar_url: null, notification_email_2: null, notification_email_3: null },
   },
   {
     id: "demo-service-4",
@@ -233,7 +233,7 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     rejection_reason: null,
     created_at: new Date(Date.now() - 1000 * 60 * 60 * 96),
     updated_at: new Date(),
-    provider: { id: "demo-provider", name: "Google", email: "demo@example.com", avatar_url: null },
+    provider: { id: "demo-provider", name: "Google", email: "demo@example.com", avatar_url: null, notification_email_2: null, notification_email_3: null },
   },
   {
     id: "demo-service-5",
@@ -263,7 +263,7 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     rejection_reason: null,
     created_at: new Date(Date.now() - 1000 * 60 * 60 * 120),
     updated_at: new Date(),
-    provider: { id: "demo-provider", name: "株式会社LoiLo", email: "demo@example.com", avatar_url: null },
+    provider: { id: "demo-provider", name: "株式会社LoiLo", email: "demo@example.com", avatar_url: null, notification_email_2: null, notification_email_3: null },
   },
 ];
 
@@ -292,6 +292,8 @@ export async function getAllServices(): Promise<ServiceWithProvider[]> {
             name: true,
             email: true,
             avatar_url: true,
+            notification_email_2: true,
+            notification_email_3: true,
           },
         },
       },
@@ -305,7 +307,7 @@ export async function getAllServices(): Promise<ServiceWithProvider[]> {
 
     return sorted.map((s) => ({
       ...s,
-      provider: s.provider || { id: s.provider_id, name: "提供者", email: "", avatar_url: null },
+      provider: s.provider || { id: s.provider_id, name: "提供者", email: "", avatar_url: null, notification_email_2: null, notification_email_3: null },
     }));
   } catch (error) {
     if (isDbUnavailable(error)) {
@@ -345,6 +347,8 @@ export async function getPopularServices(limit: number = 5): Promise<ServiceWith
             name: true,
             email: true,
             avatar_url: true,
+            notification_email_2: true,
+            notification_email_3: true,
           },
         },
       },
@@ -353,7 +357,7 @@ export async function getPopularServices(limit: number = 5): Promise<ServiceWith
 
     return sorted.slice(0, limit).map((s) => ({
       ...s,
-      provider: s.provider || { id: s.provider_id, name: "提供者", email: "", avatar_url: null },
+      provider: s.provider || { id: s.provider_id, name: "提供者", email: "", avatar_url: null, notification_email_2: null, notification_email_3: null },
     }));
   } catch (error) {
     if (isDbUnavailable(error)) {
@@ -382,6 +386,8 @@ export async function getServiceById(id: string): Promise<ServiceWithProvider | 
             name: true,
             email: true,
             avatar_url: true,
+            notification_email_2: true,
+            notification_email_3: true,
           },
         },
       },
@@ -414,7 +420,7 @@ export async function getServiceById(id: string): Promise<ServiceWithProvider | 
 
     return {
       ...service,
-      provider: service.provider || { id: service.provider_id, name: "提供者", avatar_url: null },
+      provider: service.provider || { id: service.provider_id, name: "提供者", email: "", avatar_url: null, notification_email_2: null, notification_email_3: null },
     };
   } catch (error) {
     if (isDbUnavailable(error)) {
@@ -458,6 +464,8 @@ export async function getServicesByCategory(category: string): Promise<ServiceWi
             name: true,
             email: true,
             avatar_url: true,
+            notification_email_2: true,
+            notification_email_3: true,
           },
         },
       },
@@ -468,7 +476,7 @@ export async function getServicesByCategory(category: string): Promise<ServiceWi
 
     return services.map((s) => ({
       ...s,
-      provider: s.provider || { id: s.provider_id, name: "提供者", email: "", avatar_url: null },
+      provider: s.provider || { id: s.provider_id, name: "提供者", email: "", avatar_url: null, notification_email_2: null, notification_email_3: null },
     }));
   } catch (error) {
     if (isDbUnavailable(error)) {
@@ -560,14 +568,25 @@ export async function getPendingServices(): Promise<ServiceWithProvider[]> {
   try {
     const services = await prisma.service.findMany({
       where: { status: "PENDING" },
-      include: { provider: { select: { id: true, name: true, email: true, avatar_url: true } } },
+      include: {
+        provider: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatar_url: true,
+            notification_email_2: true,
+            notification_email_3: true,
+          },
+        },
+      },
       orderBy: { submitted_at: "asc" },
       take: 100,
     });
 
     return services.map((s) => ({
       ...s,
-      provider: s.provider || { id: s.provider_id, name: "提供者", email: "", avatar_url: null },
+      provider: s.provider || { id: s.provider_id, name: "提供者", email: "", avatar_url: null, notification_email_2: null, notification_email_3: null },
     }));
   } catch (e) {
     console.error("Error fetching pending services:", e);

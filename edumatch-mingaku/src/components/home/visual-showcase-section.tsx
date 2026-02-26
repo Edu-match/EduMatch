@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getPopularArticlesByEngagement, getPopularServicesByEngagement } from "@/app/_actions/popularity";
 import { ArrowRight, BookOpen, Sparkles } from "lucide-react";
+import { serviceThumbnailPlaceholder } from "@/lib/utils";
 
 function formatDate(date: Date): string {
   return new Intl.DateTimeFormat("ja-JP", {
@@ -131,7 +132,7 @@ export async function VisualShowcaseSection() {
                 >
                   <div className="relative w-full aspect-video overflow-hidden">
                     <Image
-                      src={service.thumbnail_url || "https://placehold.co/800x450/e0f2fe/0369a1?text=Service"}
+                      src={service.thumbnail_url || serviceThumbnailPlaceholder(service.title, 800, 450)}
                       alt={service.title}
                       fill
                       className="object-contain transition-transform duration-500 group-hover:scale-105"
