@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { sortServicesByDisplayOrder } from "@/lib/service-display-order";
 
 /**
  * サービスのいいね数をインクリメント
@@ -117,15 +118,8 @@ export async function getPopularServicesByEngagement(limit: number = 10) {
           },
         },
       },
-      orderBy: [
-        { review_count: "desc" },
-        { favorite_count: "desc" },
-      ],
-      take: limit,
     });
-
-    // ソート済み（DB側で処理）
-    const sortedServices = services;
+    const sortedServices = sortServicesByDisplayOrder(services).slice(0, limit);
 
     return sortedServices.map((s) => ({
       ...s,

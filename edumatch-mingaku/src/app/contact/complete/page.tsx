@@ -7,7 +7,6 @@ export default function ContactCompletePage() {
   const inquiryDetails = {
     inquiryId: "INQ-2024011502",
     category: "一般的なお問い合わせ",
-    subject: "サービス連携について",
     date: "2024年1月15日 14:30",
     email: "yamada@example.com",
   };
@@ -45,10 +44,6 @@ export default function ContactCompletePage() {
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">種別</span>
                     <span>{inquiryDetails.category}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">件名</span>
-                    <span>{inquiryDetails.subject}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">受付日時</span>

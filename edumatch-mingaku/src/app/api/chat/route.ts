@@ -80,8 +80,11 @@ export async function GET() {
   const events = parseEvents(profile?.chat_usage_events ?? null);
   const cutoff = getCutoff24h();
   const used = countInWindow(events, cutoff);
+  const inWindow = events.filter((e) => e.at > cutoff);
+  const oldestAt = inWindow.length > 0 ? inWindow.reduce((min, e) => (e.at < min ? e.at : min), inWindow[0].at) : null;
+  const resetAt = oldestAt ? new Date(new Date(oldestAt).getTime() + TWENTY_FOUR_HOURS_MS).toISOString() : null;
   return new Response(
-    JSON.stringify({ used, limit: USAGE_LIMIT }),
+    JSON.stringify({ used, limit: USAGE_LIMIT, resetAt }),
     { headers: { "Content-Type": "application/json" } }
   );
 }

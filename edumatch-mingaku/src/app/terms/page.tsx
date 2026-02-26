@@ -12,9 +12,23 @@ export default function TermsPage() {
             <p>
               エデュマッチでは利用者様とサービス事業者様それぞれの利用規約を定めております。当サイトをご利用いただく方は必ずご一読くださいますようお願い申し上げます。
             </p>
-            <ul>
-              <li><a href="#user-terms">エデュマッチ利用者様（すべての利用者様）</a></li>
-              <li><a href="#provider-terms">契約者様（サービス事業者様）</a></li>
+            <ul className="list-none space-y-3 p-0 m-0">
+              <li>
+                <a
+                  href="#user-terms"
+                  className="inline-flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-primary font-medium underline decoration-2 underline-offset-2 hover:bg-primary/10 hover:border-primary/50 transition-colors"
+                >
+                  エデュマッチ利用者様（すべての利用者様）
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#provider-terms"
+                  className="inline-flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-primary font-medium underline decoration-2 underline-offset-2 hover:bg-primary/10 hover:border-primary/50 transition-colors"
+                >
+                  契約者様（サービス事業者様）
+                </a>
+              </li>
             </ul>
           </CardContent>
         </Card>

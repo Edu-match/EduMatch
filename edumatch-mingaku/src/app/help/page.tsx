@@ -191,12 +191,17 @@ export default function HelpPage() {
               <p className="text-sm text-muted-foreground mb-2">
                 AIナビゲーターで質問・サポートを受けることができます（AIによる自動応答です）。
               </p>
-              <p className="text-sm text-muted-foreground mb-4">
+              <p className="text-sm text-muted-foreground mb-2">
                 ご利用の際は
                 <Link href="/help/ai-navigator-disclaimer" className="text-primary underline hover:no-underline">
                   利用上の注意
                 </Link>
                 をご確認ください。
+              </p>
+              <p className="text-sm text-muted-foreground mb-4">
+                <Link href="/help/chat-usage-limit" className="text-primary underline hover:no-underline">
+                  利用回数・回復日時の詳細
+                </Link>
               </p>
               <OpenAiChatButton variant="outline" className="w-full">
                 <MessageCircle className="h-4 w-4 mr-2" />

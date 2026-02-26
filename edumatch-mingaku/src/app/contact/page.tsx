@@ -18,7 +18,6 @@ import { OpenAiChatButton } from "@/components/ui/open-ai-chat-button";
 
 const categories = [
   { value: "general", label: "一般的なお問い合わせ" },
-  { value: "technical", label: "技術的なご質問" },
   { value: "billing", label: "料金・請求について" },
   { value: "listing", label: "サービス掲載について" },
   { value: "partnership", label: "提携・パートナーシップ" },
@@ -29,7 +28,6 @@ export default function ContactPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [category, setCategory] = useState("");
-  const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
 
   return (
@@ -88,17 +86,6 @@ export default function ContactPage() {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">
-                件名 <span className="text-red-500">*</span>
-              </label>
-              <Input
-                placeholder="お問い合わせの件名"
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-              />
             </div>
 
             <div className="space-y-2">

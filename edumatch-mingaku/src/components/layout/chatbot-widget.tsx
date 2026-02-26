@@ -37,6 +37,7 @@ const CONTEXT_MAX = 1;
 const CHAT_WIDTH = 420;
 const CHAT_HEIGHT = 700;
 const AI_NAV_DISCLAIMER_PATH = "/help/ai-navigator-disclaimer";
+const CHAT_USAGE_LIMIT_PATH = "/help/chat-usage-limit";
 
 type ChatMsg = {
   id: string;
@@ -95,6 +96,18 @@ const EXAMPLE_QUESTIONS: Record<ChatMode, string[]> = {
     "校務DXを進めるうえでの教員の負担軽減について議論してください",
   ],
 };
+
+function formatResetIn(resetAt: string | null): string {
+  if (!resetAt) return "";
+  const now = Date.now();
+  const reset = new Date(resetAt).getTime();
+  const diff = Math.max(0, reset - now);
+  const hours = Math.floor(diff / (60 * 60 * 1000));
+  const minutes = Math.floor((diff % (60 * 60 * 1000)) / (60 * 1000));
+  if (hours > 0) return `あと${hours}時間${minutes}分で0にリセット`;
+  if (minutes > 0) return `あと${minutes}分で0にリセット`;
+  return "まもなく0にリセット";
+}
 
 function ModeSelectScreen({ onSelect }: { onSelect: (mode: ChatMode) => void }) {
   return (
@@ -296,7 +309,7 @@ export function ChatbotWidget() {
   const [viewHistory, setViewHistory] = useState<RecentViewItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [pendingHistorySelection, setPendingHistorySelection] = useState<string | null>(null);
-  const [usage, setUsage] = useState<{ used: number; limit: number } | null>(null);
+  const [usage, setUsage] = useState<{ used: number; limit: number; resetAt: string | null } | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -353,7 +366,7 @@ export function ChatbotWidget() {
       .then((r) => r.json())
       .then((d) => {
         if (typeof d.used === "number" && typeof d.limit === "number") {
-          setUsage({ used: d.used, limit: d.limit });
+          setUsage({ used: d.used, limit: d.limit, resetAt: d.resetAt ?? null });
         }
       })
       .catch(() => {});
@@ -543,7 +556,7 @@ export function ChatbotWidget() {
         );
         if (resp.status === 429) {
           fetch("/api/chat").then((r) => r.json()).then((d) => {
-            if (typeof d.used === "number" && typeof d.limit === "number") setUsage({ used: d.used, limit: d.limit });
+            if (typeof d.used === "number" && typeof d.limit === "number") setUsage({ used: d.used, limit: d.limit, resetAt: d.resetAt ?? null });
           }).catch(() => {});
         }
         setIsStreaming(false);
@@ -567,7 +580,7 @@ export function ChatbotWidget() {
         return updated;
       });
       fetch("/api/chat").then((r) => r.json()).then((d) => {
-        if (typeof d.used === "number" && typeof d.limit === "number") setUsage({ used: d.used, limit: d.limit });
+        if (typeof d.used === "number" && typeof d.limit === "number") setUsage({ used: d.used, limit: d.limit, resetAt: d.resetAt ?? null });
       }).catch(() => {});
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === "AbortError") {
@@ -646,10 +659,21 @@ export function ChatbotWidget() {
       </div>
 
       {view === "chat" && userId && hasAgreed && chatMode && (
-        <div className="px-3 py-2 border-b bg-muted/20 flex items-center justify-end">
+        <div className="px-3 py-2 border-b bg-muted/20 flex items-center justify-between gap-2 flex-wrap">
           <span className="text-[11px] text-muted-foreground">
             {usage ? `${usage.used}/${usage.limit}` : "0/30"} 回
+            {usage?.resetAt && usage.used > 0 && (
+              <span className="ml-1.5">・{formatResetIn(usage.resetAt)}</span>
+            )}
           </span>
+          <Link
+            href={CHAT_USAGE_LIMIT_PATH}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[11px] text-primary underline hover:no-underline shrink-0"
+          >
+            詳細を見る
+          </Link>
         </div>
       )}
 
@@ -682,31 +706,42 @@ export function ChatbotWidget() {
             <div className="space-y-4">
               {messages.length === 0 && (
                 <>
-                  <div className="flex justify-start">
-                    <div className="max-w-[88%] rounded-2xl rounded-tl-md bg-muted/80 px-4 py-3 text-sm leading-relaxed whitespace-pre-line shadow-sm">
+                  <div className="flex justify-start items-start gap-0">
+                    <div className="w-3 h-3 shrink-0 mt-5 rounded-bl-full bg-muted/80" aria-hidden />
+                    <div className="relative max-w-[88%] rounded-2xl rounded-tl-md rounded-bl-none bg-muted/80 px-4 py-3 text-sm leading-relaxed whitespace-pre-line shadow-sm">
                       {welcomeMessage}
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <p className="text-xs text-muted-foreground font-medium">例の質問</p>
-                    <div className="flex flex-col gap-1.5">
-                      {EXAMPLE_QUESTIONS[chatMode].map((q, i) => (
-                        <button
-                          key={i}
-                          type="button"
-                          onClick={() => setInput(q)}
-                          className="text-left text-sm px-3 py-2 rounded-lg border border-dashed border-muted-foreground/40 hover:border-primary/50 hover:bg-primary/5 transition-colors text-foreground"
-                        >
-                          {q}
-                        </button>
-                      ))}
+                  <div className="grid grid-cols-3 gap-3 max-w-full">
+                    <div className="col-start-2">
+                      <button
+                        type="button"
+                        onClick={() => setInput(EXAMPLE_QUESTIONS[chatMode][0])}
+                        className="block w-full text-left text-sm px-4 py-3 rounded-xl border-2 border-muted-foreground/30 hover:border-primary/50 hover:bg-primary/5 transition-colors text-foreground"
+                      >
+                        {EXAMPLE_QUESTIONS[chatMode][0]}
+                      </button>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => setInput(EXAMPLE_QUESTIONS[chatMode][1])}
+                      className="col-start-1 row-start-2 block w-full text-left text-sm px-4 py-3 rounded-xl border-2 border-muted-foreground/30 hover:border-primary/50 hover:bg-primary/5 transition-colors text-foreground"
+                    >
+                      {EXAMPLE_QUESTIONS[chatMode][1]}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInput(EXAMPLE_QUESTIONS[chatMode][2])}
+                      className="col-start-3 row-start-2 block w-full text-left text-sm px-4 py-3 rounded-xl border-2 border-muted-foreground/30 hover:border-primary/50 hover:bg-primary/5 transition-colors text-foreground"
+                    >
+                      {EXAMPLE_QUESTIONS[chatMode][2]}
+                    </button>
                   </div>
                 </>
               )}
 
               {messages.map((m) => (
-                <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start items-start gap-0"}`}>
                   {m.role === "user" && editingMessageId === m.id ? (
                     <div className="max-w-[88%] w-full flex flex-col gap-2 rounded-2xl rounded-tr-md bg-primary/10 border border-primary/20 p-3">
                       <textarea
@@ -726,13 +761,17 @@ export function ChatbotWidget() {
                       </div>
                     </div>
                   ) : (
-                    <div
-                      className={`max-w-[88%] px-4 py-2.5 rounded-2xl ${
-                        m.role === "user"
-                          ? "bg-primary text-primary-foreground rounded-tr-md shadow-sm group relative"
-                          : "bg-muted/80 text-foreground rounded-tl-md shadow-sm"
-                      }`}
-                    >
+                    <>
+                      {m.role === "assistant" && (
+                        <div className="w-3 h-3 shrink-0 mt-5 rounded-bl-full bg-muted/80" aria-hidden />
+                      )}
+                      <div
+                        className={`max-w-[88%] px-4 py-2.5 rounded-2xl ${
+                          m.role === "user"
+                            ? "bg-primary text-primary-foreground rounded-tr-md shadow-sm group relative"
+                            : "rounded-tl-md rounded-bl-none shadow-sm bg-muted/80 text-foreground"
+                        }`}
+                      >
                       {m.role === "assistant" ? (
                         m.content ? (
                           <MarkdownContent text={m.content} />
@@ -758,7 +797,8 @@ export function ChatbotWidget() {
                           )}
                         </>
                       )}
-                    </div>
+                      </div>
+                    </>
                   )}
                 </div>
               ))}
@@ -766,59 +806,74 @@ export function ChatbotWidget() {
           </div>
 
           <div className="border-t p-3 flex-shrink-0 bg-muted/20">
-            {contextItems.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mb-2 min-h-0">
-                {contextItems.map((c) => (
-                  <span
-                    key={c.id}
-                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border bg-background text-xs max-w-full"
-                  >
-                    <span className="truncate">{c.title}</span>
+            <div className="mb-2">
+              {contextItems.length > 0 ? (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[11px] text-muted-foreground font-medium">参照中:</span>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border bg-background text-xs max-w-full">
+                    <span className="truncate">{contextItems[0].title}</span>
                     <button
                       type="button"
-                      onClick={() => removeContextItem(c.id)}
+                      onClick={() => removeContextItem(contextItems[0].id)}
                       className="shrink-0 p-0.5 rounded hover:bg-muted"
-                      aria-label="削除"
+                      aria-label="添付を外す"
                     >
                       <X className="h-3 w-3" />
                     </button>
                   </span>
-                ))}
-              </div>
-            )}
-            <div className="flex items-end gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="h-11 w-11 rounded-xl shrink-0"
-                    aria-label="記事・サービスを追加"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" side="top" className="min-w-[200px]">
-                  {pageContext && !contextItems.some((c) => c.id === pageContext.id) && (
-                    <DropdownMenuItem onClick={addPageToContext}>
-                      <BookOpen className="h-3.5 w-3.5 mr-2 shrink-0" />
-                      {contextItems.length > 0
-                        ? `この${pageContext.type === "article" ? "記事" : "サービス"}に差し替え`
-                        : `この${pageContext.type === "article" ? "記事" : "サービス"}を追加`}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button type="button" variant="ghost" size="sm" className="h-7 text-[11px] px-2">
+                        変更
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" side="top" className="min-w-[200px]">
+                      {pageContext && !contextItems.some((c) => c.id === pageContext.id) && (
+                        <DropdownMenuItem onClick={addPageToContext}>
+                          <BookOpen className="h-3.5 w-3.5 mr-2 shrink-0" />
+                          この{pageContext.type === "article" ? "記事" : "サービス"}に差し替え
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem onClick={() => { fetchHistory(); setView("history-select"); }}>
+                        <History className="h-3.5 w-3.5 mr-2 shrink-0" />
+                        閲覧履歴から選び直す
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => { removeContextItem(contextItems[0].id); }}>
+                        <Trash2 className="h-3.5 w-3.5 mr-2 shrink-0" />
+                        添付を外す
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              ) : (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-full justify-start gap-2 h-9 text-xs text-muted-foreground border-dashed"
+                    >
+                      <Plus className="h-3.5 w-3.5 shrink-0" />
+                      記事・サービスを添付して質問する（任意）
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" side="top" className="min-w-[240px]">
+                    {pageContext && (
+                      <DropdownMenuItem onClick={addPageToContext}>
+                        <BookOpen className="h-3.5 w-3.5 mr-2 shrink-0" />
+                        この{pageContext.type === "article" ? "記事" : "サービス"}を参照する
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem onClick={() => { fetchHistory(); setView("history-select"); }}>
+                      <History className="h-3.5 w-3.5 mr-2 shrink-0" />
+                      閲覧履歴から1件選ぶ
                     </DropdownMenuItem>
-                  )}
-                  <DropdownMenuItem
-                    onClick={() => {
-                      fetchHistory();
-                      setView("history-select");
-                    }}
-                  >
-                    <History className="h-3.5 w-3.5 mr-2 shrink-0" />
-                    閲覧履歴から選ぶ
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
+            <div className="flex items-end gap-2">
               <textarea
                 ref={textareaRef}
                 value={input}
@@ -827,7 +882,7 @@ export function ChatbotWidget() {
                 placeholder={PLACEHOLDERS[chatMode]}
                 rows={1}
                 disabled={isStreaming}
-                className="flex-1 resize-none rounded-xl border border-input bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-50 max-h-[140px] min-h-[44px] leading-relaxed"
+                className="flex-1 resize-none rounded-xl border border-input bg-background px-3 py-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-50 max-h-[140px] min-h-[52px] leading-[1.5]"
               />
               <Button
                 type="button"
@@ -966,7 +1021,7 @@ export function ChatbotWidget() {
             aria-label="AIナビゲーターを開く"
             size="icon"
           >
-            <Bot className="h-10 w-10 text-white" />
+            <Bot className="h-14 w-14 text-white" />
           </Button>
           <span className="text-xs font-semibold text-orange-600 hidden sm:inline bg-white/90 px-2 py-1 rounded-full shadow-sm">AIナビゲーター</span>
           <Link

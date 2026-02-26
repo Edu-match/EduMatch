@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/utils/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
+import { sortServicesByDisplayOrder } from "@/lib/service-display-order";
 import type { Service, Profile, Role } from "@prisma/client";
 
 export type ServiceWithProvider = Service & {
@@ -300,11 +301,7 @@ export async function getAllServices(): Promise<ServiceWithProvider[]> {
       ],
     });
 
-    // pinned services (sort_order < 9999) first, then services with images, then without images
-    const pinned = services.filter((s) => s.sort_order < 9999);
-    const withImage = services.filter((s) => s.sort_order === 9999 && s.thumbnail_url);
-    const withoutImage = services.filter((s) => s.sort_order === 9999 && !s.thumbnail_url);
-    const sorted = [...pinned, ...withImage, ...withoutImage];
+    const sorted = sortServicesByDisplayOrder(services);
 
     return sorted.map((s) => ({
       ...s,
@@ -351,13 +348,10 @@ export async function getPopularServices(limit: number = 5): Promise<ServiceWith
           },
         },
       },
-      orderBy: {
-        created_at: "desc",
-      },
-      take: limit,
     });
+    const sorted = sortServicesByDisplayOrder(services);
 
-    return services.map((s) => ({
+    return sorted.slice(0, limit).map((s) => ({
       ...s,
       provider: s.provider || { id: s.provider_id, name: "提供者", email: "", avatar_url: null },
     }));
