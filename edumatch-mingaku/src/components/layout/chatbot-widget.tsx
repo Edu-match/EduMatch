@@ -712,30 +712,18 @@ export function ChatbotWidget() {
                       {welcomeMessage}
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-3 max-w-full">
-                    <div className="col-start-2">
+                  <div className="space-y-2 mt-1">
+                    <p className="text-xs text-muted-foreground mb-2">例：</p>
+                    {EXAMPLE_QUESTIONS[chatMode].map((q, i) => (
                       <button
+                        key={i}
                         type="button"
-                        onClick={() => setInput(EXAMPLE_QUESTIONS[chatMode][0])}
-                        className="block w-full text-left text-sm px-4 py-3 rounded-xl border-2 border-muted-foreground/30 hover:border-primary/50 hover:bg-primary/5 transition-colors text-foreground"
+                        onClick={() => setInput(q)}
+                        className="block w-full text-left text-sm px-4 py-3 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 hover:border-primary/40 transition-colors text-foreground"
                       >
-                        {EXAMPLE_QUESTIONS[chatMode][0]}
+                        {q}
                       </button>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setInput(EXAMPLE_QUESTIONS[chatMode][1])}
-                      className="col-start-1 row-start-2 block w-full text-left text-sm px-4 py-3 rounded-xl border-2 border-muted-foreground/30 hover:border-primary/50 hover:bg-primary/5 transition-colors text-foreground"
-                    >
-                      {EXAMPLE_QUESTIONS[chatMode][1]}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setInput(EXAMPLE_QUESTIONS[chatMode][2])}
-                      className="col-start-3 row-start-2 block w-full text-left text-sm px-4 py-3 rounded-xl border-2 border-muted-foreground/30 hover:border-primary/50 hover:bg-primary/5 transition-colors text-foreground"
-                    >
-                      {EXAMPLE_QUESTIONS[chatMode][2]}
-                    </button>
+                    ))}
                   </div>
                 </>
               )}
