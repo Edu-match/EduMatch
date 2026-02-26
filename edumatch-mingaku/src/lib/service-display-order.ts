@@ -27,6 +27,8 @@ function matchIndex(title: string, providerDisplayName?: string | null): number 
 
 export type ServiceForSort = { title: string; provider_display_name?: string | null };
 
+export type ServiceWithIdForSort = ServiceForSort & { id: string };
+
 export function sortServicesByDisplayOrder<T extends ServiceForSort>(services: T[]): T[] {
   return [...services].sort((a, b) => {
     const ia = matchIndex(a.title, a.provider_display_name);
@@ -34,4 +36,9 @@ export function sortServicesByDisplayOrder<T extends ServiceForSort>(services: T
     if (ia !== ib) return ia - ib;
     return 0;
   });
+}
+
+/** 表示順に並んだサービスIDの配列（クライアント側のソート用） */
+export function getDisplayOrderIds(services: ServiceWithIdForSort[]): string[] {
+  return sortServicesByDisplayOrder(services).map((s) => s.id);
 }
