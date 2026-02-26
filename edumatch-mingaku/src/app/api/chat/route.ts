@@ -37,19 +37,33 @@ function countInWindow(events: ChatUsageEvent[], cutoff: string): number {
 
 type MessageRole = "user" | "assistant";
 
+type ChatMode = "navigator" | "debate" | "discussion";
+
 type RequestBody = {
   messages: { role: MessageRole; content: string }[];
   contextItems?: { id: string; type: "article" | "service" }[];
+  mode?: ChatMode;
 };
 
-const SYSTEM_BASE = `あなたは「エデュマッチ」の AIアシスタントです。教育 ICT・EdTech に関する質問に日本語で丁寧に答えてください。回答はMarkdown形式で構造化してください。`;
+const SYSTEM_PROMPTS: Record<ChatMode, string> = {
+  navigator: `あなたは「エデュマッチ」の AIアシスタントです。教育 ICT・EdTech に関する一般的な質問・案内に日本語で丁寧に答えてください。回答はMarkdown形式で構造化してください。`,
 
-const SYSTEM_WITH_CONTEXT = `あなたは「エデュマッチ」の AIアシスタントです。
-以下に提供されるコンテンツ情報のみを参照して質問に答えてください。コンテンツに記載されていない情報については「このコンテンツには該当する情報が含まれていません」と回答してください。
-回答は日本語で丁寧に、Markdown形式で構造化してください。
+  debate: `あなたは「エデュマッチ」の AIアシスタントです。ディベートモードで、ユーザーが示す賛成・反対の立場に応じて議論を行ってください。
+ユーザーの立場と理由を踏まえ、多角的な視点で論点を整理し、根拠を示しながら議論を深めてください。回答は日本語で丁寧に、Markdown形式で構造化してください。`,
+
+  discussion: `あなたは「エデュマッチ」の AIアシスタントです。ディスカッションモードで、ユーザーが提起するテーマや論点について深く議論してください。
+教育的な観点から多様な視点を提示し、論点を整理・掘り下げながら建設的な議論を進めてください。回答は日本語で丁寧に、Markdown形式で構造化してください。`,
+};
+
+const SYSTEM_WITH_CONTEXT = (mode: ChatMode) => {
+  const base = SYSTEM_PROMPTS[mode];
+  return `${base}
+
+以下に提供されるコンテンツ情報を参照して回答に活用してください。コンテンツに記載されていない情報については「このコンテンツには該当する情報が含まれていません」と補足してください。
 
 --- 参照コンテンツ ---
 `;
+};
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -99,7 +113,8 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const { messages, contextItems } = body;
+  const { messages, contextItems, mode: bodyMode } = body;
+  const mode: ChatMode = bodyMode && ["navigator", "debate", "discussion"].includes(bodyMode) ? bodyMode : "navigator";
 
   if (!messages || !Array.isArray(messages) || messages.length === 0) {
     return new Response(JSON.stringify({ error: "Messages are required" }), {
@@ -133,7 +148,7 @@ export async function POST(req: NextRequest) {
     data: { chat_usage_events: updated as Prisma.InputJsonValue },
   });
 
-  let systemPrompt = SYSTEM_BASE;
+  let systemPrompt = SYSTEM_PROMPTS[mode];
 
   if (contextItems && contextItems.length > 0) {
     const contexts: ChatContextItem[] = [];
@@ -152,12 +167,12 @@ export async function POST(req: NextRequest) {
             `【${c.type === "article" ? "記事" : "サービス"} ${i + 1}】\n${c.content}`
         )
         .join("\n\n");
-      systemPrompt = SYSTEM_WITH_CONTEXT + contextText;
+      systemPrompt = SYSTEM_WITH_CONTEXT(mode) + contextText;
     }
   }
 
   const openai = new OpenAI({ apiKey });
-  const model = "gpt-4o";
+  const model = "gpt-5.2-chat-latest";
 
   const trimmedMessages = messages.slice(-20).map((m) => ({
     role: m.role as "user" | "assistant",

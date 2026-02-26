@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { RecentViewItem } from "@/app/_actions/view-history";
 
-const CONTEXT_MAX = 10;
+const CONTEXT_MAX = 1;
 const CHAT_WIDTH = 420;
 const CHAT_HEIGHT = 700;
 const AI_NAV_DISCLAIMER_PATH = "/help/ai-navigator-disclaimer";
@@ -57,6 +57,65 @@ type PageContext = {
 } | null;
 
 type View = "chat" | "context-select" | "history-select";
+
+export type ChatMode = "navigator" | "debate" | "discussion";
+
+const MODE_LABELS: Record<ChatMode, string> = {
+  navigator: "ナビゲーターモード",
+  debate: "ディベートモード",
+  discussion: "ディスカッションモード",
+};
+
+const MODE_DESCRIPTIONS: Record<ChatMode, string> = {
+  navigator: "一般的な質問・案内",
+  debate: "賛成・反対の立場で議論",
+  discussion: "テーマについて深く議論",
+};
+
+const PLACEHOLDERS: Record<ChatMode, string> = {
+  navigator: "教育ICTやサービスについて、何でもお聞きください",
+  debate: "あなたの立場（賛成/反対）と理由を教えてください",
+  discussion: "議論したいテーマや論点を教えてください",
+};
+
+const EXAMPLE_QUESTIONS: Record<ChatMode, string[]> = {
+  navigator: [
+    "ICT教材の選び方のポイントを教えてください",
+    "校務効率化におすすめのサービスはありますか？",
+    "プログラミング教育の導入事例を知りたいです",
+  ],
+  debate: [
+    "学校へのスマートフォン持ち込みに賛成です。その理由を踏まえて議論してください",
+    "AIを授業で使うことには反対です。反対の立場で議論してください",
+    "タブレット1人1台に賛成の立場で、メリットとデメリットを議論してください",
+  ],
+  discussion: [
+    "GIGAスクール構想の成果と課題について議論したいです",
+    "情報活用能力をどう育成するか、議論を深めたいです",
+    "校務DXを進めるうえでの教員の負担軽減について議論してください",
+  ],
+};
+
+function ModeSelectScreen({ onSelect }: { onSelect: (mode: ChatMode) => void }) {
+  return (
+    <div className="flex-1 flex flex-col min-h-0 overflow-hidden p-4">
+      <p className="text-sm text-muted-foreground mb-4">チャットのモードを選んでください</p>
+      <div className="space-y-3 flex-1 overflow-y-auto">
+        {(["navigator", "debate", "discussion"] as const).map((mode) => (
+          <button
+            key={mode}
+            type="button"
+            onClick={() => onSelect(mode)}
+            className="w-full flex flex-col items-start gap-1 p-4 rounded-xl border-2 border-primary/20 hover:border-primary/50 hover:bg-primary/5 transition-colors text-left"
+          >
+            <span className="text-sm font-semibold">{MODE_LABELS[mode]}</span>
+            <span className="text-xs text-muted-foreground">{MODE_DESCRIPTIONS[mode]}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function parsePageContext(pathname: string): PageContext {
   const articleMatch = pathname.match(/^\/articles\/([^/]+)$/);
@@ -236,13 +295,14 @@ export function ChatbotWidget() {
   const [userId, setUserId] = useState<string | null>(null);
   const [viewHistory, setViewHistory] = useState<RecentViewItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [pendingHistorySelection, setPendingHistorySelection] = useState<Set<string>>(new Set());
+  const [pendingHistorySelection, setPendingHistorySelection] = useState<string | null>(null);
   const [usage, setUsage] = useState<{ used: number; limit: number } | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [hasAgreed, setHasAgreed] = useState(false);
   const [agreeLoading, setAgreeLoading] = useState(false);
+  const [chatMode, setChatMode] = useState<ChatMode | null>(null);
 
   const listRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -315,7 +375,12 @@ export function ChatbotWidget() {
     return () => window.removeEventListener("open-ai-chat", handler);
   }, []);
 
-  const welcomeMessage = "今日は何を話しましょうか？教育ICTやサービスについて何でもお聞きください。";
+  const welcomeMessage =
+    chatMode === "navigator"
+      ? "今日は何を話しましょうか？教育ICTやサービスについて何でもお聞きください。"
+      : chatMode === "debate"
+        ? "賛成・反対の立場で議論しましょう。あなたの立場と理由を教えてください。"
+        : "テーマについて深く議論しましょう。議論したいテーマや論点を教えてください。";
 
   async function handleAgree() {
     setAgreeLoading(true);
@@ -344,7 +409,7 @@ export function ChatbotWidget() {
       const { getRecentViewHistory } = await import("@/app/_actions/view-history");
       const items = await getRecentViewHistory(userId, 20);
       setViewHistory(items);
-      setPendingHistorySelection(new Set(contextItems.map((c) => c.id)));
+      setPendingHistorySelection(contextItems[0]?.id ?? null);
     } catch (e) {
       console.error("Failed to fetch view history:", e);
     } finally {
@@ -352,37 +417,25 @@ export function ChatbotWidget() {
     }
   }
 
-  function toggleHistoryItem(item: RecentViewItem) {
-    setPendingHistorySelection((prev) => {
-      const next = new Set(prev);
-      if (next.has(item.id)) next.delete(item.id);
-      else if (next.size < CONTEXT_MAX) next.add(item.id);
-      return next;
-    });
+  function selectHistoryItem(item: RecentViewItem) {
+    setPendingHistorySelection(item.id);
   }
 
   function confirmHistorySelection() {
-    const selected = viewHistory.filter((h) => pendingHistorySelection.has(h.id));
-    setContextItems((prev) => {
-      const ids = new Set(prev.map((c) => c.id));
-      const next = [...prev];
-      for (const h of selected) {
-        if (next.length >= CONTEXT_MAX) break;
-        if (!ids.has(h.id)) {
-          ids.add(h.id);
-          next.push({ id: h.id, type: h.type, title: h.title });
-        }
-      }
-      return next;
-    });
+    if (!pendingHistorySelection) {
+      setView("chat");
+      return;
+    }
+    const selected = viewHistory.find((h) => h.id === pendingHistorySelection);
+    if (selected) {
+      setContextItems([{ id: selected.id, type: selected.type, title: selected.title }]);
+    }
     setView("chat");
   }
 
   function addPageToContext() {
-    if (!pageContext || contextItems.length >= CONTEXT_MAX) return;
-    const exists = contextItems.some((c) => c.id === pageContext.id);
-    if (exists) return;
-    setContextItems((prev) => [...prev, { id: pageContext.id, type: pageContext.type, title: pageContext.type === "article" ? "現在の記事" : "現在のサービス" }]);
+    if (!pageContext) return;
+    setContextItems([{ id: pageContext.id, type: pageContext.type, title: pageContext.type === "article" ? "現在の記事" : "現在のサービス" }]);
   }
 
   function setPageAsContext() {
@@ -432,7 +485,7 @@ export function ChatbotWidget() {
     const payload = {
       id: sessionId ?? undefined,
       title,
-      mode: "fast",
+      mode: chatMode ?? "navigator",
       messages: finalMessages.filter((m) => !m.streaming).map((m) => ({
         id: m.id,
         role: m.role,
@@ -478,7 +531,7 @@ export function ChatbotWidget() {
       const resp = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: allMessages, contextItems: ctxPayload }),
+        body: JSON.stringify({ messages: allMessages, contextItems: ctxPayload, mode: chatMode }),
         signal: controller.signal,
       });
 
@@ -577,13 +630,22 @@ export function ChatbotWidget() {
               <Trash2 className="h-4 w-4" />
             </Button>
           )}
-          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => setOpen(false)} aria-label="閉じる">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 rounded-lg"
+            onClick={() => {
+              setOpen(false);
+              setChatMode(null);
+            }}
+            aria-label="閉じる"
+          >
             <X className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
-      {view === "chat" && userId && hasAgreed && (
+      {view === "chat" && userId && hasAgreed && chatMode && (
         <div className="px-3 py-2 border-b bg-muted/20 flex items-center justify-end">
           <span className="text-[11px] text-muted-foreground">
             {usage ? `${usage.used}/${usage.limit}` : "0/30"} 回
@@ -610,16 +672,37 @@ export function ChatbotWidget() {
         />
       )}
 
-      {view === "chat" && userId && hasAgreed && (
+      {view === "chat" && userId && hasAgreed && !chatMode && (
+        <ModeSelectScreen onSelect={(mode) => setChatMode(mode)} />
+      )}
+
+      {view === "chat" && userId && hasAgreed && chatMode && (
         <>
           <div ref={listRef} className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 min-h-0">
             <div className="space-y-4">
               {messages.length === 0 && (
-                <div className="flex justify-start">
-                  <div className="max-w-[88%] rounded-2xl rounded-tl-md bg-muted/80 px-4 py-3 text-sm leading-relaxed whitespace-pre-line shadow-sm">
-                    {welcomeMessage}
+                <>
+                  <div className="flex justify-start">
+                    <div className="max-w-[88%] rounded-2xl rounded-tl-md bg-muted/80 px-4 py-3 text-sm leading-relaxed whitespace-pre-line shadow-sm">
+                      {welcomeMessage}
+                    </div>
                   </div>
-                </div>
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground font-medium">例の質問</p>
+                    <div className="flex flex-col gap-1.5">
+                      {EXAMPLE_QUESTIONS[chatMode].map((q, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => setInput(q)}
+                          className="text-left text-sm px-3 py-2 rounded-lg border border-dashed border-muted-foreground/40 hover:border-primary/50 hover:bg-primary/5 transition-colors text-foreground"
+                        >
+                          {q}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
               )}
 
               {messages.map((m) => (
@@ -717,10 +800,12 @@ export function ChatbotWidget() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" side="top" className="min-w-[200px]">
-                  {pageContext && contextItems.length < CONTEXT_MAX && !contextItems.some((c) => c.id === pageContext.id) && (
+                  {pageContext && !contextItems.some((c) => c.id === pageContext.id) && (
                     <DropdownMenuItem onClick={addPageToContext}>
                       <BookOpen className="h-3.5 w-3.5 mr-2 shrink-0" />
-                      この{pageContext.type === "article" ? "記事" : "サービス"}を追加
+                      {contextItems.length > 0
+                        ? `この${pageContext.type === "article" ? "記事" : "サービス"}に差し替え`
+                        : `この${pageContext.type === "article" ? "記事" : "サービス"}を追加`}
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuItem
@@ -739,7 +824,7 @@ export function ChatbotWidget() {
                 value={input}
                 onChange={handleTextareaInput}
                 onKeyDown={handleKeyDown}
-                placeholder={contextItems.length > 0 ? "選択したコンテンツについて質問…" : "メッセージを入力…"}
+                placeholder={PLACEHOLDERS[chatMode]}
                 rows={1}
                 disabled={isStreaming}
                 className="flex-1 resize-none rounded-xl border border-input bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-50 max-h-[140px] min-h-[44px] leading-relaxed"
@@ -755,19 +840,24 @@ export function ChatbotWidget() {
                 {isStreaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </Button>
             </div>
-            <p className="text-[11px] text-muted-foreground mt-2 text-center">AIは間違えることもあります</p>
+            <p className="text-[11px] text-muted-foreground mt-2 text-center">
+              AIは間違えることもあります。
+              <Link href={AI_NAV_DISCLAIMER_PATH} target="_blank" rel="noopener noreferrer" className="ml-1 text-primary underline hover:no-underline">
+                詳細を見る
+              </Link>
+            </p>
           </div>
         </>
       )}
 
       {view === "context-select" && (
         <div className="flex-1 overflow-y-auto px-4 py-4">
-          <p className="text-sm text-muted-foreground mb-4">特定のコンテンツに基づいて質問する場合は、以下から選択してください（最大{CONTEXT_MAX}件）。</p>
+          <p className="text-sm text-muted-foreground mb-4">特定のコンテンツに基づいて質問する場合は、以下から1件選択してください。</p>
           {pageContext && (
             <div className="mb-4">
               <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">現在のページ</h4>
               <div className="space-y-2">
-                {contextItems.length < CONTEXT_MAX && !contextItems.some((c) => c.id === pageContext.id) && (
+                {!contextItems.some((c) => c.id === pageContext.id) && (
                   <button
                     type="button"
                     onClick={() => { addPageToContext(); setView("chat"); }}
@@ -817,7 +907,7 @@ export function ChatbotWidget() {
       {view === "history-select" && (
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="px-4 pt-3 pb-2 flex-shrink-0">
-            <p className="text-xs text-muted-foreground">最大{CONTEXT_MAX}件まで選択できます（{pendingHistorySelection.size}/{CONTEXT_MAX} 選択中）</p>
+            <p className="text-xs text-muted-foreground">1件のみ選択できます</p>
           </div>
           <div className="flex-1 overflow-y-auto px-4">
             {historyLoading ? (
@@ -829,20 +919,18 @@ export function ChatbotWidget() {
             ) : (
               <div className="space-y-1.5 pb-3">
                 {viewHistory.map((item) => {
-                  const selected = pendingHistorySelection.has(item.id);
-                  const atLimit = pendingHistorySelection.size >= CONTEXT_MAX && !selected;
+                  const selected = pendingHistorySelection === item.id;
                   return (
                     <button
                       key={item.id}
                       type="button"
-                      onClick={() => toggleHistoryItem(item)}
-                      disabled={atLimit}
+                      onClick={() => selectHistoryItem(item)}
                       className={`w-full flex items-center gap-3 p-2.5 rounded-lg border transition-colors text-left ${
-                        selected ? "border-primary/40 bg-primary/5" : atLimit ? "opacity-40 cursor-not-allowed" : "hover:border-primary/30 hover:bg-muted/50"
+                        selected ? "border-primary/40 bg-primary/5" : "hover:border-primary/30 hover:bg-muted/50"
                       }`}
                     >
-                      <div className={`h-5 w-5 rounded-md border flex items-center justify-center shrink-0 ${selected ? "bg-primary border-primary" : "border-muted-foreground/30"}`}>
-                        {selected && <Check className="h-3 w-3 text-primary-foreground" />}
+                      <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 ${selected ? "bg-primary border-primary" : "border-muted-foreground/30"}`}>
+                        {selected && <span className="w-2 h-2 rounded-full bg-primary-foreground" />}
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="text-sm truncate">{item.title}</div>
@@ -856,8 +944,8 @@ export function ChatbotWidget() {
           </div>
           <div className="border-t p-3 flex-shrink-0 flex gap-2">
             <Button variant="outline" className="flex-1 text-sm" onClick={() => setView("chat")}>キャンセル</Button>
-            <Button className="flex-1 text-sm" disabled={pendingHistorySelection.size === 0} onClick={confirmHistorySelection}>
-              {pendingHistorySelection.size > 0 ? `${pendingHistorySelection.size}件で質問する` : "選択してください"}
+            <Button className="flex-1 text-sm" disabled={!pendingHistorySelection} onClick={confirmHistorySelection}>
+              {pendingHistorySelection ? "この1件で質問する" : "選択してください"}
             </Button>
           </div>
         </div>
