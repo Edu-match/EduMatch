@@ -23,6 +23,9 @@ export const metadata: Metadata = {
   },
   description:
     "教育現場とEdTechをつなぐマッチングプラットフォーム。最新の教育事例やEdTechツールを探せます。",
+  icons: {
+    icon: "/favicon.png",
+  },
 };
 
 export default function RootLayout({
