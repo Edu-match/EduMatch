@@ -78,7 +78,7 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
         await new Promise(resolve => setTimeout(resolve, 500));
       }
 
-      toast.success("登録が完了しました。次に住所などを登録してください。");
+      toast.success("登録が完了しました。次にプロフィールを登録してください。");
       
       // クライアントサイドでリダイレクト（セッションCookieが確実に設定されるように）
       const profileUrl = "/profile/register?first=1";

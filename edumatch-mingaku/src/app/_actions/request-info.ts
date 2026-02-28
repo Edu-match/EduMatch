@@ -7,14 +7,9 @@ import { Resend } from "resend";
 
 export type SubmitMaterialRequestInput = {
   serviceId: string;
-  useAccountAddress: boolean;
   deliveryName?: string;
   deliveryOrganization?: string | null;
   deliveryPhone?: string | null;
-  deliveryPostalCode?: string | null;
-  deliveryPrefecture?: string | null;
-  deliveryCity?: string | null;
-  deliveryAddress?: string | null;
   deliveryEmail?: string;
   message?: string | null;
 };
@@ -27,14 +22,9 @@ export type SubmitMaterialRequestResult = {
 
 export type SubmitMaterialRequestBatchInput = {
   serviceIds: string[];
-  useAccountAddress: boolean;
   deliveryName?: string;
   deliveryOrganization?: string | null;
   deliveryPhone?: string | null;
-  deliveryPostalCode?: string | null;
-  deliveryPrefecture?: string | null;
-  deliveryCity?: string | null;
-  deliveryAddress?: string | null;
   deliveryEmail?: string;
   message?: string | null;
 };
@@ -60,39 +50,26 @@ export async function submitMaterialRequest(
     const service = await getServiceById(input.serviceId);
     if (!service) return { success: false, error: "サービスが見つかりません" };
 
-    const useAccount = input.useAccountAddress;
-    const deliveryName = useAccount ? profile.name : (input.deliveryName ?? profile.name);
+    const deliveryName = (input.deliveryName ?? profile.name).trim();
     const deliveryEmail = (input.deliveryEmail ?? profile.email).trim();
-    const deliveryOrganization = useAccount ? profile.organization ?? null : (input.deliveryOrganization ?? null);
-    const deliveryPhone = useAccount ? profile.phone : input.deliveryPhone;
-    const deliveryPostalCode = useAccount ? profile.postal_code : input.deliveryPostalCode;
-    const deliveryPrefecture = useAccount ? profile.prefecture : input.deliveryPrefecture;
-    const deliveryCity = useAccount ? profile.city : input.deliveryCity;
-    const deliveryAddress = useAccount ? profile.address : input.deliveryAddress;
+    const deliveryOrganization = input.deliveryOrganization ?? profile.organization ?? null;
+    const deliveryPhone = input.deliveryPhone ?? profile.phone;
 
     if (!deliveryEmail) return { success: false, error: "送信先メールアドレスを入力してください" };
-
-    // 別住所で請求の場合は住所必須
-    if (!useAccount) {
-      if (!deliveryName?.trim()) return { success: false, error: "お名前を入力してください" };
-      if (!deliveryPostalCode?.trim()) return { success: false, error: "郵便番号を入力してください" };
-      if (!deliveryPrefecture?.trim()) return { success: false, error: "都道府県を選択してください" };
-      if (!deliveryCity?.trim()) return { success: false, error: "市区町村を入力してください" };
-      if (!deliveryAddress?.trim()) return { success: false, error: "町名・番地・建物名を入力してください" };
-    }
+    if (!deliveryName) return { success: false, error: "お名前を入力してください" };
 
     const req = await prisma.materialRequest.create({
       data: {
         user_id: user.id,
         service_id: input.serviceId,
-        use_account_address: useAccount,
+        use_account_address: false,
         delivery_name: deliveryName,
         delivery_organization: deliveryOrganization ?? null,
         delivery_phone: deliveryPhone ?? null,
-        delivery_postal_code: deliveryPostalCode ?? null,
-        delivery_prefecture: deliveryPrefecture ?? null,
-        delivery_city: deliveryCity ?? null,
-        delivery_address: deliveryAddress ?? null,
+        delivery_postal_code: null,
+        delivery_prefecture: null,
+        delivery_city: null,
+        delivery_address: null,
         delivery_email: deliveryEmail,
         message: input.message ?? null,
       },
@@ -116,14 +93,6 @@ export async function submitMaterialRequest(
         const from = fromRaw
           ? (fromRaw.includes("<") ? fromRaw : `エデュマッチ <${fromRaw}>`)
           : "エデュマッチ <onboarding@resend.dev>";
-        const addr = [
-          deliveryPrefecture,
-          deliveryCity,
-          deliveryAddress,
-        ]
-          .filter(Boolean)
-          .join("");
-
         const providerHtml = `
           <h2>エデュマッチで資料請求の依頼がありました</h2>
           <p>以下の内容で資料請求が届いています。</p>
@@ -133,7 +102,6 @@ export async function submitMaterialRequest(
           ${deliveryOrganization ? `<p><strong>塾名・学校名：</strong> ${deliveryOrganization}</p>` : ""}
           <p><strong>メールアドレス：</strong> ${deliveryEmail}</p>
           <p><strong>電話番号：</strong> ${deliveryPhone ?? "未入力"}</p>
-          <p><strong>送付先住所：</strong><br />〒${deliveryPostalCode ?? ""}<br />${addr || "未入力"}</p>
           ${input.message ? `<p><strong>備考：</strong><br />${input.message.replace(/\n/g, "<br />")}</p>` : ""}
           <hr />
           <p style="color:#666;font-size:12px;">このメールはエデュマッチから自動送信されています。</p>
@@ -168,10 +136,9 @@ export async function submitMaterialRequest(
             ${deliveryOrganization ? `<p><strong>塾名・学校名：</strong> ${deliveryOrganization}</p>` : ""}
             <p><strong>メールアドレス：</strong> ${deliveryEmail}</p>
             <p><strong>電話番号：</strong> ${deliveryPhone ?? "未入力"}</p>
-            <p><strong>送付先住所：</strong><br />〒${deliveryPostalCode ?? ""}<br />${addr || "未入力"}</p>
             ${input.message ? `<p><strong>ご要望：</strong><br />${input.message.replace(/\n/g, "<br />")}</p>` : ""}
             <hr />
-            <p>サービス提供者から、ご登録のメールアドレスまたは住所宛てに資料が届きます。<br />しばらくお待ちください。</p>
+            <p>サービス提供者から、ご登録のメールアドレス宛てに資料が届きます。<br />しばらくお待ちください。</p>
             <p style="color:#666;font-size:12px;margin-top:20px;">このメールはエデュマッチから自動送信されています。</p>
           `,
         });

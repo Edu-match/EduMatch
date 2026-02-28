@@ -7,36 +7,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { FileText, ArrowLeft } from "lucide-react";
 import { submitMaterialRequest, submitMaterialRequestBatch } from "@/app/_actions";
 import type { ServiceWithProvider } from "@/app/_actions";
-
-const PREFECTURES = [
-  "北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県",
-  "茨城県", "栃木県", "群馬県", "埼玉県", "千葉県", "東京都", "神奈川県",
-  "新潟県", "富山県", "石川県", "福井県", "山梨県", "長野県", "岐阜県",
-  "静岡県", "愛知県", "三重県", "滋賀県", "京都府", "大阪府", "兵庫県",
-  "奈良県", "和歌山県", "鳥取県", "島根県", "岡山県", "広島県", "山口県",
-  "徳島県", "香川県", "愛媛県", "高知県", "福岡県", "佐賀県", "長崎県",
-  "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県",
-];
 
 type ProfileAddress = {
   name: string;
   email: string;
   phone: string | null;
   organization: string | null;
-  postal_code: string | null;
-  prefecture: string | null;
-  city: string | null;
-  address: string | null;
 };
 
 type PropsSingle = {
@@ -65,65 +44,41 @@ export function RequestInfoForm(props: Props) {
   const services = isBatchMode ? props.services : undefined;
   const profile = props.profile;
 
-  const [useAccountAddress, setUseAccountAddress] = useState(true);
   const [deliveryName, setDeliveryName] = useState(profile?.name ?? "");
   const [deliveryEmail, setDeliveryEmail] = useState(profile?.email ?? "");
   const [deliveryOrganization, setDeliveryOrganization] = useState(profile?.organization ?? "");
   const [deliveryPhone, setDeliveryPhone] = useState(profile?.phone ?? "");
-  const [deliveryPostalCode, setDeliveryPostalCode] = useState(profile?.postal_code ?? "");
-  const [deliveryPrefecture, setDeliveryPrefecture] = useState(profile?.prefecture ?? "");
-  const [deliveryCity, setDeliveryCity] = useState(profile?.city ?? "");
-  const [deliveryAddress, setDeliveryAddress] = useState(profile?.address ?? "");
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  const hasAccountAddress = profile && [
-    profile.postal_code,
-    profile.prefecture,
-    profile.city,
-    profile.address,
-  ].some(Boolean);
-
   useEffect(() => {
-    if (useAccountAddress && profile) {
+    if (profile) {
       setDeliveryName(profile.name);
       setDeliveryEmail(profile.email);
       setDeliveryOrganization(profile.organization ?? "");
       setDeliveryPhone(profile.phone ?? "");
     }
-  }, [useAccountAddress, profile]);
+  }, [profile]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-
-    // 別住所で請求のときは全項目必須（送信前に必ずチェック）
-    if (!useAccountAddress) {
-      const missing: string[] = [];
-      if (!deliveryName.trim()) missing.push("お名前");
-      if (!deliveryEmail.trim()) missing.push("メールアドレス");
-      if (!deliveryPostalCode.trim()) missing.push("郵便番号");
-      if (!deliveryPrefecture.trim()) missing.push("都道府県");
-      if (!deliveryCity.trim()) missing.push("市区町村");
-      if (!deliveryAddress.trim()) missing.push("町名・番地・建物名");
-      if (missing.length > 0) {
-        setError(`別の住所で請求する場合は、次の項目をすべて入力してください：${missing.join("、")}`);
-        return;
-      }
+    if (!deliveryName.trim()) {
+      setError("お名前を入力してください");
+      return;
+    }
+    if (!deliveryEmail.trim()) {
+      setError("メールアドレスを入力してください");
+      return;
     }
 
     setSubmitting(true);
     const base = {
-      useAccountAddress,
-      deliveryName: useAccountAddress ? undefined : deliveryName.trim(),
-      deliveryEmail: useAccountAddress ? undefined : deliveryEmail.trim(),
-      deliveryOrganization: useAccountAddress ? undefined : (deliveryOrganization?.trim() || null),
-      deliveryPhone: useAccountAddress ? null : (deliveryPhone || null),
-      deliveryPostalCode: useAccountAddress ? null : (deliveryPostalCode?.trim() || null),
-      deliveryPrefecture: useAccountAddress ? null : (deliveryPrefecture?.trim() || null),
-      deliveryCity: useAccountAddress ? null : (deliveryCity?.trim() || null),
-      deliveryAddress: useAccountAddress ? null : (deliveryAddress?.trim() || null),
+      deliveryName: deliveryName.trim(),
+      deliveryEmail: deliveryEmail.trim(),
+      deliveryOrganization: deliveryOrganization?.trim() || null,
+      deliveryPhone: deliveryPhone || null,
       message: message || null,
     };
     if (isBatchMode && props.serviceIds.length > 0) {
@@ -203,10 +158,7 @@ export function RequestInfoForm(props: Props) {
                   value={deliveryEmail}
                   onChange={(e) => setDeliveryEmail(e.target.value)}
                   placeholder="example@example.com"
-                  disabled={useAccountAddress}
-                  className={useAccountAddress ? "bg-muted" : ""}
                 />
-                {useAccountAddress && <p className="text-xs text-muted-foreground">登録住所で請求のため、プロフィールのメールアドレスを使用します</p>}
               </div>
               <div className="space-y-2">
                 <label className="block text-sm font-medium mb-2">お名前 <span className="text-red-500">*</span></label>
@@ -215,8 +167,6 @@ export function RequestInfoForm(props: Props) {
                   value={deliveryName}
                   onChange={(e) => setDeliveryName(e.target.value)}
                   placeholder="山田太郎"
-                  disabled={useAccountAddress}
-                  className={useAccountAddress ? "bg-muted" : ""}
                 />
               </div>
               <div className="space-y-2">
@@ -225,8 +175,6 @@ export function RequestInfoForm(props: Props) {
                   value={deliveryOrganization}
                   onChange={(e) => setDeliveryOrganization(e.target.value)}
                   placeholder="○○中学校、○○塾など"
-                  disabled={useAccountAddress}
-                  className={useAccountAddress ? "bg-muted" : ""}
                 />
               </div>
               <div className="space-y-2">
@@ -235,106 +183,9 @@ export function RequestInfoForm(props: Props) {
                   value={deliveryPhone}
                   onChange={(e) => setDeliveryPhone(e.target.value)}
                   placeholder="090-1234-5678"
-                  disabled={useAccountAddress}
-                  className={useAccountAddress ? "bg-muted" : ""}
                 />
               </div>
             </div>
-
-            {/* 送付先の住所 */}
-            <div className="space-y-3">
-              <label className="block text-sm font-medium mb-2">送付先の住所</label>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="addressType"
-                    checked={useAccountAddress}
-                    onChange={() => setUseAccountAddress(true)}
-                    className="rounded-full"
-                  />
-                  登録住所で請求
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="addressType"
-                    checked={!useAccountAddress}
-                    onChange={() => {
-                      setUseAccountAddress(false);
-                      setDeliveryPostalCode("");
-                      setDeliveryPrefecture("");
-                      setDeliveryCity("");
-                      setDeliveryAddress("");
-                    }}
-                    className="rounded-full"
-                  />
-                  別の住所で請求
-                </label>
-              </div>
-              {useAccountAddress && (
-                <div className="p-4 rounded-lg bg-muted/50 text-sm">
-                  {hasAccountAddress ? (
-                    <p>
-                      {profile?.name} / {profile?.email}<br />
-                      {[profile?.postal_code, profile?.prefecture, profile?.city, profile?.address]
-                        .filter(Boolean)
-                        .join(" ")}
-                      {profile?.phone && ` / ${profile.phone}`}
-                    </p>
-                  ) : (
-                    <p className="text-muted-foreground">
-                      登録住所が未設定です。<Link href="/profile/register" className="text-primary underline">プロフィール設定</Link>で住所を登録してください。
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {!useAccountAddress && (
-              <div className="space-y-4 p-4 border rounded-lg">
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium mb-2">郵便番号 <span className="text-red-500">*</span></label>
-                  <Input
-                    required={!useAccountAddress}
-                    value={deliveryPostalCode}
-                    onChange={(e) => setDeliveryPostalCode(e.target.value)}
-                    placeholder="123-4567"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium mb-2">都道府県 <span className="text-red-500">*</span></label>
-                  <Select value={deliveryPrefecture} onValueChange={setDeliveryPrefecture}>
-                    <SelectTrigger aria-required={!useAccountAddress}>
-                      <SelectValue placeholder="選択してください" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PREFECTURES.map((p) => (
-                        <SelectItem key={p} value={p}>{p}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium mb-2">市区町村 <span className="text-red-500">*</span></label>
-                  <Input
-                    required={!useAccountAddress}
-                    value={deliveryCity}
-                    onChange={(e) => setDeliveryCity(e.target.value)}
-                    placeholder="渋谷区"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium mb-2">町名・番地・建物名 <span className="text-red-500">*</span></label>
-                  <Input
-                    required={!useAccountAddress}
-                    value={deliveryAddress}
-                    onChange={(e) => setDeliveryAddress(e.target.value)}
-                    placeholder="道玄坂1-2-3"
-                  />
-                </div>
-              </div>
-            )}
 
             <div className="space-y-2">
               <label className="block text-sm font-medium mb-2">ご要望・ご質問（任意）</label>
@@ -357,7 +208,7 @@ export function RequestInfoForm(props: Props) {
                 type="submit"
                 className="w-full sm:w-auto sm:min-w-[240px]"
                 size="lg"
-                disabled={submitting || (useAccountAddress && !hasAccountAddress)}
+                disabled={submitting}
               >
                 {submitting
                   ? "送信中…"

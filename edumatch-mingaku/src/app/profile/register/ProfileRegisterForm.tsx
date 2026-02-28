@@ -31,30 +31,16 @@ export type InitialProfile = {
   email: string;
   phone: string | null;
   organization?: string | null;
-  postal_code: string | null;
-  prefecture: string | null;
-  city: string | null;
-  address: string | null;
   bio?: string | null;
   website?: string | null;
   notification_email_2?: string | null;
   notification_email_3?: string | null;
 };
 
-const PREFECTURES = [
-  "北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県",
-  "茨城県", "栃木県", "群馬県", "埼玉県", "千葉県", "東京都", "神奈川県",
-  "新潟県", "富山県", "石川県", "福井県", "山梨県", "長野県", "岐阜県",
-  "静岡県", "愛知県", "三重県", "滋賀県", "京都府", "大阪府", "兵庫県",
-  "奈良県", "和歌山県", "鳥取県", "島根県", "岡山県", "広島県", "山口県",
-  "徳島県", "香川県", "愛媛県", "高知県", "福岡県", "佐賀県", "長崎県",
-  "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県",
-];
-
 const steps = [
   { id: 1, title: "基本情報", icon: User },
   { id: 2, title: "所属情報", icon: Building2 },
-  { id: 3, title: "住所・連絡先（資料請求用）", icon: MapPin },
+  { id: 3, title: "連絡先（資料請求の通知先）", icon: MapPin },
   { id: 4, title: "関心・スキル", icon: GraduationCap },
   { id: 5, title: "確認", icon: Check },
 ];
@@ -103,10 +89,6 @@ export function ProfileRegisterForm({
   const [schoolType, setSchoolType] = useState("");
   const [role, setRole] = useState("");
   const [location, setLocation] = useState("");
-  const [postalCode, setPostalCode] = useState(initialProfile?.postal_code ?? "");
-  const [prefecture, setPrefecture] = useState(initialProfile?.prefecture ?? "");
-  const [city, setCity] = useState(initialProfile?.city ?? "");
-  const [address, setAddress] = useState(initialProfile?.address ?? "");
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [bio, setBio] = useState(initialProfile?.bio ?? "");
   const [website, setWebsite] = useState(initialProfile?.website ?? "");
@@ -224,46 +206,9 @@ export function ProfileRegisterForm({
         return (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground mb-4">
-              資料請求時に送付先として利用します。後からでも設定できます。
+              サービス提供者として登録している場合、資料請求があった際の通知先メールアドレスを追加できます。
             </p>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">郵便番号</label>
-              <Input
-                placeholder="123-4567"
-                value={postalCode}
-                onChange={(e) => setPostalCode(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">都道府県</label>
-              <Select value={prefecture} onValueChange={setPrefecture}>
-                <SelectTrigger>
-                  <SelectValue placeholder="選択してください" />
-                </SelectTrigger>
-                <SelectContent>
-                  {PREFECTURES.map((p) => (
-                    <SelectItem key={p} value={p}>{p}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">市区町村</label>
-              <Input
-                placeholder="渋谷区"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">町名・番地・建物名</label>
-              <Input
-                placeholder="道玄坂1-2-3 〇〇ビル4F"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-              />
-            </div>
-            <p className="text-sm font-medium mt-6 mb-2">資料請求の通知先（任意）</p>
+            <p className="text-sm font-medium mb-2">資料請求の通知先（任意）</p>
             <p className="text-xs text-muted-foreground mb-3">
               サービス提供者として登録している場合、資料請求があった際に通知を送るメールアドレスを追加できます。最大3件まで送信されます（1件目はログイン用メールアドレス）。
             </p>
@@ -402,22 +347,12 @@ export function ProfileRegisterForm({
             <div className="p-4 rounded-lg bg-muted/50">
               <h3 className="font-medium mb-3 flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
-                住所・連絡先（資料請求用）
+                連絡先（資料請求の通知先）
               </h3>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">電話番号</span>
                   <span>{phone || "未入力"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">郵便番号</span>
-                  <span>{postalCode || "未入力"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">住所</span>
-                  <span>
-                    {[prefecture, city, address].filter(Boolean).join(" ") || "未入力（スキップ）"}
-                  </span>
                 </div>
                 {(notificationEmail2 || notificationEmail3) && (
                   <>
@@ -518,10 +453,6 @@ export function ProfileRegisterForm({
       name: name || undefined,
       phone: phone || null,
       organization: organization?.trim() || null,
-      postal_code: postalCode || null,
-      prefecture: prefecture || null,
-      city: city || null,
-      address: address || null,
       bio: bio || null,
       website: website || null,
       notification_email_2: notificationEmail2.trim() || null,
@@ -544,7 +475,7 @@ export function ProfileRegisterForm({
         {isFirstTime && (
           <div className="mb-6 p-4 rounded-lg bg-primary/10 border border-primary/20 text-center">
             <p className="font-medium text-primary">
-              ログインが完了しました。次に名前・住所（資料請求の送付先）などを登録してください。
+              ログインが完了しました。次に名前・連絡先などを登録してください。
             </p>
             <p className="text-sm text-muted-foreground mt-1">
               スキップして後から設定することもできます。

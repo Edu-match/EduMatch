@@ -19,10 +19,6 @@ export default async function RequestInfoPage({ searchParams }: Props) {
         email: profile.email,
         phone: profile.phone ?? null,
         organization: profile.organization ?? null,
-        postal_code: profile.postal_code ?? null,
-        prefecture: profile.prefecture ?? null,
-        city: profile.city ?? null,
-        address: profile.address ?? null,
       }
     : null;
 

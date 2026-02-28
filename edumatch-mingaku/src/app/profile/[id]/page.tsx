@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
   Building2,
-  MapPin,
   Globe,
   FileText,
 } from "lucide-react";
@@ -63,12 +62,6 @@ export default async function ProfileDetailPage({
               </div>
               <div className="flex-1 min-w-0">
                 <h1 className="text-2xl font-bold mb-2">{profile.name}</h1>
-                {profile.prefecture && (
-                  <p className="text-muted-foreground flex items-center gap-1.5 mb-2">
-                    <MapPin className="h-4 w-4" />
-                    {profile.prefecture}
-                  </p>
-                )}
                 {profile.website && (
                   <a
                     href={profile.website}

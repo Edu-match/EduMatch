@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
             },
           });
 
-          // 初回登録時は必ずプロフィール設定（名前・住所など）へ誘導
+          // 初回登録時は必ずプロフィール設定（名前・連絡先など）へ誘導
           const registerUrl = new URL("/profile/register", origin);
           registerUrl.searchParams.set("first", "1");
           if (redirectTo && redirectTo !== "/") {

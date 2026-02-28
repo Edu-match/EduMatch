@@ -18,10 +18,6 @@ export async function getCurrentUserProfile() {
     email: profile.email,
     phone: profile.phone,
     organization: profile.organization ?? null,
-    postal_code: profile.postal_code,
-    prefecture: profile.prefecture,
-    city: profile.city,
-    address: profile.address,
     bio: profile.bio,
     website: profile.website,
     notification_email_2: profile.notification_email_2 ?? null,
@@ -36,7 +32,6 @@ export type PublicProfile = {
   avatar_url: string | null;
   bio: string | null;
   website: string | null;
-  prefecture: string | null;
 };
 
 export async function getProfileById(id: string): Promise<PublicProfile | null> {
@@ -48,7 +43,6 @@ export async function getProfileById(id: string): Promise<PublicProfile | null> 
       avatar_url: true,
       bio: true,
       website: true,
-      prefecture: true,
     },
   });
   return profile;
@@ -71,7 +65,6 @@ export async function getProfileWithContents(
       avatar_url: true,
       bio: true,
       website: true,
-      prefecture: true,
       services: {
         where: {
           OR: [
@@ -104,10 +97,6 @@ export type UpdateProfileInput = {
   name?: string;
   phone?: string | null;
   organization?: string | null;
-  postal_code?: string | null;
-  prefecture?: string | null;
-  city?: string | null;
-  address?: string | null;
   bio?: string | null;
   website?: string | null;
   notification_email_2?: string | null;
@@ -123,10 +112,6 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
         ...(input.name != null && { name: input.name }),
         ...(input.phone !== undefined && { phone: input.phone || null }),
         ...(input.organization !== undefined && { organization: input.organization?.trim() || null }),
-        ...(input.postal_code !== undefined && { postal_code: input.postal_code || null }),
-        ...(input.prefecture !== undefined && { prefecture: input.prefecture || null }),
-        ...(input.city !== undefined && { city: input.city || null }),
-        ...(input.address !== undefined && { address: input.address || null }),
         ...(input.bio !== undefined && { bio: input.bio || null }),
         ...(input.website !== undefined && { website: input.website || null }),
         ...(input.notification_email_2 !== undefined && { notification_email_2: input.notification_email_2?.trim() || null }),

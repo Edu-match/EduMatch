@@ -48,7 +48,7 @@ export default async function RequestInfoCompletePage({ searchParams }: Props) {
               )}
               に、受付完了のご案内メールをお送りしています。
               <br />
-              資料の送付はサービス提供元より、ご登録の送付先（メールまたはご住所）宛てに行われます。
+              資料の送付はサービス提供元より、ご登録のメールアドレス宛てに行われます。
             </p>
 
             {request && (
