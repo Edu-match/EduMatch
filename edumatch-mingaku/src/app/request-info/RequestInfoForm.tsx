@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,6 +32,7 @@ type ProfileAddress = {
   name: string;
   email: string;
   phone: string | null;
+  organization: string | null;
   postal_code: string | null;
   prefecture: string | null;
   city: string | null;
@@ -67,7 +68,7 @@ export function RequestInfoForm(props: Props) {
   const [useAccountAddress, setUseAccountAddress] = useState(true);
   const [deliveryName, setDeliveryName] = useState(profile?.name ?? "");
   const [deliveryEmail, setDeliveryEmail] = useState(profile?.email ?? "");
-  const [deliveryOrganization, setDeliveryOrganization] = useState("");
+  const [deliveryOrganization, setDeliveryOrganization] = useState(profile?.organization ?? "");
   const [deliveryPhone, setDeliveryPhone] = useState(profile?.phone ?? "");
   const [deliveryPostalCode, setDeliveryPostalCode] = useState(profile?.postal_code ?? "");
   const [deliveryPrefecture, setDeliveryPrefecture] = useState(profile?.prefecture ?? "");
@@ -83,6 +84,15 @@ export function RequestInfoForm(props: Props) {
     profile.city,
     profile.address,
   ].some(Boolean);
+
+  useEffect(() => {
+    if (useAccountAddress && profile) {
+      setDeliveryName(profile.name);
+      setDeliveryEmail(profile.email);
+      setDeliveryOrganization(profile.organization ?? "");
+      setDeliveryPhone(profile.phone ?? "");
+    }
+  }, [useAccountAddress, profile]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,7 +118,7 @@ export function RequestInfoForm(props: Props) {
       useAccountAddress,
       deliveryName: useAccountAddress ? undefined : deliveryName.trim(),
       deliveryEmail: useAccountAddress ? undefined : deliveryEmail.trim(),
-      deliveryOrganization: useAccountAddress ? null : (deliveryOrganization?.trim() || null),
+      deliveryOrganization: useAccountAddress ? undefined : (deliveryOrganization?.trim() || null),
       deliveryPhone: useAccountAddress ? null : (deliveryPhone || null),
       deliveryPostalCode: useAccountAddress ? null : (deliveryPostalCode?.trim() || null),
       deliveryPrefecture: useAccountAddress ? null : (deliveryPrefecture?.trim() || null),
@@ -183,8 +193,57 @@ export function RequestInfoForm(props: Props) {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+            {/* メールアドレス・名前・塾名/学校名・電話番号を最初に表示 */}
+            <div className="space-y-4 p-4 border rounded-lg">
+              <div className="space-y-2">
+                <label className="block text-sm font-medium mb-2">メールアドレス（資料送付先） <span className="text-red-500">*</span></label>
+                <Input
+                  type="email"
+                  required
+                  value={deliveryEmail}
+                  onChange={(e) => setDeliveryEmail(e.target.value)}
+                  placeholder="example@example.com"
+                  disabled={useAccountAddress}
+                  className={useAccountAddress ? "bg-muted" : ""}
+                />
+                {useAccountAddress && <p className="text-xs text-muted-foreground">登録住所で請求のため、プロフィールのメールアドレスを使用します</p>}
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium mb-2">お名前 <span className="text-red-500">*</span></label>
+                <Input
+                  required
+                  value={deliveryName}
+                  onChange={(e) => setDeliveryName(e.target.value)}
+                  placeholder="山田太郎"
+                  disabled={useAccountAddress}
+                  className={useAccountAddress ? "bg-muted" : ""}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium mb-2">塾名・学校名（任意）</label>
+                <Input
+                  value={deliveryOrganization}
+                  onChange={(e) => setDeliveryOrganization(e.target.value)}
+                  placeholder="○○中学校、○○塾など"
+                  disabled={useAccountAddress}
+                  className={useAccountAddress ? "bg-muted" : ""}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium mb-2">電話番号</label>
+                <Input
+                  value={deliveryPhone}
+                  onChange={(e) => setDeliveryPhone(e.target.value)}
+                  placeholder="090-1234-5678"
+                  disabled={useAccountAddress}
+                  className={useAccountAddress ? "bg-muted" : ""}
+                />
+              </div>
+            </div>
+
+            {/* 送付先の住所 */}
             <div className="space-y-3">
-              <label className="block text-sm font-medium mb-2">送付先（メールで連絡する企業が多いため、アドレス・名前・塾名を先にご記入ください）</label>
+              <label className="block text-sm font-medium mb-2">送付先の住所</label>
               <div className="flex gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -203,7 +262,6 @@ export function RequestInfoForm(props: Props) {
                     checked={!useAccountAddress}
                     onChange={() => {
                       setUseAccountAddress(false);
-                      // 別住所選択時は住所フィールドを空にして必須入力を促す
                       setDeliveryPostalCode("");
                       setDeliveryPrefecture("");
                       setDeliveryCity("");
@@ -218,14 +276,11 @@ export function RequestInfoForm(props: Props) {
                 <div className="p-4 rounded-lg bg-muted/50 text-sm">
                   {hasAccountAddress ? (
                     <p>
-                      <strong>メールアドレス：</strong> {profile?.email}<br />
-                      <strong>お名前：</strong> {profile?.name}
-                      {profile?.phone && <><br /><strong>電話番号：</strong> {profile.phone}</>}
-                      <br />
-                      <strong>送付先住所：</strong><br />
-                      〒{profile?.postal_code ?? ""} {[profile?.prefecture, profile?.city, profile?.address]
+                      {profile?.name} / {profile?.email}<br />
+                      {[profile?.postal_code, profile?.prefecture, profile?.city, profile?.address]
                         .filter(Boolean)
                         .join(" ")}
+                      {profile?.phone && ` / ${profile.phone}`}
                     </p>
                   ) : (
                     <p className="text-muted-foreground">
@@ -238,42 +293,6 @@ export function RequestInfoForm(props: Props) {
 
             {!useAccountAddress && (
               <div className="space-y-4 p-4 border rounded-lg">
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium mb-2">メールアドレス（資料送付先） <span className="text-red-500">*</span></label>
-                  <Input
-                    type="email"
-                    required
-                    value={deliveryEmail}
-                    onChange={(e) => setDeliveryEmail(e.target.value)}
-                    placeholder="example@example.com"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium mb-2">お名前 <span className="text-red-500">*</span></label>
-                  <Input
-                    required
-                    value={deliveryName}
-                    onChange={(e) => setDeliveryName(e.target.value)}
-                    placeholder="山田太郎"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium mb-2">塾名・学校名（任意）</label>
-                  <Input
-                    value={deliveryOrganization}
-                    onChange={(e) => setDeliveryOrganization(e.target.value)}
-                    placeholder="〇〇中学校、△△塾 など"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium mb-2">電話番号</label>
-                  <Input
-                    value={deliveryPhone}
-                    onChange={(e) => setDeliveryPhone(e.target.value)}
-                    placeholder="090-1234-5678"
-                  />
-                </div>
-                <p className="text-sm font-medium pt-2 border-t">送付先住所</p>
                 <div className="space-y-2">
                   <label className="block text-sm font-medium mb-2">郵便番号 <span className="text-red-500">*</span></label>
                   <Input

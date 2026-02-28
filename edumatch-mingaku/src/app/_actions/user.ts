@@ -17,6 +17,7 @@ export async function getCurrentUserProfile() {
     avatar_url: profile.avatar_url,
     email: profile.email,
     phone: profile.phone,
+    organization: profile.organization ?? null,
     postal_code: profile.postal_code,
     prefecture: profile.prefecture,
     city: profile.city,
@@ -102,6 +103,7 @@ export async function getProfileWithContents(
 export type UpdateProfileInput = {
   name?: string;
   phone?: string | null;
+  organization?: string | null;
   postal_code?: string | null;
   prefecture?: string | null;
   city?: string | null;
@@ -120,6 +122,7 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
       data: {
         ...(input.name != null && { name: input.name }),
         ...(input.phone !== undefined && { phone: input.phone || null }),
+        ...(input.organization !== undefined && { organization: input.organization?.trim() || null }),
         ...(input.postal_code !== undefined && { postal_code: input.postal_code || null }),
         ...(input.prefecture !== undefined && { prefecture: input.prefecture || null }),
         ...(input.city !== undefined && { city: input.city || null }),

@@ -27,6 +27,8 @@ model Profile {
   prefecture                      String?
   bio                             String?
   website                         String?
+  /// 塾名・学校名（資料請求の送付先表示用）
+  organization                    String?
   subscription_plan               String?
   stripe_customer_id              String?           @unique
   stripe_subscription_id          String?
@@ -47,20 +49,19 @@ model Profile {
 }
 
 model MaterialRequest {
-  id                     String   @id @default(cuid())
-  user_id                String   @db.Uuid
-  service_id             String
-  use_account_address    Boolean
-  delivery_name          String
-  /// 塾名・学校名（メール連絡が多いため、先に表示）
-  delivery_organization  String?
-  delivery_phone         String?
-  delivery_postal_code   String?
-  delivery_prefecture    String?
-  delivery_city          String?
-  delivery_address       String?
-  delivery_email         String
-  message                String?
+  id                    String   @id @default(cuid())
+  user_id               String   @db.Uuid
+  service_id            String
+  use_account_address   Boolean
+  delivery_name         String
+  delivery_organization String?
+  delivery_phone        String?
+  delivery_postal_code  String?
+  delivery_prefecture   String?
+  delivery_city         String?
+  delivery_address      String?
+  delivery_email        String
+  message               String?
   created_at           DateTime @default(now())
   service              Service  @relation(fields: [service_id], references: [id], onDelete: Cascade)
   user                 Profile  @relation(fields: [user_id], references: [id], onDelete: Cascade)

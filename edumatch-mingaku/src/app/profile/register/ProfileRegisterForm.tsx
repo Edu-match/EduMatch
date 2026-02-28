@@ -30,6 +30,7 @@ export type InitialProfile = {
   name: string;
   email: string;
   phone: string | null;
+  organization?: string | null;
   postal_code: string | null;
   prefecture: string | null;
   city: string | null;
@@ -98,7 +99,7 @@ export function ProfileRegisterForm({
   const [name, setName] = useState(initialProfile?.name ?? "");
   const [email] = useState(initialProfile?.email ?? "");
   const [phone, setPhone] = useState(initialProfile?.phone ?? "");
-  const [organization, setOrganization] = useState("");
+  const [organization, setOrganization] = useState(initialProfile?.organization ?? "");
   const [schoolType, setSchoolType] = useState("");
   const [role, setRole] = useState("");
   const [location, setLocation] = useState("");
@@ -516,6 +517,7 @@ export function ProfileRegisterForm({
     const { success } = await updateProfile({
       name: name || undefined,
       phone: phone || null,
+      organization: organization?.trim() || null,
       postal_code: postalCode || null,
       prefecture: prefecture || null,
       city: city || null,

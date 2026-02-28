@@ -63,7 +63,7 @@ export async function submitMaterialRequest(
     const useAccount = input.useAccountAddress;
     const deliveryName = useAccount ? profile.name : (input.deliveryName ?? profile.name);
     const deliveryEmail = (input.deliveryEmail ?? profile.email).trim();
-    const deliveryOrganization = useAccount ? null : (input.deliveryOrganization?.trim() || null);
+    const deliveryOrganization = useAccount ? profile.organization ?? null : (input.deliveryOrganization ?? null);
     const deliveryPhone = useAccount ? profile.phone : input.deliveryPhone;
     const deliveryPostalCode = useAccount ? profile.postal_code : input.deliveryPostalCode;
     const deliveryPrefecture = useAccount ? profile.prefecture : input.deliveryPrefecture;
@@ -129,9 +129,9 @@ export async function submitMaterialRequest(
           <p>以下の内容で資料請求が届いています。</p>
           <hr />
           <p><strong>対象サービス：</strong> ${service.title}</p>
+          <p><strong>請求者名：</strong> ${deliveryName}</p>
+          ${deliveryOrganization ? `<p><strong>塾名・学校名：</strong> ${deliveryOrganization}</p>` : ""}
           <p><strong>メールアドレス：</strong> ${deliveryEmail}</p>
-          <p><strong>お名前：</strong> ${deliveryName}</p>
-          <p><strong>塾名・学校名：</strong> ${deliveryOrganization ?? "未入力"}</p>
           <p><strong>電話番号：</strong> ${deliveryPhone ?? "未入力"}</p>
           <p><strong>送付先住所：</strong><br />〒${deliveryPostalCode ?? ""}<br />${addr || "未入力"}</p>
           ${input.message ? `<p><strong>備考：</strong><br />${input.message.replace(/\n/g, "<br />")}</p>` : ""}
@@ -164,9 +164,9 @@ export async function submitMaterialRequest(
             <hr />
             <p><strong>サービス名：</strong> ${service.title}</p>
             <p><strong>提供者：</strong> ${service.provider?.name ?? "未設定"}</p>
-            <p><strong>メールアドレス：</strong> ${deliveryEmail}</p>
             <p><strong>お名前：</strong> ${deliveryName}</p>
-            <p><strong>塾名・学校名：</strong> ${deliveryOrganization ?? "未入力"}</p>
+            ${deliveryOrganization ? `<p><strong>塾名・学校名：</strong> ${deliveryOrganization}</p>` : ""}
+            <p><strong>メールアドレス：</strong> ${deliveryEmail}</p>
             <p><strong>電話番号：</strong> ${deliveryPhone ?? "未入力"}</p>
             <p><strong>送付先住所：</strong><br />〒${deliveryPostalCode ?? ""}<br />${addr || "未入力"}</p>
             ${input.message ? `<p><strong>ご要望：</strong><br />${input.message.replace(/\n/g, "<br />")}</p>` : ""}
