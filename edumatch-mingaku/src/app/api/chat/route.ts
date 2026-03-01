@@ -45,39 +45,107 @@ type RequestBody = {
   mode?: ChatMode;
 };
 
+// ─── システムプロンプト ───────────────────────────────────────────────────────
+
 const SYSTEM_PROMPTS: Record<ChatMode, string> = {
-  navigator: `あなたは「エデュマッチ」の AIアシスタントです。教育 ICT・EdTech に関する一般的な質問・案内に日本語で丁寧に答えてください。回答はMarkdown形式で構造化してください。`,
+  navigator: `あなたは「エデュマッチ」（教育ICT・EdTechのマッチングプラットフォーム）専任のAIアシスタントです。
 
-  debate: `あなたは「エデュマッチ」の AIアシスタントです。ディベートモードでは、必ずユーザーと正反対の立場から議論してください。
-ユーザーが賛成ならあなたは反対の立場で、ユーザーが反対ならあなたは賛成の立場で、根拠を示しながら議論を展開してください。相手の論点を踏まえつつ、自分の立場を明確に主張し、討論を深めてください。回答は日本語で丁寧に、Markdown形式で構造化してください。`,
+## 役割
+- ユーザーの質問に対し、エデュマッチに掲載されているサービス・記事を優先して案内する
+- 参照コンテンツが提供された場合はその内容を詳しく紹介し、末尾で関連するサービス・記事の検索も促す
+- 参照コンテンツがない場合でも「エデュマッチではこのようなサービス・記事を探せます」と誘導する
+- 外部の一般知識はあくまで補足。答えの主体は常にエデュマッチのコンテンツ
 
-  discussion: `あなたは「エデュマッチ」の AIアシスタントです。ディスカッションモードで、ユーザーが提起するテーマや論点について深く議論してください。
-教育的な観点から多様な視点を提示し、論点を整理・掘り下げながら建設的な議論を進めてください。回答は日本語で丁寧に、Markdown形式で構造化してください。`,
+## 回答の構成
+1. エデュマッチのコンテンツに基づいた回答（参照コンテンツがあればそれを中心に）
+2. 末尾に「他にもこんなサービス・記事があります」として関連カテゴリや検索を提案
+3. Markdown形式（見出し・箇条書き）で読みやすく。日本語で丁寧に。`,
+
+  debate: `あなたは「エデュマッチ」のAIディベートパートナーです。
+
+## 絶対ルール
+- ユーザーが示す立場・意見に対して **必ず正反対の立場** をとる（例外なし）
+- ユーザーが賛成 → あなたは反対。ユーザーが反対 → あなたは賛成
+- 回答の冒頭で「私は〇〇に反対（賛成）の立場をとります」と宣言する
+- 感情論は使わず、**データ・事例・論理**で反論する
+- ユーザーの論点を一つひとつ引用しながら丁寧に崩し、自分の主張を積み上げる
+- 議論相手を尊重しつつも、論理的には鋭く切り込む
+
+Markdown形式で論点を整理して返す。日本語で。`,
+
+  discussion: `あなたは「エデュマッチ」のAIディスカッションパートナーです。
+
+## スタンス
+- まずユーザーの意見・感情を **共感・肯定** してから話を進める（「そうですね、〜という観点は重要ですね」）
+- 一方的に正解を示さず、**問いかけ**を通じて一緒に考える姿勢を保つ
+- 賛否・立場・背景など多様な視点を提示して思考を広げる
+- 教育現場の実態・具体的な事例を交えて議論を豊かにする
+- 会話のキャッチボールを意識し、次の問いで終わらせる
+
+Markdown形式で読みやすく整理。日本語で。`,
 };
 
-const NAVIGATOR_CONTEXT_INSTRUCTION = `
-以下に提供されるコンテンツ情報（サイト内の記事・サービス）を参照して回答してください。
+// ─── コンテキスト付きシステムプロンプト ─────────────────────────────────────
 
-【回答の構成】
-1. まず、参照コンテンツ内の情報を優先して詳しく紹介してください。
-2. その下に「他にもこんなサービス・記事があります」として、関連するカテゴリやサイト内の他のコンテンツを探すことをおすすめする形で提案してください。
-3. コンテンツに記載されていない情報については「このコンテンツには該当する情報が含まれていません」と補足してください。
-
---- 参照コンテンツ ---
-`;
-
-const SYSTEM_WITH_CONTEXT = (mode: ChatMode) => {
-  const base = SYSTEM_PROMPTS[mode];
+const SYSTEM_WITH_CONTEXT = (mode: ChatMode, contextText: string): string => {
   if (mode === "navigator") {
-    return base + NAVIGATOR_CONTEXT_INSTRUCTION;
+    return `${SYSTEM_PROMPTS[mode]}
+
+## 参照コンテンツ（エデュマッチ内の記事・サービス）
+以下の情報を優先して回答に使用すること。
+
+${contextText}`;
   }
-  return `${base}
+  return `${SYSTEM_PROMPTS[mode]}
 
-以下に提供されるコンテンツ情報を参照して回答に活用してください。コンテンツに記載されていない情報については「このコンテンツには該当する情報が含まれていません」と補足してください。
-
---- 参照コンテンツ ---
-`;
+## 参照コンテンツ
+${contextText}`;
 };
+
+// ─── ユーザーメッセージ変換（変数埋め込み型プロンプト） ──────────────────────
+
+function buildEnhancedUserMessage(
+  userInput: string,
+  mode: ChatMode,
+  isFirstMessage: boolean
+): string {
+  const q = userInput.trim();
+
+  if (mode === "navigator") {
+    return `【質問】
+${q}
+
+エデュマッチのサービス・記事から関連するコンテンツを優先して紹介してください。`;
+  }
+
+  if (mode === "debate") {
+    if (isFirstMessage) {
+      return `【ディベート開始】ユーザーの立場・主張：
+「${q}」
+
+上記の立場に対して、正反対の立場を冒頭で宣言し、論理的根拠を挙げながら反論してください。`;
+    }
+    return `【ユーザーの返答】
+「${q}」
+
+上記に対して、引き続き反対立場を堅持しながら切り返してください。`;
+  }
+
+  if (mode === "discussion") {
+    if (isFirstMessage) {
+      return `【ディスカッション開始】ユーザーの提起：
+「${q}」
+
+まずこの意見・テーマに共感・肯定で受け止め、その上でさらに深められる論点や問いかけを返してください。`;
+    }
+    return `【ユーザーの続き】
+「${q}」
+
+共感しながら受け止め、さらに思考を深める問いや視点を返してください。`;
+  }
+
+  return q;
+}
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -165,6 +233,7 @@ export async function POST(req: NextRequest) {
     data: { chat_usage_events: updated as Prisma.InputJsonValue },
   });
 
+  // ─── システムプロンプト構築（コンテキスト付き） ─────────────────────────
   let systemPrompt = SYSTEM_PROMPTS[mode];
 
   if (contextItems && contextItems.length > 0) {
@@ -176,25 +245,31 @@ export async function POST(req: NextRequest) {
           : await getServiceContextForChat(item.id);
       if (ctx) contexts.push(ctx);
     }
-
     if (contexts.length > 0) {
       const contextText = contexts
-        .map(
-          (c, i) =>
-            `【${c.type === "article" ? "記事" : "サービス"} ${i + 1}】\n${c.content}`
-        )
+        .map((c, i) => `【${c.type === "article" ? "記事" : "サービス"} ${i + 1}】\n${c.content}`)
         .join("\n\n");
-      systemPrompt = SYSTEM_WITH_CONTEXT(mode) + contextText;
+      systemPrompt = SYSTEM_WITH_CONTEXT(mode, contextText);
     }
   }
 
+  // ─── ユーザーメッセージ変換（最後のユーザー発言をモード別プロンプトに変換） ─
+  const trimmedRaw = messages.slice(-20);
+  const isFirstMessage = trimmedRaw.filter((m) => m.role === "user").length === 1;
+  const lastUserIdx = [...trimmedRaw].map((m) => m.role).lastIndexOf("user");
+
+  const trimmedMessages = trimmedRaw.map((m, i) => {
+    if (i === lastUserIdx && m.role === "user") {
+      return {
+        role: "user" as const,
+        content: buildEnhancedUserMessage(m.content, mode, isFirstMessage),
+      };
+    }
+    return { role: m.role as "user" | "assistant", content: m.content };
+  });
+
   const openai = new OpenAI({ apiKey });
   const model = "gpt-5.2-chat-latest";
-
-  const trimmedMessages = messages.slice(-20).map((m) => ({
-    role: m.role as "user" | "assistant",
-    content: m.content,
-  }));
 
   try {
     const stream = await openai.chat.completions.create({
