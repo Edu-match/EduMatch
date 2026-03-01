@@ -3,6 +3,7 @@ import OpenAI from "openai";
 import {
   getArticleContextForChat,
   getServiceContextForChat,
+  searchRelevantContent,
   type ChatContextItem,
 } from "@/app/_actions/chat-context";
 import type { Prisma } from "@prisma/client";
@@ -233,24 +234,60 @@ export async function POST(req: NextRequest) {
     data: { chat_usage_events: updated as Prisma.InputJsonValue },
   });
 
-  // ─── システムプロンプト構築（コンテキスト付き） ─────────────────────────
+  // ─── システムプロンプト構築 ───────────────────────────────────────────────
   let systemPrompt = SYSTEM_PROMPTS[mode];
 
+  // 明示的に添付されたコンテキスト（クリップ添付）
+  const explicitContexts: ChatContextItem[] = [];
   if (contextItems && contextItems.length > 0) {
-    const contexts: ChatContextItem[] = [];
     for (const item of contextItems.slice(0, 10)) {
       const ctx =
         item.type === "article"
           ? await getArticleContextForChat(item.id)
           : await getServiceContextForChat(item.id);
-      if (ctx) contexts.push(ctx);
+      if (ctx) explicitContexts.push(ctx);
     }
-    if (contexts.length > 0) {
-      const contextText = contexts
-        .map((c, i) => `【${c.type === "article" ? "記事" : "サービス"} ${i + 1}】\n${c.content}`)
+  }
+
+  // ナビゲーターモード：添付がなくてもユーザーの質問でDBを自動検索して注入
+  if (mode === "navigator") {
+    const lastUserMsg = messages.filter((m) => m.role === "user").at(-1)?.content ?? "";
+
+    if (explicitContexts.length > 0) {
+      // 添付あり → 添付コンテンツを詳しく + 検索結果でさらに補完
+      const explicitText = explicitContexts
+        .map((c, i) => `【${c.type === "article" ? "記事" : "サービス"} ${i + 1} (詳細)】\n${c.content}`)
         .join("\n\n");
-      systemPrompt = SYSTEM_WITH_CONTEXT(mode, contextText);
+
+      const { services: searchSvcs, articles: searchArts } = await searchRelevantContent(lastUserMsg, 3);
+      const relatedItems = [...searchSvcs, ...searchArts].filter(
+        (r) => !explicitContexts.some((e) => e.id === r.id)
+      );
+      const relatedText = relatedItems.length > 0
+        ? "\n\n---\n【関連する他のサービス・記事（サイト内候補）】\n" +
+          relatedItems.map((c) => `・${c.title}（${c.type === "service" ? "サービス" : "記事"}）: ${c.content}`).join("\n")
+        : "";
+
+      systemPrompt = SYSTEM_WITH_CONTEXT(mode, explicitText + relatedText);
+    } else {
+      // 添付なし → ユーザーの質問でDB検索して自動注入
+      const { services, articles } = await searchRelevantContent(lastUserMsg, 5);
+      const allFound = [...services, ...articles];
+
+      if (allFound.length > 0) {
+        const autoText = allFound
+          .map((c) => `【${c.type === "service" ? "サービス" : "記事"}】${c.content}`)
+          .join("\n\n");
+        systemPrompt = SYSTEM_WITH_CONTEXT(mode, autoText);
+      }
+      // 0件でもシステムプロンプトは navigator のまま（サイト誘導はする）
     }
+  } else if (explicitContexts.length > 0) {
+    // debate / discussion で添付あり
+    const contextText = explicitContexts
+      .map((c, i) => `【${c.type === "article" ? "記事" : "サービス"} ${i + 1}】\n${c.content}`)
+      .join("\n\n");
+    systemPrompt = SYSTEM_WITH_CONTEXT(mode, contextText);
   }
 
   // ─── ユーザーメッセージ変換（最後のユーザー発言をモード別プロンプトに変換） ─
@@ -269,7 +306,7 @@ export async function POST(req: NextRequest) {
   });
 
   const openai = new OpenAI({ apiKey });
-  const model = "gpt-5.2-chat-latest";
+  const model = "gpt-4.1";
 
   try {
     const stream = await openai.chat.completions.create({
@@ -279,7 +316,7 @@ export async function POST(req: NextRequest) {
         { role: "system", content: systemPrompt },
         ...trimmedMessages,
       ],
-      temperature: 1,
+      temperature: 0.8,
       max_completion_tokens: 2048,
     });
 

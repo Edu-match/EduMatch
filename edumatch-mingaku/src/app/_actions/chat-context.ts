@@ -28,6 +28,7 @@ function truncate(text: string, maxChars: number): string {
 }
 
 const MAX_CONTEXT_CHARS = 6000;
+const MAX_SEARCH_CONTEXT_CHARS = 800;
 
 export async function getArticleContextForChat(
   id: string
@@ -66,6 +67,126 @@ export async function getArticleContextForChat(
   } catch (error) {
     console.error("getArticleContextForChat error:", error);
     return null;
+  }
+}
+
+/**
+ * ナビゲーターモード用：ユーザーの質問キーワードでサービス・記事を検索して返す
+ */
+export async function searchRelevantContent(
+  query: string,
+  limit = 4
+): Promise<{ services: ChatContextItem[]; articles: ChatContextItem[] }> {
+  try {
+    // クエリからキーワードを抽出（2文字以上）
+    const keywords = query
+      .replace(/[。、！？「」【】\s]+/g, " ")
+      .trim()
+      .split(" ")
+      .filter((w) => w.length >= 2)
+      .slice(0, 6);
+
+    if (keywords.length === 0) {
+      // キーワードなし → 人気サービス上位を返す
+      const services = await prisma.service.findMany({
+        where: { OR: [{ status: "APPROVED" }, { is_published: true }] },
+        select: {
+          id: true, title: true, description: true,
+          category: true, tags: true, price_info: true,
+          provider: { select: { name: true } },
+        },
+        orderBy: { created_at: "desc" },
+        take: limit,
+      });
+      return {
+        services: services.map((s) => ({
+          id: s.id,
+          type: "service" as const,
+          title: s.title,
+          content: truncate(
+            [
+              `サービス名: ${s.title}`,
+              s.provider?.name ? `提供者: ${s.provider.name}` : "",
+              s.category ? `カテゴリ: ${s.category}` : "",
+              s.description ? `概要: ${s.description}` : "",
+            ].filter(Boolean).join("\n"),
+            MAX_SEARCH_CONTEXT_CHARS
+          ),
+        })),
+        articles: [],
+      };
+    }
+
+    const orClauses = keywords.map((kw) => ({
+      OR: [
+        { title: { contains: kw, mode: "insensitive" as const } },
+        { description: { contains: kw, mode: "insensitive" as const } },
+        { category: { contains: kw, mode: "insensitive" as const } },
+      ],
+    }));
+
+    const [services, articles] = await Promise.all([
+      prisma.service.findMany({
+        where: {
+          OR: [{ status: "APPROVED" }, { is_published: true }],
+          AND: [{ OR: orClauses.flatMap((o) => o.OR) }],
+        },
+        select: {
+          id: true, title: true, description: true,
+          category: true, tags: true, price_info: true,
+          provider: { select: { name: true } },
+        },
+        take: limit,
+      }),
+      prisma.post.findMany({
+        where: {
+          OR: [{ status: "APPROVED" }, { is_published: true }],
+          AND: [{ OR: [
+            ...keywords.map((kw) => ({ title: { contains: kw, mode: "insensitive" as const } })),
+            ...keywords.map((kw) => ({ summary: { contains: kw, mode: "insensitive" as const } })),
+            ...keywords.map((kw) => ({ category: { contains: kw, mode: "insensitive" as const } })),
+          ]}],
+        },
+        select: { id: true, title: true, summary: true, category: true, tags: true },
+        take: limit,
+      }),
+    ]);
+
+    return {
+      services: services.map((s) => ({
+        id: s.id,
+        type: "service" as const,
+        title: s.title,
+        content: truncate(
+          [
+            `サービス名: ${s.title}`,
+            s.provider?.name ? `提供者: ${s.provider.name}` : "",
+            s.category ? `カテゴリ: ${s.category}` : "",
+            s.tags?.length ? `タグ: ${s.tags.join(", ")}` : "",
+            s.description ? `概要: ${s.description}` : "",
+            s.price_info ? `料金: ${s.price_info}` : "",
+          ].filter(Boolean).join("\n"),
+          MAX_SEARCH_CONTEXT_CHARS
+        ),
+      })),
+      articles: articles.map((a) => ({
+        id: a.id,
+        type: "article" as const,
+        title: a.title,
+        content: truncate(
+          [
+            `タイトル: ${a.title}`,
+            a.category ? `カテゴリ: ${a.category}` : "",
+            a.tags?.length ? `タグ: ${a.tags.join(", ")}` : "",
+            a.summary ? `要約: ${a.summary}` : "",
+          ].filter(Boolean).join("\n"),
+          MAX_SEARCH_CONTEXT_CHARS
+        ),
+      })),
+    };
+  } catch (error) {
+    console.error("searchRelevantContent error:", error);
+    return { services: [], articles: [] };
   }
 }
 
