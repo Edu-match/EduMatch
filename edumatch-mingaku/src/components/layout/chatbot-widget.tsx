@@ -14,6 +14,7 @@ import {
   Send,
   X,
   ChevronLeft,
+  ChevronDown,
   BookOpen,
   Package,
   History,
@@ -23,7 +24,8 @@ import {
   MessageSquare,
   Plus,
   Pencil,
-  } from "lucide-react";
+  Paperclip,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -633,34 +635,34 @@ export function ChatbotWidget() {
           <Bot className="h-4 w-4 text-primary" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-semibold truncate">
-            {view === "chat" ? "AIナビゲーター（ベータ版）" : view === "context-select" ? "コンテキスト選択" : "閲覧履歴から選択"}
+          <div className="text-sm font-semibold truncate leading-tight">
+            {view === "chat" ? "AIナビゲーター" : view === "context-select" ? "コンテキスト選択" : "閲覧履歴から選択"}
           </div>
+          {view === "chat" && userId && hasAgreed && chatMode && (
+            <button
+              type="button"
+              onClick={() => setChatMode(null)}
+              className="flex items-center gap-0.5 text-[11px] text-primary hover:underline mt-0.5"
+              title="モードを変更する"
+            >
+              {MODE_LABELS[chatMode]}
+              <ChevronDown className="h-3 w-3" />
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-0.5 shrink-0">
           {view === "chat" && userId && hasAgreed && chatMode && (
-            <>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 rounded-lg shrink-0"
-                onClick={resetChat}
-                title="新しいチャットを開始"
-                aria-label="新しいチャットを開始"
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 rounded-lg shrink-0"
-                onClick={() => setChatMode(null)}
-                title="モードを変更（戻る）"
-                aria-label="モードを変更"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-            </>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 px-2 rounded-lg text-xs gap-1 text-muted-foreground hover:text-foreground"
+              onClick={resetChat}
+              title="新しいチャットを開始"
+              aria-label="新しいチャットを開始"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              新規
+            </Button>
           )}
           <Button
             variant="ghost"
@@ -673,25 +675,6 @@ export function ChatbotWidget() {
           </Button>
         </div>
       </div>
-
-      {view === "chat" && userId && hasAgreed && chatMode && (
-        <div className="px-3 py-2 border-b bg-muted/20 flex items-center justify-between gap-2 flex-wrap">
-          <span className="text-[11px] text-muted-foreground">
-            {usage ? `${usage.used}/${usage.limit}` : "0/30"} 回
-            {usage?.resetAt && usage.used > 0 && (
-              <span className="ml-1.5">・{formatResetIn(usage.resetAt)}</span>
-            )}
-          </span>
-          <Link
-            href={CHAT_USAGE_LIMIT_PATH}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[11px] text-primary underline hover:no-underline shrink-0"
-          >
-            詳細を見る
-          </Link>
-        </div>
-      )}
 
       {view === "chat" && !userId && (
         <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 text-center min-h-0">
@@ -809,27 +792,18 @@ export function ChatbotWidget() {
             </div>
           </div>
 
-          <div className="border-t p-3 flex-shrink-0 bg-muted/20">
-            <div className="mb-2">
-              {contextItems.length > 0 ? (
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[11px] text-muted-foreground font-medium">参照中:</span>
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border bg-background text-xs max-w-full">
-                    <span className="truncate">{contextItems[0].title}</span>
-                    <button
-                      type="button"
-                      onClick={() => removeContextItem(contextItems[0].id)}
-                      className="shrink-0 p-0.5 rounded hover:bg-muted"
-                      aria-label="添付を外す"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </span>
+          <div className="border-t px-3 pt-2 pb-3 flex-shrink-0 bg-muted/20">
+            {/* 添付中のコンテキスト表示 */}
+            {contextItems.length > 0 && (
+              <div className="flex items-center gap-1.5 mb-2">
+                <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border bg-background text-xs min-w-0 max-w-full">
+                  <Paperclip className="h-3 w-3 shrink-0 text-muted-foreground" />
+                  <span className="truncate">{contextItems[0].title}</span>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button type="button" variant="ghost" size="sm" className="h-7 text-[11px] px-2">
-                        変更
-                      </Button>
+                      <button type="button" className="shrink-0 p-0.5 rounded hover:bg-muted" aria-label="変更">
+                        <ChevronDown className="h-3 w-3" />
+                      </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start" side="top" className="min-w-[200px]">
                       {pageContext && !contextItems.some((c) => c.id === pageContext.id) && (
@@ -842,42 +816,45 @@ export function ChatbotWidget() {
                         <History className="h-3.5 w-3.5 mr-2 shrink-0" />
                         閲覧履歴から選び直す
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => { removeContextItem(contextItems[0].id); }}>
+                      <DropdownMenuItem onClick={() => removeContextItem(contextItems[0].id)}>
                         <Trash2 className="h-3.5 w-3.5 mr-2 shrink-0" />
                         添付を外す
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                </div>
-              ) : (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="w-full justify-start gap-2 h-9 text-xs text-muted-foreground border-dashed"
-                    >
-                      <Plus className="h-3.5 w-3.5 shrink-0" />
-                      記事・サービスを添付して質問する（任意）
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" side="top" className="min-w-[240px]">
-                    {pageContext && (
-                      <DropdownMenuItem onClick={addPageToContext}>
-                        <BookOpen className="h-3.5 w-3.5 mr-2 shrink-0" />
-                        この{pageContext.type === "article" ? "記事" : "サービス"}を参照する
-                      </DropdownMenuItem>
-                    )}
-                    <DropdownMenuItem onClick={() => { fetchHistory(); setView("history-select"); }}>
-                      <History className="h-3.5 w-3.5 mr-2 shrink-0" />
-                      閲覧履歴から1件選ぶ
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </div>
+                </span>
+              </div>
+            )}
+
+            {/* 入力行：添付ボタン / テキストエリア / 送信ボタン */}
             <div className="flex items-end gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-11 w-11 rounded-xl shrink-0 text-muted-foreground hover:text-foreground"
+                    title="記事・サービスを添付"
+                    aria-label="添付"
+                  >
+                    <Paperclip className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" side="top" className="min-w-[240px]">
+                  {pageContext && (
+                    <DropdownMenuItem onClick={addPageToContext}>
+                      <BookOpen className="h-3.5 w-3.5 mr-2 shrink-0" />
+                      この{pageContext.type === "article" ? "記事" : "サービス"}を参照する
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={() => { fetchHistory(); setView("history-select"); }}>
+                    <History className="h-3.5 w-3.5 mr-2 shrink-0" />
+                    閲覧履歴から1件選ぶ
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
               <textarea
                 ref={textareaRef}
                 value={input}
@@ -899,12 +876,27 @@ export function ChatbotWidget() {
                 {isStreaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </Button>
             </div>
-            <p className="text-[11px] text-muted-foreground mt-2 text-center">
-              AIは間違えることもあります。
-              <Link href={AI_NAV_DISCLAIMER_PATH} target="_blank" rel="noopener noreferrer" className="ml-1 text-primary underline hover:no-underline">
-                詳細を見る
-              </Link>
-            </p>
+
+            {/* フッター：使用回数 + 免責リンク */}
+            <div className="flex items-center justify-between mt-2">
+              <p className="text-[11px] text-muted-foreground">
+                AIは間違えることもあります。
+                <Link href={AI_NAV_DISCLAIMER_PATH} target="_blank" rel="noopener noreferrer" className="ml-1 text-primary underline hover:no-underline">
+                  詳細
+                </Link>
+              </p>
+              {usage && (
+                <Link
+                  href={CHAT_USAGE_LIMIT_PATH}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] text-muted-foreground hover:text-foreground"
+                  title={usage.resetAt && usage.used > 0 ? formatResetIn(usage.resetAt) : undefined}
+                >
+                  {usage.used}/{usage.limit} 回
+                </Link>
+              )}
+            </div>
           </div>
         </>
       )}
