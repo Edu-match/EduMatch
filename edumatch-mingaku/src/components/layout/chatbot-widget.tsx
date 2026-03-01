@@ -23,8 +23,7 @@ import {
   MessageSquare,
   Plus,
   Pencil,
-  Settings,
-} from "lucide-react";
+  } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -639,22 +638,29 @@ export function ChatbotWidget() {
           </div>
         </div>
         <div className="flex items-center gap-0.5 shrink-0">
-          {view === "chat" && messages.length > 0 && (
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={resetChat} title="会話をリセット">
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          )}
           {view === "chat" && userId && hasAgreed && chatMode && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 rounded-lg shrink-0"
-              onClick={() => setChatMode(null)}
-              title="モードを変更"
-              aria-label="モードを変更"
-            >
-              <Settings className="h-4 w-4" />
-            </Button>
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-lg shrink-0"
+                onClick={resetChat}
+                title="新しいチャットを開始"
+                aria-label="新しいチャットを開始"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-lg shrink-0"
+                onClick={() => setChatMode(null)}
+                title="モードを変更（戻る）"
+                aria-label="モードを変更"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+            </>
           )}
           <Button
             variant="ghost"
