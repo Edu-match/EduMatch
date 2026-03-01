@@ -249,42 +249,16 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ナビゲーターモード：添付がなくてもユーザーの質問でDBを自動検索して注入
-  if (mode === "navigator") {
-    const lastUserMsg = messages.filter((m) => m.role === "user").at(-1)?.content ?? "";
+  // 全モード共通：ユーザーの最後のメッセージでDBを検索し、コンテキストを注入
+  const lastUserMsg = messages.filter((m) => m.role === "user").at(-1)?.content ?? "";
+  const { services: searchSvcs, articles: searchArts } = await searchRelevantContent(lastUserMsg, 5);
+  const searchResults = [...searchSvcs, ...searchArts].filter(
+    (r) => !explicitContexts.some((e) => e.id === r.id)
+  );
+  const allContexts = [...explicitContexts, ...searchResults];
 
-    if (explicitContexts.length > 0) {
-      // 添付あり → 添付コンテンツを詳しく + 検索結果でさらに補完
-      const explicitText = explicitContexts
-        .map((c, i) => `【${c.type === "article" ? "記事" : "サービス"} ${i + 1} (詳細)】\n${c.content}`)
-        .join("\n\n");
-
-      const { services: searchSvcs, articles: searchArts } = await searchRelevantContent(lastUserMsg, 3);
-      const relatedItems = [...searchSvcs, ...searchArts].filter(
-        (r) => !explicitContexts.some((e) => e.id === r.id)
-      );
-      const relatedText = relatedItems.length > 0
-        ? "\n\n---\n【関連する他のサービス・記事（サイト内候補）】\n" +
-          relatedItems.map((c) => `・${c.title}（${c.type === "service" ? "サービス" : "記事"}）: ${c.content}`).join("\n")
-        : "";
-
-      systemPrompt = SYSTEM_WITH_CONTEXT(mode, explicitText + relatedText);
-    } else {
-      // 添付なし → ユーザーの質問でDB検索して自動注入
-      const { services, articles } = await searchRelevantContent(lastUserMsg, 5);
-      const allFound = [...services, ...articles];
-
-      if (allFound.length > 0) {
-        const autoText = allFound
-          .map((c) => `【${c.type === "service" ? "サービス" : "記事"}】${c.content}`)
-          .join("\n\n");
-        systemPrompt = SYSTEM_WITH_CONTEXT(mode, autoText);
-      }
-      // 0件でもシステムプロンプトは navigator のまま（サイト誘導はする）
-    }
-  } else if (explicitContexts.length > 0) {
-    // debate / discussion で添付あり
-    const contextText = explicitContexts
+  if (allContexts.length > 0) {
+    const contextText = allContexts
       .map((c, i) => `【${c.type === "article" ? "記事" : "サービス"} ${i + 1}】\n${c.content}`)
       .join("\n\n");
     systemPrompt = SYSTEM_WITH_CONTEXT(mode, contextText);
@@ -306,7 +280,7 @@ export async function POST(req: NextRequest) {
   });
 
   const openai = new OpenAI({ apiKey });
-  const model = "gpt-4.1";
+  const model = "gpt-5.2";
 
   try {
     const stream = await openai.chat.completions.create({
