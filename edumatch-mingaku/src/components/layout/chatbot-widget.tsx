@@ -23,6 +23,7 @@ import {
   MessageSquare,
   Plus,
   Pencil,
+  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -643,14 +644,23 @@ export function ChatbotWidget() {
               <Trash2 className="h-4 w-4" />
             </Button>
           )}
+          {view === "chat" && userId && hasAgreed && chatMode && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-lg shrink-0"
+              onClick={() => setChatMode(null)}
+              title="モードを変更"
+              aria-label="モードを変更"
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"
             className="h-8 w-8 rounded-lg"
-            onClick={() => {
-              setOpen(false);
-              setChatMode(null);
-            }}
+            onClick={() => setOpen(false)}
             aria-label="閉じる"
           >
             <X className="h-4 w-4" />
