@@ -190,7 +190,7 @@ export async function POST(req: NextRequest) {
         { role: "system", content: systemPrompt },
         ...trimmedMessages,
       ],
-      temperature: 0.7,
+      temperature: 1,
       max_completion_tokens: 2048,
     });
 
