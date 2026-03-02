@@ -1055,7 +1055,7 @@ export function ChatbotWidget() {
             aria-label="AIナビゲーターを開く"
             size="icon"
           >
-            <Bot className="h-14 w-14 text-white" />
+            <Bot className="h-16 w-16 text-white" />
           </Button>
           <span className="text-xs font-semibold text-orange-600 hidden sm:inline bg-white/90 px-2 py-1 rounded-full shadow-sm">AIナビゲーター</span>
           <Link
