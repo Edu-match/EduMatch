@@ -450,7 +450,10 @@ export function ChatbotWidget() {
 
   function addPageToContext() {
     if (!pageContext) return;
-    setContextItems([{ id: pageContext.id, type: pageContext.type, title: pageContext.type === "article" ? "現在の記事" : "現在のサービス" }]);
+    const title = typeof document !== "undefined" && document.title
+      ? document.title.replace(/\s*\|\s*[^|]+$/, "").trim() || (pageContext.type === "article" ? "記事" : "サービス")
+      : pageContext.type === "article" ? "記事" : "サービス";
+    setContextItems([{ id: pageContext.id, type: pageContext.type, title }]);
   }
 
   function setPageAsContext() {
@@ -654,7 +657,12 @@ export function ChatbotWidget() {
                 {(["navigator", "debate", "discussion"] as const).map((m) => (
                   <DropdownMenuItem
                     key={m}
-                    onClick={() => setChatMode(m)}
+                    onClick={() => {
+                      if (m !== chatMode) {
+                        resetChat();
+                      }
+                      setChatMode(m);
+                    }}
                     className={m === chatMode ? "bg-primary/10 font-medium" : ""}
                   >
                     {MODE_LABELS[m]}
@@ -807,68 +815,84 @@ export function ChatbotWidget() {
           </div>
 
           <div className="border-t px-3 pt-2 pb-3 flex-shrink-0 bg-muted/20">
-            {/* 添付中のコンテキスト表示 */}
-            {contextItems.length > 0 && (
-              <div className="flex items-center gap-1.5 mb-2">
-                <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border bg-background text-xs min-w-0 max-w-full">
-                  <Paperclip className="h-3 w-3 shrink-0 text-muted-foreground" />
-                  <span className="truncate">{contextItems[0].title}</span>
+            {/* 回答に含めるコンテンツ（わかりやすいUI） */}
+            <div className="mb-2">
+              <p className="text-[11px] text-muted-foreground mb-1.5">回答に含める記事・サービス</p>
+              {contextItems.length > 0 ? (
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-primary/30 bg-primary/5 text-sm min-w-0 flex-1">
+                    <BookOpen className="h-4 w-4 shrink-0 text-primary" />
+                    <span className="truncate font-medium">{contextItems[0].title}</span>
+                  </span>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <button type="button" className="shrink-0 p-0.5 rounded hover:bg-muted" aria-label="変更">
-                        <ChevronDown className="h-3 w-3" />
-                      </button>
+                      <Button variant="outline" size="sm" className="shrink-0 h-8 text-xs">
+                        変更
+                      </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" side="top" className="min-w-[200px]">
+                    <DropdownMenuContent align="end" side="top" className="min-w-[220px]">
                       {pageContext && !contextItems.some((c) => c.id === pageContext.id) && (
                         <DropdownMenuItem onClick={addPageToContext}>
                           <BookOpen className="h-3.5 w-3.5 mr-2 shrink-0" />
-                          この{pageContext.type === "article" ? "記事" : "サービス"}に差し替え
+                          今見ている{pageContext.type === "article" ? "記事" : "サービス"}に差し替え
                         </DropdownMenuItem>
                       )}
                       <DropdownMenuItem onClick={() => { fetchHistory(); setView("history-select"); }}>
                         <History className="h-3.5 w-3.5 mr-2 shrink-0" />
                         閲覧履歴から選び直す
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => removeContextItem(contextItems[0].id)}>
+                      <DropdownMenuItem onClick={() => removeContextItem(contextItems[0].id)} className="text-destructive focus:text-destructive">
                         <Trash2 className="h-3.5 w-3.5 mr-2 shrink-0" />
-                        添付を外す
+                        含めるのをやめる
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                </span>
-              </div>
-            )}
-
-            {/* 入力行：添付ボタン / テキストエリア / 送信ボタン */}
-            <div className="flex items-end gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-11 w-11 rounded-xl shrink-0 text-muted-foreground hover:text-foreground"
-                    title="記事・サービスを添付"
-                    aria-label="添付"
-                  >
-                    <Paperclip className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" side="top" className="min-w-[240px]">
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
                   {pageContext && (
-                    <DropdownMenuItem onClick={addPageToContext}>
-                      <BookOpen className="h-3.5 w-3.5 mr-2 shrink-0" />
-                      この{pageContext.type === "article" ? "記事" : "サービス"}を参照する
-                    </DropdownMenuItem>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs border-dashed"
+                      onClick={addPageToContext}
+                    >
+                      <BookOpen className="h-3.5 w-3.5 mr-1.5" />
+                      今見ている{pageContext.type === "article" ? "記事" : "サービス"}を追加
+                    </Button>
                   )}
-                  <DropdownMenuItem onClick={() => { fetchHistory(); setView("history-select"); }}>
-                    <History className="h-3.5 w-3.5 mr-2 shrink-0" />
-                    閲覧履歴から1件選ぶ
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs border-dashed"
+                      >
+                        <Paperclip className="h-3.5 w-3.5 mr-1.5" />
+                        記事・サービスを選ぶ
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" side="top" className="min-w-[220px]">
+                      {pageContext && (
+                        <DropdownMenuItem onClick={addPageToContext}>
+                          <BookOpen className="h-3.5 w-3.5 mr-2 shrink-0" />
+                          今見ている{pageContext.type === "article" ? "記事" : "サービス"}を追加
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem onClick={() => { fetchHistory(); setView("history-select"); }}>
+                        <History className="h-3.5 w-3.5 mr-2 shrink-0" />
+                        閲覧履歴から1件選ぶ
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              )}
+            </div>
 
+            {/* 入力行：テキストエリア / 送信ボタン */}
+            <div className="flex items-end gap-2">
               <textarea
                 ref={textareaRef}
                 value={input}
