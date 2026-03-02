@@ -639,15 +639,29 @@ export function ChatbotWidget() {
             {view === "chat" ? "AIナビゲーター" : view === "context-select" ? "コンテキスト選択" : "閲覧履歴から選択"}
           </div>
           {view === "chat" && userId && hasAgreed && chatMode && (
-            <button
-              type="button"
-              onClick={() => setChatMode(null)}
-              className="flex items-center gap-0.5 text-[11px] text-primary hover:underline mt-0.5"
-              title="モードを変更する"
-            >
-              {MODE_LABELS[chatMode]}
-              <ChevronDown className="h-3 w-3" />
-            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="flex items-center gap-0.5 text-[11px] text-primary hover:underline mt-0.5"
+                  title="モードを変更する"
+                >
+                  {MODE_LABELS[chatMode]}
+                  <ChevronDown className="h-3 w-3" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" side="bottom" className="min-w-[200px]">
+                {(["navigator", "debate", "discussion"] as const).map((m) => (
+                  <DropdownMenuItem
+                    key={m}
+                    onClick={() => setChatMode(m)}
+                    className={m === chatMode ? "bg-primary/10 font-medium" : ""}
+                  >
+                    {MODE_LABELS[m]}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
         <div className="flex items-center gap-0.5 shrink-0">
