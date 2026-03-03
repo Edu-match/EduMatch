@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { requireProvider } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { ArticleEditForm } from "./article-edit-form";
+import { ArticleEditBlockForm } from "./article-edit-block-form";
 
 export default async function ArticleEditPage({
   params,
@@ -34,8 +34,9 @@ export default async function ArticleEditPage({
     notFound();
   }
 
-  // 投稿者本人かチェック
-  if (article.provider_id !== profile.id) {
+  // 投稿者本人または ADMIN のみ編集可
+  const isAdmin = profile.role === "ADMIN";
+  if (article.provider_id !== profile.id && !isAdmin) {
     redirect("/dashboard");
   }
 
@@ -50,5 +51,5 @@ export default async function ArticleEditPage({
     status: article.status || "PENDING",
   };
 
-  return <ArticleEditForm articleId={article.id} initialData={initialData} />;
+  return <ArticleEditBlockForm articleId={article.id} initialData={initialData} />;
 }

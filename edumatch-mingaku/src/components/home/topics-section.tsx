@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getPopularArticlesByEngagement } from "@/app/_actions/popularity";
+import { getLatestArticlesForTopics } from "@/app/_actions/popularity";
 import { getAllServices } from "@/app/_actions/services";
 import { TopicsTabs } from "./topics-tabs";
 import { serviceThumbnailPlaceholder } from "@/lib/utils";
@@ -81,7 +81,7 @@ async function fetchYouTubeVideos(): Promise<VideoItem[]> {
 
 export async function TopicsSection() {
   const [posts, services, videos] = await Promise.all([
-    getPopularArticlesByEngagement(20),
+    getLatestArticlesForTopics(50),
     getAllServices(),
     fetchYouTubeVideos(),
   ]);

@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/utils/supabase/server";
 import type { Post, Profile, Role } from "@prisma/client";
@@ -8,10 +9,10 @@ export type PostWithProvider = Post & {
   provider: Pick<Profile, "id" | "name" | "avatar_url">;
 };
 
-// ブロックの型定義
+// ブロックの型定義（BlockEditor の bulletList/numberedList にも対応）
 export type ContentBlock = {
   id: string;
-  type: "heading1" | "heading2" | "heading3" | "paragraph" | "image" | "video" | "quote" | "divider" | "list" | "ordered-list";
+  type: "heading1" | "heading2" | "heading3" | "paragraph" | "image" | "video" | "quote" | "divider" | "list" | "ordered-list" | "bulletList" | "numberedList";
   content: string;
   align?: "left" | "center" | "right";
   url?: string;
@@ -96,11 +97,13 @@ function blocksToContent(blocks: ContentBlock[], leadText: string): string {
         parts.push(`> ${block.content}`);
         break;
       case "list":
+      case "bulletList":
         if (block.items) {
           block.items.forEach(item => parts.push(`- ${item}`));
         }
         break;
       case "ordered-list":
+      case "numberedList":
         if (block.items) {
           block.items.forEach((item, i) => parts.push(`${i + 1}. ${item}`));
         }
@@ -270,7 +273,12 @@ export async function updatePost(
       return { success: false, error: "記事が見つかりません" };
     }
     
-    if (existingPost.provider_id !== user.id) {
+    const profile = await prisma.profile.findUnique({
+      where: { id: user.id },
+      select: { role: true },
+    });
+    const isAdmin = profile?.role === ("ADMIN" as Role);
+    if (existingPost.provider_id !== user.id && !isAdmin) {
       return { success: false, error: "この記事を編集する権限がありません" };
     }
     
@@ -280,6 +288,9 @@ export async function updatePost(
     if (input.title !== undefined) {
       updateData.title = input.title;
     }
+    if (input.leadText !== undefined) {
+      updateData.summary = input.leadText || null;
+    }
     if (input.blocks !== undefined) {
       updateData.content = blocksToContent(input.blocks, input.leadText || "");
       updateData.images = extractImagesFromBlocks(input.blocks);
@@ -287,6 +298,16 @@ export async function updatePost(
     }
     if (input.thumbnailUrl !== undefined) {
       updateData.thumbnail_url = input.thumbnailUrl || null;
+    }
+    if (input.category !== undefined) {
+      updateData.category = input.category;
+    }
+    if (input.tags !== undefined) {
+      const tagsArray = input.tags
+        .split(/[,、\s]+/)
+        .map((t) => t.trim())
+        .filter((t) => t.length > 0);
+      updateData.tags = tagsArray;
     }
     if (input.publishType !== undefined) {
       const isDraft = input.publishType === "draft";
@@ -303,6 +324,11 @@ export async function updatePost(
       where: { id },
       data: updateData,
     });
+
+    revalidatePath("/articles");
+    revalidatePath(`/articles/${id}`);
+    revalidatePath("/provider-dashboard");
+    revalidatePath("/");
     
     return { success: true, postId: id };
   } catch (error) {

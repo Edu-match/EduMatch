@@ -178,6 +178,49 @@ export async function getPopularArticlesByEngagement(limit: number = 10) {
 }
 
 /**
+ * トップページトピックス用：最新順で記事を取得
+ * 未ログイン時は会員限定記事を除外
+ */
+export async function getLatestArticlesForTopics(limit: number = 50) {
+  try {
+    const user = await getCurrentUser();
+
+    const where = !user
+      ? {
+          AND: [
+            { OR: [{ status: "APPROVED" as const }, { is_published: true }] },
+            { is_member_only: false },
+          ],
+        }
+      : { OR: [{ status: "APPROVED" as const }, { is_published: true }] };
+
+    const articles = await prisma.post.findMany({
+      where,
+      include: {
+        provider: {
+          select: {
+            id: true,
+            name: true,
+            avatar_url: true,
+          },
+        },
+      },
+      orderBy: { created_at: "desc" },
+      take: limit,
+    });
+
+    return articles.map((article) => ({
+      ...article,
+      provider: article.provider || { id: article.provider_id, name: "投稿者", avatar_url: null },
+      home_news_tab: article.home_news_tab,
+    }));
+  } catch (error) {
+    console.error("Failed to get latest articles for topics:", error);
+    return [];
+  }
+}
+
+/**
  * ホットトピック：直近1ヶ月の記事をいいね数でランキング
  */
 export async function getHotTopicsLastMonth(limit: number = 10) {
