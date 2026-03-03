@@ -195,6 +195,8 @@ model Post {
   wp_post_id          Int?
   /// CSV/WordPress の著者表示名。未設定時は provider.name を使用
   author_display_name String?
+  /// トップページ「ニュース」タブでの表示位置（NONE=表示しない）
+  home_news_tab       HomeNewsTab        @default(NONE)
   home_slider_entries HomeSliderArticle?
   provider            Profile            @relation(fields: [provider_id], references: [id], onDelete: Cascade)
 
@@ -276,4 +278,12 @@ enum PublishStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+/// トップページのニュースタブ分類
+enum HomeNewsTab {
+  NONE         /// どのタブにも表示しない
+  DOMESTIC     /// 国内ニュース
+  INTERNATIONAL /// 海外ニュース
+  WEEKLY       /// 週間ニュース
 }

@@ -26,6 +26,7 @@ export type ArticleItem = {
   category: string;
   tags: string[];
   isNew: boolean;
+  newsTab: "NONE" | "DOMESTIC" | "INTERNATIONAL" | "WEEKLY";
 };
 
 export type ServiceItem = {
@@ -93,6 +94,7 @@ export async function TopicsSection() {
     category: post.category ?? "",
     tags: post.tags ?? [],
     isNew: isNew(post.created_at),
+    newsTab: (post as unknown as { home_news_tab?: ArticleItem["newsTab"] }).home_news_tab ?? "NONE",
   }));
 
   const serviceItems: ServiceItem[] = services.slice(0, 10).map((s) => ({

@@ -6,13 +6,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import type { ArticleItem, ServiceItem, VideoItem } from "./topics-section";
 
-const AI_KEYWORDS = ["AI", "生成AI", "ChatGPT", "人工知能", "機械学習", "DX", "テクノロジー", "教育テック", "EdTech"];
-
-function isAiRelated(article: ArticleItem): boolean {
-  const text = `${article.title} ${article.category} ${article.tags.join(" ")}`;
-  return AI_KEYWORDS.some((kw) => text.includes(kw));
-}
-
 function ArticleListItem({ article }: { article: ArticleItem }) {
   return (
     <Link
@@ -117,7 +110,9 @@ type Props = {
 };
 
 export function TopicsTabs({ articles, services, videos }: Props) {
-  const aiArticles = articles.filter(isAiRelated);
+  const domesticArticles = articles.filter((a) => a.newsTab === "DOMESTIC");
+  const internationalArticles = articles.filter((a) => a.newsTab === "INTERNATIONAL");
+  const weeklyArticles = articles.filter((a) => a.newsTab === "WEEKLY");
 
   const triggerClass =
     "rounded-none border-b-2 border-transparent data-[state=active]:border-[#1d4ed8] data-[state=active]:bg-transparent px-4 py-2 text-sm";
@@ -127,9 +122,9 @@ export function TopicsTabs({ articles, services, videos }: Props) {
       <div className="border-b">
         <TabsList className="w-full justify-start rounded-none h-auto bg-transparent p-0">
           <TabsTrigger value="all" className={triggerClass}>すべて</TabsTrigger>
-          <TabsTrigger value="ai" className={triggerClass}>記事</TabsTrigger>
-          <TabsTrigger value="services" className={triggerClass}>サービス紹介</TabsTrigger>
-          <TabsTrigger value="videos" className={triggerClass}>動画</TabsTrigger>
+          <TabsTrigger value="domestic" className={triggerClass}>国内ニュース</TabsTrigger>
+          <TabsTrigger value="international" className={triggerClass}>海外ニュース</TabsTrigger>
+          <TabsTrigger value="weekly" className={triggerClass}>週間ニュース</TabsTrigger>
         </TabsList>
       </div>
       <div className="p-3">
@@ -141,27 +136,27 @@ export function TopicsTabs({ articles, services, videos }: Props) {
           )}
         </TabsContent>
 
-        <TabsContent value="ai" className="mt-0 space-y-0">
-          {aiArticles.length > 0 ? (
-            aiArticles.map((a) => <ArticleListItem key={a.id} article={a} />)
+        <TabsContent value="domestic" className="mt-0 space-y-0">
+          {domesticArticles.length > 0 ? (
+            domesticArticles.map((a) => <ArticleListItem key={a.id} article={a} />)
           ) : (
-            <p className="text-center text-muted-foreground py-4">AI関連記事がありません</p>
+            <p className="text-center text-muted-foreground py-4">国内ニュースがありません</p>
           )}
         </TabsContent>
 
-        <TabsContent value="services" className="mt-0 space-y-0">
-          {services.length > 0 ? (
-            services.map((s) => <ServiceListItem key={s.id} service={s} />)
+        <TabsContent value="international" className="mt-0 space-y-0">
+          {internationalArticles.length > 0 ? (
+            internationalArticles.map((a) => <ArticleListItem key={a.id} article={a} />)
           ) : (
-            <p className="text-center text-muted-foreground py-4">サービスがありません</p>
+            <p className="text-center text-muted-foreground py-4">海外ニュースがありません</p>
           )}
         </TabsContent>
 
-        <TabsContent value="videos" className="mt-0 space-y-0">
-          {videos.length > 0 ? (
-            videos.map((v) => <VideoListItem key={v.id} video={v} />)
+        <TabsContent value="weekly" className="mt-0 space-y-0">
+          {weeklyArticles.length > 0 ? (
+            weeklyArticles.map((a) => <ArticleListItem key={a.id} article={a} />)
           ) : (
-            <p className="text-center text-muted-foreground py-4">動画がありません</p>
+            <p className="text-center text-muted-foreground py-4">週間ニュースがありません</p>
           )}
         </TabsContent>
       </div>

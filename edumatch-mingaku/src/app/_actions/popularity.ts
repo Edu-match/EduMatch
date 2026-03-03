@@ -169,6 +169,7 @@ export async function getPopularArticlesByEngagement(limit: number = 10) {
     return articles.map((article) => ({
       ...article,
       provider: article.provider || { id: article.provider_id, name: "投稿者", avatar_url: null },
+      home_news_tab: article.home_news_tab,
     }));
   } catch (error) {
     console.error("Failed to get popular articles:", error);

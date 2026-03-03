@@ -3,19 +3,19 @@ import { requireProvider } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ArticleEditForm } from "./article-edit-form";
 
-type PageProps = {
-  params: {
-    id: string;
-  };
-};
+export default async function ArticleEditPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
 
-export default async function ArticleEditPage({ params }: PageProps) {
   const { profile } = await requireProvider();
   if (!profile) redirect("/dashboard");
 
   // 記事を取得
   const article = await prisma.post.findUnique({
-    where: { id: params.id },
+    where: { id },
     select: {
       id: true,
       provider_id: true,
