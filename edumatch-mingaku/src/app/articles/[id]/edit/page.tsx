@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { requireProvider } from "@/lib/auth";
+import { getCurrentProfile } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ArticleEditForm } from "./article-edit-form";
 
@@ -10,8 +10,13 @@ type PageProps = {
 };
 
 export default async function ArticleEditPage({ params }: PageProps) {
-  const { profile } = await requireProvider();
-  if (!profile) redirect("/dashboard");
+  const profile = await getCurrentProfile();
+  if (!profile) redirect("/auth/login");
+
+  // PROVIDER または ADMIN のみアクセス可
+  if (profile.role !== "PROVIDER" && profile.role !== "ADMIN") {
+    redirect("/dashboard");
+  }
 
   // 記事を取得
   const article = await prisma.post.findUnique({
@@ -34,8 +39,8 @@ export default async function ArticleEditPage({ params }: PageProps) {
     notFound();
   }
 
-  // 投稿者本人かチェック
-  if (article.provider_id !== profile.id) {
+  // ADMIN でなければ投稿者本人かチェック
+  if (profile.role !== "ADMIN" && article.provider_id !== profile.id) {
     redirect("/dashboard");
   }
 

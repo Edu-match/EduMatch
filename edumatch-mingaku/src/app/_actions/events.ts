@@ -1,6 +1,9 @@
 "use server";
 
+import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUserRole } from "@/app/_actions/user";
 
 export type SeminarEventData = {
   id: string;
@@ -114,4 +117,110 @@ export async function getEventById(id: string): Promise<SeminarEventData | null>
       wp_post_id: true,
     },
   });
+}
+
+// ─── ADMIN 専用 CRUD ────────────────────────────────────────────────────────
+
+/** 管理画面用：全イベント取得（日付順） */
+export async function getEventsForAdmin(limit: number = 200): Promise<SeminarEventData[]> {
+  const role = await getCurrentUserRole();
+  if (role !== "ADMIN") return [];
+  return prisma.seminarEvent.findMany({
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      event_date: true,
+      venue: true,
+      company: true,
+      external_url: true,
+      wp_post_id: true,
+    },
+    orderBy: [{ event_date: "desc" }, { created_at: "desc" }],
+    take: limit,
+  });
+}
+
+export type EventInput = {
+  title: string;
+  description?: string;
+  event_date?: string;
+  venue?: string;
+  company?: string;
+  external_url?: string;
+};
+
+export type EventMutationResult = { success: boolean; id?: string; error?: string };
+
+/** イベントを新規作成（ADMIN のみ） */
+export async function createEvent(input: EventInput): Promise<EventMutationResult> {
+  const role = await getCurrentUserRole();
+  if (role !== "ADMIN") return { success: false, error: "管理者権限が必要です" };
+  try {
+    const row = await prisma.seminarEvent.create({
+      data: {
+        title: input.title.trim(),
+        description: input.description?.trim() ?? "",
+        event_date: input.event_date?.trim() || null,
+        venue: input.venue?.trim() || null,
+        company: input.company?.trim() || null,
+        external_url: input.external_url?.trim() || null,
+      },
+    });
+    revalidatePath("/events");
+    revalidatePath("/admin/events");
+    return { success: true, id: row.id };
+  } catch (error) {
+    console.error("createEvent error:", error);
+    return { success: false, error: "作成に失敗しました" };
+  }
+}
+
+/** イベントを更新（ADMIN のみ） */
+export async function updateEvent(id: string, input: EventInput): Promise<EventMutationResult> {
+  const role = await getCurrentUserRole();
+  if (role !== "ADMIN") return { success: false, error: "管理者権限が必要です" };
+  try {
+    await prisma.seminarEvent.update({
+      where: { id },
+      data: {
+        title: input.title.trim(),
+        description: input.description?.trim() ?? "",
+        event_date: input.event_date?.trim() || null,
+        venue: input.venue?.trim() || null,
+        company: input.company?.trim() || null,
+        external_url: input.external_url?.trim() || null,
+      },
+    });
+    revalidatePath("/events");
+    revalidatePath(`/events/${id}`);
+    revalidatePath("/admin/events");
+    return { success: true, id };
+  } catch (error) {
+    console.error("updateEvent error:", error);
+    return { success: false, error: "更新に失敗しました" };
+  }
+}
+
+/** イベントを削除（ADMIN のみ） */
+export async function deleteEvent(id: string): Promise<EventMutationResult> {
+  const role = await getCurrentUserRole();
+  if (role !== "ADMIN") return { success: false, error: "管理者権限が必要です" };
+  try {
+    await prisma.seminarEvent.delete({ where: { id } });
+    revalidatePath("/events");
+    revalidatePath("/admin/events");
+    return { success: true };
+  } catch (error) {
+    console.error("deleteEvent error:", error);
+    return { success: false, error: "削除に失敗しました" };
+  }
+}
+
+/** フォーム用：イベントを削除してからリダイレクト */
+export async function deleteEventAction(formData: FormData) {
+  const id = formData.get("id") as string | null;
+  if (!id) return;
+  const result = await deleteEvent(id);
+  if (result.success) redirect("/admin/events");
 }

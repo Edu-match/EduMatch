@@ -112,8 +112,8 @@ export async function updateArticle(articleId: string, data: ArticleFormData) {
       };
     }
 
-    // 投稿者本人かチェック
-    if (existingArticle.provider_id !== profile.id) {
+    // 投稿者本人 or ADMIN のみ編集可
+    if (existingArticle.provider_id !== profile.id && profile.role !== "ADMIN") {
       return {
         success: false,
         error: "この記事を編集する権限がありません",
@@ -202,8 +202,8 @@ export async function deleteArticle(articleId: string) {
       };
     }
 
-    // 投稿者本人かチェック
-    if (existingArticle.provider_id !== profile.id) {
+    // 投稿者本人 or ADMIN のみ削除可
+    if (existingArticle.provider_id !== profile.id && profile.role !== "ADMIN") {
       return {
         success: false,
         error: "この記事を削除する権限がありません",
