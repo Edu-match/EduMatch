@@ -3,10 +3,10 @@ import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Calendar, ArrowLeft, Share2, Eye, User, Play, Pencil } from "lucide-react";
+import { Calendar, ArrowLeft, Eye, User, Play, Pencil } from "lucide-react";
 import { unstable_noStore } from "next/cache";
 import { getPostById, getLatestPosts, recordView } from "@/app/_actions";
-import { getCurrentUser, getCurrentProfile } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import { YouTubeEmbed } from "@/components/ui/youtube-embed";
 import { ArticleDetailActions } from "./article-detail-actions";
@@ -36,14 +36,10 @@ export default async function ArticleDetailPage({
     notFound();
   }
 
-  const [user, profile] = await Promise.all([
-    getCurrentUser(),
-    getCurrentProfile(),
-  ]);
+  const user = await getCurrentUser();
   if (user) {
     await recordView(user.id, "ARTICLE", id);
   }
-  const isAdmin = profile?.role === "ADMIN";
 
   // 関連記事を取得
   const relatedPosts = await getLatestPosts(4);
@@ -105,7 +101,7 @@ export default async function ArticleDetailPage({
               <span className="text-xs text-primary">プロフィールを見る →</span>
             </Link>
             <div className="flex items-center gap-2">
-              {(user?.id === post.provider_id || isAdmin) && (
+              {user?.id === post.provider_id && (
                 <Button variant="outline" size="sm" asChild>
                   <Link href={`/articles/${post.id}/edit`}>
                     <Pencil className="h-4 w-4 mr-1" />

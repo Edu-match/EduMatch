@@ -25,6 +25,7 @@ type Props = {
   totalPages: number;
   perPage: number;
   search: string;
+  isAdmin: boolean;
 };
 
 function formatEventDate(dateStr: string | null): string {
@@ -60,7 +61,7 @@ function DaysLabel({ dateStr }: { dateStr: string | null }) {
   return null;
 }
 
-export default function EventsClient({ events, total, page, totalPages, perPage, search }: Props) {
+export default function EventsClient({ events, total, page, totalPages, perPage, search, isAdmin }: Props) {
   const router = useRouter();
   const [inputValue, setInputValue] = useState(search);
   const [isPending, startTransition] = useTransition();
@@ -102,6 +103,13 @@ export default function EventsClient({ events, total, page, totalPages, perPage,
             </Link>
             からご連絡ください。
           </p>
+          {isAdmin && (
+            <div className="mt-4">
+              <Button asChild size="sm" variant="outline">
+                <Link href="/admin/events">セミナー・イベントを管理</Link>
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 

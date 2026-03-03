@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { getEvents } from "@/app/_actions/events";
+import { getCurrentUserRole } from "@/app/_actions/user";
 import EventsClient from "./events-client";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +18,8 @@ export default async function EventsPage({
 
   const { events, total, perPage } = await getEvents({ page, perPage: 20, search });
   const totalPages = Math.ceil(total / perPage);
+  const role = await getCurrentUserRole();
+  const isAdmin = role === "ADMIN";
 
   return (
     <Suspense>
@@ -27,6 +30,7 @@ export default async function EventsPage({
         totalPages={totalPages}
         perPage={perPage}
         search={search}
+        isAdmin={isAdmin}
       />
     </Suspense>
   );
