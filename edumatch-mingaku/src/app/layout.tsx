@@ -16,7 +16,10 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://edu-match.com";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "エデュマッチ - 教育の未来を見つける、つながる",
     template: "%s | エデュマッチ",
@@ -25,6 +28,24 @@ export const metadata: Metadata = {
     "教育現場とEdTechをつなぐマッチングプラットフォーム。最新の教育事例やEdTechツールを探せます。",
   icons: {
     icon: "/favicon.png",
+    apple: "/favicon.png",
+  },
+  openGraph: {
+    type: "website",
+    locale: "ja_JP",
+    url: SITE_URL,
+    siteName: "エデュマッチ",
+    title: "エデュマッチ - 教育の未来を見つける、つながる",
+    description:
+      "教育現場とEdTechをつなぐマッチングプラットフォーム。最新の教育事例やEdTechツールを探せます。",
+    images: [{ url: "/logo.png", width: 674, height: 176, alt: "エデュマッチロゴ" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "エデュマッチ - 教育の未来を見つける、つながる",
+    description:
+      "教育現場とEdTechをつなぐマッチングプラットフォーム。最新の教育事例やEdTechツールを探せます。",
+    images: ["/logo.png"],
   },
 };
 

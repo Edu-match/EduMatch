@@ -51,7 +51,7 @@ export default async function DashboardPage() {
 
   // 全ユーザー共通のマイページを表示
   const recentlyViewed = await getRecentViewHistory(user.id, 5);
-  const myReviews = await getMyReviews();
+  const myReviews = FEATURES.REVIEWS ? await getMyReviews() : [];
 
   const subscription = await getCurrentSubscription();
 
@@ -174,7 +174,8 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
 
-          {/* 自分の口コミ（確認・削除のみ） */}
+          {/* 自分の口コミ（FEATURES.REVIEWS が true のときのみ表示） */}
+          {FEATURES.REVIEWS && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -189,6 +190,7 @@ export default async function DashboardPage() {
               <MyReviewsCompact reviews={myReviews} />
             </CardContent>
           </Card>
+          )}
         </div>
 
         {/* サイドバー（プラン情報のみ・FEATURES.PAID_PLANS が true の場合のみ表示） */}

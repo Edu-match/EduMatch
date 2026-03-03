@@ -15,6 +15,7 @@ import { ShareButton } from "@/components/ui/share-button";
 import { ReviewSection } from "@/components/ui/review-section";
 import { getServiceReviews } from "@/app/_actions/reviews";
 import { serviceThumbnailPlaceholder } from "@/lib/utils";
+import { FEATURES } from "@/lib/features";
 
 export const dynamic = "force-dynamic";
 
@@ -44,8 +45,8 @@ export default async function ServiceDetailPage({
     await recordView(user.id, "SERVICE", id);
   }
 
-  // 口コミを取得
-  const reviews = await getServiceReviews(id);
+  // 口コミを取得（口コミ機能が有効な場合のみ）
+  const reviews = FEATURES.REVIEWS ? await getServiceReviews(id) : [];
 
   // 関連サービスを取得
   const relatedServices = await getPopularServices(4);
@@ -272,7 +273,8 @@ export default async function ServiceDetailPage({
               </CardContent>
             </Card>
 
-            {/* 口コミセクション */}
+            {/* 口コミセクション（FEATURES.REVIEWS が true のときのみ表示） */}
+            {FEATURES.REVIEWS && (
             <Card className="border-2 shadow-lg">
               <CardHeader className="bg-gradient-to-r from-yellow-50 to-background">
                 <CardTitle className="flex items-center gap-2">
@@ -291,6 +293,7 @@ export default async function ServiceDetailPage({
                 <ReviewSection serviceId={service.id} initialReviews={reviews} isLoggedIn={!!user} />
               </CardContent>
             </Card>
+            )}
           </div>
 
           {/* サイドバー（スティッキー） */}

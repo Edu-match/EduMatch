@@ -36,6 +36,9 @@ export type SubmitMaterialRequestBatchResult = {
   error?: string;
 };
 
+/** 資料請求があったときにエデュマッチ運営にも通知を送る宛先 */
+const EDUMATCH_NOTIFICATION_EMAIL = "info@edu-match.com";
+
 /**
  * 資料請求を送信し、サービス提供者にメール通知する
  */
@@ -82,7 +85,8 @@ export async function submitMaterialRequest(
       (provider as { notification_email_3?: string | null } | undefined)?.notification_email_3,
     ]
       .filter((e): e is string => typeof e === "string" && e.trim().length > 0);
-    const uniqueProviderEmails = [...new Set(providerEmails)];
+    // サービス提供者1〜3件 + エデュマッチ運営（重複除く）
+    const uniqueProviderEmails = [...new Set([...providerEmails, EDUMATCH_NOTIFICATION_EMAIL])];
 
     const apiKey = process.env.RESEND_API_KEY;
     

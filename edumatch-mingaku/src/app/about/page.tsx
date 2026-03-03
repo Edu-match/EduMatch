@@ -1,6 +1,13 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+
+export const metadata: Metadata = {
+  title: "運営について",
+  description:
+    "エデュマッチは教育現場と教育サービスをつなぐプラットフォームです。私たちは、教育現場が抱える課題を解決し、より良い教育環境の実現をサポートします。",
+};
 import {
   Building2,
   Users,

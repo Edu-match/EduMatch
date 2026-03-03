@@ -25,6 +25,7 @@ import { FavoritesCompact } from "@/components/dashboard/favorites-compact";
 import { MyReviewsCompact } from "@/components/dashboard/my-reviews-compact";
 import { getCurrentSubscription } from "@/app/_actions/subscription";
 import { getMyReviews } from "@/app/_actions/reviews";
+import { FEATURES } from "@/lib/features";
 
 // 閲覧時刻を「ついさっき」「〇分前」などで表示
 function formatViewedAt(viewedAt: Date): string {
@@ -50,7 +51,7 @@ export default async function MyPage() {
   const displayName = profile?.name ?? user.email?.split("@")[0] ?? "ユーザー";
 
   const recentlyViewed = await getRecentViewHistory(user.id, 5);
-  const myReviews = await getMyReviews();
+  const myReviews = FEATURES.REVIEWS ? await getMyReviews() : [];
 
   const notifications: { id: string; title: string; date: string; read: boolean }[] = [];
   const subscription = await getCurrentSubscription();
@@ -174,7 +175,8 @@ export default async function MyPage() {
             </CardContent>
           </Card>
 
-          {/* 自分の口コミ */}
+          {/* 自分の口コミ（FEATURES.REVIEWS が true のときのみ表示） */}
+          {FEATURES.REVIEWS && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -189,6 +191,7 @@ export default async function MyPage() {
               <MyReviewsCompact reviews={myReviews} />
             </CardContent>
           </Card>
+          )}
 
           {/* AIチャット履歴 */}
           <Card>

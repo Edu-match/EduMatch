@@ -9,4 +9,6 @@ export const FEATURES = {
   PAID_PLANS: false,
   /** 掲載登録ページ */
   LISTING_REGISTRATION: false,
+  /** 口コミ・レビュー機能（サービス詳細・マイページ・ダッシュボード） */
+  REVIEWS: false,
 } as const;
