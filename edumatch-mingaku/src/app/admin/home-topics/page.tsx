@@ -1,7 +1,5 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { format } from "date-fns";
-import { ja } from "date-fns/locale";
 import { getCurrentUserRole } from "@/app/_actions/user";
 import { getHomeTopicsPostsForAdmin, updateHomeNewsTabAction } from "@/app/_actions/home-topics";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -59,9 +57,11 @@ export default async function AdminHomeTopicsPage() {
                       {post.category && <span>カテゴリ: {post.category}</span>}
                       <span>
                         投稿日:{" "}
-                        {format(post.created_at, "yyyy/MM/dd", {
-                          locale: ja,
-                        })}
+                        {new Intl.DateTimeFormat("ja-JP", {
+                          year: "numeric",
+                          month: "2-digit",
+                          day: "2-digit",
+                        }).format(post.created_at)}
                       </span>
                     </div>
                   </div>
