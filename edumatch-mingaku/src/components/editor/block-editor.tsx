@@ -30,6 +30,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { contentToBlocks } from "@/lib/markdown-to-blocks";
+import { htmlToBlocks, looksLikeHtml } from "@/lib/html-to-blocks";
 
 export type BlockType =
   | "heading1"
@@ -209,7 +210,8 @@ export function BlockEditor({
       toast.error("貼り付けするテキストを入力してください");
       return;
     }
-    const pastedBlocks = contentToBlocks(text);
+    // HTML/CSS の場合は htmlToBlocks、それ以外は Markdown/プレーンテキストとして contentToBlocks
+    const pastedBlocks = looksLikeHtml(text) ? htmlToBlocks(text) : contentToBlocks(text);
     if (pastedBlocks.length === 0) {
       toast.error("ブロックに変換できる内容がありません");
       return;
@@ -635,12 +637,12 @@ export function BlockEditor({
           {bulkPasteOpen && (
             <div className="p-4 border-t bg-background space-y-3">
               <p className="text-xs text-muted-foreground">
-                Markdownやテキストを貼り付けると、見出し・リスト・段落などに自動変換されます。
+                プレーンテキスト、Markdown、HTML＋CSS を貼り付けると見出し・リスト・段落などに自動変換されます。
               </p>
               <Textarea
                 value={bulkPasteText}
                 onChange={(e) => setBulkPasteText(e.target.value)}
-                placeholder={"# 見出し\n## 中見出し\n- 箇条書き\n1. 番号付きリスト\n\n本文..."}
+                placeholder={"# Markdown見出し\n- 箇条書き\n\nまたは <h1>HTML</h1> <p>段落</p> など"}
                 className="min-h-[120px] font-mono text-sm"
                 onClick={(e) => e.stopPropagation()}
               />
