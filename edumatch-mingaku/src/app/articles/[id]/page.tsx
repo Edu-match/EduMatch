@@ -11,6 +11,8 @@ import { notFound } from "next/navigation";
 import { YouTubeEmbed } from "@/components/ui/youtube-embed";
 import { ArticleDetailActions } from "./article-detail-actions";
 import { ContentRenderer } from "@/components/ui/content-renderer";
+import { isImportedContent, parseImportedContent } from "@/lib/imported-content";
+import { ImportedContentRenderer } from "@/components/content/imported-content-renderer";
 import { ShareButton } from "@/components/ui/share-button";
 
 export const dynamic = "force-dynamic";
@@ -174,7 +176,18 @@ export default async function ArticleDetailPage({
 
         {/* 本文 */}
         <div className="prose prose-slate max-w-none mb-8">
-          <ContentRenderer content={post.content} />
+          {isImportedContent(post.content) ? (
+            (() => {
+              const parsed = parseImportedContent(post.content);
+              return parsed ? (
+                <ImportedContentRenderer type={parsed.type} content={parsed.raw} />
+              ) : (
+                <ContentRenderer content={post.content} />
+              );
+            })()
+          ) : (
+            <ContentRenderer content={post.content} />
+          )}
         </div>
 
         {/* 提供者情報 */}

@@ -11,8 +11,22 @@ type Props = {
   className?: string;
 };
 
-/** HTML をサニタイズして表示（style タグは許可） */
+/** 記事内にスタイルをスコープするためのベーススタイル（Shadow DOM用） */
+const SCOPED_BASE_STYLES = `
+  :host {
+    display: block;
+    font-family: inherit;
+    color: inherit;
+    font-size: inherit;
+    line-height: inherit;
+  }
+  :host a { color: var(--color-primary, #0ea5e9); }
+  :host img { max-width: 100%; height: auto; }
+`;
+
+/** HTML をサニタイズして表示（style タグは許可、Shadow DOM で記事内にのみスコープ） */
 function SafeHtml({ html, className }: { html: string; className?: string }) {
+  const hostRef = React.useRef<HTMLDivElement>(null);
   const sanitized = useMemo(() => {
     let s = html
       .replace(/<!--[\s\S]*?-->/g, "")
@@ -23,12 +37,28 @@ function SafeHtml({ html, className }: { html: string; className?: string }) {
       .replace(/javascript:/gi, "");
     return s;
   }, [html]);
-  return (
-    <div
-      className={className}
-      dangerouslySetInnerHTML={{ __html: sanitized }}
-    />
-  );
+
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host || !sanitized) return;
+    const shadow = host.shadowRoot ?? host.attachShadow({ mode: "open" });
+    shadow.innerHTML = `<style>${SCOPED_BASE_STYLES}</style><div class="article-import-content">${sanitized}</div>`;
+  }, [sanitized]);
+
+  return <div ref={hostRef} className={className} />;
+}
+
+/** CSS を Shadow DOM 内にのみ適用（記事ブロック内にスコープ） */
+function ScopedCss({ content, className }: { content: string; className?: string }) {
+  const hostRef = React.useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    const escapedCss = content.replace(/<\/style>/gi, "<\\/style>");
+    const shadow = host.shadowRoot ?? host.attachShadow({ mode: "open" });
+    shadow.innerHTML = `<style>${SCOPED_BASE_STYLES}</style><style>${escapedCss}</style><div class="article-import-content"><p class="scoped-css-message">CSS を読み込みました（このブロック内にのみ適用されます）</p></div>`;
+  }, [content]);
+  return <div ref={hostRef} className={className} />;
 }
 
 /** TSX をトランスパイルして実行（iframe で隔離、軽量） */
@@ -84,10 +114,7 @@ export function ImportedContentRenderer({ type, content, className }: Props) {
   }
   if (type === "css") {
     return (
-      <div className={className}>
-        <style dangerouslySetInnerHTML={{ __html: content }} />
-        <p className="text-sm text-muted-foreground">CSS を読み込みました（スタイルはページに適用されます）</p>
-      </div>
+      <ScopedCss content={content} className={className} />
     );
   }
   if (type === "md") {
