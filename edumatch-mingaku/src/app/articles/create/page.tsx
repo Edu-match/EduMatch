@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { BlockEditor, ContentBlock } from "@/components/editor/block-editor";
+import { renderInlineMarkdown } from "@/lib/inline-markdown";
 import {
   Eye,
   Save,
@@ -348,7 +349,7 @@ export default function ArticleCreatePage() {
                     className="text-3xl font-bold mt-8 mb-4"
                     style={{ textAlign: block.align }}
                   >
-                    {block.content}
+                    {renderInlineMarkdown(block.content)}
                   </h2>
                 );
               case "heading2":
@@ -358,7 +359,7 @@ export default function ArticleCreatePage() {
                     className="text-2xl font-bold mt-6 mb-3"
                     style={{ textAlign: block.align }}
                   >
-                    {block.content}
+                    {renderInlineMarkdown(block.content)}
                   </h3>
                 );
               case "heading3":
@@ -368,7 +369,7 @@ export default function ArticleCreatePage() {
                     className="text-xl font-semibold mt-4 mb-2"
                     style={{ textAlign: block.align }}
                   >
-                    {block.content}
+                    {renderInlineMarkdown(block.content)}
                   </h4>
                 );
               case "paragraph":
@@ -378,7 +379,7 @@ export default function ArticleCreatePage() {
                     className="mb-4 leading-relaxed"
                     style={{ textAlign: block.align }}
                   >
-                    {block.content}
+                    {renderInlineMarkdown(block.content)}
                   </p>
                 );
               case "image":
@@ -428,7 +429,7 @@ export default function ArticleCreatePage() {
                     key={block.id}
                     className="border-l-4 border-primary pl-4 my-6 italic"
                   >
-                    <p className="text-lg">{block.content}</p>
+                    <p className="text-lg">{renderInlineMarkdown(block.content)}</p>
                     {block.caption && (
                       <cite className="text-sm text-muted-foreground not-italic">
                         — {block.caption}
@@ -442,7 +443,7 @@ export default function ArticleCreatePage() {
                 return (
                   <ul key={block.id} className="list-disc pl-6 my-4 space-y-1">
                     {block.items?.map((item, i) => (
-                      <li key={i}>{item}</li>
+                      <li key={i}>{renderInlineMarkdown(item)}</li>
                     ))}
                   </ul>
                 );
@@ -450,7 +451,7 @@ export default function ArticleCreatePage() {
                 return (
                   <ol key={block.id} className="list-decimal pl-6 my-4 space-y-1">
                     {block.items?.map((item, i) => (
-                      <li key={i}>{item}</li>
+                      <li key={i}>{renderInlineMarkdown(item)}</li>
                     ))}
                   </ol>
                 );

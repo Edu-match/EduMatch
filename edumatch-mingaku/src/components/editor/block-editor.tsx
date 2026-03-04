@@ -28,6 +28,8 @@ import {
   Minus,
   ClipboardPaste,
   ChevronRight,
+  Bold,
+  Italic,
 } from "lucide-react";
 import { contentToBlocks } from "@/lib/markdown-to-blocks";
 import { htmlToBlocks, looksLikeHtml } from "@/lib/html-to-blocks";
@@ -95,6 +97,7 @@ export function BlockEditor({
   const [bulkPasteOpen, setBulkPasteOpen] = useState(false);
   const [bulkPasteText, setBulkPasteText] = useState("");
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const textInputRefs = useRef<Record<string, HTMLInputElement | HTMLTextAreaElement | null>>({});
   
   // 全体の文字数を計算
   const calculateTotalLength = useCallback((blocksToCheck: ContentBlock[]) => {
@@ -202,6 +205,54 @@ export function BlockEditor({
       }
     },
     [blocks, onChange]
+  );
+
+  /** 選択範囲に太字・斜体を適用（onMouseDown でボタンクリック時にフォーカスを維持） */
+  const applyFormat = useCallback(
+    (blockId: string, wrapper: "**" | "*", itemIndex?: number) => {
+      let refKey = blockId;
+      let targetItemIndex: number | undefined = itemIndex;
+      const block = blocks.find((b) => b.id === blockId);
+      if (block?.items && itemIndex === undefined) {
+        for (let i = 0; i < block.items.length; i++) {
+          const k = `${blockId}-${i}`;
+          if (textInputRefs.current[k] === document.activeElement) {
+            refKey = k;
+            targetItemIndex = i;
+            break;
+          }
+        }
+      } else if (itemIndex !== undefined) {
+        refKey = `${blockId}-${itemIndex}`;
+      }
+      const el = textInputRefs.current[refKey] ?? textInputRefs.current[blockId];
+      if (!el) return;
+      const start = el.selectionStart ?? 0;
+      const end = el.selectionEnd ?? 0;
+      if (start === end) return; // 選択なし
+      const val = el.value;
+      const before = val.slice(0, start);
+      const selected = val.slice(start, end);
+      const after = val.slice(end);
+      const newContent = before + wrapper + selected + wrapper + after;
+      if (targetItemIndex !== undefined && block?.items) {
+        const newItems = [...block.items];
+        newItems[targetItemIndex] = newContent;
+        updateBlock(blockId, { items: newItems });
+      } else {
+        updateBlock(blockId, { content: newContent });
+      }
+      requestAnimationFrame(() => {
+        const newEl = textInputRefs.current[refKey];
+        if (newEl) {
+          newEl.focus();
+          const newStart = start + wrapper.length;
+          const newEnd = end + wrapper.length;
+          newEl.setSelectionRange(newStart, newEnd);
+        }
+      });
+    },
+    [blocks, updateBlock]
   );
 
   const handleBulkPaste = useCallback(() => {
@@ -314,6 +365,7 @@ export function BlockEditor({
         return (
           <div className="flex items-center gap-2">
             <input
+              ref={(el) => { textInputRefs.current[block.id] = el; }}
               type="text"
               value={block.content}
               onChange={(e) => updateBlock(block.id, { content: e.target.value })}
@@ -330,6 +382,7 @@ export function BlockEditor({
         return (
           <div className="flex items-center gap-2">
             <input
+              ref={(el) => { textInputRefs.current[block.id] = el; }}
               type="text"
               value={block.content}
               onChange={(e) => updateBlock(block.id, { content: e.target.value })}
@@ -346,6 +399,7 @@ export function BlockEditor({
         return (
           <div className="flex items-center gap-2">
             <input
+              ref={(el) => { textInputRefs.current[block.id] = el; }}
               type="text"
               value={block.content}
               onChange={(e) => updateBlock(block.id, { content: e.target.value })}
@@ -362,6 +416,7 @@ export function BlockEditor({
         return (
           <div className="relative">
             <Textarea
+              ref={(el) => { textInputRefs.current[block.id] = el; }}
               value={block.content}
               onChange={(e) => updateBlock(block.id, { content: e.target.value })}
               onBlur={(e) => tryAutoConvertParagraph(block, e.target.value)}
@@ -546,6 +601,7 @@ export function BlockEditor({
           <div className="border-l-4 border-primary pl-4 py-2">
             <div className="relative">
               <Textarea
+                ref={(el) => { textInputRefs.current[block.id] = el; }}
                 value={block.content}
                 onChange={(e) => updateBlock(block.id, { content: e.target.value })}
                 onClick={(e) => e.stopPropagation()}
@@ -577,6 +633,7 @@ export function BlockEditor({
                   {block.type === "numberedList" ? `${itemIndex + 1}.` : "•"}
                 </span>
                 <Input
+                  ref={(el) => { textInputRefs.current[`${block.id}-${itemIndex}`] = el; }}
                   value={item}
                   onChange={(e) => {
                     const newItems = [...(block.items || [""])];
@@ -728,6 +785,34 @@ export function BlockEditor({
                   {blockTypeLabels[block.type]}
                 </span>
                 
+                {/* 太字・斜体（選択範囲に適用、onMouseDownでフォーカス維持） */}
+                {["heading1", "heading2", "heading3", "paragraph", "quote", "bulletList", "numberedList"].includes(block.type) && (
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      title="太字"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        applyFormat(block.id, "**");
+                      }}
+                    >
+                      <Bold className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      title="斜体"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        applyFormat(block.id, "*");
+                      }}
+                    >
+                      <Italic className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+
                 {/* Alignment controls for text blocks */}
                 {["heading1", "heading2", "heading3", "paragraph"].includes(block.type) && (
                   <div className="flex items-center gap-1 ml-auto">

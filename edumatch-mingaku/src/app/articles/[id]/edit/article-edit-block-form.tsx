@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { BlockEditor, ContentBlock } from "@/components/editor/block-editor";
+import { renderInlineMarkdown } from "@/lib/inline-markdown";
 import {
   Eye,
   Save,
@@ -216,13 +217,13 @@ export function ArticleEditBlockForm({ articleId, initialData }: ArticleEditBloc
         {blocks.map((block) => {
           switch (block.type) {
             case "heading1":
-              return <h2 key={block.id} className="text-3xl font-bold mt-8 mb-4">{block.content}</h2>;
+              return <h2 key={block.id} className="text-3xl font-bold mt-8 mb-4">{renderInlineMarkdown(block.content)}</h2>;
             case "heading2":
-              return <h3 key={block.id} className="text-2xl font-bold mt-6 mb-3">{block.content}</h3>;
+              return <h3 key={block.id} className="text-2xl font-bold mt-6 mb-3">{renderInlineMarkdown(block.content)}</h3>;
             case "heading3":
-              return <h4 key={block.id} className="text-xl font-semibold mt-4 mb-2">{block.content}</h4>;
+              return <h4 key={block.id} className="text-xl font-semibold mt-4 mb-2">{renderInlineMarkdown(block.content)}</h4>;
             case "paragraph":
-              return <p key={block.id} className="mb-4 leading-relaxed">{block.content}</p>;
+              return <p key={block.id} className="mb-4 leading-relaxed">{renderInlineMarkdown(block.content)}</p>;
             case "image":
               return block.url ? (
                 <figure key={block.id} className="my-8">
@@ -244,19 +245,19 @@ export function ArticleEditBlockForm({ articleId, initialData }: ArticleEditBloc
                 </figure>
               ) : null;
             case "quote":
-              return <blockquote key={block.id} className="border-l-4 border-primary pl-4 my-6 italic"><p className="text-lg">{block.content}</p></blockquote>;
+              return <blockquote key={block.id} className="border-l-4 border-primary pl-4 my-6 italic"><p className="text-lg">{renderInlineMarkdown(block.content)}</p></blockquote>;
             case "divider":
               return <hr key={block.id} className="my-8 border-t-2" />;
             case "bulletList":
               return (
                 <ul key={block.id} className="list-disc pl-6 my-4 space-y-1">
-                  {block.items?.map((item, i) => <li key={i}>{item}</li>)}
+                  {block.items?.map((item, i) => <li key={i}>{renderInlineMarkdown(item)}</li>)}
                 </ul>
               );
             case "numberedList":
               return (
                 <ol key={block.id} className="list-decimal pl-6 my-4 space-y-1">
-                  {block.items?.map((item, i) => <li key={i}>{item}</li>)}
+                  {block.items?.map((item, i) => <li key={i}>{renderInlineMarkdown(item)}</li>)}
                 </ol>
               );
             default:

@@ -1,8 +1,10 @@
 "use client";
 
+import React from "react";
 import Image from "next/image";
 import { useMemo } from "react";
 import { sanitizeHtml, looksLikeHtml } from "@/lib/sanitize-html";
+import { renderInlineMarkdown } from "@/lib/inline-markdown";
 import { YouTubeEmbed } from "./youtube-embed";
 
 type ContentBlock = {
@@ -152,7 +154,7 @@ function MarkdownLikeContent({ text }: { text: string }) {
           key={`md-${keyIndex++}`}
           className="mt-6 mb-2 text-lg font-semibold text-foreground scroll-mt-20"
         >
-          {trimmed.slice(4)}
+          {renderInlineMarkdown(trimmed.slice(4))}
         </h3>
       );
       i += 1;
@@ -164,7 +166,7 @@ function MarkdownLikeContent({ text }: { text: string }) {
           key={`md-${keyIndex++}`}
           className="mt-8 mb-3 text-xl font-semibold text-foreground scroll-mt-20 border-b border-border/60 pb-1"
         >
-          {trimmed.slice(3)}
+          {renderInlineMarkdown(trimmed.slice(3))}
         </h2>
       );
       i += 1;
@@ -176,7 +178,7 @@ function MarkdownLikeContent({ text }: { text: string }) {
           key={`md-${keyIndex++}`}
           className="mt-8 mb-3 text-2xl font-bold text-foreground scroll-mt-20"
         >
-          {trimmed.slice(2)}
+          {renderInlineMarkdown(trimmed.slice(2))}
         </h1>
       );
       i += 1;
@@ -214,16 +216,22 @@ function MarkdownLikeContent({ text }: { text: string }) {
             key={`md-${keyIndex++}`}
             className="mt-6 mb-2 text-lg font-semibold text-foreground scroll-mt-20"
           >
-            {singleLine}
+            {renderInlineMarkdown(singleLine)}
           </h3>
         );
       } else {
+        const paraText = paragraphLines.join("\n");
         nodes.push(
           <p
             key={`md-${keyIndex++}`}
             className="text-base text-foreground leading-relaxed mb-4 last:mb-0"
           >
-            {paragraphLines.join("\n")}
+            {paraText.split("\n").map((line, i) => (
+              <React.Fragment key={i}>
+                {i > 0 && <br />}
+                {renderInlineMarkdown(line)}
+              </React.Fragment>
+            ))}
           </p>
         );
       }
