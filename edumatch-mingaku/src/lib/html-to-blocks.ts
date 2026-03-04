@@ -211,6 +211,46 @@ export function htmlToBlocks(html: string): ContentBlock[] {
 }
 
 /**
+ * TSX/JSX を HTML 風に変換（DOMParser がパースできるように）
+ * - { ... } を空白に置換
+ * - className → class
+ */
+export function preprocessTsxForHtml(tsx: string): string {
+  let s = tsx;
+  // import ... を除去
+  s = s.replace(/import\s+.*?from\s+['"].*?['"]\s*;?\s*/g, "");
+  // export を除去
+  s = s.replace(/export\s+(default\s+)?/g, "");
+  // { ... } を空白に置換（ネスト対応）
+  const parts: string[] = [];
+  let i = 0;
+  while (i < s.length) {
+    if (s[i] === "{") {
+      let depth = 1;
+      const start = i;
+      i++;
+      while (i < s.length && depth > 0) {
+        if (s[i] === "{") depth++;
+        else if (s[i] === "}") depth--;
+        i++;
+      }
+      parts.push(" ".repeat(i - start));
+    } else {
+      parts.push(s[i]);
+      i++;
+    }
+  }
+  s = parts.join("");
+  // className= を class= に
+  s = s.replace(/\bclassName=/g, "class=");
+  // 複数行コメント除去
+  s = s.replace(/\/\*[\s\S]*?\*\//g, "");
+  // 単行コメント除去
+  s = s.replace(/\/\/[^\n]*/g, "");
+  return s;
+}
+
+/**
  * テキストがHTMLと判断できるか（< で始まる、またはタグらしきパターンを含む）
  */
 export function looksLikeHtml(text: string): boolean {

@@ -30,9 +30,10 @@ import {
   ChevronRight,
   Bold,
   Italic,
+  FileUp,
 } from "lucide-react";
 import { contentToBlocks } from "@/lib/markdown-to-blocks";
-import { htmlToBlocks, looksLikeHtml } from "@/lib/html-to-blocks";
+import { htmlToBlocks, preprocessTsxForHtml } from "@/lib/html-to-blocks";
 
 export type BlockType =
   | "heading1"
@@ -97,6 +98,7 @@ export function BlockEditor({
   const [bulkPasteOpen, setBulkPasteOpen] = useState(false);
   const [bulkPasteText, setBulkPasteText] = useState("");
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const htmlImportInputRef = useRef<HTMLInputElement | null>(null);
   const textInputRefs = useRef<Record<string, HTMLInputElement | HTMLTextAreaElement | null>>({});
   
   // 全体の文字数を計算
@@ -261,8 +263,8 @@ export function BlockEditor({
       toast.error("貼り付けするテキストを入力してください");
       return;
     }
-    // HTML/CSS の場合は htmlToBlocks、それ以外は Markdown/プレーンテキストとして contentToBlocks
-    const pastedBlocks = looksLikeHtml(text) ? htmlToBlocks(text) : contentToBlocks(text);
+    // Markdown/プレーンテキストとして contentToBlocks（HTMLはファイルインポートで）
+    const pastedBlocks = contentToBlocks(text);
     if (pastedBlocks.length === 0) {
       toast.error("ブロックに変換できる内容がありません");
       return;
@@ -277,6 +279,40 @@ export function BlockEditor({
     setBulkPasteOpen(false);
     toast.success(`${pastedBlocks.length}件のブロックを追加しました`);
   }, [bulkPasteText, blocks, onChange, maxLength, calculateTotalLength]);
+
+  const handleHtmlFileImport = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const ext = file.name.toLowerCase().split(".").pop();
+      if (ext !== "html" && ext !== "tsx" && ext !== "jsx") {
+        toast.error(".html / .tsx / .jsx ファイルを選択してください");
+        e.target.value = "";
+        return;
+      }
+      try {
+        const text = await file.text();
+        const processed = ext === "html" ? text : preprocessTsxForHtml(text);
+        const importedBlocks = htmlToBlocks(processed);
+        if (importedBlocks.length === 0) {
+          toast.error("ブロックに変換できる内容がありません");
+        } else {
+          const newBlocks = blocks.length === 0 ? importedBlocks : [...blocks, ...importedBlocks];
+          if (maxLength !== undefined && calculateTotalLength(newBlocks) > maxLength) {
+            toast.error(`文字数が上限（${maxLength.toLocaleString()}文字）を超えます`);
+          } else {
+            onChange(newBlocks);
+            toast.success(`${importedBlocks.length}件のブロックをインポートしました`);
+          }
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error("ファイルの読み込みに失敗しました");
+      }
+      e.target.value = "";
+    },
+    [blocks, onChange, maxLength, calculateTotalLength]
+  );
 
   /** 段落ブロックの内容がMarkdown形式なら自動変換 */
   const tryAutoConvertParagraph = useCallback(
@@ -692,21 +728,47 @@ export function BlockEditor({
             )}
           </button>
           {bulkPasteOpen && (
-            <div className="p-4 border-t bg-background space-y-3">
-              <p className="text-xs text-muted-foreground">
-                プレーンテキスト、Markdown、HTML＋CSS を貼り付けると見出し・リスト・段落などに自動変換されます。
-              </p>
-              <Textarea
-                value={bulkPasteText}
-                onChange={(e) => setBulkPasteText(e.target.value)}
-                placeholder={"# Markdown見出し\n- 箇条書き\n\nまたは <h1>HTML</h1> <p>段落</p> など"}
-                className="min-h-[120px] font-mono text-sm"
-                onClick={(e) => e.stopPropagation()}
-              />
-              <Button type="button" size="sm" onClick={handleBulkPaste}>
-                <ClipboardPaste className="h-4 w-4 mr-2" />
-                一括貼り付けして追加
-              </Button>
+            <div className="p-4 border-t bg-background space-y-4">
+              {/* 一括貼り付け（Markdown/プレーンテキスト） */}
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  プレーンテキスト、Markdown を貼り付けると見出し・リスト・段落などに自動変換されます。
+                </p>
+                <Textarea
+                  value={bulkPasteText}
+                  onChange={(e) => setBulkPasteText(e.target.value)}
+                  placeholder={"# Markdown見出し\n- 箇条書き\n1. 番号付きリスト\n\n本文..."}
+                  className="min-h-[100px] font-mono text-sm"
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <Button type="button" size="sm" onClick={handleBulkPaste}>
+                  <ClipboardPaste className="h-4 w-4 mr-2" />
+                  一括貼り付けして追加
+                </Button>
+              </div>
+
+              {/* ファイルインポート（HTML/TSX） */}
+              <div className="space-y-2 pt-3 border-t">
+                <p className="text-xs text-muted-foreground">
+                  .html または .tsx ファイルをインポートできます。
+                </p>
+                <input
+                  ref={htmlImportInputRef}
+                  type="file"
+                  accept=".html,.tsx,.jsx"
+                  className="hidden"
+                  onChange={handleHtmlFileImport}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => htmlImportInputRef.current?.click()}
+                >
+                  <FileUp className="h-4 w-4 mr-2" />
+                  ファイルを選択してインポート
+                </Button>
+              </div>
             </div>
           )}
         </div>
