@@ -53,7 +53,7 @@ async function revalidatePaths() {
   revalidatePath("/services");
   revalidatePath("/companies");
   revalidatePath("/articles");
-  revalidateTag("public-services");
+  revalidateTag("public-services", "max");
 }
 
 export async function GET(request: NextRequest) {
