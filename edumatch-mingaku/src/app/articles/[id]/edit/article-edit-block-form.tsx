@@ -16,8 +16,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { BlockEditor, ContentBlock } from "@/components/editor/block-editor";
+import { ContentEditorWithImport } from "@/components/content/content-editor-with-import";
+import type { ContentBlock } from "@/components/editor/block-editor";
 import { renderInlineMarkdown } from "@/lib/inline-markdown";
+import { contentToBlocks } from "@/lib/markdown-to-blocks";
+import { blocksToArticleContent, stripLeadText } from "@/lib/article-content";
+import { isImportedContent, parseImportedContent } from "@/lib/imported-content";
+import { ImportedContentRenderer } from "@/components/content/imported-content-renderer";
+import ReactMarkdown from "react-markdown";
 import {
   Eye,
   Save,
@@ -39,7 +45,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { updatePost, uploadImage, deleteArticle } from "@/app/_actions";
-import { contentToBlocks } from "@/lib/markdown-to-blocks";
 import { SHARED_CATEGORIES } from "@/lib/categories";
 
 const TITLE_MAX_LENGTH = 80;
@@ -98,14 +103,10 @@ export function ArticleEditBlockForm({ articleId, initialData }: ArticleEditBloc
   const [thumbnailUrl, setThumbnailUrl] = useState(initialData.thumbnail_url || "");
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
   const thumbnailFileInputRef = useRef<HTMLInputElement | null>(null);
-  const [blocks, setBlocks] = useState<ContentBlock[]>(() => {
-    const parsed = contentToBlocks(initialData.content || "");
-    // 先頭の段落が summary（リード文）と一致する場合はブロックから除外（重複防止）
-    const summary = (initialData.summary || "").trim();
-    if (summary && parsed[0]?.type === "paragraph" && parsed[0].content?.trim() === summary) {
-      return parsed.slice(1).length > 0 ? parsed.slice(1) : [{ id: "init", type: "paragraph", content: "" }];
-    }
-    return parsed.length > 0 ? parsed : [{ id: "init", type: "paragraph", content: "" }];
+  const [content, setContent] = useState<string>(() => {
+    const raw = initialData.content || "";
+    if (isImportedContent(raw)) return raw;
+    return stripLeadText(raw, initialData.summary || "");
   });
   const [userProfile, setUserProfile] = useState<{ name: string; avatar_url: string | null; email: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -132,14 +133,10 @@ export function ArticleEditBlockForm({ articleId, initialData }: ArticleEditBloc
   }, []);
 
   const titleLength = title.length;
-  const contentLength = blocks.reduce((acc, block) => {
-    if (block.content) return acc + block.content.length;
-    if (block.items) return acc + block.items.join("").length;
-    return acc;
-  }, 0);
+  const contentLength = content.length;
   const isTitleValid = titleLength <= TITLE_MAX_LENGTH;
   const isContentValid = contentLength <= CONTENT_MAX_LENGTH;
-  const canSubmit = isTitleValid && isContentValid && title.trim().length > 0 && blocks.length > 0;
+  const canSubmit = isTitleValid && isContentValid && title.trim().length > 0 && content.trim().length > 0;
 
   const handleUpdate = async () => {
     if (!title.trim()) {
@@ -159,7 +156,9 @@ export function ArticleEditBlockForm({ articleId, initialData }: ArticleEditBloc
         tags,
         publishType,
         thumbnailUrl,
-        blocks: blocks as Parameters<typeof updatePost>[1]["blocks"],
+        ...(isImportedContent(content)
+          ? { content }
+          : { blocks: contentToBlocks(content) as Parameters<typeof updatePost>[1]["blocks"] }),
       });
       if (result.success) {
         toast.success("記事を更新しました");
@@ -214,7 +213,16 @@ export function ArticleEditBlockForm({ articleId, initialData }: ArticleEditBloc
         <p className="text-lg text-muted-foreground mb-8 leading-relaxed">{leadText}</p>
       )}
       <div className="prose prose-lg max-w-none">
-        {blocks.map((block) => {
+        {isImportedContent(content) ? (
+          (() => {
+            const parsed = parseImportedContent(content);
+            return parsed ? (
+              <ImportedContentRenderer type={parsed.type} content={parsed.raw} />
+            ) : null;
+          })()
+        ) : (
+        <>
+        {contentToBlocks(content).map((block) => {
           switch (block.type) {
             case "heading1":
               return <h2 key={block.id} className="text-3xl font-bold mt-8 mb-4">{renderInlineMarkdown(block.content)}</h2>;
@@ -260,10 +268,18 @@ export function ArticleEditBlockForm({ articleId, initialData }: ArticleEditBloc
                   {block.items?.map((item, i) => <li key={i}>{renderInlineMarkdown(item)}</li>)}
                 </ol>
               );
+            case "markdown":
+              return (
+                <div key={block.id} className="my-4">
+                  <ReactMarkdown>{block.content}</ReactMarkdown>
+                </div>
+              );
             default:
               return null;
           }
         })}
+        </>
+        )}
       </div>
     </div>
   );
@@ -396,7 +412,13 @@ export function ArticleEditBlockForm({ articleId, initialData }: ArticleEditBloc
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <BlockEditor blocks={blocks} onChange={setBlocks} maxLength={CONTENT_MAX_LENGTH} />
+                    <ContentEditorWithImport
+                      content={content}
+                      onChange={setContent}
+                      parseToBlocks={(c) => contentToBlocks(c)}
+                      blocksToContent={(b) => blocksToArticleContent(b, "")}
+                      maxLength={CONTENT_MAX_LENGTH}
+                    />
                   </CardContent>
                 </Card>
               </TabsContent>

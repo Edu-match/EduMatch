@@ -18,6 +18,7 @@ import {
   Globe,
   ArrowRight,
 } from "lucide-react";
+import { OPERATOR_INFO } from "@/lib/operator-info";
 
 const values = [
   {
@@ -100,12 +101,15 @@ export default function AboutPage() {
                 <div className="flex items-start gap-3">
                   <Building2 className="h-5 w-5 text-primary mt-0.5" />
                   <div>
-                    <p className="font-medium">運営者名</p>
+                    <p className="font-medium">{OPERATOR_INFO.sectionTitle}</p>
                     <p className="text-muted-foreground">
-                      主催：一般社団法人教育AI活用協会
+                      主催：{OPERATOR_INFO.organizer}
                     </p>
                     <p className="text-muted-foreground">
-                      運営：株式会社スタディパーク
+                      運営：{OPERATOR_INFO.operator}
+                    </p>
+                    <p className="text-muted-foreground">
+                      設立年は、{OPERATOR_INFO.established}
                     </p>
                   </div>
                 </div>
@@ -136,13 +140,6 @@ export default function AboutPage() {
                   <div>
                     <p className="font-medium">メールアドレス</p>
                     <p className="text-muted-foreground">info@edu-match.com</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Globe className="h-5 w-5 text-primary mt-0.5" />
-                  <div>
-                    <p className="font-medium">設立</p>
-                    <p className="text-muted-foreground">2023年2月17日</p>
                   </div>
                 </div>
               </div>

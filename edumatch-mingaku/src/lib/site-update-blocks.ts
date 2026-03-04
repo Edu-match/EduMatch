@@ -4,7 +4,7 @@
 
 export type SiteUpdateContentBlock = {
   id: string;
-  type: "heading1" | "heading2" | "heading3" | "paragraph" | "image" | "video" | "quote" | "divider" | "list" | "ordered-list" | "bulletList" | "numberedList";
+  type: "heading1" | "heading2" | "heading3" | "paragraph" | "image" | "video" | "quote" | "divider" | "list" | "ordered-list" | "bulletList" | "numberedList" | "markdown";
   content: string;
   align?: "left" | "center" | "right";
   url?: string;
@@ -85,4 +85,50 @@ export function bodyToBlocks(body: string): SiteUpdateContentBlock[] {
     i++;
   }
   return blocks;
+}
+
+export function blocksToBody(blocks: SiteUpdateContentBlock[]): string {
+  const parts: string[] = [];
+  for (const block of blocks) {
+    const t = block.type === "bulletList" ? "list" : block.type === "numberedList" ? "ordered-list" : block.type;
+    switch (t) {
+      case "heading1":
+        parts.push(`# ${block.content}`);
+        break;
+      case "heading2":
+        parts.push(`## ${block.content}`);
+        break;
+      case "heading3":
+        parts.push(`### ${block.content}`);
+        break;
+      case "paragraph":
+        parts.push(block.content);
+        break;
+      case "quote":
+        parts.push(`> ${block.content}`);
+        break;
+      case "list":
+        block.items?.forEach((item) => parts.push(`- ${item}`));
+        break;
+      case "ordered-list":
+        block.items?.forEach((item, i) => parts.push(`${i + 1}. ${item}`));
+        break;
+      case "image":
+        if (block.url) parts.push(`![${block.caption || "画像"}](${block.url})`);
+        break;
+      case "video":
+        if (block.url) parts.push(`[動画](${block.url})`);
+        break;
+      case "divider":
+        parts.push("---");
+        break;
+      case "markdown":
+        parts.push(block.content);
+        break;
+      default:
+        break;
+    }
+    parts.push("");
+  }
+  return parts.join("\n").trimEnd();
 }

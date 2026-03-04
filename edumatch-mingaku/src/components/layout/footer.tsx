@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { OPERATOR_INFO } from "@/lib/operator-info";
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -88,7 +89,7 @@ export function Footer() {
         {/* Copyright */}
         <div className="mt-12 border-t pt-8">
           <p className="text-center text-sm text-muted-foreground">
-            © {currentYear} エデュマッチ（株式会社スタディパーク）. All rights reserved.
+            © {currentYear} エデュマッチ（主催：{OPERATOR_INFO.organizer} / 運営：{OPERATOR_INFO.operator}）. All rights reserved.
           </p>
         </div>
       </div>

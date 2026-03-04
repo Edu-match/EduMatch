@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { isImportedContent } from "@/lib/imported-content";
 import { createClient } from "@/utils/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { sortServicesByDisplayOrder } from "@/lib/service-display-order";
@@ -12,7 +13,7 @@ export type ServiceWithProvider = Service & {
 
 export type ContentBlock = {
   id: string;
-  type: "heading1" | "heading2" | "heading3" | "paragraph" | "image" | "video" | "quote" | "divider" | "list" | "ordered-list";
+  type: "heading1" | "heading2" | "heading3" | "paragraph" | "image" | "video" | "quote" | "divider" | "list" | "ordered-list" | "markdown";
   content: string;
   align?: "left" | "center" | "right";
   url?: string;
@@ -27,7 +28,8 @@ export type CreateServiceInput = {
   priceInfo: string;
   youtubeUrl?: string;
   thumbnailUrl: string;
-  blocks: ContentBlock[];
+  blocks?: ContentBlock[];
+  content?: string;
   publishType: "draft" | "submit";
 };
 
@@ -67,6 +69,9 @@ function blocksToContent(blocks: ContentBlock[]): string {
         break;
       case "divider":
         parts.push("---");
+        break;
+      case "markdown":
+        parts.push(block.content);
         break;
     }
     parts.push("");
@@ -525,8 +530,11 @@ export async function createService(input: CreateServiceInput): Promise<CreateSe
 
     const status = input.publishType === "draft" ? "DRAFT" : "PENDING";
     const now = new Date();
-    const content = blocksToContent(input.blocks);
-    const images = extractImagesFromBlocks(input.blocks);
+    const content =
+      input.content != null && isImportedContent(input.content)
+        ? input.content
+        : blocksToContent(input.blocks ?? []);
+    const images = input.blocks != null ? extractImagesFromBlocks(input.blocks) : [];
 
     const service = await prisma.service.create({
       data: {

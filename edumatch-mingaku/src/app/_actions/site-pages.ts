@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import type { ContentBlock } from "@/components/editor/block-editor";
 import { blocksToMarkdown } from "@/lib/markdown-to-blocks";
 import { contentToBlocks } from "@/lib/markdown-to-blocks";
+import { isImportedContent } from "@/lib/imported-content";
 
 export type SitePageKey = "terms" | "privacy" | "service_content";
 
@@ -54,6 +55,18 @@ export async function updateSitePageBlocks(
   title?: string
 ) {
   const body = blocksToMarkdown(blocks);
+  const page = await getSitePage(key);
+  const newTitle = title ?? page.title;
+  return upsertSitePage(key, { title: newTitle, body });
+}
+
+export async function updateSitePageContent(
+  key: SitePageKey,
+  content: string,
+  title?: string
+) {
+  const body =
+    isImportedContent(content) ? content : blocksToMarkdown(contentToBlocks(content));
   const page = await getSitePage(key);
   const newTitle = title ?? page.title;
   return upsertSitePage(key, { title: newTitle, body });

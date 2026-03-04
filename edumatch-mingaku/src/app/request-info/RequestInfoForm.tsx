@@ -72,12 +72,16 @@ export function RequestInfoForm(props: Props) {
       setError("メールアドレスを入力してください");
       return;
     }
+    if (!deliveryOrganization.trim()) {
+      setError("塾名・学校名等を入力してください");
+      return;
+    }
 
     setSubmitting(true);
     const base = {
       deliveryName: deliveryName.trim(),
       deliveryEmail: deliveryEmail.trim(),
-      deliveryOrganization: deliveryOrganization?.trim() || null,
+      deliveryOrganization: deliveryOrganization.trim(),
       deliveryPhone: deliveryPhone || null,
       message: message || null,
     };
@@ -170,8 +174,9 @@ export function RequestInfoForm(props: Props) {
                 />
               </div>
               <div className="space-y-2">
-                <label className="block text-sm font-medium mb-2">塾名・学校名（任意）</label>
+                <label className="block text-sm font-medium mb-2">塾名・学校名等 <span className="text-red-500">*</span></label>
                 <Input
+                  required
                   value={deliveryOrganization}
                   onChange={(e) => setDeliveryOrganization(e.target.value)}
                   placeholder="○○中学校、○○塾など"

@@ -30,10 +30,10 @@ import {
   ChevronRight,
   Bold,
   Italic,
-  FileUp,
+  FileText,
 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import { contentToBlocks } from "@/lib/markdown-to-blocks";
-import { htmlToBlocks, preprocessTsxForHtml } from "@/lib/html-to-blocks";
 
 export type BlockType =
   | "heading1"
@@ -45,7 +45,8 @@ export type BlockType =
   | "quote"
   | "divider"
   | "bulletList"
-  | "numberedList";
+  | "numberedList"
+  | "markdown";
 
 export type TextAlign = "left" | "center" | "right";
 
@@ -82,6 +83,7 @@ const blockTypeLabels: Record<BlockType, string> = {
   divider: "区切り線",
   bulletList: "箇条書き",
   numberedList: "番号付きリスト",
+  markdown: "Markdown",
 };
 
 export function BlockEditor({
@@ -98,7 +100,6 @@ export function BlockEditor({
   const [bulkPasteOpen, setBulkPasteOpen] = useState(false);
   const [bulkPasteText, setBulkPasteText] = useState("");
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
-  const htmlImportInputRef = useRef<HTMLInputElement | null>(null);
   const textInputRefs = useRef<Record<string, HTMLInputElement | HTMLTextAreaElement | null>>({});
   
   // 全体の文字数を計算
@@ -263,13 +264,13 @@ export function BlockEditor({
       toast.error("貼り付けするテキストを入力してください");
       return;
     }
-    // Markdown/プレーンテキストとして contentToBlocks（HTMLはファイルインポートで）
-    const pastedBlocks = contentToBlocks(text);
-    if (pastedBlocks.length === 0) {
-      toast.error("ブロックに変換できる内容がありません");
-      return;
-    }
-    const newBlocks = blocks.length === 0 ? pastedBlocks : [...blocks, ...pastedBlocks];
+    // Markdown はブロック変換せず、1つの markdown ブロックとしてそのまま表示
+    const markdownBlock: ContentBlock = {
+      id: generateId(),
+      type: "markdown",
+      content: text,
+    };
+    const newBlocks = blocks.length === 0 ? [markdownBlock] : [...blocks, markdownBlock];
     if (maxLength !== undefined && calculateTotalLength(newBlocks) > maxLength) {
       toast.error(`文字数が上限（${maxLength.toLocaleString()}文字）を超えます`);
       return;
@@ -277,42 +278,8 @@ export function BlockEditor({
     onChange(newBlocks);
     setBulkPasteText("");
     setBulkPasteOpen(false);
-    toast.success(`${pastedBlocks.length}件のブロックを追加しました`);
+    toast.success("Markdown を1ブロックで追加しました");
   }, [bulkPasteText, blocks, onChange, maxLength, calculateTotalLength]);
-
-  const handleHtmlFileImport = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      const ext = file.name.toLowerCase().split(".").pop();
-      if (ext !== "html" && ext !== "tsx" && ext !== "jsx") {
-        toast.error(".html / .tsx / .jsx ファイルを選択してください");
-        e.target.value = "";
-        return;
-      }
-      try {
-        const text = await file.text();
-        const processed = ext === "html" ? text : preprocessTsxForHtml(text);
-        const importedBlocks = htmlToBlocks(processed);
-        if (importedBlocks.length === 0) {
-          toast.error("ブロックに変換できる内容がありません");
-        } else {
-          const newBlocks = blocks.length === 0 ? importedBlocks : [...blocks, ...importedBlocks];
-          if (maxLength !== undefined && calculateTotalLength(newBlocks) > maxLength) {
-            toast.error(`文字数が上限（${maxLength.toLocaleString()}文字）を超えます`);
-          } else {
-            onChange(newBlocks);
-            toast.success(`${importedBlocks.length}件のブロックをインポートしました`);
-          }
-        }
-      } catch (err) {
-        console.error(err);
-        toast.error("ファイルの読み込みに失敗しました");
-      }
-      e.target.value = "";
-    },
-    [blocks, onChange, maxLength, calculateTotalLength]
-  );
 
   /** 段落ブロックの内容がMarkdown形式なら自動変換 */
   const tryAutoConvertParagraph = useCallback(
@@ -703,6 +670,24 @@ export function BlockEditor({
             </div>
           </div>
         );
+      case "markdown":
+        return (
+          <div className="space-y-2">
+            <Textarea
+              ref={(el) => { textInputRefs.current[block.id] = el; }}
+              value={block.content}
+              onChange={(e) => updateBlock(block.id, { content: e.target.value })}
+              placeholder="Markdown を入力..."
+              className="min-h-[120px] font-mono text-sm resize-none"
+              onClick={(e) => e.stopPropagation()}
+            />
+            {block.content && (
+              <div className="prose prose-sm max-w-none border-t pt-3 mt-3">
+                <ReactMarkdown>{block.content}</ReactMarkdown>
+              </div>
+            )}
+          </div>
+        );
       default:
         return null;
     }
@@ -729,10 +714,9 @@ export function BlockEditor({
           </button>
           {bulkPasteOpen && (
             <div className="p-4 border-t bg-background space-y-4">
-              {/* 一括貼り付け（Markdown/プレーンテキスト） */}
               <div className="space-y-2">
                 <p className="text-xs text-muted-foreground">
-                  プレーンテキスト、Markdown を貼り付けると見出し・リスト・段落などに自動変換されます。
+                  Markdown を貼り付けると、1つのブロックとしてそのまま表示されます。
                 </p>
                 <Textarea
                   value={bulkPasteText}
@@ -743,30 +727,7 @@ export function BlockEditor({
                 />
                 <Button type="button" size="sm" onClick={handleBulkPaste}>
                   <ClipboardPaste className="h-4 w-4 mr-2" />
-                  一括貼り付けして追加
-                </Button>
-              </div>
-
-              {/* ファイルインポート（HTML/TSX） */}
-              <div className="space-y-2 pt-3 border-t">
-                <p className="text-xs text-muted-foreground">
-                  .html または .tsx ファイルをインポートできます。
-                </p>
-                <input
-                  ref={htmlImportInputRef}
-                  type="file"
-                  accept=".html,.tsx,.jsx"
-                  className="hidden"
-                  onChange={handleHtmlFileImport}
-                />
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => htmlImportInputRef.current?.click()}
-                >
-                  <FileUp className="h-4 w-4 mr-2" />
-                  ファイルを選択してインポート
+                  貼り付けて追加
                 </Button>
               </div>
             </div>
@@ -848,7 +809,7 @@ export function BlockEditor({
                 </span>
                 
                 {/* 太字・斜体（選択範囲に適用、onMouseDownでフォーカス維持） */}
-                {["heading1", "heading2", "heading3", "paragraph", "quote", "bulletList", "numberedList"].includes(block.type) && (
+                {["heading1", "heading2", "heading3", "paragraph", "quote", "bulletList", "numberedList", "markdown"].includes(block.type) && (
                   <div className="flex items-center gap-1">
                     <Button
                       variant="ghost"
@@ -994,6 +955,11 @@ export function BlockEditor({
                 icon={<Minus className="h-5 w-5" />}
                 label="区切り線"
                 onClick={() => addBlock("divider", menuPosition)}
+              />
+              <BlockTypeButton
+                icon={<FileText className="h-5 w-5" />}
+                label="Markdown"
+                onClick={() => addBlock("markdown", menuPosition)}
               />
             </div>
           </div>

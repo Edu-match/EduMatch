@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { BlockEditor, type ContentBlock } from "@/components/editor/block-editor";
+import { ContentEditorWithImport } from "@/components/content/content-editor-with-import";
 import { contentToBlocks, blocksToMarkdown } from "@/lib/markdown-to-blocks";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
@@ -44,22 +44,15 @@ function ServiceContentBlockEditor({
   maxLength,
 }: {
   content: string;
-  onChange: (markdown: string) => void;
+  onChange: (content: string) => void;
   maxLength: number;
 }) {
-  const [blocks, setBlocks] = useState<ContentBlock[]>(() =>
-    content?.trim() ? contentToBlocks(content) : []
-  );
-
-  const handleChange = (newBlocks: ContentBlock[]) => {
-    setBlocks(newBlocks);
-    onChange(blocksToMarkdown(newBlocks));
-  };
-
   return (
-    <BlockEditor
-      blocks={blocks}
-      onChange={handleChange}
+    <ContentEditorWithImport
+      content={content}
+      onChange={onChange}
+      parseToBlocks={contentToBlocks}
+      blocksToContent={blocksToMarkdown}
       maxLength={maxLength}
     />
   );

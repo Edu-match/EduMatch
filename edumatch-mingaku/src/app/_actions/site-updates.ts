@@ -1,52 +1,10 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { isImportedContent } from "@/lib/imported-content";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserRole } from "@/app/_actions/user";
-import type { SiteUpdateContentBlock } from "@/lib/site-update-blocks";
-
-function blocksToBody(blocks: SiteUpdateContentBlock[]): string {
-  const parts: string[] = [];
-  for (const block of blocks) {
-    const t = block.type === "bulletList" ? "list" : block.type === "numberedList" ? "ordered-list" : block.type;
-    switch (t) {
-      case "heading1":
-        parts.push(`# ${block.content}`);
-        break;
-      case "heading2":
-        parts.push(`## ${block.content}`);
-        break;
-      case "heading3":
-        parts.push(`### ${block.content}`);
-        break;
-      case "paragraph":
-        parts.push(block.content);
-        break;
-      case "quote":
-        parts.push(`> ${block.content}`);
-        break;
-      case "list":
-        block.items?.forEach((item) => parts.push(`- ${item}`));
-        break;
-      case "ordered-list":
-        block.items?.forEach((item, i) => parts.push(`${i + 1}. ${item}`));
-        break;
-      case "image":
-        if (block.url) parts.push(`![${block.caption || "画像"}](${block.url})`);
-        break;
-      case "video":
-        if (block.url) parts.push(`[動画](${block.url})`);
-        break;
-      case "divider":
-        parts.push("---");
-        break;
-      default:
-        break;
-    }
-    parts.push("");
-  }
-  return parts.join("\n").trimEnd();
-}
+import { blocksToBody, type SiteUpdateContentBlock } from "@/lib/site-update-blocks";
 
 export type SiteUpdateItem = {
   id: string;
@@ -138,9 +96,11 @@ export async function createSiteUpdate(input: CreateSiteUpdateInput): Promise<Cr
     return { success: false, error: "管理者権限が必要です" };
   }
   const bodyStr =
-    input.blocks != null && input.blocks.length > 0
-      ? blocksToBody(input.blocks)
-      : (input.body?.trim() ?? "");
+    input.body != null && isImportedContent(input.body)
+      ? input.body
+      : input.blocks != null && input.blocks.length > 0
+        ? blocksToBody(input.blocks)
+        : (input.body?.trim() ?? "");
   try {
     const row = await prisma.siteUpdate.create({
       data: {
@@ -171,9 +131,11 @@ export async function updateSiteUpdate(input: UpdateSiteUpdateInput): Promise<Cr
     return { success: false, error: "管理者権限が必要です" };
   }
   const bodyStr =
-    input.blocks != null && input.blocks.length > 0
-      ? blocksToBody(input.blocks)
-      : (input.body?.trim() ?? "");
+    input.body != null && isImportedContent(input.body)
+      ? input.body
+      : input.blocks != null && input.blocks.length > 0
+        ? blocksToBody(input.blocks)
+        : (input.body?.trim() ?? "");
   try {
     await prisma.siteUpdate.update({
       where: { id: input.id },

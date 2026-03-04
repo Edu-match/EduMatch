@@ -60,6 +60,8 @@ export async function submitMaterialRequest(
 
     if (!deliveryEmail) return { success: false, error: "送信先メールアドレスを入力してください" };
     if (!deliveryName) return { success: false, error: "お名前を入力してください" };
+    const org = (deliveryOrganization ?? profile.organization ?? "").trim();
+    if (!org) return { success: false, error: "塾名・学校名等を入力してください" };
 
     const req = await prisma.materialRequest.create({
       data: {
@@ -67,7 +69,7 @@ export async function submitMaterialRequest(
         service_id: input.serviceId,
         use_account_address: false,
         delivery_name: deliveryName,
-        delivery_organization: deliveryOrganization ?? null,
+        delivery_organization: org,
         delivery_phone: deliveryPhone ?? null,
         delivery_postal_code: null,
         delivery_prefecture: null,
@@ -103,7 +105,7 @@ export async function submitMaterialRequest(
           <hr />
           <p><strong>対象サービス：</strong> ${service.title}</p>
           <p><strong>請求者名：</strong> ${deliveryName}</p>
-          ${deliveryOrganization ? `<p><strong>塾名・学校名：</strong> ${deliveryOrganization}</p>` : ""}
+          <p><strong>塾名・学校名：</strong> ${org}</p>
           <p><strong>メールアドレス：</strong> ${deliveryEmail}</p>
           <p><strong>電話番号：</strong> ${deliveryPhone ?? "未入力"}</p>
           ${input.message ? `<p><strong>備考：</strong><br />${input.message.replace(/\n/g, "<br />")}</p>` : ""}
@@ -137,7 +139,7 @@ export async function submitMaterialRequest(
             <p><strong>サービス名：</strong> ${service.title}</p>
             <p><strong>提供者：</strong> ${service.provider?.name ?? "未設定"}</p>
             <p><strong>お名前：</strong> ${deliveryName}</p>
-            ${deliveryOrganization ? `<p><strong>塾名・学校名：</strong> ${deliveryOrganization}</p>` : ""}
+            <p><strong>塾名・学校名：</strong> ${org}</p>
             <p><strong>メールアドレス：</strong> ${deliveryEmail}</p>
             <p><strong>電話番号：</strong> ${deliveryPhone ?? "未入力"}</p>
             ${input.message ? `<p><strong>ご要望：</strong><br />${input.message.replace(/\n/g, "<br />")}</p>` : ""}

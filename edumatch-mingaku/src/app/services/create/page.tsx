@@ -15,7 +15,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { BlockEditor, ContentBlock } from "@/components/editor/block-editor";
+import { ContentEditorWithImport } from "@/components/content/content-editor-with-import";
+import { contentToBlocks } from "@/lib/markdown-to-blocks";
+import { blocksToMarkdown } from "@/lib/markdown-to-blocks";
+import { isImportedContent } from "@/lib/imported-content";
 import { createService, uploadImage } from "@/app/_actions";
 import { SERVICE_CATEGORIES } from "@/lib/categories";
 import { Image as ImageIcon, Loader2, Save, Send, Building2, School } from "lucide-react";
@@ -29,7 +32,7 @@ export default function ServiceCreatePage() {
   const [priceInfo, setPriceInfo] = useState("");
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [thumbnailUrl, setThumbnailUrl] = useState("");
-  const [blocks, setBlocks] = useState<ContentBlock[]>([]);
+  const [content, setContent] = useState("");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
@@ -44,14 +47,14 @@ export default function ServiceCreatePage() {
   // 文字数カウント
   const titleLength = title.length;
   const descriptionLength = description.length;
-  const contentLength = blocks.reduce((acc, b) => acc + (b.content?.length || 0) + (b.items?.join("").length || 0), 0);
+  const contentLength = content.length;
   const totalWordCount = titleLength + descriptionLength + contentLength;
   
   // バリデーション
   const isTitleValid = titleLength <= TITLE_MAX_LENGTH;
   const isDescriptionValid = descriptionLength <= DESCRIPTION_MAX_LENGTH;
   const isContentValid = contentLength <= CONTENT_MAX_LENGTH;
-  const canSubmit = isTitleValid && isDescriptionValid && isContentValid && title.trim().length > 0 && description.trim().length > 0 && category.trim().length > 0;
+  const canSubmit = isTitleValid && isDescriptionValid && isContentValid && title.trim().length > 0 && description.trim().length > 0 && category.trim().length > 0 && content.trim().length > 0;
 
   // ユーザープロフィールを取得
   useEffect(() => {
@@ -105,7 +108,9 @@ export default function ServiceCreatePage() {
         priceInfo: priceInfo.trim() || "お問い合わせ",
         youtubeUrl: youtubeUrl.trim() || undefined,
         thumbnailUrl,
-        blocks: blocks as unknown as Parameters<typeof createService>[0]["blocks"],
+        ...(isImportedContent(content)
+          ? { content }
+          : { blocks: contentToBlocks(content) as unknown as Parameters<typeof createService>[0]["blocks"] }),
         publishType,
       });
 
@@ -344,7 +349,13 @@ export default function ServiceCreatePage() {
             </div>
           </CardHeader>
           <CardContent>
-            <BlockEditor blocks={blocks} onChange={setBlocks} maxLength={CONTENT_MAX_LENGTH} />
+            <ContentEditorWithImport
+              content={content}
+              onChange={setContent}
+              parseToBlocks={contentToBlocks}
+              blocksToContent={blocksToMarkdown}
+              maxLength={CONTENT_MAX_LENGTH}
+            />
             {!isContentValid && (
               <p className="text-destructive text-sm mt-2">
                 本文は{CONTENT_MAX_LENGTH.toLocaleString()}文字以内で入力してください

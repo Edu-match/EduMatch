@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { isImportedContent } from "@/lib/imported-content";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/utils/supabase/server";
 import type { Post, Profile, Role } from "@prisma/client";
@@ -12,7 +13,7 @@ export type PostWithProvider = Post & {
 // ブロックの型定義（BlockEditor の bulletList/numberedList にも対応）
 export type ContentBlock = {
   id: string;
-  type: "heading1" | "heading2" | "heading3" | "paragraph" | "image" | "video" | "quote" | "divider" | "list" | "ordered-list" | "bulletList" | "numberedList";
+  type: "heading1" | "heading2" | "heading3" | "paragraph" | "image" | "video" | "quote" | "divider" | "list" | "ordered-list" | "bulletList" | "numberedList" | "markdown";
   content: string;
   align?: "left" | "center" | "right";
   url?: string;
@@ -28,7 +29,10 @@ export type CreatePostInput = {
   tags: string;
   publishType: "public" | "member" | "draft";
   thumbnailUrl: string;
-  blocks: ContentBlock[];
+  /** ブロック形式（content がインポートでない場合に使用） */
+  blocks?: ContentBlock[];
+  /** インポートコンテンツ（__IMPORT__... 形式の場合はこれをそのまま使用） */
+  content?: string;
 };
 
 // 記事作成の結果型
@@ -121,6 +125,9 @@ function blocksToContent(blocks: ContentBlock[], leadText: string): string {
       case "divider":
         parts.push("---");
         break;
+      case "markdown":
+        parts.push(block.content);
+        break;
     }
     parts.push("");
   }
@@ -196,10 +203,15 @@ export async function createPost(input: CreatePostInput): Promise<CreatePostResu
       };
     }
     
-    // コンテンツを生成
-    const content = blocksToContent(input.blocks, input.leadText);
-    const images = extractImagesFromBlocks(input.blocks);
-    const youtubeUrl = extractYoutubeFromBlocks(input.blocks);
+    // コンテンツを生成（インポートの場合はそのまま、そうでなければブロックから変換）
+    const content =
+      input.content != null && isImportedContent(input.content)
+        ? input.content
+        : blocksToContent(input.blocks ?? [], input.leadText);
+    const images =
+      input.blocks != null ? extractImagesFromBlocks(input.blocks) : [];
+    const youtubeUrl =
+      input.blocks != null ? extractYoutubeFromBlocks(input.blocks) : null;
 
     // 承認方式:
     // - draft: 下書き
@@ -291,7 +303,11 @@ export async function updatePost(
     if (input.leadText !== undefined) {
       updateData.summary = input.leadText || null;
     }
-    if (input.blocks !== undefined) {
+    if (input.content !== undefined && isImportedContent(input.content)) {
+      updateData.content = input.content;
+      updateData.images = [];
+      updateData.youtube_url = null;
+    } else if (input.blocks !== undefined) {
       updateData.content = blocksToContent(input.blocks, input.leadText || "");
       updateData.images = extractImagesFromBlocks(input.blocks);
       updateData.youtube_url = extractYoutubeFromBlocks(input.blocks);

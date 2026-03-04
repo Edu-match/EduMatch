@@ -3,6 +3,7 @@ import { ContentRenderer } from "@/components/ui/content-renderer";
 import { getSitePage } from "@/app/_actions/site-pages";
 import Link from "next/link";
 import { getCurrentProfile } from "@/lib/auth";
+import { OPERATOR_INFO } from "@/lib/operator-info";
 
 const DEFAULT_TERMS_INTRO = (
   <>
@@ -43,6 +44,17 @@ export default async function TermsPage() {
             </Link>
           )}
         </div>
+
+        <Card className="mb-6">
+          <CardContent className="p-6">
+            <h2 className="text-lg font-bold mb-2">{OPERATOR_INFO.sectionTitle}</h2>
+            <p className="text-muted-foreground">
+              主催：{OPERATOR_INFO.organizer}<br />
+              運営：{OPERATOR_INFO.operator}<br />
+              設立年は、{OPERATOR_INFO.established}
+            </p>
+          </CardContent>
+        </Card>
 
         {useDbContent ? (
           <Card>

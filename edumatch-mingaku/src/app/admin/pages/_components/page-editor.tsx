@@ -7,8 +7,10 @@ import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { BlockEditor, type ContentBlock } from "@/components/editor/block-editor";
-import { updateSitePageBlocks } from "@/app/_actions/site-pages";
+import { ContentEditorWithImport } from "@/components/content/content-editor-with-import";
+import { updateSitePageContent } from "@/app/_actions/site-pages";
+import { contentToBlocks } from "@/lib/markdown-to-blocks";
+import { blocksToMarkdown } from "@/lib/markdown-to-blocks";
 import { Loader2, Save, FileText } from "lucide-react";
 import type { SitePageKey } from "@/app/_actions/site-pages";
 
@@ -20,30 +22,29 @@ const PAGE_LABELS: Record<SitePageKey, string> = {
 
 type Props = {
   keyType: SitePageKey;
-  initialBlocks: ContentBlock[];
+  initialContent: string;
   initialTitle?: string;
 };
 
-export function PageEditor({ keyType, initialBlocks, initialTitle = "" }: Props) {
+export function PageEditor({ keyType, initialContent, initialTitle = "" }: Props) {
   const router = useRouter();
-  const [blocks, setBlocks] = useState<ContentBlock[]>(initialBlocks);
+  const [content, setContent] = useState(initialContent);
   const [title, setTitle] = useState(initialTitle || PAGE_LABELS[keyType]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 初回マウント時のみ initialBlocks を反映（サーバーから受け取った値）
   const [initialized, setInitialized] = useState(false);
   useEffect(() => {
     if (!initialized) {
-      setBlocks(initialBlocks);
+      setContent(initialContent);
       setTitle(initialTitle || PAGE_LABELS[keyType]);
       setInitialized(true);
     }
-  }, [initialized, initialBlocks, initialTitle, keyType]);
+  }, [initialized, initialContent, initialTitle, keyType]);
 
   const handleSave = async () => {
     setIsSubmitting(true);
     try {
-      const result = await updateSitePageBlocks(keyType, blocks, title);
+      const result = await updateSitePageContent(keyType, content, title);
       if (result.success) {
         toast.success("保存しました");
         router.refresh();
@@ -109,7 +110,12 @@ export function PageEditor({ keyType, initialBlocks, initialTitle = "" }: Props)
             </p>
           </CardHeader>
           <CardContent>
-            <BlockEditor blocks={blocks} onChange={setBlocks} />
+            <ContentEditorWithImport
+              content={content}
+              onChange={setContent}
+              parseToBlocks={contentToBlocks}
+              blocksToContent={blocksToMarkdown}
+            />
           </CardContent>
         </Card>
       </div>

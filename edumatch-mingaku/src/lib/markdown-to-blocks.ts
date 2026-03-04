@@ -182,6 +182,9 @@ export function blocksToMarkdown(blocks: ContentBlock[]): string {
       case "divider":
         parts.push("---");
         break;
+      case "markdown":
+        parts.push(block.content);
+        break;
       default:
         break;
     }

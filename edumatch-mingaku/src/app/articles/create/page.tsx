@@ -15,8 +15,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { BlockEditor, ContentBlock } from "@/components/editor/block-editor";
+import { ContentEditorWithImport } from "@/components/content/content-editor-with-import";
+import type { ContentBlock } from "@/components/editor/block-editor";
 import { renderInlineMarkdown } from "@/lib/inline-markdown";
+import { contentToBlocks } from "@/lib/markdown-to-blocks";
+import { blocksToArticleContent } from "@/lib/article-content";
+import { isImportedContent, parseImportedContent } from "@/lib/imported-content";
+import { ImportedContentRenderer } from "@/components/content/imported-content-renderer";
+import ReactMarkdown from "react-markdown";
 import {
   Eye,
   Save,
@@ -50,7 +56,9 @@ interface ArticleDraft {
   tags: string;
   publishType: "public" | "member" | "draft";
   thumbnailUrl: string;
-  blocks: ContentBlock[];
+  content: string;
+  /** @deprecated 後方互換用 */
+  blocks?: ContentBlock[];
   savedAt: string;
 }
 
@@ -82,7 +90,13 @@ export default function ArticleCreatePage() {
   const [thumbnailInput, setThumbnailInput] = useState("");
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
   const thumbnailFileInputRef = useRef<HTMLInputElement | null>(null);
-  const [blocks, setBlocks] = useState<ContentBlock[]>(() => draft?.blocks || []);
+  const [content, setContent] = useState<string>(() => {
+    if (draft?.content) return draft.content;
+    if (draft?.blocks && draft.blocks.length > 0) {
+      return blocksToArticleContent(draft.blocks, draft.leadText || "");
+    }
+    return "";
+  });
   const [lastSaved, setLastSaved] = useState<Date | null>(() => draft?.savedAt ? new Date(draft.savedAt) : null);
   const [isSaving, setIsSaving] = useState(false);
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
@@ -99,7 +113,7 @@ export default function ArticleCreatePage() {
         tags,
         publishType,
         thumbnailUrl,
-        blocks,
+        content,
         savedAt: new Date().toISOString(),
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
@@ -110,7 +124,7 @@ export default function ArticleCreatePage() {
       console.error("Failed to save draft:", e);
     }
     setIsSaving(false);
-  }, [title, leadText, category, tags, publishType, thumbnailUrl, blocks]);
+  }, [title, leadText, category, tags, publishType, thumbnailUrl, content]);
 
   // ユーザープロフィールを取得
   useEffect(() => {
@@ -139,10 +153,9 @@ export default function ArticleCreatePage() {
       // 現在の値をキャプチャして保存を実行
       const currentTitle = title;
       const currentLeadText = leadText;
-      const currentBlocks = blocks;
+      const currentContent = content;
       
-      if (currentTitle || currentLeadText || currentBlocks.length > 0) {
-        // saveDraftを直接呼ぶ代わりに、直接保存ロジックを実行
+      if (currentTitle || currentLeadText || currentContent.length > 0) {
         try {
           const draft = {
             title: currentTitle,
@@ -151,7 +164,7 @@ export default function ArticleCreatePage() {
             tags,
             publishType,
             thumbnailUrl,
-            blocks: currentBlocks,
+            content: currentContent,
             savedAt: new Date().toISOString(),
           };
           localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
@@ -161,7 +174,7 @@ export default function ArticleCreatePage() {
       }
     }, 30000);
     return () => clearInterval(interval);
-  }, [title, leadText, category, tags, publishType, thumbnailUrl, blocks]);
+  }, [title, leadText, category, tags, publishType, thumbnailUrl, content]);
 
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -178,7 +191,7 @@ export default function ArticleCreatePage() {
       return;
     }
     
-    if (blocks.length === 0) {
+    if (!content.trim()) {
       toast.error("本文を入力してください");
       return;
     }
@@ -199,7 +212,9 @@ export default function ArticleCreatePage() {
         tags,
         publishType: submitType,
         thumbnailUrl,
-        blocks: blocks as Parameters<typeof createPost>[0]["blocks"],
+        ...(isImportedContent(content)
+          ? { content }
+          : { blocks: contentToBlocks(content) as Parameters<typeof createPost>[0]["blocks"] }),
       });
       
       if (result.success) {
@@ -247,7 +262,9 @@ export default function ArticleCreatePage() {
         tags,
         publishType: "draft",
         thumbnailUrl,
-        blocks: blocks as Parameters<typeof createPost>[0]["blocks"],
+        ...(isImportedContent(content)
+          ? { content }
+          : { blocks: contentToBlocks(content) as Parameters<typeof createPost>[0]["blocks"] }),
       });
       
       if (result.success) {
@@ -277,7 +294,7 @@ export default function ArticleCreatePage() {
       setTags("");
       setPublishType("draft");
       setThumbnailUrl("");
-      setBlocks([]);
+      setContent("");
       setLastSaved(null);
     }
   };
@@ -289,21 +306,12 @@ export default function ArticleCreatePage() {
   // 文字数カウント
   const titleLength = title.length;
   const leadTextLength = leadText.length;
-  const contentLength = blocks.reduce((acc, block) => {
-    if (block.content) {
-      return acc + block.content.length;
-    }
-    if (block.items) {
-      return acc + block.items.join("").length;
-    }
-    return acc;
-  }, 0);
+  const contentLength = content.length;
   const totalWordCount = titleLength + leadTextLength + contentLength;
-  
-  // バリデーション
+
   const isTitleValid = titleLength <= TITLE_MAX_LENGTH;
   const isContentValid = contentLength <= CONTENT_MAX_LENGTH;
-  const canSubmit = isTitleValid && isContentValid && title.trim().length > 0 && blocks.length > 0;
+  const canSubmit = isTitleValid && isContentValid && title.trim().length > 0 && content.trim().length > 0;
 
   const renderPreview = () => {
     return (
@@ -338,9 +346,17 @@ export default function ArticleCreatePage() {
           </p>
         )}
 
-        {/* Content blocks */}
+        {/* Content */}
+        {isImportedContent(content) ? (
+          (() => {
+            const parsed = parseImportedContent(content);
+            return parsed ? (
+              <ImportedContentRenderer type={parsed.type} content={parsed.raw} />
+            ) : null;
+          })()
+        ) : (
         <div className="prose prose-lg max-w-none">
-          {blocks.map((block) => {
+          {contentToBlocks(content).map((block) => {
             switch (block.type) {
               case "heading1":
                 return (
@@ -455,11 +471,18 @@ export default function ArticleCreatePage() {
                     ))}
                   </ol>
                 );
+              case "markdown":
+                return (
+                  <div key={block.id} className="prose prose-lg max-w-none my-4">
+                    <ReactMarkdown>{block.content}</ReactMarkdown>
+                  </div>
+                );
               default:
                 return null;
             }
           })}
         </div>
+        )}
       </div>
     );
   };
@@ -716,7 +739,13 @@ export default function ArticleCreatePage() {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <BlockEditor blocks={blocks} onChange={setBlocks} maxLength={CONTENT_MAX_LENGTH} />
+                    <ContentEditorWithImport
+                      content={content}
+                      onChange={setContent}
+                      parseToBlocks={(c) => contentToBlocks(c)}
+                      blocksToContent={(b) => blocksToArticleContent(b, "")}
+                      maxLength={CONTENT_MAX_LENGTH}
+                    />
                     {!isContentValid && (
                       <p className="text-destructive text-sm mt-2">
                         本文は{CONTENT_MAX_LENGTH.toLocaleString()}文字以内で入力してください
@@ -906,7 +935,7 @@ export default function ArticleCreatePage() {
                     label="リード文を入力"
                   />
                   <CheckItem
-                    checked={blocks.length > 0}
+                    checked={content.trim().length > 0}
                     label="本文を作成"
                   />
                   <CheckItem

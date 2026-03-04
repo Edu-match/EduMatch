@@ -107,7 +107,7 @@ export default async function RequestInfoCompletePage({ searchParams }: Props) {
                   <p className="font-medium">資料の到着について</p>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  資料の送付はサービス提供元が行います。目安として1〜3営業日以内に届く場合が多く、お急ぎの場合は提供元へ直接お問い合わせください。
+                  資料の送付はサービス提供元が行います。
                 </p>
               </div>
             </div>

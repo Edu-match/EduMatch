@@ -8,12 +8,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { BlockEditor, type ContentBlock } from "@/components/editor/block-editor";
+import { ContentEditorWithImport } from "@/components/content/content-editor-with-import";
+import type { ContentBlock } from "@/components/editor/block-editor";
 import { createSiteUpdate, updateSiteUpdate } from "@/app/_actions/site-updates";
-import { bodyToBlocks, type SiteUpdateContentBlock } from "@/lib/site-update-blocks";
+import { bodyToBlocks, blocksToBody, type SiteUpdateContentBlock } from "@/lib/site-update-blocks";
 import { uploadImage } from "@/app/_actions";
 import { Image as ImageIcon, Loader2, Save, Send, Building2, FileText } from "lucide-react";
 import { getCurrentUserProfile } from "@/app/_actions/user";
+import { isImportedContent } from "@/lib/imported-content";
 
 const TITLE_MAX_LENGTH = 200;
 const CONTENT_MAX_LENGTH = 50000;
@@ -57,20 +59,14 @@ export function SiteUpdateEditor({
   const [link, setLink] = useState(defaultLink);
   const [thumbnailUrl, setThumbnailUrl] = useState(defaultThumbnailUrl);
   const [category, setCategory] = useState(defaultCategory);
-  const [blocks, setBlocks] = useState<ContentBlock[]>(() => {
-    if (!defaultBody.trim()) return [];
-    return bodyToBlocks(defaultBody).map(normalizeBlockType);
-  });
+  const [content, setContent] = useState(defaultBody);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
   const thumbnailFileInputRef = useRef<HTMLInputElement | null>(null);
   const [userProfile, setUserProfile] = useState<InitialProfile | null>(initialProfile ?? null);
 
-  const contentLength = blocks.reduce(
-    (acc, b) => acc + (b.content?.length || 0) + (b.items?.join("").length || 0),
-    0
-  );
+  const contentLength = content.length;
   const titleLength = title.length;
   const isTitleValid = titleLength <= TITLE_MAX_LENGTH;
   const isContentValid = contentLength <= CONTENT_MAX_LENGTH;
@@ -78,7 +74,7 @@ export function SiteUpdateEditor({
     isTitleValid &&
     isContentValid &&
     title.trim().length > 0 &&
-    (blocks.length > 0 || mode === "edit");
+    (content.trim().length > 0 || mode === "edit");
 
   useEffect(() => {
     if (initialProfile != null) return;
@@ -115,7 +111,9 @@ export function SiteUpdateEditor({
       if (mode === "create") {
         const result = await createSiteUpdate({
           title: title.trim(),
-          blocks: blocks as SiteUpdateContentBlock[],
+          ...(isImportedContent(content)
+            ? { body: content }
+            : { blocks: bodyToBlocks(content).map((b) => normalizeBlockType(b) as SiteUpdateContentBlock) }),
           published_at: publishedAtISO,
           link: link.trim() || null,
           thumbnail_url: thumbnailUrl.trim() || null,
@@ -132,7 +130,9 @@ export function SiteUpdateEditor({
         const result = await updateSiteUpdate({
           id,
           title: title.trim(),
-          blocks: blocks as SiteUpdateContentBlock[],
+          ...(isImportedContent(content)
+            ? { body: content }
+            : { blocks: bodyToBlocks(content).map((b) => normalizeBlockType(b) as SiteUpdateContentBlock) }),
           published_at: publishedAtISO,
           link: link.trim() || null,
           thumbnail_url: thumbnailUrl.trim() || null,
@@ -315,7 +315,13 @@ export function SiteUpdateEditor({
             </div>
           </CardHeader>
           <CardContent>
-            <BlockEditor blocks={blocks} onChange={setBlocks} maxLength={CONTENT_MAX_LENGTH} />
+            <ContentEditorWithImport
+              content={content}
+              onChange={setContent}
+              parseToBlocks={(c) => bodyToBlocks(c).map(normalizeBlockType)}
+              blocksToContent={(b) => blocksToBody(b as SiteUpdateContentBlock[])}
+              maxLength={CONTENT_MAX_LENGTH}
+            />
             {!isContentValid && (
               <p className="text-destructive text-sm mt-2">
                 本文は{CONTENT_MAX_LENGTH.toLocaleString()}文字以内で入力してください
