@@ -12,6 +12,7 @@ import {
   Scale,
   PenSquare,
   SlidersHorizontal,
+  FileText,
 } from "lucide-react";
 
 const items = [
@@ -25,6 +26,7 @@ const items = [
   { href: "/admin/home-topics", label: "トップニュースを編集", icon: Newspaper, roles: ["ADMIN"] },
   { href: "/admin/events", label: "セミナー・イベントを管理", icon: Calendar, roles: ["ADMIN"] },
   { href: "/admin/home-slider", label: "スライダー記事を選択", icon: SlidersHorizontal, roles: ["ADMIN"] },
+  { href: "/admin/pages", label: "固定ページを編集", icon: FileText, roles: ["ADMIN"] },
   { href: "/companies", label: "掲載企業一覧", icon: Building2 },
   { href: "/compare", label: "サービス比較", icon: Scale },
   { href: "/help", label: "ヘルプ", icon: HelpCircle },

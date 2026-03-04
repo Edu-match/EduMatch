@@ -144,3 +144,48 @@ export function contentToBlocks(content: string): ContentBlock[] {
 
   return blocks;
 }
+
+/**
+ * ContentBlock 配列を Markdown 文字列に変換
+ */
+export function blocksToMarkdown(blocks: ContentBlock[]): string {
+  const parts: string[] = [];
+  for (const block of blocks) {
+    switch (block.type) {
+      case "heading1":
+        parts.push(`# ${block.content}`);
+        break;
+      case "heading2":
+        parts.push(`## ${block.content}`);
+        break;
+      case "heading3":
+        parts.push(`### ${block.content}`);
+        break;
+      case "paragraph":
+        parts.push(block.content);
+        break;
+      case "quote":
+        parts.push(`> ${block.content}`);
+        break;
+      case "bulletList":
+        block.items?.forEach((item) => parts.push(`- ${item}`));
+        break;
+      case "numberedList":
+        block.items?.forEach((item, i) => parts.push(`${i + 1}. ${item}`));
+        break;
+      case "image":
+        if (block.url) parts.push(`![${block.caption || "画像"}](${block.url})`);
+        break;
+      case "video":
+        if (block.url) parts.push(`[動画](${block.url})`);
+        break;
+      case "divider":
+        parts.push("---");
+        break;
+      default:
+        break;
+    }
+    parts.push("");
+  }
+  return parts.join("\n").trimEnd();
+}

@@ -7,14 +7,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Form,
   FormControl,
@@ -24,6 +16,15 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { BlockEditor, type ContentBlock } from "@/components/editor/block-editor";
+import { contentToBlocks, blocksToMarkdown } from "@/lib/markdown-to-blocks";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 import { updateServiceManagement, deleteServiceManagement } from "@/app/_actions";
@@ -36,6 +37,33 @@ const guidelines = [
   "スクリーンショットや動画があると効果的です。",
   "問い合わせ先や無料トライアル情報も記載を推奨します。",
 ];
+
+function ServiceContentBlockEditor({
+  content,
+  onChange,
+  maxLength,
+}: {
+  content: string;
+  onChange: (markdown: string) => void;
+  maxLength: number;
+}) {
+  const [blocks, setBlocks] = useState<ContentBlock[]>(() =>
+    content?.trim() ? contentToBlocks(content) : []
+  );
+
+  const handleChange = (newBlocks: ContentBlock[]) => {
+    setBlocks(newBlocks);
+    onChange(blocksToMarkdown(newBlocks));
+  };
+
+  return (
+    <BlockEditor
+      blocks={blocks}
+      onChange={handleChange}
+      maxLength={maxLength}
+    />
+  );
+}
 
 type ServiceEditFormProps = {
   serviceId: string;
@@ -294,14 +322,14 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
                   <FormItem>
                     <FormLabel>詳細説明 *</FormLabel>
                     <FormControl>
-                      <Textarea 
-                        placeholder="サービスの詳細な説明、機能、導入事例などを記載してください。Markdown記法に対応しています。" 
-                        rows={15} 
-                        {...field} 
+                      <ServiceContentBlockEditor
+                        content={field.value || ""}
+                        onChange={field.onChange}
+                        maxLength={50000}
                       />
                     </FormControl>
                     <FormDescription>
-                      {field.value?.length || 0} / 50000文字 | Markdown、画像URL、YouTube URLに対応
+                      {field.value?.length || 0} / 50000文字 | 一括貼り付け・Markdown自動変換対応
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

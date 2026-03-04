@@ -26,7 +26,10 @@ import {
   List,
   ListOrdered,
   Minus,
+  ClipboardPaste,
+  ChevronRight,
 } from "lucide-react";
+import { contentToBlocks } from "@/lib/markdown-to-blocks";
 
 export type BlockType =
   | "heading1"
@@ -56,6 +59,10 @@ interface BlockEditorProps {
   blocks: ContentBlock[];
   onChange: (blocks: ContentBlock[]) => void;
   maxLength?: number; // 全体の文字数制限（オプション）
+  /** 一括貼り付け機能を表示するか（デフォルト: true） */
+  showBulkPaste?: boolean;
+  /** タイプ時のMarkdown自動変換を有効にするか（デフォルト: true） */
+  autoConvertMarkdown?: boolean;
 }
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
@@ -73,11 +80,19 @@ const blockTypeLabels: Record<BlockType, string> = {
   numberedList: "番号付きリスト",
 };
 
-export function BlockEditor({ blocks, onChange, maxLength }: BlockEditorProps) {
+export function BlockEditor({
+  blocks,
+  onChange,
+  maxLength,
+  showBulkPaste = true,
+  autoConvertMarkdown = true,
+}: BlockEditorProps) {
   const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
   const [showBlockMenu, setShowBlockMenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState<number | null>(null);
   const [uploadingBlockId, setUploadingBlockId] = useState<string | null>(null);
+  const [bulkPasteOpen, setBulkPasteOpen] = useState(false);
+  const [bulkPasteText, setBulkPasteText] = useState("");
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   
   // 全体の文字数を計算
@@ -173,6 +188,117 @@ export function BlockEditor({ blocks, onChange, maxLength }: BlockEditorProps) {
     [blocks, onChange]
   );
 
+  /** 指定ブロックを複数ブロックに置き換え（Markdown自動変換用） */
+  const replaceBlockWithBlocks = useCallback(
+    (blockId: string, newBlocks: ContentBlock[]) => {
+      const index = blocks.findIndex((b) => b.id === blockId);
+      if (index < 0) return;
+      const newList = [...blocks];
+      newList.splice(index, 1, ...newBlocks);
+      onChange(newList);
+      if (newBlocks.length > 0) {
+        setActiveBlockId(newBlocks[0].id);
+      }
+    },
+    [blocks, onChange]
+  );
+
+  const handleBulkPaste = useCallback(() => {
+    const text = bulkPasteText.trim();
+    if (!text) {
+      toast.error("貼り付けするテキストを入力してください");
+      return;
+    }
+    const pastedBlocks = contentToBlocks(text);
+    if (pastedBlocks.length === 0) {
+      toast.error("ブロックに変換できる内容がありません");
+      return;
+    }
+    const newBlocks = blocks.length === 0 ? pastedBlocks : [...blocks, ...pastedBlocks];
+    if (maxLength !== undefined && calculateTotalLength(newBlocks) > maxLength) {
+      toast.error(`文字数が上限（${maxLength.toLocaleString()}文字）を超えます`);
+      return;
+    }
+    onChange(newBlocks);
+    setBulkPasteText("");
+    setBulkPasteOpen(false);
+    toast.success(`${pastedBlocks.length}件のブロックを追加しました`);
+  }, [bulkPasteText, blocks, onChange, maxLength, calculateTotalLength]);
+
+  /** 段落ブロックの内容がMarkdown形式なら自動変換 */
+  const tryAutoConvertParagraph = useCallback(
+    (block: ContentBlock, content: string) => {
+      if (!autoConvertMarkdown || block.type !== "paragraph") return;
+      const trimmed = content.trim();
+      if (!trimmed) return;
+      const lines = content.split(/\r?\n/);
+      const firstLine = lines[0].trim();
+
+      // 複数行のMarkdown → 複数ブロックに変換
+      if (lines.length > 1) {
+        const parsed = contentToBlocks(content);
+        if (parsed.length > 1 || (parsed.length === 1 && parsed[0].type !== "paragraph")) {
+          replaceBlockWithBlocks(block.id, parsed);
+          return;
+        }
+      }
+
+      // 単一行のMarkdownプレフィックス
+      if (firstLine.startsWith("# ")) {
+        replaceBlockWithBlocks(block.id, [
+          { ...block, type: "heading1", content: firstLine.slice(2).trim(), id: generateId() },
+        ]);
+        return;
+      }
+      if (firstLine.startsWith("## ")) {
+        replaceBlockWithBlocks(block.id, [
+          { ...block, type: "heading2", content: firstLine.slice(3).trim(), id: generateId() },
+        ]);
+        return;
+      }
+      if (firstLine.startsWith("### ")) {
+        replaceBlockWithBlocks(block.id, [
+          { ...block, type: "heading3", content: firstLine.slice(4).trim(), id: generateId() },
+        ]);
+        return;
+      }
+      if (firstLine.startsWith("> ")) {
+        replaceBlockWithBlocks(block.id, [
+          { ...block, type: "quote", content: firstLine.slice(2).trim(), id: generateId() },
+        ]);
+        return;
+      }
+      if (firstLine === "---") {
+        replaceBlockWithBlocks(block.id, [
+          { ...block, type: "divider", content: "", id: generateId() },
+        ]);
+        return;
+      }
+      if (firstLine.startsWith("- ")) {
+        const items = lines
+          .filter((l) => l.trim().startsWith("- "))
+          .map((l) => l.trim().slice(2));
+        replaceBlockWithBlocks(block.id, [
+          { ...block, type: "bulletList", content: "", items: items.length > 0 ? items : [""], id: generateId() },
+        ]);
+        return;
+      }
+      const orderedMatch = firstLine.match(/^\d+\.\s+(.*)$/);
+      if (orderedMatch) {
+        const items: string[] = [];
+        for (const line of lines) {
+          const m = line.trim().match(/^\d+\.\s+(.*)$/);
+          if (m) items.push(m[1]);
+          else break;
+        }
+        replaceBlockWithBlocks(block.id, [
+          { ...block, type: "numberedList", content: "", items: items.length > 0 ? items : [""], id: generateId() },
+        ]);
+      }
+    },
+    [autoConvertMarkdown, replaceBlockWithBlocks]
+  );
+
   const handleAddBlockClick = (index: number) => {
     setMenuPosition(index);
     setShowBlockMenu(true);
@@ -236,7 +362,8 @@ export function BlockEditor({ blocks, onChange, maxLength }: BlockEditorProps) {
             <Textarea
               value={block.content}
               onChange={(e) => updateBlock(block.id, { content: e.target.value })}
-              placeholder="本文を入力..."
+              onBlur={(e) => tryAutoConvertParagraph(block, e.target.value)}
+              placeholder="本文を入力...（# 見出し、- リストなどで自動変換）"
               className={`w-full min-h-[100px] bg-transparent resize-none border-none shadow-none focus-visible:ring-0 pr-16`}
               style={{ textAlign: block.align }}
             />
@@ -488,6 +615,44 @@ export function BlockEditor({ blocks, onChange, maxLength }: BlockEditorProps) {
 
   return (
     <div className="space-y-4">
+      {showBulkPaste && (
+        <div className="border rounded-lg overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setBulkPasteOpen((o) => !o)}
+            className="w-full flex items-center justify-between px-4 py-3 bg-muted/30 hover:bg-muted/50 text-left text-sm font-medium"
+          >
+            <span className="flex items-center gap-2">
+              <ClipboardPaste className="h-4 w-4" />
+              一括貼り付け
+            </span>
+            {bulkPasteOpen ? (
+              <ChevronUp className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            )}
+          </button>
+          {bulkPasteOpen && (
+            <div className="p-4 border-t bg-background space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Markdownやテキストを貼り付けると、見出し・リスト・段落などに自動変換されます。
+              </p>
+              <Textarea
+                value={bulkPasteText}
+                onChange={(e) => setBulkPasteText(e.target.value)}
+                placeholder={"# 見出し\n## 中見出し\n- 箇条書き\n1. 番号付きリスト\n\n本文..."}
+                className="min-h-[120px] font-mono text-sm"
+                onClick={(e) => e.stopPropagation()}
+              />
+              <Button type="button" size="sm" onClick={handleBulkPaste}>
+                <ClipboardPaste className="h-4 w-4 mr-2" />
+                一括貼り付けして追加
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
       {blocks.length === 0 && (
         <div className="text-center py-12 border-2 border-dashed rounded-lg">
           <p className="text-muted-foreground mb-4">

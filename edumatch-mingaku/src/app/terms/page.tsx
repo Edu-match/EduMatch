@@ -1,33 +1,64 @@
 import { Card, CardContent } from "@/components/ui/card";
+import { ContentRenderer } from "@/components/ui/content-renderer";
+import { getSitePage } from "@/app/_actions/site-pages";
+import Link from "next/link";
+import { getCurrentProfile } from "@/lib/auth";
 
-export default function TermsPage() {
+const DEFAULT_TERMS_INTRO = (
+  <>
+    <p>
+      エデュマッチでは利用者様とサービス事業者様それぞれの利用規約を定めております。当サイトをご利用いただく方は必ずご一読くださいますようお願い申し上げます。
+    </p>
+    <ul>
+      <li>
+        <a href="#user-terms" className="underline">
+          エデュマッチ利用者様（すべての利用者様）
+        </a>
+      </li>
+      <li>
+        <a href="#provider-terms" className="underline">
+          契約者様（サービス事業者様）
+        </a>
+      </li>
+    </ul>
+  </>
+);
+
+export default async function TermsPage() {
+  const page = await getSitePage("terms");
+  const profile = await getCurrentProfile();
+  const useDbContent = !!page.body?.trim();
+
   return (
     <div className="container py-8">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8">利用規約</h1>
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-3xl font-bold">{page.title || "利用規約"}</h1>
+          {profile?.role === "ADMIN" && (
+            <Link
+              href="/admin/pages/terms/edit"
+              className="text-sm text-primary hover:underline"
+            >
+              編集
+            </Link>
+          )}
+        </div>
 
-        {/* イントロ */}
-        <Card className="mb-8">
-          <CardContent className="p-8 prose prose-slate max-w-none">
-            <p>
-              エデュマッチでは利用者様とサービス事業者様それぞれの利用規約を定めております。当サイトをご利用いただく方は必ずご一読くださいますようお願い申し上げます。
-            </p>
-            <ul>
-              <li>
-                <a href="#user-terms" className="underline">
-                  エデュマッチ利用者様（すべての利用者様）
-                </a>
-              </li>
-              <li>
-                <a href="#provider-terms" className="underline">
-                  契約者様（サービス事業者様）
-                </a>
-              </li>
-            </ul>
-          </CardContent>
-        </Card>
+        {useDbContent ? (
+          <Card>
+            <CardContent className="p-8 prose prose-slate max-w-none">
+              <ContentRenderer content={page.body} />
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            <Card className="mb-8">
+              <CardContent className="p-8 prose prose-slate max-w-none">
+                {DEFAULT_TERMS_INTRO}
+              </CardContent>
+            </Card>
 
-        {/* 利用規約（エデュマッチ利用者様） */}
+            {/* 利用規約（エデュマッチ利用者様） */}
         <div id="user-terms" className="mb-8">
           <Card>
             <CardContent className="p-8 prose prose-slate max-w-none">
@@ -315,6 +346,8 @@ export default function TermsPage() {
             </CardContent>
           </Card>
         </div>
+          </>
+        )}
       </div>
     </div>
   );

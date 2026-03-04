@@ -206,6 +206,17 @@ model Post {
   @@index([favorite_count])
 }
 
+/// 固定ページ（利用規約・プライバシーポリシー・サービス内容一覧）。ADMINのみ編集可能。
+model SitePage {
+  id         String   @id @default(cuid())
+  key        String   @unique /// "terms" | "privacy" | "service_content"
+  title      String   @default("") /// ページタイトル（表示用）
+  body       String   @default("") /// Markdown またはブロックの JSON
+  updated_at DateTime @updatedAt
+
+  @@index([key])
+}
+
 /// 運営情報（サイト更新情報）。WordPress インポートまたは手動登録。
 model SiteUpdate {
   id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
