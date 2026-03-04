@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { FileImportButton } from "@/components/content/file-import-button";
 import { ImportedContentRenderer } from "@/components/content/imported-content-renderer";
@@ -38,15 +39,39 @@ export function ContentEditorWithImport({
   const isImported = isImportedContent(content);
   const parsed = isImported ? parseImportedContent(content) : null;
 
+  // ブロックを内部状態で保持。content→blocksの往復でブロックIDが失われたり、
+  // 空ブロックが消えるバグを防ぐ
+  const [blocks, setBlocks] = useState<ContentBlock[]>(() => {
+    const parsed = parseToBlocks(content);
+    return parsed.length > 0 ? parsed : [...emptyBlocks];
+  });
+  const isInternalUpdateRef = useRef(false);
+
+  // contentが外部から変わったときのみパースして同期（自らのonChangeによる更新は無視）
+  useEffect(() => {
+    if (isImported) return;
+    if (isInternalUpdateRef.current) {
+      isInternalUpdateRef.current = false;
+      return;
+    }
+    const parsed = parseToBlocks(content);
+    setBlocks(parsed.length > 0 ? parsed : [...emptyBlocks]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- content変化時のみ同期したい（parseToBlocksは毎回変わるため除外）
+  }, [content, isImported]);
+
   const handleImport = (importedContent: string) => {
     onChange(importedContent);
   };
 
   const handleBackToBlocks = () => {
-    onChange(blocksToContent(emptyBlocks));
+    const initialBlocks = [...emptyBlocks];
+    setBlocks(initialBlocks);
+    onChange(blocksToContent(initialBlocks));
   };
 
   const handleBlocksChange = (blocks: ContentBlock[]) => {
+    isInternalUpdateRef.current = true;
+    setBlocks(blocks);
     onChange(blocksToContent(blocks));
   };
 
@@ -82,10 +107,6 @@ export function ContentEditorWithImport({
     );
   }
 
-  const blocks = parseToBlocks(content);
-  const displayBlocks =
-    blocks.length > 0 ? blocks : emptyBlocks;
-
   return (
     <div className="space-y-4">
       {/* ページ上部: ファイルインポートボタン */}
@@ -95,7 +116,7 @@ export function ContentEditorWithImport({
 
       {/* ブロックエディター */}
       <BlockEditor
-        blocks={displayBlocks}
+        blocks={blocks}
         onChange={handleBlocksChange}
         maxLength={maxLength}
         showBulkPaste={true}
