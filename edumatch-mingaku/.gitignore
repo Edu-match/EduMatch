@@ -33,6 +33,9 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# セットアップスクリプトが生成するSQL（秘密情報を含む）
+supabase/revalidate_webhook.sql
+
 # vercel
 .vercel
 

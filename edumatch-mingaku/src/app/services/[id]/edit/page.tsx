@@ -4,18 +4,17 @@ import { prisma } from "@/lib/prisma";
 import { ServiceEditForm } from "./service-edit-form";
 
 type PageProps = {
-  params: {
-    id: string;
-  };
+  params: Promise<{ id: string }>;
 };
 
 export default async function ServiceEditPage({ params }: PageProps) {
+  const { id } = await params;
   const { profile } = await requireProvider();
   if (!profile) redirect("/dashboard");
 
   // サービスを取得
   const service = await prisma.service.findUnique({
-    where: { id: params.id },
+    where: { id },
     select: {
       id: true,
       provider_id: true,

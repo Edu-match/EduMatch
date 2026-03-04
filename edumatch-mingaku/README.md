@@ -13,13 +13,34 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 詳細は [PROFILE_FIX_GUIDE.md](./PROFILE_FIX_GUIDE.md) を参照してください。
 
-### 2. 既存ユーザーのProfile修正（必要に応じて）
+### 2. Supabaseでis_publishedを直接変更した場合のキャッシュ無効化
+
+SupabaseのTable Editorで`is_published`等を直接変更した場合、サイトに反映されないことがあります。以下を実行してください。
+
+```bash
+npm run setup:revalidate
+```
+
+スクリプトが `REVALIDATE_SECRET` を `.env.local` に追加し、Supabase SQL Editorで実行するSQLを出力します。**出力されたSQLをコピーして Supabase Dashboard → SQL Editor で実行**してください。
+
+**本番環境（Vercel）:** 環境変数 `REVALIDATE_SECRET` を Vercel の Environment Variables に追加してください。
+
+**手動で再検証する場合:**
+```bash
+curl "https://your-site.com/api/revalidate?secret=YOUR_REVALIDATE_SECRET"
+```
+
+### 3. 既存ユーザーのProfile修正（必要に応じて）
 
 トリガー設定前に作成されたユーザーのProfileを修正：
 
 ```bash
 npm run fix:profiles
 ```
+
+### 4. 環境変数
+
+`.env.example` を参照し、`REVALIDATE_SECRET` を含む必要な環境変数を設定してください。
 
 ## Getting Started
 

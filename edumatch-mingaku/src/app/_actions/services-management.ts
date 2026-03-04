@@ -48,6 +48,7 @@ export async function createServiceManagement(data: ServiceFormData) {
     });
 
     // キャッシュを更新
+    revalidatePath("/");
     revalidatePath("/services");
     revalidatePath("/provider-dashboard");
 
@@ -131,6 +132,7 @@ export async function updateServiceManagement(serviceId: string, data: ServiceFo
     });
 
     // キャッシュを更新
+    revalidatePath("/");
     revalidatePath("/services");
     revalidatePath(`/services/${serviceId}`);
     revalidatePath("/provider-dashboard");
@@ -199,6 +201,7 @@ export async function deleteServiceManagement(serviceId: string) {
     });
 
     // キャッシュを更新
+    revalidatePath("/");
     revalidatePath("/services");
     revalidatePath("/provider-dashboard");
 

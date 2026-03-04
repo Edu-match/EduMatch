@@ -38,6 +38,7 @@ export default async function AdminApprovalsPage() {
     const id = String(formData.get("id") || "");
     if (!id) return;
     await approvePost(id);
+    revalidatePath("/");
     revalidatePath("/admin/approvals");
     revalidatePath("/articles");
   }
@@ -49,7 +50,9 @@ export default async function AdminApprovalsPage() {
     const reason = String(formData.get("reason") || "").trim();
     if (!id) return;
     await rejectPost(id, reason || undefined);
+    revalidatePath("/");
     revalidatePath("/admin/approvals");
+    revalidatePath("/articles");
   }
 
   async function approveServiceAction(formData: FormData) {
@@ -58,6 +61,7 @@ export default async function AdminApprovalsPage() {
     const id = String(formData.get("id") || "");
     if (!id) return;
     await approveService(id);
+    revalidatePath("/");
     revalidatePath("/admin/approvals");
     revalidatePath("/services");
   }
@@ -69,7 +73,9 @@ export default async function AdminApprovalsPage() {
     const reason = String(formData.get("reason") || "").trim();
     if (!id) return;
     await rejectService(id, reason || undefined);
+    revalidatePath("/");
     revalidatePath("/admin/approvals");
+    revalidatePath("/services");
   }
 
   return (
