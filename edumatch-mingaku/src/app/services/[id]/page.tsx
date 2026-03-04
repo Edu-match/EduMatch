@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, ExternalLink, Building2, Calendar, Play, FileText, Mail, Check, Star, Pencil } from "lucide-react";
 import { unstable_noStore } from "next/cache";
 import { getServiceById, getPopularServices, recordView } from "@/app/_actions";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, getCurrentProfile } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import { YouTubeEmbed } from "@/components/ui/youtube-embed";
 import { AddToRequestListServiceButton } from "./service-detail-actions";
@@ -40,10 +40,11 @@ export default async function ServiceDetailPage({
     notFound();
   }
 
-  const user = await getCurrentUser();
+  const [user, profile] = await Promise.all([getCurrentUser(), getCurrentProfile()]);
   if (user) {
     await recordView(user.id, "SERVICE", id);
   }
+  const canEdit = user && (user.id === service.provider_id || profile?.role === "ADMIN");
 
   // 口コミを取得（口コミ機能が有効な場合のみ）
   const reviews = FEATURES.REVIEWS ? await getServiceReviews(id) : [];
@@ -92,7 +93,7 @@ export default async function ServiceDetailPage({
                   {service.title}
                 </h1>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  {user?.id === service.provider_id && (
+                  {canEdit && (
                     <Button variant="outline" size="sm" asChild>
                       <Link href={`/services/${service.id}/edit`}>
                         <Pencil className="h-4 w-4 mr-1" />

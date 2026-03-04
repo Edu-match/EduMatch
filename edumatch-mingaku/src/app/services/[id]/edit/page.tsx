@@ -34,8 +34,9 @@ export default async function ServiceEditPage({ params }: PageProps) {
     notFound();
   }
 
-  // 投稿者本人かチェック
-  if (service.provider_id !== profile.id) {
+  // 投稿者本人または ADMIN のみ編集可
+  const isAdmin = profile.role === "ADMIN";
+  if (service.provider_id !== profile.id && !isAdmin) {
     redirect("/dashboard");
   }
 

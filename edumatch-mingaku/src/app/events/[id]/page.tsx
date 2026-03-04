@@ -3,8 +3,9 @@ import { notFound, redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, MapPin, Building2, ArrowLeft, ExternalLink } from "lucide-react";
+import { Calendar, MapPin, Building2, ArrowLeft, ExternalLink, Pencil } from "lucide-react";
 import { getEventById } from "@/app/_actions/events";
+import { getCurrentUserRole } from "@/app/_actions/user";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -27,8 +28,9 @@ function formatEventDate(dateStr: string | null): string {
 export default async function EventDetailPage({ params }: PageProps) {
   const { id } = await params;
 
-  const event = await getEventById(id);
+  const [event, role] = await Promise.all([getEventById(id), getCurrentUserRole()]);
   if (!event) notFound();
+  const isAdmin = role === "ADMIN";
 
   // 外部URLがある場合はリダイレクト（直接外部に飛ばす）
   if (event.external_url) {
@@ -41,12 +43,22 @@ export default async function EventDetailPage({ params }: PageProps) {
 
   return (
     <div className="container py-8 max-w-2xl">
-      <Button variant="ghost" asChild className="mb-6 -ml-2">
-        <Link href="/events" className="flex items-center gap-2">
-          <ArrowLeft className="h-4 w-4" />
-          セミナー・イベント一覧に戻る
-        </Link>
-      </Button>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
+        <Button variant="ghost" asChild className="-ml-2">
+          <Link href="/events" className="flex items-center gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            セミナー・イベント一覧に戻る
+          </Link>
+        </Button>
+        {isAdmin && (
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/admin/events/${id}/edit`}>
+              <Pencil className="h-4 w-4 mr-1" />
+              編集
+            </Link>
+          </Button>
+        )}
+      </div>
 
       <Card>
         <CardContent className="p-6 sm:p-8">
