@@ -33,6 +33,8 @@ export type SubmitMaterialRequestResult = {
   success: boolean;
   requestId?: string;
   error?: string;
+  /** 資料請求は成功したが、ユーザー宛確認メールの送信に失敗した場合 */
+  userEmailFailed?: boolean;
 };
 
 export type SubmitMaterialRequestBatchInput = {
@@ -49,6 +51,7 @@ export type SubmitMaterialRequestBatchResult = {
   requestIds?: string[];
   successCount: number;
   error?: string;
+  userEmailFailed?: boolean;
 };
 
 /** 資料請求があったときにエデュマッチ運営にも通知を送る宛先 */
@@ -105,6 +108,7 @@ export async function submitMaterialRequest(
     const providerEmailsUnique = [...new Set(providerEmails)];
 
     const apiKey = process.env.RESEND_API_KEY;
+    let userEmailFailed = false;
 
     if (apiKey) {
       try {
@@ -121,6 +125,25 @@ export async function submitMaterialRequest(
         const reqEmail = escapeHtml(deliveryEmail);
         const reqPhone = deliveryPhone ? escapeHtml(deliveryPhone) : "未入力";
         const reqMessage = input.message ? nl2br(input.message) : "";
+        const providerName = provider?.name ? escapeHtml(provider.name) : "サービス提供者";
+
+        // ユーザー向けメール本文
+        const userHtml = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: sans-serif; line-height: 1.6; color: #333;">
+  <h2 style="color: #16a34a;">資料請求を受け付けました</h2>
+  <p>${reqName} 様</p>
+  <p>エデュマッチをご利用いただきありがとうございます。<br />以下のサービスへの資料請求を受け付けました。</p>
+  <div style="background: #f0fdf4; padding: 16px; border-radius: 8px; margin: 16px 0;">
+    <p style="margin: 0 0 4px;"><strong>サービス名：</strong> ${svcTitle}</p>
+    <p style="margin: 0;"><strong>提供者：</strong> ${providerName}</p>
+  </div>
+  <p><strong>${providerName}</strong> より、ご登録のメールアドレス（${reqEmail}）宛てに資料をお送りします。<br />しばらくお待ちください。</p>
+  <p style="color: #64748b; font-size: 12px; margin-top: 24px;">※ このメールはエデュマッチから自動送信されています。請求番号: ${reqId}</p>
+</body>
+</html>`;
 
         // 企業向けメール本文
         const providerHtml = `
@@ -142,7 +165,27 @@ export async function submitMaterialRequest(
 </body>
 </html>`;
 
-        // 1. 企業（サービス提供者）へのメール通知
+        // 1. ユーザーへの受付確認メール（先に送信。企業・運営より優先）
+        const userResult = await resend.emails.send({
+          from,
+          to: deliveryEmail,
+          subject: `【エデュマッチ】資料請求を受け付けました - ${service.title}`,
+          html: userHtml,
+        });
+        if (userResult.error) {
+          userEmailFailed = true;
+          console.error("[RESEND] ユーザー宛メール送信エラー:", deliveryEmail, JSON.stringify(userResult.error));
+          const errMsg = String(
+            (userResult.error as { message?: string })?.message ?? userResult.error
+          );
+          if (errMsg.includes("verify a domain") || errMsg.includes("your own email")) {
+            console.error("[RESEND] ドメイン未検証の可能性があります。docs/RESEND_SETUP.md を参照して edu-match.com を検証してください。");
+          }
+        } else {
+          console.log(`[SUCCESS] ユーザー宛確認メール送信完了: ${deliveryEmail}`);
+        }
+
+        // 2. 企業（サービス提供者）へのメール通知
         if (providerEmailsUnique.length === 0) {
           console.warn("[RESEND] サービス提供者のメールアドレスが登録されていません。企業に通知できません。", {
             serviceId: input.serviceId,
@@ -181,35 +224,7 @@ export async function submitMaterialRequest(
           console.error("[RESEND] 運営宛メール送信エラー:", JSON.stringify(adminResult.error));
         }
 
-        // 3. ユーザーへの受付確認メール
-        const providerName = provider?.name ? escapeHtml(provider.name) : "サービス提供者";
-        const userHtml = `
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="font-family: sans-serif; line-height: 1.6; color: #333;">
-  <h2 style="color: #16a34a;">資料請求を受け付けました</h2>
-  <p>${reqName} 様</p>
-  <p>エデュマッチをご利用いただきありがとうございます。<br />以下のサービスへの資料請求を受け付けました。</p>
-  <div style="background: #f0fdf4; padding: 16px; border-radius: 8px; margin: 16px 0;">
-    <p style="margin: 0 0 4px;"><strong>サービス名：</strong> ${svcTitle}</p>
-    <p style="margin: 0;"><strong>提供者：</strong> ${providerName}</p>
-  </div>
-  <p><strong>${providerName}</strong> より、ご登録のメールアドレス（${reqEmail}）宛てに資料をお送りします。<br />しばらくお待ちください。</p>
-  <p style="color: #64748b; font-size: 12px; margin-top: 24px;">※ このメールはエデュマッチから自動送信されています。請求番号: ${reqId}</p>
-</body>
-</html>`;
-
-        const userResult = await resend.emails.send({
-          from,
-          to: deliveryEmail,
-          subject: `【エデュマッチ】資料請求を受け付けました - ${service.title}`,
-          html: userHtml,
-        });
-
-        if (userResult.error) {
-          console.error("[RESEND] ユーザー宛メール送信エラー:", JSON.stringify(userResult.error));
-        } else {
+        if (!userEmailFailed) {
           console.log(`[SUCCESS] 資料請求メール送信完了: ${service.title}, 企業: ${providerEmailsUnique.join(", ") || "なし"}, ユーザー: ${deliveryEmail}`);
         }
       } catch (mailErr) {
@@ -223,13 +238,18 @@ export async function submitMaterialRequest(
           apiKeyPresent: !!apiKey,
           fromEmail: process.env.RESEND_FROM_EMAIL ?? "エデュマッチ <onboarding@resend.dev>",
         });
+        userEmailFailed = true;
         // 資料請求の保存は完了しているので success のまま返す
       }
     } else {
       console.warn("[WARN] Skipping email sending - RESEND_API_KEY not set");
     }
 
-    return { success: true, requestId: req.id };
+    return {
+      success: true,
+      requestId: req.id,
+      ...(userEmailFailed && { userEmailFailed: true }),
+    };
   } catch (e) {
     console.error("submitMaterialRequest error:", e);
     return { success: false, error: "送信に失敗しました" };
@@ -243,6 +263,7 @@ export async function submitMaterialRequestBatch(
   input: SubmitMaterialRequestBatchInput
 ): Promise<SubmitMaterialRequestBatchResult> {
   const requestIds: string[] = [];
+  let userEmailFailed = false;
   for (const serviceId of input.serviceIds) {
     const result = await submitMaterialRequest({
       ...input,
@@ -251,6 +272,7 @@ export async function submitMaterialRequestBatch(
     if (result.success && result.requestId) {
       requestIds.push(result.requestId);
     }
+    if (result.userEmailFailed) userEmailFailed = true;
   }
   return {
     success: requestIds.length > 0,
@@ -260,6 +282,7 @@ export async function submitMaterialRequestBatch(
       requestIds.length < input.serviceIds.length
         ? `${requestIds.length}件送信しました。${input.serviceIds.length - requestIds.length}件は送信に失敗しました。`
         : undefined,
+    ...(userEmailFailed && { userEmailFailed: true }),
   };
 }
 

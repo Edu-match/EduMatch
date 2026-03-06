@@ -94,9 +94,10 @@ export function RequestInfoForm(props: Props) {
       if (result.success && result.requestIds?.length) {
         const first = result.requestIds[0];
         const batch = result.requestIds.length;
-        router.push(
-          `/request-info/complete?requestId=${first}${batch > 1 ? `&batch=${batch}` : ""}`
-        );
+        const params = new URLSearchParams({ requestId: first });
+        if (batch > 1) params.set("batch", String(batch));
+        if (result.userEmailFailed) params.set("userEmailFailed", "1");
+        router.push(`/request-info/complete?${params.toString()}`);
         return;
       }
       setError(result.error ?? "送信に失敗しました");
@@ -110,7 +111,9 @@ export function RequestInfoForm(props: Props) {
     const result = await submitMaterialRequest({ ...base, serviceId });
     setSubmitting(false);
     if (result.success && result.requestId) {
-      router.push(`/request-info/complete?requestId=${result.requestId}`);
+      const params = new URLSearchParams({ requestId: result.requestId });
+      if (result.userEmailFailed) params.set("userEmailFailed", "1");
+      router.push(`/request-info/complete?${params.toString()}`);
       return;
     }
     setError(result.error ?? "送信に失敗しました");

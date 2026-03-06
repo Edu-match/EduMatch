@@ -8,6 +8,7 @@ import {
   ArrowRight,
   FileText,
   Home,
+  AlertTriangle,
 } from "lucide-react";
 import { requireAuth } from "@/lib/auth";
 import { getMaterialRequestById } from "@/app/_actions";
@@ -15,11 +16,11 @@ import { formatDateInJST } from "@/lib/date-utils";
 
 export const dynamic = "force-dynamic";
 
-type Props = { searchParams: Promise<{ requestId?: string; batch?: string }> };
+type Props = { searchParams: Promise<{ requestId?: string; batch?: string; userEmailFailed?: string }> };
 
 export default async function RequestInfoCompletePage({ searchParams }: Props) {
   await requireAuth();
-  const { requestId, batch } = await searchParams;
+  const { requestId, batch, userEmailFailed } = await searchParams;
   const batchCount = batch ? parseInt(batch, 10) : 0;
   const isBatch = batchCount > 1;
 
@@ -40,16 +41,40 @@ export default async function RequestInfoCompletePage({ searchParams }: Props) {
                 : "資料請求を送信しました"}
             </h1>
 
+            {userEmailFailed === "1" && (
+              <div className="mb-6 p-4 rounded-lg bg-amber-50 border border-amber-200 text-left">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-amber-800">確認メールの送信に失敗しました</p>
+                    <p className="text-sm text-amber-700 mt-1">
+                      資料請求は正常に受け付けましたが、受付完了メールの送信に失敗しました。迷惑メールフォルダをご確認いただくか、サービス提供元からのご連絡をお待ちください。
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <p className="text-lg text-muted-foreground mb-8">
-              ご入力いただいた
-              {request ? (
-                <>メールアドレス（<strong>{request.delivery_email}</strong>）</>
+              {userEmailFailed === "1" ? (
+                <>
+                  資料の送付はサービス提供元より、ご登録のメールアドレス
+                  {request && <>（<strong>{request.delivery_email}</strong>）</>}
+                  宛てに行われます。
+                </>
               ) : (
-                "メールアドレス"
+                <>
+                  ご入力いただいた
+                  {request ? (
+                    <>メールアドレス（<strong>{request.delivery_email}</strong>）</>
+                  ) : (
+                    "メールアドレス"
+                  )}
+                  に、受付完了のご案内メールをお送りしています。
+                  <br />
+                  資料の送付はサービス提供元より、ご登録のメールアドレス宛てに行われます。
+                </>
               )}
-              に、受付完了のご案内メールをお送りしています。
-              <br />
-              資料の送付はサービス提供元より、ご登録のメールアドレス宛てに行われます。
             </p>
 
             {request && (
