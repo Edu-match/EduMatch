@@ -20,6 +20,11 @@ function nl2br(s: string): string {
   return escapeHtml(s).replace(/\n/g, "<br />");
 }
 
+/** Resend のレート制限（2 req/s）を避けるための待機 */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export type SubmitMaterialRequestInput = {
   serviceId: string;
   deliveryName?: string;
@@ -184,25 +189,25 @@ export async function submitMaterialRequest(
         } else {
           console.log(`[SUCCESS] ユーザー宛確認メール送信完了: ${deliveryEmail}`);
         }
+        await sleep(600); // Resend レート制限（2 req/s）回避
 
-        // 2. 企業（サービス提供者）へのメール通知
+        // 2. 企業（サービス提供者）へのメール通知（最大3件を1リクエストで送信）
         if (providerEmailsUnique.length === 0) {
           console.warn("[RESEND] サービス提供者のメールアドレスが登録されていません。企業に通知できません。", {
             serviceId: input.serviceId,
             serviceTitle: service.title,
             providerId: provider?.id,
           });
-        }
-        for (const to of providerEmailsUnique) {
+        } else {
           const providerResult = await resend.emails.send({
             from,
-            to,
+            to: providerEmailsUnique,
             replyTo: deliveryEmail,
             subject: `【エデュマッチ】資料請求がありました - ${service.title}`,
             html: providerHtml,
           });
           if (providerResult.error) {
-            console.error("[RESEND] 企業宛メール送信エラー:", to, JSON.stringify(providerResult.error));
+            console.error("[RESEND] 企業宛メール送信エラー:", providerEmailsUnique, JSON.stringify(providerResult.error));
             const errMsg = String(
               (providerResult.error as { message?: string })?.message ?? providerResult.error
             );
@@ -211,8 +216,9 @@ export async function submitMaterialRequest(
             }
           }
         }
+        await sleep(600);
 
-        // 2. 運営への通知（企業と別送信）
+        // 3. 運営への通知（企業と別送信）
         const adminResult = await resend.emails.send({
           from,
           to: EDUMATCH_NOTIFICATION_EMAIL,
