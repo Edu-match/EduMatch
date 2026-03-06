@@ -770,7 +770,7 @@ export function BlockEditor({
             }`}
             onClick={() => setActiveBlockId(block.id)}
           >
-            {/* Block move controls - shown on the right for active block */}
+            {/* Block move controls & delete - shown on the right for active block */}
             {activeBlockId === block.id && (
               <div className="absolute -right-2 top-1/2 -translate-y-1/2 flex flex-col gap-1 bg-white border rounded-lg shadow-sm p-1">
                 <button
@@ -781,6 +781,7 @@ export function BlockEditor({
                   }}
                   className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
                   disabled={index === 0}
+                  title="上へ移動"
                 >
                   <ChevronUp className="h-4 w-4" />
                 </button>
@@ -795,8 +796,20 @@ export function BlockEditor({
                   }}
                   className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
                   disabled={index === blocks.length - 1}
+                  title="下へ移動"
                 >
                   <ChevronDown className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteBlock(block.id);
+                  }}
+                  className="p-1 hover:bg-red-50 rounded text-destructive hover:text-destructive"
+                  title="ブロックを削除"
+                >
+                  <Trash2 className="h-4 w-4" />
                 </button>
               </div>
             )}
@@ -862,15 +875,6 @@ export function BlockEditor({
                     </Button>
                   </div>
                 )}
-
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => deleteBlock(block.id)}
-                  className="text-destructive hover:text-destructive ml-2"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
               </div>
             )}
 
