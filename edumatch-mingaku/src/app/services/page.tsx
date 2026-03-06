@@ -1,5 +1,4 @@
 import { getAllServices } from "@/app/_actions";
-import { sortServicesByDisplayOrder, getDisplayOrderIds } from "@/lib/service-display-order";
 import { ServicesClient } from "./services-client";
 import { SERVICE_CATEGORY_LIST } from "@/lib/categories";
 import { serviceThumbnailPlaceholder } from "@/lib/utils";
@@ -18,11 +17,9 @@ export type ServiceForList = {
 export default async function ServicesPage() {
   const services = await getAllServices();
 
-  // カテゴリ「すべて」のときの表示順: 指定リスト順（プレミアム→スタンダード→ベーシック→その他）
-  const sorted = sortServicesByDisplayOrder(services);
-  const displayOrderIds = getDisplayOrderIds(services);
-
-  const serviceList: ServiceForList[] = sorted.map((service) => ({
+  // 表示順は Supabase の sort_order で管理（DB取得時点でソート済み）
+  const displayOrderIds = services.map((s) => s.id);
+  const serviceList: ServiceForList[] = services.map((service) => ({
     id: service.id,
     name: service.title,
     description: service.description ?? "",

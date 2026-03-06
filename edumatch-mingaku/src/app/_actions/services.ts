@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { isImportedContent } from "@/lib/imported-content";
 import { createClient } from "@/utils/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
-import { sortServicesByDisplayOrder } from "@/lib/service-display-order";
 import type { Service, Profile, Role } from "@prisma/client";
 
 export type ServiceWithProvider = Service & {
@@ -135,7 +134,7 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     view_count: 850,
     favorite_count: 38,
     request_count: 52,
-    sort_order: 9999,
+    sort_order: "その他",
     wp_product_id: null,
     provider_display_name: null,
     review_count: 0,
@@ -165,7 +164,7 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     view_count: 720,
     favorite_count: 29,
     request_count: 44,
-    sort_order: 9999,
+    sort_order: "その他",
     wp_product_id: null,
     provider_display_name: null,
     review_count: 0,
@@ -195,7 +194,7 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     view_count: 650,
     favorite_count: 35,
     request_count: 38,
-    sort_order: 9999,
+    sort_order: "その他",
     wp_product_id: null,
     provider_display_name: null,
     review_count: 0,
@@ -225,7 +224,7 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     view_count: 980,
     favorite_count: 42,
     request_count: 61,
-    sort_order: 9999,
+    sort_order: "その他",
     wp_product_id: null,
     provider_display_name: null,
     review_count: 0,
@@ -255,7 +254,7 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     view_count: 790,
     favorite_count: 33,
     request_count: 47,
-    sort_order: 9999,
+    sort_order: "その他",
     wp_product_id: null,
     provider_display_name: null,
     review_count: 0,
@@ -308,9 +307,7 @@ export async function getAllServices(): Promise<ServiceWithProvider[]> {
       ],
     });
 
-    const sorted = sortServicesByDisplayOrder(services);
-
-    return sorted.map((s) => ({
+    return services.map((s) => ({
       ...s,
       provider: s.provider || { id: s.provider_id, name: "提供者", email: "", avatar_url: null, notification_email_2: null, notification_email_3: null },
     }));
@@ -357,10 +354,14 @@ export async function getPopularServices(limit: number = 5): Promise<ServiceWith
           },
         },
       },
+      orderBy: [
+        { sort_order: "asc" },
+        { created_at: "desc" },
+      ],
+      take: limit,
     });
-    const sorted = sortServicesByDisplayOrder(services);
 
-    return sorted.slice(0, limit).map((s) => ({
+    return services.map((s) => ({
       ...s,
       provider: s.provider || { id: s.provider_id, name: "提供者", email: "", avatar_url: null, notification_email_2: null, notification_email_3: null },
     }));

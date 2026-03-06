@@ -4,19 +4,17 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, Building2 } from "lucide-react";
 import { getAllServices } from "@/app/_actions";
-import { sortServicesByDisplayOrder } from "@/lib/service-display-order";
 
 export const dynamic = "force-dynamic";
 
-/** サービスから「掲載企業（提供者）」を指定順でユニークに抽出 */
+/** サービスから「掲載企業（提供者）」を sort_order 順でユニークに抽出 */
 function getProvidersInDisplayOrder(
   services: Awaited<ReturnType<typeof getAllServices>>
 ): { providerId: string; providerName: string; avatarUrl: string | null; services: { id: string; title: string }[] }[] {
-  const sorted = sortServicesByDisplayOrder(services);
   const seen = new Set<string>();
   const result: { providerId: string; providerName: string; avatarUrl: string | null; services: { id: string; title: string }[] }[] = [];
 
-  for (const s of sorted) {
+  for (const s of services) {
     const pid = s.provider?.id ?? s.provider_id;
     if (!pid || seen.has(pid)) continue;
     seen.add(pid);

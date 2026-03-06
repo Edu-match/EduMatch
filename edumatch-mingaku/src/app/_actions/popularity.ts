@@ -2,7 +2,6 @@
 
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
-import { sortServicesByDisplayOrder } from "@/lib/service-display-order";
 
 /**
  * サービスのいいね数をインクリメント
@@ -118,10 +117,14 @@ export async function getPopularServicesByEngagement(limit: number = 10) {
           },
         },
       },
+      orderBy: [
+        { sort_order: "asc" },
+        { created_at: "desc" },
+      ],
+      take: limit,
     });
-    const sortedServices = sortServicesByDisplayOrder(services).slice(0, limit);
 
-    return sortedServices.map((s) => ({
+    return services.map((s) => ({
       ...s,
       provider: s.provider || { id: s.provider_id, name: "提供者", email: "", avatar_url: null },
     }));
