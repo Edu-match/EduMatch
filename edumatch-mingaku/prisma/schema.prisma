@@ -125,7 +125,7 @@ model Service {
   request_count         Int               @default(0)
   tags                  String[]          @default([])
   /// 表示順（Supabase でプルダウン: プレミアム/スタンダード/ベーシック/その他）
-  sort_order            String            @default("その他")
+  sort_order            ServiceSortOrderTier @default(OTHER)
   /// 表示用提供者名。未設定時は provider.name
   provider_display_name String?
   /// WooCommerce product (post) ID。XML とのマッチ・再インポート用
@@ -290,6 +290,15 @@ enum PublishStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+enum ServiceSortOrderTier {
+  PREMIUM  @map("プレミアム")
+  STANDARD @map("スタンダード")
+  BASIC    @map("ベーシック")
+  OTHER    @map("その他")
+
+  @@map("service_sort_order_tier")
 }
 
 /// トップページのニュースタブ分類
