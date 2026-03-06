@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,8 +14,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Mail, MessageCircle, Clock, HelpCircle } from "lucide-react";
+import { Mail, MessageCircle, Clock, HelpCircle, Loader2 } from "lucide-react";
 import { OpenAiChatButton } from "@/components/ui/open-ai-chat-button";
+import { toast } from "sonner";
+import { submitContact } from "@/app/_actions";
 
 const categories = [
   { value: "general", label: "一般的なお問い合わせ" },
@@ -25,10 +28,53 @@ const categories = [
 ];
 
 export default function ContactPage() {
+  const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [category, setCategory] = useState("");
   const [message, setMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) {
+      toast.error("お名前を入力してください");
+      return;
+    }
+    if (!email.trim()) {
+      toast.error("メールアドレスを入力してください");
+      return;
+    }
+    if (!category) {
+      toast.error("お問い合わせ種別を選択してください");
+      return;
+    }
+    if (!message.trim()) {
+      toast.error("お問い合わせ内容を入力してください");
+      return;
+    }
+
+    setSubmitting(true);
+    const categoryLabel = categories.find((c) => c.value === category)?.label ?? category;
+    const result = await submitContact({
+      name: name.trim(),
+      email: email.trim(),
+      category: categoryLabel,
+      message: message.trim(),
+    });
+    setSubmitting(false);
+
+    if (result.success && result.inquiryId) {
+      const params = new URLSearchParams({
+        email: email.trim(),
+        category: categoryLabel,
+        inquiryId: result.inquiryId,
+      });
+      router.push(`/contact/complete?${params.toString()}`);
+      return;
+    }
+    toast.error(result.error ?? "送信に失敗しました");
+  };
 
   return (
     <div className="container py-8">
@@ -46,6 +92,7 @@ export default function ContactPage() {
             <CardTitle>お問い合わせフォーム</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">
@@ -108,10 +155,23 @@ export default function ContactPage() {
             </div>
 
             <div className="form-actions">
-              <Button className="w-full sm:w-auto sm:min-w-[200px]" size="lg" asChild>
-                <Link href="/contact/complete">送信する</Link>
+              <Button
+                type="submit"
+                className="w-full sm:w-auto sm:min-w-[200px]"
+                size="lg"
+                disabled={submitting}
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    送信中...
+                  </>
+                ) : (
+                  "送信する"
+                )}
               </Button>
             </div>
+            </form>
           </CardContent>
         </Card>
 

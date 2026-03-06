@@ -1,6 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import { getCurrentProfile } from "@/lib/auth";
 import { getSitePage } from "@/app/_actions/site-pages";
+import { getDefaultContentForEdit } from "@/lib/default-site-pages";
 import { PageEditor } from "../../_components/page-editor";
 import type { SitePageKey } from "@/app/_actions/site-pages";
 
@@ -22,11 +23,15 @@ export default async function EditSitePagePage({
   }
 
   const page = await getSitePage(key as SitePageKey);
+  const initialContent = getDefaultContentForEdit(
+    key as SitePageKey,
+    page.body
+  );
 
   return (
     <PageEditor
       keyType={key as SitePageKey}
-      initialContent={page.body ?? ""}
+      initialContent={initialContent}
       initialTitle={page.title}
     />
   );

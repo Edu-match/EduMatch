@@ -53,6 +53,13 @@ export {
   type PublicProfileWithContents,
 } from "./user";
 
+// Contact (お問い合わせ)
+export {
+  submitContact,
+  type SubmitContactInput,
+  type SubmitContactResult,
+} from "./contact";
+
 // Material request (資料請求)
 export {
   submitMaterialRequest,

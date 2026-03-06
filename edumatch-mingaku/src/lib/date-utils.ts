@@ -25,3 +25,13 @@ export function formatDateShortInJST(date: Date): string {
     timeZone: JST,
   });
 }
+
+/** 日付のみ（時刻なし）でフォーマット */
+export function formatDateOnlyInJST(date: Date): string {
+  return date.toLocaleDateString("ja-JP", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    timeZone: JST,
+  });
+}

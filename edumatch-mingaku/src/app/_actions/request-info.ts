@@ -114,15 +114,23 @@ export async function submitMaterialRequest(
         `;
 
         // 1. サービス提供者へのメール通知（登録された最大3件のアドレスに送信）
+        // reply_to に請求者のメールを設定し、企業が返信しやすくする
         for (const to of uniqueProviderEmails) {
           const providerResult = await resend.emails.send({
             from,
             to,
+            replyTo: deliveryEmail,
             subject: `【エデュマッチ】資料請求がありました - ${service.title}`,
             html: providerHtml,
           });
           if (providerResult.error) {
             console.error("[RESEND] Provider email error:", to, JSON.stringify(providerResult.error));
+            const errMsg = String(
+              (providerResult.error as { message?: string })?.message ?? providerResult.error
+            );
+            if (errMsg.includes("verify a domain") || errMsg.includes("your own email")) {
+              console.error("[RESEND] ドメイン未検証の可能性があります。docs/RESEND_SETUP.md を参照して edu-match.com を検証してください。");
+            }
           }
         }
 

@@ -2,14 +2,18 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, Mail, Clock, Home, HelpCircle } from "lucide-react";
-import { formatDateInJST } from "@/lib/date-utils";
+import { formatDateOnlyInJST } from "@/lib/date-utils";
 
-export default function ContactCompletePage() {
+type Props = { searchParams: Promise<{ email?: string; category?: string; inquiryId?: string }> };
+
+export default async function ContactCompletePage({ searchParams }: Props) {
+  const { email, category, inquiryId: paramInquiryId } = await searchParams;
+  const inquiryId = paramInquiryId ?? `INQ-${Date.now().toString(36).toUpperCase()}`;
   const inquiryDetails = {
-    inquiryId: "INQ-2024011502",
-    category: "一般的なお問い合わせ",
-    date: formatDateInJST(new Date()),
-    email: "yamada@example.com",
+    inquiryId,
+    category: category || "一般的なお問い合わせ",
+    date: formatDateOnlyInJST(new Date()),
+    email: email || "",
   };
 
   return (
@@ -47,13 +51,15 @@ export default function ContactCompletePage() {
                     <span>{inquiryDetails.category}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">受付日時</span>
+                    <span className="text-muted-foreground">受付日</span>
                     <span>{inquiryDetails.date}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">回答先</span>
-                    <span>{inquiryDetails.email}</span>
-                  </div>
+                  {inquiryDetails.email && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">回答先</span>
+                      <span>{inquiryDetails.email}</span>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
