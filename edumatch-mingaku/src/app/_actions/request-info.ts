@@ -5,6 +5,21 @@ import { requireAuth } from "@/lib/auth";
 import { getServiceById } from "./services";
 import { Resend } from "resend";
 
+/** メール本文用のHTMLエスケープ */
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/** 改行を<br>に変換（既にエスケープ済みの文字列用） */
+function nl2br(s: string): string {
+  return escapeHtml(s).replace(/\n/g, "<br />");
+}
+
 export type SubmitMaterialRequestInput = {
   serviceId: string;
   deliveryName?: string;
@@ -87,11 +102,10 @@ export async function submitMaterialRequest(
       (provider as { notification_email_3?: string | null } | undefined)?.notification_email_3,
     ]
       .filter((e): e is string => typeof e === "string" && e.trim().length > 0);
-    // サービス提供者1〜3件 + エデュマッチ運営（重複除く）
-    const uniqueProviderEmails = [...new Set([...providerEmails, EDUMATCH_NOTIFICATION_EMAIL])];
+    const providerEmailsUnique = [...new Set(providerEmails)];
 
     const apiKey = process.env.RESEND_API_KEY;
-    
+
     if (apiKey) {
       try {
         const resend = new Resend(apiKey);
@@ -99,23 +113,44 @@ export async function submitMaterialRequest(
         const from = fromRaw
           ? (fromRaw.includes("<") ? fromRaw : `エデュマッチ <${fromRaw}>`)
           : "エデュマッチ <onboarding@resend.dev>";
-        const providerHtml = `
-          <h2>エデュマッチで資料請求の依頼がありました</h2>
-          <p>以下の内容で資料請求が届いています。</p>
-          <hr />
-          <p><strong>対象サービス：</strong> ${service.title}</p>
-          <p><strong>請求者名：</strong> ${deliveryName}</p>
-          <p><strong>塾名・学校名：</strong> ${org}</p>
-          <p><strong>メールアドレス：</strong> ${deliveryEmail}</p>
-          <p><strong>電話番号：</strong> ${deliveryPhone ?? "未入力"}</p>
-          ${input.message ? `<p><strong>備考：</strong><br />${input.message.replace(/\n/g, "<br />")}</p>` : ""}
-          <hr />
-          <p style="color:#666;font-size:12px;">このメールはエデュマッチから自動送信されています。</p>
-        `;
 
-        // 1. サービス提供者へのメール通知（登録された最大3件のアドレスに送信）
-        // reply_to に請求者のメールを設定し、企業が返信しやすくする
-        for (const to of uniqueProviderEmails) {
+        const reqId = req.id.slice(-8).toUpperCase();
+        const svcTitle = escapeHtml(service.title);
+        const reqName = escapeHtml(deliveryName);
+        const reqOrg = escapeHtml(org);
+        const reqEmail = escapeHtml(deliveryEmail);
+        const reqPhone = deliveryPhone ? escapeHtml(deliveryPhone) : "未入力";
+        const reqMessage = input.message ? nl2br(input.message) : "";
+
+        // 企業向けメール本文
+        const providerHtml = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: sans-serif; line-height: 1.6; color: #333;">
+  <h2 style="color: #2563eb;">【エデュマッチ】資料請求の依頼がありました。</h2>
+  <p>エデュマッチにて、貴社サービス「${svcTitle}」への資料請求がありました。</p>
+  <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin: 16px 0;">
+    <p style="margin: 0 0 8px;"><strong>請求者名：</strong> ${reqName}</p>
+    <p style="margin: 0 0 8px;"><strong>塾名・学校名：</strong> ${reqOrg}</p>
+    <p style="margin: 0 0 8px;"><strong>メールアドレス：</strong> ${reqEmail}</p>
+    <p style="margin: 0 0 8px;"><strong>電話番号：</strong> ${reqPhone}</p>
+    ${reqMessage ? `<p style="margin: 8px 0 0;"><strong>備考・ご要望：</strong><br />${reqMessage}</p>` : ""}
+  </div>
+  <p>ご対応をお願いいたします。</p>
+  <p style="color: #64748b; font-size: 12px; margin-top: 24px;">※ このメールはエデュマッチ（<a href="https://edu-match.com">edu-match.com</a>）から自動送信されています。請求番号: ${reqId}</p>
+</body>
+</html>`;
+
+        // 1. 企業（サービス提供者）へのメール通知
+        if (providerEmailsUnique.length === 0) {
+          console.warn("[RESEND] サービス提供者のメールアドレスが登録されていません。企業に通知できません。", {
+            serviceId: input.serviceId,
+            serviceTitle: service.title,
+            providerId: provider?.id,
+          });
+        }
+        for (const to of providerEmailsUnique) {
           const providerResult = await resend.emails.send({
             from,
             to,
@@ -124,7 +159,7 @@ export async function submitMaterialRequest(
             html: providerHtml,
           });
           if (providerResult.error) {
-            console.error("[RESEND] Provider email error:", to, JSON.stringify(providerResult.error));
+            console.error("[RESEND] 企業宛メール送信エラー:", to, JSON.stringify(providerResult.error));
             const errMsg = String(
               (providerResult.error as { message?: string })?.message ?? providerResult.error
             );
@@ -134,33 +169,48 @@ export async function submitMaterialRequest(
           }
         }
 
-        // 2. ユーザーへの確認メール
+        // 2. 運営への通知（企業と別送信）
+        const adminResult = await resend.emails.send({
+          from,
+          to: EDUMATCH_NOTIFICATION_EMAIL,
+          replyTo: deliveryEmail,
+          subject: `【運営通知】資料請求 - ${service.title}（${reqId}）`,
+          html: providerHtml,
+        });
+        if (adminResult.error) {
+          console.error("[RESEND] 運営宛メール送信エラー:", JSON.stringify(adminResult.error));
+        }
+
+        // 3. ユーザーへの受付確認メール
+        const providerName = provider?.name ? escapeHtml(provider.name) : "サービス提供者";
+        const userHtml = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: sans-serif; line-height: 1.6; color: #333;">
+  <h2 style="color: #16a34a;">資料請求を受け付けました</h2>
+  <p>${reqName} 様</p>
+  <p>エデュマッチをご利用いただきありがとうございます。<br />以下のサービスへの資料請求を受け付けました。</p>
+  <div style="background: #f0fdf4; padding: 16px; border-radius: 8px; margin: 16px 0;">
+    <p style="margin: 0 0 4px;"><strong>サービス名：</strong> ${svcTitle}</p>
+    <p style="margin: 0;"><strong>提供者：</strong> ${providerName}</p>
+  </div>
+  <p><strong>${providerName}</strong> より、ご登録のメールアドレス（${reqEmail}）宛てに資料をお送りします。<br />しばらくお待ちください。</p>
+  <p style="color: #64748b; font-size: 12px; margin-top: 24px;">※ このメールはエデュマッチから自動送信されています。請求番号: ${reqId}</p>
+</body>
+</html>`;
+
         const userResult = await resend.emails.send({
           from,
           to: deliveryEmail,
           subject: `【エデュマッチ】資料請求を受け付けました - ${service.title}`,
-          html: `
-            <h2>資料請求を受け付けました</h2>
-            <p>${deliveryName} 様</p>
-            <p>エデュマッチをご利用いただきありがとうございます。<br />以下の内容で資料請求を受け付けました。</p>
-            <hr />
-            <p><strong>サービス名：</strong> ${service.title}</p>
-            <p><strong>提供者：</strong> ${service.provider?.name ?? "未設定"}</p>
-            <p><strong>お名前：</strong> ${deliveryName}</p>
-            <p><strong>塾名・学校名：</strong> ${org}</p>
-            <p><strong>メールアドレス：</strong> ${deliveryEmail}</p>
-            <p><strong>電話番号：</strong> ${deliveryPhone ?? "未入力"}</p>
-            ${input.message ? `<p><strong>ご要望：</strong><br />${input.message.replace(/\n/g, "<br />")}</p>` : ""}
-            <hr />
-            <p>サービス提供者から、ご登録のメールアドレス宛てに資料が届きます。<br />しばらくお待ちください。</p>
-            <p style="color:#666;font-size:12px;margin-top:20px;">このメールはエデュマッチから自動送信されています。</p>
-          `,
+          html: userHtml,
         });
 
         if (userResult.error) {
-          console.error("[RESEND] User confirmation email error:", JSON.stringify(userResult.error));
+          console.error("[RESEND] ユーザー宛メール送信エラー:", JSON.stringify(userResult.error));
         } else {
-          console.log(`[SUCCESS] Material request emails sent for service: ${service.title}, to provider: ${uniqueProviderEmails.join(", ") || "n/a"}, to user: ${deliveryEmail}`);
+          console.log(`[SUCCESS] 資料請求メール送信完了: ${service.title}, 企業: ${providerEmailsUnique.join(", ") || "なし"}, ユーザー: ${deliveryEmail}`);
         }
       } catch (mailErr) {
         const err = mailErr as { message?: string; response?: unknown };
@@ -168,7 +218,7 @@ export async function submitMaterialRequest(
         if (err?.response) console.error("[ERROR] Resend response:", JSON.stringify(err.response));
         console.error("Details:", {
           serviceTitle: service.title,
-          providerEmails: uniqueProviderEmails,
+          providerEmails: providerEmailsUnique,
           deliveryEmail,
           apiKeyPresent: !!apiKey,
           fromEmail: process.env.RESEND_FROM_EMAIL ?? "エデュマッチ <onboarding@resend.dev>",
