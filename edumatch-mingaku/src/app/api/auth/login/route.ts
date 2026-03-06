@@ -114,7 +114,8 @@ export async function POST(request: NextRequest) {
     }
 
     const expectedRole = userType === "provider" ? "PROVIDER" : "VIEWER";
-    if (existingProfile.role !== expectedRole) {
+    // ADMIN は閲覧者・投稿者のどちらでログインしても許可
+    if (existingProfile.role !== expectedRole && existingProfile.role !== "ADMIN") {
       return NextResponse.json(
         { error: `このアカウントは${existingProfile.role === "PROVIDER" ? "投稿者" : "閲覧者"}アカウントです。正しいアカウントタイプでログインしてください。` },
         { status: 403 }

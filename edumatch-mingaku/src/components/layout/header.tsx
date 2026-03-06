@@ -167,7 +167,7 @@ export function Header() {
                   <User className="mr-2 h-4 w-4" />
                   マイページ
                 </DropdownMenuItem>
-                {userRole === "PROVIDER" && (
+                {(userRole === "PROVIDER" || userRole === "ADMIN") && (
                   <DropdownMenuItem 
                     className="cursor-pointer"
                     onSelect={() => router.push("/provider-dashboard")}
@@ -272,7 +272,7 @@ export function Header() {
                       <User className="h-4 w-4" />
                       マイページ
                     </Link>
-                    {userRole === "PROVIDER" && (
+                    {(userRole === "PROVIDER" || userRole === "ADMIN") && (
                       <Link
                         href="/provider-dashboard"
                         className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground"

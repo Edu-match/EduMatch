@@ -9,6 +9,7 @@ function formatShortDate(date: Date): string {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
+    timeZone: "Asia/Tokyo",
   }).format(date);
 }
 

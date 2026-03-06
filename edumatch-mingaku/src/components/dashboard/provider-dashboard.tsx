@@ -41,6 +41,7 @@ function getStatusBadge(status: string, isPublished: boolean) {
 
 function formatDate(date: Date): string {
   return new Date(date).toLocaleDateString("ja-JP", {
+    timeZone: "Asia/Tokyo",
     year: "numeric",
     month: "numeric",
     day: "numeric",

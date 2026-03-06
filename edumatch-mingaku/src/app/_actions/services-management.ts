@@ -20,8 +20,8 @@ export async function createServiceManagement(data: ServiceFormData) {
       };
     }
 
-    // 投稿者権限チェック
-    if (profile.role !== "PROVIDER") {
+    // 投稿者 or ADMIN 権限チェック
+    if (profile.role !== "PROVIDER" && profile.role !== "ADMIN") {
       return {
         success: false,
         error: "サービスを投稿するには投稿者アカウントが必要です",
@@ -104,8 +104,8 @@ export async function updateServiceManagement(serviceId: string, data: ServiceFo
       };
     }
 
-    // 投稿者本人かチェック
-    if (existingService.provider_id !== profile.id) {
+    // 投稿者本人 or ADMIN のみ編集可
+    if (existingService.provider_id !== profile.id && profile.role !== "ADMIN") {
       return {
         success: false,
         error: "このサービスを編集する権限がありません",
@@ -187,8 +187,8 @@ export async function deleteServiceManagement(serviceId: string) {
       };
     }
 
-    // 投稿者本人かチェック
-    if (existingService.provider_id !== profile.id) {
+    // 投稿者本人 or ADMIN のみ削除可
+    if (existingService.provider_id !== profile.id && profile.role !== "ADMIN") {
       return {
         success: false,
         error: "このサービスを削除する権限がありません",

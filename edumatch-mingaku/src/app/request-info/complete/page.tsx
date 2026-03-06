@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { requireAuth } from "@/lib/auth";
 import { getMaterialRequestById } from "@/app/_actions";
+import { formatDateInJST } from "@/lib/date-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -66,15 +67,7 @@ export default async function RequestInfoCompletePage({ searchParams }: Props) {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">送信日時</span>
-                      <span>
-                        {request.created_at.toLocaleDateString("ja-JP", {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
+                      <span>{formatDateInJST(request.created_at)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">送付先メール</span>

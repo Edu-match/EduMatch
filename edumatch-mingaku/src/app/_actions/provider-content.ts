@@ -31,13 +31,14 @@ export async function getProviderArticles() {
   try {
     const profile = await getCurrentProfile();
     
-    if (!profile || profile.role !== "PROVIDER") {
+    if (!profile || (profile.role !== "PROVIDER" && profile.role !== "ADMIN")) {
       return [];
     }
 
     const articles = await prisma.post.findMany({
       where: {
-        provider_id: profile.id,
+        // ADMIN は全件、PROVIDER は自分のみ
+        ...(profile.role === "ADMIN" ? {} : { provider_id: profile.id }),
       },
       select: {
         id: true,
@@ -68,13 +69,14 @@ export async function getProviderServices() {
   try {
     const profile = await getCurrentProfile();
     
-    if (!profile || profile.role !== "PROVIDER") {
+    if (!profile || (profile.role !== "PROVIDER" && profile.role !== "ADMIN")) {
       return [];
     }
 
     const services = await prisma.service.findMany({
       where: {
-        provider_id: profile.id,
+        // ADMIN は全件、PROVIDER は自分のみ
+        ...(profile.role === "ADMIN" ? {} : { provider_id: profile.id }),
       },
       select: {
         id: true,
@@ -104,7 +106,7 @@ export async function getProviderStats() {
   try {
     const profile = await getCurrentProfile();
     
-    if (!profile || profile.role !== "PROVIDER") {
+    if (!profile || (profile.role !== "PROVIDER" && profile.role !== "ADMIN")) {
       return {
         totalArticles: 0,
         publishedArticles: 0,
@@ -114,23 +116,13 @@ export async function getProviderStats() {
       };
     }
 
+    const whereClause = profile.role === "ADMIN" ? {} : { provider_id: profile.id };
     const [articlesCount, publishedArticlesCount, servicesCount, publishedServicesCount, viewsSum] = await Promise.all([
-      prisma.post.count({
-        where: { provider_id: profile.id },
-      }),
-      prisma.post.count({
-        where: { provider_id: profile.id, is_published: true },
-      }),
-      prisma.service.count({
-        where: { provider_id: profile.id },
-      }),
-      prisma.service.count({
-        where: { provider_id: profile.id, is_published: true },
-      }),
-      prisma.post.aggregate({
-        where: { provider_id: profile.id },
-        _sum: { view_count: true },
-      }),
+      prisma.post.count({ where: whereClause }),
+      prisma.post.count({ where: { ...whereClause, is_published: true } }),
+      prisma.service.count({ where: whereClause }),
+      prisma.service.count({ where: { ...whereClause, is_published: true } }),
+      prisma.post.aggregate({ where: whereClause, _sum: { view_count: true } }),
     ]);
 
     return {

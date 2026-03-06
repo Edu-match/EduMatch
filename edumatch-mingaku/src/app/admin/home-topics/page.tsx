@@ -61,6 +61,7 @@ export default async function AdminHomeTopicsPage() {
                           year: "numeric",
                           month: "2-digit",
                           day: "2-digit",
+                          timeZone: "Asia/Tokyo",
                         }).format(post.created_at)}
                       </span>
                     </div>

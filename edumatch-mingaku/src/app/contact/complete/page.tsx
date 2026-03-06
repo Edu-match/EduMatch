@@ -2,12 +2,13 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, Mail, Clock, Home, HelpCircle } from "lucide-react";
+import { formatDateInJST } from "@/lib/date-utils";
 
 export default function ContactCompletePage() {
   const inquiryDetails = {
     inquiryId: "INQ-2024011502",
     category: "一般的なお問い合わせ",
-    date: "2024年1月15日 14:30",
+    date: formatDateInJST(new Date()),
     email: "yamada@example.com",
   };
 

@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { getCurrentProfile } from "@/lib/auth";
 import type { ContentBlock } from "@/components/editor/block-editor";
 import { blocksToMarkdown } from "@/lib/markdown-to-blocks";
 import { contentToBlocks } from "@/lib/markdown-to-blocks";
@@ -30,6 +31,10 @@ export async function upsertSitePage(
   key: SitePageKey,
   data: { title: string; body: string }
 ) {
+  const profile = await getCurrentProfile();
+  if (!profile || profile.role !== "ADMIN") {
+    return { success: false as const, error: "管理者権限が必要です" };
+  }
   try {
     const page = await prisma.sitePage.upsert({
       where: { key },

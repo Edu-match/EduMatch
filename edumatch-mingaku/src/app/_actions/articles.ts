@@ -20,8 +20,8 @@ export async function createArticle(data: ArticleFormData) {
       };
     }
 
-    // 投稿者権限チェック
-    if (profile.role !== "PROVIDER") {
+    // 投稿者 or ADMIN 権限チェック
+    if (profile.role !== "PROVIDER" && profile.role !== "ADMIN") {
       return {
         success: false,
         error: "記事を投稿するには投稿者アカウントが必要です",
