@@ -1,8 +1,8 @@
 -- 表示順を指定のとおりに設定（Supabase SQL Editor で実行）
--- プレミアム / スタンダード / ベーシック / その他 のラベルで設定
+-- プレミアム / スタンダード / ベーシック / その他 / なし のラベルで設定
 
--- 1. いったんすべて「その他」に
-UPDATE "Service" SET sort_order = 'その他';
+-- 1. いったんすべて「なし」に（基本値）
+UPDATE "Service" SET sort_order = 'なし';
 
 -- 2. プレミアム: 合同会社CROP ワンリード
 UPDATE "Service" SET sort_order = 'プレミアム'
@@ -33,4 +33,15 @@ WHERE title ILIKE '%aim@%' OR title ILIKE '%エイムアット%'
    OR "provider_display_name" ILIKE '%塾シル%' OR "provider_display_name" ILIKE '%ユナイトプロジェクト%'
    OR provider_id IN (SELECT id FROM "Profile" WHERE name ILIKE '%メイツ%' OR name ILIKE '%okke%' OR name ILIKE '%ユナイトプロジェクト%');
 
--- その他: 上記以外は 1. のまま
+-- 5. その他: Lacicu 受験コンパス・Liew, Kidsプログラミングラボ, コードキャンプ CodeCampKIDS, スリーピース
+UPDATE "Service" SET sort_order = 'その他'
+WHERE title ILIKE '%受験コンパス%' OR title ILIKE '%Liew%' OR title ILIKE '%リュウ%'
+   OR title ILIKE '%Kidsプログラミング%' OR title ILIKE '%キッズプログラミング%'
+   OR title ILIKE '%CodeCampKIDS%' OR title ILIKE '%コードキャンプ%'
+   OR title ILIKE '%スリーピース%' OR title ILIKE '%まならぶる%'
+   OR "provider_display_name" ILIKE '%Lacicu%' OR "provider_display_name" ILIKE '%受験コンパス%'
+   OR "provider_display_name" ILIKE '%Kidsプログラミング%' OR "provider_display_name" ILIKE '%コードキャンプ%'
+   OR "provider_display_name" ILIKE '%スリーピース%'
+   OR provider_id IN (SELECT id FROM "Profile" WHERE name ILIKE '%Lacicu%' OR name ILIKE '%コードキャンプ%' OR name ILIKE '%スリーピース%');
+
+-- なし: 上記以外は 1. のまま
