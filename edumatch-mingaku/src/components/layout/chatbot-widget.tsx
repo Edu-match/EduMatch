@@ -1051,7 +1051,7 @@ export function ChatbotWidget() {
         <div className="fixed bottom-5 right-5 z-50 flex flex-col items-center gap-1">
           <Button
             onClick={() => setOpen(true)}
-            className="h-24 w-24 rounded-full shadow-xl hover:shadow-2xl transition-all hover:scale-110 bg-orange-500 hover:bg-orange-400 border-4 border-orange-300 p-0 flex items-center justify-center"
+            className="h-20 w-20 rounded-full shadow-xl hover:shadow-2xl transition-all hover:scale-110 bg-orange-500 hover:bg-orange-400 border-4 border-orange-300 p-0 flex items-center justify-center overflow-visible"
             aria-label="AIナビゲーターを開く"
             size="icon"
           >
