@@ -1051,12 +1051,11 @@ export function ChatbotWidget() {
         <div className="fixed bottom-5 right-5 z-50 flex flex-col items-center gap-1">
           <Button
             onClick={() => setOpen(true)}
-            className="h-20 w-20 rounded-full shadow-xl hover:shadow-2xl transition-all hover:scale-110 bg-orange-500 hover:bg-orange-400 border-4 border-orange-300"
+            className="h-24 w-24 rounded-full shadow-xl hover:shadow-2xl transition-all hover:scale-110 bg-orange-500 hover:bg-orange-400 border-4 border-orange-300"
             aria-label="AIナビゲーターを開く"
             size="icon"
           >
-            {/* ロボットアイコンの大きさを大きく */}
-            <Bot className="h-16 w-16 text-white" />
+            <Bot className="h-20 w-20 text-white" />
           </Button>
           <span className="text-xs font-semibold text-orange-600 hidden sm:inline bg-white/90 px-2 py-1 rounded-full shadow-sm">AIナビゲーター</span>
           <Link
