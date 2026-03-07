@@ -9,7 +9,7 @@ import {
   isImportedContent,
   parseImportedContent,
 } from "@/lib/imported-content";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Trash2 } from "lucide-react";
 
 export type ParseToBlocks = (content: string) => ContentBlock[];
 export type BlocksToContent = (blocks: ContentBlock[]) => string;
@@ -78,7 +78,7 @@ export function ContentEditorWithImport({
   if (isImported && parsed) {
     return (
       <div className="space-y-4">
-        {/* ページ上部: ファイルインポート + ブロック編集に戻る */}
+        {/* ページ上部: ファイルインポート + ブロック編集に戻る + 削除 */}
         <div className="flex items-center gap-2 flex-wrap">
           <FileImportButton onImport={handleImport} />
           <Button
@@ -89,6 +89,16 @@ export function ContentEditorWithImport({
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             ブロック編集に戻る
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleBackToBlocks}
+            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            削除
           </Button>
         </div>
 
