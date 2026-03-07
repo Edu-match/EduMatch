@@ -1,14 +1,14 @@
 import React from "react";
 
 /**
- * インライン Markdown（**太字** *斜体*）を React ノードに変換
+ * インライン Markdown（**太字** *斜体* ~~取り消し線~~）を React ノードに変換
  */
 export function renderInlineMarkdown(text: string): React.ReactNode {
   if (!text) return null;
   const parts: React.ReactNode[] = [];
   let lastIndex = 0;
-  // **bold** を先に、*italic* を後にマッチ（** が ** を飛ばすため * は [^*] で中身を取る）
-  const regex = /\*\*(.+?)\*\*|\*([^*]+)\*/g;
+  // **bold** ~~strikethrough~~ *italic* の順でマッチ
+  const regex = /\*\*(.+?)\*\*|~~(.+?)~~|\*([^*]+)\*/g;
   let m;
   let key = 0;
   while ((m = regex.exec(text)) !== null) {
@@ -26,11 +26,18 @@ export function renderInlineMarkdown(text: string): React.ReactNode {
           {renderInlineMarkdown(m[1])}
         </strong>
       );
+    } else if (m[2] !== undefined) {
+      // ~~strikethrough~~
+      parts.push(
+        <del key={`s-${key++}`}>
+          {renderInlineMarkdown(m[2])}
+        </del>
+      );
     } else {
       // *italic*
       parts.push(
         <em key={`i-${key++}`}>
-          {m[2]}
+          {m[3]}
         </em>
       );
     }

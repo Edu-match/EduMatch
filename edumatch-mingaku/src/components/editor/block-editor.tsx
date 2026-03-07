@@ -30,10 +30,20 @@ import {
   ChevronRight,
   Bold,
   Italic,
+  Strikethrough,
   FileText,
+  SplitSquareVertical,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { contentToBlocks } from "@/lib/markdown-to-blocks";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export type BlockType =
   | "heading1"
@@ -210,9 +220,9 @@ export function BlockEditor({
     [blocks, onChange]
   );
 
-  /** 選択範囲に太字・斜体を適用（onMouseDown でボタンクリック時にフォーカスを維持） */
+  /** 選択範囲に太字・斜体・取り消し線を適用（onMouseDown でボタンクリック時にフォーカスを維持） */
   const applyFormat = useCallback(
-    (blockId: string, wrapper: "**" | "*", itemIndex?: number) => {
+    (blockId: string, wrapper: "**" | "*" | "~~", itemIndex?: number) => {
       let refKey = blockId;
       let targetItemIndex: number | undefined = itemIndex;
       const block = blocks.find((b) => b.id === blockId);
@@ -254,6 +264,91 @@ export function BlockEditor({
           newEl.setSelectionRange(newStart, newEnd);
         }
       });
+    },
+    [blocks, updateBlock]
+  );
+
+  /** 選択したテキストをブロックに分割 */
+  const convertSelectedToBlocks = useCallback(
+    (blockId: string) => {
+      const block = blocks.find((b) => b.id === blockId);
+      if (!block) return;
+      const textBlockTypes = ["heading1", "heading2", "heading3", "paragraph", "quote", "markdown"];
+      if (!textBlockTypes.includes(block.type)) {
+        toast.error("このブロックでは利用できません");
+        return;
+      }
+
+      if (block.items) {
+        toast.error("本文・見出し・引用ブロックでテキストを選択してから実行してください");
+        return;
+      }
+
+      const el = textInputRefs.current[blockId];
+      if (!el) return;
+      const start = el.selectionStart ?? 0;
+      const end = el.selectionEnd ?? 0;
+      if (start === end) {
+        toast.error("テキストを選択してから実行してください");
+        return;
+      }
+      const val = block.content ?? "";
+      const before = val.slice(0, start).trim();
+      const selected = val.slice(start, end);
+      const after = val.slice(end).trim();
+      const parsed = contentToBlocks(selected);
+      if (parsed.length === 0) {
+        toast.error("選択したテキストをブロックに変換できませんでした");
+        return;
+      }
+      const newBlocks: ContentBlock[] = [];
+      if (before) {
+        newBlocks.push({
+          id: generateId(),
+          type: block.type,
+          content: before,
+          align: block.align,
+        });
+      }
+      newBlocks.push(...parsed.map((b) => ({ ...b, id: generateId() })));
+      if (after) {
+        newBlocks.push({
+          id: generateId(),
+          type: block.type,
+          content: after,
+          align: block.align,
+        });
+      }
+      replaceBlockWithBlocks(blockId, newBlocks);
+      toast.success(`${parsed.length} 個のブロックに分割しました`);
+    },
+    [blocks, updateBlock, replaceBlockWithBlocks]
+  );
+
+  /** ブロックタイプを変更 */
+  const changeBlockType = useCallback(
+    (blockId: string, newType: BlockType) => {
+      const block = blocks.find((b) => b.id === blockId);
+      if (!block) return;
+      if (block.type === newType) return;
+
+      const newBlock: ContentBlock = {
+        ...block,
+        type: newType,
+        items: newType === "bulletList" || newType === "numberedList" ? [block.content || ""] : undefined,
+        content: newType === "bulletList" || newType === "numberedList" ? "" : block.content,
+        url: ["image", "video"].includes(newType) ? undefined : block.url,
+        caption: ["image", "video"].includes(newType) ? undefined : block.caption,
+      };
+      if (newType === "divider") {
+        newBlock.content = "";
+        newBlock.items = undefined;
+      }
+      if (newType === "image" || newType === "video") {
+        newBlock.content = "";
+        newBlock.items = undefined;
+      }
+      updateBlock(blockId, newBlock);
     },
     [blocks, updateBlock]
   );
@@ -683,7 +778,7 @@ export function BlockEditor({
             />
             {block.content && (
               <div className="prose prose-sm max-w-none border-t pt-3 mt-3">
-                <ReactMarkdown>{block.content}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{block.content}</ReactMarkdown>
               </div>
             )}
           </div>
@@ -815,13 +910,13 @@ export function BlockEditor({
             )}
 
             {/* Block type indicator & controls */}
-            {activeBlockId === block.id && block.type !== "divider" && (
-              <div className="flex items-center gap-2 mb-3 pb-3 border-b">
+            {activeBlockId === block.id && (
+              <div className="flex flex-wrap items-center gap-2 mb-3 pb-3 border-b">
                 <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
                   {blockTypeLabels[block.type]}
                 </span>
                 
-                {/* 太字・斜体（選択範囲に適用、onMouseDownでフォーカス維持） */}
+                {/* 太字・斜体・取り消し線（選択範囲に適用、onMouseDownでフォーカス維持） */}
                 {["heading1", "heading2", "heading3", "paragraph", "quote", "bulletList", "numberedList", "markdown"].includes(block.type) && (
                   <div className="flex items-center gap-1">
                     <Button
@@ -846,8 +941,59 @@ export function BlockEditor({
                     >
                       <Italic className="h-4 w-4" />
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      title="取り消し線"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        applyFormat(block.id, "~~");
+                      }}
+                    >
+                      <Strikethrough className="h-4 w-4" />
+                    </Button>
                   </div>
                 )}
+
+                {/* 選択したテキストをブロックにする */}
+                {["heading1", "heading2", "heading3", "paragraph", "quote", "markdown"].includes(block.type) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs"
+                    title="選択したテキストをブロックに分割"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      convertSelectedToBlocks(block.id);
+                    }}
+                  >
+                    <SplitSquareVertical className="h-4 w-4 mr-1" />
+                    選択したテキストをブロックにする
+                  </Button>
+                )}
+
+                {/* ブロックタイプを変更 */}
+                <Select
+                  value={block.type}
+                  onValueChange={(v) => changeBlockType(block.id, v as BlockType)}
+                >
+                  <SelectTrigger className="w-[140px] h-8 text-xs" onClick={(e) => e.stopPropagation()}>
+                    <SelectValue placeholder="タイプを変更" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="heading1">大見出し</SelectItem>
+                    <SelectItem value="heading2">中見出し</SelectItem>
+                    <SelectItem value="heading3">小見出し</SelectItem>
+                    <SelectItem value="paragraph">本文</SelectItem>
+                    <SelectItem value="quote">引用</SelectItem>
+                    <SelectItem value="bulletList">箇条書き</SelectItem>
+                    <SelectItem value="numberedList">番号付きリスト</SelectItem>
+                    <SelectItem value="image">画像</SelectItem>
+                    <SelectItem value="video">動画</SelectItem>
+                    <SelectItem value="divider">区切り線</SelectItem>
+                    <SelectItem value="markdown">Markdown</SelectItem>
+                  </SelectContent>
+                </Select>
 
                 {/* Alignment controls for text blocks */}
                 {["heading1", "heading2", "heading3", "paragraph"].includes(block.type) && (
