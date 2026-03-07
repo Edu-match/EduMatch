@@ -8,7 +8,6 @@ import { FileText, Shield, Newspaper, SlidersHorizontal } from "lucide-react";
 const PAGES = [
   { key: "terms", label: "利用規約", href: "/admin/pages/terms/edit", icon: FileText },
   { key: "privacy", label: "プライバシーポリシー", href: "/admin/pages/privacy/edit", icon: Shield },
-  { key: "service_content", label: "サービス内容一覧", href: "/admin/pages/service_content/edit", icon: FileText },
   { key: "home-topics", label: "トップニュースを編集", href: "/admin/home-topics", icon: Newspaper },
   { key: "home-slider", label: "スライダー記事を選択", href: "/admin/home-slider", icon: SlidersHorizontal },
 ] as const;

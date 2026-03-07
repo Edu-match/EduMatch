@@ -66,3 +66,41 @@ export async function updateHomeNewsTabAction(formData: FormData) {
   await updateHomeNewsTab(id, tab);
 }
 
+/** クライアント用: 1件更新して結果を返す（トースト表示用） */
+export async function setHomeNewsTabAction(
+  postId: string,
+  tab: HomeNewsTab
+): Promise<UpdateResult> {
+  return updateHomeNewsTab(postId, tab);
+}
+
+export type BulkUpdateItem = { id: string; tab: HomeNewsTab };
+
+/** 一括でニュースタブ分類を更新（ADMIN 用） */
+export async function updateHomeNewsTabBulkAction(
+  updates: BulkUpdateItem[]
+): Promise<{ success: boolean; count?: number; error?: string }> {
+  const role = await getCurrentUserRole();
+  if (role !== "ADMIN") {
+    return { success: false, error: "管理者権限が必要です" };
+  }
+  if (!updates.length) {
+    return { success: true, count: 0 };
+  }
+  try {
+    await prisma.$transaction(
+      updates.map(({ id, tab }) =>
+        prisma.post.update({
+          where: { id },
+          data: { home_news_tab: tab },
+        })
+      )
+    );
+    revalidatePath("/");
+    return { success: true, count: updates.length };
+  } catch (error) {
+    console.error("Failed to update home_news_tab bulk:", error);
+    return { success: false, error: "一括更新に失敗しました" };
+  }
+}
+

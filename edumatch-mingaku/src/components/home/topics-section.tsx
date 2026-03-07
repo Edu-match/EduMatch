@@ -82,12 +82,12 @@ async function fetchYouTubeVideos(): Promise<VideoItem[]> {
 
 export async function TopicsSection() {
   const [posts, services, videos] = await Promise.all([
-    getLatestArticlesForTopics(50),
+    getLatestArticlesForTopics(10),
     getAllServices(),
     fetchYouTubeVideos(),
   ]);
 
-  const articles: ArticleItem[] = posts.map((post) => ({
+  const articles: ArticleItem[] = posts.slice(0, 10).map((post) => ({
     id: post.id,
     title: post.title,
     image: post.thumbnail_url || "https://placehold.co/80x45/e0f2fe/0369a1?text=No",
