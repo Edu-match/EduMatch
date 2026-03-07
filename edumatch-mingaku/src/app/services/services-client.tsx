@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { Input } from "@/components/ui/input";
+import { ThumbnailOrTitle } from "@/components/ui/thumbnail-or-title";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -167,28 +167,30 @@ export function ServicesClient({
               <Card className="h-full overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 border-2 hover:border-primary/50 bg-card">
                 {/* 画像エリア */}
                 <div className="relative w-full aspect-video overflow-hidden bg-muted flex items-center justify-center">
-                  <Image
-                    src={service.image}
-                    alt={service.name}
+                  <ThumbnailOrTitle
+                    src={service.image ?? undefined}
+                    title={service.name}
                     fill
                     className="object-contain transition-transform duration-500 group-hover:scale-105"
                     unoptimized
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
-                  {/* サービスのお気に入りに追加 */}
-                  <div className="absolute top-3 left-3 z-10">
-                    <AddToRequestListButton
-                      item={{
-                        id: service.id,
-                        title: service.name,
-                        thumbnail: service.image,
-                        category: service.category,
-                      }}
-                      variant="icon"
-                      className="bg-white/95 hover:bg-white shadow-lg border-0"
-                    />
-                  </div>
+                  {/* サービスのお気に入りに追加（無料企業は非表示） */}
+                  {service.sort_order !== "NONE" && (
+                    <div className="absolute top-3 left-3 z-10">
+                      <AddToRequestListButton
+                        item={{
+                          id: service.id,
+                          title: service.name,
+                          thumbnail: service.image ?? undefined,
+                          category: service.category,
+                        }}
+                        variant="icon"
+                        className="bg-white/95 hover:bg-white shadow-lg border-0"
+                      />
+                    </div>
+                  )}
 
                   {/* カテゴリバッジ（画像上） */}
                   <div className="absolute top-3 right-3">

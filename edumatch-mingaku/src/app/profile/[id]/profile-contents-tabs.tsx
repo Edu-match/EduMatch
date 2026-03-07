@@ -2,12 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Building2, Newspaper } from "lucide-react";
-import { serviceThumbnailPlaceholder } from "@/lib/utils";
+import { ThumbnailOrTitle } from "@/components/ui/thumbnail-or-title";
 
 function formatDate(date: Date): string {
   return new Intl.DateTimeFormat("ja-JP", {
@@ -92,12 +91,9 @@ export function ProfileContentsTabs({
                       className="flex gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
                     >
                       <div className="relative w-24 flex-shrink-0 overflow-hidden rounded bg-muted aspect-video">
-                        <Image
-                          src={
-                            p.thumbnail_url ||
-                            "https://placehold.co/96x64/e0f2fe/0369a1?text=Article"
-                          }
-                          alt={p.title}
+                        <ThumbnailOrTitle
+                          src={p.thumbnail_url ?? undefined}
+                          title={p.title}
                           fill
                           className="object-contain"
                           unoptimized
@@ -130,12 +126,9 @@ export function ProfileContentsTabs({
                     className="block p-4 rounded-lg border hover:bg-muted/50 transition-colors"
                   >
                     <div className="relative aspect-video rounded overflow-hidden bg-muted mb-2">
-                      <Image
-                        src={
-                          s.thumbnail_url ||
-                          serviceThumbnailPlaceholder(s.title, 400, 225)
-                        }
-                        alt={s.title}
+                      <ThumbnailOrTitle
+                        src={s.thumbnail_url ?? undefined}
+                        title={s.title}
                         fill
                         className="object-contain"
                         unoptimized

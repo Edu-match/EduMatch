@@ -14,6 +14,7 @@ import { ContentRenderer } from "@/components/ui/content-renderer";
 import { isImportedContent, parseImportedContent } from "@/lib/imported-content";
 import { ImportedContentRenderer } from "@/components/content/imported-content-renderer";
 import { ShareButton } from "@/components/ui/share-button";
+import { ThumbnailOrTitle } from "@/components/ui/thumbnail-or-title";
 
 export const dynamic = "force-dynamic";
 
@@ -132,9 +133,9 @@ export default async function ArticleDetailPage({
 
         {/* メイン画像 */}
         <div className="relative w-full aspect-video mb-8 rounded-lg overflow-hidden bg-muted flex items-center justify-center">
-          <Image
-            src={post.thumbnail_url || "https://placehold.co/800x450/e0f2fe/0369a1?text=Article"}
-            alt={post.title}
+          <ThumbnailOrTitle
+            src={post.thumbnail_url ?? undefined}
+            title={post.title}
             fill
             className="object-contain"
             unoptimized
@@ -233,9 +234,9 @@ export default async function ArticleDetailPage({
                   >
                     <div className="flex gap-4">
                       <div className="relative w-24 flex-shrink-0 overflow-hidden rounded bg-muted aspect-video flex items-center justify-center">
-                        <Image
-                          src={relatedPost.thumbnail_url || "https://placehold.co/120x80/e0f2fe/0369a1?text=Article"}
-                          alt={relatedPost.title}
+                        <ThumbnailOrTitle
+                          src={relatedPost.thumbnail_url ?? undefined}
+                          title={relatedPost.title}
                           fill
                           className="object-contain"
                           unoptimized

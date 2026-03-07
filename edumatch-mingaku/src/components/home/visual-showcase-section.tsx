@@ -1,10 +1,9 @@
 import Link from "next/link";
-import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getPopularArticlesByEngagement, getPopularServicesByEngagement } from "@/app/_actions/popularity";
 import { ArrowRight, BookOpen, Sparkles } from "lucide-react";
-import { serviceThumbnailPlaceholder } from "@/lib/utils";
+import { ThumbnailOrTitle } from "@/components/ui/thumbnail-or-title";
 
 function formatDate(date: Date): string {
   return new Intl.DateTimeFormat("ja-JP", {
@@ -65,9 +64,9 @@ export async function VisualShowcaseSection() {
                 className="group block overflow-hidden rounded-xl border bg-card"
               >
                 <div className="relative w-full aspect-video overflow-hidden">
-                  <Image
-                    src={articles[0].thumbnail_url || "https://placehold.co/1200x675/e0f2fe/0369a1?text=Article"}
-                    alt={articles[0].title}
+                  <ThumbnailOrTitle
+                    src={articles[0].thumbnail_url ?? undefined}
+                    title={articles[0].title}
                     fill
                     className="object-contain transition-transform duration-500 group-hover:scale-105"
                     sizes="(max-width: 1280px) 100vw, 66vw"
@@ -91,9 +90,9 @@ export async function VisualShowcaseSection() {
                     className="group overflow-hidden rounded-xl border bg-card transition-shadow hover:shadow-md"
                   >
                     <div className="relative w-full aspect-video overflow-hidden">
-                      <Image
-                        src={article.thumbnail_url || "https://placehold.co/800x450/e0f2fe/0369a1?text=Article"}
-                        alt={article.title}
+                      <ThumbnailOrTitle
+                        src={article.thumbnail_url ?? undefined}
+                        title={article.title}
                         fill
                         className="object-contain transition-transform duration-500 group-hover:scale-105"
                         sizes="(max-width: 768px) 100vw, 50vw"
@@ -132,9 +131,9 @@ export async function VisualShowcaseSection() {
                   className="group block overflow-hidden rounded-xl border bg-card transition-shadow hover:shadow-md"
                 >
                   <div className="relative w-full aspect-video overflow-hidden">
-                    <Image
-                      src={service.thumbnail_url || serviceThumbnailPlaceholder(service.title, 800, 450)}
-                      alt={service.title}
+                    <ThumbnailOrTitle
+                      src={service.thumbnail_url ?? undefined}
+                      title={service.title}
                       fill
                       className="object-contain transition-transform duration-500 group-hover:scale-105"
                       sizes="(max-width: 1280px) 100vw, 33vw"

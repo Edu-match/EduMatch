@@ -2,13 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useRequestList } from "@/components/request-list/request-list-context";
 import { FileText, ArrowRight } from "lucide-react";
 import { AddToRequestListButton } from "@/components/request-list/add-to-request-list-button";
-import { serviceThumbnailPlaceholder } from "@/lib/utils";
+import { ThumbnailOrTitle } from "@/components/ui/thumbnail-or-title";
 
 export function RequestListClient() {
   const router = useRouter();
@@ -76,9 +75,9 @@ export function RequestListClient() {
                 className="flex gap-3 min-w-0 flex-1 sm:flex-[1_1_0]"
               >
                 <div className="relative w-20 sm:w-28 flex-shrink-0 overflow-hidden rounded-lg bg-muted aspect-video">
-                  <Image
-                    src={item.thumbnail || serviceThumbnailPlaceholder(item.title, 200, 120)}
-                    alt={item.title}
+                  <ThumbnailOrTitle
+                    src={item.thumbnail ?? undefined}
+                    title={item.title}
                     fill
                     className="object-contain"
                     sizes="(max-width: 640px) 80px, 112px"

@@ -14,7 +14,7 @@ import { ContentRenderer } from "@/components/ui/content-renderer";
 import { ShareButton } from "@/components/ui/share-button";
 import { ReviewSection } from "@/components/ui/review-section";
 import { getServiceReviews } from "@/app/_actions/reviews";
-import { serviceThumbnailPlaceholder } from "@/lib/utils";
+import { ThumbnailOrTitle } from "@/components/ui/thumbnail-or-title";
 import { FEATURES } from "@/lib/features";
 
 export const dynamic = "force-dynamic";
@@ -46,6 +46,8 @@ export default async function ServiceDetailPage({
     await recordView(user.id, "SERVICE", id);
   }
   const canEdit = user && (user.id === service.provider_id || profile?.role === "ADMIN");
+  /** 無料企業（sort_order が「なし」）のサービスでは資料請求ボタンを非表示 */
+  const showRequestInfo = service.sort_order !== "NONE";
 
   // 口コミを取得（口コミ機能が有効な場合のみ）
   const reviews = FEATURES.REVIEWS ? await getServiceReviews(id) : [];
@@ -117,20 +119,22 @@ export default async function ServiceDetailPage({
 
               {/* CTAボタン（モバイル） */}
               <div className="mt-6 lg:hidden space-y-3">
-                <div className="flex flex-wrap gap-2">
-                  <Button asChild size="lg" className="shadow-lg">
-                    <Link href={`/request-info?serviceId=${service.id}`}>
-                      <FileText className="h-5 w-5 mr-2" />
-                      資料請求する（無料）
-                    </Link>
-                  </Button>
-                  <AddToRequestListServiceButton
-                    serviceId={service.id}
-                    title={service.title}
-                    thumbnailUrl={service.thumbnail_url}
-                    category={service.category}
-                  />
-                </div>
+                {showRequestInfo && (
+                  <div className="flex flex-wrap gap-2">
+                    <Button asChild size="lg" className="shadow-lg">
+                      <Link href={`/request-info?serviceId=${service.id}`}>
+                        <FileText className="h-5 w-5 mr-2" />
+                        資料請求する（無料）
+                      </Link>
+                    </Button>
+                    <AddToRequestListServiceButton
+                      serviceId={service.id}
+                      title={service.title}
+                      thumbnailUrl={service.thumbnail_url}
+                      category={service.category}
+                    />
+                  </div>
+                )}
                 <div className="text-center">
                   <span className="text-2xl font-bold text-primary">
                     {service.price_info}
@@ -142,9 +146,9 @@ export default async function ServiceDetailPage({
             {/* サムネイル画像（デスクトップ） */}
             <div className="lg:col-span-2 hidden lg:block">
               <div className="relative aspect-video w-full rounded-xl overflow-hidden shadow-2xl border-4 border-white/50 bg-muted flex items-center justify-center">
-                <Image
-                  src={service.thumbnail_url || serviceThumbnailPlaceholder(service.title, 800, 600)}
-                  alt={service.title}
+                <ThumbnailOrTitle
+                  src={service.thumbnail_url ?? undefined}
+                  title={service.title}
                   fill
                   className="object-contain"
                   unoptimized
@@ -161,9 +165,9 @@ export default async function ServiceDetailPage({
           <div className="lg:col-span-2 space-y-8">
             {/* メイン画像（モバイル） */}
             <div className="lg:hidden relative aspect-video w-full rounded-xl overflow-hidden shadow-xl border-2 bg-muted flex items-center justify-center">
-              <Image
-                src={service.thumbnail_url || serviceThumbnailPlaceholder(service.title, 800, 450)}
-                alt={service.title}
+              <ThumbnailOrTitle
+                src={service.thumbnail_url ?? undefined}
+                title={service.title}
                 fill
                 className="object-contain"
                 unoptimized
@@ -312,20 +316,24 @@ export default async function ServiceDetailPage({
                   </div>
                   
                   <div className="space-y-3">
-                    <Button asChild className="w-full shadow-lg" size="lg">
-                      <Link href={`/request-info?serviceId=${service.id}`}>
-                        <FileText className="h-5 w-5 mr-2" />
-                        資料請求する（無料）
-                      </Link>
-                    </Button>
-                    <AddToRequestListServiceButton
-                      serviceId={service.id}
-                      title={service.title}
-                      thumbnailUrl={service.thumbnail_url}
-                      category={service.category}
-                      variant="button"
-                      className="w-full"
-                    />
+                    {showRequestInfo && (
+                      <>
+                        <Button asChild className="w-full shadow-lg" size="lg">
+                          <Link href={`/request-info?serviceId=${service.id}`}>
+                            <FileText className="h-5 w-5 mr-2" />
+                            資料請求する（無料）
+                          </Link>
+                        </Button>
+                        <AddToRequestListServiceButton
+                          serviceId={service.id}
+                          title={service.title}
+                          thumbnailUrl={service.thumbnail_url}
+                          category={service.category}
+                          variant="button"
+                          className="w-full"
+                        />
+                      </>
+                    )}
                     <ShareButton
                       url={`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/services/${service.id}`}
                       title={service.title}
@@ -392,20 +400,24 @@ export default async function ServiceDetailPage({
                   </div>
                   
                   <div className="space-y-3">
-                    <Button asChild className="w-full shadow-lg" size="lg">
-                      <Link href={`/request-info?serviceId=${service.id}`}>
-                        <FileText className="h-5 w-5 mr-2" />
-                        資料請求する（無料）
-                      </Link>
-                    </Button>
-                    <AddToRequestListServiceButton
-                      serviceId={service.id}
-                      title={service.title}
-                      thumbnailUrl={service.thumbnail_url}
-                      category={service.category}
-                      variant="button"
-                      className="w-full"
-                    />
+                    {showRequestInfo && (
+                      <>
+                        <Button asChild className="w-full shadow-lg" size="lg">
+                          <Link href={`/request-info?serviceId=${service.id}`}>
+                            <FileText className="h-5 w-5 mr-2" />
+                            資料請求する（無料）
+                          </Link>
+                        </Button>
+                        <AddToRequestListServiceButton
+                          serviceId={service.id}
+                          title={service.title}
+                          thumbnailUrl={service.thumbnail_url}
+                          category={service.category}
+                          variant="button"
+                          className="w-full"
+                        />
+                      </>
+                    )}
                     <Button asChild variant="outline" className="w-full">
                       <Link href="/contact">
                         <Mail className="h-5 w-5 mr-2" />
@@ -438,9 +450,9 @@ export default async function ServiceDetailPage({
                   >
                     <Card className="h-full overflow-hidden border-2 hover:border-primary/50 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
                       <div className="relative w-full aspect-video overflow-hidden bg-muted flex items-center justify-center">
-                        <Image
-                          src={relatedService.thumbnail_url || serviceThumbnailPlaceholder(relatedService.title, 300, 200)}
-                          alt={relatedService.title}
+                        <ThumbnailOrTitle
+                          src={relatedService.thumbnail_url ?? undefined}
+                          title={relatedService.title}
                           fill
                           className="object-contain transition-transform duration-300 group-hover:scale-105"
                           unoptimized

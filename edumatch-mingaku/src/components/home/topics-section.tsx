@@ -2,7 +2,6 @@ import Link from "next/link";
 import { getLatestArticlesForTopics } from "@/app/_actions/popularity";
 import { getAllServices } from "@/app/_actions/services";
 import { TopicsTabs } from "./topics-tabs";
-import { serviceThumbnailPlaceholder } from "@/lib/utils";
 
 function formatShortDate(date: Date): string {
   return new Intl.DateTimeFormat("ja-JP", {
@@ -22,7 +21,8 @@ function isNew(date: Date): boolean {
 export type ArticleItem = {
   id: string;
   title: string;
-  image: string;
+  /** サムネイルURL。未設定時はタイトルを表示 */
+  image?: string | null;
   date: string;
   category: string;
   tags: string[];
@@ -33,7 +33,8 @@ export type ArticleItem = {
 export type ServiceItem = {
   id: string;
   title: string;
-  image: string;
+  /** サムネイルURL。未設定時はタイトルを表示 */
+  image?: string | null;
   category: string;
 };
 
@@ -90,7 +91,7 @@ export async function TopicsSection() {
   const articles: ArticleItem[] = posts.slice(0, 10).map((post) => ({
     id: post.id,
     title: post.title,
-    image: post.thumbnail_url || "https://placehold.co/80x45/e0f2fe/0369a1?text=No",
+    image: post.thumbnail_url ?? undefined,
     date: formatShortDate(post.created_at),
     category: post.category ?? "",
     tags: post.tags ?? [],
@@ -101,7 +102,7 @@ export async function TopicsSection() {
   const serviceItems: ServiceItem[] = services.slice(0, 10).map((s) => ({
     id: s.id,
     title: s.title,
-    image: s.thumbnail_url || serviceThumbnailPlaceholder(s.title, 80, 45),
+    image: s.thumbnail_url ?? undefined,
     category: s.category ?? "",
   }));
 

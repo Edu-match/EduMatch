@@ -1,7 +1,6 @@
 import { getAllServices } from "@/app/_actions";
 import { ServicesClient } from "./services-client";
 import { SERVICE_CATEGORY_LIST } from "@/lib/categories";
-import { serviceThumbnailPlaceholder } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -10,8 +9,11 @@ export type ServiceForList = {
   name: string;
   description: string;
   category: string;
-  image: string;
+  /** サムネイルURL。未設定時はタイトルを表示 */
+  image?: string | null;
   price: string;
+  /** 「なし」の場合は資料請求・お気に入り追加を非表示 */
+  sort_order?: string;
 };
 
 export default async function ServicesPage() {
@@ -24,8 +26,9 @@ export default async function ServicesPage() {
     name: service.title,
     description: service.description ?? "",
     category: service.category ?? "",
-    image: service.thumbnail_url || serviceThumbnailPlaceholder(service.title, 300, 200),
+    image: service.thumbnail_url ?? undefined,
     price: service.price_info ?? "",
+    sort_order: service.sort_order,
   }));
 
   // サービスカテゴリ一覧（1件以上あるものだけ表示）

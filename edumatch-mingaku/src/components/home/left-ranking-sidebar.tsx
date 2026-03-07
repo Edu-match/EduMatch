@@ -1,8 +1,7 @@
 import Link from "next/link";
-import Image from "next/image";
 import { Crown } from "lucide-react";
 import { getPopularServicesByEngagement } from "@/app/_actions/popularity";
-import { serviceThumbnailPlaceholder } from "@/lib/utils";
+import { ThumbnailOrTitle } from "@/components/ui/thumbnail-or-title";
 
 const rankColors = [
   "bg-[#ef4444] text-white",
@@ -38,9 +37,9 @@ export async function LeftRankingSidebar() {
                   {index + 1}
                 </span>
                 <div className="relative w-12 flex-shrink-0 overflow-hidden rounded border bg-muted aspect-video">
-                  <Image
-                    src={service.thumbnail_url || serviceThumbnailPlaceholder(service.title, 120, 68)}
-                    alt={service.title}
+                  <ThumbnailOrTitle
+                    src={service.thumbnail_url ?? undefined}
+                    title={service.title}
                     fill
                     className="object-contain"
                     sizes="48px"

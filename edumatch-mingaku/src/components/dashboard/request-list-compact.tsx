@@ -2,12 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { useRequestList } from "@/components/request-list/request-list-context";
 import { FileText, ArrowRight } from "lucide-react";
 import { AddToRequestListButton } from "@/components/request-list/add-to-request-list-button";
-import { serviceThumbnailPlaceholder } from "@/lib/utils";
+import { ThumbnailOrTitle } from "@/components/ui/thumbnail-or-title";
 
 const DEFAULT_MAX_BATCH = 5;
 
@@ -55,9 +54,9 @@ export function RequestListCompact({ maxBatchRequest = DEFAULT_MAX_BATCH }: Prop
             className="flex flex-1 gap-3 min-w-0"
           >
             <div className="relative w-16 flex-shrink-0 overflow-hidden rounded bg-muted aspect-video">
-              <Image
-                src={item.thumbnail || serviceThumbnailPlaceholder(item.title, 200, 120)}
-                alt={item.title}
+              <ThumbnailOrTitle
+                src={item.thumbnail ?? undefined}
+                title={item.title}
                 fill
                 className="object-contain"
                 unoptimized

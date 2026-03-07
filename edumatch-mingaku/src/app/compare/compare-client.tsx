@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +22,7 @@ import {
   Trash2,
 } from "lucide-react";
 import type { ServiceWithProvider } from "@/app/_actions/services";
-import { serviceThumbnailPlaceholder } from "@/lib/utils";
+import { ThumbnailOrTitle } from "@/components/ui/thumbnail-or-title";
 
 type CompareClientPageProps = {
   initialServices: ServiceWithProvider[];
@@ -152,9 +151,9 @@ export default function CompareClientPage({ initialServices }: CompareClientPage
                     <th key={service.id} className="p-4 text-center min-w-[180px]">
                       <div className="flex flex-col items-center gap-2">
                         <div className="relative w-[100px] h-[60px] rounded overflow-hidden">
-                            <Image
-                              src={service.thumbnail_url || serviceThumbnailPlaceholder(service.title, 100, 60)}
-                              alt={service.title}
+                            <ThumbnailOrTitle
+                              src={service.thumbnail_url ?? undefined}
+                              title={service.title}
                               fill
                               className="object-contain"
                               unoptimized

@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { serviceThumbnailPlaceholder } from "@/lib/utils";
+import { ThumbnailOrTitle } from "@/components/ui/thumbnail-or-title";
 
 export function RankingServiceImage({
   src,
@@ -10,16 +9,15 @@ export function RankingServiceImage({
   src: string | null;
   alt: string;
 }) {
-  const placeholder = serviceThumbnailPlaceholder(alt, 120, 68);
-  const [imgSrc, setImgSrc] = useState<string>(src || placeholder);
-
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={imgSrc}
-      alt={alt}
-      onError={() => setImgSrc(placeholder)}
-      className="w-20 h-[45px] flex-shrink-0 rounded-md border bg-muted object-contain"
-    />
+    <div className="relative w-20 h-[45px] flex-shrink-0 rounded-md border bg-muted overflow-hidden aspect-video">
+      <ThumbnailOrTitle
+        src={src ?? undefined}
+        title={alt}
+        fill
+        className="object-contain"
+        unoptimized
+      />
+    </div>
   );
 }

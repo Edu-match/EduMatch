@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { ThumbnailOrTitle } from "@/components/ui/thumbnail-or-title";
 import type { ArticleItem, ServiceItem, VideoItem } from "./topics-section";
 
 function ArticleListItem({ article }: { article: ArticleItem }) {
@@ -13,9 +14,9 @@ function ArticleListItem({ article }: { article: ArticleItem }) {
       className="flex gap-3 py-2.5 px-2 -mx-2 border-b last:border-b-0 hover:bg-muted/50 transition-colors"
     >
       <div className="relative w-16 flex-shrink-0 overflow-hidden rounded border bg-muted aspect-video">
-        <Image
-          src={article.image}
-          alt={article.title}
+        <ThumbnailOrTitle
+          src={article.image ?? undefined}
+          title={article.title}
           fill
           className="object-contain"
           sizes="64px"
@@ -48,9 +49,9 @@ function ServiceListItem({ service }: { service: ServiceItem }) {
       className="flex gap-3 py-2.5 px-2 -mx-2 border-b last:border-b-0 hover:bg-muted/50 transition-colors"
     >
       <div className="relative w-16 flex-shrink-0 overflow-hidden rounded border bg-muted aspect-video">
-        <Image
-          src={service.image}
-          alt={service.title}
+        <ThumbnailOrTitle
+          src={service.image ?? undefined}
+          title={service.title}
           fill
           className="object-contain"
           sizes="64px"
