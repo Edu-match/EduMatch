@@ -42,14 +42,14 @@ export function ThumbnailOrTitle({
     );
   }
 
-  // 画像なし: タイトルをテキストで表示（日本語対応）
+  // 画像なし: タイトルをテキストで表示（日本語対応）。背景は明るい青（従来の placehold に近い）
   const fillClass = fill ? "absolute inset-0" : "";
   return (
     <div
-      className={`flex items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5 text-foreground overflow-hidden ${fillClass} ${className}`}
+      className={`flex items-center justify-center bg-sky-100 overflow-hidden ${fillClass} ${className}`}
       aria-label={effectiveAlt}
     >
-      <span className="font-semibold text-center line-clamp-4 px-3 py-2 break-words [word-break:break-word] text-sm">
+      <span className="font-semibold text-center text-sky-700 line-clamp-4 px-3 py-2 break-words [word-break:break-word] text-sm sm:text-base">
         {title}
       </span>
     </div>
