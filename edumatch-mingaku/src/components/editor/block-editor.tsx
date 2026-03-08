@@ -143,8 +143,8 @@ export function BlockEditor({
   }, [activeBlockId, blocks]);
 
   useEffect(() => {
-    setHasSelectionInActiveBlock(false);
-    setAddMenuIndex(null);
+    setHasSelectionInActiveBlock((prev) => prev ? false : prev);
+    setAddMenuIndex((prev) => prev !== null ? null : prev);
   }, [activeBlockId]);
 
   const handleSelectionChange = useCallback(() => {
@@ -193,13 +193,13 @@ export function BlockEditor({
     [blocks, onChange]
   );
 
-  /** メニューを閉じてから次のティックでブロック追加（固まり防止） */
+  /** メニューを閉じてからブラウザ描画後にブロック追加（固まり防止） */
   const addBlockDeferred = useCallback(
     (type: BlockType, index: number) => {
       setAddMenuIndex(null);
       const currentBlocks = blocks;
       const currentOnChange = onChange;
-      queueMicrotask(() => {
+      setTimeout(() => {
         const newBlock: ContentBlock = {
           id: generateId(),
           type,
@@ -211,7 +211,7 @@ export function BlockEditor({
         newBlocks.splice(index, 0, newBlock);
         currentOnChange(newBlocks);
         setActiveBlockId(newBlock.id);
-      });
+      }, 0);
     },
     [blocks, onChange]
   );
