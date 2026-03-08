@@ -231,19 +231,12 @@ export function BlockEditor({
     [blocks, onChange]
   );
 
-  /** フォーマット適用（contenteditable の場合は execCommand、Input/Textarea の場合はマークダウン挿入） */
+  /** フォーマット適用（選択あり: 選択範囲に適用、選択なし: ブロック全体に適用） */
   const applyFormat = useCallback(
     (blockId: string, wrapper: "**" | "*" | "~~", itemIndex?: number) => {
-      const activeEl = document.activeElement as HTMLElement | null;
-      if (activeEl?.isContentEditable) {
-        const cmd = wrapper === "**" ? "bold" : wrapper === "*" ? "italic" : "strikeThrough";
-        document.execCommand(cmd, false);
-        activeEl.dispatchEvent(new Event("input", { bubbles: true }));
-        return;
-      }
+      const block = blocks.find((b) => b.id === blockId);
       let refKey = blockId;
       let targetItemIndex: number | undefined = itemIndex;
-      const block = blocks.find((b) => b.id === blockId);
       if (block?.items && itemIndex === undefined) {
         for (let i = 0; i < block.items.length; i++) {
           const k = `${blockId}-${i}`;
@@ -253,19 +246,39 @@ export function BlockEditor({
             break;
           }
         }
+        if (targetItemIndex === undefined) {
+          refKey = `${blockId}-0`;
+          targetItemIndex = 0;
+        }
       } else if (itemIndex !== undefined) {
         refKey = `${blockId}-${itemIndex}`;
       }
-      const el = textInputRefs.current[refKey] ?? textInputRefs.current[blockId];
-      if (!el || !("value" in el)) return;
+      const el = (textInputRefs.current[refKey] ?? textInputRefs.current[blockId]) as HTMLElement | null;
+      if (!el) return;
+      if (el.isContentEditable) {
+        el.focus();
+        const cmd = wrapper === "**" ? "bold" : wrapper === "*" ? "italic" : "strikeThrough";
+        const sel = window.getSelection();
+        const hasSelection = sel && sel.rangeCount > 0 && !sel.getRangeAt(0).collapsed;
+        if (!hasSelection) {
+          document.execCommand("selectAll", false);
+        }
+        document.execCommand(cmd, false);
+        if (!hasSelection && sel && sel.rangeCount > 0) {
+          sel.getRangeAt(0).collapse(false);
+        }
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+        return;
+      }
+      el.focus();
+      if (!("value" in el)) return;
       const inputEl = el as HTMLInputElement | HTMLTextAreaElement;
       const start = inputEl.selectionStart ?? 0;
       const end = inputEl.selectionEnd ?? 0;
-      if (start === end) return; // 選択なし
       const val = inputEl.value;
-      const before = val.slice(0, start);
-      const selected = val.slice(start, end);
-      const after = val.slice(end);
+      const selected = start === end ? val : val.slice(start, end);
+      const before = start === end ? "" : val.slice(0, start);
+      const after = start === end ? "" : val.slice(end);
       const newContent = before + wrapper + selected + wrapper + after;
       if (targetItemIndex !== undefined && block?.items) {
         const newItems = [...block.items];
@@ -278,70 +291,13 @@ export function BlockEditor({
         const newEl = textInputRefs.current[refKey] as HTMLInputElement | HTMLTextAreaElement | null;
         if (newEl && "setSelectionRange" in newEl) {
           newEl.focus();
-          const newStart = start + wrapper.length;
-          const newEnd = end + wrapper.length;
-          newEl.setSelectionRange(newStart, newEnd);
-        }
-      });
-    },
-    [blocks, updateBlock]
-  );
-
-  /** 選択範囲を行単位で箇条書き・番号付きリスト形式に変換 */
-  const applyListFormat = useCallback(
-    (blockId: string, listType: "bullet" | "numbered", itemIndex?: number) => {
-      const activeEl = document.activeElement as HTMLElement | null;
-      if (activeEl?.isContentEditable) {
-        document.execCommand(listType === "bullet" ? "insertUnorderedList" : "insertOrderedList", false);
-        activeEl.dispatchEvent(new Event("input", { bubbles: true }));
-        return;
-      }
-      let refKey = blockId;
-      let targetItemIndex: number | undefined = itemIndex;
-      const block = blocks.find((b) => b.id === blockId);
-      if (block?.items && itemIndex === undefined) {
-        for (let i = 0; i < block.items.length; i++) {
-          const k = `${blockId}-${i}`;
-          if (textInputRefs.current[k] === document.activeElement) {
-            refKey = k;
-            targetItemIndex = i;
-            break;
+          if (start === end) {
+            newEl.setSelectionRange(newContent.length, newContent.length);
+          } else {
+            const newStart = start + wrapper.length;
+            const newEnd = end + wrapper.length;
+            newEl.setSelectionRange(newStart, newEnd);
           }
-        }
-      } else if (itemIndex !== undefined) {
-        refKey = `${blockId}-${itemIndex}`;
-      }
-      const el = textInputRefs.current[refKey] ?? textInputRefs.current[blockId];
-      if (!el || !("value" in el)) return;
-      const inputEl = el as HTMLInputElement | HTMLTextAreaElement;
-      const start = inputEl.selectionStart ?? 0;
-      const end = inputEl.selectionEnd ?? 0;
-      if (start === end) return;
-      const val = inputEl.value;
-      const selected = val.slice(start, end);
-      const lines = selected.split(/\n/);
-      const formatted = lines
-        .map((line, i) =>
-          listType === "bullet" ? `- ${line}` : `${i + 1}. ${line}`
-        )
-        .join("\n");
-      const before = val.slice(0, start);
-      const after = val.slice(end);
-      const newContent = before + formatted + after;
-      if (targetItemIndex !== undefined && block?.items) {
-        const newItems = [...block.items];
-        newItems[targetItemIndex] = newContent;
-        updateBlock(blockId, { items: newItems });
-      } else {
-        updateBlock(blockId, { content: newContent });
-      }
-      requestAnimationFrame(() => {
-        const newEl = textInputRefs.current[refKey] as HTMLInputElement | HTMLTextAreaElement | null;
-        if (newEl && "setSelectionRange" in newEl) {
-          newEl.focus();
-          const newStart = start;
-          const newEnd = start + formatted.length;
-          newEl.setSelectionRange(newStart, newEnd);
         }
       });
     },
@@ -1011,30 +967,6 @@ export function BlockEditor({
 
   return (
     <div className="space-y-4 relative">
-      {/* 選択テキストをブロックにするバブル（選択範囲の上に余白を持って表示） */}
-      {selectionBubble && (
-        <div
-          className="fixed z-[100] bg-popover border rounded-lg shadow-lg p-1.5"
-          style={{
-            left: Math.max(8, Math.min(window.innerWidth - 260, selectionBubble.rect.left + selectionBubble.rect.width / 2 - 130)),
-            top: selectionBubble.rect.top - 56,
-          }}
-        >
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-sm"
-            onMouseDown={(e) => {
-              e.preventDefault();
-              extractSelectionToBlock();
-            }}
-          >
-            <SplitSquareVertical className="h-4 w-4 mr-2" />
-            選択したテキストをブロックにする
-          </Button>
-        </div>
-      )}
-
       {showBulkPaste && (
         <div className="border rounded-lg overflow-hidden">
           <button
@@ -1201,7 +1133,7 @@ export function BlockEditor({
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                {/* 太字・斜体・取り消し線・箇条書き・番号付き（選択範囲に適用、オン時はハイライト） */}
+                {/* 太字・斜体・取り消し線（選択時は選択範囲、未選択時はブロック全体に適用） */}
                 {["heading1", "heading2", "heading3", "paragraph", "quote", "bulletList", "numberedList", "markdown"].includes(block.type) && (
                   <div className="flex items-center gap-1">
                     <Button
@@ -1237,28 +1169,21 @@ export function BlockEditor({
                     >
                       <Strikethrough className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      title="箇条書き"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        applyListFormat(block.id, "bullet");
-                      }}
-                    >
-                      <List className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      title="番号付きリスト"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        applyListFormat(block.id, "numbered");
-                      }}
-                    >
-                      <ListOrdered className="h-4 w-4" />
-                    </Button>
+                    {/* 選択時に「ブロックに変換」ボタンを表示 */}
+                    {selectionBubble?.blockId === block.id && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          extractSelectionToBlock();
+                        }}
+                      >
+                        <SplitSquareVertical className="h-4 w-4 mr-1.5" />
+                        選択したテキストをブロックにする
+                      </Button>
+                    )}
                   </div>
                 )}
 
