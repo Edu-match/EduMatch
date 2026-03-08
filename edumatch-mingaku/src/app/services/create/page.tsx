@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -16,15 +17,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ContentEditorWithImport } from "@/components/content/content-editor-with-import";
+import { BlocksContentPreview } from "@/components/content/blocks-content-preview";
 import { contentToBlocks } from "@/lib/markdown-to-blocks";
 import { blocksToMarkdown } from "@/lib/markdown-to-blocks";
 import { isImportedContent } from "@/lib/imported-content";
 import { createService, uploadImage } from "@/app/_actions";
 import { SERVICE_CATEGORIES } from "@/lib/categories";
-import { Image as ImageIcon, Loader2, Save, Send, Building2, School } from "lucide-react";
+import { Image as ImageIcon, Loader2, Save, Send, Building2, School, Eye, FileText } from "lucide-react";
 
 export default function ServiceCreatePage() {
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState("edit");
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -170,6 +173,19 @@ export default function ServiceCreatePage() {
       </div>
 
       <div className="container py-8 space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="mb-6">
+            <TabsTrigger value="edit">
+              <FileText className="h-4 w-4 mr-2" />
+              編集
+            </TabsTrigger>
+            <TabsTrigger value="preview">
+              <Eye className="h-4 w-4 mr-2" />
+              プレビュー
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="edit" className="space-y-6">
         <Card>
           <CardHeader>
             <CardTitle className="text-base">サムネイル</CardTitle>
@@ -363,6 +379,36 @@ export default function ServiceCreatePage() {
             )}
           </CardContent>
         </Card>
+          </TabsContent>
+
+          <TabsContent value="preview">
+            <Card>
+              <CardContent className="py-12">
+                <div className="max-w-3xl mx-auto space-y-6">
+                  {thumbnailUrl && (
+                    <div className="rounded-xl overflow-hidden">
+                      <img
+                        src={thumbnailUrl}
+                        alt={title}
+                        className="w-full h-[200px] object-contain"
+                      />
+                    </div>
+                  )}
+                  <h1 className="text-3xl font-bold">{title || "タイトル未設定"}</h1>
+                  {description && (
+                    <p className="text-lg text-muted-foreground">{description}</p>
+                  )}
+                  {category && (
+                    <Badge variant="outline">{SERVICE_CATEGORIES.find((c) => c.value === category)?.label ?? category}</Badge>
+                  )}
+                  <div className="border-t pt-6">
+                    <BlocksContentPreview content={content} />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
 
         {/* 投稿者情報 */}
         <Card>

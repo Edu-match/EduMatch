@@ -20,13 +20,9 @@ type Props = {
   parseToBlocks: ParseToBlocks;
   blocksToContent: BlocksToContent;
   maxLength?: number;
-  /** ブロック編集に戻ったときの空の初期ブロック */
+  /** ブロック編集に戻ったときの空の初期ブロック（デフォルト: 空配列＝最初からブロックなし） */
   emptyBlocks?: ContentBlock[];
 };
-
-const DEFAULT_EMPTY_BLOCKS: ContentBlock[] = [
-  { id: "init", type: "paragraph", content: "" },
-];
 
 export function ContentEditorWithImport({
   content,
@@ -34,7 +30,7 @@ export function ContentEditorWithImport({
   parseToBlocks,
   blocksToContent,
   maxLength,
-  emptyBlocks = DEFAULT_EMPTY_BLOCKS,
+  emptyBlocks = [],
 }: Props) {
   const isImported = isImportedContent(content);
   const parsed = isImported ? parseImportedContent(content) : null;

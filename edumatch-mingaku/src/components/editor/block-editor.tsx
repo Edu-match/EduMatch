@@ -31,11 +31,11 @@ import {
   Bold,
   Italic,
   Strikethrough,
-  FileText,
   SplitSquareVertical,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { contentToBlocks } from "@/lib/markdown-to-blocks";
+import { RichTextEditable, htmlToMarkdown } from "@/components/editor/rich-text-editable";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -114,8 +114,14 @@ export function BlockEditor({
     rect: DOMRect;
   } | null>(null);
   const [blockTypeDropdownOpen, setBlockTypeDropdownOpen] = useState<string | null>(null);
+  const [activeFormats, setActiveFormats] = useState<{
+    blockId: string;
+    bold: boolean;
+    italic: boolean;
+    strikethrough: boolean;
+  } | null>(null);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
-  const textInputRefs = useRef<Record<string, HTMLInputElement | HTMLTextAreaElement | null>>({});
+  const textInputRefs = useRef<Record<string, HTMLInputElement | HTMLTextAreaElement | HTMLElement | null>>({});
   
   // 全体の文字数を計算
   const calculateTotalLength = useCallback((blocksToCheck: ContentBlock[]) => {
@@ -225,9 +231,16 @@ export function BlockEditor({
     [blocks, onChange]
   );
 
-  /** 選択範囲に太字・斜体・取り消し線を適用（onMouseDown でボタンクリック時にフォーカスを維持） */
+  /** フォーマット適用（contenteditable の場合は execCommand、Input/Textarea の場合はマークダウン挿入） */
   const applyFormat = useCallback(
     (blockId: string, wrapper: "**" | "*" | "~~", itemIndex?: number) => {
+      const activeEl = document.activeElement as HTMLElement | null;
+      if (activeEl?.isContentEditable) {
+        const cmd = wrapper === "**" ? "bold" : wrapper === "*" ? "italic" : "strikeThrough";
+        document.execCommand(cmd, false);
+        activeEl.dispatchEvent(new Event("input", { bubbles: true }));
+        return;
+      }
       let refKey = blockId;
       let targetItemIndex: number | undefined = itemIndex;
       const block = blocks.find((b) => b.id === blockId);
@@ -244,11 +257,12 @@ export function BlockEditor({
         refKey = `${blockId}-${itemIndex}`;
       }
       const el = textInputRefs.current[refKey] ?? textInputRefs.current[blockId];
-      if (!el) return;
-      const start = el.selectionStart ?? 0;
-      const end = el.selectionEnd ?? 0;
+      if (!el || !("value" in el)) return;
+      const inputEl = el as HTMLInputElement | HTMLTextAreaElement;
+      const start = inputEl.selectionStart ?? 0;
+      const end = inputEl.selectionEnd ?? 0;
       if (start === end) return; // 選択なし
-      const val = el.value;
+      const val = inputEl.value;
       const before = val.slice(0, start);
       const selected = val.slice(start, end);
       const after = val.slice(end);
@@ -261,8 +275,8 @@ export function BlockEditor({
         updateBlock(blockId, { content: newContent });
       }
       requestAnimationFrame(() => {
-        const newEl = textInputRefs.current[refKey];
-        if (newEl) {
+        const newEl = textInputRefs.current[refKey] as HTMLInputElement | HTMLTextAreaElement | null;
+        if (newEl && "setSelectionRange" in newEl) {
           newEl.focus();
           const newStart = start + wrapper.length;
           const newEnd = end + wrapper.length;
@@ -292,11 +306,12 @@ export function BlockEditor({
         refKey = `${blockId}-${itemIndex}`;
       }
       const el = textInputRefs.current[refKey] ?? textInputRefs.current[blockId];
-      if (!el) return;
-      const start = el.selectionStart ?? 0;
-      const end = el.selectionEnd ?? 0;
+      if (!el || !("value" in el)) return;
+      const inputEl = el as HTMLInputElement | HTMLTextAreaElement;
+      const start = inputEl.selectionStart ?? 0;
+      const end = inputEl.selectionEnd ?? 0;
       if (start === end) return;
-      const val = el.value;
+      const val = inputEl.value;
       const selected = val.slice(start, end);
       const lines = selected.split(/\n/);
       const formatted = lines
@@ -315,8 +330,8 @@ export function BlockEditor({
         updateBlock(blockId, { content: newContent });
       }
       requestAnimationFrame(() => {
-        const newEl = textInputRefs.current[refKey];
-        if (newEl) {
+        const newEl = textInputRefs.current[refKey] as HTMLInputElement | HTMLTextAreaElement | null;
+        if (newEl && "setSelectionRange" in newEl) {
           newEl.focus();
           const newStart = start;
           const newEnd = start + formatted.length;
@@ -335,13 +350,38 @@ export function BlockEditor({
     if (!block) return;
     const el = textInputRefs.current[refKey] ?? textInputRefs.current[blockId];
     if (!el) return;
-    const start = el.selectionStart ?? 0;
-    const end = el.selectionEnd ?? 0;
-    if (start === end) return;
-    const val = el.value;
-    const before = val.slice(0, start).trimEnd();
-    const selected = val.slice(start, end);
-    const after = val.slice(end).trimStart();
+    let before: string;
+    let selected: string;
+    let after: string;
+    if (el.isContentEditable) {
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0) return;
+      const range = sel.getRangeAt(0);
+      selected = sel.toString();
+      if (!selected) return;
+      const fragToMd = (frag: DocumentFragment) => {
+        const div = document.createElement("div");
+        div.appendChild(frag);
+        return htmlToMarkdown(div.innerHTML);
+      };
+      const preRange = document.createRange();
+      preRange.selectNodeContents(el);
+      preRange.setEnd(range.startContainer, range.startOffset);
+      before = fragToMd(preRange.cloneContents()).trimEnd();
+      const postRange = document.createRange();
+      postRange.selectNodeContents(el);
+      postRange.setStart(range.endContainer, range.endOffset);
+      after = fragToMd(postRange.cloneContents()).trimStart();
+      selected = fragToMd(range.cloneContents());
+    } else if ("value" in el) {
+      const start = (el as HTMLInputElement).selectionStart ?? 0;
+      const end = (el as HTMLInputElement).selectionEnd ?? 0;
+      if (start === end) return;
+      const val = (el as HTMLInputElement).value;
+      before = val.slice(0, start).trimEnd();
+      selected = val.slice(start, end);
+      after = val.slice(end).trimStart();
+    } else return;
     const index = blocks.findIndex((b) => b.id === blockId);
     if (index < 0) return;
     const newBlocks: ContentBlock[] = [];
@@ -369,24 +409,24 @@ export function BlockEditor({
     if (selectedBlock) setActiveBlockId(selectedBlock.id);
   }, [selectionBubble, blocks, onChange]);
 
-  /** 選択範囲の検出（selectionchange でバブルの表示） */
+  /** 選択範囲の検出とフォーマット状態の更新 */
   useEffect(() => {
+    const getActiveFormats = (value: string, start: number, end: number) => {
+      const before = value.slice(0, start);
+      const after = value.slice(end);
+      const bold = before.endsWith("**") && after.startsWith("**");
+      const italic =
+        !bold &&
+        before.endsWith("*") &&
+        !before.endsWith("**") &&
+        after.startsWith("*") &&
+        !after.startsWith("**");
+      const strikethrough = before.endsWith("~~") && after.startsWith("~~");
+      return { bold, italic, strikethrough };
+    };
+
     const checkSelection = () => {
-      const sel = window.getSelection();
-      if (!sel || sel.rangeCount === 0) {
-        setSelectionBubble(null);
-        return;
-      }
-      const range = sel.getRangeAt(0);
-      if (range.collapsed) {
-        setSelectionBubble(null);
-        return;
-      }
       const activeEl = document.activeElement;
-      if (!activeEl) {
-        setSelectionBubble(null);
-        return;
-      }
       let foundBlockId: string | null = null;
       let foundRefKey: string | null = null;
       let foundItemIndex: number | undefined;
@@ -405,14 +445,44 @@ export function BlockEditor({
       }
       if (!foundBlockId || !foundRefKey) {
         setSelectionBubble(null);
+        setActiveFormats(null);
         return;
       }
       const block = blocks.find((b) => b.id === foundBlockId);
       const textBlocks = ["heading1", "heading2", "heading3", "paragraph", "quote", "markdown", "bulletList", "numberedList"];
       if (!block || !textBlocks.includes(block.type)) {
         setSelectionBubble(null);
+        setActiveFormats(null);
         return;
       }
+      const el = textInputRefs.current[foundRefKey];
+      if (!el) {
+        setActiveFormats(null);
+        return;
+      }
+      if ((el as HTMLElement).isContentEditable) {
+        setActiveFormats({
+          blockId: foundBlockId,
+          bold: document.queryCommandState("bold"),
+          italic: document.queryCommandState("italic"),
+          strikethrough: document.queryCommandState("strikeThrough"),
+        });
+      } else if ("value" in el) {
+        const value = (el as HTMLInputElement | HTMLTextAreaElement).value;
+        const start = (el as HTMLInputElement | HTMLTextAreaElement).selectionStart ?? 0;
+        const end = (el as HTMLInputElement | HTMLTextAreaElement).selectionEnd ?? 0;
+        const formats = getActiveFormats(value, start, end);
+        setActiveFormats({ blockId: foundBlockId, ...formats });
+      } else {
+        setActiveFormats(null);
+      }
+
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0 || sel.getRangeAt(0).collapsed) {
+        setSelectionBubble(null);
+        return;
+      }
+      const range = sel.getRangeAt(0);
       try {
         const rect = range.getBoundingClientRect();
         if (rect.width === 0 && rect.height === 0) {
@@ -606,13 +676,13 @@ export function BlockEditor({
       case "heading1":
         return (
           <div className="flex items-center gap-2">
-            <input
-              ref={(el) => { textInputRefs.current[block.id] = el; }}
-              type="text"
+            <RichTextEditable
+              blockId={block.id}
               value={block.content}
-              onChange={(e) => updateBlock(block.id, { content: e.target.value })}
+              onChange={(c) => updateBlock(block.id, { content: c })}
+              refCallback={(el) => { textInputRefs.current[block.id] = el; }}
               placeholder="大見出しを入力..."
-              className={`flex-1 bg-transparent text-4xl font-bold outline-none border-none text-${block.align}`}
+              className={`flex-1 min-w-0 text-4xl font-bold outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground`}
               style={{ textAlign: block.align }}
             />
             <span className="text-xs text-muted-foreground whitespace-nowrap">
@@ -623,13 +693,13 @@ export function BlockEditor({
       case "heading2":
         return (
           <div className="flex items-center gap-2">
-            <input
-              ref={(el) => { textInputRefs.current[block.id] = el; }}
-              type="text"
+            <RichTextEditable
+              blockId={block.id}
               value={block.content}
-              onChange={(e) => updateBlock(block.id, { content: e.target.value })}
+              onChange={(c) => updateBlock(block.id, { content: c })}
+              refCallback={(el) => { textInputRefs.current[block.id] = el; }}
               placeholder="中見出しを入力..."
-              className={`flex-1 bg-transparent text-2xl font-bold outline-none border-none`}
+              className={`flex-1 min-w-0 text-2xl font-bold outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground`}
               style={{ textAlign: block.align }}
             />
             <span className="text-xs text-muted-foreground whitespace-nowrap">
@@ -640,13 +710,13 @@ export function BlockEditor({
       case "heading3":
         return (
           <div className="flex items-center gap-2">
-            <input
-              ref={(el) => { textInputRefs.current[block.id] = el; }}
-              type="text"
+            <RichTextEditable
+              blockId={block.id}
               value={block.content}
-              onChange={(e) => updateBlock(block.id, { content: e.target.value })}
+              onChange={(c) => updateBlock(block.id, { content: c })}
+              refCallback={(el) => { textInputRefs.current[block.id] = el; }}
               placeholder="小見出しを入力..."
-              className={`flex-1 bg-transparent text-xl font-semibold outline-none border-none`}
+              className={`flex-1 min-w-0 text-xl font-semibold outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground`}
               style={{ textAlign: block.align }}
             />
             <span className="text-xs text-muted-foreground whitespace-nowrap">
@@ -657,13 +727,14 @@ export function BlockEditor({
       case "paragraph":
         return (
           <div className="relative">
-            <Textarea
-              ref={(el) => { textInputRefs.current[block.id] = el; }}
+            <RichTextEditable
+              blockId={block.id}
               value={block.content}
-              onChange={(e) => updateBlock(block.id, { content: e.target.value })}
-              onBlur={(e) => tryAutoConvertParagraph(block, e.target.value)}
+              onChange={(c) => updateBlock(block.id, { content: c })}
+              onBlur={(c) => tryAutoConvertParagraph(block, c)}
+              refCallback={(el) => { textInputRefs.current[block.id] = el; }}
               placeholder="本文を入力...（# 見出し、- リストなどで自動変換）"
-              className={`w-full min-h-[100px] bg-transparent resize-none border-none shadow-none focus-visible:ring-0 pr-16`}
+              className={`w-full min-h-[100px] py-2 px-0 bg-transparent resize-none outline-none pr-16 empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground`}
               style={{ textAlign: block.align }}
             />
             <span className="absolute top-2 right-2 text-xs text-muted-foreground">
@@ -842,13 +913,13 @@ export function BlockEditor({
         return (
           <div className="border-l-4 border-primary pl-4 py-2">
             <div className="relative">
-              <Textarea
-                ref={(el) => { textInputRefs.current[block.id] = el; }}
+              <RichTextEditable
+                blockId={block.id}
                 value={block.content}
-                onChange={(e) => updateBlock(block.id, { content: e.target.value })}
-                onClick={(e) => e.stopPropagation()}
+                onChange={(c) => updateBlock(block.id, { content: c })}
+                refCallback={(el) => { textInputRefs.current[block.id] = el; }}
                 placeholder="引用文を入力..."
-                className="w-full min-h-[80px] bg-transparent resize-none border-none shadow-none focus-visible:ring-0 italic text-lg pr-16"
+                className="w-full min-h-[80px] py-2 px-0 bg-transparent resize-none outline-none italic text-lg pr-16 empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground"
               />
               <span className="absolute top-2 right-2 text-xs text-muted-foreground">
                 {block.content?.length || 0} 文字
@@ -1122,16 +1193,13 @@ export function BlockEditor({
                     <DropdownMenuItem onClick={() => convertBlockType(block.id, "divider")}>
                       <Minus className="h-4 w-4 mr-2" />区切り線
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => convertBlockType(block.id, "markdown")}>
-                      <FileText className="h-4 w-4 mr-2" />Markdown
-                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                {/* 太字・斜体・取り消し線・箇条書き・番号付き（選択範囲に適用） */}
+                {/* 太字・斜体・取り消し線・箇条書き・番号付き（選択範囲に適用、オン時はハイライト） */}
                 {["heading1", "heading2", "heading3", "paragraph", "quote", "bulletList", "numberedList", "markdown"].includes(block.type) && (
                   <div className="flex items-center gap-1">
                     <Button
-                      variant="ghost"
+                      variant={activeFormats?.blockId === block.id && activeFormats.bold ? "secondary" : "ghost"}
                       size="icon-sm"
                       title="太字"
                       onMouseDown={(e) => {
@@ -1142,7 +1210,7 @@ export function BlockEditor({
                       <Bold className="h-4 w-4" />
                     </Button>
                     <Button
-                      variant="ghost"
+                      variant={activeFormats?.blockId === block.id && activeFormats.italic ? "secondary" : "ghost"}
                       size="icon-sm"
                       title="斜体"
                       onMouseDown={(e) => {
@@ -1153,7 +1221,7 @@ export function BlockEditor({
                       <Italic className="h-4 w-4" />
                     </Button>
                     <Button
-                      variant="ghost"
+                      variant={activeFormats?.blockId === block.id && activeFormats.strikethrough ? "secondary" : "ghost"}
                       size="icon-sm"
                       title="取り消し線"
                       onMouseDown={(e) => {
@@ -1298,11 +1366,6 @@ export function BlockEditor({
                 icon={<Minus className="h-5 w-5" />}
                 label="区切り線"
                 onClick={() => addBlock("divider", menuPosition)}
-              />
-              <BlockTypeButton
-                icon={<FileText className="h-5 w-5" />}
-                label="Markdown"
-                onClick={() => addBlock("markdown", menuPosition)}
               />
             </div>
           </div>
