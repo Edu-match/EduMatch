@@ -48,7 +48,7 @@ export function BlocksContentPreview({ content }: { content: string }) {
             return (
               <h2
                 key={block.id}
-                className="text-3xl font-bold mt-8 mb-4"
+                className="text-3xl font-normal mt-8 mb-4 [&_strong]:font-bold"
                 style={{ textAlign: block.align }}
               >
                 {renderInlineMarkdown(block.content)}
@@ -58,7 +58,7 @@ export function BlocksContentPreview({ content }: { content: string }) {
             return (
               <h3
                 key={block.id}
-                className="text-2xl font-bold mt-6 mb-3"
+                className="text-2xl font-normal mt-6 mb-3 [&_strong]:font-bold"
                 style={{ textAlign: block.align }}
               >
                 {renderInlineMarkdown(block.content)}
@@ -68,7 +68,7 @@ export function BlocksContentPreview({ content }: { content: string }) {
             return (
               <h4
                 key={block.id}
-                className="text-xl font-semibold mt-4 mb-2"
+                className="text-xl font-normal mt-4 mb-2 [&_strong]:font-bold"
                 style={{ textAlign: block.align }}
               >
                 {renderInlineMarkdown(block.content)}

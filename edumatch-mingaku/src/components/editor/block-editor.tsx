@@ -290,6 +290,12 @@ export function BlockEditor({
   /** 選択範囲を行単位で箇条書き・番号付きリスト形式に変換 */
   const applyListFormat = useCallback(
     (blockId: string, listType: "bullet" | "numbered", itemIndex?: number) => {
+      const activeEl = document.activeElement as HTMLElement | null;
+      if (activeEl?.isContentEditable) {
+        document.execCommand(listType === "bullet" ? "insertUnorderedList" : "insertOrderedList", false);
+        activeEl.dispatchEvent(new Event("input", { bubbles: true }));
+        return;
+      }
       let refKey = blockId;
       let targetItemIndex: number | undefined = itemIndex;
       const block = blocks.find((b) => b.id === blockId);
@@ -682,7 +688,7 @@ export function BlockEditor({
               onChange={(c) => updateBlock(block.id, { content: c })}
               refCallback={(el) => { textInputRefs.current[block.id] = el; }}
               placeholder="大見出しを入力..."
-              className={`flex-1 min-w-0 text-4xl font-bold outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground`}
+              className={`flex-1 min-w-0 text-4xl font-normal outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground [&_strong]:font-bold`}
               style={{ textAlign: block.align }}
             />
             <span className="text-xs text-muted-foreground whitespace-nowrap">
@@ -699,7 +705,7 @@ export function BlockEditor({
               onChange={(c) => updateBlock(block.id, { content: c })}
               refCallback={(el) => { textInputRefs.current[block.id] = el; }}
               placeholder="中見出しを入力..."
-              className={`flex-1 min-w-0 text-2xl font-bold outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground`}
+              className={`flex-1 min-w-0 text-2xl font-normal outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground [&_strong]:font-bold`}
               style={{ textAlign: block.align }}
             />
             <span className="text-xs text-muted-foreground whitespace-nowrap">
@@ -716,7 +722,7 @@ export function BlockEditor({
               onChange={(c) => updateBlock(block.id, { content: c })}
               refCallback={(el) => { textInputRefs.current[block.id] = el; }}
               placeholder="小見出しを入力..."
-              className={`flex-1 min-w-0 text-xl font-semibold outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground`}
+              className={`flex-1 min-w-0 text-xl font-normal outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground [&_strong]:font-bold`}
               style={{ textAlign: block.align }}
             />
             <span className="text-xs text-muted-foreground whitespace-nowrap">
@@ -1005,13 +1011,13 @@ export function BlockEditor({
 
   return (
     <div className="space-y-4 relative">
-      {/* 選択テキストをブロックにするバブル */}
+      {/* 選択テキストをブロックにするバブル（選択範囲の上に余白を持って表示） */}
       {selectionBubble && (
         <div
-          className="fixed z-[100] bg-popover border rounded-lg shadow-lg p-1"
+          className="fixed z-[100] bg-popover border rounded-lg shadow-lg p-1.5"
           style={{
-            left: selectionBubble.rect.left + selectionBubble.rect.width / 2 - 120,
-            top: selectionBubble.rect.top - 44,
+            left: Math.max(8, Math.min(window.innerWidth - 260, selectionBubble.rect.left + selectionBubble.rect.width / 2 - 130)),
+            top: selectionBubble.rect.top - 56,
           }}
         >
           <Button

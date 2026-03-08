@@ -225,11 +225,11 @@ export function ArticleEditBlockForm({ articleId, initialData }: ArticleEditBloc
         {contentToBlocks(content).map((block) => {
           switch (block.type) {
             case "heading1":
-              return <h2 key={block.id} className="text-3xl font-bold mt-8 mb-4">{renderInlineMarkdown(block.content)}</h2>;
+              return <h2 key={block.id} className="text-3xl font-normal mt-8 mb-4 [&_strong]:font-bold">{renderInlineMarkdown(block.content)}</h2>;
             case "heading2":
-              return <h3 key={block.id} className="text-2xl font-bold mt-6 mb-3">{renderInlineMarkdown(block.content)}</h3>;
+              return <h3 key={block.id} className="text-2xl font-normal mt-6 mb-3 [&_strong]:font-bold">{renderInlineMarkdown(block.content)}</h3>;
             case "heading3":
-              return <h4 key={block.id} className="text-xl font-semibold mt-4 mb-2">{renderInlineMarkdown(block.content)}</h4>;
+              return <h4 key={block.id} className="text-xl font-normal mt-4 mb-2 [&_strong]:font-bold">{renderInlineMarkdown(block.content)}</h4>;
             case "paragraph":
               return <p key={block.id} className="mb-4 leading-relaxed">{renderInlineMarkdown(block.content)}</p>;
             case "image":
