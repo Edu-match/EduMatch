@@ -1149,17 +1149,18 @@ function AddBlockMenuItems({
     { type: "markdown", icon: <FileText className="h-4 w-4" />, label: "Markdown" },
   ];
   return (
-    <>
+    <div className="grid grid-cols-3 gap-1 p-1">
       {items.map(({ type, icon, label }) => (
         <DropdownMenuItem
           key={type}
           onSelect={() => addBlock(type, index)}
+          className="flex h-16 flex-col items-center justify-center gap-1 rounded-md"
         >
-          {icon}
-          {label}
+          <span className="text-muted-foreground">{icon}</span>
+          <span className="text-[11px] leading-none">{label}</span>
         </DropdownMenuItem>
       ))}
-    </>
+    </div>
   );
 }
 
