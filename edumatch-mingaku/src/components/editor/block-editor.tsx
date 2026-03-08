@@ -109,6 +109,11 @@ export function BlockEditor({
   const [uploadingBlockId, setUploadingBlockId] = useState<string | null>(null);
   const [bulkPasteOpen, setBulkPasteOpen] = useState(false);
   const [bulkPasteText, setBulkPasteText] = useState("");
+  const [selectionToolbar, setSelectionToolbar] = useState<{
+    blockId: string;
+    left: number;
+    top: number;
+  } | null>(null);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const textInputRefs = useRef<Record<string, HTMLInputElement | HTMLTextAreaElement | null>>({});
   
@@ -455,6 +460,42 @@ export function BlockEditor({
     setShowBlockMenu(true);
   };
 
+  const updateSelectionToolbar = useCallback(
+    (
+      blockId: string,
+      inputRefKey: string = blockId,
+      pointer?: { x: number; y: number }
+    ) => {
+      const el = textInputRefs.current[inputRefKey] ?? textInputRefs.current[blockId];
+      if (!el) {
+        setSelectionToolbar(null);
+        return;
+      }
+      const start = el.selectionStart ?? 0;
+      const end = el.selectionEnd ?? 0;
+      if (start === end) {
+        setSelectionToolbar(null);
+        return;
+      }
+
+      let left = 0;
+      let top = 0;
+      if (pointer) {
+        left = pointer.x;
+        top = pointer.y - 44;
+      } else {
+        const rect = el.getBoundingClientRect();
+        left = rect.left + rect.width / 2;
+        top = rect.top + 8;
+      }
+
+      const clampedLeft = Math.max(90, Math.min(window.innerWidth - 90, left));
+      const clampedTop = Math.max(12, top);
+      setSelectionToolbar({ blockId, left: clampedLeft, top: clampedTop });
+    },
+    []
+  );
+
   const renderBlockContent = (block: ContentBlock) => {
     const blockLength = getBlockLength(block);
     
@@ -467,6 +508,9 @@ export function BlockEditor({
               type="text"
               value={block.content}
               onChange={(e) => updateBlock(block.id, { content: e.target.value })}
+              onMouseUp={(e) => updateSelectionToolbar(block.id, block.id, { x: e.clientX, y: e.clientY })}
+              onKeyUp={() => updateSelectionToolbar(block.id)}
+              onBlur={() => setSelectionToolbar(null)}
               placeholder="大見出しを入力..."
               className={`flex-1 bg-transparent text-4xl font-bold outline-none border-none text-${block.align}`}
               style={{ textAlign: block.align }}
@@ -484,6 +528,9 @@ export function BlockEditor({
               type="text"
               value={block.content}
               onChange={(e) => updateBlock(block.id, { content: e.target.value })}
+              onMouseUp={(e) => updateSelectionToolbar(block.id, block.id, { x: e.clientX, y: e.clientY })}
+              onKeyUp={() => updateSelectionToolbar(block.id)}
+              onBlur={() => setSelectionToolbar(null)}
               placeholder="中見出しを入力..."
               className={`flex-1 bg-transparent text-2xl font-bold outline-none border-none`}
               style={{ textAlign: block.align }}
@@ -501,6 +548,9 @@ export function BlockEditor({
               type="text"
               value={block.content}
               onChange={(e) => updateBlock(block.id, { content: e.target.value })}
+              onMouseUp={(e) => updateSelectionToolbar(block.id, block.id, { x: e.clientX, y: e.clientY })}
+              onKeyUp={() => updateSelectionToolbar(block.id)}
+              onBlur={() => setSelectionToolbar(null)}
               placeholder="小見出しを入力..."
               className={`flex-1 bg-transparent text-xl font-semibold outline-none border-none`}
               style={{ textAlign: block.align }}
@@ -517,7 +567,12 @@ export function BlockEditor({
               ref={(el) => { textInputRefs.current[block.id] = el; }}
               value={block.content}
               onChange={(e) => updateBlock(block.id, { content: e.target.value })}
-              onBlur={(e) => tryAutoConvertParagraph(block, e.target.value)}
+              onMouseUp={(e) => updateSelectionToolbar(block.id, block.id, { x: e.clientX, y: e.clientY })}
+              onKeyUp={() => updateSelectionToolbar(block.id)}
+              onBlur={(e) => {
+                setSelectionToolbar(null);
+                tryAutoConvertParagraph(block, e.target.value);
+              }}
               placeholder="本文を入力...（# 見出し、- リストなどで自動変換）"
               className={`w-full min-h-[100px] bg-transparent resize-none border-none shadow-none focus-visible:ring-0 pr-16`}
               style={{ textAlign: block.align }}
@@ -702,6 +757,9 @@ export function BlockEditor({
                 ref={(el) => { textInputRefs.current[block.id] = el; }}
                 value={block.content}
                 onChange={(e) => updateBlock(block.id, { content: e.target.value })}
+                onMouseUp={(e) => updateSelectionToolbar(block.id, block.id, { x: e.clientX, y: e.clientY })}
+                onKeyUp={() => updateSelectionToolbar(block.id)}
+                onBlur={() => setSelectionToolbar(null)}
                 onClick={(e) => e.stopPropagation()}
                 placeholder="引用文を入力..."
                 className="w-full min-h-[80px] bg-transparent resize-none border-none shadow-none focus-visible:ring-0 italic text-lg pr-16"
@@ -738,6 +796,9 @@ export function BlockEditor({
                     newItems[itemIndex] = e.target.value;
                     updateBlock(block.id, { items: newItems });
                   }}
+                  onMouseUp={(e) => updateSelectionToolbar(block.id, `${block.id}-${itemIndex}`, { x: e.clientX, y: e.clientY })}
+                  onKeyUp={() => updateSelectionToolbar(block.id, `${block.id}-${itemIndex}`)}
+                  onBlur={() => setSelectionToolbar(null)}
                   onClick={(e) => e.stopPropagation()}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
@@ -772,6 +833,9 @@ export function BlockEditor({
               ref={(el) => { textInputRefs.current[block.id] = el; }}
               value={block.content}
               onChange={(e) => updateBlock(block.id, { content: e.target.value })}
+              onMouseUp={(e) => updateSelectionToolbar(block.id, block.id, { x: e.clientX, y: e.clientY })}
+              onKeyUp={() => updateSelectionToolbar(block.id)}
+              onBlur={() => setSelectionToolbar(null)}
               placeholder="Markdown を入力..."
               className="min-h-[120px] font-mono text-sm resize-none"
               onClick={(e) => e.stopPropagation()}
@@ -865,6 +929,32 @@ export function BlockEditor({
             }`}
             onClick={() => setActiveBlockId(block.id)}
           >
+            {activeBlockId === block.id && (
+              <div className="absolute top-2 right-2 z-20" onClick={(e) => e.stopPropagation()}>
+                <Select
+                  value={block.type}
+                  onValueChange={(v) => changeBlockType(block.id, v as BlockType)}
+                >
+                  <SelectTrigger className="w-[132px] h-8 text-xs bg-background/95">
+                    <SelectValue placeholder="タイプを変更" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="heading1">大見出し</SelectItem>
+                    <SelectItem value="heading2">中見出し</SelectItem>
+                    <SelectItem value="heading3">小見出し</SelectItem>
+                    <SelectItem value="paragraph">本文</SelectItem>
+                    <SelectItem value="quote">引用</SelectItem>
+                    <SelectItem value="bulletList">箇条書き</SelectItem>
+                    <SelectItem value="numberedList">番号付きリスト</SelectItem>
+                    <SelectItem value="image">画像</SelectItem>
+                    <SelectItem value="video">動画</SelectItem>
+                    <SelectItem value="divider">区切り線</SelectItem>
+                    <SelectItem value="markdown">Markdown</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             {/* Block move controls & delete - shown on the right for active block */}
             {activeBlockId === block.id && (
               <div className="absolute -right-2 top-1/2 -translate-y-1/2 flex flex-col gap-1 bg-white border rounded-lg shadow-sm p-1">
@@ -915,85 +1005,6 @@ export function BlockEditor({
                 <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
                   {blockTypeLabels[block.type]}
                 </span>
-                
-                {/* 太字・斜体・取り消し線（選択範囲に適用、onMouseDownでフォーカス維持） */}
-                {["heading1", "heading2", "heading3", "paragraph", "quote", "bulletList", "numberedList", "markdown"].includes(block.type) && (
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      title="太字"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        applyFormat(block.id, "**");
-                      }}
-                    >
-                      <Bold className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      title="斜体"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        applyFormat(block.id, "*");
-                      }}
-                    >
-                      <Italic className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      title="取り消し線"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        applyFormat(block.id, "~~");
-                      }}
-                    >
-                      <Strikethrough className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-
-                {/* 選択したテキストをブロックにする */}
-                {["heading1", "heading2", "heading3", "paragraph", "quote", "markdown"].includes(block.type) && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs"
-                    title="選択したテキストをブロックに分割"
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      convertSelectedToBlocks(block.id);
-                    }}
-                  >
-                    <SplitSquareVertical className="h-4 w-4 mr-1" />
-                    選択したテキストをブロックにする
-                  </Button>
-                )}
-
-                {/* ブロックタイプを変更 */}
-                <Select
-                  value={block.type}
-                  onValueChange={(v) => changeBlockType(block.id, v as BlockType)}
-                >
-                  <SelectTrigger className="w-[140px] h-8 text-xs" onClick={(e) => e.stopPropagation()}>
-                    <SelectValue placeholder="タイプを変更" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="heading1">大見出し</SelectItem>
-                    <SelectItem value="heading2">中見出し</SelectItem>
-                    <SelectItem value="heading3">小見出し</SelectItem>
-                    <SelectItem value="paragraph">本文</SelectItem>
-                    <SelectItem value="quote">引用</SelectItem>
-                    <SelectItem value="bulletList">箇条書き</SelectItem>
-                    <SelectItem value="numberedList">番号付きリスト</SelectItem>
-                    <SelectItem value="image">画像</SelectItem>
-                    <SelectItem value="video">動画</SelectItem>
-                    <SelectItem value="divider">区切り線</SelectItem>
-                    <SelectItem value="markdown">Markdown</SelectItem>
-                  </SelectContent>
-                </Select>
 
                 {/* Alignment controls for text blocks */}
                 {["heading1", "heading2", "heading3", "paragraph"].includes(block.type) && (
@@ -1113,6 +1124,61 @@ export function BlockEditor({
               />
             </div>
           </div>
+        </div>
+      )}
+
+      {selectionToolbar && (
+        <div
+          className="fixed z-[70] -translate-x-1/2 flex items-center gap-1 rounded-lg border bg-background shadow-md p-1"
+          style={{ left: selectionToolbar.left, top: selectionToolbar.top }}
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            title="太字"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              applyFormat(selectionToolbar.blockId, "**");
+            }}
+          >
+            <Bold className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            title="斜体"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              applyFormat(selectionToolbar.blockId, "*");
+            }}
+          >
+            <Italic className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            title="取り消し線"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              applyFormat(selectionToolbar.blockId, "~~");
+            }}
+          >
+            <Strikethrough className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-xs"
+            title="選択したテキストをブロックに分割"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              convertSelectedToBlocks(selectionToolbar.blockId);
+            }}
+          >
+            <SplitSquareVertical className="h-4 w-4 mr-1" />
+            ブロックにする
+          </Button>
         </div>
       )}
     </div>
