@@ -193,6 +193,29 @@ export function BlockEditor({
     [blocks, onChange]
   );
 
+  /** メニューを閉じてから次のティックでブロック追加（固まり防止） */
+  const addBlockDeferred = useCallback(
+    (type: BlockType, index: number) => {
+      setAddMenuIndex(null);
+      const currentBlocks = blocks;
+      const currentOnChange = onChange;
+      queueMicrotask(() => {
+        const newBlock: ContentBlock = {
+          id: generateId(),
+          type,
+          content: "",
+          align: "left",
+          items: type === "bulletList" || type === "numberedList" ? [""] : undefined,
+        };
+        const newBlocks = [...currentBlocks];
+        newBlocks.splice(index, 0, newBlock);
+        currentOnChange(newBlocks);
+        setActiveBlockId(newBlock.id);
+      });
+    },
+    [blocks, onChange]
+  );
+
   const toggleAddMenu = useCallback((index: number) => {
     setAddMenuIndex((current) => (current === index ? null : index));
   }, []);
@@ -901,7 +924,7 @@ export function BlockEditor({
           </Button>
           {addMenuIndex === 0 && (
             <div className="mt-4 flex justify-center">
-              <AddBlockGrid addBlock={addBlock} index={0} />
+              <AddBlockGrid addBlock={addBlockDeferred} index={0} />
             </div>
           )}
         </div>
@@ -923,7 +946,7 @@ export function BlockEditor({
             </div>
             {addMenuIndex === index && (
               <div className="mt-2 flex justify-center">
-                <AddBlockGrid addBlock={addBlock} index={index} />
+                <AddBlockGrid addBlock={addBlockDeferred} index={index} />
               </div>
             )}
           </div>
@@ -1136,7 +1159,7 @@ export function BlockEditor({
             </div>
             {addMenuIndex === blocks.length && (
               <div className="mt-3 flex justify-center">
-                <AddBlockGrid addBlock={addBlock} index={blocks.length} />
+                <AddBlockGrid addBlock={addBlockDeferred} index={blocks.length} />
               </div>
             )}
           </div>
