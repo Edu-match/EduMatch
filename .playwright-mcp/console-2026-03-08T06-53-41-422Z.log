@@ -1,0 +1,12 @@
+[     479ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://edu-match.com/admin-entry?_rsc=1doqf:0
+[    3956ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ chrome-error://chromewebdata/:0
+[   14066ms] [ERROR] Access to fetch at 'https://edu-match.com/admin-entry' from origin 'null' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ chrome-error://chromewebdata/:0
+[   14067ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://edu-match.com/admin-entry:0
+[   14067ms] TypeError: Failed to fetch
+    at eval (eval at evaluate (:301:30), <anonymous>:1:115)
+    at UtilityScript.evaluate (<anonymous>:303:16)
+    at UtilityScript.<anonymous> (<anonymous>:1:44)
+[   21233ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ chrome-error://chromewebdata/:0
+[   33352ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ chrome-error://chromewebdata/:0
+[   34205ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ chrome-error://chromewebdata/:0
+[   41545ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ chrome-error://chromewebdata/:0

@@ -44,12 +44,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 export type BlockType =
   | "heading1"
@@ -110,6 +104,7 @@ export function BlockEditor({
   autoConvertMarkdown = true,
 }: BlockEditorProps) {
   const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
+  const [addMenuIndex, setAddMenuIndex] = useState<number | null>(null);
   const [uploadingBlockId, setUploadingBlockId] = useState<string | null>(null);
   const [bulkPasteOpen, setBulkPasteOpen] = useState(false);
   const [bulkPasteText, setBulkPasteText] = useState("");
@@ -148,18 +143,13 @@ export function BlockEditor({
   }, [activeBlockId, blocks]);
 
   useEffect(() => {
-    const onUp = () => checkSelectionInActiveBlock();
-    document.addEventListener("mouseup", onUp);
-    document.addEventListener("keyup", onUp);
-    return () => {
-      document.removeEventListener("mouseup", onUp);
-      document.removeEventListener("keyup", onUp);
-    };
-  }, [checkSelectionInActiveBlock]);
-
-  useEffect(() => {
     setHasSelectionInActiveBlock(false);
+    setAddMenuIndex(null);
   }, [activeBlockId]);
+
+  const handleSelectionChange = useCallback(() => {
+    checkSelectionInActiveBlock();
+  }, [checkSelectionInActiveBlock]);
   
   // 全体の文字数を計算
   const calculateTotalLength = useCallback((blocksToCheck: ContentBlock[]) => {
@@ -197,10 +187,15 @@ export function BlockEditor({
       const newBlocks = [...blocks];
       newBlocks.splice(index, 0, newBlock);
       onChange(newBlocks);
+      setAddMenuIndex(null);
       setActiveBlockId(newBlock.id);
     },
     [blocks, onChange]
   );
+
+  const toggleAddMenu = useCallback((index: number) => {
+    setAddMenuIndex((current) => (current === index ? null : index));
+  }, []);
 
   const updateBlock = useCallback(
     (id: string, updates: Partial<ContentBlock>) => {
@@ -514,6 +509,9 @@ export function BlockEditor({
               type="text"
               value={block.content}
               onChange={(e) => updateBlock(block.id, { content: e.target.value })}
+              onSelect={handleSelectionChange}
+              onKeyUp={handleSelectionChange}
+              onMouseUp={handleSelectionChange}
               placeholder="大見出しを入力..."
               className={`flex-1 bg-transparent text-4xl font-bold outline-none border-none text-${block.align}`}
               style={{ textAlign: block.align }}
@@ -531,6 +529,9 @@ export function BlockEditor({
               type="text"
               value={block.content}
               onChange={(e) => updateBlock(block.id, { content: e.target.value })}
+              onSelect={handleSelectionChange}
+              onKeyUp={handleSelectionChange}
+              onMouseUp={handleSelectionChange}
               placeholder="中見出しを入力..."
               className={`flex-1 bg-transparent text-2xl font-bold outline-none border-none`}
               style={{ textAlign: block.align }}
@@ -548,6 +549,9 @@ export function BlockEditor({
               type="text"
               value={block.content}
               onChange={(e) => updateBlock(block.id, { content: e.target.value })}
+              onSelect={handleSelectionChange}
+              onKeyUp={handleSelectionChange}
+              onMouseUp={handleSelectionChange}
               placeholder="小見出しを入力..."
               className={`flex-1 bg-transparent text-xl font-semibold outline-none border-none`}
               style={{ textAlign: block.align }}
@@ -565,6 +569,9 @@ export function BlockEditor({
               value={block.content}
               onChange={(e) => updateBlock(block.id, { content: e.target.value })}
               onBlur={(e) => tryAutoConvertParagraph(block, e.target.value)}
+              onSelect={handleSelectionChange}
+              onKeyUp={handleSelectionChange}
+              onMouseUp={handleSelectionChange}
               placeholder="本文を入力...（# 見出し、- リストなどで自動変換）"
               className={`w-full min-h-[100px] bg-transparent resize-none border-none shadow-none focus-visible:ring-0 pr-16`}
               style={{ textAlign: block.align }}
@@ -750,6 +757,9 @@ export function BlockEditor({
                 value={block.content}
                 onChange={(e) => updateBlock(block.id, { content: e.target.value })}
                 onClick={(e) => e.stopPropagation()}
+                onSelect={handleSelectionChange}
+                onKeyUp={handleSelectionChange}
+                onMouseUp={handleSelectionChange}
                 placeholder="引用文を入力..."
                 className="w-full min-h-[80px] bg-transparent resize-none border-none shadow-none focus-visible:ring-0 italic text-lg pr-16"
               />
@@ -819,6 +829,9 @@ export function BlockEditor({
               ref={(el) => { textInputRefs.current[block.id] = el; }}
               value={block.content}
               onChange={(e) => updateBlock(block.id, { content: e.target.value })}
+              onSelect={handleSelectionChange}
+              onKeyUp={handleSelectionChange}
+              onMouseUp={handleSelectionChange}
               placeholder="Markdown を入力..."
               className="min-h-[120px] font-mono text-sm resize-none"
               onClick={(e) => e.stopPropagation()}
@@ -882,34 +895,37 @@ export function BlockEditor({
           <p className="text-muted-foreground mb-4">
             コンテンツブロックを追加してください
           </p>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline">
-                <Plus className="h-4 w-4 mr-2" />
-                ブロックを追加
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="center" className="w-64">
-              <AddBlockMenuItems addBlock={addBlock} index={0} />
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button variant="outline" onClick={() => toggleAddMenu(0)}>
+            <Plus className="h-4 w-4 mr-2" />
+            ブロックを追加
+          </Button>
+          {addMenuIndex === 0 && (
+            <div className="mt-4 flex justify-center">
+              <AddBlockGrid addBlock={addBlock} index={0} />
+            </div>
+          )}
         </div>
       )}
 
       {blocks.map((block, index) => (
         <div key={block.id}>
           {/* Add block button between blocks */}
-          <div className="flex justify-center py-2 opacity-0 hover:opacity-100 transition-opacity">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="text-muted-foreground">
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="center" className="w-64">
-                <AddBlockMenuItems addBlock={addBlock} index={index} />
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <div className="py-2">
+            <div className="flex justify-center opacity-0 hover:opacity-100 transition-opacity">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => toggleAddMenu(index)}
+                className="text-muted-foreground"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+            {addMenuIndex === index && (
+              <div className="mt-2 flex justify-center">
+                <AddBlockGrid addBlock={addBlock} index={index} />
+              </div>
+            )}
           </div>
 
           {/* Block */}
@@ -1111,24 +1127,26 @@ export function BlockEditor({
       {/* Add block button at the end */}
       {blocks.length > 0 && (
         <div className="flex justify-center py-4">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline">
+          <div className="w-full">
+            <div className="flex justify-center">
+              <Button variant="outline" onClick={() => toggleAddMenu(blocks.length)}>
                 <Plus className="h-4 w-4 mr-2" />
                 ブロックを追加
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="center" className="w-64">
-              <AddBlockMenuItems addBlock={addBlock} index={blocks.length} />
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </div>
+            {addMenuIndex === blocks.length && (
+              <div className="mt-3 flex justify-center">
+                <AddBlockGrid addBlock={addBlock} index={blocks.length} />
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-function AddBlockMenuItems({
+function AddBlockGrid({
   addBlock,
   index,
 }: {
@@ -1149,17 +1167,20 @@ function AddBlockMenuItems({
     { type: "markdown", icon: <FileText className="h-4 w-4" />, label: "Markdown" },
   ];
   return (
-    <div className="grid grid-cols-3 gap-1 p-1">
+    <div className="w-full max-w-md rounded-xl border bg-background p-3 shadow-sm">
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
       {items.map(({ type, icon, label }) => (
-        <DropdownMenuItem
+        <button
           key={type}
-          onSelect={() => addBlock(type, index)}
-          className="flex h-16 flex-col items-center justify-center gap-1 rounded-md"
+          type="button"
+          onClick={() => addBlock(type, index)}
+          className="flex h-16 flex-col items-center justify-center gap-1 rounded-lg border border-transparent transition-colors hover:bg-muted hover:border-border"
         >
           <span className="text-muted-foreground">{icon}</span>
           <span className="text-[11px] leading-none">{label}</span>
-        </DropdownMenuItem>
+        </button>
       ))}
+      </div>
     </div>
   );
 }
