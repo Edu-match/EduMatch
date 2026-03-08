@@ -202,6 +202,18 @@ export function BlockEditor({
     [blocks, onChange]
   );
 
+  /** メニューを先に閉じてからブロック追加（固まり防止） */
+  const addBlockDeferred = useCallback(
+    (type: BlockType) => {
+      if (menuPosition === null) return;
+      const pos = menuPosition;
+      setShowBlockMenu(false);
+      setMenuPosition(null);
+      setTimeout(() => addBlock(type, pos), 0);
+    },
+    [addBlock, menuPosition]
+  );
+
   const updateBlock = useCallback(
     (id: string, updates: Partial<ContentBlock>) => {
       const updatedBlocks = blocks.map((b) => (b.id === id ? { ...b, ...updates } : b));
@@ -1134,57 +1146,57 @@ export function BlockEditor({
               <BlockTypeButton
                 icon={<Heading1 className="h-5 w-5" />}
                 label="大見出し"
-                onClick={() => addBlock("heading1", menuPosition)}
+                onClick={() => addBlockDeferred("heading1")}
               />
               <BlockTypeButton
                 icon={<Heading2 className="h-5 w-5" />}
                 label="中見出し"
-                onClick={() => addBlock("heading2", menuPosition)}
+                onClick={() => addBlockDeferred("heading2")}
               />
               <BlockTypeButton
                 icon={<Heading3 className="h-5 w-5" />}
                 label="小見出し"
-                onClick={() => addBlock("heading3", menuPosition)}
+                onClick={() => addBlockDeferred("heading3")}
               />
               <BlockTypeButton
                 icon={<Type className="h-5 w-5" />}
                 label="本文"
-                onClick={() => addBlock("paragraph", menuPosition)}
+                onClick={() => addBlockDeferred("paragraph")}
               />
               <BlockTypeButton
                 icon={<ImageIcon className="h-5 w-5" />}
                 label="画像"
-                onClick={() => addBlock("image", menuPosition)}
+                onClick={() => addBlockDeferred("image")}
               />
               <BlockTypeButton
                 icon={<Video className="h-5 w-5" />}
                 label="動画"
-                onClick={() => addBlock("video", menuPosition)}
+                onClick={() => addBlockDeferred("video")}
               />
               <BlockTypeButton
                 icon={<Quote className="h-5 w-5" />}
                 label="引用"
-                onClick={() => addBlock("quote", menuPosition)}
+                onClick={() => addBlockDeferred("quote")}
               />
               <BlockTypeButton
                 icon={<List className="h-5 w-5" />}
                 label="箇条書き"
-                onClick={() => addBlock("bulletList", menuPosition)}
+                onClick={() => addBlockDeferred("bulletList")}
               />
               <BlockTypeButton
                 icon={<ListOrdered className="h-5 w-5" />}
                 label="番号リスト"
-                onClick={() => addBlock("numberedList", menuPosition)}
+                onClick={() => addBlockDeferred("numberedList")}
               />
               <BlockTypeButton
                 icon={<Minus className="h-5 w-5" />}
                 label="区切り線"
-                onClick={() => addBlock("divider", menuPosition)}
+                onClick={() => addBlockDeferred("divider")}
               />
               <BlockTypeButton
                 icon={<FileText className="h-5 w-5" />}
                 label="Markdown"
-                onClick={() => addBlock("markdown", menuPosition)}
+                onClick={() => addBlockDeferred("markdown")}
               />
             </div>
           </div>
