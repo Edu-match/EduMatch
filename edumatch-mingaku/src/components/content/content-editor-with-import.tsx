@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { FileImportButton } from "@/components/content/file-import-button";
 import { ImportedContentRenderer } from "@/components/content/imported-content-renderer";
@@ -24,8 +24,9 @@ type Props = {
   emptyBlocks?: ContentBlock[];
 };
 
-/** ブロック編集に戻ったときの初期ブロック（空でよい場合は []） */
-const DEFAULT_EMPTY_BLOCKS: ContentBlock[] = [];
+const DEFAULT_EMPTY_BLOCKS: ContentBlock[] = [
+  { id: "init", type: "paragraph", content: "" },
+];
 
 export function ContentEditorWithImport({
   content,
@@ -38,22 +39,24 @@ export function ContentEditorWithImport({
   const isImported = isImportedContent(content);
   const parsed = isImported ? parseImportedContent(content) : null;
 
+  // ブロックを内部状態で保持。content→blocksの往復でブロックIDが失われたり、
+  // 空ブロックが消えるバグを防ぐ
   const [blocks, setBlocks] = useState<ContentBlock[]>(() => {
     const parsed = parseToBlocks(content);
     return parsed.length > 0 ? parsed : [...emptyBlocks];
   });
+  const isInternalUpdateRef = useRef(false);
 
-  // 自分が親に送った最後の content を記録し、外部からの変更と区別する
-  const lastSentContentRef = useRef<string>(content);
-
+  // contentが外部から変わったときのみパースして同期（自らのonChangeによる更新は無視）
   useEffect(() => {
     if (isImported) return;
-    // 自分が送った content と同じなら再パースしない（循環防止）
-    if (content === lastSentContentRef.current) return;
-    lastSentContentRef.current = content;
+    if (isInternalUpdateRef.current) {
+      isInternalUpdateRef.current = false;
+      return;
+    }
     const parsed = parseToBlocks(content);
     setBlocks(parsed.length > 0 ? parsed : [...emptyBlocks]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- content変化時のみ同期したい（parseToBlocksは毎回変わるため除外）
   }, [content, isImported]);
 
   const handleImport = (importedContent: string) => {
@@ -63,17 +66,14 @@ export function ContentEditorWithImport({
   const handleBackToBlocks = () => {
     const initialBlocks = [...emptyBlocks];
     setBlocks(initialBlocks);
-    const newContent = blocksToContent(initialBlocks);
-    lastSentContentRef.current = newContent;
-    onChange(newContent);
+    onChange(blocksToContent(initialBlocks));
   };
 
-  const handleBlocksChange = useCallback((newBlocks: ContentBlock[]) => {
-    setBlocks(newBlocks);
-    const newContent = blocksToContent(newBlocks);
-    lastSentContentRef.current = newContent;
-    onChange(newContent);
-  }, [blocksToContent, onChange]);
+  const handleBlocksChange = (blocks: ContentBlock[]) => {
+    isInternalUpdateRef.current = true;
+    setBlocks(blocks);
+    onChange(blocksToContent(blocks));
+  };
 
   if (isImported && parsed) {
     return (

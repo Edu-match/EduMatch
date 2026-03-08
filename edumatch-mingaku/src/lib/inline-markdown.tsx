@@ -7,7 +7,7 @@ export function renderInlineMarkdown(text: string): React.ReactNode {
   if (!text) return null;
   const parts: React.ReactNode[] = [];
   let lastIndex = 0;
-  // **bold** ~~strikethrough~~ *italic* の順でマッチ
+  // **bold** を先に、~~strikethrough~~、*italic* の順でマッチ
   const regex = /\*\*(.+?)\*\*|~~(.+?)~~|\*([^*]+)\*/g;
   let m;
   let key = 0;
