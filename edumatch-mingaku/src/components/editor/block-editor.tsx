@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -109,15 +109,55 @@ export function BlockEditor({
   const [uploadingBlockId, setUploadingBlockId] = useState<string | null>(null);
   const [bulkPasteOpen, setBulkPasteOpen] = useState(false);
   const [bulkPasteText, setBulkPasteText] = useState("");
-  const [selectionToolbar, setSelectionToolbar] = useState<{
-    blockId: string;
-    refKey: string;
-    left: number;
-    top: number;
-  } | null>(null);
-  const toolbarRef = useRef<HTMLDivElement | null>(null);
+  /** アクティブブロック内でテキストが選択されているか（選択時のみ「選択したテキストをブロックにする」を表示） */
+  const [hasSelectionInActiveBlock, setHasSelectionInActiveBlock] = useState(false);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const textInputRefs = useRef<Record<string, HTMLInputElement | HTMLTextAreaElement | null>>({});
+
+  /** アクティブブロックの入力欄で選択があるか判定（フォーカス中の入力がアクティブブロックかつ選択範囲あり） */
+  const checkSelectionInActiveBlock = useCallback(() => {
+    const activeEl = document.activeElement;
+    if (!activeEl || !(activeEl instanceof HTMLInputElement || activeEl instanceof HTMLTextAreaElement)) {
+      setHasSelectionInActiveBlock(false);
+      return;
+    }
+    const textBlockTypes = ["heading1", "heading2", "heading3", "paragraph", "quote", "markdown"];
+    let focusedBlockId: string | null = null;
+    for (const [key, el] of Object.entries(textInputRefs.current)) {
+      if (el === activeEl) {
+        focusedBlockId = key.includes("-") ? key.replace(/-\d+$/, "") : key;
+        break;
+      }
+    }
+    if (!focusedBlockId || focusedBlockId !== activeBlockId) {
+      setHasSelectionInActiveBlock(false);
+      return;
+    }
+    const block = blocks.find((b) => b.id === activeBlockId);
+    if (!block || !textBlockTypes.includes(block.type) || block.items) {
+      setHasSelectionInActiveBlock(false);
+      return;
+    }
+    const start = activeEl.selectionStart ?? 0;
+    const end = activeEl.selectionEnd ?? 0;
+    setHasSelectionInActiveBlock(start !== end);
+  }, [activeBlockId, blocks]);
+
+  useEffect(() => {
+    const onSelectionChange = () => checkSelectionInActiveBlock();
+    document.addEventListener("mouseup", onSelectionChange);
+    document.addEventListener("keyup", onSelectionChange);
+    document.addEventListener("selectionchange", onSelectionChange);
+    return () => {
+      document.removeEventListener("mouseup", onSelectionChange);
+      document.removeEventListener("keyup", onSelectionChange);
+      document.removeEventListener("selectionchange", onSelectionChange);
+    };
+  }, [checkSelectionInActiveBlock]);
+
+  useEffect(() => {
+    setHasSelectionInActiveBlock(false);
+  }, [activeBlockId]);
   
   // 全体の文字数を計算
   const calculateTotalLength = useCallback((blocksToCheck: ContentBlock[]) => {
@@ -229,15 +269,11 @@ export function BlockEditor({
 
   /** 選択範囲に太字・斜体・取り消し線を適用（onMouseDown でボタンクリック時にフォーカスを維持） */
   const applyFormat = useCallback(
-    (blockId: string, wrapper: "**" | "*" | "~~", itemIndex?: number, explicitRefKey?: string) => {
-      let refKey = explicitRefKey ?? blockId;
+    (blockId: string, wrapper: "**" | "*" | "~~", itemIndex?: number) => {
+      let refKey = blockId;
       let targetItemIndex: number | undefined = itemIndex;
       const block = blocks.find((b) => b.id === blockId);
-      if (explicitRefKey && explicitRefKey.includes("-")) {
-        const idx = explicitRefKey.replace(blockId + "-", "");
-        if (/^\d+$/.test(idx)) targetItemIndex = parseInt(idx, 10);
-      }
-      if (!explicitRefKey && block?.items && itemIndex === undefined) {
+      if (block?.items && itemIndex === undefined) {
         for (let i = 0; i < block.items.length; i++) {
           const k = `${blockId}-${i}`;
           if (textInputRefs.current[k] === document.activeElement) {
@@ -370,13 +406,13 @@ export function BlockEditor({
       toast.error("貼り付けするテキストを入力してください");
       return;
     }
-    // Markdown はブロック変換せず、1つの markdown ブロックとしてそのまま表示
-    const markdownBlock: ContentBlock = {
-      id: generateId(),
-      type: "markdown",
-      content: text,
-    };
-    const newBlocks = blocks.length === 0 ? [markdownBlock] : [...blocks, markdownBlock];
+    // 一括貼り付けはマークダウン用。見出し・太字・箇条書きなどに自動変換してブロック追加
+    const parsed = contentToBlocks(text);
+    const blocksToAdd: ContentBlock[] =
+      parsed.length > 0
+        ? parsed.map((b) => ({ ...b, id: generateId() }))
+        : [{ id: generateId(), type: "markdown", content: text }];
+    const newBlocks = blocks.length === 0 ? blocksToAdd : [...blocks, ...blocksToAdd];
     if (maxLength !== undefined && calculateTotalLength(newBlocks) > maxLength) {
       toast.error(`文字数が上限（${maxLength.toLocaleString()}文字）を超えます`);
       return;
@@ -384,7 +420,11 @@ export function BlockEditor({
     onChange(newBlocks);
     setBulkPasteText("");
     setBulkPasteOpen(false);
-    toast.success("Markdown を1ブロックで追加しました");
+    toast.success(
+      blocksToAdd.length > 1
+        ? `Markdown を${blocksToAdd.length}個のブロックに変換して追加しました`
+        : "ブロックを追加しました"
+    );
   }, [bulkPasteText, blocks, onChange, maxLength, calculateTotalLength]);
 
   /** 段落ブロックの内容がMarkdown形式なら自動変換 */
@@ -466,41 +506,6 @@ export function BlockEditor({
     setShowBlockMenu(true);
   };
 
-  const updateSelectionToolbar = useCallback(
-    (blockId: string, inputRefKey: string = blockId) => {
-      const el = textInputRefs.current[inputRefKey] ?? textInputRefs.current[blockId];
-      if (!el) {
-        setSelectionToolbar(null);
-        return;
-      }
-      const start = el.selectionStart ?? 0;
-      const end = el.selectionEnd ?? 0;
-      if (start === end) {
-        setSelectionToolbar(null);
-        return;
-      }
-
-      const rect = el.getBoundingClientRect();
-      const toolbarHeight = 44;
-      const top = rect.top - toolbarHeight - 8;
-      const left = rect.left + rect.width / 2;
-
-      const clampedLeft = Math.max(100, Math.min((typeof window !== "undefined" ? window.innerWidth : 800) - 100, left));
-      const clampedTop = Math.max(12, top);
-
-      requestAnimationFrame(() => {
-        setSelectionToolbar({ blockId, refKey: inputRefKey, left: clampedLeft, top: clampedTop });
-      });
-    },
-    []
-  );
-
-  const hideSelectionToolbar = useCallback(() => {
-    const active = document.activeElement;
-    if (toolbarRef.current?.contains(active)) return;
-    setSelectionToolbar(null);
-  }, []);
-
   const renderBlockContent = (block: ContentBlock) => {
     const blockLength = getBlockLength(block);
     
@@ -513,9 +518,6 @@ export function BlockEditor({
               type="text"
               value={block.content}
               onChange={(e) => updateBlock(block.id, { content: e.target.value })}
-              onMouseUp={() => updateSelectionToolbar(block.id, block.id)}
-              onKeyUp={() => updateSelectionToolbar(block.id)}
-              onBlur={() => setTimeout(hideSelectionToolbar, 150)}
               placeholder="大見出しを入力..."
               className={`flex-1 bg-transparent text-4xl font-bold outline-none border-none text-${block.align}`}
               style={{ textAlign: block.align }}
@@ -533,9 +535,6 @@ export function BlockEditor({
               type="text"
               value={block.content}
               onChange={(e) => updateBlock(block.id, { content: e.target.value })}
-              onMouseUp={() => updateSelectionToolbar(block.id, block.id)}
-              onKeyUp={() => updateSelectionToolbar(block.id)}
-              onBlur={() => setTimeout(hideSelectionToolbar, 150)}
               placeholder="中見出しを入力..."
               className={`flex-1 bg-transparent text-2xl font-bold outline-none border-none`}
               style={{ textAlign: block.align }}
@@ -553,9 +552,6 @@ export function BlockEditor({
               type="text"
               value={block.content}
               onChange={(e) => updateBlock(block.id, { content: e.target.value })}
-              onMouseUp={() => updateSelectionToolbar(block.id, block.id)}
-              onKeyUp={() => updateSelectionToolbar(block.id)}
-              onBlur={() => setTimeout(hideSelectionToolbar, 150)}
               placeholder="小見出しを入力..."
               className={`flex-1 bg-transparent text-xl font-semibold outline-none border-none`}
               style={{ textAlign: block.align }}
@@ -572,12 +568,7 @@ export function BlockEditor({
               ref={(el) => { textInputRefs.current[block.id] = el; }}
               value={block.content}
               onChange={(e) => updateBlock(block.id, { content: e.target.value })}
-              onMouseUp={() => updateSelectionToolbar(block.id, block.id)}
-              onKeyUp={() => updateSelectionToolbar(block.id)}
-              onBlur={(e) => {
-                setTimeout(hideSelectionToolbar, 150);
-                tryAutoConvertParagraph(block, e.target.value);
-              }}
+              onBlur={(e) => tryAutoConvertParagraph(block, e.target.value)}
               placeholder="本文を入力...（# 見出し、- リストなどで自動変換）"
               className={`w-full min-h-[100px] bg-transparent resize-none border-none shadow-none focus-visible:ring-0 pr-16`}
               style={{ textAlign: block.align }}
@@ -762,9 +753,6 @@ export function BlockEditor({
                 ref={(el) => { textInputRefs.current[block.id] = el; }}
                 value={block.content}
                 onChange={(e) => updateBlock(block.id, { content: e.target.value })}
-                onMouseUp={() => updateSelectionToolbar(block.id, block.id)}
-                onKeyUp={() => updateSelectionToolbar(block.id)}
-                onBlur={() => setTimeout(hideSelectionToolbar, 150)}
                 onClick={(e) => e.stopPropagation()}
                 placeholder="引用文を入力..."
                 className="w-full min-h-[80px] bg-transparent resize-none border-none shadow-none focus-visible:ring-0 italic text-lg pr-16"
@@ -801,9 +789,6 @@ export function BlockEditor({
                     newItems[itemIndex] = e.target.value;
                     updateBlock(block.id, { items: newItems });
                   }}
-                  onMouseUp={() => updateSelectionToolbar(block.id, `${block.id}-${itemIndex}`)}
-                  onKeyUp={() => updateSelectionToolbar(block.id, `${block.id}-${itemIndex}`)}
-                  onBlur={() => setTimeout(hideSelectionToolbar, 150)}
                   onClick={(e) => e.stopPropagation()}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
@@ -838,9 +823,6 @@ export function BlockEditor({
               ref={(el) => { textInputRefs.current[block.id] = el; }}
               value={block.content}
               onChange={(e) => updateBlock(block.id, { content: e.target.value })}
-              onMouseUp={() => updateSelectionToolbar(block.id, block.id)}
-              onKeyUp={() => updateSelectionToolbar(block.id)}
-              onBlur={() => setTimeout(hideSelectionToolbar, 150)}
               placeholder="Markdown を入力..."
               className="min-h-[120px] font-mono text-sm resize-none"
               onClick={(e) => e.stopPropagation()}
@@ -880,18 +862,18 @@ export function BlockEditor({
             <div className="p-4 border-t bg-background space-y-4">
               <div className="space-y-2">
                 <p className="text-xs text-muted-foreground">
-                  Markdown を貼り付けると、1つのブロックとしてそのまま表示されます。
+                  通常のブロック編集はマークダウンではありません。ここは<strong>マークダウン用</strong>です。貼り付けると見出し・太字・斜体・箇条書きなどに自動変換されてブロックで追加されます。
                 </p>
                 <Textarea
                   value={bulkPasteText}
                   onChange={(e) => setBulkPasteText(e.target.value)}
-                  placeholder={"# Markdown見出し\n- 箇条書き\n1. 番号付きリスト\n\n本文..."}
+                  placeholder={"# 見出し\n**太字** や *斜体*\n- 箇条書き\n1. 番号付き\n\n本文..."}
                   className="min-h-[100px] font-mono text-sm"
                   onClick={(e) => e.stopPropagation()}
                 />
                 <Button type="button" size="sm" onClick={handleBulkPaste}>
                   <ClipboardPaste className="h-4 w-4 mr-2" />
-                  貼り付けて追加
+                  貼り付けてブロックに変換
                 </Button>
               </div>
             </div>
@@ -934,32 +916,6 @@ export function BlockEditor({
             }`}
             onClick={() => setActiveBlockId(block.id)}
           >
-            {activeBlockId === block.id && (
-              <div className="absolute top-2 right-2 z-20" onClick={(e) => e.stopPropagation()}>
-                <Select
-                  value={block.type}
-                  onValueChange={(v) => changeBlockType(block.id, v as BlockType)}
-                >
-                  <SelectTrigger className="w-[132px] h-8 text-xs bg-background/95">
-                    <SelectValue placeholder="タイプを変更" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="heading1">大見出し</SelectItem>
-                    <SelectItem value="heading2">中見出し</SelectItem>
-                    <SelectItem value="heading3">小見出し</SelectItem>
-                    <SelectItem value="paragraph">本文</SelectItem>
-                    <SelectItem value="quote">引用</SelectItem>
-                    <SelectItem value="bulletList">箇条書き</SelectItem>
-                    <SelectItem value="numberedList">番号付きリスト</SelectItem>
-                    <SelectItem value="image">画像</SelectItem>
-                    <SelectItem value="video">動画</SelectItem>
-                    <SelectItem value="divider">区切り線</SelectItem>
-                    <SelectItem value="markdown">Markdown</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
             {/* Block move controls & delete - shown on the right for active block */}
             {activeBlockId === block.id && (
               <div className="absolute -right-2 top-1/2 -translate-y-1/2 flex flex-col gap-1 bg-white border rounded-lg shadow-sm p-1">
@@ -1010,6 +966,108 @@ export function BlockEditor({
                 <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
                   {blockTypeLabels[block.type]}
                 </span>
+                
+                {/* 太字・斜体・取り消し線・箇条書き・番号付き（同じ行に5つ並べる） */}
+                {["heading1", "heading2", "heading3", "paragraph", "quote", "bulletList", "numberedList", "markdown"].includes(block.type) && (
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      title="太字"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        applyFormat(block.id, "**");
+                      }}
+                    >
+                      <Bold className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      title="斜体"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        applyFormat(block.id, "*");
+                      }}
+                    >
+                      <Italic className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      title="取り消し線"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        applyFormat(block.id, "~~");
+                      }}
+                    >
+                      <Strikethrough className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      title="箇条書き"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        changeBlockType(block.id, "bulletList");
+                      }}
+                    >
+                      <List className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      title="番号付き箇条書き"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        changeBlockType(block.id, "numberedList");
+                      }}
+                    >
+                      <ListOrdered className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+
+                {/* テキスト選択時のみ表示：選択したテキストをブロックに外に出す */}
+                {["heading1", "heading2", "heading3", "paragraph", "quote", "markdown"].includes(block.type) && hasSelectionInActiveBlock && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="text-xs shrink-0"
+                    title="選択部分をブロックに分割して外に出す"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      convertSelectedToBlocks(block.id);
+                      setHasSelectionInActiveBlock(false);
+                    }}
+                  >
+                    <SplitSquareVertical className="h-4 w-4 mr-1" />
+                    選択したテキストをブロックにする
+                  </Button>
+                )}
+
+                {/* ブロックタイプを変更 */}
+                <Select
+                  value={block.type}
+                  onValueChange={(v) => changeBlockType(block.id, v as BlockType)}
+                >
+                  <SelectTrigger className="w-[160px] h-8 text-xs border" onClick={(e) => e.stopPropagation()}>
+                    <SelectValue placeholder="ブロックタイプを変更" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="heading1">大見出し</SelectItem>
+                    <SelectItem value="heading2">中見出し</SelectItem>
+                    <SelectItem value="heading3">小見出し</SelectItem>
+                    <SelectItem value="paragraph">本文</SelectItem>
+                    <SelectItem value="quote">引用</SelectItem>
+                    <SelectItem value="bulletList">箇条書き</SelectItem>
+                    <SelectItem value="numberedList">番号付きリスト</SelectItem>
+                    <SelectItem value="image">画像</SelectItem>
+                    <SelectItem value="video">動画</SelectItem>
+                    <SelectItem value="divider">区切り線</SelectItem>
+                    <SelectItem value="markdown">Markdown</SelectItem>
+                  </SelectContent>
+                </Select>
 
                 {/* Alignment controls for text blocks */}
                 {["heading1", "heading2", "heading3", "paragraph"].includes(block.type) && (
@@ -1129,66 +1187,6 @@ export function BlockEditor({
               />
             </div>
           </div>
-        </div>
-      )}
-
-      {selectionToolbar && (
-        <div
-          ref={toolbarRef}
-          className="fixed z-[70] -translate-x-1/2 flex items-center gap-1 rounded-lg border bg-background shadow-md p-1.5"
-          style={{ left: selectionToolbar.left, top: selectionToolbar.top }}
-          onMouseDown={(e) => e.preventDefault()}
-        >
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            title="太字"
-            onMouseDown={(e) => {
-              e.preventDefault();
-              applyFormat(selectionToolbar.blockId, "**", undefined, selectionToolbar.refKey);
-              setSelectionToolbar(null);
-            }}
-          >
-            <Bold className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            title="斜体"
-            onMouseDown={(e) => {
-              e.preventDefault();
-              applyFormat(selectionToolbar.blockId, "*", undefined, selectionToolbar.refKey);
-              setSelectionToolbar(null);
-            }}
-          >
-            <Italic className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            title="取り消し線"
-            onMouseDown={(e) => {
-              e.preventDefault();
-              applyFormat(selectionToolbar.blockId, "~~", undefined, selectionToolbar.refKey);
-              setSelectionToolbar(null);
-            }}
-          >
-            <Strikethrough className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-xs"
-            title="選択したテキストをブロックに分割"
-            onMouseDown={(e) => {
-              e.preventDefault();
-              convertSelectedToBlocks(selectionToolbar.blockId);
-              setSelectionToolbar(null);
-            }}
-          >
-            <SplitSquareVertical className="h-4 w-4 mr-1" />
-            ブロックにする
-          </Button>
         </div>
       )}
     </div>
