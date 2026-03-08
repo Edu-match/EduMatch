@@ -111,9 +111,11 @@ export function BlockEditor({
   const [bulkPasteText, setBulkPasteText] = useState("");
   const [selectionToolbar, setSelectionToolbar] = useState<{
     blockId: string;
+    refKey: string;
     left: number;
     top: number;
   } | null>(null);
+  const toolbarRef = useRef<HTMLDivElement | null>(null);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const textInputRefs = useRef<Record<string, HTMLInputElement | HTMLTextAreaElement | null>>({});
   
@@ -227,11 +229,15 @@ export function BlockEditor({
 
   /** 選択範囲に太字・斜体・取り消し線を適用（onMouseDown でボタンクリック時にフォーカスを維持） */
   const applyFormat = useCallback(
-    (blockId: string, wrapper: "**" | "*" | "~~", itemIndex?: number) => {
-      let refKey = blockId;
+    (blockId: string, wrapper: "**" | "*" | "~~", itemIndex?: number, explicitRefKey?: string) => {
+      let refKey = explicitRefKey ?? blockId;
       let targetItemIndex: number | undefined = itemIndex;
       const block = blocks.find((b) => b.id === blockId);
-      if (block?.items && itemIndex === undefined) {
+      if (explicitRefKey && explicitRefKey.includes("-")) {
+        const idx = explicitRefKey.replace(blockId + "-", "");
+        if (/^\d+$/.test(idx)) targetItemIndex = parseInt(idx, 10);
+      }
+      if (!explicitRefKey && block?.items && itemIndex === undefined) {
         for (let i = 0; i < block.items.length; i++) {
           const k = `${blockId}-${i}`;
           if (textInputRefs.current[k] === document.activeElement) {
@@ -461,11 +467,7 @@ export function BlockEditor({
   };
 
   const updateSelectionToolbar = useCallback(
-    (
-      blockId: string,
-      inputRefKey: string = blockId,
-      pointer?: { x: number; y: number }
-    ) => {
+    (blockId: string, inputRefKey: string = blockId) => {
       const el = textInputRefs.current[inputRefKey] ?? textInputRefs.current[blockId];
       if (!el) {
         setSelectionToolbar(null);
@@ -478,23 +480,26 @@ export function BlockEditor({
         return;
       }
 
-      let left = 0;
-      let top = 0;
-      if (pointer) {
-        left = pointer.x;
-        top = pointer.y - 44;
-      } else {
-        const rect = el.getBoundingClientRect();
-        left = rect.left + rect.width / 2;
-        top = rect.top + 8;
-      }
+      const rect = el.getBoundingClientRect();
+      const toolbarHeight = 44;
+      const top = rect.top - toolbarHeight - 8;
+      const left = rect.left + rect.width / 2;
 
-      const clampedLeft = Math.max(90, Math.min(window.innerWidth - 90, left));
+      const clampedLeft = Math.max(100, Math.min((typeof window !== "undefined" ? window.innerWidth : 800) - 100, left));
       const clampedTop = Math.max(12, top);
-      setSelectionToolbar({ blockId, left: clampedLeft, top: clampedTop });
+
+      requestAnimationFrame(() => {
+        setSelectionToolbar({ blockId, refKey: inputRefKey, left: clampedLeft, top: clampedTop });
+      });
     },
     []
   );
+
+  const hideSelectionToolbar = useCallback(() => {
+    const active = document.activeElement;
+    if (toolbarRef.current?.contains(active)) return;
+    setSelectionToolbar(null);
+  }, []);
 
   const renderBlockContent = (block: ContentBlock) => {
     const blockLength = getBlockLength(block);
@@ -508,9 +513,9 @@ export function BlockEditor({
               type="text"
               value={block.content}
               onChange={(e) => updateBlock(block.id, { content: e.target.value })}
-              onMouseUp={(e) => updateSelectionToolbar(block.id, block.id, { x: e.clientX, y: e.clientY })}
+              onMouseUp={() => updateSelectionToolbar(block.id, block.id)}
               onKeyUp={() => updateSelectionToolbar(block.id)}
-              onBlur={() => setSelectionToolbar(null)}
+              onBlur={() => setTimeout(hideSelectionToolbar, 150)}
               placeholder="大見出しを入力..."
               className={`flex-1 bg-transparent text-4xl font-bold outline-none border-none text-${block.align}`}
               style={{ textAlign: block.align }}
@@ -528,9 +533,9 @@ export function BlockEditor({
               type="text"
               value={block.content}
               onChange={(e) => updateBlock(block.id, { content: e.target.value })}
-              onMouseUp={(e) => updateSelectionToolbar(block.id, block.id, { x: e.clientX, y: e.clientY })}
+              onMouseUp={() => updateSelectionToolbar(block.id, block.id)}
               onKeyUp={() => updateSelectionToolbar(block.id)}
-              onBlur={() => setSelectionToolbar(null)}
+              onBlur={() => setTimeout(hideSelectionToolbar, 150)}
               placeholder="中見出しを入力..."
               className={`flex-1 bg-transparent text-2xl font-bold outline-none border-none`}
               style={{ textAlign: block.align }}
@@ -548,9 +553,9 @@ export function BlockEditor({
               type="text"
               value={block.content}
               onChange={(e) => updateBlock(block.id, { content: e.target.value })}
-              onMouseUp={(e) => updateSelectionToolbar(block.id, block.id, { x: e.clientX, y: e.clientY })}
+              onMouseUp={() => updateSelectionToolbar(block.id, block.id)}
               onKeyUp={() => updateSelectionToolbar(block.id)}
-              onBlur={() => setSelectionToolbar(null)}
+              onBlur={() => setTimeout(hideSelectionToolbar, 150)}
               placeholder="小見出しを入力..."
               className={`flex-1 bg-transparent text-xl font-semibold outline-none border-none`}
               style={{ textAlign: block.align }}
@@ -567,10 +572,10 @@ export function BlockEditor({
               ref={(el) => { textInputRefs.current[block.id] = el; }}
               value={block.content}
               onChange={(e) => updateBlock(block.id, { content: e.target.value })}
-              onMouseUp={(e) => updateSelectionToolbar(block.id, block.id, { x: e.clientX, y: e.clientY })}
+              onMouseUp={() => updateSelectionToolbar(block.id, block.id)}
               onKeyUp={() => updateSelectionToolbar(block.id)}
               onBlur={(e) => {
-                setSelectionToolbar(null);
+                setTimeout(hideSelectionToolbar, 150);
                 tryAutoConvertParagraph(block, e.target.value);
               }}
               placeholder="本文を入力...（# 見出し、- リストなどで自動変換）"
@@ -757,9 +762,9 @@ export function BlockEditor({
                 ref={(el) => { textInputRefs.current[block.id] = el; }}
                 value={block.content}
                 onChange={(e) => updateBlock(block.id, { content: e.target.value })}
-                onMouseUp={(e) => updateSelectionToolbar(block.id, block.id, { x: e.clientX, y: e.clientY })}
+                onMouseUp={() => updateSelectionToolbar(block.id, block.id)}
                 onKeyUp={() => updateSelectionToolbar(block.id)}
-                onBlur={() => setSelectionToolbar(null)}
+                onBlur={() => setTimeout(hideSelectionToolbar, 150)}
                 onClick={(e) => e.stopPropagation()}
                 placeholder="引用文を入力..."
                 className="w-full min-h-[80px] bg-transparent resize-none border-none shadow-none focus-visible:ring-0 italic text-lg pr-16"
@@ -796,9 +801,9 @@ export function BlockEditor({
                     newItems[itemIndex] = e.target.value;
                     updateBlock(block.id, { items: newItems });
                   }}
-                  onMouseUp={(e) => updateSelectionToolbar(block.id, `${block.id}-${itemIndex}`, { x: e.clientX, y: e.clientY })}
+                  onMouseUp={() => updateSelectionToolbar(block.id, `${block.id}-${itemIndex}`)}
                   onKeyUp={() => updateSelectionToolbar(block.id, `${block.id}-${itemIndex}`)}
-                  onBlur={() => setSelectionToolbar(null)}
+                  onBlur={() => setTimeout(hideSelectionToolbar, 150)}
                   onClick={(e) => e.stopPropagation()}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
@@ -833,9 +838,9 @@ export function BlockEditor({
               ref={(el) => { textInputRefs.current[block.id] = el; }}
               value={block.content}
               onChange={(e) => updateBlock(block.id, { content: e.target.value })}
-              onMouseUp={(e) => updateSelectionToolbar(block.id, block.id, { x: e.clientX, y: e.clientY })}
+              onMouseUp={() => updateSelectionToolbar(block.id, block.id)}
               onKeyUp={() => updateSelectionToolbar(block.id)}
-              onBlur={() => setSelectionToolbar(null)}
+              onBlur={() => setTimeout(hideSelectionToolbar, 150)}
               placeholder="Markdown を入力..."
               className="min-h-[120px] font-mono text-sm resize-none"
               onClick={(e) => e.stopPropagation()}
@@ -1129,7 +1134,8 @@ export function BlockEditor({
 
       {selectionToolbar && (
         <div
-          className="fixed z-[70] -translate-x-1/2 flex items-center gap-1 rounded-lg border bg-background shadow-md p-1"
+          ref={toolbarRef}
+          className="fixed z-[70] -translate-x-1/2 flex items-center gap-1 rounded-lg border bg-background shadow-md p-1.5"
           style={{ left: selectionToolbar.left, top: selectionToolbar.top }}
           onMouseDown={(e) => e.preventDefault()}
         >
@@ -1139,7 +1145,8 @@ export function BlockEditor({
             title="太字"
             onMouseDown={(e) => {
               e.preventDefault();
-              applyFormat(selectionToolbar.blockId, "**");
+              applyFormat(selectionToolbar.blockId, "**", undefined, selectionToolbar.refKey);
+              setSelectionToolbar(null);
             }}
           >
             <Bold className="h-4 w-4" />
@@ -1150,7 +1157,8 @@ export function BlockEditor({
             title="斜体"
             onMouseDown={(e) => {
               e.preventDefault();
-              applyFormat(selectionToolbar.blockId, "*");
+              applyFormat(selectionToolbar.blockId, "*", undefined, selectionToolbar.refKey);
+              setSelectionToolbar(null);
             }}
           >
             <Italic className="h-4 w-4" />
@@ -1161,7 +1169,8 @@ export function BlockEditor({
             title="取り消し線"
             onMouseDown={(e) => {
               e.preventDefault();
-              applyFormat(selectionToolbar.blockId, "~~");
+              applyFormat(selectionToolbar.blockId, "~~", undefined, selectionToolbar.refKey);
+              setSelectionToolbar(null);
             }}
           >
             <Strikethrough className="h-4 w-4" />
@@ -1174,6 +1183,7 @@ export function BlockEditor({
             onMouseDown={(e) => {
               e.preventDefault();
               convertSelectedToBlocks(selectionToolbar.blockId);
+              setSelectionToolbar(null);
             }}
           >
             <SplitSquareVertical className="h-4 w-4 mr-1" />
