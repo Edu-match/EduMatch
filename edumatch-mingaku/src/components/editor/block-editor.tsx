@@ -44,6 +44,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export type BlockType =
   | "heading1"
@@ -104,8 +110,6 @@ export function BlockEditor({
   autoConvertMarkdown = true,
 }: BlockEditorProps) {
   const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
-  const [showBlockMenu, setShowBlockMenu] = useState(false);
-  const [menuPosition, setMenuPosition] = useState<number | null>(null);
   const [uploadingBlockId, setUploadingBlockId] = useState<string | null>(null);
   const [bulkPasteOpen, setBulkPasteOpen] = useState(false);
   const [bulkPasteText, setBulkPasteText] = useState("");
@@ -144,14 +148,12 @@ export function BlockEditor({
   }, [activeBlockId, blocks]);
 
   useEffect(() => {
-    const onSelectionChange = () => checkSelectionInActiveBlock();
-    document.addEventListener("mouseup", onSelectionChange);
-    document.addEventListener("keyup", onSelectionChange);
-    document.addEventListener("selectionchange", onSelectionChange);
+    const onUp = () => checkSelectionInActiveBlock();
+    document.addEventListener("mouseup", onUp);
+    document.addEventListener("keyup", onUp);
     return () => {
-      document.removeEventListener("mouseup", onSelectionChange);
-      document.removeEventListener("keyup", onSelectionChange);
-      document.removeEventListener("selectionchange", onSelectionChange);
+      document.removeEventListener("mouseup", onUp);
+      document.removeEventListener("keyup", onUp);
     };
   }, [checkSelectionInActiveBlock]);
 
@@ -195,23 +197,9 @@ export function BlockEditor({
       const newBlocks = [...blocks];
       newBlocks.splice(index, 0, newBlock);
       onChange(newBlocks);
-      setShowBlockMenu(false);
-      setMenuPosition(null);
       setActiveBlockId(newBlock.id);
     },
     [blocks, onChange]
-  );
-
-  /** メニューを先に閉じてからブロック追加（固まり防止） */
-  const addBlockDeferred = useCallback(
-    (type: BlockType) => {
-      if (menuPosition === null) return;
-      const pos = menuPosition;
-      setShowBlockMenu(false);
-      setMenuPosition(null);
-      setTimeout(() => addBlock(type, pos), 0);
-    },
-    [addBlock, menuPosition]
   );
 
   const updateBlock = useCallback(
@@ -513,11 +501,6 @@ export function BlockEditor({
     },
     [autoConvertMarkdown, replaceBlockWithBlocks]
   );
-
-  const handleAddBlockClick = (index: number) => {
-    setMenuPosition(index);
-    setShowBlockMenu(true);
-  };
 
   const renderBlockContent = (block: ContentBlock) => {
     const blockLength = getBlockLength(block);
@@ -899,10 +882,17 @@ export function BlockEditor({
           <p className="text-muted-foreground mb-4">
             コンテンツブロックを追加してください
           </p>
-          <Button variant="outline" onClick={() => handleAddBlockClick(0)}>
-            <Plus className="h-4 w-4 mr-2" />
-            ブロックを追加
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <Plus className="h-4 w-4 mr-2" />
+                ブロックを追加
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="center" className="w-64">
+              <AddBlockMenuItems addBlock={addBlock} index={0} />
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       )}
 
@@ -910,14 +900,16 @@ export function BlockEditor({
         <div key={block.id}>
           {/* Add block button between blocks */}
           <div className="flex justify-center py-2 opacity-0 hover:opacity-100 transition-opacity">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleAddBlockClick(index)}
-              className="text-muted-foreground"
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="text-muted-foreground">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center" className="w-64">
+                <AddBlockMenuItems addBlock={addBlock} index={index} />
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           {/* Block */}
@@ -1119,110 +1111,55 @@ export function BlockEditor({
       {/* Add block button at the end */}
       {blocks.length > 0 && (
         <div className="flex justify-center py-4">
-          <Button
-            variant="outline"
-            onClick={() => handleAddBlockClick(blocks.length)}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            ブロックを追加
-          </Button>
-        </div>
-      )}
-
-      {/* Block type menu */}
-      {showBlockMenu && menuPosition !== null && (
-        <div className="fixed inset-0 z-50 bg-black/20" onClick={() => setShowBlockMenu(false)}>
-          <div
-            className="absolute bg-white border rounded-lg shadow-xl p-4 w-[calc(100vw-2rem)] max-w-sm sm:max-w-md"
-            style={{
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="font-semibold mb-3">ブロックを追加</h3>
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-              <BlockTypeButton
-                icon={<Heading1 className="h-5 w-5" />}
-                label="大見出し"
-                onClick={() => addBlockDeferred("heading1")}
-              />
-              <BlockTypeButton
-                icon={<Heading2 className="h-5 w-5" />}
-                label="中見出し"
-                onClick={() => addBlockDeferred("heading2")}
-              />
-              <BlockTypeButton
-                icon={<Heading3 className="h-5 w-5" />}
-                label="小見出し"
-                onClick={() => addBlockDeferred("heading3")}
-              />
-              <BlockTypeButton
-                icon={<Type className="h-5 w-5" />}
-                label="本文"
-                onClick={() => addBlockDeferred("paragraph")}
-              />
-              <BlockTypeButton
-                icon={<ImageIcon className="h-5 w-5" />}
-                label="画像"
-                onClick={() => addBlockDeferred("image")}
-              />
-              <BlockTypeButton
-                icon={<Video className="h-5 w-5" />}
-                label="動画"
-                onClick={() => addBlockDeferred("video")}
-              />
-              <BlockTypeButton
-                icon={<Quote className="h-5 w-5" />}
-                label="引用"
-                onClick={() => addBlockDeferred("quote")}
-              />
-              <BlockTypeButton
-                icon={<List className="h-5 w-5" />}
-                label="箇条書き"
-                onClick={() => addBlockDeferred("bulletList")}
-              />
-              <BlockTypeButton
-                icon={<ListOrdered className="h-5 w-5" />}
-                label="番号リスト"
-                onClick={() => addBlockDeferred("numberedList")}
-              />
-              <BlockTypeButton
-                icon={<Minus className="h-5 w-5" />}
-                label="区切り線"
-                onClick={() => addBlockDeferred("divider")}
-              />
-              <BlockTypeButton
-                icon={<FileText className="h-5 w-5" />}
-                label="Markdown"
-                onClick={() => addBlockDeferred("markdown")}
-              />
-            </div>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <Plus className="h-4 w-4 mr-2" />
+                ブロックを追加
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="center" className="w-64">
+              <AddBlockMenuItems addBlock={addBlock} index={blocks.length} />
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       )}
     </div>
   );
 }
 
-function BlockTypeButton({
-  icon,
-  label,
-  onClick,
+function AddBlockMenuItems({
+  addBlock,
+  index,
 }: {
-  icon: React.ReactNode;
-  label: string;
-  onClick: () => void;
+  addBlock: (type: BlockType, index: number) => void;
+  index: number;
 }) {
+  const items: { type: BlockType; icon: React.ReactNode; label: string }[] = [
+    { type: "heading1", icon: <Heading1 className="h-4 w-4" />, label: "大見出し" },
+    { type: "heading2", icon: <Heading2 className="h-4 w-4" />, label: "中見出し" },
+    { type: "heading3", icon: <Heading3 className="h-4 w-4" />, label: "小見出し" },
+    { type: "paragraph", icon: <Type className="h-4 w-4" />, label: "本文" },
+    { type: "image", icon: <ImageIcon className="h-4 w-4" />, label: "画像" },
+    { type: "video", icon: <Video className="h-4 w-4" />, label: "動画" },
+    { type: "quote", icon: <Quote className="h-4 w-4" />, label: "引用" },
+    { type: "bulletList", icon: <List className="h-4 w-4" />, label: "箇条書き" },
+    { type: "numberedList", icon: <ListOrdered className="h-4 w-4" />, label: "番号付きリスト" },
+    { type: "divider", icon: <Minus className="h-4 w-4" />, label: "区切り線" },
+    { type: "markdown", icon: <FileText className="h-4 w-4" />, label: "Markdown" },
+  ];
   return (
-    <button
-      onClick={onClick}
-      className="flex flex-col items-center gap-1 p-3 rounded-lg hover:bg-gray-100 transition-colors"
-    >
-      <span className="text-gray-600">{icon}</span>
-      <span className="text-xs text-gray-600">{label}</span>
-    </button>
+    <>
+      {items.map(({ type, icon, label }) => (
+        <DropdownMenuItem
+          key={type}
+          onSelect={() => addBlock(type, index)}
+        >
+          {icon}
+          {label}
+        </DropdownMenuItem>
+      ))}
+    </>
   );
 }
 
