@@ -286,15 +286,18 @@ export function BlockEditor({
         refKey = `${blockId}-${itemIndex}`;
       }
       const el = textInputRefs.current[refKey] ?? textInputRefs.current[blockId];
-      if (!el) return;
+      const activeEl = document.activeElement;
+      if (!el || el !== activeEl || !(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) return;
       const start = el.selectionStart ?? 0;
       const end = el.selectionEnd ?? 0;
-      if (start === end) return; // 選択なし
+      if (start === end) return;
       const val = el.value;
       const before = val.slice(0, start);
       const selected = val.slice(start, end);
       const after = val.slice(end);
       const newContent = before + wrapper + selected + wrapper + after;
+      const newStart = start + wrapper.length;
+      const newEnd = end + wrapper.length;
       if (targetItemIndex !== undefined && block?.items) {
         const newItems = [...block.items];
         newItems[targetItemIndex] = newContent;
@@ -302,15 +305,13 @@ export function BlockEditor({
       } else {
         updateBlock(blockId, { content: newContent });
       }
-      requestAnimationFrame(() => {
-        const newEl = textInputRefs.current[refKey];
-        if (newEl) {
-          newEl.focus();
-          const newStart = start + wrapper.length;
-          const newEnd = end + wrapper.length;
-          newEl.setSelectionRange(newStart, newEnd);
+      setTimeout(() => {
+        const target = textInputRefs.current[refKey] ?? textInputRefs.current[blockId];
+        if (target) {
+          target.focus();
+          target.setSelectionRange(newStart, newEnd);
         }
-      });
+      }, 0);
     },
     [blocks, updateBlock]
   );
@@ -1046,10 +1047,10 @@ export function BlockEditor({
                   </Button>
                 )}
 
-                {/* ブロックタイプを変更 */}
+                {/* ブロックタイプを変更（setTimeout でドロップダウン閉じた後に更新し固まり防止） */}
                 <Select
                   value={block.type}
-                  onValueChange={(v) => changeBlockType(block.id, v as BlockType)}
+                  onValueChange={(v) => setTimeout(() => changeBlockType(block.id, v as BlockType), 0)}
                 >
                   <SelectTrigger className="w-[160px] h-8 text-xs border" onClick={(e) => e.stopPropagation()}>
                     <SelectValue placeholder="ブロックタイプを変更" />

@@ -24,9 +24,8 @@ type Props = {
   emptyBlocks?: ContentBlock[];
 };
 
-const DEFAULT_EMPTY_BLOCKS: ContentBlock[] = [
-  { id: "init", type: "paragraph", content: "" },
-];
+/** ブロック編集に戻ったときの初期ブロック（空でよい場合は []） */
+const DEFAULT_EMPTY_BLOCKS: ContentBlock[] = [];
 
 export function ContentEditorWithImport({
   content,
@@ -39,8 +38,7 @@ export function ContentEditorWithImport({
   const isImported = isImportedContent(content);
   const parsed = isImported ? parseImportedContent(content) : null;
 
-  // ブロックを内部状態で保持。content→blocksの往復でブロックIDが失われたり、
-  // 空ブロックが消えるバグを防ぐ
+  // ブロックを内部状態で保持。初期は空でよい（ブロックはユーザーが追加）
   const [blocks, setBlocks] = useState<ContentBlock[]>(() => {
     const parsed = parseToBlocks(content);
     return parsed.length > 0 ? parsed : [...emptyBlocks];
