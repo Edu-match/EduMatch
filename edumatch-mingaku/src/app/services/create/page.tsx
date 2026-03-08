@@ -15,13 +15,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ContentEditorWithImport } from "@/components/content/content-editor-with-import";
 import { contentToBlocks } from "@/lib/markdown-to-blocks";
 import { blocksToMarkdown } from "@/lib/markdown-to-blocks";
-import { isImportedContent } from "@/lib/imported-content";
+import { isImportedContent, parseImportedContent } from "@/lib/imported-content";
+import { ImportedContentRenderer } from "@/components/content/imported-content-renderer";
+import { renderInlineMarkdown } from "@/lib/inline-markdown";
 import { createService, uploadImage } from "@/app/_actions";
 import { SERVICE_CATEGORIES } from "@/lib/categories";
-import { Image as ImageIcon, Loader2, Save, Send, Building2, School } from "lucide-react";
+import { Image as ImageIcon, Loader2, Save, Send, Building2, School, Eye } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+
+function extractYouTubeId(url: string): string {
+  const match = url.match(
+    /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/
+  );
+  return match ? match[1] : "";
+}
 
 export default function ServiceCreatePage() {
   const router = useRouter();
@@ -38,6 +49,7 @@ export default function ServiceCreatePage() {
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
   const thumbnailFileInputRef = useRef<HTMLInputElement | null>(null);
   const [userProfile, setUserProfile] = useState<{ name: string; avatar_url: string | null; email: string } | null>(null);
+  const [activeTab, setActiveTab] = useState<"edit" | "preview">("edit");
 
   // 文字数制限
   const TITLE_MAX_LENGTH = 80;
@@ -55,6 +67,141 @@ export default function ServiceCreatePage() {
   const isDescriptionValid = descriptionLength <= DESCRIPTION_MAX_LENGTH;
   const isContentValid = contentLength <= CONTENT_MAX_LENGTH;
   const canSubmit = isTitleValid && isDescriptionValid && isContentValid && title.trim().length > 0 && description.trim().length > 0 && category.trim().length > 0 && content.trim().length > 0;
+
+  const renderServicePreview = () => (
+    <div className="max-w-3xl mx-auto space-y-6">
+      {thumbnailUrl && (
+        <div className="rounded-xl overflow-hidden">
+          <img src={thumbnailUrl} alt={title || "サムネイル"} className="w-full h-[200px] object-contain bg-muted" />
+        </div>
+      )}
+      <h1 className="text-3xl font-bold">{title || "タイトル未設定"}</h1>
+      <div className="flex flex-wrap items-center gap-2">
+        {category && (
+          <Badge variant="secondary">
+            {SERVICE_CATEGORIES.find((c) => c.value === category)?.label ?? category}
+          </Badge>
+        )}
+        {priceInfo && <span className="text-sm text-muted-foreground">{priceInfo}</span>}
+      </div>
+      {description && <p className="text-lg text-muted-foreground leading-relaxed">{description}</p>}
+      {youtubeUrl && (
+        <div className="aspect-video rounded-lg overflow-hidden bg-black">
+          <iframe
+            src={`https://www.youtube.com/embed/${extractYouTubeId(youtubeUrl)}`}
+            className="w-full h-full"
+            allowFullScreen
+            title="YouTube"
+          />
+        </div>
+      )}
+      <div className="prose prose-lg max-w-none">
+        {isImportedContent(content) ? (
+          (() => {
+            const parsed = parseImportedContent(content);
+            return parsed ? <ImportedContentRenderer type={parsed.type} content={parsed.raw} /> : null;
+          })()
+        ) : (
+          contentToBlocks(content).map((block) => {
+            switch (block.type) {
+              case "heading1":
+                return (
+                  <h2 key={block.id} className="text-3xl font-bold mt-8 mb-4" style={{ textAlign: block.align }}>
+                    {renderInlineMarkdown(block.content)}
+                  </h2>
+                );
+              case "heading2":
+                return (
+                  <h3 key={block.id} className="text-2xl font-bold mt-6 mb-3" style={{ textAlign: block.align }}>
+                    {renderInlineMarkdown(block.content)}
+                  </h3>
+                );
+              case "heading3":
+                return (
+                  <h4 key={block.id} className="text-xl font-semibold mt-4 mb-2" style={{ textAlign: block.align }}>
+                    {renderInlineMarkdown(block.content)}
+                  </h4>
+                );
+              case "paragraph":
+                return (
+                  <p key={block.id} className="mb-4 leading-relaxed" style={{ textAlign: block.align }}>
+                    {renderInlineMarkdown(block.content)}
+                  </p>
+                );
+              case "image":
+                return (
+                  <figure key={block.id} className="my-8">
+                    {block.url && (
+                      <img src={block.url} alt={block.caption || ""} className="w-full rounded-lg" />
+                    )}
+                    {block.caption && (
+                      <figcaption className="text-center text-sm text-muted-foreground mt-2">{block.caption}</figcaption>
+                    )}
+                  </figure>
+                );
+              case "video":
+                return (
+                  <figure key={block.id} className="my-8">
+                    {block.url && (
+                      <div className="aspect-video bg-black rounded-lg overflow-hidden">
+                        <iframe
+                          src={
+                            block.url.includes("youtube.com") || block.url.includes("youtu.be")
+                              ? `https://www.youtube.com/embed/${extractYouTubeId(block.url)}`
+                              : block.url
+                          }
+                          className="w-full h-full"
+                          allowFullScreen
+                          title="動画"
+                        />
+                      </div>
+                    )}
+                    {block.caption && (
+                      <figcaption className="text-center text-sm text-muted-foreground mt-2">{block.caption}</figcaption>
+                    )}
+                  </figure>
+                );
+              case "quote":
+                return (
+                  <blockquote key={block.id} className="border-l-4 border-primary pl-4 my-6 italic">
+                    <p className="text-lg">{renderInlineMarkdown(block.content)}</p>
+                    {block.caption && (
+                      <cite className="text-sm text-muted-foreground not-italic">— {block.caption}</cite>
+                    )}
+                  </blockquote>
+                );
+              case "divider":
+                return <hr key={block.id} className="my-8 border-t-2" />;
+              case "bulletList":
+                return (
+                  <ul key={block.id} className="list-disc pl-6 my-4 space-y-1">
+                    {block.items?.map((item, i) => (
+                      <li key={i}>{renderInlineMarkdown(item)}</li>
+                    ))}
+                  </ul>
+                );
+              case "numberedList":
+                return (
+                  <ol key={block.id} className="list-decimal pl-6 my-4 space-y-1">
+                    {block.items?.map((item, i) => (
+                      <li key={i}>{renderInlineMarkdown(item)}</li>
+                    ))}
+                  </ol>
+                );
+              case "markdown":
+                return (
+                  <div key={block.id} className="prose prose-lg max-w-none my-4">
+                    <ReactMarkdown>{block.content}</ReactMarkdown>
+                  </div>
+                );
+              default:
+                return null;
+            }
+          })
+        )}
+      </div>
+    </div>
+  );
 
   // ユーザープロフィールを取得
   useEffect(() => {
@@ -169,7 +316,16 @@ export default function ServiceCreatePage() {
         </div>
       </div>
 
-      <div className="container py-8 space-y-6">
+      <div className="container py-8">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "edit" | "preview")}>
+          <TabsList className="mb-6">
+            <TabsTrigger value="edit">編集</TabsTrigger>
+            <TabsTrigger value="preview">
+              <Eye className="h-4 w-4 mr-2" />
+              プレビュー
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="edit" className="space-y-6">
         <Card>
           <CardHeader>
             <CardTitle className="text-base">サムネイル</CardTitle>
@@ -392,6 +548,13 @@ export default function ServiceCreatePage() {
             </div>
           </CardContent>
         </Card>
+          </TabsContent>
+          <TabsContent value="preview">
+            <Card>
+              <CardContent className="py-12">{renderServicePreview()}</CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
