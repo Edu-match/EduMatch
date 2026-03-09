@@ -106,14 +106,14 @@ function VideoListItem({ video }: { video: VideoItem }) {
 
 type Props = {
   articles: ArticleItem[];
+  weeklyArticles: ArticleItem[];
   services: ServiceItem[];
   videos: VideoItem[];
 };
 
-export function TopicsTabs({ articles, services, videos }: Props) {
+export function TopicsTabs({ articles, weeklyArticles, services, videos }: Props) {
   const domesticArticles = articles.filter((a) => a.newsTab === "DOMESTIC");
   const internationalArticles = articles.filter((a) => a.newsTab === "INTERNATIONAL");
-  const weeklyArticles = articles.filter((a) => a.newsTab === "WEEKLY");
 
   const triggerClass =
     "rounded-none border-b-2 border-transparent data-[state=active]:border-[#1d4ed8] data-[state=active]:bg-transparent px-4 py-2 text-sm";
@@ -125,7 +125,9 @@ export function TopicsTabs({ articles, services, videos }: Props) {
           <TabsTrigger value="all" className={triggerClass}>すべて</TabsTrigger>
           <TabsTrigger value="domestic" className={triggerClass}>日本のニュース</TabsTrigger>
           <TabsTrigger value="international" className={triggerClass}>世界のニュース</TabsTrigger>
-          <TabsTrigger value="weekly" className={triggerClass}>今週のニュース</TabsTrigger>
+          {weeklyArticles.length > 0 && (
+            <TabsTrigger value="weekly" className={triggerClass}>今週のニュース</TabsTrigger>
+          )}
         </TabsList>
       </div>
       <div className="p-3">
@@ -153,13 +155,11 @@ export function TopicsTabs({ articles, services, videos }: Props) {
           )}
         </TabsContent>
 
+        {weeklyArticles.length > 0 && (
         <TabsContent value="weekly" className="mt-0 space-y-0">
-          {weeklyArticles.length > 0 ? (
-            weeklyArticles.map((a) => <ArticleListItem key={a.id} article={a} />)
-          ) : (
-            <p className="text-center text-muted-foreground py-4">今週のニュースがありません</p>
-          )}
+          {weeklyArticles.map((a) => <ArticleListItem key={a.id} article={a} />)}
         </TabsContent>
+        )}
       </div>
     </Tabs>
   );

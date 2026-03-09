@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getLatestArticlesForTopics } from "@/app/_actions/popularity";
+import { getLatestArticlesForTopics, getLatestArticlesFromLast7Days } from "@/app/_actions/popularity";
 import { getAllServices } from "@/app/_actions/services";
 import { TopicsTabs } from "./topics-tabs";
 
@@ -82,13 +82,25 @@ async function fetchYouTubeVideos(): Promise<VideoItem[]> {
 }
 
 export async function TopicsSection() {
-  const [posts, services, videos] = await Promise.all([
+  const [posts, weeklyPosts, services, videos] = await Promise.all([
     getLatestArticlesForTopics(10),
+    getLatestArticlesFromLast7Days(),
     getAllServices(),
     fetchYouTubeVideos(),
   ]);
 
   const articles: ArticleItem[] = posts.slice(0, 10).map((post) => ({
+    id: post.id,
+    title: post.title,
+    image: post.thumbnail_url ?? undefined,
+    date: formatShortDate(post.created_at),
+    category: post.category ?? "",
+    tags: post.tags ?? [],
+    isNew: isNew(post.created_at),
+    newsTab: (post as unknown as { home_news_tab?: ArticleItem["newsTab"] }).home_news_tab ?? "NONE",
+  }));
+
+  const weeklyArticles: ArticleItem[] = weeklyPosts.map((post) => ({
     id: post.id,
     title: post.title,
     image: post.thumbnail_url ?? undefined,
@@ -111,7 +123,7 @@ export async function TopicsSection() {
       <div className="p-4 border-b">
         <h2 className="text-xl font-bold">トピックス</h2>
       </div>
-      <TopicsTabs articles={articles} services={serviceItems} videos={videos} />
+      <TopicsTabs articles={articles} weeklyArticles={weeklyArticles} services={serviceItems} videos={videos} />
       <div className="border-t p-3 text-center">
         <Link href="/articles" className="text-sm text-[#1d4ed8] hover:underline font-medium">
           記事一覧を見る

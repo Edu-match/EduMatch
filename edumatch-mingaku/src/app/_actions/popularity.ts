@@ -181,6 +181,56 @@ export async function getPopularArticlesByEngagement(limit: number = 10) {
 }
 
 /**
+ * トップページ「今週のニュース」用：直近7日以内の記事を最新順で取得
+ * 未ログイン時は会員限定記事を除外
+ */
+export async function getLatestArticlesFromLast7Days() {
+  try {
+    const user = await getCurrentUser();
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const where = !user
+      ? {
+          AND: [
+            { OR: [{ status: "APPROVED" as const }, { is_published: true }] },
+            { is_member_only: false },
+            { created_at: { gte: sevenDaysAgo } },
+          ],
+        }
+      : {
+          AND: [
+            { OR: [{ status: "APPROVED" as const }, { is_published: true }] },
+            { created_at: { gte: sevenDaysAgo } },
+          ],
+        };
+
+    const articles = await prisma.post.findMany({
+      where,
+      include: {
+        provider: {
+          select: {
+            id: true,
+            name: true,
+            avatar_url: true,
+          },
+        },
+      },
+      orderBy: { created_at: "desc" },
+    });
+
+    return articles.map((article) => ({
+      ...article,
+      provider: article.provider || { id: article.provider_id, name: "投稿者", avatar_url: null },
+      home_news_tab: article.home_news_tab,
+    }));
+  } catch (error) {
+    console.error("Failed to get latest articles from last 7 days:", error);
+    return [];
+  }
+}
+
+/**
  * トップページトピックス用：最新順で記事を取得
  * 未ログイン時は会員限定記事を除外
  */
