@@ -218,6 +218,23 @@ export default async function ServiceDetailPage({
               </Card>
             )}
 
+            {/* YouTube動画（提供企業より上） */}
+            {service.youtube_url && (
+              <Card className="overflow-hidden border-2 shadow-lg">
+                <CardHeader className="bg-gradient-to-r from-red-50 to-background">
+                  <CardTitle className="flex items-center gap-2">
+                    <div className="p-2 bg-red-500 rounded-lg">
+                      <Play className="h-5 w-5 text-white" />
+                    </div>
+                    サービス紹介動画
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <YouTubeEmbed url={service.youtube_url} title={service.title} />
+                </CardContent>
+              </Card>
+            )}
+
             {/* 提供企業・投稿者情報 */}
             <Card className="border-2 shadow-lg">
               <CardHeader className="bg-gradient-to-r from-blue-50 to-background">
@@ -264,39 +281,22 @@ export default async function ServiceDetailPage({
 
             {/* 口コミセクション（FEATURES.REVIEWS が true のときのみ表示） */}
             {FEATURES.REVIEWS && (
-            <Card className="border-2 shadow-lg">
-              <CardHeader className="bg-gradient-to-r from-yellow-50 to-background">
-                <CardTitle className="flex items-center gap-2">
-                  <div className="p-2 bg-yellow-100 rounded-lg">
-                    <Star className="h-5 w-5 text-yellow-600" />
-                  </div>
-                  口コミ・レビュー
-                  {reviews.length > 0 && (
-                    <span className="ml-1 text-sm font-normal text-muted-foreground">
-                      （{reviews.length} 件）
-                    </span>
-                  )}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                <ReviewSection serviceId={service.id} initialReviews={reviews} isLoggedIn={!!user} />
-              </CardContent>
-            </Card>
-            )}
-
-            {/* YouTube動画（ページ下部） */}
-            {service.youtube_url && (
-              <Card className="overflow-hidden border-2 shadow-lg">
-                <CardHeader className="bg-gradient-to-r from-red-50 to-background">
+              <Card className="border-2 shadow-lg">
+                <CardHeader className="bg-gradient-to-r from-yellow-50 to-background">
                   <CardTitle className="flex items-center gap-2">
-                    <div className="p-2 bg-red-500 rounded-lg">
-                      <Play className="h-5 w-5 text-white" />
+                    <div className="p-2 bg-yellow-100 rounded-lg">
+                      <Star className="h-5 w-5 text-yellow-600" />
                     </div>
-                    サービス紹介動画
+                    口コミ・レビュー
+                    {reviews.length > 0 && (
+                      <span className="ml-1 text-sm font-normal text-muted-foreground">
+                        （{reviews.length} 件）
+                      </span>
+                    )}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-0">
-                  <YouTubeEmbed url={service.youtube_url} title={service.title} />
+                <CardContent className="p-6">
+                  <ReviewSection serviceId={service.id} initialReviews={reviews} isLoggedIn={!!user} />
                 </CardContent>
               </Card>
             )}
