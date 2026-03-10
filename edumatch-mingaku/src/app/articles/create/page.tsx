@@ -408,8 +408,11 @@ export default function ArticleCreatePage() {
         </div>
       </div>
 
-      <div className="container py-8 space-y-6">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <div className="container py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* メイン編集エリア */}
+          <div className="lg:col-span-3">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="mb-6">
                 <TabsTrigger value="edit">
                   <FileText className="h-4 w-4 mr-2" />
@@ -590,8 +593,18 @@ export default function ArticleCreatePage() {
                     )}
                   </CardContent>
                 </Card>
+              </TabsContent>
 
-                {/* 公開設定・カテゴリ・チェックリスト（サービスページ同様に編集タブ内に配置） */}
+              <TabsContent value="preview">
+                <Card>
+                  <CardContent className="py-12">{renderPreview()}</CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </div>
+
+          {/* 右サイドバー: 公開設定・カテゴリ・チェックリスト・ガイドライン */}
+          <div className="lg:col-span-1 space-y-6">
             {/* Publish settings */}
             <Card>
               <CardHeader>
@@ -790,14 +803,8 @@ export default function ArticleCreatePage() {
                 </ul>
               </CardContent>
             </Card>
-              </TabsContent>
-
-              <TabsContent value="preview">
-                <Card>
-                  <CardContent className="py-12">{renderPreview()}</CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
+          </div>
+        </div>
       </div>
     </div>
   );
