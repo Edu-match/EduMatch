@@ -16,13 +16,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ContentEditorWithImport } from "@/components/content/content-editor-with-import";
+import { BlocksContentPreview } from "@/components/content/blocks-content-preview";
 import type { ContentBlock } from "@/components/editor/block-editor";
-import { renderInlineMarkdown } from "@/lib/inline-markdown";
 import { contentToBlocks, blocksToMarkdown } from "@/lib/markdown-to-blocks";
 import { blocksToArticleContent } from "@/lib/article-content";
-import { isImportedContent, parseImportedContent } from "@/lib/imported-content";
-import { ImportedContentRenderer } from "@/components/content/imported-content-renderer";
-import ReactMarkdown from "react-markdown";
+import { isImportedContent } from "@/lib/imported-content";
 import {
   Eye,
   Save,
@@ -90,7 +88,6 @@ export default function ArticleCreatePage() {
   const [thumbnailInput, setThumbnailInput] = useState("");
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
   const thumbnailFileInputRef = useRef<HTMLInputElement | null>(null);
-  const contentEditorRef = useRef<{ flush: () => string | null } | null>(null);
   const [content, setContent] = useState<string>(() => {
     if (draft?.content) return draft.content;
     if (draft?.blocks && draft.blocks.length > 0) {
@@ -105,8 +102,6 @@ export default function ArticleCreatePage() {
 
   // Save draft to localStorage
   const saveDraft = useCallback(() => {
-    const flushedContent = contentEditorRef.current?.flush();
-    const contentToSave = flushedContent ?? content;
     setIsSaving(true);
     try {
       const draft: ArticleDraft = {
@@ -116,7 +111,7 @@ export default function ArticleCreatePage() {
         tags,
         publishType,
         thumbnailUrl,
-        content: contentToSave,
+        content,
         savedAt: new Date().toISOString(),
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
@@ -153,10 +148,9 @@ export default function ArticleCreatePage() {
   // Auto-save every 30 seconds
   useEffect(() => {
     const interval = setInterval(() => {
-      const flushedContent = contentEditorRef.current?.flush();
       const currentTitle = title;
       const currentLeadText = leadText;
-      const currentContent = flushedContent ?? content;
+      const currentContent = content;
       if (currentTitle || currentLeadText || currentContent.length > 0) {
         try {
           const draft = {
@@ -182,9 +176,6 @@ export default function ArticleCreatePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handlePublish = async () => {
-    const flushedContent = contentEditorRef.current?.flush();
-    const contentToUse = flushedContent ?? content;
-
     if (!title.trim()) {
       toast.error("タイトルを入力してください");
       return;
@@ -193,11 +184,11 @@ export default function ArticleCreatePage() {
       toast.error(`タイトルは${TITLE_MAX_LENGTH}文字以内で入力してください`);
       return;
     }
-    if (!contentToUse.trim()) {
+    if (!content.trim()) {
       toast.error("本文を入力してください");
       return;
     }
-    if (contentToUse.length > CONTENT_MAX_LENGTH) {
+    if (contentLength > CONTENT_MAX_LENGTH) {
       toast.error(`本文は${CONTENT_MAX_LENGTH.toLocaleString()}文字以内で入力してください`);
       return;
     }
@@ -212,9 +203,9 @@ export default function ArticleCreatePage() {
         tags,
         publishType: submitType,
         thumbnailUrl,
-        ...(isImportedContent(contentToUse)
-          ? { content: contentToUse }
-          : { blocks: contentToBlocks(contentToUse) as Parameters<typeof createPost>[0]["blocks"] }),
+        ...(isImportedContent(content)
+          ? { content }
+          : { blocks: contentToBlocks(content) as Parameters<typeof createPost>[0]["blocks"] }),
       });
       
       if (result.success) {
@@ -247,9 +238,6 @@ export default function ArticleCreatePage() {
   };
   
   const handleSaveDraft = async () => {
-    const flushedContent = contentEditorRef.current?.flush();
-    const contentToUse = flushedContent ?? content;
-
     if (!title.trim()) {
       toast.error("タイトルを入力してください");
       return;
@@ -264,11 +252,11 @@ export default function ArticleCreatePage() {
         tags,
         publishType: "draft",
         thumbnailUrl,
-        ...(isImportedContent(contentToUse)
-          ? { content: contentToUse }
-          : { blocks: contentToBlocks(contentToUse) as Parameters<typeof createPost>[0]["blocks"] }),
+        ...(isImportedContent(content)
+          ? { content }
+          : { blocks: contentToBlocks(content) as Parameters<typeof createPost>[0]["blocks"] }),
       });
-      
+
       if (result.success) {
         localStorage.removeItem(STORAGE_KEY);
         toast.success("下書きを保存しました");
@@ -315,179 +303,29 @@ export default function ArticleCreatePage() {
   const isContentValid = contentLength <= CONTENT_MAX_LENGTH;
   const canSubmit = isTitleValid && isContentValid && title.trim().length > 0 && content.trim().length > 0;
 
-  const renderPreview = () => {
-    return (
-      <div className="max-w-3xl mx-auto">
-        {/* Thumbnail */}
-        {thumbnailUrl && (
-          <div className="mb-6 rounded-xl overflow-hidden">
-            <img
-              src={thumbnailUrl}
-              alt={title}
-              className="w-full h-[300px] object-contain"
-            />
-          </div>
-        )}
-
-        {/* Title */}
-        <h1 className="text-4xl font-bold mb-4">{title || "タイトル未設定"}</h1>
-
-        {/* Meta info */}
-        <div className="flex items-center gap-4 text-sm text-muted-foreground mb-6">
-          <span className="flex items-center gap-1">
-            <Calendar className="h-4 w-4" />
-            {new Date().toLocaleDateString("ja-JP")}
-          </span>
-          {category && <Badge variant="outline">{category}</Badge>}
+  const renderPreview = () => (
+    <div className="max-w-3xl mx-auto space-y-6">
+      {thumbnailUrl && (
+        <div className="rounded-xl overflow-hidden">
+          <img src={thumbnailUrl} alt={title} className="w-full h-[300px] object-contain" />
         </div>
-
-        {/* Lead text */}
-        {leadText && (
-          <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
-            {leadText}
-          </p>
-        )}
-
-        {/* Content */}
-        {isImportedContent(content) ? (
-          (() => {
-            const parsed = parseImportedContent(content);
-            return parsed ? (
-              <ImportedContentRenderer type={parsed.type} content={parsed.raw} />
-            ) : null;
-          })()
-        ) : (
-        <div className="prose prose-lg max-w-none">
-          {contentToBlocks(content).map((block) => {
-            switch (block.type) {
-              case "heading1":
-                return (
-                  <h2
-                    key={block.id}
-                    className="text-3xl font-normal mt-8 mb-4 [&_strong]:font-bold"
-                    style={{ textAlign: block.align }}
-                  >
-                    {renderInlineMarkdown(block.content)}
-                  </h2>
-                );
-              case "heading2":
-                return (
-                  <h3
-                    key={block.id}
-                    className="text-2xl font-normal mt-6 mb-3 [&_strong]:font-bold"
-                    style={{ textAlign: block.align }}
-                  >
-                    {renderInlineMarkdown(block.content)}
-                  </h3>
-                );
-              case "heading3":
-                return (
-                  <h4
-                    key={block.id}
-                    className="text-xl font-normal mt-4 mb-2 [&_strong]:font-bold"
-                    style={{ textAlign: block.align }}
-                  >
-                    {renderInlineMarkdown(block.content)}
-                  </h4>
-                );
-              case "paragraph":
-                return (
-                  <p
-                    key={block.id}
-                    className="mb-4 leading-relaxed"
-                    style={{ textAlign: block.align }}
-                  >
-                    {renderInlineMarkdown(block.content)}
-                  </p>
-                );
-              case "image":
-                return (
-                  <figure key={block.id} className="my-8">
-                    {block.url && (
-                      <img
-                        src={block.url}
-                        alt={block.caption || ""}
-                        className="w-full rounded-lg"
-                      />
-                    )}
-                    {block.caption && (
-                      <figcaption className="text-center text-sm text-muted-foreground mt-2">
-                        {block.caption}
-                      </figcaption>
-                    )}
-                  </figure>
-                );
-              case "video":
-                return (
-                  <figure key={block.id} className="my-8">
-                    {block.url && (
-                      <div className="aspect-video bg-black rounded-lg overflow-hidden">
-                        <iframe
-                          src={
-                            block.url.includes("youtube.com") ||
-                            block.url.includes("youtu.be")
-                              ? `https://www.youtube.com/embed/${extractYouTubeId(block.url)}`
-                              : block.url
-                          }
-                          className="w-full h-full"
-                          allowFullScreen
-                        />
-                      </div>
-                    )}
-                    {block.caption && (
-                      <figcaption className="text-center text-sm text-muted-foreground mt-2">
-                        {block.caption}
-                      </figcaption>
-                    )}
-                  </figure>
-                );
-              case "quote":
-                return (
-                  <blockquote
-                    key={block.id}
-                    className="border-l-4 border-primary pl-4 my-6 italic"
-                  >
-                    <p className="text-lg">{renderInlineMarkdown(block.content)}</p>
-                    {block.caption && (
-                      <cite className="text-sm text-muted-foreground not-italic">
-                        — {block.caption}
-                      </cite>
-                    )}
-                  </blockquote>
-                );
-              case "divider":
-                return <hr key={block.id} className="my-8 border-t-2" />;
-              case "bulletList":
-                return (
-                  <ul key={block.id} className="list-disc pl-6 my-4 space-y-1">
-                    {block.items?.map((item, i) => (
-                      <li key={i}>{renderInlineMarkdown(item)}</li>
-                    ))}
-                  </ul>
-                );
-              case "numberedList":
-                return (
-                  <ol key={block.id} className="list-decimal pl-6 my-4 space-y-1">
-                    {block.items?.map((item, i) => (
-                      <li key={i}>{renderInlineMarkdown(item)}</li>
-                    ))}
-                  </ol>
-                );
-              case "markdown":
-                return (
-                  <div key={block.id} className="prose prose-lg max-w-none my-4">
-                    <ReactMarkdown>{block.content}</ReactMarkdown>
-                  </div>
-                );
-              default:
-                return null;
-            }
-          })}
-        </div>
-        )}
+      )}
+      <h1 className="text-4xl font-bold">{title || "タイトル未設定"}</h1>
+      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+        <span className="flex items-center gap-1">
+          <Calendar className="h-4 w-4" />
+          {new Date().toLocaleDateString("ja-JP")}
+        </span>
+        {category && <Badge variant="outline">{category}</Badge>}
       </div>
-    );
-  };
+      {leadText && (
+        <p className="text-lg text-muted-foreground leading-relaxed">{leadText}</p>
+      )}
+      <div className="border-t pt-6">
+        <BlocksContentPreview content={content} />
+      </div>
+    </div>
+  );
 
   // 最終保存時刻の表示文字列を計算
   const [lastSavedText, setLastSavedText] = useState("未保存");
@@ -570,11 +408,8 @@ export default function ArticleCreatePage() {
         </div>
       </div>
 
-      <div className="container py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Main editor area */}
-          <div className="lg:col-span-3">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <div className="container py-8 space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="mb-6">
                 <TabsTrigger value="edit">
                   <FileText className="h-4 w-4 mr-2" />
@@ -747,8 +582,6 @@ export default function ArticleCreatePage() {
                       parseToBlocks={contentToBlocks}
                       blocksToContent={blocksToMarkdown}
                       maxLength={CONTENT_MAX_LENGTH}
-                      debounceMs={150}
-                      editorRef={contentEditorRef}
                     />
                     {!isContentValid && (
                       <p className="text-destructive text-sm mt-2">
@@ -757,18 +590,8 @@ export default function ArticleCreatePage() {
                     )}
                   </CardContent>
                 </Card>
-              </TabsContent>
 
-              <TabsContent value="preview">
-                <Card>
-                  <CardContent className="py-12">{renderPreview()}</CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
-          </div>
-
-          {/* Sidebar */}
-          <div className="lg:col-span-1 space-y-6">
+                {/* 公開設定・カテゴリ・チェックリスト（サービスページ同様に編集タブ内に配置） */}
             {/* Publish settings */}
             <Card>
               <CardHeader>
@@ -967,8 +790,14 @@ export default function ArticleCreatePage() {
                 </ul>
               </CardContent>
             </Card>
-          </div>
-        </div>
+              </TabsContent>
+
+              <TabsContent value="preview">
+                <Card>
+                  <CardContent className="py-12">{renderPreview()}</CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
       </div>
     </div>
   );
@@ -987,11 +816,4 @@ function CheckItem({ checked, label }: { checked: boolean; label: string }) {
       </span>
     </div>
   );
-}
-
-function extractYouTubeId(url: string): string {
-  const match = url.match(
-    /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/
-  );
-  return match ? match[1] : "";
 }
