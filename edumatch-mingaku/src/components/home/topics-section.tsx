@@ -15,7 +15,7 @@ function formatShortDate(date: Date): string {
 function isNew(date: Date): boolean {
   const now = new Date();
   const diff = now.getTime() - date.getTime();
-  return diff < 24 * 60 * 60 * 1000;
+  return diff < 5 * 24 * 60 * 60 * 1000;
 }
 
 export type ArticleItem = {

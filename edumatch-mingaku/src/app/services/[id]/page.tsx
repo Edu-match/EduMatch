@@ -174,23 +174,6 @@ export default async function ServiceDetailPage({
               />
             </div>
 
-            {/* YouTube動画 */}
-            {service.youtube_url && (
-              <Card className="overflow-hidden border-2 shadow-lg">
-                <CardHeader className="bg-gradient-to-r from-red-50 to-background">
-                  <CardTitle className="flex items-center gap-2">
-                    <div className="p-2 bg-red-500 rounded-lg">
-                      <Play className="h-5 w-5 text-white" />
-                    </div>
-                    サービス紹介動画
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <YouTubeEmbed url={service.youtube_url} title={service.title} />
-                </CardContent>
-              </Card>
-            )}
-
             {/* 詳細説明 */}
             <Card className="border-2 shadow-lg">
               <CardHeader className="bg-gradient-to-r from-primary/5 to-background">
@@ -299,6 +282,23 @@ export default async function ServiceDetailPage({
                 <ReviewSection serviceId={service.id} initialReviews={reviews} isLoggedIn={!!user} />
               </CardContent>
             </Card>
+            )}
+
+            {/* YouTube動画（ページ下部） */}
+            {service.youtube_url && (
+              <Card className="overflow-hidden border-2 shadow-lg">
+                <CardHeader className="bg-gradient-to-r from-red-50 to-background">
+                  <CardTitle className="flex items-center gap-2">
+                    <div className="p-2 bg-red-500 rounded-lg">
+                      <Play className="h-5 w-5 text-white" />
+                    </div>
+                    サービス紹介動画
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <YouTubeEmbed url={service.youtube_url} title={service.title} />
+                </CardContent>
+              </Card>
             )}
           </div>
 
