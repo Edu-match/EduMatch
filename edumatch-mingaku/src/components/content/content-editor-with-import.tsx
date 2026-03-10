@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { FileImportButton } from "@/components/content/file-import-button";
 import { ImportedContentRenderer } from "@/components/content/imported-content-renderer";
@@ -22,6 +22,10 @@ type Props = {
   maxLength?: number;
   /** ブロック編集に戻ったときの空の初期ブロック（デフォルト: 空配列＝最初からブロックなし） */
   emptyBlocks?: ContentBlock[];
+  /** onChange をデバウンスするミリ秒（0で即時。重い親コンポーネント向け） */
+  debounceMs?: number;
+  /** 保存前などに flush() を呼んで保留中の変更を即座に親に反映。戻り値はフラッシュした content（保留がなければ null） */
+  editorRef?: React.MutableRefObject<{ flush: () => string | null } | null>;
 };
 
 export function ContentEditorWithImport({
@@ -31,6 +35,8 @@ export function ContentEditorWithImport({
   blocksToContent,
   maxLength,
   emptyBlocks = [],
+  debounceMs = 0,
+  editorRef,
 }: Props) {
   const isImported = isImportedContent(content);
   const parsed = isImported ? parseImportedContent(content) : null;
@@ -42,6 +48,32 @@ export function ContentEditorWithImport({
     return parsed.length > 0 ? parsed : [...emptyBlocks];
   });
   const isInternalUpdateRef = useRef(false);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingContentRef = useRef<string | null>(null);
+
+  const flushPendingChange = useCallback((): string | null => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    if (pendingContentRef.current !== null) {
+      const c = pendingContentRef.current;
+      pendingContentRef.current = null;
+      isInternalUpdateRef.current = true;
+      onChange(c);
+      return c;
+    }
+    return null;
+  }, [onChange]);
+
+  // editorRef と アンマウント時に保留中の変更を反映
+  useEffect(() => {
+    editorRef && (editorRef.current = { flush: flushPendingChange });
+    return () => {
+      editorRef && (editorRef.current = null);
+      flushPendingChange();
+    };
+  }, [flushPendingChange, editorRef]);
 
   // contentが外部から変わったときのみパースして同期（自らのonChangeによる更新は無視）
   useEffect(() => {
@@ -65,11 +97,29 @@ export function ContentEditorWithImport({
     onChange(blocksToContent(initialBlocks));
   };
 
-  const handleBlocksChange = (blocks: ContentBlock[]) => {
-    isInternalUpdateRef.current = true;
-    setBlocks(blocks);
-    onChange(blocksToContent(blocks));
-  };
+  const handleBlocksChange = useCallback(
+    (blocks: ContentBlock[]) => {
+      isInternalUpdateRef.current = true;
+      setBlocks(blocks);
+      const nextContent = blocksToContent(blocks);
+      if (debounceMs > 0) {
+        pendingContentRef.current = nextContent;
+        if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = setTimeout(() => {
+          debounceTimerRef.current = null;
+          if (pendingContentRef.current !== null) {
+            const toSend = pendingContentRef.current;
+            pendingContentRef.current = null;
+            isInternalUpdateRef.current = true;
+            onChange(toSend);
+          }
+        }, debounceMs);
+      } else {
+        onChange(nextContent);
+      }
+    },
+    [onChange, blocksToContent, debounceMs]
+  );
 
   if (isImported && parsed) {
     return (

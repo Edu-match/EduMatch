@@ -90,6 +90,7 @@ export default function ArticleCreatePage() {
   const [thumbnailInput, setThumbnailInput] = useState("");
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
   const thumbnailFileInputRef = useRef<HTMLInputElement | null>(null);
+  const contentEditorRef = useRef<{ flush: () => string | null } | null>(null);
   const [content, setContent] = useState<string>(() => {
     if (draft?.content) return draft.content;
     if (draft?.blocks && draft.blocks.length > 0) {
@@ -104,6 +105,8 @@ export default function ArticleCreatePage() {
 
   // Save draft to localStorage
   const saveDraft = useCallback(() => {
+    const flushedContent = contentEditorRef.current?.flush();
+    const contentToSave = flushedContent ?? content;
     setIsSaving(true);
     try {
       const draft: ArticleDraft = {
@@ -113,7 +116,7 @@ export default function ArticleCreatePage() {
         tags,
         publishType,
         thumbnailUrl,
-        content,
+        content: contentToSave,
         savedAt: new Date().toISOString(),
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
@@ -150,11 +153,10 @@ export default function ArticleCreatePage() {
   // Auto-save every 30 seconds
   useEffect(() => {
     const interval = setInterval(() => {
-      // 現在の値をキャプチャして保存を実行
+      const flushedContent = contentEditorRef.current?.flush();
       const currentTitle = title;
       const currentLeadText = leadText;
-      const currentContent = content;
-      
+      const currentContent = flushedContent ?? content;
       if (currentTitle || currentLeadText || currentContent.length > 0) {
         try {
           const draft = {
@@ -180,29 +182,27 @@ export default function ArticleCreatePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handlePublish = async () => {
-    // バリデーション
+    const flushedContent = contentEditorRef.current?.flush();
+    const contentToUse = flushedContent ?? content;
+
     if (!title.trim()) {
       toast.error("タイトルを入力してください");
       return;
     }
-    
     if (titleLength > TITLE_MAX_LENGTH) {
       toast.error(`タイトルは${TITLE_MAX_LENGTH}文字以内で入力してください`);
       return;
     }
-    
-    if (!content.trim()) {
+    if (!contentToUse.trim()) {
       toast.error("本文を入力してください");
       return;
     }
-    
-    if (contentLength > CONTENT_MAX_LENGTH) {
+    if (contentToUse.length > CONTENT_MAX_LENGTH) {
       toast.error(`本文は${CONTENT_MAX_LENGTH.toLocaleString()}文字以内で入力してください`);
       return;
     }
-    
+
     setIsSubmitting(true);
-    
     try {
       const submitType = publishType === "draft" ? "public" : publishType;
       const result = await createPost({
@@ -212,9 +212,9 @@ export default function ArticleCreatePage() {
         tags,
         publishType: submitType,
         thumbnailUrl,
-        ...(isImportedContent(content)
-          ? { content }
-          : { blocks: contentToBlocks(content) as Parameters<typeof createPost>[0]["blocks"] }),
+        ...(isImportedContent(contentToUse)
+          ? { content: contentToUse }
+          : { blocks: contentToBlocks(contentToUse) as Parameters<typeof createPost>[0]["blocks"] }),
       });
       
       if (result.success) {
@@ -247,13 +247,15 @@ export default function ArticleCreatePage() {
   };
   
   const handleSaveDraft = async () => {
+    const flushedContent = contentEditorRef.current?.flush();
+    const contentToUse = flushedContent ?? content;
+
     if (!title.trim()) {
       toast.error("タイトルを入力してください");
       return;
     }
-    
+
     setIsSubmitting(true);
-    
     try {
       const result = await createPost({
         title: title.trim(),
@@ -262,9 +264,9 @@ export default function ArticleCreatePage() {
         tags,
         publishType: "draft",
         thumbnailUrl,
-        ...(isImportedContent(content)
-          ? { content }
-          : { blocks: contentToBlocks(content) as Parameters<typeof createPost>[0]["blocks"] }),
+        ...(isImportedContent(contentToUse)
+          ? { content: contentToUse }
+          : { blocks: contentToBlocks(contentToUse) as Parameters<typeof createPost>[0]["blocks"] }),
       });
       
       if (result.success) {
@@ -745,6 +747,8 @@ export default function ArticleCreatePage() {
                       parseToBlocks={contentToBlocks}
                       blocksToContent={blocksToMarkdown}
                       maxLength={CONTENT_MAX_LENGTH}
+                      debounceMs={150}
+                      editorRef={contentEditorRef}
                     />
                     {!isContentValid && (
                       <p className="text-destructive text-sm mt-2">
