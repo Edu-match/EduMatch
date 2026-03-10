@@ -18,7 +18,7 @@ import {
 import { ContentEditorWithImport } from "@/components/content/content-editor-with-import";
 import type { ContentBlock } from "@/components/editor/block-editor";
 import { renderInlineMarkdown } from "@/lib/inline-markdown";
-import { contentToBlocks } from "@/lib/markdown-to-blocks";
+import { contentToBlocks, blocksToMarkdown } from "@/lib/markdown-to-blocks";
 import { blocksToArticleContent } from "@/lib/article-content";
 import { isImportedContent, parseImportedContent } from "@/lib/imported-content";
 import { ImportedContentRenderer } from "@/components/content/imported-content-renderer";
@@ -742,8 +742,8 @@ export default function ArticleCreatePage() {
                     <ContentEditorWithImport
                       content={content}
                       onChange={setContent}
-                      parseToBlocks={(c) => contentToBlocks(c)}
-                      blocksToContent={(b) => blocksToArticleContent(b, "")}
+                      parseToBlocks={contentToBlocks}
+                      blocksToContent={blocksToMarkdown}
                       maxLength={CONTENT_MAX_LENGTH}
                     />
                     {!isContentValid && (
