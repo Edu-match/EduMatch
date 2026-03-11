@@ -122,6 +122,8 @@ export function BlockEditor({
   } | null>(null);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const textInputRefs = useRef<Record<string, HTMLInputElement | HTMLTextAreaElement | HTMLElement | null>>({});
+  const blocksRef = useRef(blocks);
+  blocksRef.current = blocks;
   
   // 全体の文字数を計算
   const calculateTotalLength = useCallback((blocksToCheck: ContentBlock[]) => {
@@ -371,8 +373,9 @@ export function BlockEditor({
     if (selectedBlock) setActiveBlockId(selectedBlock.id);
   }, [selectionBubble, blocks, onChange]);
 
-  /** 選択範囲の検出とフォーマット状態の更新 */
+  /** 選択範囲の検出とフォーマット状態の更新（rafでスロットル） */
   useEffect(() => {
+    let rafId: number | null = null;
     const getActiveFormats = (value: string, start: number, end: number) => {
       const before = value.slice(0, start);
       const after = value.slice(end);
@@ -410,7 +413,7 @@ export function BlockEditor({
         setActiveFormats(null);
         return;
       }
-      const block = blocks.find((b) => b.id === foundBlockId);
+      const block = blocksRef.current.find((b) => b.id === foundBlockId);
       const textBlocks = ["heading1", "heading2", "heading3", "paragraph", "quote", "markdown", "bulletList", "numberedList"];
       if (!block || !textBlocks.includes(block.type)) {
         setSelectionBubble(null);
@@ -461,9 +464,19 @@ export function BlockEditor({
         setSelectionBubble(null);
       }
     };
-    document.addEventListener("selectionchange", checkSelection);
-    return () => document.removeEventListener("selectionchange", checkSelection);
-  }, [blocks]);
+    const throttledCheck = () => {
+      if (rafId !== null) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        checkSelection();
+      });
+    };
+    document.addEventListener("selectionchange", throttledCheck);
+    return () => {
+      document.removeEventListener("selectionchange", throttledCheck);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
+  }, []);
 
   /** ブロックタイプを変更（変換ロジック付き） */
   const convertBlockType = useCallback(

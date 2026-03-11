@@ -97,6 +97,7 @@ export default function ArticleCreatePage() {
   });
   const isServerDraftSavingRef = useRef(false);
   const hasMountedAutoSaveRef = useRef(false);
+  const latestContentRef = useRef<string | null>(null);
   const [content, setContent] = useState<string>(() => {
     if (draft?.content) return draft.content;
     if (draft?.blocks && draft.blocks.length > 0) {
@@ -135,15 +136,16 @@ export default function ArticleCreatePage() {
   }, [title, leadText, category, tags, publishType, thumbnailUrl, content, draftPostId]);
 
   const buildPostPayload = useCallback(() => {
+    const payloadContent = latestContentRef.current ?? content;
     return {
       title: title.trim(),
       leadText: leadText.trim(),
       category: category || "教育ICT",
       tags,
       thumbnailUrl,
-      ...(isImportedContent(content)
-        ? { content }
-        : { blocks: contentToBlocks(content) as Parameters<typeof createPost>[0]["blocks"] }),
+      ...(isImportedContent(payloadContent)
+        ? { content: payloadContent }
+        : { blocks: contentToBlocks(payloadContent) as Parameters<typeof createPost>[0]["blocks"] }),
     };
   }, [title, leadText, category, tags, thumbnailUrl, content]);
 
@@ -637,6 +639,7 @@ export default function ArticleCreatePage() {
                       parseToBlocks={contentToBlocks}
                       blocksToContent={blocksToMarkdown}
                       maxLength={CONTENT_MAX_LENGTH}
+                      latestContentRef={latestContentRef}
                     />
                     {!isContentValid && (
                       <p className="text-destructive text-sm mt-2">

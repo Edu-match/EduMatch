@@ -46,6 +46,7 @@ export default function ServiceCreatePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isServerDraftSavingRef = useRef(false);
   const hasMountedAutoSaveRef = useRef(false);
+  const latestContentRef = useRef<string | null>(null);
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
   const thumbnailFileInputRef = useRef<HTMLInputElement | null>(null);
   const [userProfile, setUserProfile] = useState<{ name: string; avatar_url: string | null; email: string } | null>(null);
@@ -89,6 +90,7 @@ export default function ServiceCreatePage() {
   }, []);
 
   const buildServicePayload = useCallback(() => {
+    const payloadContent = latestContentRef.current ?? content;
     return {
       title: title.trim(),
       description: description.trim(),
@@ -96,9 +98,9 @@ export default function ServiceCreatePage() {
       priceInfo: priceInfo.trim() || "お問い合わせ",
       youtubeUrl: youtubeUrl.trim() || undefined,
       thumbnailUrl,
-      ...(isImportedContent(content)
-        ? { content }
-        : { blocks: contentToBlocks(content) as unknown as Parameters<typeof createService>[0]["blocks"] }),
+      ...(isImportedContent(payloadContent)
+        ? { content: payloadContent }
+        : { blocks: contentToBlocks(payloadContent) as unknown as Parameters<typeof createService>[0]["blocks"] }),
     };
   }, [title, description, category, priceInfo, youtubeUrl, thumbnailUrl, content]);
 
@@ -455,6 +457,7 @@ export default function ServiceCreatePage() {
               parseToBlocks={contentToBlocks}
               blocksToContent={blocksToMarkdown}
               maxLength={CONTENT_MAX_LENGTH}
+              latestContentRef={latestContentRef}
             />
             {!isContentValid && (
               <p className="text-destructive text-sm mt-2">

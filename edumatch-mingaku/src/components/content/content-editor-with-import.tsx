@@ -14,6 +14,8 @@ import { ArrowLeft, Trash2 } from "lucide-react";
 export type ParseToBlocks = (content: string) => ContentBlock[];
 export type BlocksToContent = (blocks: ContentBlock[]) => string;
 
+const DEBOUNCE_MS = 200;
+
 type Props = {
   content: string;
   onChange: (content: string) => void;
@@ -22,6 +24,8 @@ type Props = {
   maxLength?: number;
   /** ブロック編集に戻ったときの空の初期ブロック（デフォルト: 空配列＝最初からブロックなし） */
   emptyBlocks?: ContentBlock[];
+  /** 保存時などに最新contentを参照するためのref（デバウンス中でも最新を取得可能） */
+  latestContentRef?: React.MutableRefObject<string | null>;
 };
 
 export function ContentEditorWithImport({
@@ -31,6 +35,7 @@ export function ContentEditorWithImport({
   blocksToContent,
   maxLength,
   emptyBlocks = [],
+  latestContentRef,
 }: Props) {
   const isImported = isImportedContent(content);
   const parsed = isImported ? parseImportedContent(content) : null;
@@ -43,6 +48,8 @@ export function ContentEditorWithImport({
     return parsed.length > 0 ? parsed : [...emptyBlocks];
   });
   const isInternalUpdateRef = useRef(false);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingBlocksRef = useRef<ContentBlock[] | null>(null);
 
   // contentが外部から変わったときのみパースして同期（自らのonChangeによる更新は無視）
   useEffect(() => {
@@ -52,9 +59,25 @@ export function ContentEditorWithImport({
       return;
     }
     const parsed = parseToBlocks(content);
-    setBlocks(parsed.length > 0 ? parsed : [...emptyBlocks]);
+    const nextBlocks = parsed.length > 0 ? parsed : [...emptyBlocks];
+    setBlocks(nextBlocks);
+    if (latestContentRef) latestContentRef.current = content;
     // eslint-disable-next-line react-hooks/exhaustive-deps -- content変化時のみ同期したい（parseToBlocksは毎回変わるため除外）
   }, [content, isImported]);
+
+  // アンマウント時に未反映の変更を親に渡す
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
+      if (pendingBlocksRef.current) {
+        onChange(blocksToContent(pendingBlocksRef.current));
+        pendingBlocksRef.current = null;
+      }
+    };
+  }, [onChange, blocksToContent]);
 
   const handleImport = (importedContent: string) => {
     startTransition(() => {
@@ -71,14 +94,26 @@ export function ContentEditorWithImport({
   };
 
   const handleBlocksChange = useCallback(
-    (blocks: ContentBlock[]) => {
+    (newBlocks: ContentBlock[]) => {
       isInternalUpdateRef.current = true;
-      setBlocks(blocks);
-      startTransition(() => {
-        onChange(blocksToContent(blocks));
-      });
+      setBlocks(newBlocks);
+      pendingBlocksRef.current = newBlocks;
+      const latestContent = blocksToContent(newBlocks);
+      if (latestContentRef) latestContentRef.current = latestContent;
+
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      debounceTimerRef.current = setTimeout(() => {
+        debounceTimerRef.current = null;
+        pendingBlocksRef.current = null;
+        isInternalUpdateRef.current = true;
+        startTransition(() => {
+          onChange(latestContent);
+        });
+      }, DEBOUNCE_MS);
     },
-    [onChange, blocksToContent, startTransition]
+    [onChange, blocksToContent, startTransition, latestContentRef]
   );
 
   if (isImported && parsed) {
