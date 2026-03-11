@@ -42,11 +42,10 @@ import {
   Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { createPost, savePostDraft, updatePost, uploadImage } from "@/app/_actions";
+import { createPost, uploadImage } from "@/app/_actions";
 import { SHARED_CATEGORIES } from "@/lib/categories";
 
 const STORAGE_KEY = "edumatch-article-draft";
-const DRAFT_POST_ID_KEY = "edumatch-article-draft-post-id";
 
 interface ArticleDraft {
   title: string;
@@ -58,7 +57,6 @@ interface ArticleDraft {
   content: string;
   /** @deprecated 後方互換用 */
   blocks?: ContentBlock[];
-  draftPostId?: string;
   savedAt: string;
 }
 
@@ -90,14 +88,6 @@ export default function ArticleCreatePage() {
   const [thumbnailInput, setThumbnailInput] = useState("");
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
   const thumbnailFileInputRef = useRef<HTMLInputElement | null>(null);
-  const [draftPostId, setDraftPostId] = useState<string | null>(() => {
-    if (draft?.draftPostId) return draft.draftPostId;
-    if (typeof window === "undefined") return null;
-    return localStorage.getItem(DRAFT_POST_ID_KEY);
-  });
-  const isServerDraftSavingRef = useRef(false);
-  const hasMountedAutoSaveRef = useRef(false);
-  const latestContentRef = useRef<string | null>(null);
   const [content, setContent] = useState<string>(() => {
     if (draft?.content) return draft.content;
     if (draft?.blocks && draft.blocks.length > 0) {
@@ -122,7 +112,6 @@ export default function ArticleCreatePage() {
         publishType,
         thumbnailUrl,
         content,
-        draftPostId: draftPostId || undefined,
         savedAt: new Date().toISOString(),
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
@@ -133,59 +122,7 @@ export default function ArticleCreatePage() {
       console.error("Failed to save draft:", e);
     }
     setIsSaving(false);
-  }, [title, leadText, category, tags, publishType, thumbnailUrl, content, draftPostId]);
-
-  const buildPostPayload = useCallback(() => {
-    const payloadContent = latestContentRef.current ?? content;
-    return {
-      title: title.trim(),
-      leadText: leadText.trim(),
-      category: category || "教育ICT",
-      tags,
-      thumbnailUrl,
-      ...(isImportedContent(payloadContent)
-        ? { content: payloadContent }
-        : { blocks: contentToBlocks(payloadContent) as Parameters<typeof createPost>[0]["blocks"] }),
-    };
-  }, [title, leadText, category, tags, thumbnailUrl, content]);
-
-  const persistDraftToServer = useCallback(
-    async (showToast: boolean) => {
-      if (isServerDraftSavingRef.current) return null;
-      if (!title.trim() && !leadText.trim() && !content.trim()) return null;
-      isServerDraftSavingRef.current = true;
-      try {
-        const payload = buildPostPayload();
-        const result = await savePostDraft({
-          ...payload,
-          postId: draftPostId ?? undefined,
-        });
-        if (!result.success || !result.postId) {
-          if (showToast) {
-            toast.error("下書きの保存に失敗しました", {
-              description: result.error || "もう一度お試しください",
-            });
-          }
-          return null;
-        }
-
-        setDraftPostId(result.postId);
-        if (typeof window !== "undefined") {
-          localStorage.setItem(DRAFT_POST_ID_KEY, result.postId);
-        }
-        setLastSaved(new Date());
-        if (showToast) toast.success("下書きを保存しました");
-        return result.postId;
-      } catch (error) {
-        console.error("Persist draft error:", error);
-        if (showToast) toast.error("下書きの保存に失敗しました");
-        return null;
-      } finally {
-        isServerDraftSavingRef.current = false;
-      }
-    },
-    [buildPostPayload, draftPostId, title, leadText, content]
-  );
+  }, [title, leadText, category, tags, publishType, thumbnailUrl, content]);
 
   // ユーザープロフィールを取得
   useEffect(() => {
@@ -208,47 +145,32 @@ export default function ArticleCreatePage() {
     fetchProfile();
   }, []);
 
-  const persistDraftToServerRef = useRef(persistDraftToServer);
-  persistDraftToServerRef.current = persistDraftToServer;
-
-  // 入力変更時に下書きを自動保存（ローカル + サーバー）
+  // Auto-save every 30 seconds
   useEffect(() => {
-    if (!hasMountedAutoSaveRef.current) {
-      hasMountedAutoSaveRef.current = true;
-      return;
-    }
-
-    const timer = setTimeout(() => {
+    const interval = setInterval(() => {
       const currentTitle = title;
       const currentLeadText = leadText;
-      const currentContent = latestContentRef.current ?? content;
-      if (!currentTitle && !currentLeadText && currentContent.length === 0) return;
-
-      try {
-        const draft = {
-          title: currentTitle,
-          leadText: currentLeadText,
-          category,
-          tags,
-          publishType,
-          thumbnailUrl,
-          content: currentContent,
-          draftPostId: draftPostId || undefined,
-          savedAt: new Date().toISOString(),
-        };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
-        setLastSaved(new Date());
-      } catch (e) {
-        console.error("Auto-save failed:", e);
+      const currentContent = content;
+      if (currentTitle || currentLeadText || currentContent.length > 0) {
+        try {
+          const draft = {
+            title: currentTitle,
+            leadText: currentLeadText,
+            category,
+            tags,
+            publishType,
+            thumbnailUrl,
+            content: currentContent,
+            savedAt: new Date().toISOString(),
+          };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
+        } catch (e) {
+          console.error("Auto-save failed:", e);
+        }
       }
-
-      void persistDraftToServerRef.current(false);
-    }, 1200);
-
-    return () => clearTimeout(timer);
-    // persistDraftToServer を依存から外し ref 経由にすることでループを防止
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [title, leadText, category, tags, publishType, thumbnailUrl, content, draftPostId]);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [title, leadText, category, tags, publishType, thumbnailUrl, content]);
 
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -274,16 +196,21 @@ export default function ArticleCreatePage() {
     setIsSubmitting(true);
     try {
       const submitType = publishType === "draft" ? "public" : publishType;
-      const payload = buildPostPayload();
-      const result = draftPostId
-        ? await updatePost(draftPostId, { ...payload, publishType: submitType })
-        : await createPost({ ...payload, publishType: submitType });
+      const result = await createPost({
+        title: title.trim(),
+        leadText: leadText.trim(),
+        category: category || "教育ICT",
+        tags,
+        publishType: submitType,
+        thumbnailUrl,
+        ...(isImportedContent(content)
+          ? { content }
+          : { blocks: contentToBlocks(content) as Parameters<typeof createPost>[0]["blocks"] }),
+      });
       
       if (result.success) {
         // 下書きを削除
         localStorage.removeItem(STORAGE_KEY);
-        localStorage.removeItem(DRAFT_POST_ID_KEY);
-        setDraftPostId(null);
         
         toast.success("投稿申請を受け付けました", {
           description: "管理者の承認後に公開されます。",
@@ -318,10 +245,26 @@ export default function ArticleCreatePage() {
 
     setIsSubmitting(true);
     try {
-      const savedId = await persistDraftToServer(true);
-      if (savedId) {
+      const result = await createPost({
+        title: title.trim(),
+        leadText: leadText.trim(),
+        category: category || "教育ICT",
+        tags,
+        publishType: "draft",
+        thumbnailUrl,
+        ...(isImportedContent(content)
+          ? { content }
+          : { blocks: contentToBlocks(content) as Parameters<typeof createPost>[0]["blocks"] }),
+      });
+
+      if (result.success) {
         localStorage.removeItem(STORAGE_KEY);
-        router.push("/provider-dashboard");
+        toast.success("下書きを保存しました");
+        router.push("/dashboard");
+      } else {
+        toast.error("保存に失敗しました", {
+          description: result.error || "もう一度お試しください",
+        });
       }
     } catch (error) {
       console.error("Save draft error:", error);
@@ -334,7 +277,6 @@ export default function ArticleCreatePage() {
   const clearDraft = () => {
     if (confirm("下書きを削除してもよろしいですか？")) {
       localStorage.removeItem(STORAGE_KEY);
-      localStorage.removeItem(DRAFT_POST_ID_KEY);
       setTitle("");
       setLeadText("");
       setCategory("");
@@ -343,7 +285,6 @@ export default function ArticleCreatePage() {
       setPublishType("draft");
       setThumbnailUrl("");
       setContent("");
-      setDraftPostId(null);
       setLastSaved(null);
     }
   };
@@ -644,7 +585,6 @@ export default function ArticleCreatePage() {
                       parseToBlocks={contentToBlocks}
                       blocksToContent={blocksToMarkdown}
                       maxLength={CONTENT_MAX_LENGTH}
-                      latestContentRef={latestContentRef}
                     />
                     {!isContentValid && (
                       <p className="text-destructive text-sm mt-2">
