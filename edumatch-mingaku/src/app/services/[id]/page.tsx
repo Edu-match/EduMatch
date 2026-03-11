@@ -118,7 +118,8 @@ export default async function ServiceDetailPage({
                 {service.description}
               </p>
 
-              {/* CTAボタン（モバイル） */}
+              {/* CTAボタン（モバイル）無料ベンダーではブロックごと非表示 */}
+              {showContactBlock && (
               <div className="mt-6 lg:hidden space-y-3">
                 {showRequestInfo && (
                   <div className="flex flex-wrap gap-2">
@@ -142,6 +143,7 @@ export default async function ServiceDetailPage({
                   </span>
                 </div>
               </div>
+              )}
             </div>
 
             {/* サムネイル画像（デスクトップ） */}
@@ -306,7 +308,8 @@ export default async function ServiceDetailPage({
           {/* サイドバー（スティッキー） */}
           <div className="space-y-6 hidden lg:block">
             <div className="sticky top-24 space-y-6">
-              {/* CTA Card */}
+              {/* CTA Card（無料ベンダーでは資料請求・お問い合わせブロックごと非表示） */}
+              {showContactBlock && (
               <Card className="border-2 border-primary/20 shadow-2xl overflow-hidden">
                 <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-background p-6">
                   <div className="text-center mb-6">
@@ -343,14 +346,12 @@ export default async function ServiceDetailPage({
                       size="lg"
                       className="w-full"
                     />
-                    {showContactBlock && (
-                      <Button asChild variant="outline" className="w-full" size="lg">
-                        <Link href="/contact">
-                          <Mail className="h-5 w-5 mr-2" />
-                          お問い合わせ
-                        </Link>
-                      </Button>
-                    )}
+                    <Button asChild variant="outline" className="w-full" size="lg">
+                      <Link href="/contact">
+                        <Mail className="h-5 w-5 mr-2" />
+                        お問い合わせ
+                      </Link>
+                    </Button>
                   </div>
 
                   {/* 特典リスト */}
@@ -376,6 +377,7 @@ export default async function ServiceDetailPage({
                   </div>
                 </div>
               </Card>
+              )}
 
               {/* カテゴリカード */}
               <Card className="border-2 shadow-lg">
@@ -391,8 +393,9 @@ export default async function ServiceDetailPage({
 
             </div>
 
-            {/* モバイル用CTAセクション */}
+            {/* モバイル用CTAセクション（無料ベンダーではブロックごと非表示） */}
             <div className="lg:hidden">
+              {showContactBlock && (
               <Card className="border-2 border-primary/20 shadow-2xl sticky bottom-4">
                 <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-background p-6">
                   <div className="text-center mb-4">
@@ -421,17 +424,16 @@ export default async function ServiceDetailPage({
                         />
                       </>
                     )}
-                    {showContactBlock && (
-                      <Button asChild variant="outline" className="w-full">
-                        <Link href="/contact">
-                          <Mail className="h-5 w-5 mr-2" />
-                          お問い合わせ
-                        </Link>
-                      </Button>
-                    )}
+                    <Button asChild variant="outline" className="w-full">
+                      <Link href="/contact">
+                        <Mail className="h-5 w-5 mr-2" />
+                        お問い合わせ
+                      </Link>
+                    </Button>
                   </div>
                 </div>
               </Card>
+              )}
             </div>
           </div>
         </div>
