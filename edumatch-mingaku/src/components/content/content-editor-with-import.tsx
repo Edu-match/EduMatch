@@ -65,11 +65,19 @@ export function ContentEditorWithImport({
     onChange(blocksToContent(initialBlocks));
   };
 
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const handleBlocksChange = useCallback(
-    (blocks: ContentBlock[]) => {
+    (newBlocks: ContentBlock[]) => {
       isInternalUpdateRef.current = true;
-      setBlocks(blocks);
-      onChange(blocksToContent(blocks));
+      setBlocks(newBlocks);
+
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        debounceRef.current = null;
+        isInternalUpdateRef.current = true;
+        onChange(blocksToContent(newBlocks));
+      }, 300);
     },
     [onChange, blocksToContent]
   );
