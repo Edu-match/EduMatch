@@ -1128,6 +1128,9 @@ export function BlockEditor({
                     <DropdownMenuItem onClick={() => convertBlockType(block.id, "numberedList")}>
                       <ListOrdered className="h-4 w-4 mr-2" />番号付きリスト
                     </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => convertBlockType(block.id, "markdown")}>
+                      <ClipboardPaste className="h-4 w-4 mr-2" />Markdown
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => convertBlockType(block.id, "divider")}>
                       <Minus className="h-4 w-4 mr-2" />区切り線
                     </DropdownMenuItem>
@@ -1292,6 +1295,11 @@ export function BlockEditor({
                 icon={<ListOrdered className="h-5 w-5" />}
                 label="番号リスト"
                 onClick={() => addBlock("numberedList", menuPosition)}
+              />
+              <BlockTypeButton
+                icon={<ClipboardPaste className="h-5 w-5" />}
+                label="Markdown"
+                onClick={() => addBlock("markdown", menuPosition)}
               />
               <BlockTypeButton
                 icon={<Minus className="h-5 w-5" />}

@@ -55,6 +55,10 @@ export async function ProviderDashboard({ displayName }: { displayName: string }
     getProviderStats(),
   ]);
 
+  const draftArticles = articles.filter((a) => a.status === "DRAFT");
+  const draftServices = services.filter((s) => s.status === "DRAFT");
+  const hasDrafts = draftArticles.length > 0 || draftServices.length > 0;
+
   return (
     <div className="container py-8">
       <div className="mb-8">
@@ -123,16 +127,81 @@ export async function ProviderDashboard({ displayName }: { displayName: string }
         </Card>
       </div>
 
+      {/* 下書き一覧（下書きがある場合のみ表示） */}
+      {hasDrafts && (
+        <Card className="mb-8 border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
+              <FileText className="h-5 w-5" />
+              下書き（{draftArticles.length + draftServices.length}件）
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              編集中の記事・サービスを続きから編集できます
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {draftArticles.map((article) => (
+                <div
+                  key={article.id}
+                  className="flex items-center justify-between p-3 border rounded-lg bg-background"
+                >
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium truncate">{article.title || "（無題）"}</h3>
+                    <p className="text-xs text-muted-foreground">{formatDate(article.updated_at)}</p>
+                  </div>
+                  <div className="flex items-center gap-2 ml-4">
+                    <Button variant="ghost" size="sm" asChild>
+                      <Link href={`/articles/${article.id}`}>
+                        <Eye className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                    <Button variant="ghost" size="sm" asChild>
+                      <Link href={`/articles/${article.id}/edit`}>
+                        <Edit className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              {draftServices.map((service) => (
+                <div
+                  key={service.id}
+                  className="flex items-center justify-between p-3 border rounded-lg bg-background"
+                >
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium truncate">{service.title || "（無題）"}</h3>
+                    <p className="text-xs text-muted-foreground">{formatDate(service.updated_at)}</p>
+                  </div>
+                  <div className="flex items-center gap-2 ml-4">
+                    <Button variant="ghost" size="sm" asChild>
+                      <Link href={`/services/${service.id}`}>
+                        <Eye className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                    <Button variant="ghost" size="sm" asChild>
+                      <Link href={`/services/${service.id}/edit`}>
+                        <Edit className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* クイックアクション */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
         <Button asChild size="lg" className="h-20">
-          <Link href="/articles/new">
+          <Link href="/articles/create">
             <Plus className="mr-2 h-5 w-5" />
             新規記事を投稿
           </Link>
         </Button>
         <Button asChild size="lg" variant="outline" className="h-20">
-          <Link href="/services/new">
+          <Link href="/services/create">
             <Plus className="mr-2 h-5 w-5" />
             新規サービスを投稿
           </Link>
@@ -147,7 +216,7 @@ export async function ProviderDashboard({ displayName }: { displayName: string }
             投稿記事
           </CardTitle>
           <Button variant="ghost" size="sm" asChild>
-            <Link href="/articles/new">
+            <Link href="/articles/create">
               <Plus className="h-4 w-4 mr-1" />
               新規作成
             </Link>
@@ -159,7 +228,7 @@ export async function ProviderDashboard({ displayName }: { displayName: string }
               <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
               <p className="mb-4">まだ記事を投稿していません</p>
               <Button asChild>
-                <Link href="/articles/new">最初の記事を投稿する</Link>
+                <Link href="/articles/create">最初の記事を投稿する</Link>
               </Button>
             </div>
           ) : (
@@ -210,7 +279,7 @@ export async function ProviderDashboard({ displayName }: { displayName: string }
             投稿サービス
           </CardTitle>
           <Button variant="ghost" size="sm" asChild>
-            <Link href="/services/new">
+            <Link href="/services/create">
               <Plus className="h-4 w-4 mr-1" />
               新規作成
             </Link>
@@ -222,7 +291,7 @@ export async function ProviderDashboard({ displayName }: { displayName: string }
               <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
               <p className="mb-4">まだサービスを投稿していません</p>
               <Button asChild>
-                <Link href="/services/new">最初のサービスを投稿する</Link>
+                <Link href="/services/create">最初のサービスを投稿する</Link>
               </Button>
             </div>
           ) : (
