@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,9 +21,11 @@ import { BlocksContentPreview } from "@/components/content/blocks-content-previe
 import { contentToBlocks } from "@/lib/markdown-to-blocks";
 import { blocksToMarkdown } from "@/lib/markdown-to-blocks";
 import { isImportedContent } from "@/lib/imported-content";
-import { createService, uploadImage } from "@/app/_actions";
+import { createService, saveServiceDraft, updateService, uploadImage } from "@/app/_actions";
 import { SERVICE_CATEGORIES } from "@/lib/categories";
 import { Image as ImageIcon, Loader2, Save, Send, Building2, School, Eye, FileText } from "lucide-react";
+
+const DRAFT_SERVICE_ID_KEY = "edumatch-service-draft-id";
 
 export default function ServiceCreatePage() {
   const router = useRouter();
@@ -36,8 +38,13 @@ export default function ServiceCreatePage() {
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [thumbnailUrl, setThumbnailUrl] = useState("");
   const [content, setContent] = useState("");
+  const [draftServiceId, setDraftServiceId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem(DRAFT_SERVICE_ID_KEY);
+  });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isServerDraftSavingRef = useRef(false);
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
   const thumbnailFileInputRef = useRef<HTMLInputElement | null>(null);
   const [userProfile, setUserProfile] = useState<{ name: string; avatar_url: string | null; email: string } | null>(null);
@@ -80,6 +87,64 @@ export default function ServiceCreatePage() {
     fetchProfile();
   }, []);
 
+  const buildServicePayload = useCallback(() => {
+    return {
+      title: title.trim(),
+      description: description.trim(),
+      category,
+      priceInfo: priceInfo.trim() || "お問い合わせ",
+      youtubeUrl: youtubeUrl.trim() || undefined,
+      thumbnailUrl,
+      ...(isImportedContent(content)
+        ? { content }
+        : { blocks: contentToBlocks(content) as unknown as Parameters<typeof createService>[0]["blocks"] }),
+    };
+  }, [title, description, category, priceInfo, youtubeUrl, thumbnailUrl, content]);
+
+  const persistDraftToServer = useCallback(
+    async (showToast: boolean) => {
+      if (isServerDraftSavingRef.current) return null;
+      if (!title.trim() && !description.trim() && !content.trim()) return null;
+      isServerDraftSavingRef.current = true;
+      try {
+        const payload = buildServicePayload();
+        const result = await saveServiceDraft({
+          ...payload,
+          serviceId: draftServiceId ?? undefined,
+        });
+        if (!result.success || !result.serviceId) {
+          if (showToast) {
+            toast.error("下書きの保存に失敗しました", {
+              description: result.error || "もう一度お試しください",
+            });
+          }
+          return null;
+        }
+        setDraftServiceId(result.serviceId);
+        if (typeof window !== "undefined") {
+          localStorage.setItem(DRAFT_SERVICE_ID_KEY, result.serviceId);
+        }
+        if (showToast) toast.success("下書きを保存しました");
+        return result.serviceId;
+      } catch (e) {
+        console.error("Persist service draft error:", e);
+        if (showToast) toast.error("下書きの保存に失敗しました");
+        return null;
+      } finally {
+        isServerDraftSavingRef.current = false;
+      }
+    },
+    [buildServicePayload, draftServiceId, title, description, content]
+  );
+
+  // 30秒ごとに下書きを実DBへ自動保存
+  useEffect(() => {
+    const interval = setInterval(() => {
+      void persistDraftToServer(false);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [persistDraftToServer]);
+
   async function submit(publishType: "draft" | "submit") {
     if (!title.trim()) {
       toast.error("サービス名を入力してください");
@@ -104,25 +169,29 @@ export default function ServiceCreatePage() {
 
     setIsSubmitting(true);
     try {
-      const result = await createService({
-        title: title.trim(),
-        description: description.trim(),
-        category,
-        priceInfo: priceInfo.trim() || "お問い合わせ",
-        youtubeUrl: youtubeUrl.trim() || undefined,
-        thumbnailUrl,
-        ...(isImportedContent(content)
-          ? { content }
-          : { blocks: contentToBlocks(content) as unknown as Parameters<typeof createService>[0]["blocks"] }),
-        publishType,
-      });
+      const payload = buildServicePayload();
+      const result = draftServiceId
+        ? await updateService(draftServiceId, { ...payload, publishType })
+        : await createService({ ...payload, publishType });
 
       if (result.success && result.serviceId) {
         toast.success(
           publishType === "submit" ? "投稿申請を受け付けました" : "下書きを保存しました",
           { description: publishType === "submit" ? "管理者の承認後に公開されます。" : undefined }
         );
-        router.push(`/services/${result.serviceId}`);
+        if (publishType === "draft") {
+          if (typeof window !== "undefined") {
+            localStorage.setItem(DRAFT_SERVICE_ID_KEY, result.serviceId);
+          }
+          setDraftServiceId(result.serviceId);
+          router.push("/provider-dashboard");
+        } else {
+          if (typeof window !== "undefined") {
+            localStorage.removeItem(DRAFT_SERVICE_ID_KEY);
+          }
+          setDraftServiceId(null);
+          router.push(`/services/${result.serviceId}`);
+        }
       } else {
         toast.error(publishType === "submit" ? "申請に失敗しました" : "保存に失敗しました", {
           description: result.error || "もう一度お試しください",

@@ -568,6 +568,103 @@ export async function createService(input: CreateServiceInput): Promise<CreateSe
 }
 
 /**
+ * 提供者: サービスを更新（下書き or 申請）
+ */
+export async function updateService(
+  id: string,
+  input: CreateServiceInput
+): Promise<CreateServiceResult> {
+  try {
+    const { user, error } = await requireAuthedUser();
+    if (!user) return { success: false, error };
+
+    const existingService = await prisma.service.findUnique({
+      where: { id },
+      select: { provider_id: true },
+    });
+    if (!existingService) {
+      return { success: false, error: "サービスが見つかりません" };
+    }
+
+    const profile = await prisma.profile.findUnique({
+      where: { id: user.id },
+      select: { role: true },
+    });
+    const isAdmin = profile?.role === ("ADMIN" as Role);
+    if (existingService.provider_id !== user.id && !isAdmin) {
+      return { success: false, error: "このサービスを編集する権限がありません" };
+    }
+
+    const status = input.publishType === "draft" ? "DRAFT" : "PENDING";
+    const content =
+      input.content != null && isImportedContent(input.content)
+        ? input.content
+        : blocksToContent(input.blocks ?? []);
+    const images = input.blocks != null ? extractImagesFromBlocks(input.blocks) : [];
+
+    await prisma.service.update({
+      where: { id },
+      data: {
+        title: input.title,
+        description: input.description,
+        category: input.category,
+        content,
+        price_info: input.priceInfo,
+        thumbnail_url: input.thumbnailUrl || null,
+        youtube_url: input.youtubeUrl || null,
+        images,
+        is_published: false,
+        status,
+        submitted_at: status === "PENDING" ? new Date() : null,
+        approved_at: null,
+        rejected_at: null,
+        rejection_reason: null,
+      },
+    });
+
+    return { success: true, serviceId: id };
+  } catch (e) {
+    console.error("Error updating service:", e);
+    if (isDbUnavailable(e)) {
+      return { success: false, error: "データベースに接続できません。しばらく待ってから再度お試しください。" };
+    }
+    return { success: false, error: "サービスの更新に失敗しました" };
+  }
+}
+
+/**
+ * サービス下書きを保存（既存があれば更新、なければ新規作成）
+ */
+export async function saveServiceDraft(
+  input: Omit<CreateServiceInput, "publishType"> & { serviceId?: string }
+): Promise<CreateServiceResult> {
+  if (input.serviceId) {
+    return updateService(input.serviceId, {
+      title: input.title,
+      description: input.description,
+      category: input.category,
+      priceInfo: input.priceInfo,
+      youtubeUrl: input.youtubeUrl,
+      thumbnailUrl: input.thumbnailUrl,
+      blocks: input.blocks,
+      content: input.content,
+      publishType: "draft",
+    });
+  }
+  return createService({
+    title: input.title,
+    description: input.description,
+    category: input.category,
+    priceInfo: input.priceInfo,
+    youtubeUrl: input.youtubeUrl,
+    thumbnailUrl: input.thumbnailUrl,
+    blocks: input.blocks,
+    content: input.content,
+    publishType: "draft",
+  });
+}
+
+/**
  * 管理者: 承認待ちサービス一覧
  */
 export async function getPendingServices(): Promise<ServiceWithProvider[]> {

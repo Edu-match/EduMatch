@@ -265,6 +265,36 @@ export async function createPost(input: CreatePostInput): Promise<CreatePostResu
 }
 
 /**
+ * 記事下書きを保存（既存があれば更新、なければ新規作成）
+ */
+export async function savePostDraft(
+  input: Omit<CreatePostInput, "publishType"> & { postId?: string }
+): Promise<CreatePostResult> {
+  if (input.postId) {
+    return updatePost(input.postId, {
+      title: input.title,
+      leadText: input.leadText,
+      category: input.category,
+      tags: input.tags,
+      thumbnailUrl: input.thumbnailUrl,
+      content: input.content,
+      blocks: input.blocks,
+      publishType: "draft",
+    });
+  }
+  return createPost({
+    title: input.title,
+    leadText: input.leadText,
+    category: input.category,
+    tags: input.tags,
+    thumbnailUrl: input.thumbnailUrl,
+    content: input.content,
+    blocks: input.blocks,
+    publishType: "draft",
+  });
+}
+
+/**
  * 記事を更新する
  */
 export async function updatePost(
