@@ -2,6 +2,7 @@
 
 import React from "react";
 import ReactMarkdown from "react-markdown";
+import remarkBreaks from "remark-breaks";
 import { contentToBlocks } from "@/lib/markdown-to-blocks";
 import { renderInlineMarkdown } from "@/lib/inline-markdown";
 import {
@@ -160,7 +161,9 @@ export function BlocksContentPreview({ content }: { content: string }) {
           case "markdown":
             return (
               <div key={block.id} className="prose prose-lg max-w-none my-4">
-                <ReactMarkdown>{block.content}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkBreaks]}>
+                  {block.content ?? ""}
+                </ReactMarkdown>
               </div>
             );
           default:

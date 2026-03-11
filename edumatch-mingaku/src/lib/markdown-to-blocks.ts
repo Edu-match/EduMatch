@@ -17,7 +17,7 @@ export function contentToBlocks(content: string): ContentBlock[] {
       {
         id: generateId(),
         type: "markdown",
-        content: trimmed.slice(RAW_MARKDOWN_PREFIX.length).trimEnd(),
+        content: trimmed.slice(RAW_MARKDOWN_PREFIX.length),
       },
     ];
   }

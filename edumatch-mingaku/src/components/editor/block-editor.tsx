@@ -34,6 +34,7 @@ import {
   SplitSquareVertical,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import remarkBreaks from "remark-breaks";
 import { contentToBlocks } from "@/lib/markdown-to-blocks";
 import { RichTextEditable, htmlToMarkdown } from "@/components/editor/rich-text-editable";
 import {
@@ -958,7 +959,7 @@ export function BlockEditor({
             />
             {block.content && (
               <div className="prose prose-sm max-w-none border-t pt-3 mt-3">
-                <ReactMarkdown>{block.content}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkBreaks]}>{block.content}</ReactMarkdown>
               </div>
             )}
           </div>

@@ -31,7 +31,6 @@ import {
   Save,
   School,
   Send,
-  Tag,
 } from "lucide-react";
 
 export default function ArticleCreatePage() {
@@ -389,11 +388,6 @@ export default function ArticleCreatePage() {
                     />
                   </div>
                 </div>
-
-                <p className="text-xs text-muted-foreground flex items-center gap-2">
-                  <Tag className="h-3.5 w-3.5" />
-                  例: EdTech, GIGAスクール, タブレット
-                </p>
               </CardContent>
             </Card>
 
