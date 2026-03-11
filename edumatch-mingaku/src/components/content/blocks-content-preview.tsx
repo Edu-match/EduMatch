@@ -158,14 +158,23 @@ export function BlocksContentPreview({ content }: { content: string }) {
                 ))}
               </ol>
             );
-          case "markdown":
+          case "markdown": {
+            const text = block.content ?? "";
+            const lines = text.split(/\n/);
             return (
-              <div key={block.id} className="prose prose-lg max-w-none my-4">
-                <ReactMarkdown remarkPlugins={[remarkBreaks]}>
-                  {block.content ?? ""}
-                </ReactMarkdown>
+              <div key={block.id} className="prose prose-lg max-w-none my-4 space-y-0">
+                {lines.map((line, i) =>
+                  line === "" ? (
+                    <div key={i} className="min-h-[1em]" aria-hidden />
+                  ) : (
+                    <div key={i} className="py-0.5">
+                      <ReactMarkdown remarkPlugins={[remarkBreaks]}>{line}</ReactMarkdown>
+                    </div>
+                  )
+                )}
               </div>
             );
+          }
           default:
             return null;
         }

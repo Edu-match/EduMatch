@@ -946,7 +946,9 @@ export function BlockEditor({
             </div>
           </div>
         );
-      case "markdown":
+      case "markdown": {
+        const text = block.content ?? "";
+        const lines = text.split(/\n/);
         return (
           <div className="space-y-2">
             <Textarea
@@ -957,13 +959,22 @@ export function BlockEditor({
               className="min-h-[120px] font-mono text-sm resize-none"
               onClick={(e) => e.stopPropagation()}
             />
-            {block.content && (
-              <div className="prose prose-sm max-w-none border-t pt-3 mt-3">
-                <ReactMarkdown remarkPlugins={[remarkBreaks]}>{block.content}</ReactMarkdown>
+            {text.length > 0 && (
+              <div className="prose prose-sm max-w-none border-t pt-3 mt-3 space-y-0">
+                {lines.map((line, i) =>
+                  line === "" ? (
+                    <div key={i} className="min-h-[1em]" aria-hidden />
+                  ) : (
+                    <div key={i} className="py-0.5">
+                      <ReactMarkdown remarkPlugins={[remarkBreaks]}>{line}</ReactMarkdown>
+                    </div>
+                  )
+                )}
               </div>
             )}
           </div>
         );
+      }
       default:
         return null;
     }
