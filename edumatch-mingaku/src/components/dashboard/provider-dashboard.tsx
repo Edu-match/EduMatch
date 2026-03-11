@@ -55,8 +55,9 @@ export async function ProviderDashboard({ displayName }: { displayName: string }
     getProviderStats(),
   ]);
 
-  const draftArticles = articles.filter((a) => a.status === "DRAFT");
-  const draftServices = services.filter((s) => s.status === "DRAFT");
+  // 下書きは「DRAFT かつ 未公開」のみ表示
+  const draftArticles = articles.filter((a) => a.status === "DRAFT" && !a.is_published);
+  const draftServices = services.filter((s) => s.status === "DRAFT" && !s.is_published);
   const hasDrafts = draftArticles.length > 0 || draftServices.length > 0;
 
   return (
