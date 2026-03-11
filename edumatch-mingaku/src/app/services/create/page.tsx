@@ -140,6 +140,9 @@ export default function ServiceCreatePage() {
     [buildServicePayload, draftServiceId, title, description, content]
   );
 
+  const persistDraftToServerRef = useRef(persistDraftToServer);
+  persistDraftToServerRef.current = persistDraftToServer;
+
   // 入力変更時に下書きを自動保存（サーバー）
   useEffect(() => {
     if (!hasMountedAutoSaveRef.current) {
@@ -147,20 +150,12 @@ export default function ServiceCreatePage() {
       return;
     }
     const timer = setTimeout(() => {
-      void persistDraftToServer(false);
+      void persistDraftToServerRef.current(false);
     }, 1200);
     return () => clearTimeout(timer);
-  }, [
-    title,
-    description,
-    category,
-    priceInfo,
-    youtubeUrl,
-    thumbnailUrl,
-    content,
-    draftServiceId,
-    persistDraftToServer,
-  ]);
+    // persistDraftToServer を依存から外し ref 経由にすることでループを防止
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [title, description, category, priceInfo, youtubeUrl, thumbnailUrl, content, draftServiceId]);
 
   async function submit(publishType: "draft" | "submit") {
     if (!title.trim()) {

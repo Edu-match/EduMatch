@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import React, { useState, useCallback, useRef, useEffect, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -124,28 +124,22 @@ export function BlockEditor({
   const textInputRefs = useRef<Record<string, HTMLInputElement | HTMLTextAreaElement | HTMLElement | null>>({});
   const blocksRef = useRef(blocks);
   blocksRef.current = blocks;
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  const maxLengthRef = useRef(maxLength);
+  maxLengthRef.current = maxLength;
   
-  // 全体の文字数を計算
   const calculateTotalLength = useCallback((blocksToCheck: ContentBlock[]) => {
     return blocksToCheck.reduce((acc, block) => {
-      if (block.content) {
-        return acc + block.content.length;
-      }
-      if (block.items) {
-        return acc + block.items.join("").length;
-      }
+      if (block.content) return acc + block.content.length;
+      if (block.items) return acc + block.items.join("").length;
       return acc;
     }, 0);
   }, []);
   
-  // 個別ブロックの文字数を計算
   const getBlockLength = useCallback((block: ContentBlock) => {
-    if (block.content) {
-      return block.content.length;
-    }
-    if (block.items) {
-      return block.items.join("").length;
-    }
+    if (block.content) return block.content.length;
+    if (block.items) return block.items.join("").length;
     return 0;
   }, []);
 
@@ -158,85 +152,83 @@ export function BlockEditor({
         align: "left",
         items: type === "bulletList" || type === "numberedList" ? [""] : undefined,
       };
-      const newBlocks = [...blocks];
+      const cur = blocksRef.current;
+      const newBlocks = [...cur];
       newBlocks.splice(index, 0, newBlock);
-      onChange(newBlocks);
+      onChangeRef.current(newBlocks);
       setShowBlockMenu(false);
       setMenuPosition(null);
       setActiveBlockId(newBlock.id);
     },
-    [blocks, onChange]
+    []
   );
 
   const updateBlock = useCallback(
     (id: string, updates: Partial<ContentBlock>) => {
-      const updatedBlocks = blocks.map((b) => (b.id === id ? { ...b, ...updates } : b));
+      const cur = blocksRef.current;
+      const updatedBlocks = cur.map((b) => (b.id === id ? { ...b, ...updates } : b));
       
-      // 文字数制限がある場合、全体の文字数をチェック
-      if (maxLength !== undefined) {
+      const ml = maxLengthRef.current;
+      if (ml !== undefined) {
         const currentLength = calculateTotalLength(updatedBlocks);
-        // 制限を超える場合は、変更を適用しない（ただし、削除や短縮の場合は許可）
-        if (currentLength > maxLength) {
-          const oldLength = calculateTotalLength(blocks);
-          // 文字数が増加している場合のみ制限を適用
-          if (currentLength > oldLength) {
-            return; // 変更を適用しない
-          }
+        if (currentLength > ml) {
+          const oldLength = calculateTotalLength(cur);
+          if (currentLength > oldLength) return;
         }
       }
       
-      onChange(updatedBlocks);
+      onChangeRef.current(updatedBlocks);
     },
-    [blocks, onChange, maxLength, calculateTotalLength]
+    [calculateTotalLength]
   );
 
   const deleteBlock = useCallback(
     (id: string) => {
-      onChange(blocks.filter((b) => b.id !== id));
+      onChangeRef.current(blocksRef.current.filter((b) => b.id !== id));
       setActiveBlockId(null);
     },
-    [blocks, onChange]
+    []
   );
 
   const moveBlock = useCallback(
     (id: string, direction: "up" | "down") => {
-      const index = blocks.findIndex((b) => b.id === id);
+      const cur = blocksRef.current;
+      const index = cur.findIndex((b) => b.id === id);
       if (
         (direction === "up" && index === 0) ||
-        (direction === "down" && index === blocks.length - 1)
+        (direction === "down" && index === cur.length - 1)
       ) {
         return;
       }
-      const newBlocks = [...blocks];
+      const newBlocks = [...cur];
       const targetIndex = direction === "up" ? index - 1 : index + 1;
       [newBlocks[index], newBlocks[targetIndex]] = [
         newBlocks[targetIndex],
         newBlocks[index],
       ];
-      onChange(newBlocks);
+      onChangeRef.current(newBlocks);
     },
-    [blocks, onChange]
+    []
   );
 
-  /** 指定ブロックを複数ブロックに置き換え（Markdown自動変換用） */
   const replaceBlockWithBlocks = useCallback(
     (blockId: string, newBlocks: ContentBlock[]) => {
-      const index = blocks.findIndex((b) => b.id === blockId);
+      const cur = blocksRef.current;
+      const index = cur.findIndex((b) => b.id === blockId);
       if (index < 0) return;
-      const newList = [...blocks];
+      const newList = [...cur];
       newList.splice(index, 1, ...newBlocks);
-      onChange(newList);
+      onChangeRef.current(newList);
       if (newBlocks.length > 0) {
         setActiveBlockId(newBlocks[0].id);
       }
     },
-    [blocks, onChange]
+    []
   );
 
-  /** フォーマット適用（選択あり: 選択範囲に適用、選択なし: ブロック全体に適用） */
   const applyFormat = useCallback(
     (blockId: string, wrapper: "**" | "*" | "~~", itemIndex?: number) => {
-      const block = blocks.find((b) => b.id === blockId);
+      const block = blocksRef.current.find((b) => b.id === blockId);
       let refKey = blockId;
       let targetItemIndex: number | undefined = itemIndex;
       if (block?.items && itemIndex === undefined) {
@@ -303,14 +295,13 @@ export function BlockEditor({
         }
       });
     },
-    [blocks, updateBlock]
+    [updateBlock]
   );
 
-  /** 選択したテキストを新しいブロックとして分離 */
   const extractSelectionToBlock = useCallback(() => {
     if (!selectionBubble) return;
     const { blockId, refKey, itemIndex } = selectionBubble;
-    const block = blocks.find((b) => b.id === blockId);
+    const block = blocksRef.current.find((b) => b.id === blockId);
     if (!block) return;
     const el = textInputRefs.current[refKey] ?? textInputRefs.current[blockId];
     if (!el) return;
@@ -346,7 +337,8 @@ export function BlockEditor({
       selected = val.slice(start, end);
       after = val.slice(end).trimStart();
     } else return;
-    const index = blocks.findIndex((b) => b.id === blockId);
+    const cur = blocksRef.current;
+    const index = cur.findIndex((b) => b.id === blockId);
     if (index < 0) return;
     const newBlocks: ContentBlock[] = [];
     if (block.items && itemIndex !== undefined) {
@@ -365,13 +357,13 @@ export function BlockEditor({
       newBlocks.push({ id: generateId(), type: "paragraph", content: selected });
       if (after) newBlocks.push({ ...block, id: generateId(), content: after });
     }
-    const result = [...blocks];
+    const result = [...cur];
     result.splice(index, 1, ...newBlocks);
     const selectedBlock = newBlocks.find((b) => b.type === "paragraph" && b.content === selected);
-    onChange(result);
+    onChangeRef.current(result);
     setSelectionBubble(null);
     if (selectedBlock) setActiveBlockId(selectedBlock.id);
-  }, [selectionBubble, blocks, onChange]);
+  }, [selectionBubble]);
 
   /** 選択範囲の検出とフォーマット状態の更新（rafでスロットル） */
   useEffect(() => {
@@ -478,12 +470,12 @@ export function BlockEditor({
     };
   }, []);
 
-  /** ブロックタイプを変更（変換ロジック付き） */
   const convertBlockType = useCallback(
     (blockId: string, newType: BlockType) => {
-      const block = blocks.find((b) => b.id === blockId);
+      const cur = blocksRef.current;
+      const block = cur.find((b) => b.id === blockId);
       if (!block) return;
-      const index = blocks.findIndex((b) => b.id === blockId);
+      const index = cur.findIndex((b) => b.id === blockId);
       if (index < 0) return;
       let converted: ContentBlock;
       const text = block.content ?? "";
@@ -534,12 +526,12 @@ export function BlockEditor({
         default:
           return;
       }
-      const newBlocks = [...blocks];
+      const newBlocks = [...cur];
       newBlocks[index] = converted;
-      onChange(newBlocks);
+      onChangeRef.current(newBlocks);
       setBlockTypeDropdownOpen(null);
     },
-    [blocks, onChange]
+    []
   );
 
   const handleBulkPaste = useCallback(() => {
@@ -548,22 +540,23 @@ export function BlockEditor({
       toast.error("貼り付けするテキストを入力してください");
       return;
     }
-    // Markdown はブロック変換せず、1つの markdown ブロックとしてそのまま表示
     const markdownBlock: ContentBlock = {
       id: generateId(),
       type: "markdown",
       content: text,
     };
-    const newBlocks = blocks.length === 0 ? [markdownBlock] : [...blocks, markdownBlock];
-    if (maxLength !== undefined && calculateTotalLength(newBlocks) > maxLength) {
-      toast.error(`文字数が上限（${maxLength.toLocaleString()}文字）を超えます`);
+    const cur = blocksRef.current;
+    const ml = maxLengthRef.current;
+    const newBlocks = cur.length === 0 ? [markdownBlock] : [...cur, markdownBlock];
+    if (ml !== undefined && calculateTotalLength(newBlocks) > ml) {
+      toast.error(`文字数が上限（${ml.toLocaleString()}文字）を超えます`);
       return;
     }
-    onChange(newBlocks);
+    onChangeRef.current(newBlocks);
     setBulkPasteText("");
     setBulkPasteOpen(false);
     toast.success("Markdown を1ブロックで追加しました");
-  }, [bulkPasteText, blocks, onChange, maxLength, calculateTotalLength]);
+  }, [bulkPasteText, calculateTotalLength]);
 
   /** 段落ブロックの内容がMarkdown形式なら自動変換 */
   const tryAutoConvertParagraph = useCallback(
@@ -639,344 +632,10 @@ export function BlockEditor({
     [autoConvertMarkdown, replaceBlockWithBlocks]
   );
 
-  const handleAddBlockClick = (index: number) => {
+  const handleAddBlockClick = useCallback((index: number) => {
     setMenuPosition(index);
     setShowBlockMenu(true);
-  };
-
-  const renderBlockContent = (block: ContentBlock) => {
-    const blockLength = getBlockLength(block);
-    
-    switch (block.type) {
-      case "heading1":
-        return (
-          <div className="flex items-center gap-2">
-            <RichTextEditable
-              blockId={block.id}
-              value={block.content}
-              onChange={(c) => updateBlock(block.id, { content: c })}
-              refCallback={(el) => { textInputRefs.current[block.id] = el; }}
-              placeholder="大見出しを入力..."
-              className={`flex-1 min-w-0 text-4xl font-normal outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground [&_strong]:font-bold`}
-              style={{ textAlign: block.align }}
-            />
-            <span className="text-xs text-muted-foreground whitespace-nowrap">
-              {blockLength} 文字
-            </span>
-          </div>
-        );
-      case "heading2":
-        return (
-          <div className="flex items-center gap-2">
-            <RichTextEditable
-              blockId={block.id}
-              value={block.content}
-              onChange={(c) => updateBlock(block.id, { content: c })}
-              refCallback={(el) => { textInputRefs.current[block.id] = el; }}
-              placeholder="中見出しを入力..."
-              className={`flex-1 min-w-0 text-2xl font-normal outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground [&_strong]:font-bold`}
-              style={{ textAlign: block.align }}
-            />
-            <span className="text-xs text-muted-foreground whitespace-nowrap">
-              {blockLength} 文字
-            </span>
-          </div>
-        );
-      case "heading3":
-        return (
-          <div className="flex items-center gap-2">
-            <RichTextEditable
-              blockId={block.id}
-              value={block.content}
-              onChange={(c) => updateBlock(block.id, { content: c })}
-              refCallback={(el) => { textInputRefs.current[block.id] = el; }}
-              placeholder="小見出しを入力..."
-              className={`flex-1 min-w-0 text-xl font-normal outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground [&_strong]:font-bold`}
-              style={{ textAlign: block.align }}
-            />
-            <span className="text-xs text-muted-foreground whitespace-nowrap">
-              {blockLength} 文字
-            </span>
-          </div>
-        );
-      case "paragraph":
-        return (
-          <div className="relative">
-            <RichTextEditable
-              blockId={block.id}
-              value={block.content}
-              onChange={(c) => updateBlock(block.id, { content: c })}
-              onBlur={(c) => tryAutoConvertParagraph(block, c)}
-              refCallback={(el) => { textInputRefs.current[block.id] = el; }}
-              placeholder="本文を入力...（# 見出し、- リストなどで自動変換）"
-              className={`w-full min-h-[100px] py-2 px-0 bg-transparent resize-none outline-none pr-16 empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground`}
-              style={{ textAlign: block.align }}
-            />
-            <span className="absolute top-2 right-2 text-xs text-muted-foreground">
-              {blockLength} 文字
-            </span>
-          </div>
-        );
-      case "image":
-        return (
-          <div className="space-y-3">
-            {block.url ? (
-              <div className="relative group">
-                <img
-                  src={block.url}
-                  alt={block.caption || ""}
-                  className="w-full max-h-[500px] object-contain rounded-lg"
-                />
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    updateBlock(block.id, { url: "" });
-                  }}
-                  className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div
-                  className="border-2 border-dashed border-gray-300 rounded-lg p-8 sm:p-12 text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    // 画像アップロードを起動
-                    fileInputRefs.current[block.id]?.click();
-                  }}
-                >
-                  <ImageIcon className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-                  <p className="text-gray-500">クリックして画像をアップロード</p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    JPG/PNG/GIF/WebP（最大5MB）
-                  </p>
-                </div>
-
-                <input
-                  ref={(el) => {
-                    fileInputRefs.current[block.id] = el;
-                  }}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onClick={(e) => e.stopPropagation()}
-                  onChange={async (e) => {
-                    e.stopPropagation();
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-
-                    setUploadingBlockId(block.id);
-                    try {
-                      const formData = new FormData();
-                      formData.append("file", file);
-                      const result = await uploadImage(formData);
-                      if (result.success && result.url) {
-                        updateBlock(block.id, { url: result.url, content: "" });
-                        toast.success("画像をアップロードしました");
-                      } else {
-                        toast.error("画像アップロードに失敗しました", {
-                          description: result.error || "もう一度お試しください",
-                        });
-                      }
-                    } catch (err) {
-                      console.error(err);
-                      toast.error("画像アップロードに失敗しました");
-                    } finally {
-                      setUploadingBlockId(null);
-                      // 同じファイルを選択できるようにリセット
-                      e.currentTarget.value = "";
-                    }
-                  }}
-                />
-
-                <div className="flex items-center justify-center">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      fileInputRefs.current[block.id]?.click();
-                    }}
-                    disabled={uploadingBlockId === block.id}
-                  >
-                    {uploadingBlockId === block.id ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        アップロード中...
-                      </>
-                    ) : (
-                      "画像を選択"
-                    )}
-                  </Button>
-                </div>
-              </div>
-            )}
-            <Input
-              value={block.caption || ""}
-              onChange={(e) => updateBlock(block.id, { caption: e.target.value })}
-              onClick={(e) => e.stopPropagation()}
-              placeholder="画像のキャプションを入力..."
-              className="text-center text-sm text-muted-foreground"
-            />
-          </div>
-        );
-      case "video":
-        return (
-          <div className="space-y-3">
-            {block.url ? (
-              <div className="relative aspect-video bg-black rounded-lg overflow-hidden group">
-                <iframe
-                  src={block.url.includes("youtube.com") || block.url.includes("youtu.be")
-                    ? `https://www.youtube.com/embed/${extractYouTubeId(block.url)}`
-                    : block.url
-                  }
-                  className="w-full h-full"
-                  allowFullScreen
-                />
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    updateBlock(block.id, { url: "", content: "" });
-                  }}
-                  className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center">
-                  <Video className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-                  <p className="text-gray-500">動画URLを入力してください</p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    YouTube, Vimeo対応
-                  </p>
-                </div>
-                <Input
-                  value={block.content}
-                  onChange={(e) => updateBlock(block.id, { content: e.target.value })}
-                  onBlur={(e) => {
-                    if (e.target.value) {
-                      updateBlock(block.id, { url: e.target.value });
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && block.content) {
-                      e.preventDefault();
-                      updateBlock(block.id, { url: block.content });
-                    }
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                  placeholder="動画URL（YouTube, Vimeo）を入力してEnter..."
-                />
-              </div>
-            )}
-            <Input
-              value={block.caption || ""}
-              onChange={(e) => updateBlock(block.id, { caption: e.target.value })}
-              onClick={(e) => e.stopPropagation()}
-              placeholder="動画のキャプションを入力..."
-              className="text-center text-sm text-muted-foreground"
-            />
-          </div>
-        );
-      case "quote":
-        return (
-          <div className="border-l-4 border-primary pl-4 py-2">
-            <div className="relative">
-              <RichTextEditable
-                blockId={block.id}
-                value={block.content}
-                onChange={(c) => updateBlock(block.id, { content: c })}
-                refCallback={(el) => { textInputRefs.current[block.id] = el; }}
-                placeholder="引用文を入力..."
-                className="w-full min-h-[80px] py-2 px-0 bg-transparent resize-none outline-none italic text-lg pr-16 empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground"
-              />
-              <span className="absolute top-2 right-2 text-xs text-muted-foreground">
-                {block.content?.length || 0} 文字
-              </span>
-            </div>
-            <Input
-              value={block.caption || ""}
-              onChange={(e) => updateBlock(block.id, { caption: e.target.value })}
-              onClick={(e) => e.stopPropagation()}
-              placeholder="引用元..."
-              className="mt-2 text-sm text-muted-foreground border-none shadow-none bg-transparent"
-            />
-          </div>
-        );
-      case "divider":
-        return <hr className="border-t-2 border-gray-200 my-4" />;
-      case "bulletList":
-      case "numberedList":
-        return (
-          <div className="space-y-2">
-            {(block.items || [""]).map((item, itemIndex) => (
-              <div key={itemIndex} className="flex items-center gap-2">
-                <span className="text-muted-foreground w-6 text-right">
-                  {block.type === "numberedList" ? `${itemIndex + 1}.` : "•"}
-                </span>
-                <Input
-                  ref={(el) => { textInputRefs.current[`${block.id}-${itemIndex}`] = el; }}
-                  value={item}
-                  onChange={(e) => {
-                    const newItems = [...(block.items || [""])];
-                    newItems[itemIndex] = e.target.value;
-                    updateBlock(block.id, { items: newItems });
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      const newItems = [...(block.items || [""])];
-                      newItems.splice(itemIndex + 1, 0, "");
-                      updateBlock(block.id, { items: newItems });
-                    }
-                    if (e.key === "Backspace" && item === "" && (block.items?.length || 0) > 1) {
-                      e.preventDefault();
-                      const newItems = [...(block.items || [""])];
-                      newItems.splice(itemIndex, 1);
-                      updateBlock(block.id, { items: newItems });
-                    }
-                  }}
-                  placeholder="リスト項目を入力..."
-                  className="flex-1 border-none shadow-none"
-                />
-              </div>
-            ))}
-            <div className="flex justify-end mt-2">
-              <span className="text-xs text-muted-foreground">
-                合計: {blockLength} 文字
-              </span>
-            </div>
-          </div>
-        );
-      case "markdown":
-        return (
-          <div className="space-y-2">
-            <Textarea
-              ref={(el) => { textInputRefs.current[block.id] = el; }}
-              value={block.content}
-              onChange={(e) => updateBlock(block.id, { content: e.target.value })}
-              placeholder="Markdown を入力..."
-              className="min-h-[120px] font-mono text-sm resize-none"
-              onClick={(e) => e.stopPropagation()}
-            />
-            {block.content && (
-              <div className="prose prose-sm max-w-none border-t pt-3 mt-3">
-                <ReactMarkdown>{block.content}</ReactMarkdown>
-              </div>
-            )}
-          </div>
-        );
-      default:
-        return null;
-    }
-  };
+  }, []);
 
   return (
     <div className="space-y-4 relative">
@@ -1232,7 +891,16 @@ export function BlockEditor({
               </div>
             )}
 
-            {renderBlockContent(block)}
+            <BlockContent
+              block={block}
+              updateBlock={updateBlock}
+              tryAutoConvertParagraph={tryAutoConvertParagraph}
+              getBlockLength={getBlockLength}
+              uploadingBlockId={uploadingBlockId}
+              setUploadingBlockId={setUploadingBlockId}
+              fileInputRefs={fileInputRefs}
+              textInputRefs={textInputRefs}
+            />
           </div>
         </div>
       ))}
@@ -1326,6 +994,298 @@ export function BlockEditor({
     </div>
   );
 }
+
+const BlockContent = memo(function BlockContent({
+  block,
+  updateBlock,
+  tryAutoConvertParagraph,
+  getBlockLength,
+  uploadingBlockId,
+  setUploadingBlockId,
+  fileInputRefs,
+  textInputRefs,
+}: {
+  block: ContentBlock;
+  updateBlock: (id: string, updates: Partial<ContentBlock>) => void;
+  tryAutoConvertParagraph: (block: ContentBlock, content: string) => void;
+  getBlockLength: (block: ContentBlock) => number;
+  uploadingBlockId: string | null;
+  setUploadingBlockId: (id: string | null) => void;
+  fileInputRefs: React.MutableRefObject<Record<string, HTMLInputElement | null>>;
+  textInputRefs: React.MutableRefObject<Record<string, HTMLInputElement | HTMLTextAreaElement | HTMLElement | null>>;
+}) {
+  const blockLength = getBlockLength(block);
+
+  switch (block.type) {
+    case "heading1":
+      return (
+        <div className="flex items-center gap-2">
+          <RichTextEditable
+            blockId={block.id}
+            value={block.content}
+            onChange={(c) => updateBlock(block.id, { content: c })}
+            refCallback={(el) => { textInputRefs.current[block.id] = el; }}
+            placeholder="大見出しを入力..."
+            className="flex-1 min-w-0 text-4xl font-normal outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground [&_strong]:font-bold"
+            style={{ textAlign: block.align }}
+          />
+          <span className="text-xs text-muted-foreground whitespace-nowrap">{blockLength} 文字</span>
+        </div>
+      );
+    case "heading2":
+      return (
+        <div className="flex items-center gap-2">
+          <RichTextEditable
+            blockId={block.id}
+            value={block.content}
+            onChange={(c) => updateBlock(block.id, { content: c })}
+            refCallback={(el) => { textInputRefs.current[block.id] = el; }}
+            placeholder="中見出しを入力..."
+            className="flex-1 min-w-0 text-2xl font-normal outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground [&_strong]:font-bold"
+            style={{ textAlign: block.align }}
+          />
+          <span className="text-xs text-muted-foreground whitespace-nowrap">{blockLength} 文字</span>
+        </div>
+      );
+    case "heading3":
+      return (
+        <div className="flex items-center gap-2">
+          <RichTextEditable
+            blockId={block.id}
+            value={block.content}
+            onChange={(c) => updateBlock(block.id, { content: c })}
+            refCallback={(el) => { textInputRefs.current[block.id] = el; }}
+            placeholder="小見出しを入力..."
+            className="flex-1 min-w-0 text-xl font-normal outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground [&_strong]:font-bold"
+            style={{ textAlign: block.align }}
+          />
+          <span className="text-xs text-muted-foreground whitespace-nowrap">{blockLength} 文字</span>
+        </div>
+      );
+    case "paragraph":
+      return (
+        <div className="relative">
+          <RichTextEditable
+            blockId={block.id}
+            value={block.content}
+            onChange={(c) => updateBlock(block.id, { content: c })}
+            onBlur={(c) => tryAutoConvertParagraph(block, c)}
+            refCallback={(el) => { textInputRefs.current[block.id] = el; }}
+            placeholder="本文を入力...（# 見出し、- リストなどで自動変換）"
+            className="w-full min-h-[100px] py-2 px-0 bg-transparent resize-none outline-none pr-16 empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground"
+            style={{ textAlign: block.align }}
+          />
+          <span className="absolute top-2 right-2 text-xs text-muted-foreground">{blockLength} 文字</span>
+        </div>
+      );
+    case "image":
+      return (
+        <div className="space-y-3">
+          {block.url ? (
+            <div className="relative group">
+              <img src={block.url} alt={block.caption || ""} className="w-full max-h-[500px] object-contain rounded-lg" />
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); updateBlock(block.id, { url: "" }); }}
+                className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div
+                className="border-2 border-dashed border-gray-300 rounded-lg p-8 sm:p-12 text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors"
+                onClick={(e) => { e.stopPropagation(); fileInputRefs.current[block.id]?.click(); }}
+              >
+                <ImageIcon className="h-12 w-12 mx-auto text-gray-400 mb-3" />
+                <p className="text-gray-500">クリックして画像をアップロード</p>
+                <p className="text-xs text-gray-400 mt-1">JPG/PNG/GIF/WebP（最大5MB）</p>
+              </div>
+              <input
+                ref={(el) => { fileInputRefs.current[block.id] = el; }}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onClick={(e) => e.stopPropagation()}
+                onChange={async (e) => {
+                  e.stopPropagation();
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setUploadingBlockId(block.id);
+                  try {
+                    const formData = new FormData();
+                    formData.append("file", file);
+                    const result = await uploadImage(formData);
+                    if (result.success && result.url) {
+                      updateBlock(block.id, { url: result.url, content: "" });
+                      toast.success("画像をアップロードしました");
+                    } else {
+                      toast.error("画像アップロードに失敗しました", { description: result.error || "もう一度お試しください" });
+                    }
+                  } catch (err) {
+                    console.error(err);
+                    toast.error("画像アップロードに失敗しました");
+                  } finally {
+                    setUploadingBlockId(null);
+                    e.currentTarget.value = "";
+                  }
+                }}
+              />
+              <div className="flex items-center justify-center">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={(e) => { e.stopPropagation(); fileInputRefs.current[block.id]?.click(); }}
+                  disabled={uploadingBlockId === block.id}
+                >
+                  {uploadingBlockId === block.id ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />アップロード中...</>) : "画像を選択"}
+                </Button>
+              </div>
+            </div>
+          )}
+          <Input
+            value={block.caption || ""}
+            onChange={(e) => updateBlock(block.id, { caption: e.target.value })}
+            onClick={(e) => e.stopPropagation()}
+            placeholder="画像のキャプションを入力..."
+            className="text-center text-sm text-muted-foreground"
+          />
+        </div>
+      );
+    case "video":
+      return (
+        <div className="space-y-3">
+          {block.url ? (
+            <div className="relative aspect-video bg-black rounded-lg overflow-hidden group">
+              <iframe
+                src={block.url.includes("youtube.com") || block.url.includes("youtu.be") ? `https://www.youtube.com/embed/${extractYouTubeId(block.url)}` : block.url}
+                className="w-full h-full"
+                allowFullScreen
+              />
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); updateBlock(block.id, { url: "", content: "" }); }}
+                className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center">
+                <Video className="h-12 w-12 mx-auto text-gray-400 mb-3" />
+                <p className="text-gray-500">動画URLを入力してください</p>
+                <p className="text-xs text-gray-400 mt-1">YouTube, Vimeo対応</p>
+              </div>
+              <Input
+                value={block.content}
+                onChange={(e) => updateBlock(block.id, { content: e.target.value })}
+                onBlur={(e) => { if (e.target.value) updateBlock(block.id, { url: e.target.value }); }}
+                onKeyDown={(e) => { if (e.key === "Enter" && block.content) { e.preventDefault(); updateBlock(block.id, { url: block.content }); } }}
+                onClick={(e) => e.stopPropagation()}
+                placeholder="動画URL（YouTube, Vimeo）を入力してEnter..."
+              />
+            </div>
+          )}
+          <Input
+            value={block.caption || ""}
+            onChange={(e) => updateBlock(block.id, { caption: e.target.value })}
+            onClick={(e) => e.stopPropagation()}
+            placeholder="動画のキャプションを入力..."
+            className="text-center text-sm text-muted-foreground"
+          />
+        </div>
+      );
+    case "quote":
+      return (
+        <div className="border-l-4 border-primary pl-4 py-2">
+          <div className="relative">
+            <RichTextEditable
+              blockId={block.id}
+              value={block.content}
+              onChange={(c) => updateBlock(block.id, { content: c })}
+              refCallback={(el) => { textInputRefs.current[block.id] = el; }}
+              placeholder="引用文を入力..."
+              className="w-full min-h-[80px] py-2 px-0 bg-transparent resize-none outline-none italic text-lg pr-16 empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground"
+            />
+            <span className="absolute top-2 right-2 text-xs text-muted-foreground">{block.content?.length || 0} 文字</span>
+          </div>
+          <Input
+            value={block.caption || ""}
+            onChange={(e) => updateBlock(block.id, { caption: e.target.value })}
+            onClick={(e) => e.stopPropagation()}
+            placeholder="引用元..."
+            className="mt-2 text-sm text-muted-foreground border-none shadow-none bg-transparent"
+          />
+        </div>
+      );
+    case "divider":
+      return <hr className="border-t-2 border-gray-200 my-4" />;
+    case "bulletList":
+    case "numberedList":
+      return (
+        <div className="space-y-2">
+          {(block.items || [""]).map((item, itemIndex) => (
+            <div key={itemIndex} className="flex items-center gap-2">
+              <span className="text-muted-foreground w-6 text-right">
+                {block.type === "numberedList" ? `${itemIndex + 1}.` : "•"}
+              </span>
+              <Input
+                ref={(el) => { textInputRefs.current[`${block.id}-${itemIndex}`] = el; }}
+                value={item}
+                onChange={(e) => {
+                  const newItems = [...(block.items || [""])];
+                  newItems[itemIndex] = e.target.value;
+                  updateBlock(block.id, { items: newItems });
+                }}
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    const newItems = [...(block.items || [""])];
+                    newItems.splice(itemIndex + 1, 0, "");
+                    updateBlock(block.id, { items: newItems });
+                  }
+                  if (e.key === "Backspace" && item === "" && (block.items?.length || 0) > 1) {
+                    e.preventDefault();
+                    const newItems = [...(block.items || [""])];
+                    newItems.splice(itemIndex, 1);
+                    updateBlock(block.id, { items: newItems });
+                  }
+                }}
+                placeholder="リスト項目を入力..."
+                className="flex-1 border-none shadow-none"
+              />
+            </div>
+          ))}
+          <div className="flex justify-end mt-2">
+            <span className="text-xs text-muted-foreground">合計: {blockLength} 文字</span>
+          </div>
+        </div>
+      );
+    case "markdown":
+      return (
+        <div className="space-y-2">
+          <Textarea
+            ref={(el) => { textInputRefs.current[block.id] = el; }}
+            value={block.content}
+            onChange={(e) => updateBlock(block.id, { content: e.target.value })}
+            placeholder="Markdown を入力..."
+            className="min-h-[120px] font-mono text-sm resize-none"
+            onClick={(e) => e.stopPropagation()}
+          />
+          {block.content && (
+            <div className="prose prose-sm max-w-none border-t pt-3 mt-3">
+              <ReactMarkdown>{block.content}</ReactMarkdown>
+            </div>
+          )}
+        </div>
+      );
+    default:
+      return null;
+  }
+});
 
 function BlockTypeButton({
   icon,

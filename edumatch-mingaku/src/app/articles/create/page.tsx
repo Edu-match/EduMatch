@@ -208,6 +208,9 @@ export default function ArticleCreatePage() {
     fetchProfile();
   }, []);
 
+  const persistDraftToServerRef = useRef(persistDraftToServer);
+  persistDraftToServerRef.current = persistDraftToServer;
+
   // 入力変更時に下書きを自動保存（ローカル + サーバー）
   useEffect(() => {
     if (!hasMountedAutoSaveRef.current) {
@@ -218,7 +221,7 @@ export default function ArticleCreatePage() {
     const timer = setTimeout(() => {
       const currentTitle = title;
       const currentLeadText = leadText;
-      const currentContent = content;
+      const currentContent = latestContentRef.current ?? content;
       if (!currentTitle && !currentLeadText && currentContent.length === 0) return;
 
       try {
@@ -239,11 +242,13 @@ export default function ArticleCreatePage() {
         console.error("Auto-save failed:", e);
       }
 
-      void persistDraftToServer(false);
+      void persistDraftToServerRef.current(false);
     }, 1200);
 
     return () => clearTimeout(timer);
-  }, [title, leadText, category, tags, publishType, thumbnailUrl, content, draftPostId, persistDraftToServer]);
+    // persistDraftToServer を依存から外し ref 経由にすることでループを防止
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [title, leadText, category, tags, publishType, thumbnailUrl, content, draftPostId]);
 
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
