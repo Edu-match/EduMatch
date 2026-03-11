@@ -2,11 +2,26 @@ import type { ContentBlock } from "@/components/editor/block-editor";
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
+/** マークダウンブロック1つのまま保存したことを示すプレフィックス（ブロックに分解しない） */
+const RAW_MARKDOWN_PREFIX = "__EDUMATCH_RAW_MARKDOWN__\n";
+
 /**
  * Markdown を ContentBlock 配列に変換
  * blocksToContent の逆変換（createPost で保存された形式に対応）
+ * ※ プレフィックス付きの場合は1つの markdown ブロックとしてそのまま返す
  */
 export function contentToBlocks(content: string): ContentBlock[] {
+  const trimmed = content.trim();
+  if (trimmed.startsWith(RAW_MARKDOWN_PREFIX)) {
+    return [
+      {
+        id: generateId(),
+        type: "markdown",
+        content: trimmed.slice(RAW_MARKDOWN_PREFIX.length).trimEnd(),
+      },
+    ];
+  }
+
   const blocks: ContentBlock[] = [];
   const lines = content.split(/\r?\n/);
 
@@ -147,8 +162,14 @@ export function contentToBlocks(content: string): ContentBlock[] {
 
 /**
  * ContentBlock 配列を Markdown 文字列に変換
+ * ブロックが1つかつ markdown の場合はプレフィックス付きで出力し、
+ * 読み込み時にブロックに分解されず「ひと続きのマークダウン」として復元される
  */
 export function blocksToMarkdown(blocks: ContentBlock[]): string {
+  if (blocks.length === 1 && blocks[0].type === "markdown") {
+    return RAW_MARKDOWN_PREFIX + (blocks[0].content ?? "");
+  }
+
   const parts: string[] = [];
   for (const block of blocks) {
     switch (block.type) {
