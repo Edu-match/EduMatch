@@ -13,6 +13,8 @@ import {
   Eye,
   Heart,
   CreditCard,
+  User,
+  ChevronRight,
 } from "lucide-react";
 import { requireAuth, getCurrentProfile } from "@/lib/auth";
 import { getRecentViewHistory } from "@/app/_actions";
@@ -58,21 +60,50 @@ export default async function DashboardPage() {
 
   return (
     <div className="container py-8">
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">マイページ</h1>
-            <p className="text-muted-foreground">
-              こんにちは、{displayName}さん
-            </p>
+      {/* アカウント概要カード：設定への導線を明確に */}
+      <Card className="mb-6 overflow-hidden border-2 border-primary/10 bg-gradient-to-r from-primary/5 via-transparent to-transparent">
+        <Link
+          href="/profile/register"
+          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 sm:p-5 hover:bg-muted/30 transition-colors group"
+        >
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="flex-shrink-0 w-14 h-14 rounded-full bg-muted border-2 border-background shadow-sm overflow-hidden flex items-center justify-center">
+              {profile?.avatar_url ? (
+                <Image
+                  src={profile.avatar_url}
+                  alt=""
+                  width={56}
+                  height={56}
+                  className="object-cover w-full h-full"
+                  unoptimized
+                />
+              ) : (
+                <User className="h-7 w-7 text-muted-foreground" />
+              )}
+            </div>
+            <div className="min-w-0">
+              <p className="font-semibold text-lg truncate">{displayName}</p>
+              <p className="text-sm text-muted-foreground truncate">
+                {user.email ?? "—"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                表示名・アイコン・連絡先を変更できます
+              </p>
+            </div>
           </div>
-          <Button variant="outline" asChild>
-            <Link href="/profile/register">
-              <Settings className="h-4 w-4 mr-2" />
-              アカウント設定
-            </Link>
-          </Button>
-        </div>
+          <div className="flex items-center gap-2 text-primary font-medium shrink-0 sm:pl-4">
+            <Settings className="h-5 w-5" aria-hidden />
+            <span>アカウント設定</span>
+            <ChevronRight className="h-5 w-5 group-hover:translate-x-0.5 transition-transform" aria-hidden />
+          </div>
+        </Link>
+      </Card>
+
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold mb-2">マイページ</h1>
+        <p className="text-muted-foreground">
+          こんにちは、{displayName}さん
+        </p>
       </div>
 
       <div className={FEATURES.PAID_PLANS ? "grid grid-cols-1 lg:grid-cols-3 gap-6" : "space-y-6"}>
