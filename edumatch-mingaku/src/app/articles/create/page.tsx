@@ -96,6 +96,7 @@ export default function ArticleCreatePage() {
     return localStorage.getItem(DRAFT_POST_ID_KEY);
   });
   const isServerDraftSavingRef = useRef(false);
+  const hasMountedAutoSaveRef = useRef(false);
   const [content, setContent] = useState<string>(() => {
     if (draft?.content) return draft.content;
     if (draft?.blocks && draft.blocks.length > 0) {
@@ -205,33 +206,41 @@ export default function ArticleCreatePage() {
     fetchProfile();
   }, []);
 
-  // Auto-save every 30 seconds
+  // 入力変更時に下書きを自動保存（ローカル + サーバー）
   useEffect(() => {
-    const interval = setInterval(() => {
+    if (!hasMountedAutoSaveRef.current) {
+      hasMountedAutoSaveRef.current = true;
+      return;
+    }
+
+    const timer = setTimeout(() => {
       const currentTitle = title;
       const currentLeadText = leadText;
       const currentContent = content;
-      if (currentTitle || currentLeadText || currentContent.length > 0) {
-        try {
-          const draft = {
-            title: currentTitle,
-            leadText: currentLeadText,
-            category,
-            tags,
-            publishType,
-            thumbnailUrl,
-            content: currentContent,
-            draftPostId: draftPostId || undefined,
-            savedAt: new Date().toISOString(),
-          };
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
-        } catch (e) {
-          console.error("Auto-save failed:", e);
-        }
-        void persistDraftToServer(false);
+      if (!currentTitle && !currentLeadText && currentContent.length === 0) return;
+
+      try {
+        const draft = {
+          title: currentTitle,
+          leadText: currentLeadText,
+          category,
+          tags,
+          publishType,
+          thumbnailUrl,
+          content: currentContent,
+          draftPostId: draftPostId || undefined,
+          savedAt: new Date().toISOString(),
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
+        setLastSaved(new Date());
+      } catch (e) {
+        console.error("Auto-save failed:", e);
       }
-    }, 30000);
-    return () => clearInterval(interval);
+
+      void persistDraftToServer(false);
+    }, 1200);
+
+    return () => clearTimeout(timer);
   }, [title, leadText, category, tags, publishType, thumbnailUrl, content, draftPostId, persistDraftToServer]);
 
   const router = useRouter();

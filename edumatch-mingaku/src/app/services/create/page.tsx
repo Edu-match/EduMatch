@@ -45,6 +45,7 @@ export default function ServiceCreatePage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isServerDraftSavingRef = useRef(false);
+  const hasMountedAutoSaveRef = useRef(false);
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
   const thumbnailFileInputRef = useRef<HTMLInputElement | null>(null);
   const [userProfile, setUserProfile] = useState<{ name: string; avatar_url: string | null; email: string } | null>(null);
@@ -137,13 +138,27 @@ export default function ServiceCreatePage() {
     [buildServicePayload, draftServiceId, title, description, content]
   );
 
-  // 30秒ごとに下書きを実DBへ自動保存
+  // 入力変更時に下書きを自動保存（サーバー）
   useEffect(() => {
-    const interval = setInterval(() => {
+    if (!hasMountedAutoSaveRef.current) {
+      hasMountedAutoSaveRef.current = true;
+      return;
+    }
+    const timer = setTimeout(() => {
       void persistDraftToServer(false);
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [persistDraftToServer]);
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [
+    title,
+    description,
+    category,
+    priceInfo,
+    youtubeUrl,
+    thumbnailUrl,
+    content,
+    draftServiceId,
+    persistDraftToServer,
+  ]);
 
   async function submit(publishType: "draft" | "submit") {
     if (!title.trim()) {
