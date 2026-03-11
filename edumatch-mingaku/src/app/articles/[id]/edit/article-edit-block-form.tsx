@@ -17,13 +17,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ContentEditorWithImport } from "@/components/content/content-editor-with-import";
+import { BlocksContentPreview } from "@/components/content/blocks-content-preview";
 import type { ContentBlock } from "@/components/editor/block-editor";
-import { renderInlineMarkdown } from "@/lib/inline-markdown";
-import { contentToBlocks } from "@/lib/markdown-to-blocks";
+import { contentToBlocks, blocksToMarkdown } from "@/lib/markdown-to-blocks";
 import { blocksToArticleContent, stripLeadText } from "@/lib/article-content";
-import { isImportedContent, parseImportedContent } from "@/lib/imported-content";
-import { ImportedContentRenderer } from "@/components/content/imported-content-renderer";
-import ReactMarkdown from "react-markdown";
+import { isImportedContent } from "@/lib/imported-content";
 import {
   Eye,
   Save,
@@ -68,13 +66,6 @@ function statusToPublishType(status: string): "public" | "member" | "draft" {
   if (status === "DRAFT") return "draft";
   if (status === "APPROVED" || status === "REJECTED") return "public";
   return "public"; // PENDING
-}
-
-function extractYouTubeId(url: string): string {
-  const match = url.match(
-    /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/
-  );
-  return match ? match[1] : "";
 }
 
 function CheckItem({ checked, label }: { checked: boolean; label: string }) {
@@ -195,14 +186,14 @@ export function ArticleEditBlockForm({ articleId, initialData }: ArticleEditBloc
   };
 
   const renderPreview = () => (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-3xl mx-auto space-y-6">
       {thumbnailUrl && (
-        <div className="mb-6 rounded-xl overflow-hidden">
+        <div className="rounded-xl overflow-hidden">
           <img src={thumbnailUrl} alt={title} className="w-full h-[300px] object-contain" />
         </div>
       )}
-      <h1 className="text-4xl font-bold mb-4">{title || "タイトル未設定"}</h1>
-      <div className="flex items-center gap-4 text-sm text-muted-foreground mb-6">
+      <h1 className="text-4xl font-bold">{title || "タイトル未設定"}</h1>
+      <div className="flex items-center gap-4 text-sm text-muted-foreground">
         <span className="flex items-center gap-1">
           <Calendar className="h-4 w-4" />
           {new Date().toLocaleDateString("ja-JP")}
@@ -210,76 +201,10 @@ export function ArticleEditBlockForm({ articleId, initialData }: ArticleEditBloc
         {category && <Badge variant="outline">{category}</Badge>}
       </div>
       {leadText && (
-        <p className="text-lg text-muted-foreground mb-8 leading-relaxed">{leadText}</p>
+        <p className="text-lg text-muted-foreground leading-relaxed">{leadText}</p>
       )}
-      <div className="prose prose-lg max-w-none">
-        {isImportedContent(content) ? (
-          (() => {
-            const parsed = parseImportedContent(content);
-            return parsed ? (
-              <ImportedContentRenderer type={parsed.type} content={parsed.raw} />
-            ) : null;
-          })()
-        ) : (
-        <>
-        {contentToBlocks(content).map((block) => {
-          switch (block.type) {
-            case "heading1":
-              return <h2 key={block.id} className="text-3xl font-normal mt-8 mb-4 [&_strong]:font-bold">{renderInlineMarkdown(block.content)}</h2>;
-            case "heading2":
-              return <h3 key={block.id} className="text-2xl font-normal mt-6 mb-3 [&_strong]:font-bold">{renderInlineMarkdown(block.content)}</h3>;
-            case "heading3":
-              return <h4 key={block.id} className="text-xl font-normal mt-4 mb-2 [&_strong]:font-bold">{renderInlineMarkdown(block.content)}</h4>;
-            case "paragraph":
-              return <p key={block.id} className="mb-4 leading-relaxed">{renderInlineMarkdown(block.content)}</p>;
-            case "image":
-              return block.url ? (
-                <figure key={block.id} className="my-8">
-                  <img src={block.url} alt={block.caption || ""} className="w-full rounded-lg" />
-                  {block.caption && <figcaption className="text-center text-sm text-muted-foreground mt-2">{block.caption}</figcaption>}
-                </figure>
-              ) : null;
-            case "video":
-              return block.url && (block.url.includes("youtube.com") || block.url.includes("youtu.be")) ? (
-                <figure key={block.id} className="my-8">
-                  <div className="aspect-video bg-black rounded-lg overflow-hidden">
-                    <iframe
-                      src={`https://www.youtube.com/embed/${extractYouTubeId(block.url)}`}
-                      className="w-full h-full"
-                      allowFullScreen
-                    />
-                  </div>
-                  {block.caption && <figcaption className="text-center text-sm text-muted-foreground mt-2">{block.caption}</figcaption>}
-                </figure>
-              ) : null;
-            case "quote":
-              return <blockquote key={block.id} className="border-l-4 border-primary pl-4 my-6 italic"><p className="text-lg">{renderInlineMarkdown(block.content)}</p></blockquote>;
-            case "divider":
-              return <hr key={block.id} className="my-8 border-t-2" />;
-            case "bulletList":
-              return (
-                <ul key={block.id} className="list-disc pl-6 my-4 space-y-1">
-                  {block.items?.map((item, i) => <li key={i}>{renderInlineMarkdown(item)}</li>)}
-                </ul>
-              );
-            case "numberedList":
-              return (
-                <ol key={block.id} className="list-decimal pl-6 my-4 space-y-1">
-                  {block.items?.map((item, i) => <li key={i}>{renderInlineMarkdown(item)}</li>)}
-                </ol>
-              );
-            case "markdown":
-              return (
-                <div key={block.id} className="my-4">
-                  <ReactMarkdown>{block.content}</ReactMarkdown>
-                </div>
-              );
-            default:
-              return null;
-          }
-        })}
-        </>
-        )}
+      <div className="border-t pt-6">
+        <BlocksContentPreview content={content} />
       </div>
     </div>
   );
@@ -415,8 +340,8 @@ export function ArticleEditBlockForm({ articleId, initialData }: ArticleEditBloc
                     <ContentEditorWithImport
                       content={content}
                       onChange={setContent}
-                      parseToBlocks={(c) => contentToBlocks(c)}
-                      blocksToContent={(b) => blocksToArticleContent(b, "")}
+                      parseToBlocks={contentToBlocks}
+                      blocksToContent={blocksToMarkdown}
                       maxLength={CONTENT_MAX_LENGTH}
                     />
                   </CardContent>

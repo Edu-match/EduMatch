@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { FileImportButton } from "@/components/content/file-import-button";
 import { ImportedContentRenderer } from "@/components/content/imported-content-renderer";
@@ -34,6 +34,7 @@ export function ContentEditorWithImport({
 }: Props) {
   const isImported = isImportedContent(content);
   const parsed = isImported ? parseImportedContent(content) : null;
+  const [, startTransition] = useTransition();
 
   // ブロックを内部状態で保持。content→blocksの往復でブロックIDが失われたり、
   // 空ブロックが消えるバグを防ぐ
@@ -56,22 +57,28 @@ export function ContentEditorWithImport({
   }, [content, isImported]);
 
   const handleImport = (importedContent: string) => {
-    onChange(importedContent);
+    startTransition(() => {
+      onChange(importedContent);
+    });
   };
 
   const handleBackToBlocks = () => {
     const initialBlocks = [...emptyBlocks];
     setBlocks(initialBlocks);
-    onChange(blocksToContent(initialBlocks));
+    startTransition(() => {
+      onChange(blocksToContent(initialBlocks));
+    });
   };
 
   const handleBlocksChange = useCallback(
     (blocks: ContentBlock[]) => {
       isInternalUpdateRef.current = true;
       setBlocks(blocks);
-      onChange(blocksToContent(blocks));
+      startTransition(() => {
+        onChange(blocksToContent(blocks));
+      });
     },
-    [onChange, blocksToContent]
+    [onChange, blocksToContent, startTransition]
   );
 
   if (isImported && parsed) {
