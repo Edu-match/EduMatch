@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,12 +23,16 @@ import {
   ArrowRight,
   Check,
   MapPin,
+  ImageIcon,
+  Loader2,
 } from "lucide-react";
 import { updateProfile } from "@/app/_actions";
+import { uploadImage } from "@/app/_actions";
 
 export type InitialProfile = {
   name: string;
   email: string;
+  avatar_url?: string | null;
   phone: string | null;
   organization?: string | null;
   bio?: string | null;
@@ -38,7 +42,7 @@ export type InitialProfile = {
 };
 
 const steps = [
-  { id: 1, title: "基本情報", icon: User },
+  { id: 1, title: "アカウント", icon: User },
   { id: 2, title: "所属情報", icon: Building2 },
   { id: 3, title: "連絡先（資料請求の通知先）", icon: MapPin },
   { id: 4, title: "関心・スキル", icon: GraduationCap },
@@ -83,6 +87,7 @@ export function ProfileRegisterForm({
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const [name, setName] = useState(initialProfile?.name ?? "");
+  const [avatarUrl, setAvatarUrl] = useState(initialProfile?.avatar_url ?? "");
   const [email] = useState(initialProfile?.email ?? "");
   const [phone, setPhone] = useState(initialProfile?.phone ?? "");
   const [organization, setOrganization] = useState(initialProfile?.organization ?? "");
@@ -95,7 +100,9 @@ export function ProfileRegisterForm({
   const [notificationEmail2, setNotificationEmail2] = useState(initialProfile?.notification_email_2 ?? "");
   const [notificationEmail3, setNotificationEmail3] = useState(initialProfile?.notification_email_3 ?? "");
   const [saving, setSaving] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const avatarFileInputRef = useRef<HTMLInputElement>(null);
 
   const toggleInterest = (interest: string) => {
     if (selectedInterests.includes(interest)) {
@@ -111,14 +118,73 @@ export function ProfileRegisterForm({
         return (
           <div className="space-y-4">
             <div className="space-y-2">
+              <label className="text-sm font-medium">プロフィール画像（アイコン）</label>
+              <div className="flex items-center gap-4">
+                <div className="flex-shrink-0 w-20 h-20 rounded-full bg-muted border-2 flex items-center justify-center overflow-hidden">
+                  {avatarUrl ? (
+                    <img
+                      src={avatarUrl}
+                      alt="プロフィール"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <User className="h-10 w-10 text-muted-foreground" />
+                  )}
+                </div>
+                <div className="flex-1 space-y-2">
+                  <input
+                    ref={avatarFileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/gif,image/webp"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setAvatarUploading(true);
+                      const formData = new FormData();
+                      formData.append("file", file);
+                      const result = await uploadImage(formData);
+                      setAvatarUploading(false);
+                      if (result.success && result.url) setAvatarUrl(result.url);
+                      e.target.value = "";
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={avatarUploading}
+                    onClick={() => avatarFileInputRef.current?.click()}
+                  >
+                    {avatarUploading ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <ImageIcon className="h-4 w-4 mr-2" />
+                    )}
+                    画像をアップロード
+                  </Button>
+                  <Input
+                    type="url"
+                    placeholder="または画像のURLを入力"
+                    value={avatarUrl}
+                    onChange={(e) => setAvatarUrl(e.target.value)}
+                    className="text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="space-y-2">
               <label className="text-sm font-medium">
-                お名前 <span className="text-red-500">*</span>
+                表示名 <span className="text-red-500">*</span>
               </label>
               <Input
                 placeholder="山田太郎"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
+              <p className="text-xs text-muted-foreground">
+                サイト内で表示される名前です
+              </p>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">
@@ -296,20 +362,29 @@ export function ProfileRegisterForm({
             <div className="p-4 rounded-lg bg-muted/50">
               <h3 className="font-medium mb-3 flex items-center gap-2">
                 <User className="h-4 w-4" />
-                基本情報
+                アカウント
               </h3>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">お名前</span>
-                  <span>{name || "未入力"}</span>
+              <div className="flex items-center gap-4 mb-3">
+                <div className="w-14 h-14 rounded-full bg-muted border-2 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="h-7 w-7 text-muted-foreground" />
+                  )}
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">メールアドレス</span>
-                  <span>{email || "未入力"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">電話番号</span>
-                  <span>{phone || "未入力"}</span>
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between gap-4">
+                    <span className="text-muted-foreground">表示名</span>
+                    <span>{name || "未入力"}</span>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <span className="text-muted-foreground">メールアドレス</span>
+                    <span className="break-all">{email || "未入力"}</span>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <span className="text-muted-foreground">電話番号</span>
+                    <span>{phone || "未入力"}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -451,6 +526,7 @@ export function ProfileRegisterForm({
     setSaving(true);
     const { success } = await updateProfile({
       name: name || undefined,
+      avatar_url: avatarUrl.trim() || null,
       phone: phone || null,
       organization: organization?.trim() || null,
       bio: bio || null,
@@ -475,7 +551,7 @@ export function ProfileRegisterForm({
         {isFirstTime && (
           <div className="mb-6 p-4 rounded-lg bg-primary/10 border border-primary/20 text-center">
             <p className="font-medium text-primary">
-              ログインが完了しました。次に名前・連絡先などを登録してください。
+              ログインが完了しました。次に表示名やプロフィール画像などを登録してください。
             </p>
             <p className="text-sm text-muted-foreground mt-1">
               スキップして後から設定することもできます。
@@ -483,9 +559,9 @@ export function ProfileRegisterForm({
           </div>
         )}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">プロフィール設定</h1>
+          <h1 className="text-3xl font-bold mb-2">アカウント設定</h1>
           <p className="text-muted-foreground">
-            あなたに最適な情報をお届けするために、プロフィールを設定してください
+            表示名やプロフィール画像、連絡先などを設定できます
           </p>
         </div>
 

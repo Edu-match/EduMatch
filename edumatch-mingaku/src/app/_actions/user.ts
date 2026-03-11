@@ -95,6 +95,7 @@ export async function getProfileWithContents(
 
 export type UpdateProfileInput = {
   name?: string;
+  avatar_url?: string | null;
   phone?: string | null;
   organization?: string | null;
   bio?: string | null;
@@ -110,6 +111,7 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
       where: { id: user.id },
       data: {
         ...(input.name != null && { name: input.name }),
+        ...(input.avatar_url !== undefined && { avatar_url: input.avatar_url || null }),
         ...(input.phone !== undefined && { phone: input.phone || null }),
         ...(input.organization !== undefined && { organization: input.organization?.trim() || null }),
         ...(input.bio !== undefined && { bio: input.bio || null }),

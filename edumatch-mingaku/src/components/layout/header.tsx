@@ -181,7 +181,7 @@ export function Header() {
                   onSelect={() => router.push("/profile/register")}
                 >
                   <Settings className="mr-2 h-4 w-4" />
-                  プロフィール編集
+                  アカウント設定
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
@@ -286,7 +286,7 @@ export function Header() {
                       className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground"
                     >
                       <Settings className="h-4 w-4" />
-                      プロフィール編集
+                      アカウント設定
                     </Link>
                     <Button 
                       variant="outline" 

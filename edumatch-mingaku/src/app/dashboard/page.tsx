@@ -69,7 +69,7 @@ export default async function DashboardPage() {
           <Button variant="outline" asChild>
             <Link href="/profile/register">
               <Settings className="h-4 w-4 mr-2" />
-              プロフィール設定
+              アカウント設定
             </Link>
           </Button>
         </div>

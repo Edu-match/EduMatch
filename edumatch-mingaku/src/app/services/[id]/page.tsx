@@ -46,8 +46,9 @@ export default async function ServiceDetailPage({
     await recordView(user.id, "SERVICE", id);
   }
   const canEdit = user && (user.id === service.provider_id || profile?.role === "ADMIN");
-  /** 無料企業（sort_order が「なし」）のサービスでは資料請求ボタンを非表示 */
+  /** 無料企業（sort_order が「なし」）のサービスでは資料請求・お問い合わせブロックを非表示 */
   const showRequestInfo = service.sort_order !== "NONE";
+  const showContactBlock = service.sort_order !== "NONE";
 
   // 口コミを取得（口コミ機能が有効な場合のみ）
   const reviews = FEATURES.REVIEWS ? await getServiceReviews(id) : [];
@@ -342,12 +343,14 @@ export default async function ServiceDetailPage({
                       size="lg"
                       className="w-full"
                     />
-                    <Button asChild variant="outline" className="w-full" size="lg">
-                      <Link href="/contact">
-                        <Mail className="h-5 w-5 mr-2" />
-                        お問い合わせ
-                      </Link>
-                    </Button>
+                    {showContactBlock && (
+                      <Button asChild variant="outline" className="w-full" size="lg">
+                        <Link href="/contact">
+                          <Mail className="h-5 w-5 mr-2" />
+                          お問い合わせ
+                        </Link>
+                      </Button>
+                    )}
                   </div>
 
                   {/* 特典リスト */}
@@ -418,12 +421,14 @@ export default async function ServiceDetailPage({
                         />
                       </>
                     )}
-                    <Button asChild variant="outline" className="w-full">
-                      <Link href="/contact">
-                        <Mail className="h-5 w-5 mr-2" />
-                        お問い合わせ
-                      </Link>
-                    </Button>
+                    {showContactBlock && (
+                      <Button asChild variant="outline" className="w-full">
+                        <Link href="/contact">
+                          <Mail className="h-5 w-5 mr-2" />
+                          お問い合わせ
+                        </Link>
+                      </Button>
+                    )}
                   </div>
                 </div>
               </Card>
