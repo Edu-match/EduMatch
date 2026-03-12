@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { getPasswordErrors } from "@/lib/password";
 
 export const dynamic = "force-dynamic";
 
@@ -29,14 +28,6 @@ export async function POST(request: NextRequest) {
     if (!email || !password) {
       return NextResponse.json(
         { error: "メールアドレスとパスワードを入力してください" },
-        { status: 400 }
-      );
-    }
-
-    const passwordErrors = getPasswordErrors(password);
-    if (passwordErrors.length > 0) {
-      return NextResponse.json(
-        { error: "パスワードが間違っています。" },
         { status: 400 }
       );
     }

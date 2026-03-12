@@ -7,10 +7,7 @@ export const loginSchema = z.object({
     .email("メールアドレスの形式が正しくありません"),
   password: z
     .string()
-    .min(8, "パスワードは8文字以上で入力してください")
-    .regex(/[A-Z]/, "パスワードに大文字を含めてください")
-    .regex(/[a-z]/, "パスワードに小文字を含めてください")
-    .regex(/[0-9]/, "パスワードに数字を含めてください"),
+    .min(1, "パスワードを入力してください"),
 });
 
 export const signupSchema = z.object({
