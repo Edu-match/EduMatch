@@ -6,10 +6,7 @@ export const dynamic = "force-dynamic";
 
 function authErrorMessage(en: string): string {
   const map: Record<string, string> = {
-    "Invalid login credentials": "メールアドレスまたはパスワードが正しくありません",
     "Email not confirmed": "メールアドレスの確認が完了していません。確認メールのリンクをクリックしてください。",
-    "Invalid email or password": "メールアドレスまたはパスワードが正しくありません",
-    "User not found": "このメールアドレスは登録されていません",
     "Too many requests": "リクエストが多すぎます。しばらく待ってから再度お試しください",
     "Invalid OTP": "認証コードが正しくありません",
     "otp_expired": "認証コードの有効期限が切れています",
@@ -18,8 +15,20 @@ function authErrorMessage(en: string): string {
   for (const [key, ja] of Object.entries(map)) {
     if (lower.includes(key.toLowerCase())) return ja;
   }
+  // 認証情報の誤り（パスワード不一致・未登録・Googleのみ登録など）は同じメッセージにし、列挙を防ぐ
+  if (
+    lower.includes("invalid login credentials") ||
+    lower.includes("invalid email or password") ||
+    lower.includes("user not found")
+  ) {
+    return "メールアドレスまたはパスワードが正しくありません。";
+  }
   return "エラーが発生しました。入力内容を確認してもう一度お試しください。";
 }
+
+/** 認証失敗時用の案内（Google登録・パスワード未設定のユーザー向け） */
+export const LOGIN_CREDENTIALS_HINT =
+  "Googleで登録した方は「Googleでログイン」を、パスワードをまだ設定していない方は「パスワードをお忘れですか？」でパスワードを設定してからメールでログインできます。";
 
 export async function POST(request: NextRequest) {
   try {
@@ -47,8 +56,14 @@ export async function POST(request: NextRequest) {
     });
 
     if (error) {
+      const message = authErrorMessage(error.message);
+      const isCredentialsError =
+        /invalid login credentials|invalid email or password|user not found/i.test(error.message);
       return NextResponse.json(
-        { error: authErrorMessage(error.message) },
+        {
+          error: message,
+          hint: isCredentialsError ? LOGIN_CREDENTIALS_HINT : undefined,
+        },
         { status: 401 }
       );
     }

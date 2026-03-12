@@ -22,6 +22,7 @@ type Props = {
 export function LoginForm({ onSuccess, redirectTo = "/" }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
+  const [globalHint, setGlobalHint] = useState<string | null>(null);
 
   const {
     register,
@@ -35,6 +36,7 @@ export function LoginForm({ onSuccess, redirectTo = "/" }: Props) {
   const onSubmit = async (data: LoginInput) => {
     setIsSubmitting(true);
     setGlobalError(null);
+    setGlobalHint(null);
 
     try {
       const response = await fetch("/api/auth/login", {
@@ -51,6 +53,8 @@ export function LoginForm({ onSuccess, redirectTo = "/" }: Props) {
 
       if (!response.ok) {
         setGlobalError(result.error || "ログインに失敗しました");
+        if (result.hint) setGlobalHint(result.hint);
+        else setGlobalHint(null);
         setIsSubmitting(false);
         return;
       }
@@ -159,11 +163,30 @@ export function LoginForm({ onSuccess, redirectTo = "/" }: Props) {
 
             {globalError && (
               <div
-                className="flex gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive"
+                className="flex flex-col gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive"
                 role="alert"
               >
-                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                <p className="text-sm font-medium">{globalError}</p>
+                <div className="flex gap-2">
+                  <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                  <p className="text-sm font-medium">{globalError}</p>
+                </div>
+                {globalHint && (
+                  <p className="text-sm text-muted-foreground pl-6">
+                    Googleで登録した方は
+                    <button
+                      type="button"
+                      onClick={handleGoogleLogin}
+                      className="text-primary hover:underline font-medium mx-0.5"
+                    >
+                      Googleでログイン
+                    </button>
+                    を、パスワードをまだ設定していない方は
+                    <Link href="/auth/password-reset" className="text-primary hover:underline font-medium mx-0.5">
+                      パスワードをお忘れですか？
+                    </Link>
+                    でパスワードを設定してからメールでログインできます。
+                  </p>
+                )}
               </div>
             )}
 
