@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Mail, ArrowLeft } from "lucide-react";
 
-export default function PasswordResetPage() {
+function PasswordResetForm() {
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -110,5 +110,13 @@ export default function PasswordResetPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function PasswordResetPage() {
+  return (
+    <Suspense fallback={<div className="container py-8 max-w-md mx-auto animate-pulse rounded-lg h-64 bg-muted" />}>
+      <PasswordResetForm />
+    </Suspense>
   );
 }

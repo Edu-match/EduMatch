@@ -54,10 +54,16 @@ export async function POST(request: NextRequest) {
 
       if (apiKey) {
         const resend = new Resend(apiKey);
+        const sentAt = new Date().toLocaleString("ja-JP", {
+          month: "numeric",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
         const sendResult = await resend.emails.send({
           from,
           to: email,
-          subject: "【エデュマッチ】パスワードの再設定",
+          subject: `【エデュマッチ】パスワードの再設定（${sentAt}）`,
           html: `
             <h2>パスワードの再設定</h2>
             <p>パスワードを再設定するには、以下のリンクをクリックしてください。</p>
