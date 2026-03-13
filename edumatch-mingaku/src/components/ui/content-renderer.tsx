@@ -191,14 +191,73 @@ function MarkdownLikeContent({ text }: { text: string }) {
       continue;
     }
 
-    // 連続する通常行を1つの段落に（# / ## / ### で始まる行は見出しなので区切る）
+    // 箇条書き（- または * で始まる行）
+    if (trimmed.startsWith("- ") || (trimmed.startsWith("* ") && trimmed.length > 2)) {
+      const items: string[] = [];
+      while (i < lines.length) {
+        const t = lines[i].trimEnd();
+        if (t === "") break;
+        if (t.startsWith("- ")) items.push(t.slice(2));
+        else if (t.startsWith("* ") && t.length > 2) items.push(t.slice(2));
+        else break;
+        i += 1;
+      }
+      if (items.length > 0) {
+        nodes.push(
+          <ul
+            key={`md-${keyIndex++}`}
+            className="list-disc list-inside text-base text-foreground leading-relaxed mb-4 space-y-1"
+          >
+            {items.map((item, j) => (
+              <li key={j}>{renderInlineMarkdown(item)}</li>
+            ))}
+          </ul>
+        );
+      }
+      continue;
+    }
+
+    // 番号付きリスト（1. 2. など）
+    const orderedMatch = trimmed.match(/^(\d+)\.\s+(.*)$/);
+    if (orderedMatch) {
+      const items: string[] = [];
+      while (i < lines.length) {
+        const t = lines[i].trimEnd();
+        const m = t.match(/^\d+\.\s+(.*)$/);
+        if (m) {
+          items.push(m[1]);
+          i += 1;
+        } else if (t === "") {
+          break;
+        } else {
+          break;
+        }
+      }
+      if (items.length > 0) {
+        nodes.push(
+          <ol
+            key={`md-${keyIndex++}`}
+            className="list-decimal list-inside text-base text-foreground leading-relaxed mb-4 space-y-1"
+          >
+            {items.map((item, j) => (
+              <li key={j}>{renderInlineMarkdown(item)}</li>
+            ))}
+          </ol>
+        );
+      }
+      continue;
+    }
+
+    // 連続する通常行を1つの段落に（# / ## / ### / リストで始まる行は区切る）
     const isHeadingLine = (s: string) =>
       s.startsWith("# ") || s.startsWith("## ") || s.startsWith("### ");
+    const isListLine = (s: string) =>
+      s.startsWith("- ") || (s.startsWith("* ") && s.length > 2) || /^\d+\.\s+/.test(s);
     const paragraphLines: string[] = [];
     while (i < lines.length) {
       const ln = lines[i];
       const t = ln.trimEnd();
-      if (t === "" || isHeadingLine(t)) break;
+      if (t === "" || isHeadingLine(t) || isListLine(t)) break;
       paragraphLines.push(ln);
       i += 1;
     }
@@ -226,9 +285,9 @@ function MarkdownLikeContent({ text }: { text: string }) {
             key={`md-${keyIndex++}`}
             className="text-base text-foreground leading-relaxed mb-4 last:mb-0"
           >
-            {paraText.split("\n").map((line, i) => (
-              <React.Fragment key={i}>
-                {i > 0 && <br />}
+            {paraText.split("\n").map((line, idx) => (
+              <React.Fragment key={idx}>
+                {idx > 0 && <br />}
                 {renderInlineMarkdown(line)}
               </React.Fragment>
             ))}
