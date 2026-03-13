@@ -23,7 +23,10 @@ export async function POST(request: NextRequest) {
     }
 
     const origin = getSiteOrigin(request.nextUrl.origin);
-    const redirectTo = `${origin}/auth/password-reset-new`;
+    // PKCE 使用時は code をコールバックで交換してからパスワード再設定ページへ飛ばす
+    const callbackUrl = new URL("/api/auth/callback", origin);
+    callbackUrl.searchParams.set("redirect_to", "/auth/password-reset-new");
+    const redirectTo = callbackUrl.toString();
 
     const supabase = createServiceRoleClient();
     const { data, error } = await supabase.auth.admin.generateLink({
