@@ -23,16 +23,11 @@ export async function POST(request: NextRequest) {
     }
 
     const origin = getSiteOrigin(request.nextUrl.origin);
-    // PKCE 使用時は code をコールバックで交換してからパスワード再設定ページへ飛ばす
-    const callbackUrl = new URL("/api/auth/callback", origin);
-    callbackUrl.searchParams.set("redirect_to", "/auth/password-reset-new");
-    const redirectTo = callbackUrl.toString();
 
     const supabase = createServiceRoleClient();
     const { data, error } = await supabase.auth.admin.generateLink({
       type: "recovery",
       email,
-      options: { redirectTo },
     });
 
     if (error) {
@@ -41,12 +36,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    // action_link は data.properties 内にある（Supabase JS クライアントの仕様）
-    const actionLink =
-      (data as { properties?: { action_link?: string } })?.properties?.action_link ??
-      (data as { action_link?: string })?.action_link;
+    // PKCE 非互換を避けるため action_link は使わず、hashed_token で独自リンクを構築
+    const props = (data as { properties?: { hashed_token?: string } })?.properties;
+    const hashedToken = props?.hashed_token;
 
-    if (actionLink) {
+    if (hashedToken) {
+      const confirmUrl = new URL("/auth/confirm-password-reset", origin);
+      confirmUrl.searchParams.set("token_hash", hashedToken);
+      const resetLink = confirmUrl.toString();
       const apiKey = process.env.RESEND_API_KEY;
       const fromRaw = process.env.RESEND_FROM_EMAIL?.trim();
       const from = fromRaw
@@ -64,7 +61,7 @@ export async function POST(request: NextRequest) {
           html: `
             <h2>パスワードの再設定</h2>
             <p>パスワードを再設定するには、以下のリンクをクリックしてください。</p>
-            <p><a href="${actionLink}" style="color: #2563eb; text-decoration: underline;">パスワードを再設定する</a></p>
+            <p><a href="${resetLink}" style="color: #2563eb; text-decoration: underline;">パスワードを再設定する</a></p>
             <p>リンクの有効期限は24時間です。心当たりがない場合はこのメールを無視してください。</p>
             <hr />
             <p style="color:#666;font-size:12px;">このメールに心当たりがない場合は、お問い合わせください。</p>
