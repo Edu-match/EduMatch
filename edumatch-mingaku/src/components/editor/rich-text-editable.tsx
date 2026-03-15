@@ -69,6 +69,8 @@ export function RichTextEditable({
     }
   }, [value]);
 
+  const LINK_CLASS = "text-blue-600 underline hover:text-blue-700";
+
   const handleInput = useCallback(() => {
     const el = divRef.current;
     if (!el) return;
@@ -76,6 +78,12 @@ export function RichTextEditable({
     lastValueRef.current = md;
     isInternalChangeRef.current = true;
     onChange(md);
+    // createLink などで挿入された <a> にスタイルを付与（内部変更で useEffect をスキップするため）
+    el.querySelectorAll("a[href]").forEach((a) => {
+      if (!a.className.includes("text-blue-600")) {
+        a.className = `${a.className || ""} ${LINK_CLASS}`.trim();
+      }
+    });
   }, [onChange]);
 
   const handleBlur = useCallback(() => {
