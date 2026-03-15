@@ -308,7 +308,7 @@ export function BlockEditor({
     [blocks, updateBlock]
   );
 
-  /** リンク化（選択テキストを [text](url) に変換） */
+  /** リンク化のオンオフ（選択がリンク内なら解除、否則追加） */
   const applyLink = useCallback(
     (blockId: string, itemIndex?: number) => {
       const block = blocks.find((b) => b.id === blockId);
@@ -341,6 +341,16 @@ export function BlockEditor({
           toast.info("リンクにするテキストを選択してください");
           return;
         }
+        const range = sel.getRangeAt(0);
+        const container = range.commonAncestorContainer;
+        const node = container.nodeType === Node.TEXT_NODE ? container.parentElement : (container as HTMLElement);
+        const insideLink = node?.closest("a[href]");
+        el.focus();
+        if (insideLink instanceof HTMLAnchorElement) {
+          document.execCommand("unlink", false);
+          el.dispatchEvent(new Event("input", { bubbles: true }));
+          return;
+        }
       } else if ("value" in el) {
         const inputEl = el as HTMLInputElement | HTMLTextAreaElement;
         const start = inputEl.selectionStart ?? 0;
@@ -350,8 +360,35 @@ export function BlockEditor({
           return;
         }
         selected = inputEl.value.slice(start, end);
+        const linkMatch = selected.match(/^\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)$/);
+        if (linkMatch) {
+          const plainText = linkMatch[1] || linkMatch[2];
+          const val = inputEl.value;
+          const newContent = val.slice(0, start) + plainText + val.slice(end);
+          if (targetItemIndex !== undefined && block?.items) {
+            const newItems = [...block.items];
+            newItems[targetItemIndex] = newContent;
+            updateBlock(blockId, { items: newItems });
+          } else {
+            updateBlock(blockId, { content: newContent });
+          }
+          requestAnimationFrame(() => {
+            const newEl = textInputRefs.current[refKey] as HTMLInputElement | HTMLTextAreaElement | null;
+            if (newEl && "setSelectionRange" in newEl) {
+              newEl.focus();
+              const newPos = start + plainText.length;
+              newEl.setSelectionRange(newPos, newPos);
+            }
+          });
+          return;
+        }
       }
-      // 選択テキストがURLならそのままリンク化、否則プロンプトで入力
+      if (!el.isContentEditable) {
+        const inputEl = el as HTMLInputElement | HTMLTextAreaElement;
+        const start = inputEl.selectionStart ?? 0;
+        const end = inputEl.selectionEnd ?? 0;
+        selected = inputEl.value.slice(start, end);
+      }
       const looksLikeUrl = /^https?:\/\/.+/.test(selected.trim());
       const href = looksLikeUrl
         ? selected.trim()
@@ -384,7 +421,7 @@ export function BlockEditor({
         const newEl = textInputRefs.current[refKey] as HTMLInputElement | HTMLTextAreaElement | null;
         if (newEl && "setSelectionRange" in newEl) {
           newEl.focus();
-          const newPos = start + selected.length + 4 + href.length; // ](url)
+          const newPos = start + selected.length + 4 + href.length;
           newEl.setSelectionRange(newPos, newPos);
         }
       });
