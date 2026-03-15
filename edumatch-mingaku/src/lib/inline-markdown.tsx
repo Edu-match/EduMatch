@@ -29,7 +29,7 @@ export function renderInlineMarkdown(text: string): React.ReactNode {
           href={m[2]}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-primary underline hover:underline"
+          className="text-blue-600 underline hover:text-blue-700"
         >
           {renderInlineMarkdown(linkText)}
         </a>

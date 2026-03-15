@@ -1055,7 +1055,7 @@ export function BlockEditor({
                         remarkPlugins={[remarkBreaks]}
                         components={{
                           a: ({ href, children, ...props }) => (
-                            <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary underline" {...props}>
+                            <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline hover:text-blue-700" {...props}>
                               {children}
                             </a>
                           ),

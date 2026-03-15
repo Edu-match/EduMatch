@@ -12,7 +12,7 @@ export function inlineMarkdownToHtml(md: string): string {
   html = html.replace(
     /\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/g,
     (_, text, url) =>
-      `<a href="${url}" target="_blank" rel="noopener noreferrer">${text || url}</a>`
+      `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline hover:text-blue-700">${text || url}</a>`
   );
   // **bold** を先に
   html = html.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
