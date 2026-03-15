@@ -79,7 +79,7 @@ export function SideMenu() {
       {/* 一般メニュー（ブロック） */}
       <div className="border rounded-lg bg-card overflow-hidden">
         <div className="p-3 border-b">
-          <h2 className="text-sm font-bold">一般</h2>
+          <h2 className="text-sm font-bold">メニュー</h2>
         </div>
         <nav>
           {generalItems.map((item, index) => (
@@ -96,7 +96,7 @@ export function SideMenu() {
       {visibleBottomItems.length > 0 && (
         <div className="border rounded-lg bg-card overflow-hidden">
           <div className="p-3 border-b">
-            <h2 className="text-sm font-bold">投稿・管理</h2>
+            <h2 className="text-sm font-bold">管理者メニュー</h2>
           </div>
           <nav>
             {visibleBottomItems.map((item, index) => (
