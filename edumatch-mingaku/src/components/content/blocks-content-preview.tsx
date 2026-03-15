@@ -168,7 +168,18 @@ export function BlocksContentPreview({ content }: { content: string }) {
                     <div key={i} className="min-h-[1em]" aria-hidden />
                   ) : (
                     <div key={i} className="py-0.5">
-                      <ReactMarkdown remarkPlugins={[remarkBreaks]}>{line}</ReactMarkdown>
+                      <ReactMarkdown
+                        remarkPlugins={[remarkBreaks]}
+                        components={{
+                          a: ({ href, children, ...props }) => (
+                            <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary underline" {...props}>
+                              {children}
+                            </a>
+                          ),
+                        }}
+                      >
+                        {line}
+                      </ReactMarkdown>
                     </div>
                   )
                 )}

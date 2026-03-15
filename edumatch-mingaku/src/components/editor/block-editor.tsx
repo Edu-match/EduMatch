@@ -351,9 +351,15 @@ export function BlockEditor({
         }
         selected = inputEl.value.slice(start, end);
       }
-      const url = window.prompt("リンク先URLを入力してください", "https://");
-      if (url == null || !url.trim()) return;
-      const href = url.trim();
+      // 選択テキストがURLならそのままリンク化、否則プロンプトで入力
+      const looksLikeUrl = /^https?:\/\/.+/.test(selected.trim());
+      const href = looksLikeUrl
+        ? selected.trim()
+        : (() => {
+            const url = window.prompt("リンク先URLを入力してください", "https://");
+            return url != null && url.trim() ? url.trim() : null;
+          })();
+      if (!href) return;
       el.focus();
       if (el.isContentEditable) {
         document.execCommand("createLink", false, href);
@@ -1045,7 +1051,18 @@ export function BlockEditor({
                     <div key={i} className="min-h-[1em]" aria-hidden />
                   ) : (
                     <div key={i} className="py-0.5">
-                      <ReactMarkdown remarkPlugins={[remarkBreaks]}>{line}</ReactMarkdown>
+                      <ReactMarkdown
+                        remarkPlugins={[remarkBreaks]}
+                        components={{
+                          a: ({ href, children, ...props }) => (
+                            <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary underline" {...props}>
+                              {children}
+                            </a>
+                          ),
+                        }}
+                      >
+                        {line}
+                      </ReactMarkdown>
                     </div>
                   )
                 )}

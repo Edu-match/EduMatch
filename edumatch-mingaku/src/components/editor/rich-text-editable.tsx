@@ -91,6 +91,15 @@ export function RichTextEditable({
     document.execCommand("insertText", false, text);
   }, []);
 
+  /** リンククリックで新しいタブで開く（contentEditable では通常クリックで選択されるため） */
+  const handleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const anchor = (e.target as HTMLElement).closest("a[href]");
+    if (anchor instanceof HTMLAnchorElement && anchor.href) {
+      e.preventDefault();
+      window.open(anchor.href, "_blank", "noopener,noreferrer");
+    }
+  }, []);
+
   // 初回マウント時・blockId 変更時に innerHTML を設定
   useEffect(() => {
     const el = divRef.current;
@@ -107,6 +116,7 @@ export function RichTextEditable({
       onInput={handleInput}
       onBlur={handleBlur}
       onPaste={handlePaste}
+      onClick={handleClick}
       data-placeholder={placeholder}
       className={className}
       style={style}

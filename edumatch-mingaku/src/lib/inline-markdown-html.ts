@@ -1,6 +1,6 @@
 /**
- * インライン Markdown（**太字** *斜体* ~~取り消し線~~）を HTML に変換
- * contenteditable での表示用
+ * インライン Markdown（**太字** *斜体* ~~取り消し線~~ [text](url)）を HTML に変換
+ * contenteditable での表示用。リンクは target="_blank" でクリック可能
  */
 export function inlineMarkdownToHtml(md: string): string {
   if (!md) return "";
@@ -8,6 +8,12 @@ export function inlineMarkdownToHtml(md: string): string {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
+  // [text](url) リンク（&は上で既に&amp;になっている）
+  html = html.replace(
+    /\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/g,
+    (_, text, url) =>
+      `<a href="${url}" target="_blank" rel="noopener noreferrer">${text || url}</a>`
+  );
   // **bold** を先に
   html = html.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
   // ~~strikethrough~~

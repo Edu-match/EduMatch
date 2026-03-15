@@ -120,7 +120,17 @@ export function ImportedContentRenderer({ type, content, className }: Props) {
   if (type === "md") {
     return (
       <div className={`prose prose-slate max-w-none dark:prose-invert ${className ?? ""}`}>
-        <ReactMarkdown>{content}</ReactMarkdown>
+        <ReactMarkdown
+          components={{
+            a: ({ href, children, ...props }) => (
+              <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary underline" {...props}>
+                {children}
+              </a>
+            ),
+          }}
+        >
+          {content}
+        </ReactMarkdown>
       </div>
     );
   }
