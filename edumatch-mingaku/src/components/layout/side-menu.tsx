@@ -75,16 +75,13 @@ export function SideMenu() {
   );
 
   return (
-    <aside className="border rounded-lg bg-card overflow-hidden">
-      <div className="p-3 border-b">
-        <h2 className="text-sm font-bold">メニュー</h2>
-      </div>
-      <nav className="divide-y divide-border">
-        {/* 一般メニュー（上） */}
-        <div>
-          <div className="px-3 py-2 text-xs font-medium text-muted-foreground bg-muted/50">
-            一般
-          </div>
+    <aside className="space-y-3">
+      {/* 一般メニュー（ブロック） */}
+      <div className="border rounded-lg bg-card overflow-hidden">
+        <div className="p-3 border-b">
+          <h2 className="text-sm font-bold">一般</h2>
+        </div>
+        <nav>
           {generalItems.map((item, index) => (
             <MenuItemLink
               key={item.href}
@@ -92,14 +89,16 @@ export function SideMenu() {
               hasBorder={index < generalItems.length - 1}
             />
           ))}
-        </div>
+        </nav>
+      </div>
 
-        {/* 投稿・管理者メニュー（下）※PROVIDER/ADMIN 向け */}
-        {visibleBottomItems.length > 0 && (
-          <div>
-            <div className="px-3 py-2 text-xs font-medium text-muted-foreground bg-muted/50">
-              投稿・管理
-            </div>
+      {/* 投稿・管理者メニュー（ブロック）※PROVIDER/ADMIN 向け */}
+      {visibleBottomItems.length > 0 && (
+        <div className="border rounded-lg bg-card overflow-hidden">
+          <div className="p-3 border-b">
+            <h2 className="text-sm font-bold">投稿・管理</h2>
+          </div>
+          <nav>
             {visibleBottomItems.map((item, index) => (
               <MenuItemLink
                 key={item.href}
@@ -107,9 +106,9 @@ export function SideMenu() {
                 hasBorder={index < visibleBottomItems.length - 1}
               />
             ))}
-          </div>
-        )}
-      </nav>
+          </nav>
+        </div>
+      )}
     </aside>
   );
 }
