@@ -91,12 +91,11 @@ export function RichTextEditable({
     document.execCommand("insertText", false, text);
   }, []);
 
-  /** リンククリックで新しいタブで開く（contentEditable では通常クリックで選択されるため） */
+  /** 編集時はリンククリックで飛ばないようにする */
   const handleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const anchor = (e.target as HTMLElement).closest("a[href]");
-    if (anchor instanceof HTMLAnchorElement && anchor.href) {
+    if (anchor instanceof HTMLAnchorElement) {
       e.preventDefault();
-      window.open(anchor.href, "_blank", "noopener,noreferrer");
     }
   }, []);
 
