@@ -32,6 +32,7 @@ import {
   Italic,
   Strikethrough,
   SplitSquareVertical,
+  Link,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
@@ -301,6 +302,84 @@ export function BlockEditor({
             const newEnd = end + wrapper.length;
             newEl.setSelectionRange(newStart, newEnd);
           }
+        }
+      });
+    },
+    [blocks, updateBlock]
+  );
+
+  /** リンク化（選択テキストを [text](url) に変換） */
+  const applyLink = useCallback(
+    (blockId: string, itemIndex?: number) => {
+      const block = blocks.find((b) => b.id === blockId);
+      let refKey = blockId;
+      let targetItemIndex: number | undefined = itemIndex;
+      if (block?.items && itemIndex === undefined) {
+        for (let i = 0; i < block.items.length; i++) {
+          const k = `${blockId}-${i}`;
+          if (textInputRefs.current[k] === document.activeElement) {
+            refKey = k;
+            targetItemIndex = i;
+            break;
+          }
+        }
+        if (targetItemIndex === undefined) {
+          refKey = `${blockId}-0`;
+          targetItemIndex = 0;
+        }
+      } else if (itemIndex !== undefined) {
+        refKey = `${blockId}-${itemIndex}`;
+      }
+      const el = (textInputRefs.current[refKey] ?? textInputRefs.current[blockId]) as HTMLElement | null;
+      if (!el) return;
+      let selected = "";
+      if (el.isContentEditable) {
+        const sel = window.getSelection();
+        if (!sel || sel.rangeCount === 0) return;
+        selected = sel.toString();
+        if (!selected.trim()) {
+          toast.info("リンクにするテキストを選択してください");
+          return;
+        }
+      } else if ("value" in el) {
+        const inputEl = el as HTMLInputElement | HTMLTextAreaElement;
+        const start = inputEl.selectionStart ?? 0;
+        const end = inputEl.selectionEnd ?? 0;
+        if (start === end) {
+          toast.info("リンクにするテキストを選択してください");
+          return;
+        }
+        selected = inputEl.value.slice(start, end);
+      }
+      const url = window.prompt("リンク先URLを入力してください", "https://");
+      if (url == null || !url.trim()) return;
+      const href = url.trim();
+      el.focus();
+      if (el.isContentEditable) {
+        document.execCommand("createLink", false, href);
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+        return;
+      }
+      const inputEl = el as HTMLInputElement | HTMLTextAreaElement;
+      const start = inputEl.selectionStart ?? 0;
+      const end = inputEl.selectionEnd ?? 0;
+      const val = inputEl.value;
+      const before = val.slice(0, start);
+      const after = val.slice(end);
+      const newContent = before + `[${selected}](${href})` + after;
+      if (targetItemIndex !== undefined && block?.items) {
+        const newItems = [...block.items];
+        newItems[targetItemIndex] = newContent;
+        updateBlock(blockId, { items: newItems });
+      } else {
+        updateBlock(blockId, { content: newContent });
+      }
+      requestAnimationFrame(() => {
+        const newEl = textInputRefs.current[refKey] as HTMLInputElement | HTMLTextAreaElement | null;
+        if (newEl && "setSelectionRange" in newEl) {
+          newEl.focus();
+          const newPos = start + selected.length + 4 + href.length; // ](url)
+          newEl.setSelectionRange(newPos, newPos);
         }
       });
     },
@@ -1186,6 +1265,17 @@ export function BlockEditor({
                       }}
                     >
                       <Strikethrough className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      title="リンク"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        applyLink(block.id);
+                      }}
+                    >
+                      <Link className="h-4 w-4" />
                     </Button>
                     {/* 選択時に「ブロックに変換」ボタンを表示 */}
                     {selectionBubble?.blockId === block.id && (
