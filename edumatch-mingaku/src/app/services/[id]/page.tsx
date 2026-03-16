@@ -3,7 +3,7 @@ import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, ExternalLink, Building2, Calendar, Play, FileText, Mail, Check, Star, Pencil } from "lucide-react";
+import { ArrowLeft, ExternalLink, Building2, Calendar, Play, FileText, Check, Star, Pencil } from "lucide-react";
 import { unstable_noStore } from "next/cache";
 import { getServiceById, getPopularServices, recordView } from "@/app/_actions";
 import { getCurrentUser, getCurrentProfile } from "@/lib/auth";
@@ -346,12 +346,6 @@ export default async function ServiceDetailPage({
                       size="lg"
                       className="w-full"
                     />
-                    <Button asChild variant="outline" className="w-full" size="lg">
-                      <Link href="/contact">
-                        <Mail className="h-5 w-5 mr-2" />
-                        お問い合わせ
-                      </Link>
-                    </Button>
                   </div>
 
                   {/* 特典リスト */}
@@ -424,12 +418,6 @@ export default async function ServiceDetailPage({
                         />
                       </>
                     )}
-                    <Button asChild variant="outline" className="w-full">
-                      <Link href="/contact">
-                        <Mail className="h-5 w-5 mr-2" />
-                        お問い合わせ
-                      </Link>
-                    </Button>
                   </div>
                 </div>
               </Card>
