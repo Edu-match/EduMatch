@@ -142,11 +142,45 @@ export async function getPendingServicesFromSupabase() {
 }
 
 export async function getApprovedPostsFromSupabase() {
-  return getPostsByStatus("APPROVED");
+  try {
+    const supabase = createServiceRoleClient();
+    const { data, error } = await supabase
+      .from("Post")
+      .select(postSelectFull)
+      .eq("is_published", true)
+      .order("approved_at", { ascending: false })
+      .limit(100);
+    if (error) {
+      console.error("[supabase-pending-approvals] getApprovedPostsFromSupabase:", error);
+      return [];
+    }
+    if (!data || !Array.isArray(data)) return [];
+    return (data as unknown[]).map((row) => mapPost(row as Record<string, unknown>));
+  } catch (e) {
+    console.error("[supabase-pending-approvals] getApprovedPostsFromSupabase:", e);
+    return [];
+  }
 }
 
 export async function getApprovedServicesFromSupabase() {
-  return getServicesByStatus("APPROVED");
+  try {
+    const supabase = createServiceRoleClient();
+    const { data, error } = await supabase
+      .from("Service")
+      .select(serviceSelectFull)
+      .eq("is_published", true)
+      .order("approved_at", { ascending: false })
+      .limit(100);
+    if (error) {
+      console.error("[supabase-pending-approvals] getApprovedServicesFromSupabase:", error);
+      return [];
+    }
+    if (!data || !Array.isArray(data)) return [];
+    return (data as unknown[]).map((row) => mapService(row as Record<string, unknown>));
+  } catch (e) {
+    console.error("[supabase-pending-approvals] getApprovedServicesFromSupabase:", e);
+    return [];
+  }
 }
 
 export async function getRejectedPostsFromSupabase() {
