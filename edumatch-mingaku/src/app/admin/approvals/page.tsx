@@ -16,7 +16,12 @@ import {
 import {
   getPendingPostsFromSupabase,
   getPendingServicesFromSupabase,
+  getApprovedPostsFromSupabase,
+  getApprovedServicesFromSupabase,
+  getRejectedPostsFromSupabase,
+  getRejectedServicesFromSupabase,
 } from "@/lib/supabase-pending-approvals";
+import { CheckCircle, XCircle, Eye, Clock } from "lucide-react";
 
 async function ensureAdmin() {
   await requireAuth();
@@ -26,12 +31,34 @@ async function ensureAdmin() {
   }
 }
 
+function formatDate(s: string | null): string {
+  if (!s) return "—";
+  return new Date(s).toLocaleDateString("ja-JP", {
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export default async function AdminApprovalsPage() {
   await ensureAdmin();
 
-  const [pendingPosts, pendingServices] = await Promise.all([
+  const [
+    pendingPosts,
+    pendingServices,
+    approvedPosts,
+    approvedServices,
+    rejectedPosts,
+    rejectedServices,
+  ] = await Promise.all([
     getPendingPostsFromSupabase(),
     getPendingServicesFromSupabase(),
+    getApprovedPostsFromSupabase(),
+    getApprovedServicesFromSupabase(),
+    getRejectedPostsFromSupabase(),
+    getRejectedServicesFromSupabase(),
   ]);
 
   async function approvePostAction(formData: FormData) {
@@ -81,12 +108,12 @@ export default async function AdminApprovalsPage() {
   }
 
   return (
-    <div className="container py-8 space-y-8">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+    <div className="container py-8 max-w-4xl">
+      <div className="flex items-center justify-between gap-4 flex-wrap mb-8">
         <div>
           <h1 className="text-2xl font-bold">承認キュー</h1>
-          <p className="text-sm text-muted-foreground">
-            投稿申請された記事・サービスを確認して承認すると公開されます。
+          <p className="text-sm text-muted-foreground mt-1">
+            記事・サービスの承認・却下・公開状況を管理します
           </p>
         </div>
         <Button asChild variant="outline">
@@ -94,114 +121,234 @@ export default async function AdminApprovalsPage() {
         </Button>
       </div>
 
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">記事の申請</h2>
-          <Badge variant="secondary">{pendingPosts.length}件</Badge>
-        </div>
-
-        {pendingPosts.length === 0 ? (
-          <Card>
-            <CardContent className="py-8 text-center text-muted-foreground">
-              承認待ちの記事はありません
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {pendingPosts.map((p) => (
-              <Card key={p.id}>
-                <CardHeader>
-                  <CardTitle className="text-base line-clamp-2">{p.title}</CardTitle>
-                  <div className="text-xs text-muted-foreground">
-                    申請者: {p.provider?.name || "投稿者"} / ID: {p.id}
+      {/* ブロック1: 承認待ち */}
+      <section className="mb-10">
+        <Card className="border-amber-200 bg-amber-50/30 dark:border-amber-800 dark:bg-amber-950/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <span className="flex items-center gap-1.5">
+                <Clock className="h-4 w-4 text-amber-600" />
+                承認待ち
+              </span>
+              <Badge variant="secondary">
+                {pendingPosts.length + pendingServices.length}件
+              </Badge>
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              申請された記事・サービスを確認して承認すると公開されます
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {pendingPosts.length === 0 && pendingServices.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">
+                承認待ちの申請はありません
+              </p>
+            ) : (
+              <>
+                {pendingPosts.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-medium mb-3">記事</h3>
+                    <div className="space-y-3">
+                      {pendingPosts.map((p) => (
+                        <div
+                          key={p.id}
+                          className="p-4 rounded-lg border bg-background space-y-3"
+                        >
+                          <p className="font-medium line-clamp-2">{p.title}</p>
+                          <p className="text-xs text-muted-foreground">
+                            申請者: {p.provider?.name || "投稿者"}
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            <form action={approvePostAction}>
+                              <input type="hidden" name="id" value={p.id} />
+                              <Button type="submit" size="sm" className="gap-1">
+                                <CheckCircle className="h-4 w-4" />
+                                承認
+                              </Button>
+                            </form>
+                            <Button asChild size="sm" variant="outline">
+                              <Link href={`/articles/${p.id}`} target="_blank">
+                                <Eye className="h-4 w-4 mr-1" />
+                                プレビュー
+                              </Link>
+                            </Button>
+                            <form action={rejectPostAction} className="inline-flex gap-2 items-center">
+                              <input type="hidden" name="id" value={p.id} />
+                              <Textarea name="reason" placeholder="却下理由（任意）" className="min-h-[60px] w-40" />
+                              <Button type="submit" size="sm" variant="destructive" className="gap-1">
+                                <XCircle className="h-4 w-4" />
+                                却下
+                              </Button>
+                            </form>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="text-sm text-muted-foreground line-clamp-3 whitespace-pre-wrap">
-                    {p.content}
+                )}
+                {pendingServices.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-medium mb-3">サービス</h3>
+                    <div className="space-y-3">
+                      {pendingServices.map((s) => (
+                        <div
+                          key={s.id}
+                          className="p-4 rounded-lg border bg-background space-y-3"
+                        >
+                          <p className="font-medium line-clamp-2">{s.title}</p>
+                          <p className="text-xs text-muted-foreground">
+                            申請者: {s.provider?.name || "提供者"}
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            <form action={approveServiceAction}>
+                              <input type="hidden" name="id" value={s.id} />
+                              <Button type="submit" size="sm" className="gap-1">
+                                <CheckCircle className="h-4 w-4" />
+                                承認
+                              </Button>
+                            </form>
+                            <Button asChild size="sm" variant="outline">
+                              <Link href={`/services/${s.id}`} target="_blank">
+                                <Eye className="h-4 w-4 mr-1" />
+                                プレビュー
+                              </Link>
+                            </Button>
+                            <form action={rejectServiceAction} className="inline-flex gap-2 items-center">
+                              <input type="hidden" name="id" value={s.id} />
+                              <Input name="reason" placeholder="却下理由（任意）" className="w-40" />
+                              <Button type="submit" size="sm" variant="destructive" className="gap-1">
+                                <XCircle className="h-4 w-4" />
+                                却下
+                              </Button>
+                            </form>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-
-                  <div className="flex gap-2">
-                    <form action={approvePostAction}>
-                      <input type="hidden" name="id" value={p.id} />
-                      <Button type="submit">承認して公開</Button>
-                    </form>
-                    <Button asChild variant="outline">
-                      <Link href={`/articles/${p.id}`} target="_blank">
-                        プレビュー
-                      </Link>
-                    </Button>
-                  </div>
-
-                  <form action={rejectPostAction} className="space-y-2">
-                    <input type="hidden" name="id" value={p.id} />
-                    <Textarea
-                      name="reason"
-                      placeholder="却下理由（任意）"
-                      className="min-h-[80px]"
-                    />
-                    <Button type="submit" variant="destructive">
-                      却下
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
       </section>
 
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">サービスの申請</h2>
-          <Badge variant="secondary">{pendingServices.length}件</Badge>
-        </div>
-
-        {pendingServices.length === 0 ? (
-          <Card>
-            <CardContent className="py-8 text-center text-muted-foreground">
-              承認待ちのサービスはありません
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {pendingServices.map((s) => (
-              <Card key={s.id}>
-                <CardHeader>
-                  <CardTitle className="text-base line-clamp-2">{s.title}</CardTitle>
-                  <div className="text-xs text-muted-foreground">
-                    申請者: {s.provider?.name || "提供者"} / ID: {s.id}
+      {/* ブロック2: 公開済み */}
+      <section className="mb-10">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              公開済み
+              <Badge variant="secondary">{approvedPosts.length + approvedServices.length}件</Badge>
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              承認され公開中の記事・サービス
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {approvedPosts.length === 0 && approvedServices.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">公開済みはありません</p>
+            ) : (
+              <>
+                {approvedPosts.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-medium mb-2">記事</h3>
+                    <ul className="space-y-2">
+                      {approvedPosts.map((p) => (
+                        <li key={p.id} className="flex items-center justify-between py-2 px-3 rounded-md bg-muted/50">
+                          <Link href={`/articles/${p.id}`} className="font-medium hover:underline line-clamp-1">
+                            {p.title}
+                          </Link>
+                          <span className="text-xs text-muted-foreground shrink-0 ml-2">
+                            承認: {formatDate(p.approved_at)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="text-sm text-muted-foreground line-clamp-3 whitespace-pre-wrap">
-                    {s.description}
+                )}
+                {approvedServices.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-medium mb-2">サービス</h3>
+                    <ul className="space-y-2">
+                      {approvedServices.map((s) => (
+                        <li key={s.id} className="flex items-center justify-between py-2 px-3 rounded-md bg-muted/50">
+                          <Link href={`/services/${s.id}`} className="font-medium hover:underline line-clamp-1">
+                            {s.title}
+                          </Link>
+                          <span className="text-xs text-muted-foreground shrink-0 ml-2">
+                            承認: {formatDate(s.approved_at)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </section>
 
-                  <div className="flex gap-2">
-                    <form action={approveServiceAction}>
-                      <input type="hidden" name="id" value={s.id} />
-                      <Button type="submit">承認して公開</Button>
-                    </form>
-                    <Button asChild variant="outline">
-                      <Link href={`/services/${s.id}`} target="_blank">
-                        プレビュー
-                      </Link>
-                    </Button>
+      {/* ブロック3: 却下 */}
+      <section>
+        <Card className="border-red-200/50 dark:border-red-900/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <XCircle className="h-4 w-4 text-red-600" />
+              却下
+              <Badge variant="secondary">{rejectedPosts.length + rejectedServices.length}件</Badge>
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              却下された記事・サービス
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {rejectedPosts.length === 0 && rejectedServices.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">却下されたものはありません</p>
+            ) : (
+              <>
+                {rejectedPosts.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-medium mb-2">記事</h3>
+                    <ul className="space-y-2">
+                      {rejectedPosts.map((p) => (
+                        <li key={p.id} className="flex flex-col gap-1 py-2 px-3 rounded-md bg-red-50/30 dark:bg-red-950/20">
+                          <Link href={`/articles/${p.id}`} className="font-medium hover:underline line-clamp-1">
+                            {p.title}
+                          </Link>
+                          <p className="text-xs text-muted-foreground">
+                            却下: {formatDate(p.rejected_at)}
+                            {p.rejection_reason && ` — ${p.rejection_reason}`}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-
-                  <form action={rejectServiceAction} className="space-y-2">
-                    <input type="hidden" name="id" value={s.id} />
-                    <Input name="reason" placeholder="却下理由（任意）" />
-                    <Button type="submit" variant="destructive">
-                      却下
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+                )}
+                {rejectedServices.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-medium mb-2">サービス</h3>
+                    <ul className="space-y-2">
+                      {rejectedServices.map((s) => (
+                        <li key={s.id} className="flex flex-col gap-1 py-2 px-3 rounded-md bg-red-50/30 dark:bg-red-950/20">
+                          <Link href={`/services/${s.id}`} className="font-medium hover:underline line-clamp-1">
+                            {s.title}
+                          </Link>
+                          <p className="text-xs text-muted-foreground">
+                            却下: {formatDate(s.rejected_at)}
+                            {s.rejection_reason && ` — ${s.rejection_reason}`}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
       </section>
     </div>
   );

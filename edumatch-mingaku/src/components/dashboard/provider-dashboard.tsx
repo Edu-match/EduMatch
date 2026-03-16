@@ -13,33 +13,31 @@ import {
   Clock,
   CheckCircle,
   XCircle,
+  BarChart3,
+  LayoutDashboard,
 } from "lucide-react";
 import {
   getProviderArticles,
   getProviderServices,
   getProviderStats,
-  type ProviderArticle,
-  type ProviderService,
 } from "@/app/_actions";
 
 type PendingPost = { id: string; title: string; content: string; provider?: { name?: string | null } | null };
 type PendingService = { id: string; title: string; description: string; provider?: { name?: string | null } | null };
 
-
 function getStatusBadge(status: string, isPublished: boolean) {
   if (isPublished) {
-    return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">公開中</Badge>;
+    return <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200 text-xs">公開中</Badge>;
   }
-  
   switch (status) {
     case "DRAFT":
-      return <Badge variant="outline">下書き</Badge>;
+      return <Badge variant="outline" className="text-xs">下書き</Badge>;
     case "PENDING":
-      return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">審査中</Badge>;
+      return <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200 text-xs">審査中</Badge>;
     case "REJECTED":
-      return <Badge variant="destructive">却下</Badge>;
+      return <Badge variant="destructive" className="text-xs">却下</Badge>;
     default:
-      return <Badge variant="outline">{status}</Badge>;
+      return <Badge variant="outline" className="text-xs">{status}</Badge>;
   }
 }
 
@@ -85,365 +83,341 @@ export async function ProviderDashboard({
     approveServiceAction &&
     rejectServiceAction;
 
-  // 下書きは「DRAFT かつ 未公開」のみ表示
   const draftArticles = articles.filter((a) => a.status === "DRAFT" && !a.is_published);
   const draftServices = services.filter((s) => s.status === "DRAFT" && !s.is_published);
   const hasDrafts = draftArticles.length > 0 || draftServices.length > 0;
 
   return (
-    <div className="container py-6 md:py-8 max-w-5xl">
-      {/* ヘッダー */}
-      <header className="mb-8">
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">投稿者ダッシュボード</h1>
-        <p className="text-muted-foreground mt-1">こんにちは、{displayName}さん</p>
-      </header>
+    <div className="min-h-screen bg-gradient-to-b from-muted/30 to-background">
+      <div className="container py-8 md:py-10 max-w-6xl">
+        {/* ヒーローセクション */}
+        <section className="mb-10">
+          <div className="rounded-2xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/10 p-6 md:p-8">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+                  こんにちは、{displayName}さん
+                </h1>
+                <p className="text-muted-foreground mt-1">
+                  投稿者ダッシュボードで記事・サービスを管理できます
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3 shrink-0">
+                <Button asChild size="lg" className="gap-2 shadow-md">
+                  <Link href="/articles/create">
+                    <FileText className="h-5 w-5" />
+                    記事を投稿
+                  </Link>
+                </Button>
+                <Button asChild size="lg" variant="outline" className="gap-2">
+                  <Link href="/services/create">
+                    <Package className="h-5 w-5" />
+                    サービスを投稿
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </section>
 
-      {/* クイックアクション（上部に配置） */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
-        <Button asChild size="lg" className="h-14 shadow-sm">
-          <Link href="/articles/create" className="flex items-center justify-center gap-2">
-            <Plus className="h-5 w-5" />
-            新規記事を投稿
-          </Link>
-        </Button>
-        <Button asChild size="lg" variant="outline" className="h-14 shadow-sm">
-          <Link href="/services/create" className="flex items-center justify-center gap-2">
-            <Plus className="h-5 w-5" />
-            新規サービスを投稿
-          </Link>
-        </Button>
-      </div>
+        {/* 統計 */}
+        <section className="mb-10">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="overflow-hidden border-0 shadow-sm">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-xl bg-primary/10 p-3">
+                    <FileText className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold tabular-nums">{stats.totalArticles}</p>
+                    <p className="text-xs text-muted-foreground">記事（公開 {stats.publishedArticles}）</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="overflow-hidden border-0 shadow-sm">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-xl bg-primary/10 p-3">
+                    <Package className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold tabular-nums">{stats.totalServices}</p>
+                    <p className="text-xs text-muted-foreground">サービス（公開 {stats.publishedServices}）</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="overflow-hidden border-0 shadow-sm">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-xl bg-primary/10 p-3">
+                    <BarChart3 className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold tabular-nums">{stats.totalViews.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">総閲覧数</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="overflow-hidden border-0 shadow-sm">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-xl bg-emerald-500/10 p-3">
+                    <TrendingUp className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">アクティブ</p>
+                    <p className="text-xs text-muted-foreground">投稿可能</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
 
-      {/* 統計カード */}
-      <section className="mb-8">
-        <h2 className="text-sm font-semibold text-muted-foreground mb-3">概要</h2>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <Card className="border-muted/50">
-            <CardContent className="pt-4 pb-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">記事</span>
-                <FileText className="h-4 w-4 text-muted-foreground/70" />
-              </div>
-              <p className="text-2xl font-bold mt-1">{stats.totalArticles}</p>
-              <p className="text-xs text-muted-foreground">公開中 {stats.publishedArticles}件</p>
+        {/* 管理者向け: 承認待ち */}
+        {hasPendingApprovals && (
+          <section className="mb-10">
+            <Card className="border-amber-200 dark:border-amber-800 overflow-hidden">
+              <CardHeader className="bg-amber-50/50 dark:bg-amber-950/20 pb-4">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Clock className="h-4 w-4 text-amber-600" />
+                  承認待ち（最大10件）
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  申請された記事・サービスを承認するとサイトに公開されます
+                </p>
+              </CardHeader>
+              <CardContent className="pt-4 space-y-4">
+                {pendingPosts.map((p) => (
+                  <div key={p.id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-lg bg-muted/30">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm line-clamp-1">{p.title}</p>
+                      <p className="text-xs text-muted-foreground">申請者: {p.provider?.name || "投稿者"}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <form action={approvePostAction} className="inline">
+                        <input type="hidden" name="id" value={p.id} />
+                        <Button type="submit" size="sm" className="gap-1">
+                          <CheckCircle className="h-3.5 w-3.5" />承認
+                        </Button>
+                      </form>
+                      <Button asChild size="sm" variant="outline">
+                        <Link href={`/articles/${p.id}`} target="_blank">プレビュー</Link>
+                      </Button>
+                      <form action={rejectPostAction} className="inline flex gap-1.5">
+                        <input type="hidden" name="id" value={p.id} />
+                        <Input name="reason" placeholder="却下理由" className="h-8 w-20 text-xs" />
+                        <Button type="submit" size="sm" variant="destructive" className="gap-1">
+                          <XCircle className="h-3.5 w-3.5" />却下
+                        </Button>
+                      </form>
+                    </div>
+                  </div>
+                ))}
+                {pendingServices.map((s) => (
+                  <div key={s.id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-lg bg-muted/30">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm line-clamp-1">{s.title}</p>
+                      <p className="text-xs text-muted-foreground">申請者: {s.provider?.name || "提供者"}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <form action={approveServiceAction} className="inline">
+                        <input type="hidden" name="id" value={s.id} />
+                        <Button type="submit" size="sm" className="gap-1">
+                          <CheckCircle className="h-3.5 w-3.5" />承認
+                        </Button>
+                      </form>
+                      <Button asChild size="sm" variant="outline">
+                        <Link href={`/services/${s.id}`} target="_blank">プレビュー</Link>
+                      </Button>
+                      <form action={rejectServiceAction} className="inline flex gap-1.5">
+                        <input type="hidden" name="id" value={s.id} />
+                        <Input name="reason" placeholder="却下理由" className="h-8 w-20 text-xs" />
+                        <Button type="submit" size="sm" variant="destructive" className="gap-1">
+                          <XCircle className="h-3.5 w-3.5" />却下
+                        </Button>
+                      </form>
+                    </div>
+                  </div>
+                ))}
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/admin/approvals">承認キューをすべて見る</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          </section>
+        )}
+
+        {/* 下書き */}
+        {hasDrafts && (
+          <section className="mb-10">
+            <Card className="border-amber-200/60 dark:border-amber-800/60 overflow-hidden">
+              <CardHeader className="py-4">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <LayoutDashboard className="h-4 w-4" />
+                  下書き（{draftArticles.length + draftServices.length}件）
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="flex flex-wrap gap-2">
+                  {draftArticles.map((a) => (
+                    <Link
+                      key={a.id}
+                      href={`/articles/${a.id}/edit`}
+                      className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border bg-background hover:bg-muted/50 transition-colors text-sm"
+                    >
+                      <FileText className="h-4 w-4 text-muted-foreground" />
+                      <span className="truncate max-w-[200px]">{a.title || "（無題）"}</span>
+                      <Edit className="h-3.5 w-3.5 text-muted-foreground" />
+                    </Link>
+                  ))}
+                  {draftServices.map((s) => (
+                    <Link
+                      key={s.id}
+                      href={`/services/${s.id}/edit`}
+                      className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border bg-background hover:bg-muted/50 transition-colors text-sm"
+                    >
+                      <Package className="h-4 w-4 text-muted-foreground" />
+                      <span className="truncate max-w-[200px]">{s.title || "（無題）"}</span>
+                      <Edit className="h-3.5 w-3.5 text-muted-foreground" />
+                    </Link>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+        )}
+
+        {/* 記事・サービス 2カラム */}
+        <div className="grid lg:grid-cols-2 gap-8">
+          {/* 記事一覧 */}
+          <Card className="overflow-hidden">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                投稿記事
+              </CardTitle>
+              <Button asChild variant="ghost" size="sm">
+                <Link href="/articles/create" className="gap-1">
+                  <Plus className="h-4 w-4" />
+                  新規
+                </Link>
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {articles.length === 0 ? (
+                <div className="text-center py-12 rounded-xl bg-muted/20">
+                  <FileText className="h-12 w-12 mx-auto text-muted-foreground/40 mb-3" />
+                  <p className="text-sm text-muted-foreground mb-3">まだ記事がありません</p>
+                  <Button asChild size="sm">
+                    <Link href="/articles/create">最初の記事を投稿</Link>
+                  </Button>
+                </div>
+              ) : (
+                <ul className="space-y-2">
+                  {articles.map((article) => (
+                    <li key={article.id}>
+                      <Link
+                        href={`/articles/${article.id}`}
+                        className="flex items-center justify-between gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors group"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate group-hover:text-primary">
+                            {article.title}
+                          </p>
+                          <div className="flex items-center gap-3 mt-1">
+                            {getStatusBadge(article.status, article.is_published)}
+                            <span className="text-xs text-muted-foreground">{article.category}</span>
+                            <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                              <Eye className="h-3 w-3" /> {article.view_count}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                            <Link href={`/articles/${article.id}`} onClick={(e) => e.stopPropagation()}>
+                              <Eye className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                            <Link href={`/articles/${article.id}/edit`} onClick={(e) => e.stopPropagation()}>
+                              <Edit className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                        </div>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </CardContent>
           </Card>
-          <Card className="border-muted/50">
-            <CardContent className="pt-4 pb-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">サービス</span>
-                <Package className="h-4 w-4 text-muted-foreground/70" />
-              </div>
-              <p className="text-2xl font-bold mt-1">{stats.totalServices}</p>
-              <p className="text-xs text-muted-foreground">公開中 {stats.publishedServices}件</p>
-            </CardContent>
-          </Card>
-          <Card className="border-muted/50">
-            <CardContent className="pt-4 pb-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">閲覧数</span>
-                <Eye className="h-4 w-4 text-muted-foreground/70" />
-              </div>
-              <p className="text-2xl font-bold mt-1">{stats.totalViews.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground">記事合計</p>
-            </CardContent>
-          </Card>
-          <Card className="border-muted/50">
-            <CardContent className="pt-4 pb-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">ステータス</span>
-                <TrendingUp className="h-4 w-4 text-muted-foreground/70" />
-              </div>
-              <p className="text-2xl font-bold mt-1">アクティブ</p>
-              <p className="text-xs text-muted-foreground">投稿可能</p>
+
+          {/* サービス一覧 */}
+          <Card className="overflow-hidden">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Package className="h-5 w-5" />
+                投稿サービス
+              </CardTitle>
+              <Button asChild variant="ghost" size="sm">
+                <Link href="/services/create" className="gap-1">
+                  <Plus className="h-4 w-4" />
+                  新規
+                </Link>
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {services.length === 0 ? (
+                <div className="text-center py-12 rounded-xl bg-muted/20">
+                  <Package className="h-12 w-12 mx-auto text-muted-foreground/40 mb-3" />
+                  <p className="text-sm text-muted-foreground mb-3">まだサービスがありません</p>
+                  <Button asChild size="sm">
+                    <Link href="/services/create">最初のサービスを投稿</Link>
+                  </Button>
+                </div>
+              ) : (
+                <ul className="space-y-2">
+                  {services.map((service) => (
+                    <li key={service.id}>
+                      <Link
+                        href={`/services/${service.id}`}
+                        className="flex items-center justify-between gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors group"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate group-hover:text-primary">
+                            {service.title}
+                          </p>
+                          <div className="flex items-center gap-3 mt-1">
+                            {getStatusBadge(service.status, service.is_published)}
+                            <span className="text-xs text-muted-foreground">{service.category}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                            <Link href={`/services/${service.id}`} onClick={(e) => e.stopPropagation()}>
+                              <Eye className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                            <Link href={`/services/${service.id}/edit`} onClick={(e) => e.stopPropagation()}>
+                              <Edit className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                        </div>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </CardContent>
           </Card>
         </div>
-      </section>
-
-      {/* 管理者向け: 承認待ち（最大10件・Supabase連携） */}
-      {hasPendingApprovals && (
-        <section className="mb-8">
-          <Card className="border-amber-200/80 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/30">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base text-amber-800 dark:text-amber-200">
-                <Clock className="h-4 w-4" />
-                承認待ち（最大10件表示）
-              </CardTitle>
-              <p className="text-sm text-muted-foreground">
-                申請された記事・サービスを承認するとサイトに公開されます
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              {pendingPosts.length > 0 && (
-                <div>
-                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                    記事の申請
-                  </h3>
-                  <ul className="space-y-3">
-                    {pendingPosts.map((p) => (
-                      <li
-                        key={p.id}
-                        className="flex flex-col gap-2 p-3 rounded-lg bg-background/80 border border-border/50"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm line-clamp-2">{p.title}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            申請者: {p.provider?.name || "投稿者"}
-                          </p>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <form action={approvePostAction} className="inline">
-                            <input type="hidden" name="id" value={p.id} />
-                            <Button type="submit" size="sm" className="gap-1">
-                              <CheckCircle className="h-3.5 w-3.5" />
-                              承認
-                            </Button>
-                          </form>
-                          <Button asChild size="sm" variant="outline">
-                            <Link href={`/articles/${p.id}`} target="_blank">
-                              プレビュー
-                            </Link>
-                          </Button>
-                          <form action={rejectPostAction} className="inline flex items-center gap-1.5">
-                            <input type="hidden" name="id" value={p.id} />
-                            <Input
-                              name="reason"
-                              placeholder="却下理由（任意）"
-                              className="h-8 w-24 text-xs"
-                            />
-                            <Button type="submit" size="sm" variant="destructive" className="gap-1">
-                              <XCircle className="h-3.5 w-3.5" />
-                              却下
-                            </Button>
-                          </form>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {pendingServices.length > 0 && (
-                <div>
-                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                    サービスの申請
-                  </h3>
-                  <ul className="space-y-3">
-                    {pendingServices.map((s) => (
-                      <li
-                        key={s.id}
-                        className="flex flex-col gap-2 p-3 rounded-lg bg-background/80 border border-border/50"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm line-clamp-2">{s.title}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            申請者: {s.provider?.name || "提供者"}
-                          </p>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <form action={approveServiceAction} className="inline">
-                            <input type="hidden" name="id" value={s.id} />
-                            <Button type="submit" size="sm" className="gap-1">
-                              <CheckCircle className="h-3.5 w-3.5" />
-                              承認
-                            </Button>
-                          </form>
-                          <Button asChild size="sm" variant="outline">
-                            <Link href={`/services/${s.id}`} target="_blank">
-                              プレビュー
-                            </Link>
-                          </Button>
-                          <form action={rejectServiceAction} className="inline flex items-center gap-1.5">
-                            <input type="hidden" name="id" value={s.id} />
-                            <Input
-                              name="reason"
-                              placeholder="却下理由（任意）"
-                              className="h-8 w-24 text-xs"
-                            />
-                            <Button type="submit" size="sm" variant="destructive" className="gap-1">
-                              <XCircle className="h-3.5 w-3.5" />
-                              却下
-                            </Button>
-                          </form>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              <Button asChild variant="outline" size="sm" className="w-full sm:w-auto">
-                <Link href="/admin/approvals">承認キューをすべて見る</Link>
-              </Button>
-            </CardContent>
-          </Card>
-        </section>
-      )}
-
-      {/* 下書き一覧 */}
-      {hasDrafts && (
-        <section className="mb-8">
-          <h2 className="text-sm font-semibold text-muted-foreground mb-3">下書き</h2>
-          <Card className="border-amber-200/80 bg-amber-50/30 dark:border-amber-800 dark:bg-amber-950/20">
-            <CardContent className="pt-4">
-              <p className="text-sm text-muted-foreground mb-3">
-                編集中の記事・サービスを続きから編集できます（{draftArticles.length + draftServices.length}件）
-              </p>
-              <ul className="space-y-2">
-                {draftArticles.map((article) => (
-                  <li
-                    key={article.id}
-                    className="flex items-center justify-between py-2 px-3 rounded-md bg-background/80 border border-border/50"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{article.title || "（無題）"}</p>
-                      <p className="text-xs text-muted-foreground">{formatDate(article.updated_at)}</p>
-                    </div>
-                    <div className="flex items-center gap-1 ml-3">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                        <Link href={`/articles/${article.id}`} title="プレビュー">
-                          <Eye className="h-4 w-4" />
-                        </Link>
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                        <Link href={`/articles/${article.id}/edit`} title="編集">
-                          <Edit className="h-4 w-4" />
-                        </Link>
-                      </Button>
-                    </div>
-                  </li>
-                ))}
-                {draftServices.map((service) => (
-                  <li
-                    key={service.id}
-                    className="flex items-center justify-between py-2 px-3 rounded-md bg-background/80 border border-border/50"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{service.title || "（無題）"}</p>
-                      <p className="text-xs text-muted-foreground">{formatDate(service.updated_at)}</p>
-                    </div>
-                    <div className="flex items-center gap-1 ml-3">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                        <Link href={`/services/${service.id}`} title="プレビュー">
-                          <Eye className="h-4 w-4" />
-                        </Link>
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                        <Link href={`/services/${service.id}/edit`} title="編集">
-                          <Edit className="h-4 w-4" />
-                        </Link>
-                      </Button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-        </section>
-      )}
-
-      {/* 記事一覧 */}
-      <section className="mb-8">
-        <h2 className="text-sm font-semibold text-muted-foreground mb-3">投稿記事</h2>
-      <Card className="border-muted/50">
-        <CardContent className="pt-4">
-          {articles.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground">
-              <FileText className="h-10 w-10 mx-auto mb-3 text-muted-foreground/50" />
-              <p className="text-sm mb-3">まだ記事を投稿していません</p>
-              <Button asChild size="sm">
-                <Link href="/articles/create">最初の記事を投稿する</Link>
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {articles.map((article) => (
-                <div
-                  key={article.id}
-                  className="flex items-center justify-between py-3 px-3 rounded-lg border border-border/50 hover:bg-muted/30 transition-colors"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-medium truncate">{article.title}</h3>
-                      {getStatusBadge(article.status, article.is_published)}
-                    </div>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <span>{article.category}</span>
-                      <span className="flex items-center gap-1">
-                        <Eye className="h-3 w-3" />
-                        {article.view_count}
-                      </span>
-                      <span>{formatDate(article.created_at)}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 ml-4">
-                    <Button variant="ghost" size="sm" asChild>
-                      <Link href={`/articles/${article.id}`}>
-                        <Eye className="h-4 w-4" />
-                      </Link>
-                    </Button>
-                    <Button variant="ghost" size="sm" asChild>
-                      <Link href={`/articles/${article.id}/edit`}>
-                        <Edit className="h-4 w-4" />
-                      </Link>
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-      </section>
-
-      {/* サービス一覧 */}
-      <section>
-        <h2 className="text-sm font-semibold text-muted-foreground mb-3">投稿サービス</h2>
-      <Card className="border-muted/50">
-        <CardContent className="pt-4">
-          {services.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground">
-              <Package className="h-10 w-10 mx-auto mb-3 text-muted-foreground/50" />
-              <p className="text-sm mb-3">まだサービスを投稿していません</p>
-              <Button asChild size="sm">
-                <Link href="/services/create">最初のサービスを投稿する</Link>
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {services.map((service) => (
-                <div
-                  key={service.id}
-                  className="flex items-center justify-between py-3 px-3 rounded-lg border border-border/50 hover:bg-muted/30 transition-colors"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-medium truncate">{service.title}</h3>
-                      {getStatusBadge(service.status, service.is_published)}
-                    </div>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <span>{service.category}</span>
-                      <span>{formatDate(service.created_at)}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 ml-4">
-                    <Button variant="ghost" size="sm" asChild>
-                      <Link href={`/services/${service.id}`}>
-                        <Eye className="h-4 w-4" />
-                      </Link>
-                    </Button>
-                    <Button variant="ghost" size="sm" asChild>
-                      <Link href={`/services/${service.id}/edit`}>
-                        <Edit className="h-4 w-4" />
-                      </Link>
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-      </section>
+      </div>
     </div>
   );
 }

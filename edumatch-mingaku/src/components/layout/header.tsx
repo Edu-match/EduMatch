@@ -35,11 +35,10 @@ export function Header() {
   const [userName, setUserName] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [pendingApprovals, setPendingApprovals] = useState<{
-    posts: number;
-    services: number;
-    items: { type: "post" | "service"; id: string; title: string }[];
-  }>({ posts: 0, services: 0, items: [] });
+  const [notifications, setNotifications] = useState<{
+    list: { id: string; type: string; title: string; body?: string; href?: string }[];
+    unreadCount: number;
+  }>({ list: [], unreadCount: 0 });
 
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
@@ -59,27 +58,20 @@ export function Header() {
           const data = await res.json();
           setUserRole(data?.profile?.role || null);
           if (data?.profile?.name) setUserName(data.profile.name);
-          // 管理者は承認待ち一覧を取得（通知ベル用・Supabase連携）
-          if (data?.profile?.role === "ADMIN") {
-            const pendingRes = await fetch("/api/admin/pending-approvals", { credentials: "include" });
-            const pending = await pendingRes
-              .json()
-              .catch(() => ({ posts: 0, services: 0, items: [] }));
-            setPendingApprovals({
-              posts: pending.posts ?? 0,
-              services: pending.services ?? 0,
-              items: Array.isArray(pending.items) ? pending.items : [],
-            });
-          } else {
-            setPendingApprovals({ posts: 0, services: 0, items: [] });
-          }
+          // 汎用通知を取得（承認申請だけでなく様々な種類に対応）
+          const notifRes = await fetch("/api/notifications", { credentials: "include" });
+          const notif = await notifRes.json().catch(() => ({ notifications: [], unreadCount: 0 }));
+          setNotifications({
+            list: Array.isArray(notif.notifications) ? notif.notifications : [],
+            unreadCount: notif.unreadCount ?? 0,
+          });
         } catch {
           setUserRole(null);
-          setPendingApprovals({ posts: 0, services: 0, items: [] });
+          setNotifications({ list: [], unreadCount: 0 });
         }
       } else {
         setUserRole(null);
-        setPendingApprovals({ posts: 0, services: 0, items: [] });
+        setNotifications({ list: [], unreadCount: 0 });
       }
 
       setIsLoading(false);
@@ -155,41 +147,59 @@ export function Header() {
             )}
           </Link>
 
-          {/* 管理者向け: 承認申請通知ベル */}
-          {isAuthenticated && userRole === "ADMIN" && (
+          {/* 通知ベル（全ログインユーザー・汎用） */}
+          {isAuthenticated && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative">
-                  <Bell className="h-5 w-5 text-foreground/70" aria-label="承認通知" />
-                  {(pendingApprovals.posts > 0 || pendingApprovals.services > 0) && (
-                    <span className="absolute top-1 right-1 min-w-[16px] h-[16px] flex items-center justify-center rounded-full bg-amber-500 text-white text-[10px] font-bold px-1">
-                      {pendingApprovals.posts + pendingApprovals.services > 99
-                        ? "99+"
-                        : pendingApprovals.posts + pendingApprovals.services}
+                <Button variant="ghost" size="icon" className="relative" aria-label="通知">
+                  <Bell className="h-5 w-5 text-foreground/70" />
+                  {notifications.unreadCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
+                      {notifications.unreadCount > 99 ? "99+" : notifications.unreadCount}
                     </span>
                   )}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-80 max-h-[70vh] overflow-y-auto">
-                <div className="p-3">
-                  <p className="text-sm font-medium mb-2">承認申請</p>
-                  {pendingApprovals.items.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">承認待ちの申請はありません</p>
+              <DropdownMenuContent align="end" className="w-[360px] p-0 overflow-hidden">
+                <div className="border-b px-4 py-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-sm">通知</h3>
+                    {notifications.list.length > 0 && (
+                      <Link
+                        href="/notifications"
+                        className="text-xs text-primary hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        すべて見る
+                      </Link>
+                    )}
+                  </div>
+                </div>
+                <div className="max-h-[min(60vh,400px)] overflow-y-auto">
+                  {notifications.list.length === 0 ? (
+                    <div className="py-12 text-center">
+                      <Bell className="h-10 w-10 mx-auto text-muted-foreground/50 mb-2" />
+                      <p className="text-sm text-muted-foreground">通知はありません</p>
+                    </div>
                   ) : (
-                    <ul className="space-y-2 mb-3">
-                      {pendingApprovals.items.map((item) => (
-                        <li key={`${item.type}-${item.id}`} className="text-xs">
-                          <span className="text-muted-foreground">
-                            「{item.title}」の承認申請が届いています
-                          </span>
+                    <ul className="divide-y">
+                      {notifications.list.map((n) => (
+                        <li key={n.id}>
+                          <Link
+                            href={n.href ?? "/notifications"}
+                            className="block px-4 py-3 hover:bg-muted/50 transition-colors text-left"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <p className="text-sm font-medium line-clamp-1">{n.title}</p>
+                            {n.body && (
+                              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                                {n.body}
+                              </p>
+                            )}
+                          </Link>
                         </li>
                       ))}
                     </ul>
-                  )}
-                  {(pendingApprovals.posts > 0 || pendingApprovals.services > 0) && (
-                    <Button asChild size="sm" className="w-full">
-                      <Link href="/admin/approvals">承認キューを開く</Link>
-                    </Button>
                   )}
                 </div>
               </DropdownMenuContent>
@@ -308,20 +318,18 @@ export function Header() {
                         </span>
                       )}
                     </Link>
-                    {userRole === "ADMIN" && (
-                      <Link
-                        href="/admin/approvals"
-                        className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground"
-                      >
-                        <Bell className="h-4 w-4" />
-                        承認申請
-                        {(pendingApprovals.posts > 0 || pendingApprovals.services > 0) && (
-                          <span className="rounded-full bg-amber-500 text-white text-xs font-bold px-2 py-0.5">
-                            {pendingApprovals.posts + pendingApprovals.services}
-                          </span>
-                        )}
-                      </Link>
-                    )}
+                    <Link
+                      href="/notifications"
+                      className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground"
+                    >
+                      <Bell className="h-4 w-4" />
+                      通知
+                      {notifications.unreadCount > 0 && (
+                        <span className="rounded-full bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5">
+                          {notifications.unreadCount}
+                        </span>
+                      )}
+                    </Link>
               
               <div className="border-t pt-4 mt-4">
                 {isLoading ? (
