@@ -208,9 +208,8 @@ export async function ProviderDashboard({
                       <Button asChild size="sm" variant="outline">
                         <Link href={`/articles/${p.id}`} target="_blank">プレビュー</Link>
                       </Button>
-                      <form action={rejectPostAction} className="inline flex gap-1.5">
+                      <form action={rejectPostAction} className="inline">
                         <input type="hidden" name="id" value={p.id} />
-                        <Input name="reason" placeholder="却下理由" className="h-8 w-20 text-xs" />
                         <Button type="submit" size="sm" variant="destructive" className="gap-1">
                           <XCircle className="h-3.5 w-3.5" />却下
                         </Button>
@@ -234,9 +233,8 @@ export async function ProviderDashboard({
                       <Button asChild size="sm" variant="outline">
                         <Link href={`/services/${s.id}`} target="_blank">プレビュー</Link>
                       </Button>
-                      <form action={rejectServiceAction} className="inline flex gap-1.5">
+                      <form action={rejectServiceAction} className="inline">
                         <input type="hidden" name="id" value={s.id} />
-                        <Input name="reason" placeholder="却下理由" className="h-8 w-20 text-xs" />
                         <Button type="submit" size="sm" variant="destructive" className="gap-1">
                           <XCircle className="h-3.5 w-3.5" />却下
                         </Button>

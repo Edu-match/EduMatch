@@ -76,9 +76,8 @@ export default async function AdminApprovalsPage() {
     "use server";
     await ensureAdmin();
     const id = String(formData.get("id") || "");
-    const reason = String(formData.get("reason") || "").trim();
     if (!id) return;
-    await rejectPost(id, reason || undefined);
+    await rejectPost(id);
     revalidatePath("/");
     revalidatePath("/admin/approvals");
     revalidatePath("/articles");
@@ -99,9 +98,8 @@ export default async function AdminApprovalsPage() {
     "use server";
     await ensureAdmin();
     const id = String(formData.get("id") || "");
-    const reason = String(formData.get("reason") || "").trim();
     if (!id) return;
-    await rejectService(id, reason || undefined);
+    await rejectService(id);
     revalidatePath("/");
     revalidatePath("/admin/approvals");
     revalidatePath("/services");
@@ -172,9 +170,8 @@ export default async function AdminApprovalsPage() {
                                 プレビュー
                               </Link>
                             </Button>
-                            <form action={rejectPostAction} className="inline-flex gap-2 items-center">
+                            <form action={rejectPostAction}>
                               <input type="hidden" name="id" value={p.id} />
-                              <Textarea name="reason" placeholder="却下理由（任意）" className="min-h-[60px] w-40" />
                               <Button type="submit" size="sm" variant="destructive" className="gap-1">
                                 <XCircle className="h-4 w-4" />
                                 却下
@@ -213,9 +210,8 @@ export default async function AdminApprovalsPage() {
                                 プレビュー
                               </Link>
                             </Button>
-                            <form action={rejectServiceAction} className="inline-flex gap-2 items-center">
+                            <form action={rejectServiceAction}>
                               <input type="hidden" name="id" value={s.id} />
-                              <Input name="reason" placeholder="却下理由（任意）" className="w-40" />
                               <Button type="submit" size="sm" variant="destructive" className="gap-1">
                                 <XCircle className="h-4 w-4" />
                                 却下

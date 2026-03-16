@@ -87,12 +87,11 @@ async function getPostsByStatus(status: "PENDING" | "APPROVED" | "REJECTED"): Pr
     const supabase = createServiceRoleClient();
     const select = status === "PENDING" ? postSelectPending : postSelectFull;
     const orderBy = status === "PENDING" ? "submitted_at" : status === "APPROVED" ? "approved_at" : "rejected_at";
-    const { data, error } = await supabase
-      .from("Post")
-      .select(select)
-      .eq("status", status)
-      .order(orderBy, { ascending: false })
-      .limit(100);
+    let query = supabase.from("Post").select(select).eq("status", status);
+    if (status === "PENDING") {
+      query = query.eq("is_published", false);
+    }
+    const { data, error } = await query.order(orderBy, { ascending: false }).limit(100);
     if (error) {
       console.error("[supabase-pending-approvals] getPostsByStatus:", error);
       return [];
@@ -115,12 +114,11 @@ async function getServicesByStatus(status: "PENDING" | "APPROVED" | "REJECTED"):
     const supabase = createServiceRoleClient();
     const select = status === "PENDING" ? serviceSelectPending : serviceSelectFull;
     const orderBy = status === "PENDING" ? "submitted_at" : status === "APPROVED" ? "approved_at" : "rejected_at";
-    const { data, error } = await supabase
-      .from("Service")
-      .select(select)
-      .eq("status", status)
-      .order(orderBy, { ascending: false })
-      .limit(100);
+    let query = supabase.from("Service").select(select).eq("status", status);
+    if (status === "PENDING") {
+      query = query.eq("is_published", false);
+    }
+    const { data, error } = await query.order(orderBy, { ascending: false }).limit(100);
     if (error) {
       console.error("[supabase-pending-approvals] getServicesByStatus:", error);
       return [];
