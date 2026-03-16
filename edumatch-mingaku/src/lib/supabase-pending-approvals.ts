@@ -38,11 +38,21 @@ type ServiceWithProvider = Omit<ServiceFromSupabase, "provider"> & {
   provider: { id: string; name: string | null; avatar_url: string | null };
 };
 
-const postSelect = `
+// PENDING 用は最小限のカラム（approved_at 等がないDBにも対応）
+const postSelectPending = `
+  id, title, content, submitted_at, provider_id,
+  Profile!provider_id ( id, name, avatar_url )
+`;
+const serviceSelectPending = `
+  id, title, description, submitted_at, provider_id,
+  Profile!provider_id ( id, name, avatar_url )
+`;
+// APPROVED/REJECTED 用は追加カラム含む
+const postSelectFull = `
   id, title, content, submitted_at, approved_at, rejected_at, rejection_reason, status, provider_id,
   Profile!provider_id ( id, name, avatar_url )
 `;
-const serviceSelect = `
+const serviceSelectFull = `
   id, title, description, submitted_at, approved_at, rejected_at, rejection_reason, status, provider_id,
   Profile!provider_id ( id, name, avatar_url )
 `;
@@ -75,10 +85,11 @@ function mapService(row: Record<string, unknown>): ServiceWithProvider {
 async function getPostsByStatus(status: "PENDING" | "APPROVED" | "REJECTED"): Promise<PostWithProvider[]> {
   try {
     const supabase = createServiceRoleClient();
+    const select = status === "PENDING" ? postSelectPending : postSelectFull;
     const orderBy = status === "PENDING" ? "submitted_at" : status === "APPROVED" ? "approved_at" : "rejected_at";
     const { data, error } = await supabase
       .from("Post")
-      .select(postSelect)
+      .select(select)
       .eq("status", status)
       .order(orderBy, { ascending: false })
       .limit(100);
@@ -99,10 +110,11 @@ async function getPostsByStatus(status: "PENDING" | "APPROVED" | "REJECTED"): Pr
 async function getServicesByStatus(status: "PENDING" | "APPROVED" | "REJECTED"): Promise<ServiceWithProvider[]> {
   try {
     const supabase = createServiceRoleClient();
+    const select = status === "PENDING" ? serviceSelectPending : serviceSelectFull;
     const orderBy = status === "PENDING" ? "submitted_at" : status === "APPROVED" ? "approved_at" : "rejected_at";
     const { data, error } = await supabase
       .from("Service")
-      .select(serviceSelect)
+      .select(select)
       .eq("status", status)
       .order(orderBy, { ascending: false })
       .limit(100);

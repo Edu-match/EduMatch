@@ -9,6 +9,7 @@ import {
 export type NotificationItem = {
   id: string;
   type: "approval_request" | "system" | "material_request";
+  category: string; // 表示用カテゴリ（例: 記事の承認申請）
   title: string;
   body?: string;
   href?: string;
@@ -34,8 +35,9 @@ export async function getNotifications(): Promise<NotificationItem[]> {
       notifications.push({
         id: `approval-post-${p.id}`,
         type: "approval_request",
-        title: `「${p.title}」の承認申請`,
-        body: `記事の承認申請が届いています（${p.provider?.name ?? "投稿者"}）`,
+        category: "記事の承認申請",
+        title: `「${p.title}」の承認申請が届いています`,
+        body: `${p.provider?.name ?? "投稿者"} から申請`,
         href: "/admin/approvals",
         createdAt: p.submitted_at ?? p.id,
         meta: { contentType: "post", contentId: p.id },
@@ -45,8 +47,9 @@ export async function getNotifications(): Promise<NotificationItem[]> {
       notifications.push({
         id: `approval-service-${s.id}`,
         type: "approval_request",
-        title: `「${s.title}」の承認申請`,
-        body: `サービスの承認申請が届いています（${s.provider?.name ?? "提供者"}）`,
+        category: "サービスの承認申請",
+        title: `「${s.title}」の承認申請が届いています`,
+        body: `${s.provider?.name ?? "提供者"} から申請`,
         href: "/admin/approvals",
         createdAt: s.submitted_at ?? s.id,
         meta: { contentType: "service", contentId: s.id },

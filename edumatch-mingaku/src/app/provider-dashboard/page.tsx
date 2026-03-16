@@ -23,19 +23,23 @@ export default async function ProviderDashboardPage() {
   let pendingPosts: Awaited<ReturnType<typeof getPendingPostsFromSupabase>> = [];
   let pendingServices: Awaited<ReturnType<typeof getPendingServicesFromSupabase>> = [];
   if (isAdmin) {
-    const [posts, services] = await Promise.all([
-      getPendingPostsFromSupabase(),
-      getPendingServicesFromSupabase(),
-    ]);
-    // 合計最大10件まで表示（記事優先で残りをサービス）
-    const total = posts.length + services.length;
-    if (total <= MAX_PENDING_DISPLAY) {
-      pendingPosts = posts;
-      pendingServices = services;
-    } else {
-      const postCount = Math.min(posts.length, MAX_PENDING_DISPLAY);
-      pendingPosts = posts.slice(0, postCount);
-      pendingServices = services.slice(0, MAX_PENDING_DISPLAY - postCount);
+    try {
+      const [posts, services] = await Promise.all([
+        getPendingPostsFromSupabase(),
+        getPendingServicesFromSupabase(),
+      ]);
+      const total = posts.length + services.length;
+      if (total <= MAX_PENDING_DISPLAY) {
+        pendingPosts = posts;
+        pendingServices = services;
+      } else {
+        const postCount = Math.min(posts.length, MAX_PENDING_DISPLAY);
+        pendingPosts = posts.slice(0, postCount);
+        pendingServices = services.slice(0, MAX_PENDING_DISPLAY - postCount);
+      }
+    } catch (e) {
+      console.error("[provider-dashboard] Failed to fetch pending approvals:", e);
+      // Supabase 未設定時などは空で継続
     }
   }
 

@@ -36,7 +36,7 @@ export function Header() {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [notifications, setNotifications] = useState<{
-    list: { id: string; type: string; title: string; body?: string; href?: string }[];
+    list: { id: string; type: string; category?: string; title: string; body?: string; href?: string }[];
     unreadCount: number;
   }>({ list: [], unreadCount: 0 });
 
@@ -190,6 +190,11 @@ export function Header() {
                             className="block px-4 py-3 hover:bg-muted/50 transition-colors text-left"
                             onClick={(e) => e.stopPropagation()}
                           >
+                            {n.category && (
+                              <p className="text-xs font-medium text-primary/90 mb-0.5">
+                                【{n.category}】
+                              </p>
+                            )}
                             <p className="text-sm font-medium line-clamp-1">{n.title}</p>
                             {n.body && (
                               <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">

@@ -44,12 +44,15 @@ export default async function NotificationsPage() {
             </div>
           ) : (
             <ul className="divide-y">
-              {notifications.map((n: { id: string; title: string; body?: string; href?: string }) => (
+              {notifications.map((n: { id: string; category?: string; title: string; body?: string; href?: string }) => (
                 <li key={n.id}>
                   <Link
                     href={n.href ?? "#"}
                     className="block px-4 py-4 hover:bg-muted/50 transition-colors"
                   >
+                    {n.category && (
+                      <p className="text-xs font-medium text-primary mb-0.5">【{n.category}】</p>
+                    )}
                     <p className="font-medium">{n.title}</p>
                     {n.body && (
                       <p className="text-sm text-muted-foreground mt-0.5">{n.body}</p>

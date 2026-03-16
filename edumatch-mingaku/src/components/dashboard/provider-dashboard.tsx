@@ -321,11 +321,8 @@ export async function ProviderDashboard({
                 <ul className="space-y-2">
                   {articles.map((article) => (
                     <li key={article.id}>
-                      <Link
-                        href={`/articles/${article.id}`}
-                        className="flex items-center justify-between gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors group"
-                      >
-                        <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors group">
+                        <Link href={`/articles/${article.id}`} className="flex-1 min-w-0">
                           <p className="font-medium text-sm truncate group-hover:text-primary">
                             {article.title}
                           </p>
@@ -336,20 +333,20 @@ export async function ProviderDashboard({
                               <Eye className="h-3 w-3" /> {article.view_count}
                             </span>
                           </div>
-                        </div>
+                        </Link>
                         <div className="flex items-center gap-1 shrink-0">
                           <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                            <Link href={`/articles/${article.id}`} onClick={(e) => e.stopPropagation()}>
+                            <Link href={`/articles/${article.id}`}>
                               <Eye className="h-4 w-4" />
                             </Link>
                           </Button>
                           <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                            <Link href={`/articles/${article.id}/edit`} onClick={(e) => e.stopPropagation()}>
+                            <Link href={`/articles/${article.id}/edit`}>
                               <Edit className="h-4 w-4" />
                             </Link>
                           </Button>
                         </div>
-                      </Link>
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -384,11 +381,8 @@ export async function ProviderDashboard({
                 <ul className="space-y-2">
                   {services.map((service) => (
                     <li key={service.id}>
-                      <Link
-                        href={`/services/${service.id}`}
-                        className="flex items-center justify-between gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors group"
-                      >
-                        <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors group">
+                        <Link href={`/services/${service.id}`} className="flex-1 min-w-0">
                           <p className="font-medium text-sm truncate group-hover:text-primary">
                             {service.title}
                           </p>
@@ -396,20 +390,20 @@ export async function ProviderDashboard({
                             {getStatusBadge(service.status, service.is_published)}
                             <span className="text-xs text-muted-foreground">{service.category}</span>
                           </div>
-                        </div>
+                        </Link>
                         <div className="flex items-center gap-1 shrink-0">
                           <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                            <Link href={`/services/${service.id}`} onClick={(e) => e.stopPropagation()}>
+                            <Link href={`/services/${service.id}`}>
                               <Eye className="h-4 w-4" />
                             </Link>
                           </Button>
                           <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                            <Link href={`/services/${service.id}/edit`} onClick={(e) => e.stopPropagation()}>
+                            <Link href={`/services/${service.id}/edit`}>
                               <Edit className="h-4 w-4" />
                             </Link>
                           </Button>
                         </div>
-                      </Link>
+                      </div>
                     </li>
                   ))}
                 </ul>
