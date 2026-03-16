@@ -6,7 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { 
   Menu, LogOut, User, LayoutDashboard, Settings, 
-  ChevronDown, UserPlus, LogIn, FileText
+  ChevronDown, UserPlus, LogIn, FileText, Bell
 } from "lucide-react";
 import { useRequestList } from "@/components/request-list/request-list-context";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,7 @@ export function Header() {
   const [userName, setUserName] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [pendingApprovals, setPendingApprovals] = useState({ posts: 0, services: 0 });
 
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
@@ -54,11 +55,21 @@ export function Header() {
           const data = await res.json();
           setUserRole(data?.profile?.role || null);
           if (data?.profile?.name) setUserName(data.profile.name);
+          // 管理者は承認待ち件数を取得（通知ベル用）
+          if (data?.profile?.role === "ADMIN") {
+            const pendingRes = await fetch("/api/admin/pending-approvals", { credentials: "include" });
+            const pending = await pendingRes.json().catch(() => ({ posts: 0, services: 0 }));
+            setPendingApprovals({ posts: pending.posts ?? 0, services: pending.services ?? 0 });
+          } else {
+            setPendingApprovals({ posts: 0, services: 0 });
+          }
         } catch {
           setUserRole(null);
+          setPendingApprovals({ posts: 0, services: 0 });
         }
       } else {
         setUserRole(null);
+        setPendingApprovals({ posts: 0, services: 0 });
       }
 
       setIsLoading(false);
@@ -133,6 +144,39 @@ export function Header() {
               </span>
             )}
           </Link>
+
+          {/* 管理者向け: 承認申請通知ベル */}
+          {isAuthenticated && userRole === "ADMIN" && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="relative">
+                  <Bell className="h-5 w-5 text-foreground/70" aria-label="承認通知" />
+                  {(pendingApprovals.posts > 0 || pendingApprovals.services > 0) && (
+                    <span className="absolute top-1 right-1 min-w-[16px] h-[16px] flex items-center justify-center rounded-full bg-amber-500 text-white text-[10px] font-bold px-1">
+                      {pendingApprovals.posts + pendingApprovals.services > 99
+                        ? "99+"
+                        : pendingApprovals.posts + pendingApprovals.services}
+                    </span>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-72">
+                <div className="p-3">
+                  <p className="text-sm font-medium mb-1">承認申請</p>
+                  <p className="text-xs text-muted-foreground">
+                    {pendingApprovals.posts === 0 && pendingApprovals.services === 0
+                      ? "承認待ちの申請はありません"
+                      : `記事が${pendingApprovals.posts}件、サービスが${pendingApprovals.services}件の承認申請があります`}
+                  </p>
+                  {(pendingApprovals.posts > 0 || pendingApprovals.services > 0) && (
+                    <Button asChild size="sm" className="mt-3 w-full">
+                      <Link href="/admin/approvals">承認キューを開く</Link>
+                    </Button>
+                  )}
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           
           {isLoading ? (
             <div className="w-24 h-9 bg-muted animate-pulse rounded-md" />
@@ -234,18 +278,32 @@ export function Header() {
                   {link.label}
                 </Link>
               ))}
-              <Link
-                href="/request-info/list"
-                className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground"
-              >
-                <FileText className="h-4 w-4" />
-                サービスのお気に入り
-                {requestListCount > 0 && (
-                  <span className="rounded-full bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5">
-                    {requestListCount}
-                  </span>
-                )}
-              </Link>
+<Link
+                      href="/request-info/list"
+                      className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground"
+                    >
+                      <FileText className="h-4 w-4" />
+                      サービスのお気に入り
+                      {requestListCount > 0 && (
+                        <span className="rounded-full bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5">
+                          {requestListCount}
+                        </span>
+                      )}
+                    </Link>
+                    {userRole === "ADMIN" && (
+                      <Link
+                        href="/admin/approvals"
+                        className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground"
+                      >
+                        <Bell className="h-4 w-4" />
+                        承認申請
+                        {(pendingApprovals.posts > 0 || pendingApprovals.services > 0) && (
+                          <span className="rounded-full bg-amber-500 text-white text-xs font-bold px-2 py-0.5">
+                            {pendingApprovals.posts + pendingApprovals.services}
+                          </span>
+                        )}
+                      </Link>
+                    )}
               
               <div className="border-t pt-4 mt-4">
                 {isLoading ? (

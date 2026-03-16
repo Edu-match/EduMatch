@@ -2,17 +2,18 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   FileText,
   Package,
   Eye,
   Edit,
-  Trash2,
   Plus,
   TrendingUp,
-  AlertCircle,
-  CheckCircle,
   Clock,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
 import {
   getProviderArticles,
@@ -21,6 +22,10 @@ import {
   type ProviderArticle,
   type ProviderService,
 } from "@/app/_actions";
+
+type PendingPost = { id: string; title: string; content: string; provider?: { name?: string | null } | null };
+type PendingService = { id: string; title: string; description: string; provider?: { name?: string | null } | null };
+
 
 function getStatusBadge(status: string, isPublished: boolean) {
   if (isPublished) {
@@ -48,12 +53,38 @@ function formatDate(date: Date): string {
   });
 }
 
-export async function ProviderDashboard({ displayName }: { displayName: string }) {
+export async function ProviderDashboard({
+  displayName,
+  isAdmin = false,
+  pendingPosts = [],
+  pendingServices = [],
+  approvePostAction,
+  rejectPostAction,
+  approveServiceAction,
+  rejectServiceAction,
+}: {
+  displayName: string;
+  isAdmin?: boolean;
+  pendingPosts?: PendingPost[];
+  pendingServices?: PendingService[];
+  approvePostAction?: (formData: FormData) => Promise<void>;
+  rejectPostAction?: (formData: FormData) => Promise<void>;
+  approveServiceAction?: (formData: FormData) => Promise<void>;
+  rejectServiceAction?: (formData: FormData) => Promise<void>;
+}) {
   const [articles, services, stats] = await Promise.all([
     getProviderArticles(),
     getProviderServices(),
     getProviderStats(),
   ]);
+
+  const hasPendingApprovals =
+    isAdmin &&
+    pendingPosts.length + pendingServices.length > 0 &&
+    approvePostAction &&
+    rejectPostAction &&
+    approveServiceAction &&
+    rejectServiceAction;
 
   // 下書きは「DRAFT かつ 未公開」のみ表示
   const draftArticles = articles.filter((a) => a.status === "DRAFT" && !a.is_published);
@@ -127,6 +158,108 @@ export async function ProviderDashboard({ displayName }: { displayName: string }
           </CardContent>
         </Card>
       </div>
+
+      {/* 管理者向け: 承認待ちセクション */}
+      {hasPendingApprovals && (
+        <Card className="mb-8 border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
+              <Clock className="h-5 w-5" />
+              承認待ち（{pendingPosts.length + pendingServices.length}件）
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              申請された記事・サービスを承認するとサイトに公開されます
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {pendingPosts.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold">記事の申請</h3>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {pendingPosts.map((p) => (
+                    <div key={p.id} className="p-4 border rounded-lg bg-background space-y-3">
+                      <div>
+                        <p className="font-medium line-clamp-2">{p.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          申請者: {p.provider?.name || "投稿者"}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <form action={approvePostAction}>
+                          <input type="hidden" name="id" value={p.id} />
+                          <Button type="submit" size="sm">
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            承認
+                          </Button>
+                        </form>
+                        <Button asChild size="sm" variant="outline">
+                          <Link href={`/articles/${p.id}`} target="_blank">
+                            プレビュー
+                          </Link>
+                        </Button>
+                      </div>
+                      <form action={rejectPostAction} className="flex gap-2 items-end">
+                        <input type="hidden" name="id" value={p.id} />
+                        <Textarea
+                          name="reason"
+                          placeholder="却下理由（任意）"
+                          className="min-h-[60px] flex-1"
+                        />
+                        <Button type="submit" size="sm" variant="destructive">
+                          <XCircle className="h-4 w-4 mr-1" />
+                          却下
+                        </Button>
+                      </form>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {pendingServices.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold">サービスの申請</h3>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {pendingServices.map((s) => (
+                    <div key={s.id} className="p-4 border rounded-lg bg-background space-y-3">
+                      <div>
+                        <p className="font-medium line-clamp-2">{s.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          申請者: {s.provider?.name || "提供者"}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <form action={approveServiceAction}>
+                          <input type="hidden" name="id" value={s.id} />
+                          <Button type="submit" size="sm">
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            承認
+                          </Button>
+                        </form>
+                        <Button asChild size="sm" variant="outline">
+                          <Link href={`/services/${s.id}`} target="_blank">
+                            プレビュー
+                          </Link>
+                        </Button>
+                      </div>
+                      <form action={rejectServiceAction} className="flex gap-2 items-end">
+                        <input type="hidden" name="id" value={s.id} />
+                        <Input name="reason" placeholder="却下理由（任意）" className="flex-1" />
+                        <Button type="submit" size="sm" variant="destructive">
+                          <XCircle className="h-4 w-4 mr-1" />
+                          却下
+                        </Button>
+                      </form>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <Button asChild variant="outline" size="sm">
+              <Link href="/admin/approvals">承認キューをすべて見る</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* 下書き一覧（下書きがある場合のみ表示） */}
       {hasDrafts && (

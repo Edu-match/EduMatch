@@ -29,6 +29,7 @@ const generalItems = [
 const bottomItems = [
   { href: "/articles/create", label: "記事を投稿", icon: PenSquare, roles: ["PROVIDER", "ADMIN"] },
   { href: "/services/create", label: "サービスを投稿", icon: PenSquare, roles: ["PROVIDER", "ADMIN"] },
+  { href: "/admin/approvals", label: "承認キュー", icon: FileText, roles: ["ADMIN"] },
   { href: "/admin/site-updates", label: "運営記事を書く", icon: PenSquare, roles: ["ADMIN"] },
   { href: "/admin/events", label: "セミナー・イベントを管理", icon: Calendar, roles: ["ADMIN"] },
   { href: "/admin/pages", label: "固定ページ・表示設定", icon: FileText, roles: ["ADMIN"] },
