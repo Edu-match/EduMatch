@@ -2,15 +2,17 @@ import { revalidatePath } from "next/cache";
 import { requireProvider } from "@/lib/auth";
 import { ProviderDashboard } from "@/components/dashboard/provider-dashboard";
 import {
-  getPendingPosts,
-  getPendingServices,
   approvePost,
   rejectPost,
   approveService,
   rejectService,
-  type PostWithProvider,
-  type ServiceWithProvider,
 } from "@/app/_actions";
+import {
+  getPendingPostsFromSupabase,
+  getPendingServicesFromSupabase,
+} from "@/lib/supabase-pending-approvals";
+
+const MAX_PENDING_DISPLAY = 10; // 投稿者ダッシュボードの承認待ち最大表示数
 
 export default async function ProviderDashboardPage() {
   const { user, profile } = await requireProvider();
@@ -18,9 +20,24 @@ export default async function ProviderDashboardPage() {
   const displayName = profile?.name ?? user.email?.split("@")[0] ?? "ユーザー";
   const isAdmin = profile?.role === "ADMIN";
 
-  const [pendingPosts, pendingServices]: [PostWithProvider[], ServiceWithProvider[]] = isAdmin
-    ? await Promise.all([getPendingPosts(), getPendingServices()])
-    : [[], []];
+  let pendingPosts: Awaited<ReturnType<typeof getPendingPostsFromSupabase>> = [];
+  let pendingServices: Awaited<ReturnType<typeof getPendingServicesFromSupabase>> = [];
+  if (isAdmin) {
+    const [posts, services] = await Promise.all([
+      getPendingPostsFromSupabase(),
+      getPendingServicesFromSupabase(),
+    ]);
+    // 合計最大10件まで表示（記事優先で残りをサービス）
+    const total = posts.length + services.length;
+    if (total <= MAX_PENDING_DISPLAY) {
+      pendingPosts = posts;
+      pendingServices = services;
+    } else {
+      const postCount = Math.min(posts.length, MAX_PENDING_DISPLAY);
+      pendingPosts = posts.slice(0, postCount);
+      pendingServices = services.slice(0, MAX_PENDING_DISPLAY - postCount);
+    }
+  }
 
   async function approvePostAction(formData: FormData) {
     "use server";

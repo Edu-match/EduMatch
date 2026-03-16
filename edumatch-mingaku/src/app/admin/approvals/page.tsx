@@ -10,11 +10,13 @@ import { requireAuth, getCurrentProfile } from "@/lib/auth";
 import {
   approvePost,
   rejectPost,
-  getPendingPosts,
   approveService,
   rejectService,
-  getPendingServices,
 } from "@/app/_actions";
+import {
+  getPendingPostsFromSupabase,
+  getPendingServicesFromSupabase,
+} from "@/lib/supabase-pending-approvals";
 
 async function ensureAdmin() {
   await requireAuth();
@@ -28,8 +30,8 @@ export default async function AdminApprovalsPage() {
   await ensureAdmin();
 
   const [pendingPosts, pendingServices] = await Promise.all([
-    getPendingPosts(),
-    getPendingServices(),
+    getPendingPostsFromSupabase(),
+    getPendingServicesFromSupabase(),
   ]);
 
   async function approvePostAction(formData: FormData) {

@@ -35,7 +35,11 @@ export function Header() {
   const [userName, setUserName] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [pendingApprovals, setPendingApprovals] = useState({ posts: 0, services: 0 });
+  const [pendingApprovals, setPendingApprovals] = useState<{
+    posts: number;
+    services: number;
+    items: { type: "post" | "service"; id: string; title: string }[];
+  }>({ posts: 0, services: 0, items: [] });
 
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
@@ -55,21 +59,27 @@ export function Header() {
           const data = await res.json();
           setUserRole(data?.profile?.role || null);
           if (data?.profile?.name) setUserName(data.profile.name);
-          // 管理者は承認待ち件数を取得（通知ベル用）
+          // 管理者は承認待ち一覧を取得（通知ベル用・Supabase連携）
           if (data?.profile?.role === "ADMIN") {
             const pendingRes = await fetch("/api/admin/pending-approvals", { credentials: "include" });
-            const pending = await pendingRes.json().catch(() => ({ posts: 0, services: 0 }));
-            setPendingApprovals({ posts: pending.posts ?? 0, services: pending.services ?? 0 });
+            const pending = await pendingRes
+              .json()
+              .catch(() => ({ posts: 0, services: 0, items: [] }));
+            setPendingApprovals({
+              posts: pending.posts ?? 0,
+              services: pending.services ?? 0,
+              items: Array.isArray(pending.items) ? pending.items : [],
+            });
           } else {
-            setPendingApprovals({ posts: 0, services: 0 });
+            setPendingApprovals({ posts: 0, services: 0, items: [] });
           }
         } catch {
           setUserRole(null);
-          setPendingApprovals({ posts: 0, services: 0 });
+          setPendingApprovals({ posts: 0, services: 0, items: [] });
         }
       } else {
         setUserRole(null);
-        setPendingApprovals({ posts: 0, services: 0 });
+        setPendingApprovals({ posts: 0, services: 0, items: [] });
       }
 
       setIsLoading(false);
@@ -160,16 +170,24 @@ export function Header() {
                   )}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-72">
+              <DropdownMenuContent align="end" className="w-80 max-h-[70vh] overflow-y-auto">
                 <div className="p-3">
-                  <p className="text-sm font-medium mb-1">承認申請</p>
-                  <p className="text-xs text-muted-foreground">
-                    {pendingApprovals.posts === 0 && pendingApprovals.services === 0
-                      ? "承認待ちの申請はありません"
-                      : `記事が${pendingApprovals.posts}件、サービスが${pendingApprovals.services}件の承認申請があります`}
-                  </p>
+                  <p className="text-sm font-medium mb-2">承認申請</p>
+                  {pendingApprovals.items.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">承認待ちの申請はありません</p>
+                  ) : (
+                    <ul className="space-y-2 mb-3">
+                      {pendingApprovals.items.map((item) => (
+                        <li key={`${item.type}-${item.id}`} className="text-xs">
+                          <span className="text-muted-foreground">
+                            「{item.title}」の承認申請が届いています
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                   {(pendingApprovals.posts > 0 || pendingApprovals.services > 0) && (
-                    <Button asChild size="sm" className="mt-3 w-full">
+                    <Button asChild size="sm" className="w-full">
                       <Link href="/admin/approvals">承認キューを開く</Link>
                     </Button>
                   )}
