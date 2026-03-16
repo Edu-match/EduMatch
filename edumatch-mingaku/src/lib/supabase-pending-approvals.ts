@@ -97,7 +97,10 @@ async function getPostsByStatus(status: "PENDING" | "APPROVED" | "REJECTED"): Pr
       console.error("[supabase-pending-approvals] getPostsByStatus:", error);
       return [];
     }
-    return (data ?? []).map((row) => mapPost(row as Record<string, unknown>));
+    if (!data || !Array.isArray(data)) {
+      return [];
+    }
+    return (data as unknown[]).map((row) => mapPost(row as Record<string, unknown>));
   } catch (e) {
     console.error("[supabase-pending-approvals] getPostsByStatus:", e);
     return [];
@@ -122,7 +125,10 @@ async function getServicesByStatus(status: "PENDING" | "APPROVED" | "REJECTED"):
       console.error("[supabase-pending-approvals] getServicesByStatus:", error);
       return [];
     }
-    return (data ?? []).map((row) => mapService(row as Record<string, unknown>));
+    if (!data || !Array.isArray(data)) {
+      return [];
+    }
+    return (data as unknown[]).map((row) => mapService(row as Record<string, unknown>));
   } catch (e) {
     console.error("[supabase-pending-approvals] getServicesByStatus:", e);
     return [];
