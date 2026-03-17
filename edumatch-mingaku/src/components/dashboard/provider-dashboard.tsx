@@ -96,10 +96,12 @@ export async function ProviderDashboard({
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
               <div>
                 <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-                  こんにちは、{displayName}さん
+                  {isAdmin ? "管理者ダッシュボード" : "投稿者ダッシュボード"}
                 </h1>
                 <p className="text-muted-foreground mt-1">
-                  投稿者ダッシュボードで記事・サービスを管理できます
+                  {isAdmin
+                    ? "サイト全体の投稿状況と承認キューを管理できます"
+                    : `こんにちは、${displayName}さん`}
                 </p>
               </div>
               <div className="flex flex-col sm:flex-row gap-3 shrink-0">

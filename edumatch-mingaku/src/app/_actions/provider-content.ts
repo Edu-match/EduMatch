@@ -35,10 +35,12 @@ export async function getProviderArticles() {
       return [];
     }
 
+    const isAdmin = profile.role === "ADMIN";
+
     const articles = await prisma.post.findMany({
       where: {
-        // 投稿者ダッシュボードは ADMIN/PROVIDER ともに自分の投稿のみ表示
-        provider_id: profile.id,
+        // PROVIDER: 自分の投稿のみ / ADMIN: 全投稿を対象
+        ...(isAdmin ? {} : { provider_id: profile.id }),
       },
       select: {
         id: true,
@@ -73,10 +75,12 @@ export async function getProviderServices() {
       return [];
     }
 
+    const isAdmin = profile.role === "ADMIN";
+
     const services = await prisma.service.findMany({
       where: {
-        // 投稿者ダッシュボードは ADMIN/PROVIDER ともに自分の投稿のみ表示
-        provider_id: profile.id,
+        // PROVIDER: 自分の投稿のみ / ADMIN: 全サービスを対象
+        ...(isAdmin ? {} : { provider_id: profile.id }),
       },
       select: {
         id: true,
@@ -116,7 +120,8 @@ export async function getProviderStats() {
       };
     }
 
-    const whereClause = { provider_id: profile.id };
+    const isAdmin = profile.role === "ADMIN";
+    const whereClause = isAdmin ? {} : { provider_id: profile.id };
     const [articlesCount, publishedArticlesCount, servicesCount, publishedServicesCount, viewsSum] = await Promise.all([
       prisma.post.count({ where: whereClause }),
       prisma.post.count({ where: { ...whereClause, is_published: true } }),
