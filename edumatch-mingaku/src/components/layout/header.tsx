@@ -250,7 +250,7 @@ export function Header() {
                     onSelect={() => router.push("/provider-dashboard")}
                   >
                     <LayoutDashboard className="mr-2 h-4 w-4" />
-                    投稿者ダッシュボード
+                    {userRole === "ADMIN" ? "管理者ダッシュボード" : "投稿者ダッシュボード"}
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem 

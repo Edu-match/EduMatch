@@ -318,8 +318,9 @@ export async function ProviderDashboard({
                   </Button>
                 </div>
               ) : (
+                <>
                 <ul className="space-y-2">
-                  {articles.map((article) => (
+                  {articles.slice(0, 10).map((article) => (
                     <li key={article.id}>
                       <div className="flex items-center justify-between gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors group">
                         <Link href={`/articles/${article.id}`} className="flex-1 min-w-0">
@@ -350,6 +351,16 @@ export async function ProviderDashboard({
                     </li>
                   ))}
                 </ul>
+                {articles.length > 10 && (
+                  <div className="mt-3 flex justify-end">
+                    <Button asChild variant="ghost" size="sm" className="gap-1 text-xs">
+                      <Link href="/articles">
+                        すべての記事を見る
+                      </Link>
+                    </Button>
+                  </div>
+                )}
+                </>
               )}
             </CardContent>
           </Card>
@@ -378,8 +389,9 @@ export async function ProviderDashboard({
                   </Button>
                 </div>
               ) : (
+                <>
                 <ul className="space-y-2">
-                  {services.map((service) => (
+                  {services.slice(0, 10).map((service) => (
                     <li key={service.id}>
                       <div className="flex items-center justify-between gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors group">
                         <Link href={`/services/${service.id}`} className="flex-1 min-w-0">
@@ -407,6 +419,16 @@ export async function ProviderDashboard({
                     </li>
                   ))}
                 </ul>
+                {services.length > 10 && (
+                  <div className="mt-3 flex justify-end">
+                    <Button asChild variant="ghost" size="sm" className="gap-1 text-xs">
+                      <Link href="/services">
+                        すべてのサービスを見る
+                      </Link>
+                    </Button>
+                  </div>
+                )}
+                </>
               )}
             </CardContent>
           </Card>
