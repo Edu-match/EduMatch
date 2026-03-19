@@ -2,8 +2,8 @@ import type { ContentBlock } from "@/components/editor/block-editor";
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
-/** マークダウンブロック1つのまま保存したことを示すプレフィックス（ブロックに分解しない） */
-const RAW_MARKDOWN_PREFIX = "__EDUMATCH_RAW_MARKDOWN__\n";
+/** マークダウンブロック1つのまま保存したことを示すプレフィックス（ブロックに分解しない・表示時は除去） */
+export const RAW_MARKDOWN_PREFIX = "__EDUMATCH_RAW_MARKDOWN__\n";
 
 /**
  * Markdown を ContentBlock 配列に変換

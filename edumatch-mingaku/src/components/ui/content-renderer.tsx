@@ -6,6 +6,14 @@ import { useMemo } from "react";
 import { sanitizeHtml, looksLikeHtml } from "@/lib/sanitize-html";
 import { renderInlineMarkdown } from "@/lib/inline-markdown";
 import { YouTubeEmbed } from "./youtube-embed";
+import { RAW_MARKDOWN_PREFIX } from "@/lib/markdown-to-blocks";
+
+function stripRawMarkdownPrefix(content: string): string {
+  const trimmed = content.trimStart();
+  return trimmed.startsWith(RAW_MARKDOWN_PREFIX)
+    ? trimmed.slice(RAW_MARKDOWN_PREFIX.length)
+    : content;
+}
 
 type ContentBlock = {
   type: "text" | "image" | "youtube";
@@ -310,7 +318,10 @@ type ContentRendererProps = {
  * テキストと画像URLを自動的に判別して表示
  */
 export function ContentRenderer({ content, className }: ContentRendererProps) {
-  const blocks = useMemo(() => parseContent(content), [content]);
+  const blocks = useMemo(
+    () => parseContent(stripRawMarkdownPrefix(content)),
+    [content]
+  );
   
   return (
     <div className={className}>
