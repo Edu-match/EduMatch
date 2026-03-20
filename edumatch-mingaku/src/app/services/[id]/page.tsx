@@ -16,7 +16,7 @@ import { ReviewSection } from "@/components/ui/review-section";
 import { getServiceReviews } from "@/app/_actions/reviews";
 import { ThumbnailOrTitle } from "@/components/ui/thumbnail-or-title";
 import { FEATURES } from "@/lib/features";
-import { normalizeImageUrl } from "@/lib/image-url-utils";
+import { toImageSrcForDisplay } from "@/lib/image-url-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -209,7 +209,7 @@ export default async function ServiceDetailPage({
                         className="group relative aspect-video rounded-lg overflow-hidden bg-muted border-2 hover:border-primary transition-all hover:shadow-xl"
                       >
                         <Image
-                          src={normalizeImageUrl(imageUrl)}
+                          src={toImageSrcForDisplay(imageUrl)}
                           alt={`${service.title} - 画像${index + 1}`}
                           fill
                           className="object-contain transition-transform duration-300 group-hover:scale-110"

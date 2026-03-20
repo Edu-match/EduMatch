@@ -1,7 +1,7 @@
 "use client";
 
 import Image, { ImageProps } from "next/image";
-import { normalizeImageUrl } from "@/lib/image-url-utils";
+import { toImageSrcForDisplay } from "@/lib/image-url-utils";
 
 type ThumbnailOrTitleProps = Omit<ImageProps, "src" | "alt"> & {
   /** 画像URL。未設定の場合は title をテキストで表示 */
@@ -14,7 +14,7 @@ type ThumbnailOrTitleProps = Omit<ImageProps, "src" | "alt"> & {
 /**
  * サムネイル画像がある場合は表示、ない場合はタイトルをテキストで表示。
  * 日本語タイトルもそのまま表示される（placehold.co の ??? を避けるため）。
- * Google Drive / GitHub のURLは表示用に正規化される。
+ * Google Drive はプロキシ経由、GitHub は raw URL に正規化。
  */
 export function ThumbnailOrTitle({
   src,
@@ -28,7 +28,7 @@ export function ThumbnailOrTitle({
   ...rest
 }: ThumbnailOrTitleProps) {
   const effectiveAlt = alt ?? title;
-  const displaySrc = src ? normalizeImageUrl(src) : undefined;
+  const displaySrc = src ? toImageSrcForDisplay(src) : undefined;
 
   if (displaySrc) {
     return (

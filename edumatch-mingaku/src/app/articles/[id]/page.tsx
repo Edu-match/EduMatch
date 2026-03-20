@@ -15,6 +15,7 @@ import { isImportedContent, parseImportedContent } from "@/lib/imported-content"
 import { ImportedContentRenderer } from "@/components/content/imported-content-renderer";
 import { ShareButton } from "@/components/ui/share-button";
 import { ThumbnailOrTitle } from "@/components/ui/thumbnail-or-title";
+import { toImageSrcForDisplay } from "@/lib/image-url-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -164,7 +165,7 @@ export default async function ArticleDetailPage({
                   className="relative aspect-video rounded-lg overflow-hidden bg-muted flex items-center justify-center"
                 >
                   <Image
-                    src={imageUrl}
+                    src={toImageSrcForDisplay(imageUrl)}
                     alt={`${post.title} - 画像${index + 1}`}
                     fill
                     className="object-contain"

@@ -65,6 +65,43 @@ export function normalizeImageUrl(url: string): string {
   return trimmed;
 }
 
+const GD_FILE_ID = /^[a-zA-Z0-9_-]+$/;
+
+/**
+ * Google Drive のファイルIDを URL から抽出
+ */
+export function extractGoogleDriveFileId(url: string): string | null {
+  const trimmed = url.trim();
+  if (!trimmed || !trimmed.includes("drive.google.com")) return null;
+  try {
+    const u = new URL(trimmed);
+    if (!u.hostname.toLowerCase().endsWith("drive.google.com")) return null;
+    const fromPath = u.pathname.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (fromPath?.[1] && GD_FILE_ID.test(fromPath[1])) return fromPath[1];
+    const id = u.searchParams.get("id");
+    if (id && GD_FILE_ID.test(id)) return id;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * ブラウザ向けの画像 src（Google Drive は直接読み込みが失敗しやすいためプロキシ経由）
+ */
+export function toImageSrcForDisplay(url: string): string {
+  const trimmed = url.trim();
+  if (!trimmed) return trimmed;
+
+  const fileId =
+    extractGoogleDriveFileId(trimmed) ?? extractGoogleDriveFileId(normalizeImageUrl(trimmed));
+  if (fileId) {
+    return `/api/remote-image?gd=${encodeURIComponent(fileId)}`;
+  }
+
+  return normalizeImageUrl(trimmed);
+}
+
 /**
  * URLが許可されたホスティング（Google Drive / GitHub / Supabase）かチェック
  */
