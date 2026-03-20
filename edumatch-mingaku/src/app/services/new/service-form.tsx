@@ -29,6 +29,7 @@ import { Loader2 } from "lucide-react";
 import { createServiceManagement } from "@/app/_actions";
 import { serviceSchema, type ServiceFormData } from "@/lib/validations/service";
 import { SERVICE_CATEGORIES } from "@/lib/categories";
+import { toImageSrcForDisplay } from "@/lib/image-url-utils";
 
 const guidelines = [
   "サービスの特徴や導入効果を具体的に記載してください。",
@@ -213,7 +214,7 @@ export function ServiceForm() {
                         {thumbnailPreview && (
                           <div className="relative w-full aspect-video border rounded-lg overflow-hidden bg-muted">
                             <img
-                              src={thumbnailPreview}
+                              src={toImageSrcForDisplay(thumbnailPreview)}
                               alt="サムネイルプレビュー"
                               className="w-full h-full object-contain"
                               onError={() => setThumbnailPreview(null)}

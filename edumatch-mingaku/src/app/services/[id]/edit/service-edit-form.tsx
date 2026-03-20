@@ -33,6 +33,7 @@ import { Loader2, Eye, FileText, Image as ImageIcon } from "lucide-react";
 import { updateServiceManagement, deleteServiceManagement, uploadImage } from "@/app/_actions";
 import { serviceSchema, type ServiceFormData } from "@/lib/validations/service";
 import { SERVICE_CATEGORIES } from "@/lib/categories";
+import { toImageSrcForDisplay } from "@/lib/image-url-utils";
 
 const guidelines = [
   "サービスの特徴や導入効果を具体的に記載してください。",
@@ -334,7 +335,7 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
                         {thumbnailPreview && (
                           <div className="relative w-full aspect-video border rounded-lg overflow-hidden bg-muted">
                             <img
-                              src={thumbnailPreview}
+                              src={toImageSrcForDisplay(thumbnailPreview)}
                               alt="サムネイルプレビュー"
                               className="w-full h-full object-contain"
                               onError={() => setThumbnailPreview(null)}
@@ -452,7 +453,7 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
                       {thumbnailPreview && (
                         <div className="rounded-xl overflow-hidden">
                           <img
-                            src={thumbnailPreview}
+                            src={toImageSrcForDisplay(thumbnailPreview)}
                             alt={form.watch("title")}
                             className="w-full h-[200px] object-contain"
                           />

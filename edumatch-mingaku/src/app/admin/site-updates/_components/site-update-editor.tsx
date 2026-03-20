@@ -16,6 +16,7 @@ import { uploadImage } from "@/app/_actions";
 import { Image as ImageIcon, Loader2, Save, Send, Building2, FileText } from "lucide-react";
 import { getCurrentUserProfile } from "@/app/_actions/user";
 import { isImportedContent } from "@/lib/imported-content";
+import { toImageSrcForDisplay } from "@/lib/image-url-utils";
 
 const TITLE_MAX_LENGTH = 200;
 const CONTENT_MAX_LENGTH = 50000;
@@ -191,7 +192,7 @@ export function SiteUpdateEditor({
             {thumbnailUrl ? (
               <div className="relative group">
                 <img
-                  src={thumbnailUrl}
+                  src={toImageSrcForDisplay(thumbnailUrl)}
                   alt="サムネイル"
                   className="w-full h-[200px] object-contain rounded-lg"
                 />

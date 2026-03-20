@@ -23,6 +23,7 @@ import { blocksToMarkdown } from "@/lib/markdown-to-blocks";
 import { isImportedContent } from "@/lib/imported-content";
 import { createService, uploadImage } from "@/app/_actions";
 import { SERVICE_CATEGORIES } from "@/lib/categories";
+import { toImageSrcForDisplay } from "@/lib/image-url-utils";
 import { Image as ImageIcon, Loader2, Save, Send, Building2, School, Eye, FileText } from "lucide-react";
 
 export default function ServiceCreatePage() {
@@ -194,7 +195,7 @@ export default function ServiceCreatePage() {
             {thumbnailUrl ? (
               <div className="relative group">
                 <img
-                  src={thumbnailUrl}
+                  src={toImageSrcForDisplay(thumbnailUrl)}
                   alt="サムネイル"
                   className="w-full h-[200px] object-contain rounded-lg"
                 />
@@ -403,7 +404,7 @@ export default function ServiceCreatePage() {
                   {thumbnailUrl && (
                     <div className="rounded-xl overflow-hidden">
                       <img
-                        src={thumbnailUrl}
+                        src={toImageSrcForDisplay(thumbnailUrl)}
                         alt={title}
                         className="w-full h-[200px] object-contain"
                       />

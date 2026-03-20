@@ -30,6 +30,7 @@ import { Loader2, Image as ImageIcon } from "lucide-react";
 import { updateArticle, deleteArticle, uploadImage } from "@/app/_actions";
 import { articleSchema, type ArticleFormData } from "@/lib/validations/article";
 import { SHARED_CATEGORIES } from "@/lib/categories";
+import { toImageSrcForDisplay } from "@/lib/image-url-utils";
 
 const guidelines = [
   "記事の内容は教育現場に役立つ実践的な情報にしてください。",
@@ -299,7 +300,7 @@ export function ArticleEditForm({ articleId, initialData }: ArticleEditFormProps
                         {thumbnailPreview && (
                           <div className="relative w-full aspect-video border rounded-lg overflow-hidden bg-muted">
                             <img
-                              src={thumbnailPreview}
+                              src={toImageSrcForDisplay(thumbnailPreview)}
                               alt="サムネイルプレビュー"
                               className="w-full h-full object-contain"
                               onError={() => setThumbnailPreview(null)}

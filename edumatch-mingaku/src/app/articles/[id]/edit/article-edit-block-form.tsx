@@ -44,6 +44,7 @@ import {
 import { toast } from "sonner";
 import { updatePost, uploadImage, deleteArticle } from "@/app/_actions";
 import { SHARED_CATEGORIES } from "@/lib/categories";
+import { toImageSrcForDisplay } from "@/lib/image-url-utils";
 
 const TITLE_MAX_LENGTH = 80;
 const CONTENT_MAX_LENGTH = 10000;
@@ -189,7 +190,7 @@ export function ArticleEditBlockForm({ articleId, initialData }: ArticleEditBloc
     <div className="max-w-3xl mx-auto space-y-6">
       {thumbnailUrl && (
         <div className="rounded-xl overflow-hidden">
-          <img src={thumbnailUrl} alt={title} className="w-full h-[300px] object-contain" />
+          <img src={toImageSrcForDisplay(thumbnailUrl)} alt={title} className="w-full h-[300px] object-contain" />
         </div>
       )}
       <h1 className="text-4xl font-bold">{title || "タイトル未設定"}</h1>
@@ -249,7 +250,7 @@ export function ArticleEditBlockForm({ articleId, initialData }: ArticleEditBloc
                   <CardContent className="pt-6 space-y-4">
                     {thumbnailUrl ? (
                       <div className="relative group">
-                        <img src={thumbnailUrl} alt="サムネイル" className="w-full h-[200px] object-contain rounded-lg" />
+                        <img src={toImageSrcForDisplay(thumbnailUrl)} alt="サムネイル" className="w-full h-[200px] object-contain rounded-lg" />
                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-4">
                           <Button variant="secondary" size="sm" onClick={() => thumbnailFileInputRef.current?.click()}>変更</Button>
                           <Button variant="destructive" size="sm" onClick={() => setThumbnailUrl("")}>削除</Button>
