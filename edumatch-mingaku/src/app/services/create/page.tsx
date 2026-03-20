@@ -23,7 +23,7 @@ import { blocksToMarkdown } from "@/lib/markdown-to-blocks";
 import { isImportedContent } from "@/lib/imported-content";
 import { createService, uploadImage } from "@/app/_actions";
 import { SERVICE_CATEGORIES } from "@/lib/categories";
-import { toImageSrcForDisplay } from "@/lib/image-url-utils";
+import { ImageWithUrlError } from "@/components/ui/image-with-url-error";
 import { Image as ImageIcon, Loader2, Save, Send, Building2, School, Eye, FileText } from "lucide-react";
 
 export default function ServiceCreatePage() {
@@ -193,11 +193,13 @@ export default function ServiceCreatePage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {thumbnailUrl ? (
-              <div className="relative group">
-                <img
-                  src={toImageSrcForDisplay(thumbnailUrl)}
+              <div className="relative group h-[200px]">
+                <ImageWithUrlError
+                  originalSrc={thumbnailUrl}
                   alt="サムネイル"
-                  className="w-full h-[200px] object-contain rounded-lg"
+                  fill
+                  className="object-contain rounded-lg"
+                  unoptimized
                 />
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-4">
                   <Button
@@ -402,11 +404,13 @@ export default function ServiceCreatePage() {
               <CardContent className="py-12">
                 <div className="max-w-3xl mx-auto space-y-6">
                   {thumbnailUrl && (
-                    <div className="rounded-xl overflow-hidden">
-                      <img
-                        src={toImageSrcForDisplay(thumbnailUrl)}
+                    <div className="rounded-xl overflow-hidden relative h-[200px]">
+                      <ImageWithUrlError
+                        originalSrc={thumbnailUrl}
                         alt={title}
-                        className="w-full h-[200px] object-contain"
+                        fill
+                        className="object-contain"
+                        unoptimized
                       />
                     </div>
                   )}

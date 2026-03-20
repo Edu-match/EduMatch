@@ -33,7 +33,7 @@ import { Loader2, Eye, FileText, Image as ImageIcon } from "lucide-react";
 import { updateServiceManagement, deleteServiceManagement, uploadImage } from "@/app/_actions";
 import { serviceSchema, type ServiceFormData } from "@/lib/validations/service";
 import { SERVICE_CATEGORIES } from "@/lib/categories";
-import { toImageSrcForDisplay } from "@/lib/image-url-utils";
+import { ImageWithUrlError } from "@/components/ui/image-with-url-error";
 
 const guidelines = [
   "サービスの特徴や導入効果を具体的に記載してください。",
@@ -334,11 +334,12 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
                         />
                         {thumbnailPreview && (
                           <div className="relative w-full aspect-video border rounded-lg overflow-hidden bg-muted">
-                            <img
-                              src={toImageSrcForDisplay(thumbnailPreview)}
+                            <ImageWithUrlError
+                              originalSrc={thumbnailPreview}
                               alt="サムネイルプレビュー"
-                              className="w-full h-full object-contain"
-                              onError={() => setThumbnailPreview(null)}
+                              fill
+                              className="object-contain"
+                              unoptimized
                             />
                           </div>
                         )}
@@ -451,11 +452,13 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
                         </Badge>
                       )}
                       {thumbnailPreview && (
-                        <div className="rounded-xl overflow-hidden">
-                          <img
-                            src={toImageSrcForDisplay(thumbnailPreview)}
+                        <div className="rounded-xl overflow-hidden relative h-[200px]">
+                          <ImageWithUrlError
+                            originalSrc={thumbnailPreview}
                             alt={form.watch("title")}
-                            className="w-full h-[200px] object-contain"
+                            fill
+                            className="object-contain"
+                            unoptimized
                           />
                         </div>
                       )}

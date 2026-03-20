@@ -150,3 +150,22 @@ export function validateImageUrl(url: string): { ok: true } | { ok: false; error
   }
   return { ok: true };
 }
+
+/** 画像の表示に失敗したとき（共有設定・URL誤りなど）の案内 */
+export const IMAGE_LOAD_FAILED_USER_MESSAGE =
+  "画像を表示できません。URLが正しいか、共有設定（例: Google Drive は「リンクを知っている全員が閲覧可」）をご確認ください。";
+
+/**
+ * 表示前チェック: 未対応ホスト等のときユーザー向けメッセージ、問題なければ null
+ */
+export function getImageUrlValidationMessage(url: string): string | null {
+  const t = url.trim();
+  if (!t) return null;
+  if (!t.startsWith("http")) {
+    return "画像のURLは https で始まる有効なアドレスを指定してください。";
+  }
+  if (!isAllowedImageUrl(t)) {
+    return "この画像URLは利用できません。Google Drive、GitHub、またはこのサイトでアップロードした画像のURLのみ対応しています。";
+  }
+  return null;
+}

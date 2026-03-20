@@ -29,7 +29,7 @@ import { Loader2, Upload, Image as ImageIcon } from "lucide-react";
 import { createArticle } from "@/app/_actions";
 import { articleSchema, type ArticleFormData } from "@/lib/validations/article";
 import { SHARED_CATEGORIES } from "@/lib/categories";
-import { toImageSrcForDisplay } from "@/lib/image-url-utils";
+import { ImageWithUrlError } from "@/components/ui/image-with-url-error";
 
 const guidelines = [
   "記事の内容は教育現場に役立つ実践的な情報にしてください。",
@@ -214,11 +214,12 @@ export function ArticleForm() {
                         />
                         {thumbnailPreview && (
                           <div className="relative w-full aspect-video border rounded-lg overflow-hidden bg-muted">
-                            <img
-                              src={toImageSrcForDisplay(thumbnailPreview)}
+                            <ImageWithUrlError
+                              originalSrc={thumbnailPreview}
                               alt="サムネイルプレビュー"
-                              className="w-full h-full object-contain"
-                              onError={() => setThumbnailPreview(null)}
+                              fill
+                              className="object-contain"
+                              unoptimized
                             />
                           </div>
                         )}

@@ -1,13 +1,12 @@
 "use client";
 
 import React from "react";
-import Image from "next/image";
 import { useMemo } from "react";
 import { sanitizeHtml, looksLikeHtml } from "@/lib/sanitize-html";
 import { renderInlineMarkdown } from "@/lib/inline-markdown";
 import { YouTubeEmbed } from "./youtube-embed";
 import { RAW_MARKDOWN_PREFIX } from "@/lib/markdown-to-blocks";
-import { toImageSrcForDisplay } from "@/lib/image-url-utils";
+import { ImageWithUrlError } from "@/components/ui/image-with-url-error";
 
 function stripRawMarkdownPrefix(content: string): string {
   const trimmed = content.trimStart();
@@ -344,8 +343,8 @@ export function ContentRenderer({ content, className }: ContentRendererProps) {
               className="my-6 relative w-full rounded-lg overflow-hidden bg-muted"
             >
               <div className="relative aspect-video w-full overflow-hidden">
-                <Image
-                  src={toImageSrcForDisplay(block.content)}
+                <ImageWithUrlError
+                  originalSrc={block.content}
                   alt={block.alt || `コンテンツ画像 ${index + 1}`}
                   fill
                   className="object-contain"

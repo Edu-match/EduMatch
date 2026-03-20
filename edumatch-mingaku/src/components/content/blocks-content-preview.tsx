@@ -10,6 +10,7 @@ import {
   parseImportedContent,
 } from "@/lib/imported-content";
 import { ImportedContentRenderer } from "@/components/content/imported-content-renderer";
+import { ImageWithUrlError } from "@/components/ui/image-with-url-error";
 function extractYouTubeId(url: string): string {
   const match = url.match(
     /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/
@@ -89,11 +90,15 @@ export function BlocksContentPreview({ content }: { content: string }) {
             return (
               <figure key={block.id} className="my-8">
                 {block.url && (
-                  <img
-                    src={block.url}
-                    alt={block.caption || ""}
-                    className="w-full rounded-lg"
-                  />
+                  <div className="relative w-full aspect-video max-w-4xl mx-auto">
+                    <ImageWithUrlError
+                      originalSrc={block.url}
+                      alt={block.caption || "画像"}
+                      fill
+                      className="object-contain rounded-lg"
+                      unoptimized
+                    />
+                  </div>
                 )}
                 {block.caption && (
                   <figcaption className="text-center text-sm text-muted-foreground mt-2">
