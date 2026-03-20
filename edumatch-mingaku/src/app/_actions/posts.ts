@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { isImportedContent } from "@/lib/imported-content";
+import { normalizeImageUrl, validateImageUrl } from "@/lib/image-url-utils";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/utils/supabase/server";
 import type { Post, Profile, Role } from "@prisma/client";
@@ -203,6 +204,11 @@ export async function createPost(input: CreatePostInput): Promise<CreatePostResu
       };
     }
     
+    if (input.thumbnailUrl?.trim()) {
+      const v = validateImageUrl(input.thumbnailUrl);
+      if (!v.ok) return { success: false, error: v.error };
+    }
+
     // コンテンツを生成（インポートの場合はそのまま、そうでなければブロックから変換）
     const content =
       input.content != null && isImportedContent(input.content)
@@ -226,7 +232,7 @@ export async function createPost(input: CreatePostInput): Promise<CreatePostResu
         provider_id: user.id,
         title: input.title,
         content: content,
-        thumbnail_url: input.thumbnailUrl || null,
+        thumbnail_url: input.thumbnailUrl ? normalizeImageUrl(input.thumbnailUrl) : null,
         youtube_url: youtubeUrl,
         images: images,
         is_published: false,
@@ -343,7 +349,7 @@ export async function updatePost(
       updateData.youtube_url = extractYoutubeFromBlocks(input.blocks);
     }
     if (input.thumbnailUrl !== undefined) {
-      updateData.thumbnail_url = input.thumbnailUrl || null;
+      updateData.thumbnail_url = input.thumbnailUrl ? normalizeImageUrl(input.thumbnailUrl) : null;
     }
     if (input.category !== undefined) {
       updateData.category = input.category;

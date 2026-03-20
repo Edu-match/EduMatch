@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentProfile } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { articleSchema, type ArticleFormData } from "@/lib/validations/article";
+import { normalizeImageUrl } from "@/lib/image-url-utils";
 
 /**
  * 記事を作成する
@@ -48,7 +49,9 @@ export async function createArticle(data: ArticleFormData) {
         tags: tagsArray,
         summary: validatedData.summary,
         content: validatedData.content,
-        thumbnail_url: validatedData.thumbnail_url || null,
+        thumbnail_url: validatedData.thumbnail_url?.trim()
+          ? normalizeImageUrl(validatedData.thumbnail_url.trim())
+          : null,
         youtube_url: validatedData.youtube_url || null,
         status: validatedData.status,
         is_published: validatedData.status === "APPROVED",
@@ -140,7 +143,9 @@ export async function updateArticle(articleId: string, data: ArticleFormData) {
         tags: tagsArray,
         summary: validatedData.summary,
         content: validatedData.content,
-        thumbnail_url: validatedData.thumbnail_url || null,
+        thumbnail_url: validatedData.thumbnail_url?.trim()
+          ? normalizeImageUrl(validatedData.thumbnail_url.trim())
+          : null,
         youtube_url: validatedData.youtube_url || null,
         status: validatedData.status,
         is_published: validatedData.status === "APPROVED",

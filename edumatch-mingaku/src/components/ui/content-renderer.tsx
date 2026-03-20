@@ -7,6 +7,7 @@ import { sanitizeHtml, looksLikeHtml } from "@/lib/sanitize-html";
 import { renderInlineMarkdown } from "@/lib/inline-markdown";
 import { YouTubeEmbed } from "./youtube-embed";
 import { RAW_MARKDOWN_PREFIX } from "@/lib/markdown-to-blocks";
+import { normalizeImageUrl } from "@/lib/image-url-utils";
 
 function stripRawMarkdownPrefix(content: string): string {
   const trimmed = content.trimStart();
@@ -342,7 +343,7 @@ export function ContentRenderer({ content, className }: ContentRendererProps) {
             >
               <div className="relative aspect-video w-full overflow-hidden">
                 <Image
-                  src={block.content}
+                  src={normalizeImageUrl(block.content)}
                   alt={block.alt || `コンテンツ画像 ${index + 1}`}
                   fill
                   className="object-contain"

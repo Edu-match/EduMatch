@@ -285,20 +285,32 @@ export default function ArticleCreatePage() {
                   }}
                 />
 
-                <Button
-                  variant="outline"
-                  onClick={() => thumbnailFileInputRef.current?.click()}
-                  disabled={thumbnailUploading}
-                >
-                  {thumbnailUploading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      アップロード中...
-                    </>
-                  ) : (
-                    "画像を選択"
-                  )}
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => thumbnailFileInputRef.current?.click()}
+                    disabled={thumbnailUploading}
+                  >
+                    {thumbnailUploading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        アップロード中...
+                      </>
+                    ) : (
+                      "画像を選択"
+                    )}
+                  </Button>
+                  <span className="self-center text-sm text-muted-foreground">または</span>
+                  <Input
+                    placeholder="Google Drive / GitHub の画像URL"
+                    value={thumbnailUrl}
+                    onChange={(e) => setThumbnailUrl(e.target.value)}
+                    className="flex-1 min-w-[200px]"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  対応: アップロード画像、Google Drive、GitHub（raw.githubusercontent.com または github.com/.../blob/...）
+                </p>
               </CardContent>
             </Card>
 

@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { isImportedContent } from "@/lib/imported-content";
+import { normalizeImageUrl, validateImageUrl } from "@/lib/image-url-utils";
 import { createClient } from "@/utils/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import type { Service, Profile, Role } from "@prisma/client";
@@ -529,6 +530,11 @@ export async function createService(input: CreateServiceInput): Promise<CreateSe
       return { success: false, error: "ユーザー情報の取得に失敗しました。プロフィールを登録してください。" };
     }
 
+    if (input.thumbnailUrl?.trim()) {
+      const v = validateImageUrl(input.thumbnailUrl);
+      if (!v.ok) return { success: false, error: v.error };
+    }
+
     const status = input.publishType === "draft" ? "DRAFT" : "PENDING";
     const now = new Date();
     const content =
@@ -543,7 +549,7 @@ export async function createService(input: CreateServiceInput): Promise<CreateSe
         title: input.title,
         description: input.description,
         content,
-        thumbnail_url: input.thumbnailUrl || null,
+        thumbnail_url: input.thumbnailUrl ? normalizeImageUrl(input.thumbnailUrl) : null,
         youtube_url: input.youtubeUrl || null,
         images,
         category: input.category,
@@ -610,7 +616,7 @@ export async function updateService(
         category: input.category,
         content,
         price_info: input.priceInfo,
-        thumbnail_url: input.thumbnailUrl || null,
+        thumbnail_url: input.thumbnailUrl ? normalizeImageUrl(input.thumbnailUrl) : null,
         youtube_url: input.youtubeUrl || null,
         images,
         is_published: false,

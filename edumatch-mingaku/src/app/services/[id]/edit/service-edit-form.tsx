@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,8 +29,8 @@ import { ContentEditorWithImport } from "@/components/content/content-editor-wit
 import { BlocksContentPreview } from "@/components/content/blocks-content-preview";
 import { contentToBlocks, blocksToMarkdown } from "@/lib/markdown-to-blocks";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Eye, FileText } from "lucide-react";
-import { updateServiceManagement, deleteServiceManagement } from "@/app/_actions";
+import { Loader2, Eye, FileText, Image as ImageIcon } from "lucide-react";
+import { updateServiceManagement, deleteServiceManagement, uploadImage } from "@/app/_actions";
 import { serviceSchema, type ServiceFormData } from "@/lib/validations/service";
 import { SERVICE_CATEGORIES } from "@/lib/categories";
 
@@ -79,6 +80,8 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [thumbnailUploading, setThumbnailUploading] = useState(false);
+  const thumbnailFileInputRef = useRef<HTMLInputElement | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(
     initialData.thumbnail_url
   );
@@ -272,15 +275,60 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
                 name="thumbnail_url"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>サムネイル画像URL</FormLabel>
+                    <FormLabel>サムネイル画像</FormLabel>
                     <FormControl>
                       <div className="space-y-2">
-                        <Input 
-                          placeholder="https://example.com/image.jpg" 
-                          {...field}
-                          onChange={(e) => {
-                            field.onChange(e);
-                            handleThumbnailChange(e);
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => thumbnailFileInputRef.current?.click()}
+                            disabled={thumbnailUploading}
+                          >
+                            {thumbnailUploading ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <>
+                                <ImageIcon className="h-4 w-4 mr-1" />
+                                アップロード
+                              </>
+                            )}
+                          </Button>
+                          <Input
+                            placeholder="Google Drive / GitHub のURL"
+                            className="flex-1 min-w-[200px]"
+                            {...field}
+                            onChange={(e) => {
+                              field.onChange(e);
+                              handleThumbnailChange(e);
+                            }}
+                          />
+                        </div>
+                        <input
+                          ref={thumbnailFileInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            setThumbnailUploading(true);
+                            try {
+                              const formData = new FormData();
+                              formData.append("file", file);
+                              const result = await uploadImage(formData);
+                              if (result.success && result.url) {
+                                field.onChange(result.url);
+                                setThumbnailPreview(result.url);
+                                toast.success("サムネイルをアップロードしました");
+                              } else {
+                                toast.error(result.error || "アップロードに失敗しました");
+                              }
+                            } finally {
+                              setThumbnailUploading(false);
+                              e.target.value = "";
+                            }
                           }}
                         />
                         {thumbnailPreview && (
@@ -296,7 +344,7 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
                       </div>
                     </FormControl>
                     <FormDescription>
-                      画像ホスティングサービスにアップロードしたURLを入力してください
+                      アップロード、または Google Drive / GitHub の画像URL
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
