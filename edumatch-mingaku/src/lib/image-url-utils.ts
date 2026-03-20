@@ -9,16 +9,24 @@ const SUPABASE_STORAGE_HOST = "lyoesgwecpcoaylsyiys.supabase.co";
 /**
  * Google Drive 共有リンクをサムネイル表示用URLに変換
  * 形式: https://drive.google.com/file/d/FILE_ID/view?usp=sharing
+ *   または https://drive.google.com/open?id=FILE_ID
  * → https://drive.google.com/thumbnail?id=FILE_ID&sz=w1000
  */
 function googleDriveShareToThumbnail(url: string): string | null {
-  const match = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
-  if (match) {
-    return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1000`;
+  const fileMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (fileMatch) {
+    return `https://drive.google.com/thumbnail?id=${fileMatch[1]}&sz=w1000`;
+  }
+  const openMatch = url.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/);
+  if (openMatch) {
+    return `https://drive.google.com/thumbnail?id=${openMatch[1]}&sz=w1000`;
+  }
+  const idParam = url.match(/drive\.google\.com\/[^?]*\?.*[?&]id=([a-zA-Z0-9_-]+)/);
+  if (idParam) {
+    return `https://drive.google.com/thumbnail?id=${idParam[1]}&sz=w1000`;
   }
   // すでに thumbnail 形式の場合
-  const thumbMatch = url.match(/drive\.google\.com\/thumbnail\?id=([a-zA-Z0-9_-]+)/);
-  if (thumbMatch) {
+  if (url.includes("drive.google.com/thumbnail")) {
     return url;
   }
   return null;

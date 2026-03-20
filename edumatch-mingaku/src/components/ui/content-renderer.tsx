@@ -63,7 +63,9 @@ function parseContent(content: string): ContentBlock[] {
 
   const blocks: ContentBlock[] = [];
   const youtubePattern = /(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})(?:[^\s]*))/gi;
-  const markdownImagePattern = /!\[([^\]]*)\]\((https?:\/\/[^\s)]+\.(?:jpg|jpeg|png|gif|webp|svg)(?:\?[^\s)]*)?)\)/gi;
+  // ![alt](url) 形式：拡張子付きURL に加え、Google Drive / GitHub も画像として認識
+  const markdownImagePattern =
+    /!\[([^\]]*)\]\((https?:\/\/[^\s)]+(?:\.(?:jpg|jpeg|png|gif|webp|svg)(?:\?[^\s)]*)?)?)\)/gi;
   const plainImageUrlPattern = /(https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif|webp|svg)(?:\?[^\s]*)?)/gi;
 
   let processedContent = content;
