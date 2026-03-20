@@ -5,7 +5,7 @@ import { isImportedContent } from "@/lib/imported-content";
 import { normalizeImageUrl, validateImageUrl } from "@/lib/image-url-utils";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/utils/supabase/server";
-import type { Post, Profile, Role } from "@prisma/client";
+import type { HomeNewsTab, Post, Profile, Role } from "@prisma/client";
 
 export type PostWithProvider = Post & {
   provider: Pick<Profile, "id" | "name" | "avatar_url">;
@@ -34,6 +34,8 @@ export type CreatePostInput = {
   blocks?: ContentBlock[];
   /** インポートコンテンツ（__IMPORT__... 形式の場合はこれをそのまま使用） */
   content?: string;
+  /** トップ「トピックス」のニュースタブ分類（未指定時は NONE = すべて） */
+  homeNewsTab?: HomeNewsTab;
 };
 
 // 記事作成の結果型
@@ -225,16 +227,27 @@ export async function createPost(input: CreatePostInput): Promise<CreatePostResu
     const isDraft = input.publishType === "draft";
     const status = isDraft ? "DRAFT" : "PENDING";
     const now = new Date();
-    
+
+    const tagsArray = input.tags
+      .split(/[,、\s]+/)
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0);
+
+    const homeTab = input.homeNewsTab ?? ("NONE" as HomeNewsTab);
+
     // 記事を作成
     const post = await prisma.post.create({
       data: {
         provider_id: user.id,
         title: input.title,
         content: content,
+        category: input.category || "教育ICT",
+        summary: input.leadText?.trim() ? input.leadText.trim() : null,
+        tags: tagsArray,
         thumbnail_url: input.thumbnailUrl ? normalizeImageUrl(input.thumbnailUrl) : null,
         youtube_url: youtubeUrl,
         images: images,
+        home_news_tab: homeTab,
         is_published: false,
         is_member_only: input.publishType === "member",
         status,
@@ -244,7 +257,11 @@ export async function createPost(input: CreatePostInput): Promise<CreatePostResu
         rejection_reason: null,
       },
     });
-    
+
+    revalidatePath("/");
+    revalidatePath("/articles");
+    revalidatePath("/provider-dashboard");
+
     return { success: true, postId: post.id };
   } catch (error) {
     console.error("Error creating post:", error);
@@ -286,6 +303,7 @@ export async function savePostDraft(
       content: input.content,
       blocks: input.blocks,
       publishType: "draft",
+      homeNewsTab: input.homeNewsTab,
     });
   }
   return createPost({
@@ -297,6 +315,7 @@ export async function savePostDraft(
     content: input.content,
     blocks: input.blocks,
     publishType: "draft",
+    homeNewsTab: input.homeNewsTab,
   });
 }
 
@@ -371,7 +390,10 @@ export async function updatePost(
       updateData.rejected_at = null;
       updateData.rejection_reason = null;
     }
-    
+    if (input.homeNewsTab !== undefined) {
+      updateData.home_news_tab = input.homeNewsTab;
+    }
+
     await prisma.post.update({
       where: { id },
       data: updateData,

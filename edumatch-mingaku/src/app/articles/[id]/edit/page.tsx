@@ -27,6 +27,7 @@ export default async function ArticleEditPage({
       thumbnail_url: true,
       youtube_url: true,
       status: true,
+      home_news_tab: true,
     },
   });
 
@@ -49,6 +50,7 @@ export default async function ArticleEditPage({
     thumbnail_url: article.thumbnail_url,
     youtube_url: article.youtube_url,
     status: article.status || "PENDING",
+    home_news_tab: article.home_news_tab,
   };
 
   return <ArticleEditBlockForm articleId={article.id} initialData={initialData} />;

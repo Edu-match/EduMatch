@@ -76,6 +76,55 @@ export async function getEvents(options?: {
   return { events, total, perPage };
 }
 
+const CALENDAR_MAX = 500;
+
+/**
+ * カレンダー表示用：今日以降・検索条件一致のイベントを日付順で最大 CALENDAR_MAX 件取得。件数は別途 total で返す。
+ */
+export async function getUpcomingEventsForCalendar(search?: string): Promise<{
+  events: SeminarEventData[];
+  total: number;
+}> {
+  const q = search?.trim() ?? "";
+  const today = todayString();
+
+  const baseWhere = {
+    event_date: { not: null, gte: today },
+  };
+  const searchWhere = q
+    ? {
+        OR: [
+          { title: { contains: q, mode: "insensitive" as const } },
+          { description: { contains: q, mode: "insensitive" as const } },
+          { company: { contains: q, mode: "insensitive" as const } },
+          { venue: { contains: q, mode: "insensitive" as const } },
+        ],
+      }
+    : undefined;
+  const where = searchWhere ? { AND: [baseWhere, searchWhere] } : baseWhere;
+
+  const [events, total] = await Promise.all([
+    prisma.seminarEvent.findMany({
+      where,
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        event_date: true,
+        venue: true,
+        company: true,
+        external_url: true,
+        wp_post_id: true,
+      },
+      orderBy: { event_date: "asc" },
+      take: CALENDAR_MAX,
+    }),
+    prisma.seminarEvent.count({ where }),
+  ]);
+
+  return { events, total };
+}
+
 export type UpcomingEventItem = {
   id: string;
   title: string;

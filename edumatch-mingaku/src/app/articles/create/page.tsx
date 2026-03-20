@@ -22,6 +22,8 @@ import { contentToBlocks, blocksToMarkdown } from "@/lib/markdown-to-blocks";
 import { isImportedContent } from "@/lib/imported-content";
 import { createPost, uploadImage } from "@/app/_actions";
 import { SHARED_CATEGORIES } from "@/lib/categories";
+import { HOME_TOPICS_TAB_OPTIONS } from "@/lib/home-news-tab-ui";
+import type { HomeNewsTab } from "@prisma/client";
 import { ImageWithUrlError } from "@/components/ui/image-with-url-error";
 import {
   Building2,
@@ -43,6 +45,7 @@ export default function ArticleCreatePage() {
   const [category, setCategory] = useState("");
   const [tags, setTags] = useState("");
   const [thumbnailUrl, setThumbnailUrl] = useState("");
+  const [homeNewsTab, setHomeNewsTab] = useState<HomeNewsTab>("NONE");
   const [content, setContent] = useState("");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -123,6 +126,7 @@ export default function ArticleCreatePage() {
         category: category || "教育ICT",
         tags: tags.trim(),
         thumbnailUrl,
+        homeNewsTab,
         ...(isImportedContent(content)
           ? { content }
           : { blocks: contentToBlocks(content) as Parameters<typeof createPost>[0]["blocks"] }),
@@ -402,6 +406,28 @@ export default function ArticleCreatePage() {
                       placeholder="タグをカンマ区切りで入力"
                     />
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">トップページのトピックス</label>
+                  <p className="text-xs text-muted-foreground">
+                    トップの「トピックス」欄で、国内／世界のニュースタブに並べるかを選べます。「すべて」は両タブ専用ではなく一覧用の分類です。
+                  </p>
+                  <Select
+                    value={homeNewsTab}
+                    onValueChange={(v) => setHomeNewsTab(v as HomeNewsTab)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="分類を選択" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {HOME_TOPICS_TAB_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </CardContent>
             </Card>

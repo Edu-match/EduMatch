@@ -44,6 +44,8 @@ import {
 import { toast } from "sonner";
 import { updatePost, uploadImage, deleteArticle } from "@/app/_actions";
 import { SHARED_CATEGORIES } from "@/lib/categories";
+import { HOME_TOPICS_TAB_OPTIONS, topicsAdminTabValue } from "@/lib/home-news-tab-ui";
+import type { HomeNewsTab } from "@prisma/client";
 import { ImageWithUrlError } from "@/components/ui/image-with-url-error";
 
 const TITLE_MAX_LENGTH = 80;
@@ -60,6 +62,7 @@ type ArticleEditBlockFormProps = {
     thumbnail_url: string | null;
     youtube_url: string | null;
     status: string;
+    home_news_tab: HomeNewsTab;
   };
 };
 
@@ -93,6 +96,9 @@ export function ArticleEditBlockForm({ articleId, initialData }: ArticleEditBloc
     () => statusToPublishType(initialData.status)
   );
   const [thumbnailUrl, setThumbnailUrl] = useState(initialData.thumbnail_url || "");
+  const [homeNewsTab, setHomeNewsTab] = useState<HomeNewsTab>(() =>
+    topicsAdminTabValue(initialData.home_news_tab)
+  );
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
   const thumbnailFileInputRef = useRef<HTMLInputElement | null>(null);
   const [content, setContent] = useState<string>(() => {
@@ -148,6 +154,7 @@ export function ArticleEditBlockForm({ articleId, initialData }: ArticleEditBloc
         tags,
         publishType,
         thumbnailUrl,
+        homeNewsTab,
         ...(isImportedContent(content)
           ? { content }
           : { blocks: contentToBlocks(content) as Parameters<typeof updatePost>[1]["blocks"] }),
@@ -409,6 +416,27 @@ export function ArticleEditBlockForm({ articleId, initialData }: ArticleEditBloc
                 <div className="space-y-2">
                   <label className="text-sm font-medium">タグ</label>
                   <Input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="タグをカンマ区切りで入力" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">トップページのトピックス</label>
+                  <p className="text-xs text-muted-foreground">
+                    トップのニュースタブ（すべて／国内／世界）での分類です。
+                  </p>
+                  <Select
+                    value={homeNewsTab}
+                    onValueChange={(v) => setHomeNewsTab(v as HomeNewsTab)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {HOME_TOPICS_TAB_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </CardContent>
             </Card>

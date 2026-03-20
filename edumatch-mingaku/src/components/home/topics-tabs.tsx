@@ -123,7 +123,7 @@ export function TopicsTabs({ articles, weeklyArticles, services, videos }: Props
       <div className="border-b">
         <TabsList className="w-full justify-start rounded-none h-auto bg-transparent p-0">
           <TabsTrigger value="all" className={triggerClass}>すべて</TabsTrigger>
-          <TabsTrigger value="domestic" className={triggerClass}>日本のニュース</TabsTrigger>
+          <TabsTrigger value="domestic" className={triggerClass}>国内のニュース</TabsTrigger>
           <TabsTrigger value="international" className={triggerClass}>世界のニュース</TabsTrigger>
           {weeklyArticles.length > 0 && (
             <TabsTrigger value="weekly" className={triggerClass}>今週のニュース</TabsTrigger>
@@ -143,7 +143,7 @@ export function TopicsTabs({ articles, weeklyArticles, services, videos }: Props
           {domesticArticles.length > 0 ? (
             domesticArticles.map((a) => <ArticleListItem key={a.id} article={a} />)
           ) : (
-            <p className="text-center text-muted-foreground py-4">日本のニュースがありません</p>
+            <p className="text-center text-muted-foreground py-4">国内のニュースがありません</p>
           )}
         </TabsContent>
 
