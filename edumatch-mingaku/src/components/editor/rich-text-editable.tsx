@@ -62,8 +62,19 @@ export function RichTextEditable({
       lastValueRef.current = value;
       const el = divRef.current;
       if (!el) return;
-      const html = inlineMarkdownToHtml(value || "");
-      el.innerHTML = html || "";
+      const targetHtml = inlineMarkdownToHtml(value || "") || "";
+      const fromDom = htmlToMarkdown(el.innerHTML);
+      if (fromDom !== value) {
+        el.innerHTML = targetHtml;
+        return;
+      }
+      // DOM から読んだ Markdown が value と同じなら、無差し替えでカーソル位置を維持する。
+      // （毎回 innerHTML を書き換えると <div> ラッパー差などでキャレットが先頭に飛ぶ）
+      const hasRenderedRich = /<strong>|<em>|<del>|<a\s/i.test(targetHtml);
+      if (!hasRenderedRich || el.innerHTML === targetHtml) {
+        return;
+      }
+      el.innerHTML = targetHtml;
       return;
     }
     if (value === lastValueRef.current) return;
