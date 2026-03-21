@@ -20,5 +20,7 @@ export function inlineMarkdownToHtml(md: string): string {
   html = html.replace(/~~(.+?)~~/g, "<del>$1</del>");
   // *italic*（**の後に処理）
   html = html.replace(/\*([^*]+)\*/g, "<em>$1</em>");
+  // contenteditable 表示用: Turndown の改行（\n や "  \n"）を折り返しに反映
+  html = html.replace(/\r\n|\r|\n/g, "<br>");
   return html;
 }

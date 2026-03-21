@@ -15,8 +15,10 @@ turndown.addRule("strikethrough", {
 
 export function htmlToMarkdown(html: string): string {
   if (!html || html === "<br>" || html === "<div><br></div>") return "";
-  const md = turndown.turndown(html);
-  return md.trim();
+  let md = turndown.turndown(html).replace(/\u200B/g, "");
+  if (!md.replace(/[\s\u00a0]/g, "")) return "";
+  // 先頭の空白のみ除去（.trim() は行末の Markdown 改行「  \n」まで消してしまう）
+  return md.replace(/^\s+/, "");
 }
 
 interface RichTextEditableProps {
@@ -96,6 +98,37 @@ export function RichTextEditable({
     document.execCommand("insertText", false, text);
   }, []);
 
+  /**
+   * Enter のデフォルト（ブロック用の div が増える）だと Turndown が空行を落とし、
+   * 親の Markdown 同期で改行が消える。明示的に <br> を入れる。
+   * フォーム内では Enter が submit されうるため止める。
+   */
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (e.key !== "Enter") return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const el = divRef.current;
+      if (!el) return;
+      const sel = window.getSelection();
+      if (!sel?.rangeCount) return;
+      const range = sel.getRangeAt(0);
+      if (!el.contains(range.commonAncestorContainer)) return;
+      range.deleteContents();
+      const br = document.createElement("br");
+      range.insertNode(br);
+      const zwsp = document.createTextNode("\u200B");
+      br.parentNode?.insertBefore(zwsp, br.nextSibling);
+      range.setStartAfter(zwsp);
+      range.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(range);
+      handleInput();
+    },
+    [handleInput]
+  );
+
   /** 編集時はリンククリックで飛ばないようにする */
   const handleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const anchor = (e.target as HTMLElement).closest("a[href]");
@@ -118,6 +151,7 @@ export function RichTextEditable({
       suppressContentEditableWarning
       data-block-id={blockId}
       onInput={handleInput}
+      onKeyDown={handleKeyDown}
       onBlur={handleBlur}
       onPaste={handlePaste}
       onClick={handleClick}
