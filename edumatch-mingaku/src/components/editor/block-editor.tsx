@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -81,6 +81,11 @@ interface BlockEditorProps {
 }
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
+
+/** 箇条書き行（contentToBlocks と同じルール） */
+function isMdBulletLine(trimmed: string): boolean {
+  return /^[-*+] /.test(trimmed);
+}
 
 const blockTypeLabels: Record<BlockType, string> = {
   heading1: "大見出し",
@@ -655,13 +660,54 @@ export function BlockEditor({
     [blocks, onChange]
   );
 
-  const handleBulkPaste = useCallback(() => {
+  const bulkPasteParsed = useMemo(() => {
+    const t = bulkPasteText.trim();
+    if (!t) return null;
+    const parsed = contentToBlocks(t);
+    return parsed.length > 0 ? parsed : null;
+  }, [bulkPasteText]);
+
+  const bulkPastePreviewLabel = useMemo(() => {
+    if (!bulkPasteParsed?.length) return null;
+    const counts: Partial<Record<BlockType, number>> = {};
+    for (const b of bulkPasteParsed) {
+      counts[b.type] = (counts[b.type] || 0) + 1;
+    }
+    const parts = (Object.entries(counts) as [BlockType, number][]).map(
+      ([t, n]) => `${blockTypeLabels[t]}×${n}`
+    );
+    return `${bulkPasteParsed.length} 個のブロックに変換されます（${parts.join("、")}）`;
+  }, [bulkPasteParsed]);
+
+  const handleBulkPasteAsBlocks = useCallback(() => {
     const text = bulkPasteText.trim();
     if (!text) {
       toast.error("貼り付けするテキストを入力してください");
       return;
     }
-    // Markdown はブロック変換せず、1つの markdown ブロックとしてそのまま表示
+    const parsed = contentToBlocks(text);
+    if (parsed.length === 0) {
+      toast.error("変換できる内容がありません");
+      return;
+    }
+    const newBlocks = blocks.length === 0 ? parsed : [...blocks, ...parsed];
+    if (maxLength !== undefined && calculateTotalLength(newBlocks) > maxLength) {
+      toast.error(`文字数が上限（${maxLength.toLocaleString()}文字）を超えます`);
+      return;
+    }
+    onChange(newBlocks);
+    setBulkPasteText("");
+    setBulkPasteOpen(false);
+    toast.success(`${parsed.length}件のブロックを追加しました`);
+  }, [bulkPasteText, blocks, onChange, maxLength, calculateTotalLength]);
+
+  /** 表・フェンスコード・複雑なGFMなど、ブロック分解で壊れうるもの向け */
+  const handleBulkPasteAsSingleMarkdown = useCallback(() => {
+    const text = bulkPasteText.trim();
+    if (!text) {
+      toast.error("貼り付けするテキストを入力してください");
+      return;
+    }
     const markdownBlock: ContentBlock = {
       id: generateId(),
       type: "markdown",
@@ -675,8 +721,22 @@ export function BlockEditor({
     onChange(newBlocks);
     setBulkPasteText("");
     setBulkPasteOpen(false);
-    toast.success("Markdown を1ブロックで追加しました");
+    toast.success("Markdown を1ブロックで追加しました（プレビュー用）");
   }, [bulkPasteText, blocks, onChange, maxLength, calculateTotalLength]);
+
+  const handleBulkPasteReadClipboard = useCallback(async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text) {
+        toast.message("クリップボードが空です");
+        return;
+      }
+      setBulkPasteText(text);
+      toast.success("クリップボードを読み込みました");
+    } catch {
+      toast.error("クリップボードにアクセスできません（ブラウザの許可を確認してください）");
+    }
+  }, []);
 
   /** 段落ブロックの内容がMarkdown形式なら自動変換 */
   const tryAutoConvertParagraph = useCallback(
@@ -696,10 +756,10 @@ export function BlockEditor({
         }
       }
 
-      // 単一行のMarkdownプレフィックス
-      if (firstLine.startsWith("# ")) {
+      // 単一行のMarkdownプレフィックス（### を # より先に判定）
+      if (firstLine.startsWith("### ")) {
         replaceBlockWithBlocks(block.id, [
-          { ...block, type: "heading1", content: firstLine.slice(2).trim(), id: generateId() },
+          { ...block, type: "heading3", content: firstLine.slice(4).trim(), id: generateId() },
         ]);
         return;
       }
@@ -709,9 +769,9 @@ export function BlockEditor({
         ]);
         return;
       }
-      if (firstLine.startsWith("### ")) {
+      if (firstLine.startsWith("# ")) {
         replaceBlockWithBlocks(block.id, [
-          { ...block, type: "heading3", content: firstLine.slice(4).trim(), id: generateId() },
+          { ...block, type: "heading1", content: firstLine.slice(2).trim(), id: generateId() },
         ]);
         return;
       }
@@ -727,10 +787,10 @@ export function BlockEditor({
         ]);
         return;
       }
-      if (firstLine.startsWith("- ")) {
+      if (isMdBulletLine(firstLine)) {
         const items = lines
-          .filter((l) => l.trim().startsWith("- "))
-          .map((l) => l.trim().slice(2));
+          .filter((l) => isMdBulletLine(l.trim()))
+          .map((l) => l.trim().replace(/^[-*+] /, "").trimStart());
         replaceBlockWithBlocks(block.id, [
           { ...block, type: "bulletList", content: "", items: items.length > 0 ? items : [""], id: generateId() },
         ]);
@@ -1135,20 +1195,73 @@ export function BlockEditor({
           {bulkPasteOpen && (
             <div className="p-4 border-t bg-background space-y-4">
               <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">
-                  Markdown を貼り付けると、1つのブロックとしてそのまま表示されます。
-                </p>
+                <div className="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:justify-between">
+                  <p className="text-xs text-muted-foreground leading-relaxed flex-1">
+                    見出し（#〜###）、リスト（<code className="text-[11px] bg-muted px-1 rounded">-</code>{" "}
+                    <code className="text-[11px] bg-muted px-1 rounded">*</code>{" "}
+                    <code className="text-[11px] bg-muted px-1 rounded">+</code>
+                    ）、番号付き、引用、区切り線、1行画像などをブロックに分解します。表やコードブロックは右のボタンを。
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0"
+                    onClick={handleBulkPasteReadClipboard}
+                  >
+                    <ClipboardPaste className="h-4 w-4 mr-1.5" />
+                    クリップボードから
+                  </Button>
+                </div>
+                {bulkPastePreviewLabel && (
+                  <p className="text-xs font-medium text-foreground/90 rounded-md bg-muted/50 px-3 py-2 border border-border/60">
+                    {bulkPastePreviewLabel}
+                  </p>
+                )}
                 <Textarea
                   value={bulkPasteText}
                   onChange={(e) => setBulkPasteText(e.target.value)}
-                  placeholder={"# Markdown見出し\n- 箇条書き\n1. 番号付きリスト\n\n本文..."}
-                  className="min-h-[100px] font-mono text-sm"
+                  placeholder={
+                    "### 小見出し\n\n本文の段落は空行で区切ります。\n\n- 箇条書き\n* アスタリスクでも可\n\n1. 番号付き\n2. 続き"
+                  }
+                  className="min-h-[140px] font-mono text-sm leading-relaxed"
                   onClick={(e) => e.stopPropagation()}
+                  onPaste={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => {
+                    e.stopPropagation();
+                    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+                      e.preventDefault();
+                      handleBulkPasteAsBlocks();
+                    }
+                  }}
+                  spellCheck={false}
                 />
-                <Button type="button" size="sm" onClick={handleBulkPaste}>
-                  <ClipboardPaste className="h-4 w-4 mr-2" />
-                  貼り付けて追加
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleBulkPasteAsBlocks}
+                    disabled={!bulkPasteText.trim()}
+                  >
+                    <ClipboardPaste className="h-4 w-4 mr-2" />
+                    ブロックに変換して追加
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={handleBulkPasteAsSingleMarkdown}
+                    disabled={!bulkPasteText.trim()}
+                  >
+                    1ブロックのMarkdownで追加
+                  </Button>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  ヒント: <kbd className="px-1 py-0.5 rounded bg-muted font-mono text-[10px]">⌘</kbd> または{" "}
+                  <kbd className="px-1 py-0.5 rounded bg-muted font-mono text-[10px]">Ctrl</kbd> +{" "}
+                  <kbd className="px-1 py-0.5 rounded bg-muted font-mono text-[10px]">Enter</kbd>{" "}
+                  でブロック変換（表・```コード```は「1ブロック」推奨）
+                </p>
               </div>
             </div>
           )}
