@@ -118,6 +118,8 @@ export function RichTextEditable({
     (e: React.KeyboardEvent<HTMLDivElement>) => {
       if (e.key !== "Enter") return;
       if (e.ctrlKey || e.metaKey || e.altKey) return;
+      // IME 変換中・確定直前の Enter はブラウザに任せる（ここで止めると確定だけで改行になる）
+      if (e.nativeEvent.isComposing || e.keyCode === 229) return;
       e.preventDefault();
       e.stopPropagation();
       const el = divRef.current;
