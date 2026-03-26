@@ -14,10 +14,12 @@ export default async function ProfileRegisterPage({ searchParams }: Props) {
   const initialProfile = profile
     ? {
         name: profile.name,
+        legal_name: profile.legal_name ?? null,
         email: profile.email,
         avatar_url: profile.avatar_url ?? null,
         phone: profile.phone ?? null,
         organization: profile.organization ?? null,
+        organization_type: profile.organization_type ?? null,
         bio: profile.bio ?? null,
         website: profile.website ?? null,
         notification_email_2: profile.notification_email_2 ?? null,

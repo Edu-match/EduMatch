@@ -56,6 +56,18 @@ export {
   type PublicProfileWithContents,
 } from "./user";
 
+// サイト内通知（マイページ・通知一覧）
+export {
+  SITE_UPDATE_NOTIFICATION_KIND,
+  type InAppNotificationRow,
+} from "@/lib/in-app-notification-constants";
+export {
+  getInAppNotificationsForCurrentUser,
+  markInAppNotificationRead,
+  markInAppNotificationReadFromForm,
+  notifyAllUsersOfSiteUpdate,
+} from "./in-app-notifications";
+
 // Contact (お問い合わせ)
 export {
   submitContact,

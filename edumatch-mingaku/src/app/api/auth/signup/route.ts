@@ -3,6 +3,7 @@ import { createClient } from "@/utils/supabase/server";
 import { createServiceRoleClient } from "@/utils/supabase/server-admin";
 import { prisma } from "@/lib/prisma";
 import { getPasswordErrors } from "@/lib/password";
+import { ORGANIZATION_TYPE_VALUES } from "@/lib/organization-types";
 
 export const dynamic = "force-dynamic";
 
@@ -29,11 +30,26 @@ function authErrorMessage(en: string): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password, name, organization, userType } = await request.json();
+    const {
+      email,
+      password,
+      name,
+      legalName,
+      organization,
+      organizationType,
+      userType,
+    } = await request.json();
 
-    if (!email || !password || !name) {
+    const orgTypeOk =
+      typeof organizationType === "string" &&
+      (ORGANIZATION_TYPE_VALUES as readonly string[]).includes(organizationType);
+
+    if (!email || !password || !name || !legalName || !organization || !orgTypeOk) {
       return NextResponse.json(
-        { error: "メールアドレス、パスワード、お名前を入力してください" },
+        {
+          error:
+            "メールアドレス、パスワード、本名、表示名、所属組織、組織の種類を正しく入力してください",
+        },
         { status: 400 }
       );
     }
@@ -46,10 +62,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 投稿者の場合は組織名必須
-    if (userType === "provider" && !organization) {
+    const orgTrimmed = String(organization).trim();
+    if (!orgTrimmed) {
       return NextResponse.json(
-        { error: "企業名・学校名を入力してください" },
+        { error: "所属組織を入力してください" },
         { status: 400 }
       );
     }
@@ -62,7 +78,9 @@ export async function POST(request: NextRequest) {
       options: {
         data: {
           name,
-          organization: organization || null,
+          legal_name: String(legalName).trim(),
+          organization: orgTrimmed,
+          organization_type: organizationType,
           role: userType === "provider" ? "PROVIDER" : "VIEWER",
         },
       },
@@ -93,12 +111,18 @@ export async function POST(request: NextRequest) {
         create: {
           id: authData.user.id,
           name,
+          legal_name: String(legalName).trim(),
           email,
+          organization: orgTrimmed,
+          organization_type: organizationType,
           role,
           subscription_status: "INACTIVE",
         },
         update: {
           name,
+          legal_name: String(legalName).trim(),
+          organization: orgTrimmed,
+          organization_type: organizationType,
           role,
         },
       });
@@ -121,7 +145,9 @@ export async function POST(request: NextRequest) {
           ...authData.user.user_metadata,
           role,
           name,
-          organization: organization || null,
+          legal_name: String(legalName).trim(),
+          organization: orgTrimmed,
+          organization_type: organizationType,
         },
       });
       

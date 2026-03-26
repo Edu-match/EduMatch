@@ -27,6 +27,8 @@ import { FavoritesCompact } from "@/components/dashboard/favorites-compact";
 import { MyReviewsCompact } from "@/components/dashboard/my-reviews-compact";
 import { getCurrentSubscription } from "@/app/_actions/subscription";
 import { getMyReviews } from "@/app/_actions/reviews";
+import { getInAppNotificationsForCurrentUser } from "@/app/_actions/in-app-notifications";
+import { InAppNotificationLink } from "@/components/notifications/in-app-notification-link";
 import { FEATURES } from "@/lib/features";
 
 // 閲覧時刻を「ついさっき」「〇分前」などで表示
@@ -56,7 +58,14 @@ export default async function MyPage() {
   const recentlyViewed = await getRecentViewHistory(user.id, 5);
   const myReviews = FEATURES.REVIEWS ? await getMyReviews() : [];
 
-  const notifications: { id: string; title: string; date: string; read: boolean }[] = [];
+  const notificationRows = await getInAppNotificationsForCurrentUser(8);
+  const notifications = notificationRows.map((n) => ({
+    id: n.id,
+    title: n.title,
+    date: n.created_at.toISOString(),
+    read: n.read,
+    href: n.link ?? "#",
+  }));
   const subscription = await getCurrentSubscription();
 
   return (
@@ -274,9 +283,10 @@ export default async function MyPage() {
                   <p className="text-sm text-muted-foreground py-4">通知はまだありません。</p>
                 ) : (
                   notifications.map((notification) => (
-                  <div
+                  <InAppNotificationLink
                     key={notification.id}
-                    className={`p-3 rounded-lg ${
+                    href={notification.href}
+                    className={`block p-3 rounded-lg transition-colors hover:opacity-90 ${
                       notification.read ? "bg-muted/30" : "bg-primary/5 border border-primary/20"
                     }`}
                   >
@@ -286,7 +296,7 @@ export default async function MyPage() {
                     <p className="text-xs text-muted-foreground mt-1">
                       {new Date(notification.date).toLocaleDateString("ja-JP")}
                     </p>
-                  </div>
+                  </InAppNotificationLink>
                 ))
                 )}
               </div>
