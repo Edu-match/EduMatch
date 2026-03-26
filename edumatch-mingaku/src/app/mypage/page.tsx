@@ -27,8 +27,7 @@ import { FavoritesCompact } from "@/components/dashboard/favorites-compact";
 import { MyReviewsCompact } from "@/components/dashboard/my-reviews-compact";
 import { getCurrentSubscription } from "@/app/_actions/subscription";
 import { getMyReviews } from "@/app/_actions/reviews";
-import { getInAppNotificationsForCurrentUser } from "@/app/_actions/in-app-notifications";
-import { InAppNotificationLink } from "@/components/notifications/in-app-notification-link";
+import { InAppNotificationsCard } from "@/components/dashboard/in-app-notifications-card";
 import { FEATURES } from "@/lib/features";
 
 // 閲覧時刻を「ついさっき」「〇分前」などで表示
@@ -58,14 +57,6 @@ export default async function MyPage() {
   const recentlyViewed = await getRecentViewHistory(user.id, 5);
   const myReviews = FEATURES.REVIEWS ? await getMyReviews() : [];
 
-  const notificationRows = await getInAppNotificationsForCurrentUser(8);
-  const notifications = notificationRows.map((n) => ({
-    id: n.id,
-    title: n.title,
-    date: n.created_at.toISOString(),
-    read: n.read,
-    href: n.link ?? "#",
-  }));
   const subscription = await getCurrentSubscription();
 
   return (
@@ -266,42 +257,7 @@ export default async function MyPage() {
 
         {/* サイドバー */}
         <div className="space-y-6">
-          {/* 通知 */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Bell className="h-5 w-5" />
-                通知
-              </CardTitle>
-              <Button variant="ghost" size="sm" asChild>
-                <Link href="/notifications">すべて</Link>
-              </Button>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {notifications.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-4">通知はまだありません。</p>
-                ) : (
-                  notifications.map((notification) => (
-                  <InAppNotificationLink
-                    key={notification.id}
-                    href={notification.href}
-                    className={`block p-3 rounded-lg transition-colors hover:opacity-90 ${
-                      notification.read ? "bg-muted/30" : "bg-primary/5 border border-primary/20"
-                    }`}
-                  >
-                    <p className={`text-sm ${notification.read ? "" : "font-medium"}`}>
-                      {notification.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {new Date(notification.date).toLocaleDateString("ja-JP")}
-                    </p>
-                  </InAppNotificationLink>
-                ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          <InAppNotificationsCard />
 
           {/* クイックアクション */}
           <Card>

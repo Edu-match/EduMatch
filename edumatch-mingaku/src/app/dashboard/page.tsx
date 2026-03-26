@@ -27,6 +27,7 @@ import {
 } from "@/app/_actions/popularity";
 import { getCurrentSubscription } from "@/app/_actions/subscription";
 import { getMyReviews } from "@/app/_actions/reviews";
+import { InAppNotificationsCard } from "@/components/dashboard/in-app-notifications-card";
 
 // 閲覧時刻を「ついさっき」「〇分前」などで表示
 function formatViewedAt(viewedAt: Date): string {
@@ -107,8 +108,9 @@ export default async function DashboardPage() {
       </div>
 
       <div className={FEATURES.PAID_PLANS ? "grid grid-cols-1 lg:grid-cols-3 gap-6" : "space-y-6"}>
-        {/* メインコンテンツ */}
+        {/* メインコンテンツ（ヘッダーのマイページ＝/dashboard でも通知を表示） */}
         <div className={FEATURES.PAID_PLANS ? "lg:col-span-2 space-y-6" : "space-y-6"}>
+          <InAppNotificationsCard />
           {/* 閲覧履歴 */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">

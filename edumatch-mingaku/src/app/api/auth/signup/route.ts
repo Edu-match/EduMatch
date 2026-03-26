@@ -3,7 +3,6 @@ import { createClient } from "@/utils/supabase/server";
 import { createServiceRoleClient } from "@/utils/supabase/server-admin";
 import { prisma } from "@/lib/prisma";
 import { getPasswordErrors } from "@/lib/password";
-import { ORGANIZATION_TYPE_VALUES } from "@/lib/organization-types";
 
 export const dynamic = "force-dynamic";
 
@@ -30,26 +29,11 @@ function authErrorMessage(en: string): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const {
-      email,
-      password,
-      name,
-      legalName,
-      organization,
-      organizationType,
-      userType,
-    } = await request.json();
+    const { email, password, userType } = await request.json();
 
-    const orgTypeOk =
-      typeof organizationType === "string" &&
-      (ORGANIZATION_TYPE_VALUES as readonly string[]).includes(organizationType);
-
-    if (!email || !password || !name || !legalName || !organization || !orgTypeOk) {
+    if (!email || !password) {
       return NextResponse.json(
-        {
-          error:
-            "メールアドレス、パスワード、本名、表示名、所属組織、組織の種類を正しく入力してください",
-        },
+        { error: "メールアドレスとパスワードを入力してください" },
         { status: 400 }
       );
     }
@@ -62,25 +46,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const orgTrimmed = String(organization).trim();
-    if (!orgTrimmed) {
-      return NextResponse.json(
-        { error: "所属組織を入力してください" },
-        { status: 400 }
-      );
-    }
+    const emailStr = String(email).trim();
+    const localPart = emailStr.split("@")[0]?.trim() || "";
+    const provisionalName =
+      (localPart.length > 0 ? localPart : "ユーザー").slice(0, 100);
 
     const supabase = await createClient();
 
     const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
+      email: emailStr,
       password,
       options: {
         data: {
-          name,
-          legal_name: String(legalName).trim(),
-          organization: orgTrimmed,
-          organization_type: organizationType,
+          name: provisionalName,
           role: userType === "provider" ? "PROVIDER" : "VIEWER",
         },
       },
@@ -110,19 +88,16 @@ export async function POST(request: NextRequest) {
         },
         create: {
           id: authData.user.id,
-          name,
-          legal_name: String(legalName).trim(),
-          email,
-          organization: orgTrimmed,
-          organization_type: organizationType,
+          name: provisionalName,
+          email: emailStr,
+          legal_name: null,
+          organization: null,
+          organization_type: null,
           role,
           subscription_status: "INACTIVE",
         },
         update: {
-          name,
-          legal_name: String(legalName).trim(),
-          organization: orgTrimmed,
-          organization_type: organizationType,
+          name: provisionalName,
           role,
         },
       });
@@ -144,10 +119,7 @@ export async function POST(request: NextRequest) {
         user_metadata: {
           ...authData.user.user_metadata,
           role,
-          name,
-          legal_name: String(legalName).trim(),
-          organization: orgTrimmed,
-          organization_type: organizationType,
+          name: provisionalName,
         },
       });
       

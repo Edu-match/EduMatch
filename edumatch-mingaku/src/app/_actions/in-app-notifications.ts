@@ -55,10 +55,18 @@ export async function notifyAllUsersOfSiteUpdate(siteUpdate: {
   const title = `【運営お知らせ】${siteUpdate.title}`;
 
   const profiles = await prisma.profile.findMany({ select: { id: true } });
+  if (profiles.length === 0) {
+    console.warn(
+      "[notifyAllUsersOfSiteUpdate] Profile が0件のため通知を作成しません（DBまたは会員データを確認してください）"
+    );
+    return;
+  }
+
+  let inserted = 0;
   const BATCH = 400;
   for (let i = 0; i < profiles.length; i += BATCH) {
     const batch = profiles.slice(i, i + BATCH);
-    await prisma.inAppNotification.createMany({
+    const result = await prisma.inAppNotification.createMany({
       data: batch.map(({ id }) => ({
         user_id: id,
         kind: SITE_UPDATE_NOTIFICATION_KIND,
@@ -68,7 +76,11 @@ export async function notifyAllUsersOfSiteUpdate(siteUpdate: {
       })),
       skipDuplicates: true,
     });
+    inserted += result.count;
   }
+  console.log(
+    `[notifyAllUsersOfSiteUpdate] siteUpdate=${siteUpdate.id} 作成=${inserted}/${profiles.length} 件（重複は skip）`
+  );
 }
 
 export async function getInAppNotificationsForCurrentUser(

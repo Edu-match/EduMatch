@@ -119,7 +119,6 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
         ...(input.legal_name !== undefined && {
           legal_name: input.legal_name?.trim() || null,
         }),
-        ...(input.avatar_url !== undefined && { avatar_url: input.avatar_url || null }),
         ...(input.phone !== undefined && { phone: input.phone || null }),
         ...(input.organization !== undefined && { organization: input.organization?.trim() || null }),
         ...(input.organization_type !== undefined && {

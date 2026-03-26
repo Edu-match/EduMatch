@@ -173,41 +173,21 @@ export function ProfileRegisterForm({
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                本名（本人確認・運営用） <span className="text-red-500">*</span>
+                名前 <span className="text-red-500">*</span>
               </label>
-              <Input
-                placeholder="山田 太郎"
-                value={legalName}
-                onChange={(e) => setLegalName(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                サイト上の一覧には表示されません。トラブル時の確認に利用します。
-              </p>
+              <Input value={legalName} onChange={(e) => setLegalName(e.target.value)} />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                表示名（ニックネーム・部門名など） <span className="text-red-500">*</span>
+                表示名（ニックネーム） <span className="text-red-500">*</span>
               </label>
-              <Input
-                placeholder="やまだ / 教育ICT推進チーム"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                サイト内で表示される名前です
-              </p>
+              <Input value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">
                 メールアドレス <span className="text-red-500">*</span>
               </label>
-              <Input
-                type="email"
-                placeholder="example@email.com"
-                value={email}
-                readOnly
-                className="bg-muted"
-              />
+              <Input type="email" value={email} readOnly className="bg-muted" />
               <p className="text-xs text-muted-foreground">
                 メールアドレスはログインに使用しているため変更できません
               </p>
@@ -230,11 +210,7 @@ export function ProfileRegisterForm({
               <label className="text-sm font-medium">
                 所属組織 <span className="text-red-500">*</span>
               </label>
-              <Input
-                placeholder="○○学校、○○株式会社など"
-                value={organization}
-                onChange={(e) => setOrganization(e.target.value)}
-              />
+              <Input value={organization} onChange={(e) => setOrganization(e.target.value)} />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">
@@ -242,7 +218,7 @@ export function ProfileRegisterForm({
               </label>
               <Select value={schoolType} onValueChange={setSchoolType}>
                 <SelectTrigger>
-                  <SelectValue placeholder="選択してください" />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {ORGANIZATION_TYPE_OPTIONS.map((type) => (
@@ -385,12 +361,12 @@ export function ProfileRegisterForm({
                 </div>
                 <div className="space-y-2 text-sm flex-1 min-w-0">
                   <div className="flex justify-between gap-4">
-                    <span className="text-muted-foreground shrink-0">本名</span>
+                    <span className="text-muted-foreground shrink-0">名前</span>
                     <span className="text-right break-all">{legalName || "未入力"}</span>
                   </div>
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between gap-4">
-                      <span className="text-muted-foreground">表示名</span>
+                      <span className="text-muted-foreground">表示名（ニックネーム）</span>
                       <span>{name || "未入力"}</span>
                     </div>
                     <div className="flex justify-between gap-4">
@@ -510,7 +486,7 @@ export function ProfileRegisterForm({
     setValidationError(null);
     if (currentStep === 1) {
       if (!legalName.trim()) {
-        setValidationError("本名を入力してください。");
+        setValidationError("名前を入力してください。");
         return;
       }
       if (!name.trim()) {
@@ -538,7 +514,7 @@ export function ProfileRegisterForm({
   const handleSave = async () => {
     setValidationError(null);
     if (!legalName.trim()) {
-      setValidationError("本名を入力してください。");
+      setValidationError("名前を入力してください。");
       return;
     }
     if (!name.trim()) {
@@ -583,10 +559,10 @@ export function ProfileRegisterForm({
         {isFirstTime && (
           <div className="mb-6 p-4 rounded-lg bg-primary/10 border border-primary/20 text-center">
             <p className="font-medium text-primary">
-              ログインが完了しました。次に表示名やプロフィール画像などを登録してください。
+              アカウント登録が完了しました。続けて名前・所属・表示名などを入力してください（Google登録と同じ流れです）。
             </p>
             <p className="text-sm text-muted-foreground mt-1">
-              スキップして後から設定することもできます。
+              あとからプロフィール設定から変更・追加入力できます。
             </p>
           </div>
         )}

@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { isImportedContent } from "@/lib/imported-content";
 import { prisma } from "@/lib/prisma";
@@ -120,6 +121,9 @@ export async function createSiteUpdate(input: CreateSiteUpdateInput): Promise<Cr
         title: row.title,
         link: row.link,
       });
+      revalidatePath("/dashboard");
+      revalidatePath("/mypage");
+      revalidatePath("/notifications");
     } catch (e) {
       console.error("notifyAllUsersOfSiteUpdate error:", e);
     }
