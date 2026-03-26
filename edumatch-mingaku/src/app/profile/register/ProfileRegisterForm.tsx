@@ -389,17 +389,18 @@ export function ProfileRegisterForm({
                     <span className="text-right break-all">{legalName || "未入力"}</span>
                   </div>
                   <div className="space-y-1 text-sm">
-                  <div className="flex justify-between gap-4">
-                    <span className="text-muted-foreground">表示名</span>
-                    <span>{name || "未入力"}</span>
-                  </div>
-                  <div className="flex justify-between gap-4">
-                    <span className="text-muted-foreground">メールアドレス</span>
-                    <span className="break-all">{email || "未入力"}</span>
-                  </div>
-                  <div className="flex justify-between gap-4">
-                    <span className="text-muted-foreground">電話番号</span>
-                    <span>{phone || "未入力"}</span>
+                    <div className="flex justify-between gap-4">
+                      <span className="text-muted-foreground">表示名</span>
+                      <span>{name || "未入力"}</span>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <span className="text-muted-foreground">メールアドレス</span>
+                      <span className="break-all">{email || "未入力"}</span>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <span className="text-muted-foreground">電話番号</span>
+                      <span>{phone || "未入力"}</span>
+                    </div>
                   </div>
                 </div>
               </div>
