@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { isImportedContent } from "@/lib/imported-content";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserRole } from "@/app/_actions/user";
+import { notifyAllUsersOfSiteUpdate } from "@/app/_actions/in-app-notifications";
 import { blocksToBody, type SiteUpdateContentBlock } from "@/lib/site-update-blocks";
 
 export type SiteUpdateItem = {
@@ -113,6 +114,15 @@ export async function createSiteUpdate(input: CreateSiteUpdateInput): Promise<Cr
         category: input.category?.trim() || null,
       },
     });
+    try {
+      await notifyAllUsersOfSiteUpdate({
+        id: row.id,
+        title: row.title,
+        link: row.link,
+      });
+    } catch (e) {
+      console.error("notifyAllUsersOfSiteUpdate error:", e);
+    }
     return { success: true, id: row.id };
   } catch (error) {
     console.error("Failed to create site update:", error);

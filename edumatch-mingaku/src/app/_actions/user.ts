@@ -14,10 +14,12 @@ export async function getCurrentUserProfile() {
   if (!profile) return null;
   return {
     name: profile.name,
+    legal_name: profile.legal_name ?? null,
     avatar_url: profile.avatar_url,
     email: profile.email,
     phone: profile.phone,
     organization: profile.organization ?? null,
+    organization_type: profile.organization_type ?? null,
     bio: profile.bio,
     website: profile.website,
     notification_email_2: profile.notification_email_2 ?? null,
@@ -95,8 +97,10 @@ export async function getProfileWithContents(
 
 export type UpdateProfileInput = {
   name?: string;
+  legal_name?: string | null;
   phone?: string | null;
   organization?: string | null;
+  organization_type?: string | null;
   bio?: string | null;
   website?: string | null;
   notification_email_2?: string | null;
@@ -110,8 +114,14 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
       where: { id: user.id },
       data: {
         ...(input.name != null && { name: input.name }),
+        ...(input.legal_name !== undefined && {
+          legal_name: input.legal_name?.trim() || null,
+        }),
         ...(input.phone !== undefined && { phone: input.phone || null }),
         ...(input.organization !== undefined && { organization: input.organization?.trim() || null }),
+        ...(input.organization_type !== undefined && {
+          organization_type: input.organization_type?.trim() || null,
+        }),
         ...(input.bio !== undefined && { bio: input.bio || null }),
         ...(input.website !== undefined && { website: input.website || null }),
         ...(input.notification_email_2 !== undefined && { notification_email_2: input.notification_email_2?.trim() || null }),

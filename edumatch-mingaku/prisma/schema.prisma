@@ -29,6 +29,10 @@ model Profile {
   website                         String?
   /// 塾名・学校名（資料請求の送付先表示用）
   organization                    String?
+  /// 本人確認・運営用の本名（表示名とは別）
+  legal_name                      String?
+  /// 所属組織の区分（elementary 等、`organization-types` と一致）
+  organization_type               String?
   subscription_plan               String?
   stripe_customer_id              String?           @unique
   stripe_subscription_id          String?
@@ -43,9 +47,29 @@ model Profile {
   services                        Service[]
   view_histories                  ViewHistory[]
   chat_sessions                   ChatSession[]
+  in_app_notifications           InAppNotification[]
 
   @@index([email])
   @@index([stripe_customer_id])
+}
+
+/// サイト内通知（「通知」一覧・マイページ）
+model InAppNotification {
+  id         String   @id @default(cuid())
+  user_id    String   @db.Uuid
+  /// 例: SITE_UPDATE
+  kind       String
+  title      String
+  link       String?
+  /// SiteUpdate.id など、重複配信防止用
+  source_id  String?
+  read       Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  user Profile @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, kind, source_id])
+  @@index([user_id, created_at(sort: Desc)])
 }
 
 model MaterialRequest {

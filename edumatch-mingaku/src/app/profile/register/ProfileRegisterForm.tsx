@@ -25,12 +25,18 @@ import {
   MapPin,
 } from "lucide-react";
 import { updateProfile } from "@/app/_actions";
+import {
+  ORGANIZATION_TYPE_OPTIONS,
+  organizationTypeLabel,
+} from "@/lib/organization-types";
 
 export type InitialProfile = {
   name: string;
+  legal_name?: string | null;
   email: string;
   phone: string | null;
   organization?: string | null;
+  organization_type?: string | null;
   bio?: string | null;
   website?: string | null;
   notification_email_2?: string | null;
@@ -43,15 +49,6 @@ const steps = [
   { id: 3, title: "連絡先（資料請求の通知先）", icon: MapPin },
   { id: 4, title: "関心・スキル", icon: GraduationCap },
   { id: 5, title: "確認", icon: Check },
-];
-
-const schoolTypes = [
-  { value: "elementary", label: "小学校" },
-  { value: "junior-high", label: "中学校" },
-  { value: "high-school", label: "高等学校" },
-  { value: "university", label: "大学・専門学校" },
-  { value: "company", label: "企業・EdTech事業者" },
-  { value: "other", label: "その他" },
 ];
 
 const interests = [
@@ -82,11 +79,12 @@ export function ProfileRegisterForm({
 }: Props) {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
+  const [legalName, setLegalName] = useState(initialProfile?.legal_name ?? "");
   const [name, setName] = useState(initialProfile?.name ?? "");
   const [email] = useState(initialProfile?.email ?? "");
   const [phone, setPhone] = useState(initialProfile?.phone ?? "");
   const [organization, setOrganization] = useState(initialProfile?.organization ?? "");
-  const [schoolType, setSchoolType] = useState("");
+  const [schoolType, setSchoolType] = useState(initialProfile?.organization_type ?? "");
   const [role, setRole] = useState("");
   const [location, setLocation] = useState("");
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
@@ -112,10 +110,23 @@ export function ProfileRegisterForm({
           <div className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                お名前 <span className="text-red-500">*</span>
+                本名（本人確認・運営用） <span className="text-red-500">*</span>
               </label>
               <Input
-                placeholder="山田太郎"
+                placeholder="山田 太郎"
+                value={legalName}
+                onChange={(e) => setLegalName(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                サイト上の一覧には表示されません。トラブル時の確認に利用します。
+              </p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                表示名（ニックネーム・部門名など） <span className="text-red-500">*</span>
+              </label>
+              <Input
+                placeholder="やまだ / 教育ICT推進チーム"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
@@ -168,7 +179,7 @@ export function ProfileRegisterForm({
                   <SelectValue placeholder="選択してください" />
                 </SelectTrigger>
                 <SelectContent>
-                  {schoolTypes.map((type) => (
+                  {ORGANIZATION_TYPE_OPTIONS.map((type) => (
                     <SelectItem key={type.value} value={type.value}>
                       {type.label}
                     </SelectItem>
@@ -299,9 +310,13 @@ export function ProfileRegisterForm({
                 基本情報
               </h3>
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">お名前</span>
-                  <span>{name || "未入力"}</span>
+                <div className="flex justify-between gap-4">
+                  <span className="text-muted-foreground shrink-0">本名</span>
+                  <span className="text-right break-all">{legalName || "未入力"}</span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-muted-foreground shrink-0">表示名</span>
+                  <span className="text-right break-all">{name || "未入力"}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">メールアドレス</span>
@@ -326,10 +341,7 @@ export function ProfileRegisterForm({
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">組織の種類</span>
-                  <span>
-                    {schoolTypes.find((t) => t.value === schoolType)?.label ||
-                      "未入力"}
-                  </span>
+                  <span>{organizationTypeLabel(schoolType) || "未入力"}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">役職・職種</span>
@@ -420,8 +432,12 @@ export function ProfileRegisterForm({
   const handleNext = () => {
     setValidationError(null);
     if (currentStep === 1) {
+      if (!legalName.trim()) {
+        setValidationError("本名を入力してください。");
+        return;
+      }
       if (!name.trim()) {
-        setValidationError("お名前を入力してください。");
+        setValidationError("表示名を入力してください。");
         return;
       }
     } else if (currentStep === 2) {
@@ -444,15 +460,29 @@ export function ProfileRegisterForm({
 
   const handleSave = async () => {
     setValidationError(null);
+    if (!legalName.trim()) {
+      setValidationError("本名を入力してください。");
+      return;
+    }
     if (!name.trim()) {
-      setValidationError("お名前を入力してください。");
+      setValidationError("表示名を入力してください。");
+      return;
+    }
+    if (!organization.trim()) {
+      setValidationError("所属組織を入力してください。");
+      return;
+    }
+    if (!schoolType) {
+      setValidationError("組織の種類を選択してください。");
       return;
     }
     setSaving(true);
     const { success } = await updateProfile({
       name: name || undefined,
+      legal_name: legalName.trim(),
       phone: phone || null,
       organization: organization?.trim() || null,
+      organization_type: schoolType || null,
       bio: bio || null,
       website: website || null,
       notification_email_2: notificationEmail2.trim() || null,

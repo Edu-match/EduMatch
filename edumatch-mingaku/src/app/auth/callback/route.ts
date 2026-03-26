@@ -46,8 +46,20 @@ export async function GET(request: NextRequest) {
           await prisma.profile.create({
             data: {
               id: data.user.id,
-              name: userMetadata.organization || name,
+              name,
+              legal_name:
+                typeof userMetadata.legal_name === "string"
+                  ? userMetadata.legal_name.trim() || null
+                  : null,
               email: data.user.email || "",
+              organization:
+                typeof userMetadata.organization === "string"
+                  ? userMetadata.organization.trim() || null
+                  : null,
+              organization_type:
+                typeof userMetadata.organization_type === "string"
+                  ? userMetadata.organization_type.trim() || null
+                  : null,
               role,
               subscription_status: "INACTIVE",
               avatar_url: userMetadata.avatar_url || userMetadata.picture || null,
