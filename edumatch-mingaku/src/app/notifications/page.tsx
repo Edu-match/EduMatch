@@ -7,7 +7,8 @@ import {
   getInAppNotificationsForCurrentUser,
   markInAppNotificationReadFromForm,
 } from "@/app/_actions/in-app-notifications";
-import { InAppNotificationLink } from "@/components/notifications/in-app-notification-link";
+import { InAppNotificationReadLink } from "@/components/notifications/in-app-notification-read-link";
+import { formatInAppNotificationTitle } from "@/lib/in-app-notification-constants";
 
 export const dynamic = "force-dynamic";
 
@@ -56,12 +57,14 @@ export default async function NotificationsPage() {
                   }`}
                 >
                   <div className="flex-1 min-w-0">
-                    <InAppNotificationLink
-                      href={n.link ?? "#"}
+                    <InAppNotificationReadLink
+                      href={n.link?.trim() || "/notifications"}
+                      notificationId={n.id}
+                      read={n.read}
                       className={`text-sm hover:underline ${n.read ? "text-foreground" : "font-medium text-foreground"}`}
                     >
-                      {n.title}
-                    </InAppNotificationLink>
+                      {formatInAppNotificationTitle(n.title)}
+                    </InAppNotificationReadLink>
                     <p className="text-xs text-muted-foreground mt-1">
                       {n.created_at.toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })}
                     </p>

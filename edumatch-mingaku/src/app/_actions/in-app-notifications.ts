@@ -30,7 +30,7 @@ async function ensureUserSiteUpdateNotifications(userId: string): Promise<void> 
     data: toAdd.map((u) => ({
       user_id: userId,
       kind: SITE_UPDATE_NOTIFICATION_KIND,
-      title: `【運営お知らせ】${u.title}`,
+      title: `【運営からのお知らせ】${u.title}`,
       link: u.link?.trim() || `/site-updates/${u.id}`,
       source_id: u.id,
     })),
@@ -52,7 +52,7 @@ export async function notifyAllUsersOfSiteUpdate(siteUpdate: {
   link: string | null;
 }): Promise<void> {
   const link = siteUpdateHref(siteUpdate.id, siteUpdate.link);
-  const title = `【運営お知らせ】${siteUpdate.title}`;
+  const title = `【運営からのお知らせ】${siteUpdate.title}`;
 
   const profiles = await prisma.profile.findMany({ select: { id: true } });
   if (profiles.length === 0) {
@@ -112,6 +112,7 @@ export async function markInAppNotificationRead(notificationId: string): Promise
     where: { id: notificationId, user_id: user.id },
     data: { read: true },
   });
+  revalidatePath("/");
   revalidatePath("/dashboard");
   revalidatePath("/mypage");
   revalidatePath("/notifications");

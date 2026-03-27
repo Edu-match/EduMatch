@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Bell } from "lucide-react";
 import { getInAppNotificationsForCurrentUser } from "@/app/_actions/in-app-notifications";
-import { InAppNotificationLink } from "@/components/notifications/in-app-notification-link";
+import { InAppNotificationReadLink } from "@/components/notifications/in-app-notification-read-link";
+import { formatInAppNotificationTitle } from "@/lib/in-app-notification-constants";
 
 type Props = {
   /** カードに表示する最大件数 */
@@ -30,20 +31,24 @@ export async function InAppNotificationsCard({ limit = 8 }: Props) {
             <p className="text-sm text-muted-foreground py-4">通知はまだありません。</p>
           ) : (
             rows.map((n) => {
-              const href = n.link ?? "#";
+              const href = n.link?.trim() || "/notifications";
               return (
-                <InAppNotificationLink
+                <InAppNotificationReadLink
                   key={n.id}
                   href={href}
+                  notificationId={n.id}
+                  read={n.read}
                   className={`block p-3 rounded-lg transition-colors hover:opacity-90 ${
                     n.read ? "bg-muted/30" : "bg-primary/5 border border-primary/20"
                   }`}
                 >
-                  <p className={`text-sm ${n.read ? "" : "font-medium"}`}>{n.title}</p>
+                  <p className={`text-sm ${n.read ? "" : "font-medium"}`}>
+                    {formatInAppNotificationTitle(n.title)}
+                  </p>
                   <p className="text-xs text-muted-foreground mt-1">
                     {n.created_at.toLocaleDateString("ja-JP")}
                   </p>
-                </InAppNotificationLink>
+                </InAppNotificationReadLink>
               );
             })
           )}

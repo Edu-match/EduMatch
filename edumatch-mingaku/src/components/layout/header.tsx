@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { createSupabaseBrowserClient } from "@/utils/supabase/client";
+import { markInAppNotificationRead } from "@/app/_actions/in-app-notifications";
 
 export function Header() {
   const router = useRouter();
@@ -37,7 +38,16 @@ export function Header() {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [notifications, setNotifications] = useState<{
-    list: { id: string; type: string; category?: string; title: string; body?: string; href?: string }[];
+    list: {
+      id: string;
+      type: string;
+      category?: string;
+      title: string;
+      body?: string;
+      href?: string;
+      inAppNotificationId?: string;
+      read?: boolean;
+    }[];
     unreadCount: number;
   }>({ list: [], unreadCount: 0 });
 
@@ -202,14 +212,50 @@ export function Header() {
                           <Link
                             href={n.href ?? "/notifications"}
                             className="block px-4 py-3 hover:bg-muted/50 transition-colors text-left"
-                            onClick={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const target = n.href ?? "/notifications";
+                              if (
+                                n.inAppNotificationId &&
+                                n.read !== true
+                              ) {
+                                e.preventDefault();
+                                void (async () => {
+                                  await markInAppNotificationRead(
+                                    n.inAppNotificationId!
+                                  );
+                                  setNotifications((prev) => ({
+                                    list: prev.list.map((item) =>
+                                      item.id === n.id
+                                        ? { ...item, read: true }
+                                        : item
+                                    ),
+                                    unreadCount: Math.max(0, prev.unreadCount - 1),
+                                  }));
+                                  if (
+                                    target.startsWith("http://") ||
+                                    target.startsWith("https://")
+                                  ) {
+                                    window.open(
+                                      target,
+                                      "_blank",
+                                      "noopener,noreferrer"
+                                    );
+                                  } else {
+                                    router.push(target);
+                                  }
+                                })();
+                              }
+                            }}
                           >
                             {n.category && (
                               <p className="text-xs font-medium text-primary/90 mb-0.5">
                                 【{n.category}】
                               </p>
                             )}
-                            <p className="text-sm font-medium line-clamp-1">{n.title}</p>
+                            <p className="text-sm font-medium line-clamp-1">
+                              {n.title}
+                            </p>
                             {n.body && (
                               <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
                                 {n.body}

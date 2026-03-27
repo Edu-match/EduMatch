@@ -17,6 +17,8 @@ export type NotificationItem = {
   createdAt: string;
   /** 未読バッジ用（undefined は未読扱い） */
   read?: boolean;
+  /** サイト内通知の DB id（開封時に既読化） */
+  inAppNotificationId?: string;
   meta?: Record<string, unknown>;
 };
 
@@ -64,16 +66,21 @@ export async function getNotifications(): Promise<NotificationItem[]> {
 
   try {
     const inApp = await getInAppNotificationsForUserId(profile.id, 30);
+    const titlePrefixRe = /^【運営お知らせ】/;
     for (const row of inApp) {
       const href = row.link?.trim() || "/notifications";
+      const title = titlePrefixRe.test(row.title)
+        ? row.title.replace(titlePrefixRe, "【運営からのお知らせ】")
+        : row.title;
       notifications.push({
         id: `inapp-${row.id}`,
         type: "site_update",
-        category: "運営お知らせ",
-        title: row.title,
+        category: "運営からのお知らせ",
+        title,
         href,
         createdAt: row.created_at.toISOString(),
         read: row.read,
+        inAppNotificationId: row.id,
       });
     }
   } catch (e) {
