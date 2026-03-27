@@ -8,8 +8,9 @@ export const dynamic = "force-dynamic";
  */
 export async function GET() {
   const notifications = await getNotifications();
+  const unreadCount = notifications.filter((n) => n.read !== true).length;
   return NextResponse.json({
     notifications: notifications.slice(0, 20),
-    unreadCount: notifications.length,
+    unreadCount,
   });
 }

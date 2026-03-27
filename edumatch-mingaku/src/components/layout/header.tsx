@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { 
@@ -29,6 +29,7 @@ import { createSupabaseBrowserClient } from "@/utils/supabase/client";
 
 export function Header() {
   const router = useRouter();
+  const pathname = usePathname();
   const { count: requestListCount } = useRequestList();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -89,7 +90,7 @@ export function Header() {
     return () => {
       subscription.unsubscribe();
     };
-  }, []); // onAuthStateChange で認証変化を監視するため、pathname 依存は不要
+  }, [pathname]);
 
   const handleLogout = async () => {
     const supabase = createSupabaseBrowserClient();
@@ -149,7 +150,20 @@ export function Header() {
 
           {/* 通知ベル（全ログインユーザー・汎用） */}
           {isAuthenticated && (
-            <DropdownMenu>
+            <DropdownMenu
+              onOpenChange={(open) => {
+                if (!open) return;
+                void fetch("/api/notifications", { credentials: "include" })
+                  .then((r) => r.json())
+                  .then((notif) => {
+                    setNotifications({
+                      list: Array.isArray(notif.notifications) ? notif.notifications : [],
+                      unreadCount: notif.unreadCount ?? 0,
+                    });
+                  })
+                  .catch(() => {});
+              }}
+            >
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative" aria-label="通知">
                   <Bell className="h-5 w-5 text-foreground/70" />

@@ -83,17 +83,27 @@ export async function notifyAllUsersOfSiteUpdate(siteUpdate: {
   );
 }
 
-export async function getInAppNotificationsForCurrentUser(
+/**
+ * ヘッダー /api/notifications など、セッション済みユーザーIDが分かっているとき用（requireAuth 不要）
+ */
+export async function getInAppNotificationsForUserId(
+  userId: string,
   limit: number
 ): Promise<InAppNotificationRow[]> {
-  const user = await requireAuth();
-  await ensureUserSiteUpdateNotifications(user.id);
+  await ensureUserSiteUpdateNotifications(userId);
   return prisma.inAppNotification.findMany({
-    where: { user_id: user.id },
+    where: { user_id: userId },
     orderBy: { created_at: "desc" },
     take: limit,
     select: { id: true, title: true, link: true, read: true, created_at: true },
   });
+}
+
+export async function getInAppNotificationsForCurrentUser(
+  limit: number
+): Promise<InAppNotificationRow[]> {
+  const user = await requireAuth();
+  return getInAppNotificationsForUserId(user.id, limit);
 }
 
 export async function markInAppNotificationRead(notificationId: string): Promise<void> {
