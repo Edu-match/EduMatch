@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { isImportedContent } from "@/lib/imported-content";
+import { normalizeImageUrl, validateImageUrl } from "@/lib/image-url-utils";
 import { createClient } from "@/utils/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import type { Service, Profile, Role } from "@prisma/client";
@@ -529,6 +530,11 @@ export async function createService(input: CreateServiceInput): Promise<CreateSe
       return { success: false, error: "ユーザー情報の取得に失敗しました。プロフィールを登録してください。" };
     }
 
+    if (input.thumbnailUrl?.trim()) {
+      const v = validateImageUrl(input.thumbnailUrl);
+      if (!v.ok) return { success: false, error: v.error };
+    }
+
     const status = input.publishType === "draft" ? "DRAFT" : "PENDING";
     const now = new Date();
     const content =
@@ -543,7 +549,7 @@ export async function createService(input: CreateServiceInput): Promise<CreateSe
         title: input.title,
         description: input.description,
         content,
-        thumbnail_url: input.thumbnailUrl || null,
+        thumbnail_url: input.thumbnailUrl ? normalizeImageUrl(input.thumbnailUrl) : null,
         youtube_url: input.youtubeUrl || null,
         images,
         category: input.category,
@@ -565,6 +571,103 @@ export async function createService(input: CreateServiceInput): Promise<CreateSe
     }
     return { success: false, error: "サービスの作成に失敗しました" };
   }
+}
+
+/**
+ * 提供者: サービスを更新（下書き or 申請）
+ */
+export async function updateService(
+  id: string,
+  input: CreateServiceInput
+): Promise<CreateServiceResult> {
+  try {
+    const { user, error } = await requireAuthedUser();
+    if (!user) return { success: false, error };
+
+    const existingService = await prisma.service.findUnique({
+      where: { id },
+      select: { provider_id: true },
+    });
+    if (!existingService) {
+      return { success: false, error: "サービスが見つかりません" };
+    }
+
+    const profile = await prisma.profile.findUnique({
+      where: { id: user.id },
+      select: { role: true },
+    });
+    const isAdmin = profile?.role === ("ADMIN" as Role);
+    if (existingService.provider_id !== user.id && !isAdmin) {
+      return { success: false, error: "このサービスを編集する権限がありません" };
+    }
+
+    const status = input.publishType === "draft" ? "DRAFT" : "PENDING";
+    const content =
+      input.content != null && isImportedContent(input.content)
+        ? input.content
+        : blocksToContent(input.blocks ?? []);
+    const images = input.blocks != null ? extractImagesFromBlocks(input.blocks) : [];
+
+    await prisma.service.update({
+      where: { id },
+      data: {
+        title: input.title,
+        description: input.description,
+        category: input.category,
+        content,
+        price_info: input.priceInfo,
+        thumbnail_url: input.thumbnailUrl ? normalizeImageUrl(input.thumbnailUrl) : null,
+        youtube_url: input.youtubeUrl || null,
+        images,
+        is_published: false,
+        status,
+        submitted_at: status === "PENDING" ? new Date() : null,
+        approved_at: null,
+        rejected_at: null,
+        rejection_reason: null,
+      },
+    });
+
+    return { success: true, serviceId: id };
+  } catch (e) {
+    console.error("Error updating service:", e);
+    if (isDbUnavailable(e)) {
+      return { success: false, error: "データベースに接続できません。しばらく待ってから再度お試しください。" };
+    }
+    return { success: false, error: "サービスの更新に失敗しました" };
+  }
+}
+
+/**
+ * サービス下書きを保存（既存があれば更新、なければ新規作成）
+ */
+export async function saveServiceDraft(
+  input: Omit<CreateServiceInput, "publishType"> & { serviceId?: string }
+): Promise<CreateServiceResult> {
+  if (input.serviceId) {
+    return updateService(input.serviceId, {
+      title: input.title,
+      description: input.description,
+      category: input.category,
+      priceInfo: input.priceInfo,
+      youtubeUrl: input.youtubeUrl,
+      thumbnailUrl: input.thumbnailUrl,
+      blocks: input.blocks,
+      content: input.content,
+      publishType: "draft",
+    });
+  }
+  return createService({
+    title: input.title,
+    description: input.description,
+    category: input.category,
+    priceInfo: input.priceInfo,
+    youtubeUrl: input.youtubeUrl,
+    thumbnailUrl: input.thumbnailUrl,
+    blocks: input.blocks,
+    content: input.content,
+    publishType: "draft",
+  });
 }
 
 /**

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -31,19 +31,19 @@ import {
   Bold,
   Italic,
   Strikethrough,
-  FileText,
   SplitSquareVertical,
+  Link,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import remarkBreaks from "remark-breaks";
 import { contentToBlocks } from "@/lib/markdown-to-blocks";
+import { RichTextEditable, htmlToMarkdown } from "@/components/editor/rich-text-editable";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export type BlockType =
   | "heading1"
@@ -82,6 +82,11 @@ interface BlockEditorProps {
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
+/** 箇条書き行（contentToBlocks と同じルール） */
+function isMdBulletLine(trimmed: string): boolean {
+  return /^[-*+] /.test(trimmed);
+}
+
 const blockTypeLabels: Record<BlockType, string> = {
   heading1: "大見出し",
   heading2: "中見出し",
@@ -109,55 +114,23 @@ export function BlockEditor({
   const [uploadingBlockId, setUploadingBlockId] = useState<string | null>(null);
   const [bulkPasteOpen, setBulkPasteOpen] = useState(false);
   const [bulkPasteText, setBulkPasteText] = useState("");
-  /** アクティブブロック内でテキストが選択されているか（選択時のみ「選択したテキストをブロックにする」を表示） */
-  const [hasSelectionInActiveBlock, setHasSelectionInActiveBlock] = useState(false);
+  const [selectionBubble, setSelectionBubble] = useState<{
+    blockId: string;
+    refKey: string;
+    itemIndex?: number;
+    rect: DOMRect;
+  } | null>(null);
+  const [blockTypeDropdownOpen, setBlockTypeDropdownOpen] = useState<string | null>(null);
+  const [activeFormats, setActiveFormats] = useState<{
+    blockId: string;
+    bold: boolean;
+    italic: boolean;
+    strikethrough: boolean;
+  } | null>(null);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
-  const textInputRefs = useRef<Record<string, HTMLInputElement | HTMLTextAreaElement | null>>({});
-
-  /** アクティブブロックの入力欄で選択があるか判定（フォーカス中の入力がアクティブブロックかつ選択範囲あり） */
-  const checkSelectionInActiveBlock = useCallback(() => {
-    const activeEl = document.activeElement;
-    if (!activeEl || !(activeEl instanceof HTMLInputElement || activeEl instanceof HTMLTextAreaElement)) {
-      setHasSelectionInActiveBlock(false);
-      return;
-    }
-    const textBlockTypes = ["heading1", "heading2", "heading3", "paragraph", "quote", "markdown"];
-    let focusedBlockId: string | null = null;
-    for (const [key, el] of Object.entries(textInputRefs.current)) {
-      if (el === activeEl) {
-        focusedBlockId = key.includes("-") ? key.replace(/-\d+$/, "") : key;
-        break;
-      }
-    }
-    if (!focusedBlockId || focusedBlockId !== activeBlockId) {
-      setHasSelectionInActiveBlock(false);
-      return;
-    }
-    const block = blocks.find((b) => b.id === activeBlockId);
-    if (!block || !textBlockTypes.includes(block.type) || block.items) {
-      setHasSelectionInActiveBlock(false);
-      return;
-    }
-    const start = activeEl.selectionStart ?? 0;
-    const end = activeEl.selectionEnd ?? 0;
-    setHasSelectionInActiveBlock(start !== end);
-  }, [activeBlockId, blocks]);
-
-  useEffect(() => {
-    const onSelectionChange = () => checkSelectionInActiveBlock();
-    document.addEventListener("mouseup", onSelectionChange);
-    document.addEventListener("keyup", onSelectionChange);
-    document.addEventListener("selectionchange", onSelectionChange);
-    return () => {
-      document.removeEventListener("mouseup", onSelectionChange);
-      document.removeEventListener("keyup", onSelectionChange);
-      document.removeEventListener("selectionchange", onSelectionChange);
-    };
-  }, [checkSelectionInActiveBlock]);
-
-  useEffect(() => {
-    setHasSelectionInActiveBlock(false);
-  }, [activeBlockId]);
+  const textInputRefs = useRef<Record<string, HTMLInputElement | HTMLTextAreaElement | HTMLElement | null>>({});
+  const blocksRef = useRef(blocks);
+  blocksRef.current = blocks;
   
   // 全体の文字数を計算
   const calculateTotalLength = useCallback((blocksToCheck: ContentBlock[]) => {
@@ -267,12 +240,12 @@ export function BlockEditor({
     [blocks, onChange]
   );
 
-  /** 選択範囲に太字・斜体・取り消し線を適用（onMouseDown でボタンクリック時にフォーカスを維持） */
+  /** フォーマット適用（選択あり: 選択範囲に適用、選択なし: ブロック全体に適用） */
   const applyFormat = useCallback(
     (blockId: string, wrapper: "**" | "*" | "~~", itemIndex?: number) => {
+      const block = blocks.find((b) => b.id === blockId);
       let refKey = blockId;
       let targetItemIndex: number | undefined = itemIndex;
-      const block = blocks.find((b) => b.id === blockId);
       if (block?.items && itemIndex === undefined) {
         for (let i = 0; i < block.items.length; i++) {
           const k = `${blockId}-${i}`;
@@ -282,22 +255,40 @@ export function BlockEditor({
             break;
           }
         }
+        if (targetItemIndex === undefined) {
+          refKey = `${blockId}-0`;
+          targetItemIndex = 0;
+        }
       } else if (itemIndex !== undefined) {
         refKey = `${blockId}-${itemIndex}`;
       }
-      const el = textInputRefs.current[refKey] ?? textInputRefs.current[blockId];
-      const activeEl = document.activeElement;
-      if (!el || el !== activeEl || !(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) return;
-      const start = el.selectionStart ?? 0;
-      const end = el.selectionEnd ?? 0;
-      if (start === end) return;
-      const val = el.value;
-      const before = val.slice(0, start);
-      const selected = val.slice(start, end);
-      const after = val.slice(end);
+      const el = (textInputRefs.current[refKey] ?? textInputRefs.current[blockId]) as HTMLElement | null;
+      if (!el) return;
+      if (el.isContentEditable) {
+        el.focus();
+        const cmd = wrapper === "**" ? "bold" : wrapper === "*" ? "italic" : "strikeThrough";
+        const sel = window.getSelection();
+        const hasSelection = sel && sel.rangeCount > 0 && !sel.getRangeAt(0).collapsed;
+        if (!hasSelection) {
+          document.execCommand("selectAll", false);
+        }
+        document.execCommand(cmd, false);
+        if (!hasSelection && sel && sel.rangeCount > 0) {
+          sel.getRangeAt(0).collapse(false);
+        }
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+        return;
+      }
+      el.focus();
+      if (!("value" in el)) return;
+      const inputEl = el as HTMLInputElement | HTMLTextAreaElement;
+      const start = inputEl.selectionStart ?? 0;
+      const end = inputEl.selectionEnd ?? 0;
+      const val = inputEl.value;
+      const selected = start === end ? val : val.slice(start, end);
+      const before = start === end ? "" : val.slice(0, start);
+      const after = start === end ? "" : val.slice(end);
       const newContent = before + wrapper + selected + wrapper + after;
-      const newStart = start + wrapper.length;
-      const newEnd = end + wrapper.length;
       if (targetItemIndex !== undefined && block?.items) {
         const newItems = [...block.items];
         newItems[targetItemIndex] = newContent;
@@ -305,115 +296,401 @@ export function BlockEditor({
       } else {
         updateBlock(blockId, { content: newContent });
       }
-      setTimeout(() => {
-        const target = textInputRefs.current[refKey] ?? textInputRefs.current[blockId];
-        if (target) {
-          target.focus();
-          target.setSelectionRange(newStart, newEnd);
+      requestAnimationFrame(() => {
+        const newEl = textInputRefs.current[refKey] as HTMLInputElement | HTMLTextAreaElement | null;
+        if (newEl && "setSelectionRange" in newEl) {
+          newEl.focus();
+          if (start === end) {
+            newEl.setSelectionRange(newContent.length, newContent.length);
+          } else {
+            const newStart = start + wrapper.length;
+            const newEnd = end + wrapper.length;
+            newEl.setSelectionRange(newStart, newEnd);
+          }
         }
-      }, 0);
+      });
     },
     [blocks, updateBlock]
   );
 
-  /** 選択したテキストをブロックに分割 */
-  const convertSelectedToBlocks = useCallback(
-    (blockId: string) => {
+  /** リンク化のオンオフ（選択がリンク内なら解除、否則追加） */
+  const applyLink = useCallback(
+    (blockId: string, itemIndex?: number) => {
       const block = blocks.find((b) => b.id === blockId);
-      if (!block) return;
-      const textBlockTypes = ["heading1", "heading2", "heading3", "paragraph", "quote", "markdown"];
-      if (!textBlockTypes.includes(block.type)) {
-        toast.error("このブロックでは利用できません");
-        return;
+      let refKey = blockId;
+      let targetItemIndex: number | undefined = itemIndex;
+      if (block?.items && itemIndex === undefined) {
+        for (let i = 0; i < block.items.length; i++) {
+          const k = `${blockId}-${i}`;
+          if (textInputRefs.current[k] === document.activeElement) {
+            refKey = k;
+            targetItemIndex = i;
+            break;
+          }
+        }
+        if (targetItemIndex === undefined) {
+          refKey = `${blockId}-0`;
+          targetItemIndex = 0;
+        }
+      } else if (itemIndex !== undefined) {
+        refKey = `${blockId}-${itemIndex}`;
       }
-
-      if (block.items) {
-        toast.error("本文・見出し・引用ブロックでテキストを選択してから実行してください");
-        return;
-      }
-
-      const el = textInputRefs.current[blockId];
+      const el = (textInputRefs.current[refKey] ?? textInputRefs.current[blockId]) as HTMLElement | null;
       if (!el) return;
-      const start = el.selectionStart ?? 0;
-      const end = el.selectionEnd ?? 0;
-      if (start === end) {
-        toast.error("テキストを選択してから実行してください");
+      let selected = "";
+      if (el.isContentEditable) {
+        const sel = window.getSelection();
+        if (!sel || sel.rangeCount === 0) return;
+        selected = sel.toString();
+        if (!selected.trim()) {
+          toast.info("リンクにするテキストを選択してください");
+          return;
+        }
+        const range = sel.getRangeAt(0);
+        const container = range.commonAncestorContainer;
+        const node = container.nodeType === Node.TEXT_NODE ? container.parentElement : (container as HTMLElement);
+        const insideLink = node?.closest("a[href]");
+        el.focus();
+        if (insideLink instanceof HTMLAnchorElement) {
+          document.execCommand("unlink", false);
+          el.dispatchEvent(new Event("input", { bubbles: true }));
+          return;
+        }
+      } else if ("value" in el) {
+        const inputEl = el as HTMLInputElement | HTMLTextAreaElement;
+        const start = inputEl.selectionStart ?? 0;
+        const end = inputEl.selectionEnd ?? 0;
+        if (start === end) {
+          toast.info("リンクにするテキストを選択してください");
+          return;
+        }
+        selected = inputEl.value.slice(start, end);
+        const linkMatch = selected.match(/^\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)$/);
+        if (linkMatch) {
+          const plainText = linkMatch[1] || linkMatch[2];
+          const val = inputEl.value;
+          const newContent = val.slice(0, start) + plainText + val.slice(end);
+          if (targetItemIndex !== undefined && block?.items) {
+            const newItems = [...block.items];
+            newItems[targetItemIndex] = newContent;
+            updateBlock(blockId, { items: newItems });
+          } else {
+            updateBlock(blockId, { content: newContent });
+          }
+          requestAnimationFrame(() => {
+            const newEl = textInputRefs.current[refKey] as HTMLInputElement | HTMLTextAreaElement | null;
+            if (newEl && "setSelectionRange" in newEl) {
+              newEl.focus();
+              const newPos = start + plainText.length;
+              newEl.setSelectionRange(newPos, newPos);
+            }
+          });
+          return;
+        }
+      }
+      if (!el.isContentEditable) {
+        const inputEl = el as HTMLInputElement | HTMLTextAreaElement;
+        const start = inputEl.selectionStart ?? 0;
+        const end = inputEl.selectionEnd ?? 0;
+        selected = inputEl.value.slice(start, end);
+      }
+      const looksLikeUrl = /^https?:\/\/.+/.test(selected.trim());
+      const href = looksLikeUrl
+        ? selected.trim()
+        : (() => {
+            const url = window.prompt("リンク先URLを入力してください", "https://");
+            return url != null && url.trim() ? url.trim() : null;
+          })();
+      if (!href) return;
+      el.focus();
+      if (el.isContentEditable) {
+        document.execCommand("createLink", false, href);
+        el.dispatchEvent(new Event("input", { bubbles: true }));
         return;
       }
-      const val = block.content ?? "";
-      const before = val.slice(0, start).trim();
-      const selected = val.slice(start, end);
-      const after = val.slice(end).trim();
-      const parsed = contentToBlocks(selected);
-      if (parsed.length === 0) {
-        toast.error("選択したテキストをブロックに変換できませんでした");
-        return;
+      const inputEl = el as HTMLInputElement | HTMLTextAreaElement;
+      const start = inputEl.selectionStart ?? 0;
+      const end = inputEl.selectionEnd ?? 0;
+      const val = inputEl.value;
+      const before = val.slice(0, start);
+      const after = val.slice(end);
+      const newContent = before + `[${selected}](${href})` + after;
+      if (targetItemIndex !== undefined && block?.items) {
+        const newItems = [...block.items];
+        newItems[targetItemIndex] = newContent;
+        updateBlock(blockId, { items: newItems });
+      } else {
+        updateBlock(blockId, { content: newContent });
       }
-      const newBlocks: ContentBlock[] = [];
-      if (before) {
-        newBlocks.push({
-          id: generateId(),
-          type: block.type,
-          content: before,
-          align: block.align,
-        });
-      }
-      newBlocks.push(...parsed.map((b) => ({ ...b, id: generateId() })));
-      if (after) {
-        newBlocks.push({
-          id: generateId(),
-          type: block.type,
-          content: after,
-          align: block.align,
-        });
-      }
-      replaceBlockWithBlocks(blockId, newBlocks);
-      toast.success(`${parsed.length} 個のブロックに分割しました`);
+      requestAnimationFrame(() => {
+        const newEl = textInputRefs.current[refKey] as HTMLInputElement | HTMLTextAreaElement | null;
+        if (newEl && "setSelectionRange" in newEl) {
+          newEl.focus();
+          const newPos = start + selected.length + 4 + href.length;
+          newEl.setSelectionRange(newPos, newPos);
+        }
+      });
     },
-    [blocks, updateBlock, replaceBlockWithBlocks]
+    [blocks, updateBlock]
   );
 
-  /** ブロックタイプを変更 */
-  const changeBlockType = useCallback(
+  /** 選択したテキストを新しいブロックとして分離 */
+  const extractSelectionToBlock = useCallback(() => {
+    if (!selectionBubble) return;
+    const { blockId, refKey, itemIndex } = selectionBubble;
+    const block = blocks.find((b) => b.id === blockId);
+    if (!block) return;
+    const el = textInputRefs.current[refKey] ?? textInputRefs.current[blockId];
+    if (!el) return;
+    let before: string;
+    let selected: string;
+    let after: string;
+    if (el.isContentEditable) {
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0) return;
+      const range = sel.getRangeAt(0);
+      selected = sel.toString();
+      if (!selected) return;
+      const fragToMd = (frag: DocumentFragment) => {
+        const div = document.createElement("div");
+        div.appendChild(frag);
+        return htmlToMarkdown(div.innerHTML);
+      };
+      const preRange = document.createRange();
+      preRange.selectNodeContents(el);
+      preRange.setEnd(range.startContainer, range.startOffset);
+      before = fragToMd(preRange.cloneContents()).trimEnd();
+      const postRange = document.createRange();
+      postRange.selectNodeContents(el);
+      postRange.setStart(range.endContainer, range.endOffset);
+      after = fragToMd(postRange.cloneContents()).trimStart();
+      selected = fragToMd(range.cloneContents());
+    } else if ("value" in el) {
+      const start = (el as HTMLInputElement).selectionStart ?? 0;
+      const end = (el as HTMLInputElement).selectionEnd ?? 0;
+      if (start === end) return;
+      const val = (el as HTMLInputElement).value;
+      before = val.slice(0, start).trimEnd();
+      selected = val.slice(start, end);
+      after = val.slice(end).trimStart();
+    } else return;
+    const index = blocks.findIndex((b) => b.id === blockId);
+    if (index < 0) return;
+    const newBlocks: ContentBlock[] = [];
+    if (block.items && itemIndex !== undefined) {
+      const items = block.items;
+      const newItems = [
+        ...items.slice(0, itemIndex),
+        ...(before ? [before] : []),
+        ...(after ? [after] : []),
+        ...items.slice(itemIndex + 1),
+      ];
+      const modifiedBlock = { ...block, id: generateId(), items: newItems.length > 0 ? newItems : [""] };
+      newBlocks.push(modifiedBlock);
+      newBlocks.push({ id: generateId(), type: "paragraph", content: selected });
+    } else {
+      if (before) newBlocks.push({ ...block, id: generateId(), content: before });
+      newBlocks.push({ id: generateId(), type: "paragraph", content: selected });
+      if (after) newBlocks.push({ ...block, id: generateId(), content: after });
+    }
+    const result = [...blocks];
+    result.splice(index, 1, ...newBlocks);
+    const selectedBlock = newBlocks.find((b) => b.type === "paragraph" && b.content === selected);
+    onChange(result);
+    setSelectionBubble(null);
+    if (selectedBlock) setActiveBlockId(selectedBlock.id);
+  }, [selectionBubble, blocks, onChange]);
+
+  /** 選択範囲の検出とフォーマット状態の更新 */
+  useEffect(() => {
+    const getActiveFormats = (value: string, start: number, end: number) => {
+      const before = value.slice(0, start);
+      const after = value.slice(end);
+      const bold = before.endsWith("**") && after.startsWith("**");
+      const italic =
+        !bold &&
+        before.endsWith("*") &&
+        !before.endsWith("**") &&
+        after.startsWith("*") &&
+        !after.startsWith("**");
+      const strikethrough = before.endsWith("~~") && after.startsWith("~~");
+      return { bold, italic, strikethrough };
+    };
+
+    const checkSelection = () => {
+      const activeEl = document.activeElement;
+      let foundBlockId: string | null = null;
+      let foundRefKey: string | null = null;
+      let foundItemIndex: number | undefined;
+      for (const [key, el] of Object.entries(textInputRefs.current)) {
+        if (el && (el === activeEl || el.contains(activeEl))) {
+          foundRefKey = key;
+          const m = key.match(/^(.+)-(\d+)$/);
+          if (m) {
+            foundBlockId = m[1];
+            foundItemIndex = parseInt(m[2], 10);
+          } else {
+            foundBlockId = key;
+          }
+          break;
+        }
+      }
+      if (!foundBlockId || !foundRefKey) {
+        setSelectionBubble(null);
+        setActiveFormats(null);
+        return;
+      }
+      const block = blocksRef.current.find((b) => b.id === foundBlockId);
+      const textBlocks = ["heading1", "heading2", "heading3", "paragraph", "quote", "markdown", "bulletList", "numberedList"];
+      if (!block || !textBlocks.includes(block.type)) {
+        setSelectionBubble(null);
+        setActiveFormats(null);
+        return;
+      }
+      const el = textInputRefs.current[foundRefKey];
+      if (!el) {
+        setActiveFormats(null);
+        return;
+      }
+      if ((el as HTMLElement).isContentEditable) {
+        setActiveFormats({
+          blockId: foundBlockId,
+          bold: document.queryCommandState("bold"),
+          italic: document.queryCommandState("italic"),
+          strikethrough: document.queryCommandState("strikeThrough"),
+        });
+      } else if ("value" in el) {
+        const value = (el as HTMLInputElement | HTMLTextAreaElement).value;
+        const start = (el as HTMLInputElement | HTMLTextAreaElement).selectionStart ?? 0;
+        const end = (el as HTMLInputElement | HTMLTextAreaElement).selectionEnd ?? 0;
+        const formats = getActiveFormats(value, start, end);
+        setActiveFormats({ blockId: foundBlockId, ...formats });
+      } else {
+        setActiveFormats(null);
+      }
+
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0 || sel.getRangeAt(0).collapsed) {
+        setSelectionBubble(null);
+        return;
+      }
+      const range = sel.getRangeAt(0);
+      try {
+        const rect = range.getBoundingClientRect();
+        if (rect.width === 0 && rect.height === 0) {
+          setSelectionBubble(null);
+          return;
+        }
+        setSelectionBubble({
+          blockId: foundBlockId,
+          refKey: foundRefKey,
+          itemIndex: foundItemIndex,
+          rect,
+        });
+      } catch {
+        setSelectionBubble(null);
+      }
+    };
+    document.addEventListener("selectionchange", checkSelection);
+    return () => document.removeEventListener("selectionchange", checkSelection);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /** ブロックタイプを変更（変換ロジック付き） */
+  const convertBlockType = useCallback(
     (blockId: string, newType: BlockType) => {
       const block = blocks.find((b) => b.id === blockId);
       if (!block) return;
-      if (block.type === newType) return;
-
-      const newBlock: ContentBlock = {
-        ...block,
-        type: newType,
-        items: newType === "bulletList" || newType === "numberedList" ? [block.content || ""] : undefined,
-        content: newType === "bulletList" || newType === "numberedList" ? "" : block.content,
-        url: ["image", "video"].includes(newType) ? undefined : block.url,
-        caption: ["image", "video"].includes(newType) ? undefined : block.caption,
-      };
-      if (newType === "divider") {
-        newBlock.content = "";
-        newBlock.items = undefined;
+      const index = blocks.findIndex((b) => b.id === blockId);
+      if (index < 0) return;
+      let converted: ContentBlock;
+      const text = block.content ?? "";
+      const items = block.items ?? [];
+      switch (newType) {
+        case "heading1":
+        case "heading2":
+        case "heading3":
+          converted = { ...block, type: newType, content: text.replace(/^#+\s*/, "").trim() };
+          break;
+        case "paragraph":
+          converted = {
+            ...block,
+            type: "paragraph",
+            content: items.length > 0 ? items.join("\n") : text,
+            items: undefined,
+          };
+          break;
+        case "quote":
+          converted = { ...block, type: "quote", content: items.length > 0 ? items.join("\n") : text, items: undefined };
+          break;
+        case "bulletList":
+          converted = {
+            ...block,
+            type: "bulletList",
+            content: "",
+            items: text ? text.split(/\n/).filter(Boolean) : items.length > 0 ? items : [""],
+          };
+          break;
+        case "numberedList":
+          converted = {
+            ...block,
+            type: "numberedList",
+            content: "",
+            items: text ? text.split(/\n/).filter(Boolean) : items.length > 0 ? items : [""],
+          };
+          break;
+        case "divider":
+          converted = { ...block, type: "divider", content: "", items: undefined };
+          break;
+        case "markdown":
+          converted = { ...block, type: "markdown", content: items.length > 0 ? items.join("\n") : text, items: undefined };
+          break;
+        case "image":
+        case "video":
+          converted = { ...block, type: newType, content: "", items: undefined };
+          break;
+        default:
+          return;
       }
-      if (newType === "image" || newType === "video") {
-        newBlock.content = "";
-        newBlock.items = undefined;
-      }
-      updateBlock(blockId, newBlock);
+      const newBlocks = [...blocks];
+      newBlocks[index] = converted;
+      onChange(newBlocks);
+      setBlockTypeDropdownOpen(null);
     },
-    [blocks, updateBlock]
+    [blocks, onChange]
   );
 
-  const handleBulkPaste = useCallback(() => {
+  const bulkPasteParsed = useMemo(() => {
+    const t = bulkPasteText.trim();
+    if (!t) return null;
+    const parsed = contentToBlocks(t);
+    return parsed.length > 0 ? parsed : null;
+  }, [bulkPasteText]);
+
+  const bulkPastePreviewLabel = useMemo(() => {
+    if (!bulkPasteParsed?.length) return null;
+    const counts: Partial<Record<BlockType, number>> = {};
+    for (const b of bulkPasteParsed) {
+      counts[b.type] = (counts[b.type] || 0) + 1;
+    }
+    const parts = (Object.entries(counts) as [BlockType, number][]).map(
+      ([t, n]) => `${blockTypeLabels[t]}×${n}`
+    );
+    return `${bulkPasteParsed.length} 個のブロックに変換されます（${parts.join("、")}）`;
+  }, [bulkPasteParsed]);
+
+  const handleBulkPasteAsBlocks = useCallback(() => {
     const text = bulkPasteText.trim();
     if (!text) {
       toast.error("貼り付けするテキストを入力してください");
       return;
     }
-    // 一括貼り付けはマークダウン用。見出し・太字・箇条書きなどに自動変換してブロック追加
     const parsed = contentToBlocks(text);
-    const blocksToAdd: ContentBlock[] =
-      parsed.length > 0
-        ? parsed.map((b) => ({ ...b, id: generateId() }))
-        : [{ id: generateId(), type: "markdown", content: text }];
-    const newBlocks = blocks.length === 0 ? blocksToAdd : [...blocks, ...blocksToAdd];
+    if (parsed.length === 0) {
+      toast.error("変換できる内容がありません");
+      return;
+    }
+    const newBlocks = blocks.length === 0 ? parsed : [...blocks, ...parsed];
     if (maxLength !== undefined && calculateTotalLength(newBlocks) > maxLength) {
       toast.error(`文字数が上限（${maxLength.toLocaleString()}文字）を超えます`);
       return;
@@ -421,12 +698,45 @@ export function BlockEditor({
     onChange(newBlocks);
     setBulkPasteText("");
     setBulkPasteOpen(false);
-    toast.success(
-      blocksToAdd.length > 1
-        ? `Markdown を${blocksToAdd.length}個のブロックに変換して追加しました`
-        : "ブロックを追加しました"
-    );
+    toast.success(`${parsed.length}件のブロックを追加しました`);
   }, [bulkPasteText, blocks, onChange, maxLength, calculateTotalLength]);
+
+  /** 表・フェンスコード・複雑なGFMなど、ブロック分解で壊れうるもの向け */
+  const handleBulkPasteAsSingleMarkdown = useCallback(() => {
+    const text = bulkPasteText.trim();
+    if (!text) {
+      toast.error("貼り付けするテキストを入力してください");
+      return;
+    }
+    const markdownBlock: ContentBlock = {
+      id: generateId(),
+      type: "markdown",
+      content: text,
+    };
+    const newBlocks = blocks.length === 0 ? [markdownBlock] : [...blocks, markdownBlock];
+    if (maxLength !== undefined && calculateTotalLength(newBlocks) > maxLength) {
+      toast.error(`文字数が上限（${maxLength.toLocaleString()}文字）を超えます`);
+      return;
+    }
+    onChange(newBlocks);
+    setBulkPasteText("");
+    setBulkPasteOpen(false);
+    toast.success("Markdown を1ブロックで追加しました（プレビュー用）");
+  }, [bulkPasteText, blocks, onChange, maxLength, calculateTotalLength]);
+
+  const handleBulkPasteReadClipboard = useCallback(async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text) {
+        toast.message("クリップボードが空です");
+        return;
+      }
+      setBulkPasteText(text);
+      toast.success("クリップボードを読み込みました");
+    } catch {
+      toast.error("クリップボードにアクセスできません（ブラウザの許可を確認してください）");
+    }
+  }, []);
 
   /** 段落ブロックの内容がMarkdown形式なら自動変換 */
   const tryAutoConvertParagraph = useCallback(
@@ -446,10 +756,10 @@ export function BlockEditor({
         }
       }
 
-      // 単一行のMarkdownプレフィックス
-      if (firstLine.startsWith("# ")) {
+      // 単一行のMarkdownプレフィックス（### を # より先に判定）
+      if (firstLine.startsWith("### ")) {
         replaceBlockWithBlocks(block.id, [
-          { ...block, type: "heading1", content: firstLine.slice(2).trim(), id: generateId() },
+          { ...block, type: "heading3", content: firstLine.slice(4).trim(), id: generateId() },
         ]);
         return;
       }
@@ -459,9 +769,9 @@ export function BlockEditor({
         ]);
         return;
       }
-      if (firstLine.startsWith("### ")) {
+      if (firstLine.startsWith("# ")) {
         replaceBlockWithBlocks(block.id, [
-          { ...block, type: "heading3", content: firstLine.slice(4).trim(), id: generateId() },
+          { ...block, type: "heading1", content: firstLine.slice(2).trim(), id: generateId() },
         ]);
         return;
       }
@@ -477,10 +787,10 @@ export function BlockEditor({
         ]);
         return;
       }
-      if (firstLine.startsWith("- ")) {
+      if (isMdBulletLine(firstLine)) {
         const items = lines
-          .filter((l) => l.trim().startsWith("- "))
-          .map((l) => l.trim().slice(2));
+          .filter((l) => isMdBulletLine(l.trim()))
+          .map((l) => l.trim().replace(/^[-*+] /, "").trimStart());
         replaceBlockWithBlocks(block.id, [
           { ...block, type: "bulletList", content: "", items: items.length > 0 ? items : [""], id: generateId() },
         ]);
@@ -514,13 +824,13 @@ export function BlockEditor({
       case "heading1":
         return (
           <div className="flex items-center gap-2">
-            <input
-              ref={(el) => { textInputRefs.current[block.id] = el; }}
-              type="text"
+            <RichTextEditable
+              blockId={block.id}
               value={block.content}
-              onChange={(e) => updateBlock(block.id, { content: e.target.value })}
+              onChange={(c) => updateBlock(block.id, { content: c })}
+              refCallback={(el) => { textInputRefs.current[block.id] = el; }}
               placeholder="大見出しを入力..."
-              className={`flex-1 bg-transparent text-4xl font-bold outline-none border-none text-${block.align}`}
+              className={`flex-1 min-w-0 text-4xl font-normal outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground [&_strong]:font-bold`}
               style={{ textAlign: block.align }}
             />
             <span className="text-xs text-muted-foreground whitespace-nowrap">
@@ -531,13 +841,13 @@ export function BlockEditor({
       case "heading2":
         return (
           <div className="flex items-center gap-2">
-            <input
-              ref={(el) => { textInputRefs.current[block.id] = el; }}
-              type="text"
+            <RichTextEditable
+              blockId={block.id}
               value={block.content}
-              onChange={(e) => updateBlock(block.id, { content: e.target.value })}
+              onChange={(c) => updateBlock(block.id, { content: c })}
+              refCallback={(el) => { textInputRefs.current[block.id] = el; }}
               placeholder="中見出しを入力..."
-              className={`flex-1 bg-transparent text-2xl font-bold outline-none border-none`}
+              className={`flex-1 min-w-0 text-2xl font-normal outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground [&_strong]:font-bold`}
               style={{ textAlign: block.align }}
             />
             <span className="text-xs text-muted-foreground whitespace-nowrap">
@@ -548,13 +858,13 @@ export function BlockEditor({
       case "heading3":
         return (
           <div className="flex items-center gap-2">
-            <input
-              ref={(el) => { textInputRefs.current[block.id] = el; }}
-              type="text"
+            <RichTextEditable
+              blockId={block.id}
               value={block.content}
-              onChange={(e) => updateBlock(block.id, { content: e.target.value })}
+              onChange={(c) => updateBlock(block.id, { content: c })}
+              refCallback={(el) => { textInputRefs.current[block.id] = el; }}
               placeholder="小見出しを入力..."
-              className={`flex-1 bg-transparent text-xl font-semibold outline-none border-none`}
+              className={`flex-1 min-w-0 text-xl font-normal outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground [&_strong]:font-bold`}
               style={{ textAlign: block.align }}
             />
             <span className="text-xs text-muted-foreground whitespace-nowrap">
@@ -565,13 +875,14 @@ export function BlockEditor({
       case "paragraph":
         return (
           <div className="relative">
-            <Textarea
-              ref={(el) => { textInputRefs.current[block.id] = el; }}
+            <RichTextEditable
+              blockId={block.id}
               value={block.content}
-              onChange={(e) => updateBlock(block.id, { content: e.target.value })}
-              onBlur={(e) => tryAutoConvertParagraph(block, e.target.value)}
+              onChange={(c) => updateBlock(block.id, { content: c })}
+              onBlur={(c) => tryAutoConvertParagraph(block, c)}
+              refCallback={(el) => { textInputRefs.current[block.id] = el; }}
               placeholder="本文を入力...（# 見出し、- リストなどで自動変換）"
-              className={`w-full min-h-[100px] bg-transparent resize-none border-none shadow-none focus-visible:ring-0 pr-16`}
+              className={`w-full min-h-[100px] py-2 px-0 bg-transparent resize-none outline-none pr-16 empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground`}
               style={{ textAlign: block.align }}
             />
             <span className="absolute top-2 right-2 text-xs text-muted-foreground">
@@ -750,13 +1061,13 @@ export function BlockEditor({
         return (
           <div className="border-l-4 border-primary pl-4 py-2">
             <div className="relative">
-              <Textarea
-                ref={(el) => { textInputRefs.current[block.id] = el; }}
+              <RichTextEditable
+                blockId={block.id}
                 value={block.content}
-                onChange={(e) => updateBlock(block.id, { content: e.target.value })}
-                onClick={(e) => e.stopPropagation()}
+                onChange={(c) => updateBlock(block.id, { content: c })}
+                refCallback={(el) => { textInputRefs.current[block.id] = el; }}
                 placeholder="引用文を入力..."
-                className="w-full min-h-[80px] bg-transparent resize-none border-none shadow-none focus-visible:ring-0 italic text-lg pr-16"
+                className="w-full min-h-[80px] py-2 px-0 bg-transparent resize-none outline-none italic text-lg pr-16 empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground"
               />
               <span className="absolute top-2 right-2 text-xs text-muted-foreground">
                 {block.content?.length || 0} 文字
@@ -817,7 +1128,9 @@ export function BlockEditor({
             </div>
           </div>
         );
-      case "markdown":
+      case "markdown": {
+        const text = block.content ?? "";
+        const lines = text.split(/\n/);
         return (
           <div className="space-y-2">
             <Textarea
@@ -828,20 +1141,40 @@ export function BlockEditor({
               className="min-h-[120px] font-mono text-sm resize-none"
               onClick={(e) => e.stopPropagation()}
             />
-            {block.content && (
-              <div className="prose prose-sm max-w-none border-t pt-3 mt-3">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{block.content}</ReactMarkdown>
+            {text.length > 0 && (
+              <div className="prose prose-sm max-w-none border-t pt-3 mt-3 space-y-0">
+                {lines.map((line, i) =>
+                  line === "" ? (
+                    <div key={i} className="min-h-[1em]" aria-hidden />
+                  ) : (
+                    <div key={i} className="py-0.5">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkBreaks]}
+                        components={{
+                          a: ({ children, ...props }) => (
+                            <span className="text-blue-600 underline cursor-default" {...props}>
+                              {children}
+                            </span>
+                          ),
+                        }}
+                      >
+                        {line}
+                      </ReactMarkdown>
+                    </div>
+                  )
+                )}
               </div>
             )}
           </div>
         );
+      }
       default:
         return null;
     }
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 relative">
       {showBulkPaste && (
         <div className="border rounded-lg overflow-hidden">
           <button
@@ -862,20 +1195,73 @@ export function BlockEditor({
           {bulkPasteOpen && (
             <div className="p-4 border-t bg-background space-y-4">
               <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">
-                  通常のブロック編集はマークダウンではありません。ここは<strong>マークダウン用</strong>です。貼り付けると見出し・太字・斜体・箇条書きなどに自動変換されてブロックで追加されます。
-                </p>
+                <div className="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:justify-between">
+                  <p className="text-xs text-muted-foreground leading-relaxed flex-1">
+                    見出し（#〜###）、リスト（<code className="text-[11px] bg-muted px-1 rounded">-</code>{" "}
+                    <code className="text-[11px] bg-muted px-1 rounded">*</code>{" "}
+                    <code className="text-[11px] bg-muted px-1 rounded">+</code>
+                    ）、番号付き、引用、区切り線、1行画像などをブロックに分解します。表やコードブロックは右のボタンを。
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0"
+                    onClick={handleBulkPasteReadClipboard}
+                  >
+                    <ClipboardPaste className="h-4 w-4 mr-1.5" />
+                    クリップボードから
+                  </Button>
+                </div>
+                {bulkPastePreviewLabel && (
+                  <p className="text-xs font-medium text-foreground/90 rounded-md bg-muted/50 px-3 py-2 border border-border/60">
+                    {bulkPastePreviewLabel}
+                  </p>
+                )}
                 <Textarea
                   value={bulkPasteText}
                   onChange={(e) => setBulkPasteText(e.target.value)}
-                  placeholder={"# 見出し\n**太字** や *斜体*\n- 箇条書き\n1. 番号付き\n\n本文..."}
-                  className="min-h-[100px] font-mono text-sm"
+                  placeholder={
+                    "### 小見出し\n\n本文の段落は空行で区切ります。\n\n- 箇条書き\n* アスタリスクでも可\n\n1. 番号付き\n2. 続き"
+                  }
+                  className="min-h-[140px] font-mono text-sm leading-relaxed"
                   onClick={(e) => e.stopPropagation()}
+                  onPaste={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => {
+                    e.stopPropagation();
+                    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+                      e.preventDefault();
+                      handleBulkPasteAsBlocks();
+                    }
+                  }}
+                  spellCheck={false}
                 />
-                <Button type="button" size="sm" onClick={handleBulkPaste}>
-                  <ClipboardPaste className="h-4 w-4 mr-2" />
-                  貼り付けてブロックに変換
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleBulkPasteAsBlocks}
+                    disabled={!bulkPasteText.trim()}
+                  >
+                    <ClipboardPaste className="h-4 w-4 mr-2" />
+                    ブロックに変換して追加
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={handleBulkPasteAsSingleMarkdown}
+                    disabled={!bulkPasteText.trim()}
+                  >
+                    1ブロックのMarkdownで追加
+                  </Button>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  ヒント: <kbd className="px-1 py-0.5 rounded bg-muted font-mono text-[10px]">⌘</kbd> または{" "}
+                  <kbd className="px-1 py-0.5 rounded bg-muted font-mono text-[10px]">Ctrl</kbd> +{" "}
+                  <kbd className="px-1 py-0.5 rounded bg-muted font-mono text-[10px]">Enter</kbd>{" "}
+                  でブロック変換（表・```コード```は「1ブロック」推奨）
+                </p>
               </div>
             </div>
           )}
@@ -962,17 +1348,60 @@ export function BlockEditor({
             )}
 
             {/* Block type indicator & controls */}
-            {activeBlockId === block.id && (
-              <div className="flex flex-wrap items-center gap-2 mb-3 pb-3 border-b">
-                <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
-                  {blockTypeLabels[block.type]}
-                </span>
-                
-                {/* 太字・斜体・取り消し線・箇条書き・番号付き（同じ行に5つ並べる） */}
+            {activeBlockId === block.id && block.type !== "divider" && (
+              <div className="flex items-center gap-2 mb-3 pb-3 border-b">
+                <DropdownMenu open={blockTypeDropdownOpen === block.id} onOpenChange={(open) => setBlockTypeDropdownOpen(open ? block.id : null)}>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded hover:bg-muted/80 flex items-center gap-1"
+                    >
+                      {blockTypeLabels[block.type]}
+                      <ChevronDown className="h-3 w-3" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenuItem onClick={() => convertBlockType(block.id, "heading1")}>
+                      <Heading1 className="h-4 w-4 mr-2" />大見出し
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => convertBlockType(block.id, "heading2")}>
+                      <Heading2 className="h-4 w-4 mr-2" />中見出し
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => convertBlockType(block.id, "heading3")}>
+                      <Heading3 className="h-4 w-4 mr-2" />小見出し
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => convertBlockType(block.id, "paragraph")}>
+                      <Type className="h-4 w-4 mr-2" />本文
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => convertBlockType(block.id, "image")}>
+                      <ImageIcon className="h-4 w-4 mr-2" />画像
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => convertBlockType(block.id, "video")}>
+                      <Video className="h-4 w-4 mr-2" />動画
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => convertBlockType(block.id, "quote")}>
+                      <Quote className="h-4 w-4 mr-2" />引用
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => convertBlockType(block.id, "bulletList")}>
+                      <List className="h-4 w-4 mr-2" />箇条書き
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => convertBlockType(block.id, "numberedList")}>
+                      <ListOrdered className="h-4 w-4 mr-2" />番号付きリスト
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => convertBlockType(block.id, "markdown")}>
+                      <ClipboardPaste className="h-4 w-4 mr-2" />Markdown
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => convertBlockType(block.id, "divider")}>
+                      <Minus className="h-4 w-4 mr-2" />区切り線
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                {/* 太字・斜体・取り消し線（選択時は選択範囲、未選択時はブロック全体に適用） */}
                 {["heading1", "heading2", "heading3", "paragraph", "quote", "bulletList", "numberedList", "markdown"].includes(block.type) && (
                   <div className="flex items-center gap-1">
                     <Button
-                      variant="ghost"
+                      variant={activeFormats?.blockId === block.id && activeFormats.bold ? "secondary" : "ghost"}
                       size="icon-sm"
                       title="太字"
                       onMouseDown={(e) => {
@@ -983,7 +1412,7 @@ export function BlockEditor({
                       <Bold className="h-4 w-4" />
                     </Button>
                     <Button
-                      variant="ghost"
+                      variant={activeFormats?.blockId === block.id && activeFormats.italic ? "secondary" : "ghost"}
                       size="icon-sm"
                       title="斜体"
                       onMouseDown={(e) => {
@@ -994,7 +1423,7 @@ export function BlockEditor({
                       <Italic className="h-4 w-4" />
                     </Button>
                     <Button
-                      variant="ghost"
+                      variant={activeFormats?.blockId === block.id && activeFormats.strikethrough ? "secondary" : "ghost"}
                       size="icon-sm"
                       title="取り消し線"
                       onMouseDown={(e) => {
@@ -1007,68 +1436,31 @@ export function BlockEditor({
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      title="箇条書き"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        changeBlockType(block.id, "bulletList");
+                      title="リンク"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        applyLink(block.id);
                       }}
                     >
-                      <List className="h-4 w-4" />
+                      <Link className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      title="番号付き箇条書き"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        changeBlockType(block.id, "numberedList");
-                      }}
-                    >
-                      <ListOrdered className="h-4 w-4" />
-                    </Button>
+                    {/* 選択時に「ブロックに変換」ボタンを表示 */}
+                    {selectionBubble?.blockId === block.id && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          extractSelectionToBlock();
+                        }}
+                      >
+                        <SplitSquareVertical className="h-4 w-4 mr-1.5" />
+                        選択したテキストをブロックにする
+                      </Button>
+                    )}
                   </div>
                 )}
-
-                {/* テキスト選択時のみ表示：選択したテキストをブロックに外に出す */}
-                {["heading1", "heading2", "heading3", "paragraph", "quote", "markdown"].includes(block.type) && hasSelectionInActiveBlock && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="text-xs shrink-0"
-                    title="選択部分をブロックに分割して外に出す"
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      convertSelectedToBlocks(block.id);
-                      setHasSelectionInActiveBlock(false);
-                    }}
-                  >
-                    <SplitSquareVertical className="h-4 w-4 mr-1" />
-                    選択したテキストをブロックにする
-                  </Button>
-                )}
-
-                {/* ブロックタイプを変更（setTimeout でドロップダウン閉じた後に更新し固まり防止） */}
-                <Select
-                  value={block.type}
-                  onValueChange={(v) => setTimeout(() => changeBlockType(block.id, v as BlockType), 0)}
-                >
-                  <SelectTrigger className="w-[160px] h-8 text-xs border" onClick={(e) => e.stopPropagation()}>
-                    <SelectValue placeholder="ブロックタイプを変更" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="heading1">大見出し</SelectItem>
-                    <SelectItem value="heading2">中見出し</SelectItem>
-                    <SelectItem value="heading3">小見出し</SelectItem>
-                    <SelectItem value="paragraph">本文</SelectItem>
-                    <SelectItem value="quote">引用</SelectItem>
-                    <SelectItem value="bulletList">箇条書き</SelectItem>
-                    <SelectItem value="numberedList">番号付きリスト</SelectItem>
-                    <SelectItem value="image">画像</SelectItem>
-                    <SelectItem value="video">動画</SelectItem>
-                    <SelectItem value="divider">区切り線</SelectItem>
-                    <SelectItem value="markdown">Markdown</SelectItem>
-                  </SelectContent>
-                </Select>
 
                 {/* Alignment controls for text blocks */}
                 {["heading1", "heading2", "heading3", "paragraph"].includes(block.type) && (
@@ -1177,14 +1569,14 @@ export function BlockEditor({
                 onClick={() => addBlock("numberedList", menuPosition)}
               />
               <BlockTypeButton
+                icon={<ClipboardPaste className="h-5 w-5" />}
+                label="Markdown"
+                onClick={() => addBlock("markdown", menuPosition)}
+              />
+              <BlockTypeButton
                 icon={<Minus className="h-5 w-5" />}
                 label="区切り線"
                 onClick={() => addBlock("divider", menuPosition)}
-              />
-              <BlockTypeButton
-                icon={<FileText className="h-5 w-5" />}
-                label="Markdown"
-                onClick={() => addBlock("markdown", menuPosition)}
               />
             </div>
           </div>

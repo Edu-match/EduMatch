@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Form,
   FormControl,
@@ -24,12 +26,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ContentEditorWithImport } from "@/components/content/content-editor-with-import";
+import { BlocksContentPreview } from "@/components/content/blocks-content-preview";
 import { contentToBlocks, blocksToMarkdown } from "@/lib/markdown-to-blocks";
 import { Badge } from "@/components/ui/badge";
-import { Loader2 } from "lucide-react";
-import { updateServiceManagement, deleteServiceManagement } from "@/app/_actions";
+import { Loader2, Eye, FileText, Image as ImageIcon } from "lucide-react";
+import { updateServiceManagement, deleteServiceManagement, uploadImage } from "@/app/_actions";
 import { serviceSchema, type ServiceFormData } from "@/lib/validations/service";
 import { SERVICE_CATEGORIES } from "@/lib/categories";
+import { ImageWithUrlError } from "@/components/ui/image-with-url-error";
 
 const guidelines = [
   "サービスの特徴や導入効果を具体的に記載してください。",
@@ -77,6 +81,8 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [thumbnailUploading, setThumbnailUploading] = useState(false);
+  const thumbnailFileInputRef = useRef<HTMLInputElement | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(
     initialData.thumbnail_url
   );
@@ -169,7 +175,20 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-2">
+          <div className="lg:col-span-2 space-y-6">
+            <Tabs defaultValue="edit" className="w-full">
+              <TabsList className="mb-4">
+                <TabsTrigger value="edit">
+                  <FileText className="h-4 w-4 mr-2" />
+                  編集
+                </TabsTrigger>
+                <TabsTrigger value="preview">
+                  <Eye className="h-4 w-4 mr-2" />
+                  プレビュー
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="edit">
+          <Card>
             <CardHeader>
               <CardTitle>サービス編集フォーム</CardTitle>
             </CardHeader>
@@ -257,31 +276,77 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
                 name="thumbnail_url"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>サムネイル画像URL</FormLabel>
+                    <FormLabel>サムネイル画像</FormLabel>
                     <FormControl>
                       <div className="space-y-2">
-                        <Input 
-                          placeholder="https://example.com/image.jpg" 
-                          {...field}
-                          onChange={(e) => {
-                            field.onChange(e);
-                            handleThumbnailChange(e);
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => thumbnailFileInputRef.current?.click()}
+                            disabled={thumbnailUploading}
+                          >
+                            {thumbnailUploading ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <>
+                                <ImageIcon className="h-4 w-4 mr-1" />
+                                アップロード
+                              </>
+                            )}
+                          </Button>
+                          <Input
+                            placeholder="Google Drive / GitHub のURL"
+                            className="flex-1 min-w-[200px]"
+                            {...field}
+                            onChange={(e) => {
+                              field.onChange(e);
+                              handleThumbnailChange(e);
+                            }}
+                          />
+                        </div>
+                        <input
+                          ref={thumbnailFileInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            setThumbnailUploading(true);
+                            try {
+                              const formData = new FormData();
+                              formData.append("file", file);
+                              const result = await uploadImage(formData);
+                              if (result.success && result.url) {
+                                field.onChange(result.url);
+                                setThumbnailPreview(result.url);
+                                toast.success("サムネイルをアップロードしました");
+                              } else {
+                                toast.error(result.error || "アップロードに失敗しました");
+                              }
+                            } finally {
+                              setThumbnailUploading(false);
+                              e.target.value = "";
+                            }
                           }}
                         />
                         {thumbnailPreview && (
                           <div className="relative w-full aspect-video border rounded-lg overflow-hidden bg-muted">
-                            <img
-                              src={thumbnailPreview}
+                            <ImageWithUrlError
+                              originalSrc={thumbnailPreview}
                               alt="サムネイルプレビュー"
-                              className="w-full h-full object-contain"
-                              onError={() => setThumbnailPreview(null)}
+                              fill
+                              className="object-contain"
+                              unoptimized
                             />
                           </div>
                         )}
                       </div>
                     </FormControl>
                     <FormDescription>
-                      画像ホスティングサービスにアップロードしたURLを入力してください
+                      アップロード、または Google Drive / GitHub の画像URL
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -371,6 +436,41 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
               </div>
             </CardContent>
           </Card>
+              </TabsContent>
+
+              <TabsContent value="preview">
+                <Card>
+                  <CardContent className="py-12">
+                    <div className="max-w-3xl mx-auto space-y-6">
+                      <h1 className="text-3xl font-bold">{form.watch("title") || "タイトル未設定"}</h1>
+                      {form.watch("description") && (
+                        <p className="text-lg text-muted-foreground">{form.watch("description")}</p>
+                      )}
+                      {form.watch("category") && (
+                        <Badge variant="outline">
+                          {SERVICE_CATEGORIES.find((c) => c.value === form.watch("category"))?.label ?? form.watch("category")}
+                        </Badge>
+                      )}
+                      {thumbnailPreview && (
+                        <div className="rounded-xl overflow-hidden relative h-[200px]">
+                          <ImageWithUrlError
+                            originalSrc={thumbnailPreview}
+                            alt={form.watch("title")}
+                            fill
+                            className="object-contain"
+                            unoptimized
+                          />
+                        </div>
+                      )}
+                      <div className="border-t pt-6">
+                        <BlocksContentPreview content={form.watch("content") || ""} />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </div>
 
           <div className="space-y-4">
             <Card>

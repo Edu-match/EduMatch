@@ -1,0 +1,4 @@
+[      56ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://edu-match.com/api/auth/signin:0
+[    3895ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://edu-match.com/admin-entry?_rsc=1doqf:0
+[    6948ms] [WARNING] The resource https://edu-match.com/_next/static/media/797e433ab948586e-s.p.dbea232f.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ https://edu-match.com/maintenance:0
+[    6948ms] [WARNING] The resource https://edu-match.com/_next/static/media/ad9c66e761fed85a-s.p.bd81a64b.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ https://edu-match.com/maintenance:0

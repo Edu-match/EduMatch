@@ -16,6 +16,7 @@ import { uploadImage } from "@/app/_actions";
 import { Image as ImageIcon, Loader2, Save, Send, Building2, FileText } from "lucide-react";
 import { getCurrentUserProfile } from "@/app/_actions/user";
 import { isImportedContent } from "@/lib/imported-content";
+import { ImageWithUrlError } from "@/components/ui/image-with-url-error";
 
 const TITLE_MAX_LENGTH = 200;
 const CONTENT_MAX_LENGTH = 50000;
@@ -189,11 +190,13 @@ export function SiteUpdateEditor({
           </CardHeader>
           <CardContent className="space-y-4">
             {thumbnailUrl ? (
-              <div className="relative group">
-                <img
-                  src={thumbnailUrl}
+              <div className="relative group h-[200px]">
+                <ImageWithUrlError
+                  originalSrc={thumbnailUrl}
                   alt="サムネイル"
-                  className="w-full h-[200px] object-contain rounded-lg"
+                  fill
+                  className="object-contain rounded-lg"
+                  unoptimized
                 />
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-4">
                   <Button

@@ -3,7 +3,7 @@ import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, ExternalLink, Building2, Calendar, Play, FileText, Mail, Check, Star, Pencil } from "lucide-react";
+import { ArrowLeft, ExternalLink, Building2, Calendar, Play, FileText, Check, Star, Pencil } from "lucide-react";
 import { unstable_noStore } from "next/cache";
 import { getServiceById, getPopularServices, recordView } from "@/app/_actions";
 import { getCurrentUser, getCurrentProfile } from "@/lib/auth";
@@ -16,6 +16,7 @@ import { ReviewSection } from "@/components/ui/review-section";
 import { getServiceReviews } from "@/app/_actions/reviews";
 import { ThumbnailOrTitle } from "@/components/ui/thumbnail-or-title";
 import { FEATURES } from "@/lib/features";
+import { ImageWithUrlError } from "@/components/ui/image-with-url-error";
 
 export const dynamic = "force-dynamic";
 
@@ -46,8 +47,9 @@ export default async function ServiceDetailPage({
     await recordView(user.id, "SERVICE", id);
   }
   const canEdit = user && (user.id === service.provider_id || profile?.role === "ADMIN");
-  /** 無料企業（sort_order が「なし」）のサービスでは資料請求ボタンを非表示 */
+  /** 無料企業（sort_order が「なし」）のサービスでは資料請求・お問い合わせブロックを非表示 */
   const showRequestInfo = service.sort_order !== "NONE";
+  const showContactBlock = service.sort_order !== "NONE";
 
   // 口コミを取得（口コミ機能が有効な場合のみ）
   const reviews = FEATURES.REVIEWS ? await getServiceReviews(id) : [];
@@ -117,7 +119,8 @@ export default async function ServiceDetailPage({
                 {service.description}
               </p>
 
-              {/* CTAボタン（モバイル） */}
+              {/* CTAボタン（モバイル）無料ベンダーではブロックごと非表示 */}
+              {showContactBlock && (
               <div className="mt-6 lg:hidden space-y-3">
                 {showRequestInfo && (
                   <div className="flex flex-wrap gap-2">
@@ -141,6 +144,7 @@ export default async function ServiceDetailPage({
                   </span>
                 </div>
               </div>
+              )}
             </div>
 
             {/* サムネイル画像（デスクトップ） */}
@@ -174,23 +178,6 @@ export default async function ServiceDetailPage({
               />
             </div>
 
-            {/* YouTube動画 */}
-            {service.youtube_url && (
-              <Card className="overflow-hidden border-2 shadow-lg">
-                <CardHeader className="bg-gradient-to-r from-red-50 to-background">
-                  <CardTitle className="flex items-center gap-2">
-                    <div className="p-2 bg-red-500 rounded-lg">
-                      <Play className="h-5 w-5 text-white" />
-                    </div>
-                    サービス紹介動画
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <YouTubeEmbed url={service.youtube_url} title={service.title} />
-                </CardContent>
-              </Card>
-            )}
-
             {/* 詳細説明 */}
             <Card className="border-2 shadow-lg">
               <CardHeader className="bg-gradient-to-r from-primary/5 to-background">
@@ -221,8 +208,8 @@ export default async function ServiceDetailPage({
                         key={index}
                         className="group relative aspect-video rounded-lg overflow-hidden bg-muted border-2 hover:border-primary transition-all hover:shadow-xl"
                       >
-                        <Image
-                          src={imageUrl}
+                        <ImageWithUrlError
+                          originalSrc={imageUrl}
                           alt={`${service.title} - 画像${index + 1}`}
                           fill
                           className="object-contain transition-transform duration-300 group-hover:scale-110"
@@ -231,6 +218,23 @@ export default async function ServiceDetailPage({
                       </div>
                     ))}
                   </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* YouTube動画（提供企業より上） */}
+            {service.youtube_url && (
+              <Card className="overflow-hidden border-2 shadow-lg">
+                <CardHeader className="bg-gradient-to-r from-red-50 to-background">
+                  <CardTitle className="flex items-center gap-2">
+                    <div className="p-2 bg-red-500 rounded-lg">
+                      <Play className="h-5 w-5 text-white" />
+                    </div>
+                    サービス紹介動画
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <YouTubeEmbed url={service.youtube_url} title={service.title} />
                 </CardContent>
               </Card>
             )}
@@ -281,31 +285,32 @@ export default async function ServiceDetailPage({
 
             {/* 口コミセクション（FEATURES.REVIEWS が true のときのみ表示） */}
             {FEATURES.REVIEWS && (
-            <Card className="border-2 shadow-lg">
-              <CardHeader className="bg-gradient-to-r from-yellow-50 to-background">
-                <CardTitle className="flex items-center gap-2">
-                  <div className="p-2 bg-yellow-100 rounded-lg">
-                    <Star className="h-5 w-5 text-yellow-600" />
-                  </div>
-                  口コミ・レビュー
-                  {reviews.length > 0 && (
-                    <span className="ml-1 text-sm font-normal text-muted-foreground">
-                      （{reviews.length} 件）
-                    </span>
-                  )}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                <ReviewSection serviceId={service.id} initialReviews={reviews} isLoggedIn={!!user} />
-              </CardContent>
-            </Card>
+              <Card className="border-2 shadow-lg">
+                <CardHeader className="bg-gradient-to-r from-yellow-50 to-background">
+                  <CardTitle className="flex items-center gap-2">
+                    <div className="p-2 bg-yellow-100 rounded-lg">
+                      <Star className="h-5 w-5 text-yellow-600" />
+                    </div>
+                    口コミ・レビュー
+                    {reviews.length > 0 && (
+                      <span className="ml-1 text-sm font-normal text-muted-foreground">
+                        （{reviews.length} 件）
+                      </span>
+                    )}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <ReviewSection serviceId={service.id} initialReviews={reviews} isLoggedIn={!!user} />
+                </CardContent>
+              </Card>
             )}
           </div>
 
           {/* サイドバー（スティッキー） */}
           <div className="space-y-6 hidden lg:block">
             <div className="sticky top-24 space-y-6">
-              {/* CTA Card */}
+              {/* CTA Card（無料ベンダーでは資料請求・お問い合わせブロックごと非表示） */}
+              {showContactBlock && (
               <Card className="border-2 border-primary/20 shadow-2xl overflow-hidden">
                 <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-background p-6">
                   <div className="text-center mb-6">
@@ -342,12 +347,6 @@ export default async function ServiceDetailPage({
                       size="lg"
                       className="w-full"
                     />
-                    <Button asChild variant="outline" className="w-full" size="lg">
-                      <Link href="/contact">
-                        <Mail className="h-5 w-5 mr-2" />
-                        お問い合わせ
-                      </Link>
-                    </Button>
                   </div>
 
                   {/* 特典リスト */}
@@ -373,6 +372,7 @@ export default async function ServiceDetailPage({
                   </div>
                 </div>
               </Card>
+              )}
 
               {/* カテゴリカード */}
               <Card className="border-2 shadow-lg">
@@ -388,8 +388,9 @@ export default async function ServiceDetailPage({
 
             </div>
 
-            {/* モバイル用CTAセクション */}
+            {/* モバイル用CTAセクション（無料ベンダーではブロックごと非表示） */}
             <div className="lg:hidden">
+              {showContactBlock && (
               <Card className="border-2 border-primary/20 shadow-2xl sticky bottom-4">
                 <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-background p-6">
                   <div className="text-center mb-4">
@@ -418,15 +419,10 @@ export default async function ServiceDetailPage({
                         />
                       </>
                     )}
-                    <Button asChild variant="outline" className="w-full">
-                      <Link href="/contact">
-                        <Mail className="h-5 w-5 mr-2" />
-                        お問い合わせ
-                      </Link>
-                    </Button>
                   </div>
                 </div>
               </Card>
+              )}
             </div>
           </div>
         </div>

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentProfile } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { serviceSchema, type ServiceFormData } from "@/lib/validations/service";
+import { normalizeImageUrl } from "@/lib/image-url-utils";
 
 /**
  * サービスを作成する
@@ -40,7 +41,9 @@ export async function createServiceManagement(data: ServiceFormData) {
         category: validatedData.category,
         content: validatedData.content,
         price_info: validatedData.price_info,
-        thumbnail_url: validatedData.thumbnail_url || null,
+        thumbnail_url: validatedData.thumbnail_url?.trim()
+          ? normalizeImageUrl(validatedData.thumbnail_url.trim())
+          : null,
         youtube_url: validatedData.youtube_url || null,
         status: validatedData.status,
         is_published: validatedData.status === "APPROVED",
@@ -124,7 +127,9 @@ export async function updateServiceManagement(serviceId: string, data: ServiceFo
         category: validatedData.category,
         content: validatedData.content,
         price_info: validatedData.price_info,
-        thumbnail_url: validatedData.thumbnail_url || null,
+        thumbnail_url: validatedData.thumbnail_url?.trim()
+          ? normalizeImageUrl(validatedData.thumbnail_url.trim())
+          : null,
         youtube_url: validatedData.youtube_url || null,
         status: validatedData.status,
         is_published: validatedData.status === "APPROVED",

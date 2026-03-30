@@ -1,6 +1,7 @@
 "use client";
 
-import Image, { ImageProps } from "next/image";
+import { ImageProps } from "next/image";
+import { ImageWithUrlError } from "@/components/ui/image-with-url-error";
 
 type ThumbnailOrTitleProps = Omit<ImageProps, "src" | "alt"> & {
   /** 画像URL。未設定の場合は title をテキストで表示 */
@@ -13,6 +14,7 @@ type ThumbnailOrTitleProps = Omit<ImageProps, "src" | "alt"> & {
 /**
  * サムネイル画像がある場合は表示、ない場合はタイトルをテキストで表示。
  * 日本語タイトルもそのまま表示される（placehold.co の ??? を避けるため）。
+ * Google Drive はプロキシ経由。未対応URL・読み込み失敗時は枠内に案内を表示。
  */
 export function ThumbnailOrTitle({
   src,
@@ -27,10 +29,10 @@ export function ThumbnailOrTitle({
 }: ThumbnailOrTitleProps) {
   const effectiveAlt = alt ?? title;
 
-  if (src) {
+  if (src?.trim()) {
     return (
-      <Image
-        src={src}
+      <ImageWithUrlError
+        originalSrc={src}
         alt={effectiveAlt}
         fill={fill}
         sizes={sizes}
@@ -42,7 +44,6 @@ export function ThumbnailOrTitle({
     );
   }
 
-  // 画像なし: タイトルをテキストで表示（日本語対応）。背景は明るい青（従来の placehold に近い）
   const fillClass = fill ? "absolute inset-0" : "";
   return (
     <div

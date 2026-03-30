@@ -1,15 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { useForm, type Resolver } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Mail, Lock, User, Loader2, Chrome, AlertCircle } from "lucide-react";
+import { Mail, Lock, Loader2, Chrome, AlertCircle } from "lucide-react";
 import { signupSchema, type SignupInput } from "@/lib/validations/auth";
-import { ORGANIZATION_TYPE_OPTIONS } from "@/lib/organization-types";
 import { toast } from "sonner";
 import { createSupabaseBrowserClient } from "@/utils/supabase/client";
 
@@ -31,7 +30,7 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
     formState: { errors },
     watch,
   } = useForm<SignupInput>({
-    resolver: zodResolver(signupSchema) as Resolver<SignupInput>,
+    resolver: zodResolver(signupSchema),
     mode: "onChange",
   });
 
@@ -46,10 +45,6 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
         body: JSON.stringify({
           email: data.email,
           password: data.password,
-          legalName: data.legalName,
-          name: data.name,
-          organization: data.organization,
-          organizationType: data.organizationType,
           userType: SIGNUP_USER_TYPE,
         }),
       });
@@ -120,102 +115,8 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
         </div>
       </div>
 
-      {/* メール登録フォーム */}
+      {/* メール登録フォーム（名前・所属は登録後のプロフィール設定で入力） */}
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div className="space-y-2">
-          <label htmlFor="signup-legal-name" className="text-sm font-medium text-foreground">
-            本名 <span className="text-destructive">*</span>
-          </label>
-          <div className="relative">
-            <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-            <Input
-              id="signup-legal-name"
-              {...register("legalName")}
-              placeholder="戸籍・本人確認用（サイト上の公開表示名とは別です）"
-              autoComplete="name"
-              className="pl-10 h-11 rounded-lg"
-              disabled={isSubmitting}
-              aria-invalid={!!errors.legalName}
-            />
-          </div>
-          {errors.legalName && (
-            <p className="text-sm text-destructive" role="alert">
-              {errors.legalName.message}
-            </p>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <label htmlFor="signup-display-name" className="text-sm font-medium text-foreground">
-            表示名（ニックネーム・会社名など） <span className="text-destructive">*</span>
-          </label>
-          <div className="relative">
-            <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-            <Input
-              id="signup-display-name"
-              {...register("name")}
-              placeholder="例: やまだ・教育ICT研究部"
-              autoComplete="nickname"
-              className="pl-10 h-11 rounded-lg"
-              disabled={isSubmitting}
-              aria-invalid={!!errors.name}
-            />
-          </div>
-          {errors.name && (
-            <p className="text-sm text-destructive" role="alert">
-              {errors.name.message}
-            </p>
-          )}
-          <p className="text-xs text-muted-foreground">
-            一覧やコメントなど、サイト上に表示される名前です。プロフィール写真は登録後に設定できます。
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          <label htmlFor="signup-organization" className="text-sm font-medium text-foreground">
-            所属組織 <span className="text-destructive">*</span>
-          </label>
-          <Input
-            id="signup-organization"
-            {...register("organization")}
-            placeholder="例: ○○市立○○小学校、○○株式会社"
-            autoComplete="organization"
-            className="h-11 rounded-lg"
-            disabled={isSubmitting}
-            aria-invalid={!!errors.organization}
-          />
-          {errors.organization && (
-            <p className="text-sm text-destructive" role="alert">
-              {errors.organization.message}
-            </p>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <label htmlFor="signup-org-type" className="text-sm font-medium text-foreground">
-            組織の種類 <span className="text-destructive">*</span>
-          </label>
-          <select
-            id="signup-org-type"
-            {...register("organizationType")}
-            className="flex h-11 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={isSubmitting}
-            aria-invalid={!!errors.organizationType}
-          >
-            <option value="">選択してください</option>
-            {ORGANIZATION_TYPE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          {errors.organizationType && (
-            <p className="text-sm text-destructive" role="alert">
-              {errors.organizationType.message}
-            </p>
-          )}
-        </div>
-
             <div className="space-y-2">
               <label htmlFor="signup-email" className="text-sm font-medium text-foreground">
                 メールアドレス <span className="text-destructive">*</span>

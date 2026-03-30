@@ -7,7 +7,8 @@ import {
   getInAppNotificationsForCurrentUser,
   markInAppNotificationReadFromForm,
 } from "@/app/_actions/in-app-notifications";
-import { InAppNotificationLink } from "@/components/notifications/in-app-notification-link";
+import { InAppNotificationReadLink } from "@/components/notifications/in-app-notification-read-link";
+import { formatInAppNotificationTitle } from "@/lib/in-app-notification-constants";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ export default async function NotificationsPage() {
   const items = await getInAppNotificationsForCurrentUser(100);
 
   return (
-    <div className="container py-8">
+    <div className="container py-8 max-w-2xl">
       <div className="mb-6">
         <Button variant="ghost" asChild>
           <Link href="/dashboard">
@@ -26,7 +27,7 @@ export default async function NotificationsPage() {
         </Button>
       </div>
 
-      <div className="mb-8">
+      <header className="mb-8">
         <div className="flex items-center gap-2 mb-2">
           <Bell className="h-6 w-6 text-primary" />
           <h1 className="text-3xl font-bold">通知一覧</h1>
@@ -34,7 +35,7 @@ export default async function NotificationsPage() {
         <p className="text-muted-foreground">
           運営からのお知らせなどを確認できます（通知ターミナル）
         </p>
-      </div>
+      </header>
 
       <Card>
         <CardHeader>
@@ -56,12 +57,14 @@ export default async function NotificationsPage() {
                   }`}
                 >
                   <div className="flex-1 min-w-0">
-                    <InAppNotificationLink
-                      href={n.link ?? "#"}
+                    <InAppNotificationReadLink
+                      href={n.link?.trim() || "/notifications"}
+                      notificationId={n.id}
+                      read={n.read}
                       className={`text-sm hover:underline ${n.read ? "text-foreground" : "font-medium text-foreground"}`}
                     >
-                      {n.title}
-                    </InAppNotificationLink>
+                      {formatInAppNotificationTitle(n.title)}
+                    </InAppNotificationReadLink>
                     <p className="text-xs text-muted-foreground mt-1">
                       {n.created_at.toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })}
                     </p>

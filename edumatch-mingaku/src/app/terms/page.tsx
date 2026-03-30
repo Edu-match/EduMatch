@@ -51,7 +51,7 @@ export default async function TermsPage() {
             <p className="text-muted-foreground">
               主催：{OPERATOR_INFO.organizer}<br />
               運営：{OPERATOR_INFO.operator}<br />
-              設立年は、{OPERATOR_INFO.established}
+              設立年：{OPERATOR_INFO.established}
             </p>
           </CardContent>
         </Card>

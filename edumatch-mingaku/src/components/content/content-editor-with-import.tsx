@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { FileImportButton } from "@/components/content/file-import-button";
 import { ImportedContentRenderer } from "@/components/content/imported-content-renderer";
@@ -20,12 +20,9 @@ type Props = {
   parseToBlocks: ParseToBlocks;
   blocksToContent: BlocksToContent;
   maxLength?: number;
-  /** ブロック編集に戻ったときの空の初期ブロック */
+  /** ブロック編集に戻ったときの空の初期ブロック（デフォルト: 空配列＝最初からブロックなし） */
   emptyBlocks?: ContentBlock[];
 };
-
-/** ブロック編集に戻ったときの初期ブロック（空でよい場合は []） */
-const DEFAULT_EMPTY_BLOCKS: ContentBlock[] = [];
 
 export function ContentEditorWithImport({
   content,
@@ -33,12 +30,13 @@ export function ContentEditorWithImport({
   parseToBlocks,
   blocksToContent,
   maxLength,
-  emptyBlocks = DEFAULT_EMPTY_BLOCKS,
+  emptyBlocks = [],
 }: Props) {
   const isImported = isImportedContent(content);
   const parsed = isImported ? parseImportedContent(content) : null;
 
-  // ブロックを内部状態で保持。初期は空でよい（ブロックはユーザーが追加）
+  // ブロックを内部状態で保持。content→blocksの往復でブロックIDが失われたり、
+  // 空ブロックが消えるバグを防ぐ
   const [blocks, setBlocks] = useState<ContentBlock[]>(() => {
     const parsed = parseToBlocks(content);
     return parsed.length > 0 ? parsed : [...emptyBlocks];
@@ -67,11 +65,22 @@ export function ContentEditorWithImport({
     onChange(blocksToContent(initialBlocks));
   };
 
-  const handleBlocksChange = (blocks: ContentBlock[]) => {
-    isInternalUpdateRef.current = true;
-    setBlocks(blocks);
-    onChange(blocksToContent(blocks));
-  };
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleBlocksChange = useCallback(
+    (newBlocks: ContentBlock[]) => {
+      isInternalUpdateRef.current = true;
+      setBlocks(newBlocks);
+
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        debounceRef.current = null;
+        isInternalUpdateRef.current = true;
+        onChange(blocksToContent(newBlocks));
+      }, 300);
+    },
+    [onChange, blocksToContent]
+  );
 
   if (isImported && parsed) {
     return (

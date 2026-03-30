@@ -11,19 +11,15 @@ import {
   updateHomeNewsTabBulkAction,
   type HomeTopicsAdminPost,
 } from "@/app/_actions/home-topics";
+import { HOME_TOPICS_TAB_OPTIONS, topicsAdminTabValue } from "@/lib/home-news-tab-ui";
 import type { HomeNewsTab } from "@prisma/client";
 import { Check, Loader2, Save } from "lucide-react";
 
-const TAB_LABELS: Record<HomeNewsTab, string> = {
-  NONE: "表示しない",
-  DOMESTIC: "国内ニュース",
-  INTERNATIONAL: "海外ニュース",
-  WEEKLY: "週間ニュース",
-};
+type TopicsTabChoice = (typeof HOME_TOPICS_TAB_OPTIONS)[number]["value"];
 
 export function HomeTopicsAdminClient({ posts }: { posts: HomeTopicsAdminPost[] }) {
-  const [tabByPostId, setTabByPostId] = useState<Record<string, HomeNewsTab>>(() =>
-    Object.fromEntries(posts.map((p) => [p.id, p.home_news_tab]))
+  const [tabByPostId, setTabByPostId] = useState<Record<string, TopicsTabChoice>>(() =>
+    Object.fromEntries(posts.map((p) => [p.id, topicsAdminTabValue(p.home_news_tab)]))
   );
   const [savingId, setSavingId] = useState<string | null>(null);
   const [bulkSaving, setBulkSaving] = useState(false);
@@ -35,7 +31,7 @@ export function HomeTopicsAdminClient({ posts }: { posts: HomeTopicsAdminPost[] 
     setSavingId(postId);
     setLastSavedId(null);
     try {
-      const result = await setHomeNewsTabAction(postId, tab);
+      const result = await setHomeNewsTabAction(postId, tab as HomeNewsTab);
       if (result.success) {
         toast.success("保存しました");
         setLastSavedId(postId);
@@ -52,7 +48,10 @@ export function HomeTopicsAdminClient({ posts }: { posts: HomeTopicsAdminPost[] 
   const handleBulkSave = async () => {
     setBulkSaving(true);
     try {
-      const updates = posts.map((p) => ({ id: p.id, tab: tabByPostId[p.id] ?? p.home_news_tab }));
+      const updates = posts.map((p) => ({
+        id: p.id,
+        tab: (tabByPostId[p.id] ?? topicsAdminTabValue(p.home_news_tab)) as HomeNewsTab,
+      }));
       const result = await updateHomeNewsTabBulkAction(updates);
       if (result.success) {
         toast.success(`${result.count ?? 0} 件を保存しました`);
@@ -111,19 +110,20 @@ export function HomeTopicsAdminClient({ posts }: { posts: HomeTopicsAdminPost[] 
                 </div>
                 <div className="flex items-center gap-2">
                   <Select
-                    value={tabByPostId[post.id] ?? post.home_news_tab}
+                    value={tabByPostId[post.id] ?? topicsAdminTabValue(post.home_news_tab)}
                     onValueChange={(value) =>
-                      setTabByPostId((prev) => ({ ...prev, [post.id]: value as HomeNewsTab }))
+                      setTabByPostId((prev) => ({ ...prev, [post.id]: value as TopicsTabChoice }))
                     }
                   >
                     <SelectTrigger className="w-40">
                       <SelectValue placeholder="タブを選択" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="NONE">{TAB_LABELS.NONE}</SelectItem>
-                      <SelectItem value="DOMESTIC">{TAB_LABELS.DOMESTIC}</SelectItem>
-                      <SelectItem value="INTERNATIONAL">{TAB_LABELS.INTERNATIONAL}</SelectItem>
-                      <SelectItem value="WEEKLY">{TAB_LABELS.WEEKLY}</SelectItem>
+                      {HOME_TOPICS_TAB_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <Button

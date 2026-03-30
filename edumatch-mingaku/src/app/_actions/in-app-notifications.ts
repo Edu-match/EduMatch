@@ -30,7 +30,7 @@ async function ensureUserSiteUpdateNotifications(userId: string): Promise<void> 
     data: toAdd.map((u) => ({
       user_id: userId,
       kind: SITE_UPDATE_NOTIFICATION_KIND,
-      title: `【運営お知らせ】${u.title}`,
+      title: `【運営からのお知らせ】${u.title}`,
       link: u.link?.trim() || `/site-updates/${u.id}`,
       source_id: u.id,
     })),
@@ -52,13 +52,21 @@ export async function notifyAllUsersOfSiteUpdate(siteUpdate: {
   link: string | null;
 }): Promise<void> {
   const link = siteUpdateHref(siteUpdate.id, siteUpdate.link);
-  const title = `【運営お知らせ】${siteUpdate.title}`;
+  const title = `【運営からのお知らせ】${siteUpdate.title}`;
 
   const profiles = await prisma.profile.findMany({ select: { id: true } });
+  if (profiles.length === 0) {
+    console.warn(
+      "[notifyAllUsersOfSiteUpdate] Profile が0件のため通知を作成しません（DBまたは会員データを確認してください）"
+    );
+    return;
+  }
+
+  let inserted = 0;
   const BATCH = 400;
   for (let i = 0; i < profiles.length; i += BATCH) {
     const batch = profiles.slice(i, i + BATCH);
-    await prisma.inAppNotification.createMany({
+    const result = await prisma.inAppNotification.createMany({
       data: batch.map(({ id }) => ({
         user_id: id,
         kind: SITE_UPDATE_NOTIFICATION_KIND,
@@ -68,20 +76,34 @@ export async function notifyAllUsersOfSiteUpdate(siteUpdate: {
       })),
       skipDuplicates: true,
     });
+    inserted += result.count;
   }
+  console.log(
+    `[notifyAllUsersOfSiteUpdate] siteUpdate=${siteUpdate.id} 作成=${inserted}/${profiles.length} 件（重複は skip）`
+  );
+}
+
+/**
+ * ヘッダー /api/notifications など、セッション済みユーザーIDが分かっているとき用（requireAuth 不要）
+ */
+export async function getInAppNotificationsForUserId(
+  userId: string,
+  limit: number
+): Promise<InAppNotificationRow[]> {
+  await ensureUserSiteUpdateNotifications(userId);
+  return prisma.inAppNotification.findMany({
+    where: { user_id: userId },
+    orderBy: { created_at: "desc" },
+    take: limit,
+    select: { id: true, title: true, link: true, read: true, created_at: true },
+  });
 }
 
 export async function getInAppNotificationsForCurrentUser(
   limit: number
 ): Promise<InAppNotificationRow[]> {
   const user = await requireAuth();
-  await ensureUserSiteUpdateNotifications(user.id);
-  return prisma.inAppNotification.findMany({
-    where: { user_id: user.id },
-    orderBy: { created_at: "desc" },
-    take: limit,
-    select: { id: true, title: true, link: true, read: true, created_at: true },
-  });
+  return getInAppNotificationsForUserId(user.id, limit);
 }
 
 export async function markInAppNotificationRead(notificationId: string): Promise<void> {
@@ -90,6 +112,7 @@ export async function markInAppNotificationRead(notificationId: string): Promise
     where: { id: notificationId, user_id: user.id },
     data: { read: true },
   });
+  revalidatePath("/");
   revalidatePath("/dashboard");
   revalidatePath("/mypage");
   revalidatePath("/notifications");

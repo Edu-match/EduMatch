@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { validateImageUrl } from "@/lib/image-url-utils";
 
 export const articleSchema = z.object({
   title: z
@@ -26,9 +27,11 @@ export const articleSchema = z.object({
   
   thumbnail_url: z
     .string()
-    .url("有効なURLを入力してください")
     .optional()
-    .or(z.literal("")),
+    .refine(
+      (v) => !v || v.trim() === "" || validateImageUrl(v.trim()).ok,
+      "画像URLはGoogle Drive、GitHub、またはアップロード画像のみ対応しています"
+    ),
   
   youtube_url: z
     .string()

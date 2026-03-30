@@ -1,11 +1,19 @@
 "use client";
 
 import React from "react";
-import Image from "next/image";
 import { useMemo } from "react";
 import { sanitizeHtml, looksLikeHtml } from "@/lib/sanitize-html";
 import { renderInlineMarkdown } from "@/lib/inline-markdown";
 import { YouTubeEmbed } from "./youtube-embed";
+import { RAW_MARKDOWN_PREFIX } from "@/lib/markdown-to-blocks";
+import { ImageWithUrlError } from "@/components/ui/image-with-url-error";
+
+function stripRawMarkdownPrefix(content: string): string {
+  const trimmed = content.trimStart();
+  return trimmed.startsWith(RAW_MARKDOWN_PREFIX)
+    ? trimmed.slice(RAW_MARKDOWN_PREFIX.length)
+    : content;
+}
 
 type ContentBlock = {
   type: "text" | "image" | "youtube";
@@ -54,7 +62,9 @@ function parseContent(content: string): ContentBlock[] {
 
   const blocks: ContentBlock[] = [];
   const youtubePattern = /(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})(?:[^\s]*))/gi;
-  const markdownImagePattern = /!\[([^\]]*)\]\((https?:\/\/[^\s)]+\.(?:jpg|jpeg|png|gif|webp|svg)(?:\?[^\s)]*)?)\)/gi;
+  // ![alt](url) 形式：拡張子付きURL に加え、Google Drive / GitHub も画像として認識
+  const markdownImagePattern =
+    /!\[([^\]]*)\]\((https?:\/\/[^\s)]+(?:\.(?:jpg|jpeg|png|gif|webp|svg)(?:\?[^\s)]*)?)?)\)/gi;
   const plainImageUrlPattern = /(https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif|webp|svg)(?:\?[^\s]*)?)/gi;
 
   let processedContent = content;
@@ -191,14 +201,73 @@ function MarkdownLikeContent({ text }: { text: string }) {
       continue;
     }
 
-    // 連続する通常行を1つの段落に（# / ## / ### で始まる行は見出しなので区切る）
+    // 箇条書き（- または * で始まる行）
+    if (trimmed.startsWith("- ") || (trimmed.startsWith("* ") && trimmed.length > 2)) {
+      const items: string[] = [];
+      while (i < lines.length) {
+        const t = lines[i].trimEnd();
+        if (t === "") break;
+        if (t.startsWith("- ")) items.push(t.slice(2));
+        else if (t.startsWith("* ") && t.length > 2) items.push(t.slice(2));
+        else break;
+        i += 1;
+      }
+      if (items.length > 0) {
+        nodes.push(
+          <ul
+            key={`md-${keyIndex++}`}
+            className="list-disc list-inside text-base text-foreground leading-relaxed mb-4 space-y-1"
+          >
+            {items.map((item, j) => (
+              <li key={j}>{renderInlineMarkdown(item)}</li>
+            ))}
+          </ul>
+        );
+      }
+      continue;
+    }
+
+    // 番号付きリスト（1. 2. など）
+    const orderedMatch = trimmed.match(/^(\d+)\.\s+(.*)$/);
+    if (orderedMatch) {
+      const items: string[] = [];
+      while (i < lines.length) {
+        const t = lines[i].trimEnd();
+        const m = t.match(/^\d+\.\s+(.*)$/);
+        if (m) {
+          items.push(m[1]);
+          i += 1;
+        } else if (t === "") {
+          break;
+        } else {
+          break;
+        }
+      }
+      if (items.length > 0) {
+        nodes.push(
+          <ol
+            key={`md-${keyIndex++}`}
+            className="list-decimal list-inside text-base text-foreground leading-relaxed mb-4 space-y-1"
+          >
+            {items.map((item, j) => (
+              <li key={j}>{renderInlineMarkdown(item)}</li>
+            ))}
+          </ol>
+        );
+      }
+      continue;
+    }
+
+    // 連続する通常行を1つの段落に（# / ## / ### / リストで始まる行は区切る）
     const isHeadingLine = (s: string) =>
       s.startsWith("# ") || s.startsWith("## ") || s.startsWith("### ");
+    const isListLine = (s: string) =>
+      s.startsWith("- ") || (s.startsWith("* ") && s.length > 2) || /^\d+\.\s+/.test(s);
     const paragraphLines: string[] = [];
     while (i < lines.length) {
       const ln = lines[i];
       const t = ln.trimEnd();
-      if (t === "" || isHeadingLine(t)) break;
+      if (t === "" || isHeadingLine(t) || isListLine(t)) break;
       paragraphLines.push(ln);
       i += 1;
     }
@@ -226,9 +295,9 @@ function MarkdownLikeContent({ text }: { text: string }) {
             key={`md-${keyIndex++}`}
             className="text-base text-foreground leading-relaxed mb-4 last:mb-0"
           >
-            {paraText.split("\n").map((line, i) => (
-              <React.Fragment key={i}>
-                {i > 0 && <br />}
+            {paraText.split("\n").map((line, idx) => (
+              <React.Fragment key={idx}>
+                {idx > 0 && <br />}
                 {renderInlineMarkdown(line)}
               </React.Fragment>
             ))}
@@ -251,7 +320,10 @@ type ContentRendererProps = {
  * テキストと画像URLを自動的に判別して表示
  */
 export function ContentRenderer({ content, className }: ContentRendererProps) {
-  const blocks = useMemo(() => parseContent(content), [content]);
+  const blocks = useMemo(
+    () => parseContent(stripRawMarkdownPrefix(content)),
+    [content]
+  );
   
   return (
     <div className={className}>
@@ -271,8 +343,8 @@ export function ContentRenderer({ content, className }: ContentRendererProps) {
               className="my-6 relative w-full rounded-lg overflow-hidden bg-muted"
             >
               <div className="relative aspect-video w-full overflow-hidden">
-                <Image
-                  src={block.content}
+                <ImageWithUrlError
+                  originalSrc={block.content}
                   alt={block.alt || `コンテンツ画像 ${index + 1}`}
                   fill
                   className="object-contain"

@@ -17,13 +17,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ContentEditorWithImport } from "@/components/content/content-editor-with-import";
+import { BlocksContentPreview } from "@/components/content/blocks-content-preview";
 import type { ContentBlock } from "@/components/editor/block-editor";
-import { renderInlineMarkdown } from "@/lib/inline-markdown";
-import { contentToBlocks } from "@/lib/markdown-to-blocks";
+import { contentToBlocks, blocksToMarkdown } from "@/lib/markdown-to-blocks";
 import { blocksToArticleContent, stripLeadText } from "@/lib/article-content";
-import { isImportedContent, parseImportedContent } from "@/lib/imported-content";
-import { ImportedContentRenderer } from "@/components/content/imported-content-renderer";
-import ReactMarkdown from "react-markdown";
+import { isImportedContent } from "@/lib/imported-content";
 import {
   Eye,
   Save,
@@ -46,6 +44,9 @@ import {
 import { toast } from "sonner";
 import { updatePost, uploadImage, deleteArticle } from "@/app/_actions";
 import { SHARED_CATEGORIES } from "@/lib/categories";
+import { HOME_TOPICS_TAB_OPTIONS, topicsAdminTabValue } from "@/lib/home-news-tab-ui";
+import type { HomeNewsTab } from "@prisma/client";
+import { ImageWithUrlError } from "@/components/ui/image-with-url-error";
 
 const TITLE_MAX_LENGTH = 80;
 const CONTENT_MAX_LENGTH = 10000;
@@ -61,6 +62,7 @@ type ArticleEditBlockFormProps = {
     thumbnail_url: string | null;
     youtube_url: string | null;
     status: string;
+    home_news_tab: HomeNewsTab;
   };
 };
 
@@ -68,13 +70,6 @@ function statusToPublishType(status: string): "public" | "member" | "draft" {
   if (status === "DRAFT") return "draft";
   if (status === "APPROVED" || status === "REJECTED") return "public";
   return "public"; // PENDING
-}
-
-function extractYouTubeId(url: string): string {
-  const match = url.match(
-    /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/
-  );
-  return match ? match[1] : "";
 }
 
 function CheckItem({ checked, label }: { checked: boolean; label: string }) {
@@ -101,6 +96,9 @@ export function ArticleEditBlockForm({ articleId, initialData }: ArticleEditBloc
     () => statusToPublishType(initialData.status)
   );
   const [thumbnailUrl, setThumbnailUrl] = useState(initialData.thumbnail_url || "");
+  const [homeNewsTab, setHomeNewsTab] = useState<HomeNewsTab>(() =>
+    topicsAdminTabValue(initialData.home_news_tab)
+  );
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
   const thumbnailFileInputRef = useRef<HTMLInputElement | null>(null);
   const [content, setContent] = useState<string>(() => {
@@ -156,6 +154,7 @@ export function ArticleEditBlockForm({ articleId, initialData }: ArticleEditBloc
         tags,
         publishType,
         thumbnailUrl,
+        homeNewsTab,
         ...(isImportedContent(content)
           ? { content }
           : { blocks: contentToBlocks(content) as Parameters<typeof updatePost>[1]["blocks"] }),
@@ -195,14 +194,16 @@ export function ArticleEditBlockForm({ articleId, initialData }: ArticleEditBloc
   };
 
   const renderPreview = () => (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-3xl mx-auto space-y-6">
       {thumbnailUrl && (
-        <div className="mb-6 rounded-xl overflow-hidden">
-          <img src={thumbnailUrl} alt={title} className="w-full h-[300px] object-contain" />
+        <div className="rounded-xl overflow-hidden">
+          <div className="relative w-full h-[300px]">
+            <ImageWithUrlError originalSrc={thumbnailUrl} alt={title} fill className="object-contain" unoptimized />
+          </div>
         </div>
       )}
-      <h1 className="text-4xl font-bold mb-4">{title || "タイトル未設定"}</h1>
-      <div className="flex items-center gap-4 text-sm text-muted-foreground mb-6">
+      <h1 className="text-4xl font-bold">{title || "タイトル未設定"}</h1>
+      <div className="flex items-center gap-4 text-sm text-muted-foreground">
         <span className="flex items-center gap-1">
           <Calendar className="h-4 w-4" />
           {new Date().toLocaleDateString("ja-JP")}
@@ -210,76 +211,10 @@ export function ArticleEditBlockForm({ articleId, initialData }: ArticleEditBloc
         {category && <Badge variant="outline">{category}</Badge>}
       </div>
       {leadText && (
-        <p className="text-lg text-muted-foreground mb-8 leading-relaxed">{leadText}</p>
+        <p className="text-lg text-muted-foreground leading-relaxed">{leadText}</p>
       )}
-      <div className="prose prose-lg max-w-none">
-        {isImportedContent(content) ? (
-          (() => {
-            const parsed = parseImportedContent(content);
-            return parsed ? (
-              <ImportedContentRenderer type={parsed.type} content={parsed.raw} />
-            ) : null;
-          })()
-        ) : (
-        <>
-        {contentToBlocks(content).map((block) => {
-          switch (block.type) {
-            case "heading1":
-              return <h2 key={block.id} className="text-3xl font-bold mt-8 mb-4">{renderInlineMarkdown(block.content)}</h2>;
-            case "heading2":
-              return <h3 key={block.id} className="text-2xl font-bold mt-6 mb-3">{renderInlineMarkdown(block.content)}</h3>;
-            case "heading3":
-              return <h4 key={block.id} className="text-xl font-semibold mt-4 mb-2">{renderInlineMarkdown(block.content)}</h4>;
-            case "paragraph":
-              return <p key={block.id} className="mb-4 leading-relaxed">{renderInlineMarkdown(block.content)}</p>;
-            case "image":
-              return block.url ? (
-                <figure key={block.id} className="my-8">
-                  <img src={block.url} alt={block.caption || ""} className="w-full rounded-lg" />
-                  {block.caption && <figcaption className="text-center text-sm text-muted-foreground mt-2">{block.caption}</figcaption>}
-                </figure>
-              ) : null;
-            case "video":
-              return block.url && (block.url.includes("youtube.com") || block.url.includes("youtu.be")) ? (
-                <figure key={block.id} className="my-8">
-                  <div className="aspect-video bg-black rounded-lg overflow-hidden">
-                    <iframe
-                      src={`https://www.youtube.com/embed/${extractYouTubeId(block.url)}`}
-                      className="w-full h-full"
-                      allowFullScreen
-                    />
-                  </div>
-                  {block.caption && <figcaption className="text-center text-sm text-muted-foreground mt-2">{block.caption}</figcaption>}
-                </figure>
-              ) : null;
-            case "quote":
-              return <blockquote key={block.id} className="border-l-4 border-primary pl-4 my-6 italic"><p className="text-lg">{renderInlineMarkdown(block.content)}</p></blockquote>;
-            case "divider":
-              return <hr key={block.id} className="my-8 border-t-2" />;
-            case "bulletList":
-              return (
-                <ul key={block.id} className="list-disc pl-6 my-4 space-y-1">
-                  {block.items?.map((item, i) => <li key={i}>{renderInlineMarkdown(item)}</li>)}
-                </ul>
-              );
-            case "numberedList":
-              return (
-                <ol key={block.id} className="list-decimal pl-6 my-4 space-y-1">
-                  {block.items?.map((item, i) => <li key={i}>{renderInlineMarkdown(item)}</li>)}
-                </ol>
-              );
-            case "markdown":
-              return (
-                <div key={block.id} className="my-4">
-                  <ReactMarkdown>{block.content}</ReactMarkdown>
-                </div>
-              );
-            default:
-              return null;
-          }
-        })}
-        </>
-        )}
+      <div className="border-t pt-6">
+        <BlocksContentPreview content={content} />
       </div>
     </div>
   );
@@ -324,7 +259,9 @@ export function ArticleEditBlockForm({ articleId, initialData }: ArticleEditBloc
                   <CardContent className="pt-6 space-y-4">
                     {thumbnailUrl ? (
                       <div className="relative group">
-                        <img src={thumbnailUrl} alt="サムネイル" className="w-full h-[200px] object-contain rounded-lg" />
+                        <div className="relative w-full h-[200px] rounded-lg overflow-hidden">
+                          <ImageWithUrlError originalSrc={thumbnailUrl} alt="サムネイル" fill className="object-contain rounded-lg" unoptimized />
+                        </div>
                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-4">
                           <Button variant="secondary" size="sm" onClick={() => thumbnailFileInputRef.current?.click()}>変更</Button>
                           <Button variant="destructive" size="sm" onClick={() => setThumbnailUrl("")}>削除</Button>
@@ -415,8 +352,8 @@ export function ArticleEditBlockForm({ articleId, initialData }: ArticleEditBloc
                     <ContentEditorWithImport
                       content={content}
                       onChange={setContent}
-                      parseToBlocks={(c) => contentToBlocks(c)}
-                      blocksToContent={(b) => blocksToArticleContent(b, "")}
+                      parseToBlocks={contentToBlocks}
+                      blocksToContent={blocksToMarkdown}
                       maxLength={CONTENT_MAX_LENGTH}
                     />
                   </CardContent>
@@ -479,6 +416,27 @@ export function ArticleEditBlockForm({ articleId, initialData }: ArticleEditBloc
                 <div className="space-y-2">
                   <label className="text-sm font-medium">タグ</label>
                   <Input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="タグをカンマ区切りで入力" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">トップページのトピックス</label>
+                  <p className="text-xs text-muted-foreground">
+                    トップのニュースタブ（すべて／国内／世界）での分類です。
+                  </p>
+                  <Select
+                    value={homeNewsTab}
+                    onValueChange={(v) => setHomeNewsTab(v as HomeNewsTab)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {HOME_TOPICS_TAB_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </CardContent>
             </Card>

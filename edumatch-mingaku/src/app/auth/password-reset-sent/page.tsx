@@ -23,9 +23,9 @@ export default function PasswordResetSentPage() {
             <h1 className="text-2xl font-bold mb-4">メールを送信しました</h1>
 
             <p className="text-muted-foreground mb-6">
-              パスワードリセット用のリンクを
+              入力されたメールアドレスが登録済みの場合、
               <br />
-              ご登録のメールアドレスに送信しました。
+              パスワードリセット用のリンクを送信しています。メールをご確認ください。
             </p>
 
             <div className="p-4 rounded-lg bg-muted/50 mb-6 text-left">

@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { ORGANIZATION_TYPE_VALUES } from "@/lib/organization-types";
 
 export const loginSchema = z.object({
   email: z
@@ -8,33 +7,11 @@ export const loginSchema = z.object({
     .email("メールアドレスの形式が正しくありません"),
   password: z
     .string()
-    .min(8, "パスワードは8文字以上で入力してください")
-    .regex(/[A-Z]/, "パスワードに大文字を含めてください")
-    .regex(/[a-z]/, "パスワードに小文字を含めてください")
-    .regex(/[0-9]/, "パスワードに数字を含めてください"),
+    .min(1, "パスワードを入力してください"),
 });
 
+/** メール＋パスワードのみ。名前・所属は登録後のプロフィール画面で入力（Google と同じ流れ） */
 export const signupSchema = z.object({
-  legalName: z
-    .string()
-    .min(1, "本名を入力してください")
-    .max(100, "本名は100文字以内で入力してください"),
-  name: z
-    .string()
-    .min(1, "表示名を入力してください")
-    .max(100, "表示名は100文字以内で入力してください"),
-  organization: z
-    .string()
-    .min(1, "所属組織を入力してください")
-    .max(200, "所属組織は200文字以内で入力してください"),
-  organizationType: z
-    .string()
-    .min(1, "組織の種類を選択してください")
-    .refine(
-      (v): v is (typeof ORGANIZATION_TYPE_VALUES)[number] =>
-        (ORGANIZATION_TYPE_VALUES as readonly string[]).includes(v),
-      { message: "組織の種類を選択してください" }
-    ),
   email: z
     .string()
     .min(1, "メールアドレスを入力してください")

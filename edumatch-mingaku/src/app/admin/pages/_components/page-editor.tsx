@@ -18,6 +18,9 @@ const PAGE_LABELS: Record<SitePageKey, string> = {
   terms: "利用規約",
   privacy: "プライバシーポリシー",
   service_content: "サービス内容一覧",
+  faq: "よくある質問",
+  about: "運営について",
+  company_info: "会社情報",
 };
 
 type Props = {
