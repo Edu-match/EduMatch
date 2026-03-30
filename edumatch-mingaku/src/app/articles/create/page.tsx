@@ -46,6 +46,7 @@ import {
 import { toast } from "sonner";
 import { createPost, uploadImage } from "@/app/_actions";
 import { SHARED_CATEGORIES } from "@/lib/categories";
+import { AiArticleGenerator } from "@/components/articles/ai-article-generator";
 
 const STORAGE_KEY = "edumatch-article-draft";
 
@@ -765,6 +766,19 @@ export default function ArticleCreatePage() {
 
           {/* Sidebar */}
           <div className="lg:col-span-1 space-y-6">
+            {/* AI Article Generator */}
+            <AiArticleGenerator
+              onGenerated={({ title, leadText, content, category, tags }) => {
+                setTitle(title);
+                setLeadText(leadText);
+                setContent(content);
+                setCategory(category);
+                setTags(tags);
+                setActiveTab("edit");
+                toast.success("AI記事をエディタに反映しました");
+              }}
+            />
+
             {/* Publish settings */}
             <Card>
               <CardHeader>
