@@ -1,5 +1,18 @@
 import type { NextConfig } from "next";
 
+/** 接続先 Supabase プロジェクトに合わせて Storage の画像を許可（Vercel Preview の開発用 URL でもビルド時に解決される） */
+function supabaseStorageHostname(): string {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (url) {
+    try {
+      return new URL(url).hostname;
+    } catch {
+      /* ignore */
+    }
+  }
+  return "lyoesgwecpcoaylsyiys.supabase.co";
+}
+
 const nextConfig: NextConfig = {
   async redirects() {
     return [
@@ -25,7 +38,7 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        hostname: "lyoesgwecpcoaylsyiys.supabase.co",
+        hostname: supabaseStorageHostname(),
         port: "",
         pathname: "/storage/v1/object/public/**",
       },

@@ -73,6 +73,21 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhY
 - ✓ Deploying
 - ✓ Ready
 
+## Preview（開発）デプロイで一覧が空になる
+
+このアプリの記事・サービス・トップのスライダーなどは **Supabase の API キーだけではなく、Postgres に接続する `DATABASE_URL` / `DIRECT_URL`（Prisma）** でデータを読みます。
+
+**対処:**
+
+1. Vercel の **Preview** 用に、**開発用 Supabase プロジェクト**の接続文字列を設定する（`NEXT_PUBLIC_SUPABASE_URL` の ref と同じプロジェクトの DB であること）。
+   - Supabase Dashboard → **Project Settings** → **Database** → *Connection string*（URI）
+   - `DATABASE_URL`: 通常は **Transaction pooler**（ポート 6543、`pgbouncer=true`）
+   - `DIRECT_URL`: **Session mode** または直接接続（ポート 5432）
+2. 開発用 DB に **マイグレーション適用済み**で、かつ **データが入っている**こと（本番と別プロジェクトなら空のままでは何も表示されません）。
+3. 環境変数を変えたら **Redeploy**。
+
+**画像が出ないだけ**の場合は、`next.config.ts` が `NEXT_PUBLIC_SUPABASE_URL` から Storage ホストを許可するようになっているので、Preview 用に開発用の `NEXT_PUBLIC_SUPABASE_URL` を設定して再ビルドしてください。
+
 ## よくある問題
 
 ### 問題1: 環境変数を追加したのに404エラー
