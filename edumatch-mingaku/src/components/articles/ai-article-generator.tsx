@@ -72,7 +72,7 @@ export function AiArticleGenerator({ onGenerated }: AiArticleGeneratorProps) {
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <Wand2 className="h-4 w-4 text-primary" />
-          AI記事生成
+          AI記事自動生成
         </CardTitle>
         <p className="text-xs text-muted-foreground">
           URLを入力するとAIが記事を自動生成します
