@@ -88,6 +88,16 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhY
 
 **画像が出ないだけ**の場合は、`next.config.ts` が `NEXT_PUBLIC_SUPABASE_URL` から Storage ホストを許可するようになっているので、Preview 用に開発用の `NEXT_PUBLIC_SUPABASE_URL` を設定して再ビルドしてください。
 
+### DB 疎通の切り分け（`/api/health/database`）
+
+1. Vercel の **Preview**（必要なら Production）に `HEALTH_CHECK_SECRET` を任意の長い文字列で追加する。
+2. デプロイ後、ブラウザで次を開く（`プレビューURL` と `秘密` を置き換え）:
+   - `https://プレビューURL/api/health/database?secret=秘密`
+3. JSON の見方:
+   - `ok: false` か `prisma: error` → `DATABASE_URL` / `DIRECT_URL` またはネットワークを疑う（`error` メッセージを確認）
+   - `counts.services_total` などが **0** → その環境の DB に行が無い
+   - **合計はあるが** `services_visible_when_logged_out` だけ **0** → `status` / `is_published` / `is_member_only` の条件で除外されている（未ログイン時）
+
 ## よくある問題
 
 ### 問題1: 環境変数を追加したのに404エラー

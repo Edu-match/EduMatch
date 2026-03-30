@@ -76,7 +76,17 @@ export async function getHomeSliderItems(limit: number = 12): Promise<HomeSlider
     });
     return deduplicated.slice(0, limit);
   } catch (error) {
-    console.error("Failed to get home slider items:", error);
+    const msg = error instanceof Error ? error.message : String(error);
+    const code =
+      error && typeof error === "object" && "code" in error
+        ? String((error as { code: unknown }).code)
+        : "";
+    console.error(
+      "Failed to get home slider items:",
+      msg,
+      code ? `(code ${code})` : "",
+      error
+    );
     return [];
   }
 }
