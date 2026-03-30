@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ContentEditorWithImport } from "@/components/content/content-editor-with-import";
-import { AiArticleGenerator } from "@/components/articles/ai-article-generator";
+import { AiArticleGenerator, type GeneratedArticle } from "@/components/articles/ai-article-generator";
 import type { ContentBlock } from "@/components/editor/block-editor";
 import { renderInlineMarkdown } from "@/lib/inline-markdown";
 import { contentToBlocks } from "@/lib/markdown-to-blocks";
@@ -43,6 +43,8 @@ import {
   Lock,
   Check,
   Loader2,
+  X,
+  Wand2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { createPost, uploadImage } from "@/app/_actions";
@@ -102,6 +104,8 @@ export default function ArticleCreatePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
   const [userProfile, setUserProfile] = useState<{ name: string; avatar_url: string | null; email: string } | null>(null);
+  const [generatedArticle, setGeneratedArticle] = useState<GeneratedArticle | null>(null);
+  const [aiPanelOpen, setAiPanelOpen] = useState(false);
 
   // Save draft to localStorage
   const saveDraft = useCallback(() => {
@@ -285,17 +289,24 @@ export default function ArticleCreatePage() {
     }
   };
 
-  const handleAiGenerated = useCallback((data: { title: string; leadText: string; content: string; category: string; tags: string }) => {
-    setTitle(data.title.slice(0, 80));
-    setLeadText(data.leadText);
-    setContent(data.content);
-    if (data.category) setCategory(data.category);
-    if (data.tags) setTags(data.tags);
+  const handleAiGenerated = useCallback((data: GeneratedArticle) => {
+    setGeneratedArticle(data);
+    setAiPanelOpen(true);
+  }, []);
+
+  const handleApplyGenerated = useCallback(() => {
+    if (!generatedArticle) return;
+    setTitle(generatedArticle.title.slice(0, 80));
+    setLeadText(generatedArticle.leadText);
+    setContent(generatedArticle.content);
+    if (generatedArticle.category) setCategory(generatedArticle.category);
+    if (generatedArticle.tags) setTags(generatedArticle.tags);
+    setAiPanelOpen(false);
     setActiveTab("edit");
     toast.success("AIが記事を生成しました", {
       description: "内容を確認・編集してから申請してください",
     });
-  }, []);
+  }, [generatedArticle]);
 
   const clearDraft = () => {
     if (confirm("下書きを削除してもよろしいですか？")) {
@@ -547,6 +558,16 @@ export default function ArticleCreatePage() {
             </Badge>
           </div>
           <div className="flex items-center gap-3">
+            {generatedArticle && (
+              <Button
+                variant={aiPanelOpen ? "secondary" : "outline"}
+                size="sm"
+                onClick={() => setAiPanelOpen((v) => !v)}
+              >
+                <Wand2 className="h-4 w-4 mr-2" />
+                {aiPanelOpen ? "AIプレビューを閉じる" : "AIプレビューを開く"}
+              </Button>
+            )}
             <span className={`text-sm ${canSubmit ? "text-muted-foreground" : "text-destructive"}`}>
               合計: {totalWordCount.toLocaleString()} 文字
             </span>
@@ -582,9 +603,9 @@ export default function ArticleCreatePage() {
       </div>
 
       <div className="container py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <div className={`grid grid-cols-1 gap-6 ${aiPanelOpen ? "lg:grid-cols-5" : "lg:grid-cols-4"}`}>
           {/* Main editor area */}
-          <div className="lg:col-span-3">
+          <div className={aiPanelOpen ? "lg:col-span-2" : "lg:col-span-3"}>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="mb-6">
                 <TabsTrigger value="edit">
@@ -776,10 +797,106 @@ export default function ArticleCreatePage() {
             </Tabs>
           </div>
 
+          {/* AI Preview Panel */}
+          {aiPanelOpen && generatedArticle && (
+            <div className="lg:col-span-2 sticky top-20 self-start">
+              <Card className="border-primary/30 flex flex-col max-h-[calc(100vh-6rem)] overflow-hidden">
+                <CardHeader className="flex-shrink-0 pb-3 border-b">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Wand2 className="h-4 w-4 text-primary" />
+                      AI生成プレビュー
+                    </CardTitle>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      onClick={() => setAiPanelOpen(false)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    内容を確認してからエディタに反映してください
+                  </p>
+                </CardHeader>
+
+                <div className="flex-1 overflow-y-auto">
+                  <CardContent className="py-5 space-y-5">
+                    {/* Title */}
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1">タイトル</p>
+                      <p className="font-bold text-lg leading-snug">{generatedArticle.title}</p>
+                    </div>
+
+                    {/* Lead text */}
+                    {generatedArticle.leadText && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground mb-1">リード文</p>
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                          {generatedArticle.leadText}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Category & Tags */}
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-2">カテゴリ・タグ</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {generatedArticle.category && (
+                          <Badge variant="default" className="text-xs">
+                            {generatedArticle.category}
+                          </Badge>
+                        )}
+                        {generatedArticle.tags
+                          .split(",")
+                          .map((t) => t.trim())
+                          .filter(Boolean)
+                          .map((tag) => (
+                            <Badge key={tag} variant="outline" className="text-xs">
+                              {tag}
+                            </Badge>
+                          ))}
+                      </div>
+                    </div>
+
+                    {/* Content */}
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-2">本文</p>
+                      <div className="prose prose-sm max-w-none border rounded-lg p-4 bg-gray-50/50">
+                        <ReactMarkdown>{generatedArticle.content}</ReactMarkdown>
+                      </div>
+                    </div>
+                  </CardContent>
+                </div>
+
+                <div className="flex-shrink-0 border-t p-4 space-y-2 bg-white">
+                  <Button className="w-full" onClick={handleApplyGenerated}>
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                    エディタに反映
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="w-full"
+                    size="sm"
+                    onClick={() => setAiPanelOpen(false)}
+                  >
+                    後で確認する
+                  </Button>
+                </div>
+              </Card>
+            </div>
+          )}
+
           {/* Sidebar */}
           <div className="lg:col-span-1 space-y-6">
             {/* AI Article Generator */}
-            <AiArticleGenerator onGenerated={handleAiGenerated} />
+            <AiArticleGenerator
+              onGenerated={handleAiGenerated}
+              isPanelOpen={aiPanelOpen}
+              onTogglePanel={() => setAiPanelOpen((v) => !v)}
+              hasGeneratedArticle={!!generatedArticle}
+            />
 
             {/* Publish settings */}
             <Card>
