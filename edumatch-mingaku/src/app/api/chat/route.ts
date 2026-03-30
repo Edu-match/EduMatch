@@ -270,7 +270,7 @@ export async function POST(req: NextRequest) {
   });
 
   const openai = new OpenAI({ apiKey });
-  const model = "gpt-5.2";
+  const model = "gpt-5.4-nano";
 
   try {
     const stream = await openai.chat.completions.create({
