@@ -46,8 +46,33 @@ ${ARTICLE_CATEGORIES.join(" / ")}
 - 誇大表現・根拠のない断言は避ける
 - 元のWebページの情報を元にするが、EduMatch読者向けに編集・加工して良い`;
 
+const BINARY_CONTENT_TYPES = [
+  "image/", "video/", "audio/",
+  "application/pdf", "application/zip", "application/octet-stream",
+  "application/vnd.", "font/",
+];
+
+function isBinaryContentType(contentType: string): boolean {
+  return BINARY_CONTENT_TYPES.some((prefix) => contentType.includes(prefix));
+}
+
+function decodeHtmlEntities(text: string): string {
+  return text
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)));
+}
+
+function normalizeWhitespace(text: string): string {
+  return text.replace(/\s{2,}/g, " ").trim();
+}
+
 function extractTextFromHtml(html: string): string {
-  return html
+  const stripped = html
     .replace(/<script[\s\S]*?<\/script>/gi, "")
     .replace(/<style[\s\S]*?<\/style>/gi, "")
     .replace(/<noscript[\s\S]*?<\/noscript>/gi, "")
@@ -55,15 +80,59 @@ function extractTextFromHtml(html: string): string {
     .replace(/<footer[\s\S]*?<\/footer>/gi, "")
     .replace(/<header[\s\S]*?<\/header>/gi, "")
     .replace(/<!--[\s\S]*?-->/g, "")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\s{2,}/g, " ")
-    .trim();
+    .replace(/<[^>]+>/g, " ");
+  return normalizeWhitespace(decodeHtmlEntities(stripped));
+}
+
+function extractTextFromXml(xml: string): string {
+  // CDATA セクションを中身に置換してからタグを除去
+  const stripped = xml
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, " $1 ")
+    .replace(/<[^>]+>/g, " ");
+  return normalizeWhitespace(decodeHtmlEntities(stripped));
+}
+
+function extractTextFromJson(json: string): string {
+  try {
+    const data = JSON.parse(json);
+    const values: string[] = [];
+    function collect(obj: unknown, depth = 0): void {
+      if (depth > 6) return;
+      if (typeof obj === "string") { values.push(obj); return; }
+      if (typeof obj === "number" || typeof obj === "boolean") { values.push(String(obj)); return; }
+      if (Array.isArray(obj)) { obj.forEach((v) => collect(v, depth + 1)); return; }
+      if (obj !== null && typeof obj === "object") {
+        Object.values(obj as Record<string, unknown>).forEach((v) => collect(v, depth + 1));
+      }
+    }
+    collect(data);
+    return normalizeWhitespace(values.join(" "));
+  } catch {
+    return normalizeWhitespace(json);
+  }
+}
+
+function extractTextFromContent(body: string, contentType: string): string {
+  if (contentType.includes("text/html") || contentType.includes("application/xhtml")) {
+    return extractTextFromHtml(body);
+  }
+  if (
+    contentType.includes("text/xml") ||
+    contentType.includes("application/xml") ||
+    contentType.includes("application/rss+xml") ||
+    contentType.includes("application/atom+xml")
+  ) {
+    return extractTextFromXml(body);
+  }
+  if (contentType.includes("application/json")) {
+    return extractTextFromJson(body);
+  }
+  // text/plain, text/markdown, text/csv など
+  if (contentType.startsWith("text/")) {
+    return normalizeWhitespace(body);
+  }
+  // content-type 不明でも text として試みる
+  return normalizeWhitespace(body);
 }
 
 export async function POST(req: NextRequest) {
@@ -113,7 +182,8 @@ export async function POST(req: NextRequest) {
       headers: {
         "User-Agent":
           "Mozilla/5.0 (compatible; EduMatch-ArticleBot/1.0; +https://edumatch.jp)",
-        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        Accept:
+          "text/html,application/xhtml+xml,application/xml,application/rss+xml,application/atom+xml,application/json,text/plain,text/markdown,*/*;q=0.8",
         "Accept-Language": "ja,en;q=0.5",
       },
     });
@@ -126,16 +196,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const contentType = response.headers.get("content-type") ?? "";
-    if (!contentType.includes("text/html") && !contentType.includes("application/xhtml")) {
+    const contentType = (response.headers.get("content-type") ?? "").toLowerCase();
+
+    if (isBinaryContentType(contentType)) {
       return NextResponse.json(
-        { error: "HTMLページのみ対応しています" },
+        { error: "画像・動画・PDFなどのバイナリファイルには対応していません" },
         { status: 422 }
       );
     }
 
-    const html = await response.text();
-    pageText = extractTextFromHtml(html);
+    const body = await response.text();
+    pageText = extractTextFromContent(body, contentType);
 
     if (pageText.length < 100) {
       return NextResponse.json(
