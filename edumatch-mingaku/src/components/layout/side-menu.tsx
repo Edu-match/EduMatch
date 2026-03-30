@@ -12,6 +12,7 @@ import {
   Scale,
   PenSquare,
   FileText,
+  ShieldCheck,
 } from "lucide-react";
 
 /** 一般ユーザー向けメニュー（全員閲覧用） */
@@ -95,9 +96,12 @@ export function SideMenu() {
 
       {/* 投稿・管理者メニュー（ブロック）※PROVIDER/ADMIN 向け */}
       {visibleBottomItems.length > 0 && (
-        <div className="border rounded-lg bg-card overflow-hidden">
-          <div className="p-3 border-b">
-            <h2 className="text-sm font-bold">管理者メニュー</h2>
+        <div className="border-2 border-amber-400 rounded-lg bg-amber-50 overflow-hidden">
+          <div className="px-3 py-2.5 bg-amber-400 flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-amber-900 flex-shrink-0" />
+            <h2 className="text-sm font-bold text-amber-900">
+              {role === "ADMIN" ? "管理者メニュー" : "投稿者メニュー"}
+            </h2>
           </div>
           <nav>
             {visibleBottomItems.map((item, index) => (
