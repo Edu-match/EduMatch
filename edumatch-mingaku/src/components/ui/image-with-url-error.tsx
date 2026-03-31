@@ -1,5 +1,6 @@
 "use client";
 
+import type React from "react";
 import Image, { type ImageProps } from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -15,6 +16,8 @@ export type ImageWithUrlErrorProps = {
   /** ユーザーが保存・入力した元URL（検証用） */
   originalSrc: string;
   errorBoxClassName?: string;
+  /** 検証エラー・読み込み失敗時にエラー枠の代わりに表示（例: サムネイルのタイトルフォールバック） */
+  errorFallback?: React.ReactNode;
 } & Omit<ImageProps, "src" | "onError">;
 
 /**
@@ -25,6 +28,7 @@ export function ImageWithUrlError({
   originalSrc,
   alt,
   errorBoxClassName = "",
+  errorFallback,
   fill,
   className,
   unoptimized = true,
@@ -50,12 +54,14 @@ export function ImageWithUrlError({
   );
 
   if (validationMsg) {
+    if (errorFallback !== undefined) return <>{errorFallback}</>;
     return errorBox(validationMsg);
   }
 
   const displaySrc = toImageSrcForDisplay(originalSrc);
 
   if (loadError) {
+    if (errorFallback !== undefined) return <>{errorFallback}</>;
     return errorBox(IMAGE_LOAD_FAILED_USER_MESSAGE);
   }
 

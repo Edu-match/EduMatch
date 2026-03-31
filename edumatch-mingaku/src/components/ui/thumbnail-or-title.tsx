@@ -2,6 +2,7 @@
 
 import { ImageProps } from "next/image";
 import { ImageWithUrlError } from "@/components/ui/image-with-url-error";
+import { getImageUrlValidationMessage } from "@/lib/image-url-utils";
 
 type ThumbnailOrTitleProps = Omit<ImageProps, "src" | "alt"> & {
   /** 画像URL。未設定の場合は title をテキストで表示 */
@@ -11,10 +12,34 @@ type ThumbnailOrTitleProps = Omit<ImageProps, "src" | "alt"> & {
   alt?: string;
 };
 
+function TitleOnSkyBackground({
+  title,
+  effectiveAlt,
+  fill,
+  className = "",
+}: {
+  title: string;
+  effectiveAlt: string;
+  fill?: boolean;
+  className?: string;
+}) {
+  const fillClass = fill ? "absolute inset-0" : "";
+  return (
+    <div
+      className={`flex items-center justify-center bg-sky-100 overflow-hidden ${fillClass} ${className}`}
+      aria-label={effectiveAlt}
+    >
+      <span className="font-semibold text-center text-sky-700 line-clamp-4 px-3 py-2 break-words [word-break:break-word] text-sm sm:text-base">
+        {title}
+      </span>
+    </div>
+  );
+}
+
 /**
- * サムネイル画像がある場合は表示、ない場合はタイトルをテキストで表示。
- * 日本語タイトルもそのまま表示される（placehold.co の ??? を避けるため）。
- * Google Drive はプロキシ経由。未対応URL・読み込み失敗時は枠内に案内を表示。
+ * サムネイル画像がある場合は表示、ない・または表示できないURLの場合は水色背景にタイトルを表示。
+ * 日本語タイトルもそのまま表示される（外部プレースホルダ画像に頼らない）。
+ * Google Drive はプロキシ経由。
  */
 export function ThumbnailOrTitle({
   src,
@@ -28,31 +53,32 @@ export function ThumbnailOrTitle({
   ...rest
 }: ThumbnailOrTitleProps) {
   const effectiveAlt = alt ?? title;
+  const trimmed = src?.trim() ?? "";
 
-  if (src?.trim()) {
-    return (
-      <ImageWithUrlError
-        originalSrc={src}
-        alt={effectiveAlt}
-        fill={fill}
-        sizes={sizes}
-        priority={priority}
-        unoptimized={unoptimized}
-        className={className}
-        {...rest}
-      />
-    );
+  const titleFallback = (
+    <TitleOnSkyBackground
+      title={title}
+      effectiveAlt={effectiveAlt}
+      fill={fill}
+      className={className}
+    />
+  );
+
+  if (!trimmed || getImageUrlValidationMessage(trimmed)) {
+    return titleFallback;
   }
 
-  const fillClass = fill ? "absolute inset-0" : "";
   return (
-    <div
-      className={`flex items-center justify-center bg-sky-100 overflow-hidden ${fillClass} ${className}`}
-      aria-label={effectiveAlt}
-    >
-      <span className="font-semibold text-center text-sky-700 line-clamp-4 px-3 py-2 break-words [word-break:break-word] text-sm sm:text-base">
-        {title}
-      </span>
-    </div>
+    <ImageWithUrlError
+      originalSrc={trimmed}
+      alt={effectiveAlt}
+      fill={fill}
+      sizes={sizes}
+      priority={priority}
+      unoptimized={unoptimized}
+      className={className}
+      errorFallback={titleFallback}
+      {...rest}
+    />
   );
 }
