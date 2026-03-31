@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef } from "react";
 import {
   caretPositionAfterUndoToPrevious,
   createUndoGroupTracker,
+  isRedoShortcut,
+  isUndoShortcut,
   UNDO_TYPING_MERGE_MS,
 } from "@/lib/text-undo-caret";
 
@@ -24,9 +26,8 @@ export type UndoRedoTextFieldBinding = {
 };
 
 /**
- * ネイティブの input/textarea 履歴とフォームの短縮キーが競合しやすい箇所向けに、
- * Ctrl+Z / Ctrl+Shift+Z（および Ctrl+Y）を統一する。
- * `typingGroupMs > 0` のときだけ、短い休止までの連続入力を 1 つの Undo にまとめる。
+ * Ctrl+Z / Cmd+Z と Redo を扱う。自前スタックがあるときだけブラウザ既定を止め、
+ * ないときはネイティブ Undo/Redo に任せる（空スタックで無効になるのを防ぐ）。
  */
 export function useUndoRedoTextField({
   value,
@@ -39,13 +40,11 @@ export function useUndoRedoTextField({
   onCommit: (next: string) => void;
   historyKey: string;
   maxDepth?: number;
-  /** 0: すべての変更を個別に Undo。UNDO_TYPING_MERGE_MS 前後なら連続入力をまとめる */
   typingGroupMs?: number;
 }): UndoRedoTextFieldBinding {
   const undoStackRef = useRef<string[]>([]);
   const redoStackRef = useRef<string[]>([]);
   const valueRef = useRef(value);
-  const lastCommittedRef = useRef(value);
   const composingRef = useRef(false);
   const isApplyingHistoryRef = useRef(false);
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
@@ -65,15 +64,6 @@ export function useUndoRedoTextField({
   useEffect(() => {
     if (isApplyingHistoryRef.current) {
       isApplyingHistoryRef.current = false;
-      lastCommittedRef.current = value;
-      valueRef.current = value;
-      return;
-    }
-    if (value !== lastCommittedRef.current) {
-      groupRef.current.flush();
-      undoStackRef.current = [];
-      redoStackRef.current = [];
-      lastCommittedRef.current = value;
     }
     valueRef.current = value;
   }, [value]);
@@ -84,7 +74,6 @@ export function useUndoRedoTextField({
       const from = valueRef.current;
       isApplyingHistoryRef.current = true;
       valueRef.current = next;
-      lastCommittedRef.current = next;
       const caret = caretPositionAfterUndoToPrevious(next, from);
       onCommit(next);
       requestAnimationFrame(() => {
@@ -114,7 +103,6 @@ export function useUndoRedoTextField({
         }
       }
       valueRef.current = next;
-      lastCommittedRef.current = next;
       onCommit(next);
     },
     [onCommit, maxDepth]
@@ -122,40 +110,43 @@ export function useUndoRedoTextField({
 
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && !e.altKey) {
-        const k = e.key.toLowerCase();
-        if (k === "z" || k === "y") {
-          const redo = k === "y" || (k === "z" && e.shiftKey);
-          const undo = k === "z" && !e.shiftKey;
-          if (undo || redo) {
-            e.preventDefault();
-            e.stopPropagation();
-            if (undo && undoStackRef.current.length > 0) {
-              groupRef.current.flush();
-              const prev = undoStackRef.current.pop()!;
-              redoStackRef.current.push(valueRef.current);
-              while (redoStackRef.current.length > maxDepth) redoStackRef.current.shift();
-              applyHistory(prev);
-              return;
-            }
-            if (redo && redoStackRef.current.length > 0) {
-              groupRef.current.flush();
-              const next = redoStackRef.current.pop()!;
-              undoStackRef.current.push(valueRef.current);
-              while (undoStackRef.current.length > maxDepth) undoStackRef.current.shift();
-              applyHistory(next);
-            }
-          }
-        }
+      if (!isUndoShortcut(e) && !isRedoShortcut(e)) return;
+
+      const undo = isUndoShortcut(e);
+      const redo = isRedoShortcut(e);
+
+      if (undo && undoStackRef.current.length > 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        groupRef.current.flush();
+        const prev = undoStackRef.current.pop()!;
+        redoStackRef.current.push(valueRef.current);
+        while (redoStackRef.current.length > maxDepth) redoStackRef.current.shift();
+        applyHistory(prev);
+        return;
       }
+      if (redo && redoStackRef.current.length > 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        groupRef.current.flush();
+        const next = redoStackRef.current.pop()!;
+        undoStackRef.current.push(valueRef.current);
+        while (undoStackRef.current.length > maxDepth) undoStackRef.current.shift();
+        applyHistory(next);
+      }
+      // スタックが空のときは prevent しない → ブラウザの Undo/Redo が効く
     },
     [applyHistory, maxDepth]
   );
 
   const onBeforeInput = useCallback((e: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const ie = e.nativeEvent as InputEvent;
-    if (ie.inputType === "historyUndo" || ie.inputType === "historyRedo") {
-      e.preventDefault();
+    if (ie.inputType === "historyUndo") {
+      if (undoStackRef.current.length > 0) e.preventDefault();
+      return;
+    }
+    if (ie.inputType === "historyRedo") {
+      if (redoStackRef.current.length > 0) e.preventDefault();
     }
   }, []);
 

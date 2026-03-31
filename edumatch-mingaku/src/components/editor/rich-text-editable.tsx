@@ -6,6 +6,8 @@ import { inlineMarkdownToHtml } from "@/lib/inline-markdown-html";
 import {
   caretPositionAfterUndoToPrevious,
   createUndoGroupTracker,
+  isRedoShortcut,
+  isUndoShortcut,
   setContentEditablePlainCaret,
   UNDO_TYPING_MERGE_MS,
 } from "@/lib/text-undo-caret";
@@ -191,7 +193,11 @@ export function RichTextEditable({
    */
   const handleBeforeInput = useCallback((e: React.FormEvent<HTMLDivElement>) => {
     const ie = e.nativeEvent as InputEvent;
-    if (ie.inputType === "historyUndo" || ie.inputType === "historyRedo") {
+    if (ie.inputType === "historyUndo" && undoStackRef.current.length > 0) {
+      e.preventDefault();
+      return;
+    }
+    if (ie.inputType === "historyRedo" && redoStackRef.current.length > 0) {
       e.preventDefault();
     }
   }, []);
@@ -203,38 +209,29 @@ export function RichTextEditable({
    */
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
-      if ((e.ctrlKey || e.metaKey) && !e.altKey) {
-        const k = e.key.toLowerCase();
-        // Redo: Ctrl+Shift+Z / Cmd+Shift+Z、Windows 慣例の Ctrl+Y
-        if (k === "z" || k === "y") {
-          const redo = k === "y" || (k === "z" && e.shiftKey);
-          const undo = k === "z" && !e.shiftKey;
-          if (undo || redo) {
-            e.preventDefault();
-            e.stopPropagation();
-            if (undo && undoStackRef.current.length > 0) {
-              groupTrackerRef.current.flush();
-              const prev = undoStackRef.current.pop()!;
-              redoStackRef.current.push(valueRef.current);
-              while (redoStackRef.current.length > MAX_UNDO_STACK) {
-                redoStackRef.current.shift();
-              }
-              applyMarkdownValue(prev);
-              return;
-            }
-            if (redo && redoStackRef.current.length > 0) {
-              groupTrackerRef.current.flush();
-              const next = redoStackRef.current.pop()!;
-              undoStackRef.current.push(valueRef.current);
-              while (undoStackRef.current.length > MAX_UNDO_STACK) {
-                undoStackRef.current.shift();
-              }
-              applyMarkdownValue(next);
-              return;
-            }
-            return;
-          }
+      if (isUndoShortcut(e) && undoStackRef.current.length > 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        groupTrackerRef.current.flush();
+        const prev = undoStackRef.current.pop()!;
+        redoStackRef.current.push(valueRef.current);
+        while (redoStackRef.current.length > MAX_UNDO_STACK) {
+          redoStackRef.current.shift();
         }
+        applyMarkdownValue(prev);
+        return;
+      }
+      if (isRedoShortcut(e) && redoStackRef.current.length > 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        groupTrackerRef.current.flush();
+        const next = redoStackRef.current.pop()!;
+        undoStackRef.current.push(valueRef.current);
+        while (undoStackRef.current.length > MAX_UNDO_STACK) {
+          undoStackRef.current.shift();
+        }
+        applyMarkdownValue(next);
+        return;
       }
 
       if (e.key !== "Enter") return;

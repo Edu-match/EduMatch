@@ -1,4 +1,23 @@
 /**
+ * Ctrl+Z / Cmd+Z 等（AZERTY 等でも code で判定）
+ */
+export function isUndoShortcut(e: Pick<KeyboardEvent, "key" | "code" | "ctrlKey" | "metaKey" | "altKey" | "shiftKey">): boolean {
+  if (!e.ctrlKey && !e.metaKey) return false;
+  if (e.altKey) return false;
+  if (e.shiftKey) return false;
+  return e.code === "KeyZ" || e.key === "z" || e.key === "Z";
+}
+
+/** Ctrl+Shift+Z / Cmd+Shift+Z / Ctrl+Y */
+export function isRedoShortcut(e: Pick<KeyboardEvent, "key" | "code" | "ctrlKey" | "metaKey" | "altKey" | "shiftKey">): boolean {
+  if (!e.ctrlKey && !e.metaKey) return false;
+  if (e.altKey) return false;
+  const y = e.code === "KeyY" || e.key === "y" || e.key === "Y";
+  const z = e.code === "KeyZ" || e.key === "z" || e.key === "Z";
+  return y || (z && e.shiftKey);
+}
+
+/**
  * 直前の編集を取り消したあと、どの文字位置にキャレットを置くかの推定。
  * （1 回の挿入・削除を想定した単純な共通接頭辞／接尾辞ベース）
  */
