@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo, type MutableRefObject } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -38,6 +38,7 @@ import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import { contentToBlocks } from "@/lib/markdown-to-blocks";
 import { RichTextEditable, htmlToMarkdown } from "@/components/editor/rich-text-editable";
+import { useUndoRedoTextField } from "@/components/editor/use-undo-redo-text-field";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -101,6 +102,210 @@ const blockTypeLabels: Record<BlockType, string> = {
   markdown: "Markdown",
 };
 
+function MarkdownBlockField({
+  block,
+  updateBlock,
+  textInputRefs,
+}: {
+  block: ContentBlock;
+  updateBlock: (id: string, updates: Partial<ContentBlock>) => void;
+  textInputRefs: MutableRefObject<
+    Record<string, HTMLInputElement | HTMLTextAreaElement | HTMLElement | null>
+  >;
+}) {
+  const undo = useUndoRedoTextField({
+    value: block.content ?? "",
+    historyKey: `${block.id}-markdown`,
+    onCommit: (next) => updateBlock(block.id, { content: next }),
+  });
+  const text = block.content ?? "";
+  const lines = text.split(/\n/);
+  return (
+    <div className="space-y-2">
+      <Textarea
+        ref={(el) => {
+          undo.inputRef.current = el;
+          textInputRefs.current[block.id] = el;
+        }}
+        value={block.content}
+        onChange={(e) => undo.commit(e.target.value)}
+        onBeforeInput={undo.onBeforeInput}
+        onCompositionStart={undo.onCompositionStart}
+        onCompositionEnd={undo.onCompositionEnd}
+        onKeyDown={undo.onKeyDown}
+        placeholder="Markdown を入力..."
+        className="min-h-[120px] font-mono text-sm resize-none"
+        onClick={(e) => e.stopPropagation()}
+      />
+      {text.length > 0 && (
+        <div className="prose prose-sm max-w-none border-t pt-3 mt-3 space-y-0">
+          {lines.map((line, i) =>
+            line === "" ? (
+              <div key={i} className="min-h-[1em]" aria-hidden />
+            ) : (
+              <div key={i} className="py-0.5">
+                <ReactMarkdown
+                  remarkPlugins={[remarkBreaks]}
+                  components={{
+                    a: ({ children, ...props }) => (
+                      <span className="text-blue-600 underline cursor-default" {...props}>
+                        {children}
+                      </span>
+                    ),
+                  }}
+                >
+                  {line}
+                </ReactMarkdown>
+              </div>
+            )
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BlockListItemInput({
+  block,
+  itemIndex,
+  item,
+  updateBlock,
+  textInputRefs,
+}: {
+  block: ContentBlock;
+  itemIndex: number;
+  item: string;
+  updateBlock: (id: string, updates: Partial<ContentBlock>) => void;
+  textInputRefs: MutableRefObject<
+    Record<string, HTMLInputElement | HTMLTextAreaElement | HTMLElement | null>
+  >;
+}) {
+  const refKey = `${block.id}-${itemIndex}`;
+  const undo = useUndoRedoTextField({
+    value: item,
+    historyKey: refKey,
+    onCommit: (next) => {
+      const newItems = [...(block.items || [""])];
+      newItems[itemIndex] = next;
+      updateBlock(block.id, { items: newItems });
+    },
+  });
+  return (
+    <Input
+      ref={(el) => {
+        undo.inputRef.current = el;
+        textInputRefs.current[refKey] = el;
+      }}
+      value={item}
+      onChange={(e) => undo.commit(e.target.value)}
+      onBeforeInput={undo.onBeforeInput}
+      onCompositionStart={undo.onCompositionStart}
+      onCompositionEnd={undo.onCompositionEnd}
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => {
+        undo.onKeyDown(e);
+        if (e.defaultPrevented) return;
+        if (e.key === "Enter") {
+          e.preventDefault();
+          const newItems = [...(block.items || [""])];
+          newItems.splice(itemIndex + 1, 0, "");
+          updateBlock(block.id, { items: newItems });
+        }
+        if (e.key === "Backspace" && item === "" && (block.items?.length || 0) > 1) {
+          e.preventDefault();
+          const newItems = [...(block.items || [""])];
+          newItems.splice(itemIndex, 1);
+          updateBlock(block.id, { items: newItems });
+        }
+      }}
+      placeholder="リスト項目を入力..."
+      className="flex-1 border-none shadow-none"
+    />
+  );
+}
+
+function BlockCaptionInput({
+  blockId,
+  caption,
+  updateBlock,
+  placeholder,
+  className,
+}: {
+  blockId: string;
+  caption: string;
+  updateBlock: (id: string, updates: Partial<ContentBlock>) => void;
+  placeholder: string;
+  className?: string;
+}) {
+  const undo = useUndoRedoTextField({
+    value: caption,
+    historyKey: `${blockId}-caption`,
+    onCommit: (next) => updateBlock(blockId, { caption: next }),
+  });
+  return (
+    <Input
+      ref={(el) => {
+        undo.inputRef.current = el;
+      }}
+      value={caption}
+      onChange={(e) => undo.commit(e.target.value)}
+      onBeforeInput={undo.onBeforeInput}
+      onCompositionStart={undo.onCompositionStart}
+      onCompositionEnd={undo.onCompositionEnd}
+      onKeyDown={undo.onKeyDown}
+      onClick={(e) => e.stopPropagation()}
+      placeholder={placeholder}
+      className={className}
+    />
+  );
+}
+
+function VideoUrlInput({
+  block,
+  updateBlock,
+  textInputRefs,
+}: {
+  block: ContentBlock;
+  updateBlock: (id: string, updates: Partial<ContentBlock>) => void;
+  textInputRefs: MutableRefObject<
+    Record<string, HTMLInputElement | HTMLTextAreaElement | HTMLElement | null>
+  >;
+}) {
+  const undo = useUndoRedoTextField({
+    value: block.content,
+    historyKey: `${block.id}-video-url`,
+    onCommit: (next) => updateBlock(block.id, { content: next }),
+  });
+  return (
+    <Input
+      ref={(el) => {
+        undo.inputRef.current = el;
+        textInputRefs.current[block.id] = el;
+      }}
+      value={block.content}
+      onChange={(e) => undo.commit(e.target.value)}
+      onBeforeInput={undo.onBeforeInput}
+      onCompositionStart={undo.onCompositionStart}
+      onCompositionEnd={undo.onCompositionEnd}
+      onBlur={(e) => {
+        if (e.target.value) {
+          updateBlock(block.id, { url: e.target.value });
+        }
+      }}
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => {
+        undo.onKeyDown(e);
+        if (e.defaultPrevented) return;
+        if (e.key === "Enter" && block.content) {
+          e.preventDefault();
+          updateBlock(block.id, { url: block.content });
+        }
+      }}
+      placeholder="動画URL（YouTube, Vimeo）を入力してEnter..."
+    />
+  );
+}
+
 export function BlockEditor({
   blocks,
   onChange,
@@ -114,6 +319,11 @@ export function BlockEditor({
   const [uploadingBlockId, setUploadingBlockId] = useState<string | null>(null);
   const [bulkPasteOpen, setBulkPasteOpen] = useState(false);
   const [bulkPasteText, setBulkPasteText] = useState("");
+  const bulkPasteUndo = useUndoRedoTextField({
+    value: bulkPasteText,
+    historyKey: "block-editor-bulk-paste",
+    onCommit: setBulkPasteText,
+  });
   const [selectionBubble, setSelectionBubble] = useState<{
     blockId: string;
     refKey: string;
@@ -987,10 +1197,10 @@ export function BlockEditor({
                 </div>
               </div>
             )}
-            <Input
-              value={block.caption || ""}
-              onChange={(e) => updateBlock(block.id, { caption: e.target.value })}
-              onClick={(e) => e.stopPropagation()}
+            <BlockCaptionInput
+              blockId={block.id}
+              caption={block.caption || ""}
+              updateBlock={updateBlock}
               placeholder="画像のキャプションを入力..."
               className="text-center text-sm text-muted-foreground"
             />
@@ -1029,29 +1239,13 @@ export function BlockEditor({
                     YouTube, Vimeo対応
                   </p>
                 </div>
-                <Input
-                  value={block.content}
-                  onChange={(e) => updateBlock(block.id, { content: e.target.value })}
-                  onBlur={(e) => {
-                    if (e.target.value) {
-                      updateBlock(block.id, { url: e.target.value });
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && block.content) {
-                      e.preventDefault();
-                      updateBlock(block.id, { url: block.content });
-                    }
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                  placeholder="動画URL（YouTube, Vimeo）を入力してEnter..."
-                />
+                <VideoUrlInput block={block} updateBlock={updateBlock} textInputRefs={textInputRefs} />
               </div>
             )}
-            <Input
-              value={block.caption || ""}
-              onChange={(e) => updateBlock(block.id, { caption: e.target.value })}
-              onClick={(e) => e.stopPropagation()}
+            <BlockCaptionInput
+              blockId={block.id}
+              caption={block.caption || ""}
+              updateBlock={updateBlock}
               placeholder="動画のキャプションを入力..."
               className="text-center text-sm text-muted-foreground"
             />
@@ -1073,10 +1267,10 @@ export function BlockEditor({
                 {block.content?.length || 0} 文字
               </span>
             </div>
-            <Input
-              value={block.caption || ""}
-              onChange={(e) => updateBlock(block.id, { caption: e.target.value })}
-              onClick={(e) => e.stopPropagation()}
+            <BlockCaptionInput
+              blockId={block.id}
+              caption={block.caption || ""}
+              updateBlock={updateBlock}
               placeholder="引用元..."
               className="mt-2 text-sm text-muted-foreground border-none shadow-none bg-transparent"
             />
@@ -1093,31 +1287,12 @@ export function BlockEditor({
                 <span className="text-muted-foreground w-6 text-right">
                   {block.type === "numberedList" ? `${itemIndex + 1}.` : "•"}
                 </span>
-                <Input
-                  ref={(el) => { textInputRefs.current[`${block.id}-${itemIndex}`] = el; }}
-                  value={item}
-                  onChange={(e) => {
-                    const newItems = [...(block.items || [""])];
-                    newItems[itemIndex] = e.target.value;
-                    updateBlock(block.id, { items: newItems });
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      const newItems = [...(block.items || [""])];
-                      newItems.splice(itemIndex + 1, 0, "");
-                      updateBlock(block.id, { items: newItems });
-                    }
-                    if (e.key === "Backspace" && item === "" && (block.items?.length || 0) > 1) {
-                      e.preventDefault();
-                      const newItems = [...(block.items || [""])];
-                      newItems.splice(itemIndex, 1);
-                      updateBlock(block.id, { items: newItems });
-                    }
-                  }}
-                  placeholder="リスト項目を入力..."
-                  className="flex-1 border-none shadow-none"
+                <BlockListItemInput
+                  block={block}
+                  itemIndex={itemIndex}
+                  item={item}
+                  updateBlock={updateBlock}
+                  textInputRefs={textInputRefs}
                 />
               </div>
             ))}
@@ -1128,46 +1303,10 @@ export function BlockEditor({
             </div>
           </div>
         );
-      case "markdown": {
-        const text = block.content ?? "";
-        const lines = text.split(/\n/);
+      case "markdown":
         return (
-          <div className="space-y-2">
-            <Textarea
-              ref={(el) => { textInputRefs.current[block.id] = el; }}
-              value={block.content}
-              onChange={(e) => updateBlock(block.id, { content: e.target.value })}
-              placeholder="Markdown を入力..."
-              className="min-h-[120px] font-mono text-sm resize-none"
-              onClick={(e) => e.stopPropagation()}
-            />
-            {text.length > 0 && (
-              <div className="prose prose-sm max-w-none border-t pt-3 mt-3 space-y-0">
-                {lines.map((line, i) =>
-                  line === "" ? (
-                    <div key={i} className="min-h-[1em]" aria-hidden />
-                  ) : (
-                    <div key={i} className="py-0.5">
-                      <ReactMarkdown
-                        remarkPlugins={[remarkBreaks]}
-                        components={{
-                          a: ({ children, ...props }) => (
-                            <span className="text-blue-600 underline cursor-default" {...props}>
-                              {children}
-                            </span>
-                          ),
-                        }}
-                      >
-                        {line}
-                      </ReactMarkdown>
-                    </div>
-                  )
-                )}
-              </div>
-            )}
-          </div>
+          <MarkdownBlockField block={block} updateBlock={updateBlock} textInputRefs={textInputRefs} />
         );
-      }
       default:
         return null;
     }
@@ -1219,8 +1358,14 @@ export function BlockEditor({
                   </p>
                 )}
                 <Textarea
+                  ref={(el) => {
+                    bulkPasteUndo.inputRef.current = el;
+                  }}
                   value={bulkPasteText}
-                  onChange={(e) => setBulkPasteText(e.target.value)}
+                  onChange={(e) => bulkPasteUndo.commit(e.target.value)}
+                  onBeforeInput={bulkPasteUndo.onBeforeInput}
+                  onCompositionStart={bulkPasteUndo.onCompositionStart}
+                  onCompositionEnd={bulkPasteUndo.onCompositionEnd}
                   placeholder={
                     "### 小見出し\n\n本文の段落は空行で区切ります。\n\n- 箇条書き\n* アスタリスクでも可\n\n1. 番号付き\n2. 続き"
                   }
@@ -1229,6 +1374,8 @@ export function BlockEditor({
                   onPaste={(e) => e.stopPropagation()}
                   onKeyDown={(e) => {
                     e.stopPropagation();
+                    bulkPasteUndo.onKeyDown(e);
+                    if (e.defaultPrevented) return;
                     if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
                       e.preventDefault();
                       handleBulkPasteAsBlocks();

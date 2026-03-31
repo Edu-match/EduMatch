@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ContentEditorWithImport } from "@/components/content/content-editor-with-import";
+import { useUndoRedoTextField } from "@/components/editor/use-undo-redo-text-field";
 import { BlocksContentPreview } from "@/components/content/blocks-content-preview";
 import type { ContentBlock } from "@/components/editor/block-editor";
 import { contentToBlocks, blocksToMarkdown } from "@/lib/markdown-to-blocks";
@@ -109,6 +110,18 @@ export function ArticleEditBlockForm({ articleId, initialData }: ArticleEditBloc
   const [userProfile, setUserProfile] = useState<{ name: string; avatar_url: string | null; email: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const titleUndo = useUndoRedoTextField({
+    value: title,
+    historyKey: `article-edit-title-${articleId}`,
+    onCommit: (next) => setTitle(next.slice(0, TITLE_MAX_LENGTH)),
+  });
+
+  const leadUndo = useUndoRedoTextField({
+    value: leadText,
+    historyKey: `article-edit-lead-${articleId}`,
+    onCommit: setLeadText,
+  });
 
   useEffect(() => {
     async function fetchProfile() {
@@ -313,9 +326,16 @@ export function ArticleEditBlockForm({ articleId, initialData }: ArticleEditBloc
                   <CardContent className="pt-6">
                     <div className="flex items-center gap-3">
                       <input
+                        ref={(el) => {
+                          titleUndo.inputRef.current = el;
+                        }}
                         type="text"
                         value={title}
-                        onChange={(e) => setTitle(e.target.value.slice(0, TITLE_MAX_LENGTH))}
+                        onChange={(e) => titleUndo.commit(e.target.value)}
+                        onBeforeInput={titleUndo.onBeforeInput}
+                        onCompositionStart={titleUndo.onCompositionStart}
+                        onCompositionEnd={titleUndo.onCompositionEnd}
+                        onKeyDown={titleUndo.onKeyDown}
                         placeholder="記事タイトルを入力..."
                         className={`flex-1 text-3xl font-bold bg-transparent outline-none border-none ${!isTitleValid ? "text-destructive" : ""}`}
                         maxLength={TITLE_MAX_LENGTH}
@@ -330,8 +350,15 @@ export function ArticleEditBlockForm({ articleId, initialData }: ArticleEditBloc
                 <Card>
                   <CardContent className="pt-6">
                     <Textarea
+                      ref={(el) => {
+                        leadUndo.inputRef.current = el;
+                      }}
                       value={leadText}
-                      onChange={(e) => setLeadText(e.target.value)}
+                      onChange={(e) => leadUndo.commit(e.target.value)}
+                      onBeforeInput={leadUndo.onBeforeInput}
+                      onCompositionStart={leadUndo.onCompositionStart}
+                      onCompositionEnd={leadUndo.onCompositionEnd}
+                      onKeyDown={leadUndo.onKeyDown}
                       placeholder="リード文（概要）を入力..."
                       className="border-none shadow-none resize-none text-lg text-muted-foreground focus-visible:ring-0"
                       rows={3}

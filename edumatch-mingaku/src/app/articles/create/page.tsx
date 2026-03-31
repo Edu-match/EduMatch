@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ContentEditorWithImport } from "@/components/content/content-editor-with-import";
+import { useUndoRedoTextField } from "@/components/editor/use-undo-redo-text-field";
 import { AiArticleGenerator, type GeneratedArticle } from "@/components/articles/ai-article-generator";
 import type { ContentBlock } from "@/components/editor/block-editor";
 import { renderInlineMarkdown } from "@/lib/inline-markdown";
@@ -51,6 +52,8 @@ import { createPost, uploadImage } from "@/app/_actions";
 import { SHARED_CATEGORIES } from "@/lib/categories";
 
 const STORAGE_KEY = "edumatch-article-draft";
+const TITLE_MAX_LENGTH = 80;
+const CONTENT_MAX_LENGTH = 10_000;
 
 interface ArticleDraft {
   title: string;
@@ -106,6 +109,18 @@ export default function ArticleCreatePage() {
   const [userProfile, setUserProfile] = useState<{ name: string; avatar_url: string | null; email: string } | null>(null);
   const [generatedArticle, setGeneratedArticle] = useState<GeneratedArticle | null>(null);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
+
+  const titleUndo = useUndoRedoTextField({
+    value: title,
+    historyKey: "article-create-title",
+    onCommit: (next) => setTitle(next.slice(0, TITLE_MAX_LENGTH)),
+  });
+
+  const leadUndo = useUndoRedoTextField({
+    value: leadText,
+    historyKey: "article-create-lead",
+    onCommit: setLeadText,
+  });
 
   // Save draft to localStorage
   const saveDraft = useCallback(() => {
@@ -323,10 +338,6 @@ export default function ArticleCreatePage() {
     }
   };
 
-  // 文字数制限
-  const TITLE_MAX_LENGTH = 80;
-  const CONTENT_MAX_LENGTH = 10000;
-  
   // 文字数カウント
   const titleLength = title.length;
   const leadTextLength = leadText.length;
@@ -718,14 +729,16 @@ export default function ArticleCreatePage() {
                   <CardContent className="pt-6">
                     <div className="flex items-center gap-3">
                       <input
+                        ref={(el) => {
+                          titleUndo.inputRef.current = el;
+                        }}
                         type="text"
                         value={title}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          if (value.length <= TITLE_MAX_LENGTH) {
-                            setTitle(value);
-                          }
-                        }}
+                        onChange={(e) => titleUndo.commit(e.target.value)}
+                        onBeforeInput={titleUndo.onBeforeInput}
+                        onCompositionStart={titleUndo.onCompositionStart}
+                        onCompositionEnd={titleUndo.onCompositionEnd}
+                        onKeyDown={titleUndo.onKeyDown}
                         placeholder="記事タイトルを入力..."
                         className={`flex-1 text-3xl font-bold bg-transparent outline-none border-none ${
                           !isTitleValid ? "text-destructive" : ""
@@ -749,8 +762,15 @@ export default function ArticleCreatePage() {
                   <CardContent className="pt-6">
                     <div className="relative">
                       <Textarea
+                        ref={(el) => {
+                          leadUndo.inputRef.current = el;
+                        }}
                         value={leadText}
-                        onChange={(e) => setLeadText(e.target.value)}
+                        onChange={(e) => leadUndo.commit(e.target.value)}
+                        onBeforeInput={leadUndo.onBeforeInput}
+                        onCompositionStart={leadUndo.onCompositionStart}
+                        onCompositionEnd={leadUndo.onCompositionEnd}
+                        onKeyDown={leadUndo.onKeyDown}
                         placeholder="リード文（概要）を入力..."
                         className="border-none shadow-none resize-none text-lg text-muted-foreground focus-visible:ring-0 pr-20"
                         rows={3}
