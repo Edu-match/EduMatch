@@ -132,7 +132,13 @@ function MarkdownBlockField({
         onBeforeInput={undo.onBeforeInput}
         onCompositionStart={undo.onCompositionStart}
         onCompositionEnd={undo.onCompositionEnd}
-        onKeyDown={undo.onKeyDown}
+        onKeyDown={(e) => {
+          undo.onKeyDown(e);
+          if (e.defaultPrevented) return;
+          if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+            undo.flushUndoGrouping();
+          }
+        }}
         placeholder="Markdown を入力..."
         className="min-h-[120px] font-mono text-sm resize-none"
         onClick={(e) => e.stopPropagation()}
@@ -206,6 +212,7 @@ function BlockListItemInput({
         undo.onKeyDown(e);
         if (e.defaultPrevented) return;
         if (e.key === "Enter") {
+          undo.flushUndoGrouping();
           e.preventDefault();
           const newItems = [...(block.items || [""])];
           newItems.splice(itemIndex + 1, 0, "");
@@ -253,6 +260,7 @@ function BlockCaptionInput({
       onCompositionStart={undo.onCompositionStart}
       onCompositionEnd={undo.onCompositionEnd}
       onKeyDown={undo.onKeyDown}
+      onBlur={() => undo.flushUndoGrouping()}
       onClick={(e) => e.stopPropagation()}
       placeholder={placeholder}
       className={className}
@@ -297,6 +305,7 @@ function VideoUrlInput({
         undo.onKeyDown(e);
         if (e.defaultPrevented) return;
         if (e.key === "Enter" && block.content) {
+          undo.flushUndoGrouping();
           e.preventDefault();
           updateBlock(block.id, { url: block.content });
         }
@@ -1379,6 +1388,10 @@ export function BlockEditor({
                     if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
                       e.preventDefault();
                       handleBulkPasteAsBlocks();
+                      return;
+                    }
+                    if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                      bulkPasteUndo.flushUndoGrouping();
                     }
                   }}
                   spellCheck={false}

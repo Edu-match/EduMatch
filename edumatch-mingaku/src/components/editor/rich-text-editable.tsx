@@ -3,6 +3,11 @@
 import { useRef, useEffect, useCallback } from "react";
 import TurndownService from "turndown";
 import { inlineMarkdownToHtml } from "@/lib/inline-markdown-html";
+import {
+  caretPositionAfterUndoToPrevious,
+  createUndoGroupTracker,
+  setContentEditablePlainCaret,
+} from "@/lib/text-undo-caret";
 
 const turndown = new TurndownService({
   headingStyle: "atx",
@@ -21,16 +26,6 @@ export function htmlToMarkdown(html: string): string {
   if (!md.replace(/[\s\u00a0]/g, "")) return "";
   // 先頭の空白のみ除去（.trim() は行末の Markdown 改行「  \n」まで消してしまう）
   return md.replace(/^\s+/, "");
-}
-
-function placeCaretAtEnd(el: HTMLElement) {
-  const sel = window.getSelection();
-  if (!sel) return;
-  const range = document.createRange();
-  range.selectNodeContents(el);
-  range.collapse(false);
-  sel.removeAllRanges();
-  sel.addRange(range);
 }
 
 interface RichTextEditableProps {
@@ -63,6 +58,7 @@ export function RichTextEditable({
   const redoStackRef = useRef<string[]>([]);
   const isApplyingHistoryRef = useRef(false);
   const composingRef = useRef(false);
+  const groupTrackerRef = useRef(createUndoGroupTracker());
 
   const setRef = useCallback(
     (el: HTMLDivElement | null) => {
@@ -74,13 +70,21 @@ export function RichTextEditable({
 
   const applyMarkdownValue = useCallback(
     (next: string) => {
+      groupTrackerRef.current.flush();
+      const from = valueRef.current;
       isApplyingHistoryRef.current = true;
       lastValueRef.current = next;
       valueRef.current = next;
       const el = divRef.current;
+      const caretMd = caretPositionAfterUndoToPrevious(next, from);
       if (el) {
         el.innerHTML = inlineMarkdownToHtml(next || "") || "";
-        placeCaretAtEnd(el);
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            const maxPlain = el.innerText.length;
+            setContentEditablePlainCaret(el, Math.min(caretMd, maxPlain));
+          });
+        });
       }
       isInternalChangeRef.current = true;
       onChange(next);
@@ -128,6 +132,7 @@ export function RichTextEditable({
     if (value === lastValueRef.current) return;
 
     // 親（AI生成・インポート等）から差し替えられたときは Undo 履歴が無意味なのでクリア
+    groupTrackerRef.current.flush();
     undoStackRef.current = [];
     redoStackRef.current = [];
     lastValueRef.current = value;
@@ -145,10 +150,12 @@ export function RichTextEditable({
     const md = htmlToMarkdown(el.innerHTML);
     if (md === valueRef.current) return;
     if (!isApplyingHistoryRef.current && !composingRef.current) {
-      undoStackRef.current.push(valueRef.current);
-      redoStackRef.current = [];
-      while (undoStackRef.current.length > MAX_UNDO_STACK) {
-        undoStackRef.current.shift();
+      if (groupTrackerRef.current.shouldPushSnapshot()) {
+        undoStackRef.current.push(valueRef.current);
+        redoStackRef.current = [];
+        while (undoStackRef.current.length > MAX_UNDO_STACK) {
+          undoStackRef.current.shift();
+        }
       }
     }
     lastValueRef.current = md;
@@ -166,6 +173,7 @@ export function RichTextEditable({
   }, []);
 
   const handleBlur = useCallback(() => {
+    groupTrackerRef.current.flush();
     const el = divRef.current;
     if (!el) return;
     const md = htmlToMarkdown(el.innerHTML);
@@ -174,6 +182,7 @@ export function RichTextEditable({
 
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
     e.preventDefault();
+    groupTrackerRef.current.flush();
     const text = e.clipboardData.getData("text/plain");
     document.execCommand("insertText", false, text);
   }, []);
@@ -206,6 +215,7 @@ export function RichTextEditable({
             e.preventDefault();
             e.stopPropagation();
             if (undo && undoStackRef.current.length > 0) {
+              groupTrackerRef.current.flush();
               const prev = undoStackRef.current.pop()!;
               redoStackRef.current.push(valueRef.current);
               while (redoStackRef.current.length > MAX_UNDO_STACK) {
@@ -215,6 +225,7 @@ export function RichTextEditable({
               return;
             }
             if (redo && redoStackRef.current.length > 0) {
+              groupTrackerRef.current.flush();
               const next = redoStackRef.current.pop()!;
               undoStackRef.current.push(valueRef.current);
               while (undoStackRef.current.length > MAX_UNDO_STACK) {
@@ -249,6 +260,7 @@ export function RichTextEditable({
       range.collapse(true);
       sel.removeAllRanges();
       sel.addRange(range);
+      groupTrackerRef.current.flush();
       handleInput();
     },
     [applyMarkdownValue, handleInput]
@@ -264,6 +276,7 @@ export function RichTextEditable({
 
   // ブロック切り替え時は履歴を捨てる
   useEffect(() => {
+    groupTrackerRef.current = createUndoGroupTracker();
     undoStackRef.current = [];
     redoStackRef.current = [];
   }, [blockId]);

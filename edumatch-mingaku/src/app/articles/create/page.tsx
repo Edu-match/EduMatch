@@ -739,6 +739,7 @@ export default function ArticleCreatePage() {
                         onCompositionStart={titleUndo.onCompositionStart}
                         onCompositionEnd={titleUndo.onCompositionEnd}
                         onKeyDown={titleUndo.onKeyDown}
+                        onBlur={titleUndo.flushUndoGrouping}
                         placeholder="記事タイトルを入力..."
                         className={`flex-1 text-3xl font-bold bg-transparent outline-none border-none ${
                           !isTitleValid ? "text-destructive" : ""
@@ -770,7 +771,14 @@ export default function ArticleCreatePage() {
                         onBeforeInput={leadUndo.onBeforeInput}
                         onCompositionStart={leadUndo.onCompositionStart}
                         onCompositionEnd={leadUndo.onCompositionEnd}
-                        onKeyDown={leadUndo.onKeyDown}
+                        onKeyDown={(e) => {
+                          leadUndo.onKeyDown(e);
+                          if (e.defaultPrevented) return;
+                          if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                            leadUndo.flushUndoGrouping();
+                          }
+                        }}
+                        onBlur={leadUndo.flushUndoGrouping}
                         placeholder="リード文（概要）を入力..."
                         className="border-none shadow-none resize-none text-lg text-muted-foreground focus-visible:ring-0 pr-20"
                         rows={3}
