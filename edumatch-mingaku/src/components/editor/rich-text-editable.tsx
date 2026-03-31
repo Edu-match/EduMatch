@@ -13,12 +13,24 @@ turndown.addRule("strikethrough", {
   replacement: (content) => `~~${content}~~`,
 });
 
+const MAX_UNDO_STACK = 100;
+
 export function htmlToMarkdown(html: string): string {
   if (!html || html === "<br>" || html === "<div><br></div>") return "";
   let md = turndown.turndown(html).replace(/\u200B/g, "");
   if (!md.replace(/[\s\u00a0]/g, "")) return "";
   // 先頭の空白のみ除去（.trim() は行末の Markdown 改行「  \n」まで消してしまう）
   return md.replace(/^\s+/, "");
+}
+
+function placeCaretAtEnd(el: HTMLElement) {
+  const sel = window.getSelection();
+  if (!sel) return;
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  range.collapse(false);
+  sel.removeAllRanges();
+  sel.addRange(range);
 }
 
 interface RichTextEditableProps {
@@ -46,6 +58,11 @@ export function RichTextEditable({
   const divRef = useRef<HTMLDivElement | null>(null);
   const isInternalChangeRef = useRef(false);
   const lastValueRef = useRef(value);
+  const valueRef = useRef(value);
+  const undoStackRef = useRef<string[]>([]);
+  const redoStackRef = useRef<string[]>([]);
+  const isApplyingHistoryRef = useRef(false);
+  const composingRef = useRef(false);
 
   const setRef = useCallback(
     (el: HTMLDivElement | null) => {
@@ -55,8 +72,38 @@ export function RichTextEditable({
     [refCallback]
   );
 
+  const applyMarkdownValue = useCallback(
+    (next: string) => {
+      isApplyingHistoryRef.current = true;
+      lastValueRef.current = next;
+      valueRef.current = next;
+      const el = divRef.current;
+      if (el) {
+        el.innerHTML = inlineMarkdownToHtml(next || "") || "";
+        placeCaretAtEnd(el);
+      }
+      isInternalChangeRef.current = true;
+      onChange(next);
+    },
+    [onChange]
+  );
+
   // value が変わったら innerHTML をスタイル付きで同期
   useEffect(() => {
+    valueRef.current = value;
+
+    if (isApplyingHistoryRef.current) {
+      isApplyingHistoryRef.current = false;
+      lastValueRef.current = value;
+      const el = divRef.current;
+      if (!el) return;
+      const html = inlineMarkdownToHtml(value || "") || "";
+      if (el.innerHTML !== html) {
+        el.innerHTML = html;
+      }
+      return;
+    }
+
     if (isInternalChangeRef.current) {
       isInternalChangeRef.current = false;
       lastValueRef.current = value;
@@ -77,7 +124,12 @@ export function RichTextEditable({
       el.innerHTML = targetHtml;
       return;
     }
+
     if (value === lastValueRef.current) return;
+
+    // 親（AI生成・インポート等）から差し替えられたときは Undo 履歴が無意味なのでクリア
+    undoStackRef.current = [];
+    redoStackRef.current = [];
     lastValueRef.current = value;
     const el = divRef.current;
     if (!el) return;
@@ -91,10 +143,27 @@ export function RichTextEditable({
     const el = divRef.current;
     if (!el) return;
     const md = htmlToMarkdown(el.innerHTML);
+    if (md === valueRef.current) return;
+    if (!isApplyingHistoryRef.current && !composingRef.current) {
+      undoStackRef.current.push(valueRef.current);
+      redoStackRef.current = [];
+      while (undoStackRef.current.length > MAX_UNDO_STACK) {
+        undoStackRef.current.shift();
+      }
+    }
     lastValueRef.current = md;
+    valueRef.current = md;
     isInternalChangeRef.current = true;
     onChange(md);
   }, [onChange]);
+
+  const handleCompositionStart = useCallback(() => {
+    composingRef.current = true;
+  }, []);
+
+  const handleCompositionEnd = useCallback(() => {
+    composingRef.current = false;
+  }, []);
 
   const handleBlur = useCallback(() => {
     const el = divRef.current;
@@ -110,12 +179,55 @@ export function RichTextEditable({
   }, []);
 
   /**
+   * ブラウザの contenteditable 履歴（Ctrl+Z 等）は Turndown·React 同期と競合し、
+   * 逆変換の結果バックスラッシュが増殖するなどの不具合が出るため無効化する。
+   */
+  const handleBeforeInput = useCallback((e: React.FormEvent<HTMLDivElement>) => {
+    const ie = e.nativeEvent as InputEvent;
+    if (ie.inputType === "historyUndo" || ie.inputType === "historyRedo") {
+      e.preventDefault();
+    }
+  }, []);
+
+  /**
    * Enter のデフォルト（ブロック用の div が増える）だと Turndown が空行を落とし、
    * 親の Markdown 同期で改行が消える。明示的に <br> を入れる。
    * フォーム内では Enter が submit されうるため止める。
    */
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+        const k = e.key.toLowerCase();
+        // Redo: Ctrl+Shift+Z / Cmd+Shift+Z、Windows 慣例の Ctrl+Y
+        if (k === "z" || k === "y") {
+          const redo = k === "y" || (k === "z" && e.shiftKey);
+          const undo = k === "z" && !e.shiftKey;
+          if (undo || redo) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (undo && undoStackRef.current.length > 0) {
+              const prev = undoStackRef.current.pop()!;
+              redoStackRef.current.push(valueRef.current);
+              while (redoStackRef.current.length > MAX_UNDO_STACK) {
+                redoStackRef.current.shift();
+              }
+              applyMarkdownValue(prev);
+              return;
+            }
+            if (redo && redoStackRef.current.length > 0) {
+              const next = redoStackRef.current.pop()!;
+              undoStackRef.current.push(valueRef.current);
+              while (undoStackRef.current.length > MAX_UNDO_STACK) {
+                undoStackRef.current.shift();
+              }
+              applyMarkdownValue(next);
+              return;
+            }
+            return;
+          }
+        }
+      }
+
       if (e.key !== "Enter") return;
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       // IME 変換中・確定直前の Enter はブラウザに任せる（ここで止めると確定だけで改行になる）
@@ -139,7 +251,7 @@ export function RichTextEditable({
       sel.addRange(range);
       handleInput();
     },
-    [handleInput]
+    [applyMarkdownValue, handleInput]
   );
 
   /** 編集時はリンククリックで飛ばないようにする */
@@ -150,11 +262,19 @@ export function RichTextEditable({
     }
   }, []);
 
+  // ブロック切り替え時は履歴を捨てる
+  useEffect(() => {
+    undoStackRef.current = [];
+    redoStackRef.current = [];
+  }, [blockId]);
+
   // 初回マウント時・blockId 変更時に innerHTML を設定
   useEffect(() => {
     const el = divRef.current;
     if (!el) return;
     el.innerHTML = inlineMarkdownToHtml(value || "") || "";
+    valueRef.current = value;
+    lastValueRef.current = value;
   }, [blockId]); // マウント時・blockId 変更時のみ（value は親から value 変更で別 useEffect が処理）
 
   return (
@@ -163,7 +283,10 @@ export function RichTextEditable({
       contentEditable
       suppressContentEditableWarning
       data-block-id={blockId}
+      onBeforeInput={handleBeforeInput}
       onInput={handleInput}
+      onCompositionStart={handleCompositionStart}
+      onCompositionEnd={handleCompositionEnd}
       onKeyDown={handleKeyDown}
       onBlur={handleBlur}
       onPaste={handlePaste}
