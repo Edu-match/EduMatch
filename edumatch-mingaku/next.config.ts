@@ -14,6 +14,7 @@ function supabaseStorageHostname(): string {
 }
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ["pdf-parse", "pdfjs-dist"],
   async redirects() {
     return [
       // 旧サイト（WordPress等）のURLを新サイト構成にリダイレクト

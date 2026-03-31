@@ -46,14 +46,35 @@ ${ARTICLE_CATEGORIES.join(" / ")}
 - 誇大表現・根拠のない断言は避ける
 - 元のWebページの情報を元にするが、EduMatch読者向けに編集・加工して良い`;
 
-const BINARY_CONTENT_TYPES = [
-  "image/", "video/", "audio/",
-  "application/pdf", "application/zip", "application/octet-stream",
-  "application/vnd.", "font/",
+/** PDF 以外のバイナリ（Content-Type ベースで拒否。application/octet-stream はマジックバイトで PDF 判定する） */
+const NON_PDF_BINARY_PREFIXES = [
+  "image/",
+  "video/",
+  "audio/",
+  "application/zip",
+  "application/vnd.",
+  "font/",
 ];
 
-function isBinaryContentType(contentType: string): boolean {
-  return BINARY_CONTENT_TYPES.some((prefix) => contentType.includes(prefix));
+const MAX_PDF_BYTES = 12 * 1024 * 1024;
+
+function isNonPdfBinaryContentType(contentType: string): boolean {
+  return NON_PDF_BINARY_PREFIXES.some((prefix) => contentType.includes(prefix));
+}
+
+function isPdfMagicBuffer(buf: Buffer): boolean {
+  return buf.length >= 5 && buf.subarray(0, 5).toString("ascii") === "%PDF-";
+}
+
+async function extractTextFromPdfBuffer(buffer: Buffer): Promise<string> {
+  const { PDFParse } = await import("pdf-parse");
+  const parser = new PDFParse({ data: buffer });
+  try {
+    const result = await parser.getText();
+    return normalizeWhitespace(result.text ?? "");
+  } finally {
+    await parser.destroy();
+  }
 }
 
 function decodeHtmlEntities(text: string): string {
@@ -175,7 +196,7 @@ export async function POST(req: NextRequest) {
   let pageText: string;
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    const timeoutId = setTimeout(() => controller.abort(), 30_000);
 
     const response = await fetch(parsedUrl.toString(), {
       signal: controller.signal,
@@ -183,7 +204,7 @@ export async function POST(req: NextRequest) {
         "User-Agent":
           "Mozilla/5.0 (compatible; EduMatch-ArticleBot/1.0; +https://edumatch.jp)",
         Accept:
-          "text/html,application/xhtml+xml,application/xml,application/rss+xml,application/atom+xml,application/json,text/plain,text/markdown,*/*;q=0.8",
+          "text/html,application/xhtml+xml,application/xml,application/rss+xml,application/atom+xml,application/json,text/plain,text/markdown,application/pdf,*/*;q=0.8",
         "Accept-Language": "ja,en;q=0.5",
       },
     });
@@ -198,15 +219,45 @@ export async function POST(req: NextRequest) {
 
     const contentType = (response.headers.get("content-type") ?? "").toLowerCase();
 
-    if (isBinaryContentType(contentType)) {
+    if (isNonPdfBinaryContentType(contentType)) {
       return NextResponse.json(
-        { error: "画像・動画・PDFなどのバイナリファイルには対応していません" },
+        { error: "画像・動画・ZIPなどのバイナリには対応していません（PDFは除く）" },
         { status: 422 }
       );
     }
 
-    const body = await response.text();
-    pageText = extractTextFromContent(body, contentType);
+    const raw = Buffer.from(await response.arrayBuffer());
+
+    const declaredPdf =
+      contentType.includes("application/pdf") ||
+      parsedUrl.pathname.toLowerCase().endsWith(".pdf");
+
+    if (isPdfMagicBuffer(raw) || declaredPdf) {
+      if (!isPdfMagicBuffer(raw) && declaredPdf) {
+        return NextResponse.json(
+          { error: "PDFとして解析できませんでした（ファイルが壊れているか、別形式の可能性があります）" },
+          { status: 422 }
+        );
+      }
+      if (raw.length > MAX_PDF_BYTES) {
+        return NextResponse.json(
+          { error: `PDFは${Math.floor(MAX_PDF_BYTES / (1024 * 1024))}MB以下にしてください` },
+          { status: 422 }
+        );
+      }
+      try {
+        pageText = await extractTextFromPdfBuffer(raw);
+      } catch (e) {
+        console.error("[ai-article-generate] PDF parse error:", e);
+        return NextResponse.json(
+          { error: "PDFからテキストを抽出できませんでした（スキャン画像のみのPDF等は読み取れない場合があります）" },
+          { status: 422 }
+        );
+      }
+    } else {
+      const body = raw.toString("utf8");
+      pageText = extractTextFromContent(body, contentType);
+    }
 
     if (pageText.length < 100) {
       return NextResponse.json(
