@@ -1,9 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import { caretPositionAfterUndoToPrevious, createUndoGroupTracker } from "@/lib/text-undo-caret";
+import {
+  caretPositionAfterUndoToPrevious,
+  createUndoGroupTracker,
+  UNDO_TYPING_MERGE_MS,
+} from "@/lib/text-undo-caret";
 
 const DEFAULT_MAX_DEPTH = 100;
+
+export { UNDO_TYPING_MERGE_MS };
+/** 単一行 Input 等: 毎回 Undo */
+export const UNDO_NO_MERGE = 0;
 
 export type UndoRedoTextFieldBinding = {
   inputRef: React.MutableRefObject<HTMLInputElement | HTMLTextAreaElement | null>;
@@ -12,25 +20,27 @@ export type UndoRedoTextFieldBinding = {
   onBeforeInput: (e: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   onCompositionStart: () => void;
   onCompositionEnd: () => void;
-  /** 連続入力グループを区切る（blur 時などに呼ぶと次のキーから新しい Undo 単位になる） */
   flushUndoGrouping: () => void;
 };
 
 /**
  * ネイティブの input/textarea 履歴とフォームの短縮キーが競合しやすい箇所向けに、
  * Ctrl+Z / Ctrl+Shift+Z（および Ctrl+Y）を統一する。
- * 短い休止までの連続入力は 1 つの Undo 単位にまとめる。
+ * `typingGroupMs > 0` のときだけ、短い休止までの連続入力を 1 つの Undo にまとめる。
  */
 export function useUndoRedoTextField({
   value,
   onCommit,
   historyKey,
   maxDepth = DEFAULT_MAX_DEPTH,
+  typingGroupMs = UNDO_NO_MERGE,
 }: {
   value: string;
   onCommit: (next: string) => void;
   historyKey: string;
   maxDepth?: number;
+  /** 0: すべての変更を個別に Undo。UNDO_TYPING_MERGE_MS 前後なら連続入力をまとめる */
+  typingGroupMs?: number;
 }): UndoRedoTextFieldBinding {
   const undoStackRef = useRef<string[]>([]);
   const redoStackRef = useRef<string[]>([]);
@@ -39,7 +49,7 @@ export function useUndoRedoTextField({
   const composingRef = useRef(false);
   const isApplyingHistoryRef = useRef(false);
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
-  const groupRef = useRef(createUndoGroupTracker());
+  const groupRef = useRef(createUndoGroupTracker(typingGroupMs));
 
   const flushUndoGrouping = useCallback(() => {
     groupRef.current.flush();
@@ -47,9 +57,10 @@ export function useUndoRedoTextField({
 
   useEffect(() => {
     groupRef.current.flush();
+    groupRef.current = createUndoGroupTracker(typingGroupMs);
     undoStackRef.current = [];
     redoStackRef.current = [];
-  }, [historyKey]);
+  }, [historyKey, typingGroupMs]);
 
   useEffect(() => {
     if (isApplyingHistoryRef.current) {
@@ -150,6 +161,7 @@ export function useUndoRedoTextField({
 
   const onCompositionStart = useCallback(() => {
     composingRef.current = true;
+    groupRef.current.flush();
   }, []);
 
   const onCompositionEnd = useCallback(() => {

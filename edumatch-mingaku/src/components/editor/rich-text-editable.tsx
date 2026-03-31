@@ -7,6 +7,7 @@ import {
   caretPositionAfterUndoToPrevious,
   createUndoGroupTracker,
   setContentEditablePlainCaret,
+  UNDO_TYPING_MERGE_MS,
 } from "@/lib/text-undo-caret";
 
 const turndown = new TurndownService({
@@ -58,7 +59,7 @@ export function RichTextEditable({
   const redoStackRef = useRef<string[]>([]);
   const isApplyingHistoryRef = useRef(false);
   const composingRef = useRef(false);
-  const groupTrackerRef = useRef(createUndoGroupTracker());
+  const groupTrackerRef = useRef(createUndoGroupTracker(UNDO_TYPING_MERGE_MS));
 
   const setRef = useCallback(
     (el: HTMLDivElement | null) => {
@@ -98,13 +99,9 @@ export function RichTextEditable({
 
     if (isApplyingHistoryRef.current) {
       isApplyingHistoryRef.current = false;
+      isInternalChangeRef.current = false;
       lastValueRef.current = value;
-      const el = divRef.current;
-      if (!el) return;
-      const html = inlineMarkdownToHtml(value || "") || "";
-      if (el.innerHTML !== html) {
-        el.innerHTML = html;
-      }
+      // innerHTML は applyMarkdownValue 側で既に同期済み。ここで触るとキャレット復元と競合する。
       return;
     }
 
@@ -166,6 +163,7 @@ export function RichTextEditable({
 
   const handleCompositionStart = useCallback(() => {
     composingRef.current = true;
+    groupTrackerRef.current.flush();
   }, []);
 
   const handleCompositionEnd = useCallback(() => {
@@ -276,7 +274,7 @@ export function RichTextEditable({
 
   // ブロック切り替え時は履歴を捨てる
   useEffect(() => {
-    groupTrackerRef.current = createUndoGroupTracker();
+    groupTrackerRef.current = createUndoGroupTracker(UNDO_TYPING_MERGE_MS);
     undoStackRef.current = [];
     redoStackRef.current = [];
   }, [blockId]);

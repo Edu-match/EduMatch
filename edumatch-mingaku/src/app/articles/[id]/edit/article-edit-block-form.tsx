@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ContentEditorWithImport } from "@/components/content/content-editor-with-import";
-import { useUndoRedoTextField } from "@/components/editor/use-undo-redo-text-field";
+import { useUndoRedoTextField, UNDO_TYPING_MERGE_MS } from "@/components/editor/use-undo-redo-text-field";
 import { BlocksContentPreview } from "@/components/content/blocks-content-preview";
 import type { ContentBlock } from "@/components/editor/block-editor";
 import { contentToBlocks, blocksToMarkdown } from "@/lib/markdown-to-blocks";
@@ -121,6 +121,7 @@ export function ArticleEditBlockForm({ articleId, initialData }: ArticleEditBloc
     value: leadText,
     historyKey: `article-edit-lead-${articleId}`,
     onCommit: setLeadText,
+    typingGroupMs: UNDO_TYPING_MERGE_MS,
   });
 
   useEffect(() => {

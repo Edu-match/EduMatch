@@ -38,7 +38,7 @@ import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import { contentToBlocks } from "@/lib/markdown-to-blocks";
 import { RichTextEditable, htmlToMarkdown } from "@/components/editor/rich-text-editable";
-import { useUndoRedoTextField } from "@/components/editor/use-undo-redo-text-field";
+import { useUndoRedoTextField, UNDO_TYPING_MERGE_MS } from "@/components/editor/use-undo-redo-text-field";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -117,6 +117,7 @@ function MarkdownBlockField({
     value: block.content ?? "",
     historyKey: `${block.id}-markdown`,
     onCommit: (next) => updateBlock(block.id, { content: next }),
+    typingGroupMs: UNDO_TYPING_MERGE_MS,
   });
   const text = block.content ?? "";
   const lines = text.split(/\n/);
@@ -332,6 +333,7 @@ export function BlockEditor({
     value: bulkPasteText,
     historyKey: "block-editor-bulk-paste",
     onCommit: setBulkPasteText,
+    typingGroupMs: UNDO_TYPING_MERGE_MS,
   });
   const [selectionBubble, setSelectionBubble] = useState<{
     blockId: string;

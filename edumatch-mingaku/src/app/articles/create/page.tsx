@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ContentEditorWithImport } from "@/components/content/content-editor-with-import";
-import { useUndoRedoTextField } from "@/components/editor/use-undo-redo-text-field";
+import { useUndoRedoTextField, UNDO_TYPING_MERGE_MS } from "@/components/editor/use-undo-redo-text-field";
 import { AiArticleGenerator, type GeneratedArticle } from "@/components/articles/ai-article-generator";
 import type { ContentBlock } from "@/components/editor/block-editor";
 import { renderInlineMarkdown } from "@/lib/inline-markdown";
@@ -120,6 +120,7 @@ export default function ArticleCreatePage() {
     value: leadText,
     historyKey: "article-create-lead",
     onCommit: setLeadText,
+    typingGroupMs: UNDO_TYPING_MERGE_MS,
   });
 
   // Save draft to localStorage

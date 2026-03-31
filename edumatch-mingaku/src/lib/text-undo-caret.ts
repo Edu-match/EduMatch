@@ -12,9 +12,20 @@ export function caretPositionAfterUndoToPrevious(prev: string, next: string): nu
   return Math.min(i, prev.length);
 }
 
-const GROUP_IDLE_MS = 420;
+/** 本文・Markdown 等で連続入力をまとめるときの既定の休止時間（ms） */
+export const UNDO_TYPING_MERGE_MS = 380;
 
-export function createUndoGroupTracker(onFlush?: () => void) {
+/**
+ * @param idleMs このミリ秒以上入力が止まると「1 まとまり」終了。0 以下なら毎回 Undo を積む（ショートフィールド向け）
+ */
+export function createUndoGroupTracker(idleMs: number | undefined = UNDO_TYPING_MERGE_MS, onFlush?: () => void) {
+  if (idleMs <= 0) {
+    return {
+      shouldPushSnapshot: () => true,
+      flush: () => {},
+    };
+  }
+
   let inGroup = false;
   let timer: ReturnType<typeof setTimeout> | null = null;
 
@@ -31,7 +42,7 @@ export function createUndoGroupTracker(onFlush?: () => void) {
 
   const scheduleEnd = () => {
     if (timer) clearTimeout(timer);
-    timer = setTimeout(flush, GROUP_IDLE_MS);
+    timer = setTimeout(flush, idleMs);
   };
 
   /** 次の変更で新しい Undo スナップショットを積むべきか */
