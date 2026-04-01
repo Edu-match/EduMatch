@@ -23,6 +23,9 @@ async function ensureNotoSansJpBold(): Promise<void> {
   await document.fonts.load(`700 48px "Noto Sans JP"`);
 }
 
+/** 全角スペース（U+3000） */
+const IDEOGRAPHIC_SPACE = "\u3000";
+
 function wrapLines(
   ctx: CanvasRenderingContext2D,
   text: string,
@@ -42,6 +45,28 @@ function wrapLines(
   }
   if (current) lines.push(current);
   return lines;
+}
+
+/**
+ * 全角スペースの位置で必ず改行し、各ブロックは幅に収まるよう折り返す
+ */
+function wrapTitleForThumbnail(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number
+): string[] {
+  const segments = text
+    .split(IDEOGRAPHIC_SPACE)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+  if (segments.length === 0) {
+    return wrapLines(ctx, text, maxWidth);
+  }
+  const out: string[] = [];
+  for (const seg of segments) {
+    out.push(...wrapLines(ctx, seg, maxWidth));
+  }
+  return out;
 }
 
 /**
@@ -89,7 +114,7 @@ export async function generateArticleThumbnailPng(options: {
 
   while (fontSize >= minSize) {
     ctx.font = `700 ${fontSize}px ${NOTO_FAMILY}`;
-    lines = wrapLines(ctx, title, maxWidth);
+    lines = wrapTitleForThumbnail(ctx, title, maxWidth);
     const lineHeight = fontSize * 1.35;
     const totalH = lines.length * lineHeight;
     if (totalH <= textAreaHeight) break;
@@ -97,7 +122,7 @@ export async function generateArticleThumbnailPng(options: {
   }
 
   ctx.font = `700 ${fontSize}px ${NOTO_FAMILY}`;
-  lines = wrapLines(ctx, title, maxWidth);
+  lines = wrapTitleForThumbnail(ctx, title, maxWidth);
   const lineHeight = fontSize * 1.35;
   const totalH = lines.length * lineHeight;
 
