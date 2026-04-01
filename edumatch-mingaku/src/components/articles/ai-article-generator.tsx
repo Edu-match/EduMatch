@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Wand2, Loader2, AlertCircle, CheckCircle2, Eye, EyeOff } from "lucide-react";
+import type { ThumbnailTemplateKind } from "@/lib/thumbnail-template";
 
 export interface GeneratedArticle {
   title: string;
@@ -12,6 +13,8 @@ export interface GeneratedArticle {
   content: string;
   category: string;
   tags: string;
+  /** AI が選んだサムネイルテンプレート（未返却時はクライアントで省略可） */
+  thumbnailKind?: ThumbnailTemplateKind;
 }
 
 interface AiArticleGeneratorProps {

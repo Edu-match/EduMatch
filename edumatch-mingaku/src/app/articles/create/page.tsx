@@ -18,20 +18,24 @@ import {
 import { ContentEditorWithImport } from "@/components/content/content-editor-with-import";
 import { useUndoRedoTextField, UNDO_TYPING_MERGE_MS } from "@/components/editor/use-undo-redo-text-field";
 import { AiArticleGenerator, type GeneratedArticle } from "@/components/articles/ai-article-generator";
+import { ArticlePreview } from "@/components/articles/article-preview";
 import type { ContentBlock } from "@/components/editor/block-editor";
-import { renderInlineMarkdown } from "@/lib/inline-markdown";
 import { contentToBlocks } from "@/lib/markdown-to-blocks";
 import { blocksToArticleContent } from "@/lib/article-content";
-import { isImportedContent, parseImportedContent } from "@/lib/imported-content";
-import { ImportedContentRenderer } from "@/components/content/imported-content-renderer";
-import ReactMarkdown from "react-markdown";
+import { isImportedContent } from "@/lib/imported-content";
+import { generateArticleThumbnailPng } from "@/lib/article-thumbnail-canvas";
+import {
+  THUMBNAIL_TEMPLATE_KINDS,
+  THUMBNAIL_TEMPLATE_LABELS,
+  getThumbnailTemplateImageUrl,
+  type ThumbnailTemplateKind,
+} from "@/lib/thumbnail-template";
 import {
   Eye,
   Save,
   Send,
   Settings,
   Image as ImageIcon,
-  Calendar,
   Building2,
   School,
   FileText,
@@ -95,6 +99,9 @@ export default function ArticleCreatePage() {
   const [thumbnailUrl, setThumbnailUrl] = useState(() => draft?.thumbnailUrl || "");
   const [thumbnailInput, setThumbnailInput] = useState("");
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
+  const [thumbnailTemplateKind, setThumbnailTemplateKind] =
+    useState<ThumbnailTemplateKind>("domestic");
+  const [thumbnailTemplateGenerating, setThumbnailTemplateGenerating] = useState(false);
   const thumbnailFileInputRef = useRef<HTMLInputElement | null>(null);
   const [content, setContent] = useState<string>(() => {
     if (draft?.content) return draft.content;
@@ -310,19 +317,59 @@ export default function ArticleCreatePage() {
     setAiPanelOpen(true);
   }, []);
 
-  const handleApplyGenerated = useCallback(() => {
+  const applyThumbnailFromTemplate = useCallback(
+    async (
+      kind: ThumbnailTemplateKind,
+      titleText: string,
+      options?: { quiet?: boolean }
+    ) => {
+      const t = titleText.trim();
+      if (!t) {
+        toast.error("先にタイトルを入力してください");
+        return;
+      }
+      setThumbnailTemplateGenerating(true);
+      try {
+        const blob = await generateArticleThumbnailPng({ templateKind: kind, title: t });
+        const file = new File([blob], "article-thumbnail.png", { type: "image/png" });
+        const formData = new FormData();
+        formData.append("file", file);
+        const result = await uploadImage(formData);
+        if (result.success && result.url) {
+          setThumbnailUrl(result.url);
+          setThumbnailTemplateKind(kind);
+          if (!options?.quiet) {
+            toast.success("サムネイルを生成して設定しました");
+          }
+        } else {
+          toast.error(result.error || "アップロードに失敗しました");
+        }
+      } catch (e) {
+        console.error(e);
+        toast.error("サムネイルの生成に失敗しました");
+      } finally {
+        setThumbnailTemplateGenerating(false);
+      }
+    },
+    []
+  );
+
+  const handleApplyGenerated = useCallback(async () => {
     if (!generatedArticle) return;
-    setTitle(generatedArticle.title.slice(0, 80));
+    const kind = generatedArticle.thumbnailKind ?? "domestic";
+    setThumbnailTemplateKind(kind);
+    setTitle(generatedArticle.title.slice(0, TITLE_MAX_LENGTH));
     setLeadText(generatedArticle.leadText);
     setContent(generatedArticle.content);
     if (generatedArticle.category) setCategory(generatedArticle.category);
     if (generatedArticle.tags) setTags(generatedArticle.tags);
     setAiPanelOpen(false);
     setActiveTab("edit");
-    toast.success("AIが記事を生成しました", {
+    await applyThumbnailFromTemplate(kind, generatedArticle.title, { quiet: true });
+    toast.success("AIが記事とサムネイルを反映しました", {
       description: "内容を確認・編集してから申請してください",
     });
-  }, [generatedArticle]);
+  }, [generatedArticle, applyThumbnailFromTemplate]);
 
   const clearDraft = () => {
     if (confirm("下書きを削除してもよろしいですか？")) {
@@ -334,6 +381,7 @@ export default function ArticleCreatePage() {
       setTags("");
       setPublishType("draft");
       setThumbnailUrl("");
+      setThumbnailTemplateKind("domestic");
       setContent("");
       setLastSaved(null);
     }
@@ -349,179 +397,15 @@ export default function ArticleCreatePage() {
   const isContentValid = contentLength <= CONTENT_MAX_LENGTH;
   const canSubmit = isTitleValid && isContentValid && title.trim().length > 0 && content.trim().length > 0;
 
-  const renderPreview = () => {
-    return (
-      <div className="max-w-3xl mx-auto">
-        {/* Thumbnail */}
-        {thumbnailUrl && (
-          <div className="mb-6 rounded-xl overflow-hidden">
-            <img
-              src={thumbnailUrl}
-              alt={title}
-              className="w-full h-[300px] object-contain"
-            />
-          </div>
-        )}
-
-        {/* Title */}
-        <h1 className="text-4xl font-bold mb-4">{title || "タイトル未設定"}</h1>
-
-        {/* Meta info */}
-        <div className="flex items-center gap-4 text-sm text-muted-foreground mb-6">
-          <span className="flex items-center gap-1">
-            <Calendar className="h-4 w-4" />
-            {new Date().toLocaleDateString("ja-JP")}
-          </span>
-          {category && <Badge variant="outline">{category}</Badge>}
-        </div>
-
-        {/* Lead text */}
-        {leadText && (
-          <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
-            {leadText}
-          </p>
-        )}
-
-        {/* Content */}
-        {isImportedContent(content) ? (
-          (() => {
-            const parsed = parseImportedContent(content);
-            return parsed ? (
-              <ImportedContentRenderer type={parsed.type} content={parsed.raw} />
-            ) : null;
-          })()
-        ) : (
-        <div className="prose prose-lg max-w-none">
-          {contentToBlocks(content).map((block) => {
-            switch (block.type) {
-              case "heading1":
-                return (
-                  <h2
-                    key={block.id}
-                    className="text-3xl font-bold mt-8 mb-4"
-                    style={{ textAlign: block.align }}
-                  >
-                    {renderInlineMarkdown(block.content)}
-                  </h2>
-                );
-              case "heading2":
-                return (
-                  <h3
-                    key={block.id}
-                    className="text-2xl font-bold mt-6 mb-3"
-                    style={{ textAlign: block.align }}
-                  >
-                    {renderInlineMarkdown(block.content)}
-                  </h3>
-                );
-              case "heading3":
-                return (
-                  <h4
-                    key={block.id}
-                    className="text-xl font-semibold mt-4 mb-2"
-                    style={{ textAlign: block.align }}
-                  >
-                    {renderInlineMarkdown(block.content)}
-                  </h4>
-                );
-              case "paragraph":
-                return (
-                  <p
-                    key={block.id}
-                    className="mb-4 leading-relaxed"
-                    style={{ textAlign: block.align }}
-                  >
-                    {renderInlineMarkdown(block.content)}
-                  </p>
-                );
-              case "image":
-                return (
-                  <figure key={block.id} className="my-8">
-                    {block.url && (
-                      <img
-                        src={block.url}
-                        alt={block.caption || ""}
-                        className="w-full rounded-lg"
-                      />
-                    )}
-                    {block.caption && (
-                      <figcaption className="text-center text-sm text-muted-foreground mt-2">
-                        {block.caption}
-                      </figcaption>
-                    )}
-                  </figure>
-                );
-              case "video":
-                return (
-                  <figure key={block.id} className="my-8">
-                    {block.url && (
-                      <div className="aspect-video bg-black rounded-lg overflow-hidden">
-                        <iframe
-                          src={
-                            block.url.includes("youtube.com") ||
-                            block.url.includes("youtu.be")
-                              ? `https://www.youtube.com/embed/${extractYouTubeId(block.url)}`
-                              : block.url
-                          }
-                          className="w-full h-full"
-                          allowFullScreen
-                        />
-                      </div>
-                    )}
-                    {block.caption && (
-                      <figcaption className="text-center text-sm text-muted-foreground mt-2">
-                        {block.caption}
-                      </figcaption>
-                    )}
-                  </figure>
-                );
-              case "quote":
-                return (
-                  <blockquote
-                    key={block.id}
-                    className="border-l-4 border-primary pl-4 my-6 italic"
-                  >
-                    <p className="text-lg">{renderInlineMarkdown(block.content)}</p>
-                    {block.caption && (
-                      <cite className="text-sm text-muted-foreground not-italic">
-                        — {block.caption}
-                      </cite>
-                    )}
-                  </blockquote>
-                );
-              case "divider":
-                return <hr key={block.id} className="my-8 border-t-2" />;
-              case "bulletList":
-                return (
-                  <ul key={block.id} className="list-disc pl-6 my-4 space-y-1">
-                    {block.items?.map((item, i) => (
-                      <li key={i}>{renderInlineMarkdown(item)}</li>
-                    ))}
-                  </ul>
-                );
-              case "numberedList":
-                return (
-                  <ol key={block.id} className="list-decimal pl-6 my-4 space-y-1">
-                    {block.items?.map((item, i) => (
-                      <li key={i}>{renderInlineMarkdown(item)}</li>
-                    ))}
-                  </ol>
-                );
-              case "markdown":
-                return (
-                  <div key={block.id} className="prose prose-lg max-w-none my-4">
-                    <ReactMarkdown>{block.content}</ReactMarkdown>
-                  </div>
-                );
-              default:
-                return null;
-            }
-          })}
-        </div>
-        )}
-      </div>
-    );
-  };
+  const renderPreview = () => (
+    <ArticlePreview
+      title={title}
+      leadText={leadText}
+      content={content}
+      category={category}
+      thumbnailUrl={thumbnailUrl || undefined}
+    />
+  );
 
   // 最終保存時刻の表示文字列を計算
   const [lastSavedText, setLastSavedText] = useState("未保存");
@@ -722,6 +606,60 @@ export default function ArticleCreatePage() {
                         </div>
                       </div>
                     )}
+
+                    <div className="pt-6 border-t space-y-3">
+                      <p className="text-sm font-medium">テンプレート背景＋タイトルでサムネイル</p>
+                      <p className="text-xs text-muted-foreground leading-snug">
+                        青＝国内記事・黄＝海外記事・赤＝募集・緑＝その他。生成した画像は Supabase Storage（media
+                        バケット）にアップロードされます。
+                      </p>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {THUMBNAIL_TEMPLATE_KINDS.map((kind) => (
+                          <button
+                            key={kind}
+                            type="button"
+                            onClick={() => setThumbnailTemplateKind(kind)}
+                            className={`rounded-lg border-2 overflow-hidden p-0.5 transition-colors text-left ${
+                              thumbnailTemplateKind === kind
+                                ? "border-primary ring-2 ring-primary/30"
+                                : "border-transparent hover:border-muted-foreground/30"
+                            }`}
+                          >
+                            <img
+                              src={getThumbnailTemplateImageUrl(kind)}
+                              alt=""
+                              className="w-full h-14 object-cover rounded-sm"
+                            />
+                            <span className="text-[10px] block text-center py-1 leading-tight text-muted-foreground">
+                              {THUMBNAIL_TEMPLATE_LABELS[kind]}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="w-full"
+                        disabled={
+                          thumbnailTemplateGenerating || thumbnailUploading || !title.trim()
+                        }
+                        onClick={() =>
+                          applyThumbnailFromTemplate(thumbnailTemplateKind, title)
+                        }
+                      >
+                        {thumbnailTemplateGenerating ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            生成中...
+                          </>
+                        ) : (
+                          <>
+                            <ImageIcon className="h-4 w-4 mr-2" />
+                            テンプレートでサムネイルを生成
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
 
@@ -851,51 +789,13 @@ export default function ArticleCreatePage() {
                 </CardHeader>
 
                 <div className="flex-1 overflow-y-auto">
-                  <CardContent className="py-5 space-y-5">
-                    {/* Title */}
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-1">タイトル</p>
-                      <p className="font-bold text-lg leading-snug">{generatedArticle.title}</p>
-                    </div>
-
-                    {/* Lead text */}
-                    {generatedArticle.leadText && (
-                      <div>
-                        <p className="text-xs font-medium text-muted-foreground mb-1">リード文</p>
-                        <p className="text-sm text-muted-foreground leading-relaxed">
-                          {generatedArticle.leadText}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Category & Tags */}
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-2">カテゴリ・タグ</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {generatedArticle.category && (
-                          <Badge variant="default" className="text-xs">
-                            {generatedArticle.category}
-                          </Badge>
-                        )}
-                        {generatedArticle.tags
-                          .split(",")
-                          .map((t) => t.trim())
-                          .filter(Boolean)
-                          .map((tag) => (
-                            <Badge key={tag} variant="outline" className="text-xs">
-                              {tag}
-                            </Badge>
-                          ))}
-                      </div>
-                    </div>
-
-                    {/* Content */}
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-2">本文</p>
-                      <div className="prose prose-sm max-w-none border rounded-lg p-4 bg-gray-50/50">
-                        <ReactMarkdown>{generatedArticle.content}</ReactMarkdown>
-                      </div>
-                    </div>
+                  <CardContent className="py-8">
+                    <ArticlePreview
+                      title={generatedArticle.title}
+                      leadText={generatedArticle.leadText}
+                      content={generatedArticle.content}
+                      category={generatedArticle.category}
+                    />
                   </CardContent>
                 </div>
 
@@ -1145,11 +1045,4 @@ function CheckItem({ checked, label }: { checked: boolean; label: string }) {
       </span>
     </div>
   );
-}
-
-function extractYouTubeId(url: string): string {
-  const match = url.match(
-    /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/
-  );
-  return match ? match[1] : "";
 }
