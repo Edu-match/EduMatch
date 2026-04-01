@@ -609,28 +609,26 @@ export default function ArticleCreatePage() {
 
                     <div className="pt-6 border-t space-y-3">
                       <p className="text-sm font-medium">テンプレート背景＋タイトルでサムネイル</p>
-                      <p className="text-xs text-muted-foreground leading-snug">
-                        青＝国内記事・黄＝海外記事・赤＝募集・緑＝その他。生成した画像は Supabase Storage（media
-                        バケット）にアップロードされます。
-                      </p>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         {THUMBNAIL_TEMPLATE_KINDS.map((kind) => (
                           <button
                             key={kind}
                             type="button"
                             onClick={() => setThumbnailTemplateKind(kind)}
-                            className={`rounded-lg border-2 overflow-hidden p-0.5 transition-colors text-left ${
+                            className={`rounded-lg border-2 overflow-hidden p-1 transition-colors text-left flex flex-col gap-1 ${
                               thumbnailTemplateKind === kind
                                 ? "border-primary ring-2 ring-primary/30"
                                 : "border-transparent hover:border-muted-foreground/30"
                             }`}
                           >
-                            <img
-                              src={getThumbnailTemplateImageUrl(kind)}
-                              alt=""
-                              className="w-full h-14 object-cover rounded-sm"
-                            />
-                            <span className="text-[10px] block text-center py-1 leading-tight text-muted-foreground">
+                            <div className="relative w-full aspect-video rounded-sm overflow-hidden bg-muted/30">
+                              <img
+                                src={getThumbnailTemplateImageUrl(kind)}
+                                alt=""
+                                className="absolute inset-0 w-full h-full object-contain"
+                              />
+                            </div>
+                            <span className="text-[10px] block text-center leading-tight text-muted-foreground">
                               {THUMBNAIL_TEMPLATE_LABELS[kind]}
                             </span>
                           </button>

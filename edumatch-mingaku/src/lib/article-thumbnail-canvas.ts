@@ -1,6 +1,28 @@
 import type { ThumbnailTemplateKind } from "@/lib/thumbnail-template";
 import { getThumbnailTemplateImageUrl } from "@/lib/thumbnail-template";
 
+const NOTO_FAMILY = '"Noto Sans JP", sans-serif';
+
+/** Canvas 用に Google Fonts の Noto Sans JP (700) を読み込む */
+async function ensureNotoSansJpBold(): Promise<void> {
+  if (typeof document === "undefined") return;
+  const id = "edumatch-noto-sans-jp-canvas";
+  if (!document.getElementById(id)) {
+    await new Promise<void>((resolve, reject) => {
+      const link = document.createElement("link");
+      link.id = id;
+      link.rel = "stylesheet";
+      link.href =
+        "https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@700&display=swap";
+      link.onload = () => resolve();
+      link.onerror = () => reject(new Error("フォントの読み込みに失敗しました"));
+      document.head.appendChild(link);
+    });
+  }
+  await document.fonts.ready;
+  await document.fonts.load(`700 48px "Noto Sans JP"`);
+}
+
 function wrapLines(
   ctx: CanvasRenderingContext2D,
   text: string,
@@ -24,11 +46,14 @@ function wrapLines(
 
 /**
  * テンプレ背景にタイトルを載せた PNG を生成（ブラウザのみ）
+ * タイトルは上下左右ともセンター（ロゴ想定の下余白を除いたエリアの中央）
  */
 export async function generateArticleThumbnailPng(options: {
   templateKind: ThumbnailTemplateKind;
   title: string;
 }): Promise<Blob> {
+  await ensureNotoSansJpBold();
+
   const title = options.title.trim().slice(0, 80) || "タイトル未設定";
   const src = getThumbnailTemplateImageUrl(options.templateKind);
 
@@ -52,39 +77,39 @@ export async function generateArticleThumbnailPng(options: {
 
   const padX = w * 0.08;
   const maxWidth = w - padX * 2;
-  const areaTop = h * 0.12;
-  const areaBottom = h * 0.58;
-  const maxHeight = areaBottom - areaTop;
+  /** 下部はロゴ帯として少し空け、全体の見た目の中心に近づける */
+  const marginTop = h * 0.1;
+  const marginBottom = h * 0.22;
+  const textAreaHeight = h - marginTop - marginBottom;
+  const centerY = marginTop + textAreaHeight / 2;
 
   let fontSize = Math.min(48, Math.floor(w / 22));
   const minSize = 20;
   let lines: string[] = [];
-  const fontFamily =
-    '"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic UI","Yu Gothic",Meiryo,sans-serif';
 
   while (fontSize >= minSize) {
-    ctx.font = `bold ${fontSize}px ${fontFamily}`;
+    ctx.font = `700 ${fontSize}px ${NOTO_FAMILY}`;
     lines = wrapLines(ctx, title, maxWidth);
-    const lineHeight = fontSize * 1.38;
+    const lineHeight = fontSize * 1.35;
     const totalH = lines.length * lineHeight;
-    if (totalH <= maxHeight) break;
+    if (totalH <= textAreaHeight) break;
     fontSize -= 2;
   }
 
-  ctx.font = `bold ${fontSize}px ${fontFamily}`;
+  ctx.font = `700 ${fontSize}px ${NOTO_FAMILY}`;
   lines = wrapLines(ctx, title, maxWidth);
-  const lineHeight = fontSize * 1.38;
+  const lineHeight = fontSize * 1.35;
   const totalH = lines.length * lineHeight;
-  let y = areaTop + (maxHeight - totalH) / 2 + fontSize * 0.88;
 
   ctx.fillStyle = "rgba(30, 40, 60, 0.92)";
   ctx.textAlign = "center";
-  ctx.textBaseline = "alphabetic";
+  ctx.textBaseline = "middle";
 
   const cx = w / 2;
-  for (const line of lines) {
-    ctx.fillText(line, cx, y);
-    y += lineHeight;
+  const firstLineCenterY = centerY - ((lines.length - 1) * lineHeight) / 2;
+
+  for (let i = 0; i < lines.length; i++) {
+    ctx.fillText(lines[i], cx, firstLineCenterY + i * lineHeight);
   }
 
   return new Promise((resolve, reject) => {
