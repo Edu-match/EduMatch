@@ -538,6 +538,39 @@ export default function ArticleCreatePage() {
                 {/* Thumbnail upload */}
                 <Card>
                   <CardContent className="pt-6 space-y-4">
+                    <input
+                      ref={thumbnailFileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      aria-hidden
+                      tabIndex={-1}
+                      onChange={async (e) => {
+                        const input = e.currentTarget;
+                        const file = input.files?.[0];
+                        if (!file) return;
+                        setThumbnailUploading(true);
+                        try {
+                          const formData = new FormData();
+                          formData.append("file", file);
+                          const result = await uploadImage(formData);
+                          if (result.success && result.url) {
+                            setThumbnailUrl(result.url);
+                            toast.success("サムネイルをアップロードしました");
+                          } else {
+                            toast.error("サムネイルのアップロードに失敗しました", {
+                              description: result.error || "もう一度お試しください",
+                            });
+                          }
+                        } catch (err) {
+                          console.error(err);
+                          toast.error("サムネイルのアップロードに失敗しました");
+                        } finally {
+                          setThumbnailUploading(false);
+                          input.value = "";
+                        }
+                      }}
+                    />
                     {thumbnailUrl ? (
                       <div className="space-y-3">
                         <div className="relative group rounded-lg overflow-hidden">
@@ -600,40 +633,9 @@ export default function ArticleCreatePage() {
                           </p>
                         </div>
                         <div className="space-y-3">
-                          <input
-                            ref={thumbnailFileInputRef}
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={async (e) => {
-                              const input = e.currentTarget;
-                              const file = input.files?.[0];
-                              if (!file) return;
-                              setThumbnailUploading(true);
-                              try {
-                                const formData = new FormData();
-                                formData.append("file", file);
-                                const result = await uploadImage(formData);
-                                if (result.success && result.url) {
-                                  setThumbnailUrl(result.url);
-                                  toast.success("サムネイルをアップロードしました");
-                                } else {
-                                  toast.error("サムネイルのアップロードに失敗しました", {
-                                    description: result.error || "もう一度お試しください",
-                                  });
-                                }
-                              } catch (err) {
-                                console.error(err);
-                                toast.error("サムネイルのアップロードに失敗しました");
-                              } finally {
-                                setThumbnailUploading(false);
-                                input.value = "";
-                              }
-                            }}
-                          />
-
                           <Button
                             variant="outline"
+                            type="button"
                             onClick={() => thumbnailFileInputRef.current?.click()}
                             disabled={thumbnailUploading}
                           >
