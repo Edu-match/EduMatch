@@ -66,17 +66,20 @@ export function blocksToArticleContent(
 }
 
 /**
- * コンテンツからリード文を除去して本文のみを取得
+ * コンテンツ先頭から、リード文と同一のテキストを（空白区切りで）連続している限り除去する。
+ * AI が lead と同じ段落を本文 Markdown に繰り返した場合や、旧下書きの二重保存に対応。
+ * 本文がリードと同一文字列で始まる1語だけのケースは、直後に空白がないと除去しない（誤除去防止）。
  */
 export function stripLeadText(content: string, leadText: string): string {
-  const lt = (leadText || "").trim();
+  const lt = (leadText || "").replace(/\r\n/g, "\n").trim();
   if (!lt) return content;
-  const trimmed = content.trimStart();
-  if (trimmed.startsWith(lt)) {
-    const rest = trimmed.slice(lt.length).trimStart();
-    if (rest.startsWith("\n\n") || rest.startsWith("\n")) {
-      return rest.replace(/^\n+/, "");
-    }
+
+  let cur = content.replace(/\r\n/g, "\n").trimStart();
+  while (cur.startsWith(lt)) {
+    const after = cur.slice(lt.length);
+    if (after.length === 0) return "";
+    if (!/^\s/.test(after)) break;
+    cur = after.replace(/^\s+/, "");
   }
-  return content;
+  return cur;
 }

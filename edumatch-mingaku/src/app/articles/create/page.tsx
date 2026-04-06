@@ -21,7 +21,7 @@ import { AiArticleGenerator, type GeneratedArticle } from "@/components/articles
 import { ArticlePreview } from "@/components/articles/article-preview";
 import type { ContentBlock } from "@/components/editor/block-editor";
 import { contentToBlocks } from "@/lib/markdown-to-blocks";
-import { blocksToArticleContent } from "@/lib/article-content";
+import { blocksToArticleContent, stripLeadText } from "@/lib/article-content";
 import { isImportedContent } from "@/lib/imported-content";
 import { generateArticleThumbnailPng } from "@/lib/article-thumbnail-canvas";
 import {
@@ -115,9 +115,10 @@ export default function ArticleCreatePage() {
   const [thumbnailTemplateGenerating, setThumbnailTemplateGenerating] = useState(false);
   const thumbnailFileInputRef = useRef<HTMLInputElement | null>(null);
   const [content, setContent] = useState<string>(() => {
-    if (draft?.content) return draft.content;
+    const lead = draft?.leadText || "";
+    if (draft?.content) return stripLeadText(draft.content, lead);
     if (draft?.blocks && draft.blocks.length > 0) {
-      return blocksToArticleContent(draft.blocks, draft.leadText || "");
+      return stripLeadText(blocksToArticleContent(draft.blocks, lead), lead);
     }
     return "";
   });
@@ -377,8 +378,9 @@ export default function ArticleCreatePage() {
     const kind = generatedArticle.thumbnailKind ?? "domestic";
     setThumbnailTemplateKind(kind);
     setTitle(generatedArticle.title.slice(0, TITLE_MAX_LENGTH));
-    setLeadText(generatedArticle.leadText);
-    setContent(generatedArticle.content);
+    const nextLead = generatedArticle.leadText;
+    setLeadText(nextLead);
+    setContent(stripLeadText(generatedArticle.content, nextLead));
     setHomeNewsTab(homeNewsTabFromThumbnailKind(kind));
     if (generatedArticle.category) setCategory(generatedArticle.category);
     if (generatedArticle.tags) setTags(generatedArticle.tags);
