@@ -18,7 +18,9 @@ import {
   Bot,
   User,
   ChevronRight,
+  Award,
 } from "lucide-react";
+import { AiKenteiCertificatesCompact } from "@/components/ai-kentei/certificates-compact";
 import { ChatHistoryCompact } from "@/components/dashboard/chat-history-compact";
 import { requireAuth, getCurrentProfile } from "@/lib/auth";
 import { getRecentViewHistory } from "@/app/_actions";
@@ -224,6 +226,25 @@ export default async function MyPage() {
             </CardContent>
           </Card>
           )}
+
+          {/* AI検定 認定証 */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Award className="h-5 w-5 text-amber-500" />
+                AI検定 認定証
+              </CardTitle>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/ai-kentei">
+                  検定を受ける
+                  <ArrowRight className="h-4 w-4 ml-1" />
+                </Link>
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <AiKenteiCertificatesCompact />
+            </CardContent>
+          </Card>
 
           {/* AIチャット履歴 */}
           <Card>

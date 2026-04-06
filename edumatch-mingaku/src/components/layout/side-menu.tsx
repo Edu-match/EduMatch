@@ -13,6 +13,7 @@ import {
   PenSquare,
   FileText,
   ShieldCheck,
+  Award,
 } from "lucide-react";
 
 /** 一般ユーザー向けメニュー（全員閲覧用） */
@@ -23,6 +24,7 @@ const generalItems = [
   { href: "/events", label: "セミナー・イベント情報", icon: Calendar },
   { href: "/companies", label: "掲載企業一覧", icon: Building2 },
   { href: "/compare", label: "サービス比較", icon: Scale },
+  { href: "/ai-kentei", label: "AI検定", icon: Award },
   { href: "/help", label: "ヘルプ", icon: HelpCircle },
 ];
 
@@ -34,6 +36,7 @@ const bottomItems = [
   { href: "/admin/site-updates", label: "運営記事を書く", icon: PenSquare, roles: ["ADMIN"] },
   { href: "/admin/events", label: "セミナー・イベントを管理", icon: Calendar, roles: ["ADMIN"] },
   { href: "/admin/pages", label: "固定ページ・表示設定", icon: FileText, roles: ["ADMIN"] },
+  { href: "/ai-kentei/admin", label: "AI検定 管理", icon: Award, roles: ["ADMIN"] },
 ];
 
 type MenuItem = (typeof generalItems)[number] | (typeof bottomItems)[number];
