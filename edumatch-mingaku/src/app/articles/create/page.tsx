@@ -28,6 +28,7 @@ import {
   THUMBNAIL_TEMPLATE_KINDS,
   THUMBNAIL_TEMPLATE_LABELS,
   getThumbnailTemplateImageUrl,
+  parseThumbnailKind,
   type ThumbnailTemplateKind,
 } from "@/lib/thumbnail-template";
 import {
@@ -81,6 +82,13 @@ function homeNewsTabFromThumbnailKind(
   if (kind === "overseas") return "INTERNATIONAL";
   if (kind === "domestic") return "DOMESTIC";
   return "NONE";
+}
+
+/** トップトピックスの分類に合わせたサムネイルテンプレート（反映・生成に使用） */
+function thumbnailKindFromHomeNewsTab(tab: HomeNewsTab): ThumbnailTemplateKind {
+  if (tab === "DOMESTIC") return "domestic";
+  if (tab === "INTERNATIONAL") return "overseas";
+  return "other";
 }
 
 // ローカルストレージから下書きを読み込む関数（クライアントサイドのみ）
@@ -334,6 +342,8 @@ export default function ArticleCreatePage() {
   const handleAiGenerated = useCallback((data: GeneratedArticle) => {
     setGeneratedArticle(data);
     setAiPanelOpen(true);
+    const aiKind = parseThumbnailKind(data.thumbnailKind ?? "domestic");
+    setThumbnailTemplateKind(aiKind);
     setHomeNewsTab(homeNewsTabFromThumbnailKind(data.thumbnailKind ?? "domestic"));
   }, []);
 
@@ -376,7 +386,7 @@ export default function ArticleCreatePage() {
 
   const handleApplyGenerated = useCallback(async () => {
     if (!generatedArticle) return;
-    const kind = generatedArticle.thumbnailKind ?? "domestic";
+    const kind = thumbnailKindFromHomeNewsTab(homeNewsTab);
     setThumbnailTemplateKind(kind);
     setTitle(generatedArticle.title.slice(0, TITLE_MAX_LENGTH));
     const nextLead = generatedArticle.leadText;
@@ -390,7 +400,7 @@ export default function ArticleCreatePage() {
     toast.success("AIが記事とサムネイルを反映しました", {
       description: "内容を確認・編集してから申請してください",
     });
-  }, [generatedArticle, applyThumbnailFromTemplate]);
+  }, [generatedArticle, applyThumbnailFromTemplate, homeNewsTab]);
 
   const clearDraft = () => {
     if (confirm("下書きを削除してもよろしいですか？")) {
@@ -854,7 +864,11 @@ export default function ArticleCreatePage() {
                     </p>
                     <Select
                       value={homeNewsTab}
-                      onValueChange={(v) => setHomeNewsTab(v as HomeNewsTab)}
+                      onValueChange={(v) => {
+                        const tab = v as HomeNewsTab;
+                        setHomeNewsTab(tab);
+                        setThumbnailTemplateKind(thumbnailKindFromHomeNewsTab(tab));
+                      }}
                     >
                       <SelectTrigger className="w-full">
                         <SelectValue />
@@ -1020,7 +1034,11 @@ export default function ArticleCreatePage() {
                   </p>
                   <Select
                     value={homeNewsTab}
-                    onValueChange={(v) => setHomeNewsTab(v as HomeNewsTab)}
+                    onValueChange={(v) => {
+                      const tab = v as HomeNewsTab;
+                      setHomeNewsTab(tab);
+                      setThumbnailTemplateKind(thumbnailKindFromHomeNewsTab(tab));
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue />
