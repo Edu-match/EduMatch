@@ -106,12 +106,11 @@ function VideoListItem({ video }: { video: VideoItem }) {
 
 type Props = {
   articles: ArticleItem[];
-  weeklyArticles: ArticleItem[];
   services: ServiceItem[];
   videos: VideoItem[];
 };
 
-export function TopicsTabs({ articles, weeklyArticles, services, videos }: Props) {
+export function TopicsTabs({ articles, services, videos }: Props) {
   const domesticArticles = articles.filter((a) => a.newsTab === "DOMESTIC");
   const internationalArticles = articles.filter((a) => a.newsTab === "INTERNATIONAL");
 
@@ -125,9 +124,6 @@ export function TopicsTabs({ articles, weeklyArticles, services, videos }: Props
           <TabsTrigger value="all" className={triggerClass}>すべて</TabsTrigger>
           <TabsTrigger value="domestic" className={triggerClass}>国内のニュース</TabsTrigger>
           <TabsTrigger value="international" className={triggerClass}>世界のニュース</TabsTrigger>
-          {weeklyArticles.length > 0 && (
-            <TabsTrigger value="weekly" className={triggerClass}>今週のニュース</TabsTrigger>
-          )}
         </TabsList>
       </div>
       <div className="p-3">
@@ -154,12 +150,6 @@ export function TopicsTabs({ articles, weeklyArticles, services, videos }: Props
             <p className="text-center text-muted-foreground py-4">世界のニュースがありません</p>
           )}
         </TabsContent>
-
-        {weeklyArticles.length > 0 && (
-        <TabsContent value="weekly" className="mt-0 space-y-0">
-          {weeklyArticles.map((a) => <ArticleListItem key={a.id} article={a} />)}
-        </TabsContent>
-        )}
       </div>
     </Tabs>
   );

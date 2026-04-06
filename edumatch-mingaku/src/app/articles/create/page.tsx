@@ -334,6 +334,7 @@ export default function ArticleCreatePage() {
   const handleAiGenerated = useCallback((data: GeneratedArticle) => {
     setGeneratedArticle(data);
     setAiPanelOpen(true);
+    setHomeNewsTab(homeNewsTabFromThumbnailKind(data.thumbnailKind ?? "domestic"));
   }, []);
 
   const applyThumbnailFromTemplate = useCallback(
@@ -381,7 +382,6 @@ export default function ArticleCreatePage() {
     const nextLead = generatedArticle.leadText;
     setLeadText(nextLead);
     setContent(stripLeadText(generatedArticle.content, nextLead));
-    setHomeNewsTab(homeNewsTabFromThumbnailKind(kind));
     if (generatedArticle.category) setCategory(generatedArticle.category);
     if (generatedArticle.tags) setTags(generatedArticle.tags);
     setAiPanelOpen(false);
@@ -846,7 +846,28 @@ export default function ArticleCreatePage() {
                   </CardContent>
                 </div>
 
-                <div className="flex-shrink-0 border-t p-4 space-y-2 bg-white">
+                <div className="flex-shrink-0 border-t p-4 space-y-3 bg-white">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">トップページのトピックス</label>
+                    <p className="text-xs text-muted-foreground">
+                      すべて／国内のニュース／世界のニュースのいずれかを選べます。
+                    </p>
+                    <Select
+                      value={homeNewsTab}
+                      onValueChange={(v) => setHomeNewsTab(v as HomeNewsTab)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {HOME_TOPICS_TAB_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <Button className="w-full" onClick={handleApplyGenerated}>
                     <CheckCircle2 className="h-4 w-4 mr-2" />
                     エディタに反映
