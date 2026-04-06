@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useLayoutEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { FileImportButton } from "@/components/content/file-import-button";
 import { ImportedContentRenderer } from "@/components/content/imported-content-renderer";
@@ -41,7 +41,12 @@ export function ContentEditorWithImport({
     const parsed = parseToBlocks(content);
     return parsed.length > 0 ? parsed : [...emptyBlocks];
   });
+  const blocksRef = useRef(blocks);
   const isInternalUpdateRef = useRef(false);
+
+  useLayoutEffect(() => {
+    blocksRef.current = blocks;
+  }, [blocks]);
 
   // contentが外部から変わったときのみパースして同期（自らのonChangeによる更新は無視）
   useEffect(() => {
@@ -66,6 +71,20 @@ export function ContentEditorWithImport({
   };
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const blocksToContentRef = useRef(blocksToContent);
+  blocksToContentRef.current = blocksToContent;
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
+  useEffect(() => {
+    return () => {
+      if (!debounceRef.current) return;
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+      isInternalUpdateRef.current = true;
+      onChangeRef.current(blocksToContentRef.current(blocksRef.current));
+    };
+  }, []);
 
   const handleBlocksChange = useCallback(
     (newBlocks: ContentBlock[]) => {

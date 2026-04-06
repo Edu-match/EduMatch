@@ -35,7 +35,8 @@ interface RichTextEditableProps {
   blockId: string;
   value: string;
   onChange: (value: string) => void;
-  onBlur?: (value: string) => void;
+  /** 第2引数はネイティブ blur（relatedTarget 判定用） */
+  onBlur?: (value: string, event: React.FocusEvent<HTMLDivElement>) => void;
   placeholder?: string;
   className?: string;
   style?: React.CSSProperties;
@@ -172,13 +173,16 @@ export function RichTextEditable({
     composingRef.current = false;
   }, []);
 
-  const handleBlur = useCallback(() => {
-    groupTrackerRef.current.flush();
-    const el = divRef.current;
-    if (!el) return;
-    const md = htmlToMarkdown(el.innerHTML);
-    onBlur?.(md);
-  }, [onBlur]);
+  const handleBlur = useCallback(
+    (e: React.FocusEvent<HTMLDivElement>) => {
+      groupTrackerRef.current.flush();
+      const el = divRef.current;
+      if (!el) return;
+      const md = htmlToMarkdown(el.innerHTML);
+      onBlur?.(md, e);
+    },
+    [onBlur]
+  );
 
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
     e.preventDefault();

@@ -186,7 +186,7 @@ export default function ServiceCreatePage() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="edit" className="space-y-6">
+          <TabsContent value="edit" forceMount className="space-y-6 data-[state=inactive]:hidden">
         <Card>
           <CardHeader>
             <CardTitle className="text-base">サムネイル</CardTitle>
@@ -201,18 +201,20 @@ export default function ServiceCreatePage() {
                   className="object-contain rounded-lg"
                   unoptimized
                 />
-                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-4">
+                <div className="pointer-events-none group-hover:pointer-events-auto absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-4">
                   <Button
+                    type="button"
                     variant="secondary"
                     size="sm"
                     onClick={(e) => {
                       e.preventDefault();
+                      e.stopPropagation();
                       thumbnailFileInputRef.current?.click();
                     }}
                   >
                     変更
                   </Button>
-                  <Button variant="destructive" size="sm" onClick={() => setThumbnailUrl("")}>
+                  <Button type="button" variant="destructive" size="sm" onClick={() => setThumbnailUrl("")}>
                     削除
                   </Button>
                 </div>

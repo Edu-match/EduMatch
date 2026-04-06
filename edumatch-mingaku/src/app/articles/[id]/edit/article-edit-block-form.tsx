@@ -268,7 +268,7 @@ export function ArticleEditBlockForm({ articleId, initialData }: ArticleEditBloc
                 <TabsTrigger value="preview"><Eye className="h-4 w-4 mr-2" />プレビュー</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="edit" className="space-y-6">
+              <TabsContent value="edit" forceMount className="space-y-6 data-[state=inactive]:hidden">
                 <Card>
                   <CardContent className="pt-6 space-y-4">
                     {thumbnailUrl ? (

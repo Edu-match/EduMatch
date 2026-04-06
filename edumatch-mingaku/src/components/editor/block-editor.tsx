@@ -37,6 +37,7 @@ import {
 import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import { contentToBlocks } from "@/lib/markdown-to-blocks";
+import { isFocusMovedToTabOrOverlay } from "@/lib/focus-moved-to-ui-overlay";
 import { RichTextEditable, htmlToMarkdown } from "@/components/editor/rich-text-editable";
 import { useUndoRedoTextField, UNDO_TYPING_MERGE_MS } from "@/components/editor/use-undo-redo-text-field";
 import {
@@ -1033,6 +1034,19 @@ export function BlockEditor({
     [autoConvertMarkdown, replaceBlockWithBlocks]
   );
 
+  /** タブ切替・ドロップダウン等で blur したときは自動変換しない（本文の誤変換・増殖を防ぐ） */
+  const scheduleTryAutoConvertParagraph = useCallback(
+    (block: ContentBlock, md: string, e: React.FocusEvent<HTMLDivElement>) => {
+      if (isFocusMovedToTabOrOverlay(e.relatedTarget)) return;
+      requestAnimationFrame(() => {
+        const ae = document.activeElement;
+        if (ae instanceof HTMLElement && isFocusMovedToTabOrOverlay(ae)) return;
+        tryAutoConvertParagraph(block, md);
+      });
+    },
+    [tryAutoConvertParagraph]
+  );
+
   const handleAddBlockClick = (index: number) => {
     setMenuPosition(index);
     setShowBlockMenu(true);
@@ -1100,7 +1114,7 @@ export function BlockEditor({
               blockId={block.id}
               value={block.content}
               onChange={(c) => updateBlock(block.id, { content: c })}
-              onBlur={(c) => tryAutoConvertParagraph(block, c)}
+              onBlur={(md, e) => scheduleTryAutoConvertParagraph(block, md, e)}
               refCallback={(el) => { textInputRefs.current[block.id] = el; }}
               placeholder="本文を入力...（# 見出し、- リストなどで自動変換）"
               className={`w-full min-h-[100px] py-2 px-0 bg-transparent resize-none outline-none pr-16 empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground`}

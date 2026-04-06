@@ -54,6 +54,8 @@ import {
 import { toast } from "sonner";
 import { createPost, uploadImage } from "@/app/_actions";
 import { SHARED_CATEGORIES } from "@/lib/categories";
+import { HOME_TOPICS_TAB_OPTIONS } from "@/lib/home-news-tab-ui";
+import type { HomeNewsTab } from "@prisma/client";
 
 const STORAGE_KEY = "edumatch-article-draft";
 const TITLE_MAX_LENGTH = 80;
@@ -67,9 +69,18 @@ interface ArticleDraft {
   publishType: "public" | "member" | "draft";
   thumbnailUrl: string;
   content: string;
+  homeNewsTab?: HomeNewsTab;
   /** @deprecated 後方互換用 */
   blocks?: ContentBlock[];
   savedAt: string;
+}
+
+function homeNewsTabFromThumbnailKind(
+  kind: string | undefined
+): "NONE" | "DOMESTIC" | "INTERNATIONAL" {
+  if (kind === "overseas") return "INTERNATIONAL";
+  if (kind === "domestic") return "DOMESTIC";
+  return "NONE";
 }
 
 // ローカルストレージから下書きを読み込む関数（クライアントサイドのみ）
@@ -116,6 +127,9 @@ export default function ArticleCreatePage() {
   const [userProfile, setUserProfile] = useState<{ name: string; avatar_url: string | null; email: string } | null>(null);
   const [generatedArticle, setGeneratedArticle] = useState<GeneratedArticle | null>(null);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
+  const [homeNewsTab, setHomeNewsTab] = useState<HomeNewsTab>(
+    () => draft?.homeNewsTab ?? "NONE"
+  );
 
   const titleUndo = useUndoRedoTextField({
     value: title,
@@ -142,6 +156,7 @@ export default function ArticleCreatePage() {
         publishType,
         thumbnailUrl,
         content,
+        homeNewsTab,
         savedAt: new Date().toISOString(),
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
@@ -152,7 +167,7 @@ export default function ArticleCreatePage() {
       console.error("Failed to save draft:", e);
     }
     setIsSaving(false);
-  }, [title, leadText, category, tags, publishType, thumbnailUrl, content]);
+  }, [title, leadText, category, tags, publishType, thumbnailUrl, content, homeNewsTab]);
 
   // ユーザープロフィールを取得
   useEffect(() => {
@@ -193,6 +208,7 @@ export default function ArticleCreatePage() {
             publishType,
             thumbnailUrl,
             content: currentContent,
+            homeNewsTab,
             savedAt: new Date().toISOString(),
           };
           localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
@@ -202,7 +218,7 @@ export default function ArticleCreatePage() {
       }
     }, 30000);
     return () => clearInterval(interval);
-  }, [title, leadText, category, tags, publishType, thumbnailUrl, content]);
+  }, [title, leadText, category, tags, publishType, thumbnailUrl, content, homeNewsTab]);
 
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -240,6 +256,7 @@ export default function ArticleCreatePage() {
         tags,
         publishType: submitType,
         thumbnailUrl,
+        homeNewsTab,
         ...(isImportedContent(content)
           ? { content }
           : { blocks: contentToBlocks(content) as Parameters<typeof createPost>[0]["blocks"] }),
@@ -290,6 +307,7 @@ export default function ArticleCreatePage() {
         tags,
         publishType: "draft",
         thumbnailUrl,
+        homeNewsTab,
         ...(isImportedContent(content)
           ? { content }
           : { blocks: contentToBlocks(content) as Parameters<typeof createPost>[0]["blocks"] }),
@@ -361,6 +379,7 @@ export default function ArticleCreatePage() {
     setTitle(generatedArticle.title.slice(0, TITLE_MAX_LENGTH));
     setLeadText(generatedArticle.leadText);
     setContent(generatedArticle.content);
+    setHomeNewsTab(homeNewsTabFromThumbnailKind(kind));
     if (generatedArticle.category) setCategory(generatedArticle.category);
     if (generatedArticle.tags) setTags(generatedArticle.tags);
     setAiPanelOpen(false);
@@ -382,6 +401,7 @@ export default function ArticleCreatePage() {
       setPublishType("draft");
       setThumbnailUrl("");
       setThumbnailTemplateKind("domestic");
+      setHomeNewsTab("NONE");
       setContent("");
       setLastSaved(null);
     }
@@ -514,34 +534,59 @@ export default function ArticleCreatePage() {
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="edit" className="space-y-6">
+              <TabsContent value="edit" forceMount className="space-y-6 data-[state=inactive]:hidden">
                 {/* Thumbnail upload */}
                 <Card>
                   <CardContent className="pt-6 space-y-4">
                     {thumbnailUrl ? (
-                      <div className="relative group">
-                        <img
-                          src={thumbnailUrl}
-                          alt="サムネイル"
-                          className="w-full h-[200px] object-contain rounded-lg"
-                        />
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-4">
+                      <div className="space-y-3">
+                        <div className="relative group rounded-lg overflow-hidden">
+                          <img
+                            src={thumbnailUrl}
+                            alt="サムネイル"
+                            className="w-full h-[200px] object-contain rounded-lg bg-muted/20"
+                          />
+                          <div className="pointer-events-none group-hover:pointer-events-auto absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-4">
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                thumbnailFileInputRef.current?.click();
+                              }}
+                            >
+                              変更
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => setThumbnailUrl("")}
+                            >
+                              削除
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
                           <Button
-                            variant="secondary"
+                            type="button"
+                            variant="outline"
                             size="sm"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              thumbnailFileInputRef.current?.click();
-                            }}
+                            onClick={() => thumbnailFileInputRef.current?.click()}
+                            disabled={thumbnailUploading}
                           >
-                            変更
+                            画像を差し替え
                           </Button>
                           <Button
-                            variant="destructive"
+                            type="button"
+                            variant="outline"
                             size="sm"
+                            className="text-destructive hover:text-destructive"
                             onClick={() => setThumbnailUrl("")}
                           >
-                            削除
+                            サムネイルを削除
                           </Button>
                         </div>
                       </div>
@@ -942,6 +987,27 @@ export default function ArticleCreatePage() {
                   <p className="text-xs text-muted-foreground">
                     例: EdTech, GIGAスクール, タブレット
                   </p>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">トップページのトピックス</label>
+                  <p className="text-xs text-muted-foreground">
+                    トップのニュースタブ（すべて／国内／世界）での分類です。
+                  </p>
+                  <Select
+                    value={homeNewsTab}
+                    onValueChange={(v) => setHomeNewsTab(v as HomeNewsTab)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {HOME_TOPICS_TAB_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </CardContent>
             </Card>

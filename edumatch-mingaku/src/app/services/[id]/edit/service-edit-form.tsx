@@ -187,7 +187,7 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
                   プレビュー
                 </TabsTrigger>
               </TabsList>
-              <TabsContent value="edit">
+              <TabsContent value="edit" forceMount className="data-[state=inactive]:hidden">
           <Card>
             <CardHeader>
               <CardTitle>サービス編集フォーム</CardTitle>
