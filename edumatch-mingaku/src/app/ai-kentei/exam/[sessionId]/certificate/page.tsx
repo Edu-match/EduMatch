@@ -8,7 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { Brain, Share2, Camera, Loader2, ArrowLeft, Eye, Award } from 'lucide-react'
+import { Brain, Share2, Camera, Loader2, ArrowLeft, Eye, Award, Info } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
 import { CertificatePreview } from '@/components/ai-kentei/certificate-preview'
 import { createSupabaseBrowserClient } from '@/utils/supabase/client'
@@ -40,7 +41,13 @@ export default function CertificatePage({ params }: { params: Promise<{ sessionI
   const [generating, setGenerating] = useState(false)
   const [certificateId, setCertificateId] = useState<string | null>(null)
   const [shareSlug, setShareSlug] = useState<string | null>(null)
+  /** 発行後の公開設定（API応答）。未発行時は isPublicPage を参照 */
+  const [issuedIsPublic, setIssuedIsPublic] = useState<boolean | null>(null)
+  /** 発行前：共有用URLで誰でも閲覧可能にするか（デフォルトON） */
+  const [isPublicPage, setIsPublicPage] = useState(true)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const publicSharingEnabled = issuedIsPublic !== null ? issuedIsPublic : isPublicPage
 
   const resolvedName = (() => {
     if (nameType === 'display') return profileInfo?.displayName ?? customName
@@ -123,6 +130,7 @@ export default function CertificatePage({ params }: { params: Promise<{ sessionI
           displayName: resolvedName.trim(),
           photoUrl,
           nameType,
+          isPublic: isPublicPage,
         }),
       })
 
@@ -134,6 +142,9 @@ export default function CertificatePage({ params }: { params: Promise<{ sessionI
       const data = await response.json()
       setCertificateId(data.certificateId)
       setShareSlug(data.shareSlug)
+      if (typeof data.isPublic === 'boolean') {
+        setIssuedIsPublic(data.isPublic)
+      }
       toast.success('認定証を発行しました！')
       if (profileInfo?.email) {
         toast.success(`認定証をメール（${profileInfo.email}）に送信しました`)
@@ -147,6 +158,10 @@ export default function CertificatePage({ params }: { params: Promise<{ sessionI
 
   const handleShare = async () => {
     if (!shareSlug) return
+    if (!publicSharingEnabled) {
+      toast.info('公開ページが無効のため、共有用URLはありません。マイページからご確認ください。')
+      return
+    }
     const shareUrl = `${window.location.origin}/ai-kentei/c/${shareSlug}`
 
     if (navigator.share) {
@@ -207,6 +222,60 @@ export default function CertificatePage({ params }: { params: Promise<{ sessionI
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
+                {/* 公開範囲の説明 */}
+                <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-3">
+                  <div className="flex gap-2">
+                    <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" aria-hidden />
+                    <div className="space-y-2 text-sm text-foreground/90">
+                      <p className="font-medium">認定証の公開について</p>
+                      <ul className="list-disc pl-4 space-y-1 text-muted-foreground">
+                        <li>
+                          サイトにログインした<strong>ご本人</strong>は、いつでも<strong>マイページ</strong>から認定証を確認できます。
+                        </li>
+                        <li>
+                          下の「共有用の公開ページ」を<strong>オン</strong>にすると、発行後に表示される<strong>共有URL</strong>を知っている人は、ログインなしで認定証ページを閲覧できます（掲載一覧に載るわけではなく、URLを知っている人だけが見られます）。
+                        </li>
+                        <li>
+                          <strong>オフ</strong>にすると、共有用ページは表示されず、マイページからのみ確認できます。SNS共有ボタンも利用できません。
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 公開ページのオン/オフ（未発行時のみ変更可） */}
+                {!certificateId && (
+                  <div className="flex items-start gap-3 rounded-lg border p-4">
+                    <Checkbox
+                      id="public-page"
+                      checked={isPublicPage}
+                      onCheckedChange={(c) => setIsPublicPage(c === true)}
+                    />
+                    <div className="space-y-1">
+                      <Label htmlFor="public-page" className="text-sm font-medium leading-snug cursor-pointer">
+                        共有用の公開ページを有効にする
+                      </Label>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        オフにすると、共有URLによる閲覧はできません。マイページでのみ確認できます。
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {certificateId && (
+                  <div className={`rounded-md border px-3 py-2 text-sm ${publicSharingEnabled ? 'border-amber-200 bg-amber-50/80 dark:bg-amber-950/30' : 'border-muted bg-muted/40'}`}>
+                    {publicSharingEnabled ? (
+                      <p>
+                        <strong>公開ページ：有効</strong> — 共有URLを知っている人が認定証を閲覧できます。URLの取り扱いにご注意ください。
+                      </p>
+                    ) : (
+                      <p>
+                        <strong>公開ページ：無効</strong> — 共有用URLでは閲覧できません。マイページからご確認ください。
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 {/* Name selection */}
                 <div className="space-y-3">
                   <Label>認定証に表示する名前</Label>
@@ -308,44 +377,48 @@ export default function CertificatePage({ params }: { params: Promise<{ sessionI
                   </Button>
                 ) : (
                   <div className="space-y-3">
-                    <Button onClick={handleShare} className="w-full" size="lg">
-                      <Share2 className="mr-2 h-4 w-4" />
-                      共有する
-                    </Button>
+                    {publicSharingEnabled ? (
+                      <>
+                        <Button onClick={handleShare} className="w-full" size="lg">
+                          <Share2 className="mr-2 h-4 w-4" />
+                          共有する
+                        </Button>
 
-                    <div className="grid grid-cols-2 gap-3">
-                      <Button variant="outline" asChild>
-                        <a
-                          href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`${typeof window !== 'undefined' ? window.location.origin : ''}/ai-kentei/c/${shareSlug}`)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <svg className="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                            <path fillRule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" clipRule="evenodd" />
-                          </svg>
-                          Facebook
-                        </a>
-                      </Button>
-                      <Button variant="outline" asChild>
-                        <a
-                          href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`${resolvedName}さんが生成AI活用ガイドライン検定に合格しました！`)}&url=${encodeURIComponent(`${typeof window !== 'undefined' ? window.location.origin : ''}/ai-kentei/c/${shareSlug}`)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <svg className="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                          </svg>
-                          X (Twitter)
-                        </a>
-                      </Button>
-                    </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <Button variant="outline" asChild>
+                            <a
+                              href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`${typeof window !== 'undefined' ? window.location.origin : ''}/ai-kentei/c/${shareSlug}`)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <svg className="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                                <path fillRule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" clipRule="evenodd" />
+                              </svg>
+                              Facebook
+                            </a>
+                          </Button>
+                          <Button variant="outline" asChild>
+                            <a
+                              href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`${resolvedName}さんが生成AI活用ガイドライン検定に合格しました！`)}&url=${encodeURIComponent(`${typeof window !== 'undefined' ? window.location.origin : ''}/ai-kentei/c/${shareSlug}`)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <svg className="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                              </svg>
+                              X (Twitter)
+                            </a>
+                          </Button>
+                        </div>
 
-                    <Button variant="outline" className="w-full" asChild>
-                      <Link href={`/ai-kentei/c/${shareSlug}`} target="_blank">
-                        <Eye className="mr-2 h-4 w-4" />
-                        認定証を表示
-                      </Link>
-                    </Button>
+                        <Button variant="outline" className="w-full" asChild>
+                          <Link href={`/ai-kentei/c/${shareSlug}`} target="_blank">
+                            <Eye className="mr-2 h-4 w-4" />
+                            認定証ページを開く
+                          </Link>
+                        </Button>
+                      </>
+                    ) : null}
 
                     <Button variant="outline" className="w-full" asChild>
                       <Link href="/mypage">

@@ -9,7 +9,8 @@ async function sendCertificateEmail(
   certificateId: string,
   score: number,
   shareSlug: string,
-  siteUrl: string
+  siteUrl: string,
+  isPublic: boolean
 ) {
   const apiKey = process.env.RESEND_API_KEY
   if (!apiKey) return
@@ -20,7 +21,10 @@ async function sendCertificateEmail(
     ? fromRaw.includes('<') ? fromRaw : `エデュマッチ <${fromRaw}>`
     : 'エデュマッチ <onboarding@resend.dev>'
 
-  const certUrl = `${siteUrl}/ai-kentei/c/${shareSlug}`
+  const certUrl = isPublic
+    ? `${siteUrl}/ai-kentei/c/${shareSlug}`
+    : `${siteUrl}/mypage`
+  const buttonLabel = isPublic ? '認定証ページを開く' : 'マイページで認定証を確認する'
 
   await resend.emails.send({
     from,
@@ -41,11 +45,13 @@ async function sendCertificateEmail(
           <p style="font-size: 14px; color: #374151; margin: 0;"><strong>スコア：</strong> ${score} / 25 問正解</p>
         </div>
 
+        ${isPublic ? `<p style="font-size: 13px; color: #6b7280; margin-bottom: 16px;">共有用の公開ページが有効です。URLを知っている方が認定証を閲覧できます。</p>` : `<p style="font-size: 13px; color: #6b7280; margin-bottom: 16px;">公開ページは無効のため、認定証はログイン後のマイページからのみご確認いただけます。</p>`}
+
         <a
           href="${certUrl}"
           style="display: inline-block; background: #4f46e5; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-size: 15px; font-weight: 600; margin-bottom: 24px;"
         >
-          認定証を確認する
+          ${buttonLabel}
         </a>
 
         <p style="font-size: 13px; color: #9ca3af; margin-top: 32px;">
@@ -59,7 +65,8 @@ async function sendCertificateEmail(
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { sessionId, displayName, photoUrl, nameType } = body
+    const { sessionId, displayName, photoUrl, nameType, isPublic } = body
+    const isPublicPage = isPublic !== false
 
     if (!sessionId || !displayName) {
       return NextResponse.json(
@@ -104,6 +111,7 @@ export async function POST(request: Request) {
       return NextResponse.json({
         certificateId: existingCert.certificate_id,
         shareSlug: existingCert.share_slug,
+        isPublic: existingCert.is_public !== false,
       })
     }
 
@@ -121,6 +129,7 @@ export async function POST(request: Request) {
         photo_url: photoUrl || null,
         score: session.score,
         share_slug: shareSlug,
+        is_public: isPublicPage,
       })
 
     if (createError) {
@@ -141,7 +150,8 @@ export async function POST(request: Request) {
           certificateId,
           session.score,
           shareSlug,
-          siteUrl
+          siteUrl,
+          isPublicPage
         )
         // email_sent フラグを更新
         await supabase
@@ -154,7 +164,7 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({ certificateId, shareSlug })
+    return NextResponse.json({ certificateId, shareSlug, isPublic: isPublicPage })
   } catch (error) {
     console.error('Unexpected error:', error)
     return NextResponse.json(
