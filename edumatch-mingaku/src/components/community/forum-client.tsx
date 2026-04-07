@@ -1,16 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import {
-  Eye,
   Flame,
-  MessageCircle,
+  LogIn,
   MessageSquare,
   PenSquare,
-  Sparkles,
   TrendingUp,
-  Users,
+  X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,7 +18,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -39,17 +35,46 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  COMMUNITY_ROLE_LABELS,
   FORUM_CATEGORIES,
   FORUM_SORT_OPTIONS,
-  type CommunityRole,
   type ForumThread,
 } from "@/lib/mock-community";
-import { RoleBadge } from "./role-badge";
+import { CommentSection } from "./comment-section";
+import Link from "next/link";
 
+// ─── 認証フック ────────────────────────────────────────────
+function useAuthUser() {
+  const [auth, setAuth] = useState<{
+    name: string;
+    isLoading: boolean;
+    isLoggedIn: boolean;
+  }>({ name: "", isLoading: true, isLoggedIn: false });
+
+  useEffect(() => {
+    fetch("/api/auth/me", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        const name =
+          data?.profile?.name ?? data?.user?.email?.split("@")[0] ?? null;
+        setAuth({ name: name ?? "", isLoading: false, isLoggedIn: !!name });
+      })
+      .catch(() => setAuth({ name: "", isLoading: false, isLoggedIn: false }));
+  }, []);
+
+  return auth;
+}
+
+// ─── ユーティリティ ────────────────────────────────────────
 function formatDate(dateString: string) {
   return new Intl.DateTimeFormat("ja-JP", {
     year: "numeric",
@@ -61,176 +86,277 @@ function formatDate(dateString: string) {
   }).format(new Date(dateString));
 }
 
-type ThreadComposerState = {
+// ─── スレッドカード ────────────────────────────────────────
+function ThreadCard({
+  thread,
+  onClick,
+}: {
+  thread: ForumThread;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full rounded-xl border bg-card text-left shadow-xs transition-all duration-150 hover:border-primary/40 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <div className="p-5">
+        {/* メタ情報 */}
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <Badge variant="secondary" className="text-xs">{thread.category}</Badge>
+          <span className="text-xs text-muted-foreground">{thread.authorName}</span>
+          <span className="text-xs text-muted-foreground">{formatDate(thread.postedAt)}</span>
+        </div>
+
+        {/* タイトル */}
+        <p className="mb-2 text-base font-semibold leading-7">{thread.title}</p>
+
+        {/* 本文プレビュー */}
+        <p className="mb-4 line-clamp-2 text-sm leading-6 text-muted-foreground">
+          {thread.body}
+        </p>
+
+        {/* タグ */}
+        {thread.tags.length > 0 && (
+          <div className="mb-4 flex flex-wrap gap-1.5">
+            {thread.tags.map((tag) => (
+              <span
+                key={tag}
+                className="rounded-full border bg-muted/40 px-2.5 py-0.5 text-xs text-muted-foreground"
+              >
+                #{tag}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* フッター */}
+        <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <MessageSquare className="h-3.5 w-3.5" />
+              コメント {thread.commentCount}
+            </span>
+          </div>
+          <span className="text-xs font-medium text-primary">詳細を見る →</span>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+// ─── スレッド詳細 Sheet 内コンテンツ ──────────────────────
+function ThreadDetailContent({ thread }: { thread: ForumThread }) {
+  return (
+    <div className="flex flex-col gap-6">
+      {/* ヘッダー情報 */}
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="secondary" className="text-xs">{thread.category}</Badge>
+          <span className="text-xs text-muted-foreground">{thread.authorName}</span>
+          <span className="text-xs text-muted-foreground">{formatDate(thread.postedAt)}</span>
+        </div>
+        <h2 className="text-lg font-semibold leading-8">{thread.title}</h2>
+        {thread.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {thread.tags.map((tag) => (
+              <span
+                key={tag}
+                className="rounded-full border bg-muted/40 px-2.5 py-0.5 text-xs text-muted-foreground"
+              >
+                #{tag}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* 本文 */}
+      <div className="rounded-xl bg-muted/40 px-5 py-4">
+        <p className="whitespace-pre-wrap text-sm leading-8">{thread.body}</p>
+      </div>
+
+      <Separator />
+
+      {/* コメントセクション */}
+      <div className="space-y-4">
+        <p className="text-sm font-semibold">コメント</p>
+        <CommentSection
+          initialComments={thread.comments}
+          placeholder="この投稿に関して意見や情報を共有しましょう"
+          submitLabel="コメントを投稿"
+          emptyMessage="まだコメントはありません。最初の投稿をしてみましょう。"
+        />
+      </div>
+    </div>
+  );
+}
+
+// ─── 新規投稿ダイアログ ────────────────────────────────────
+type DraftState = {
   title: string;
   body: string;
   category: string;
   tags: string;
-  role: CommunityRole;
-  name: string;
-  anonymous: boolean;
 };
 
-function createDefaultThreadComposer(): ThreadComposerState {
-  return {
+function NewThreadDialog({
+  auth,
+  onSubmit,
+}: {
+  auth: ReturnType<typeof useAuthUser>;
+  onSubmit: (thread: ForumThread) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState<DraftState>({
     title: "",
     body: "",
     category: "授業づくり",
     tags: "",
-    role: "general",
-    name: "",
-    anonymous: false,
-  };
-}
+  });
 
-function NewThreadDialog({
-  composer,
-  setComposer,
-  isOpen,
-  setIsOpen,
-  onSubmit,
-}: {
-  composer: ThreadComposerState;
-  setComposer: React.Dispatch<React.SetStateAction<ThreadComposerState>>;
-  isOpen: boolean;
-  setIsOpen: (open: boolean) => void;
-  onSubmit: () => void;
-}) {
+  const handleSubmit = () => {
+    if (!draft.title.trim() || !draft.body.trim()) return;
+
+    const thread: ForumThread = {
+      id: `thread-${Date.now()}`,
+      title: draft.title.trim(),
+      body: draft.body.trim(),
+      category: draft.category,
+      tags: draft.tags
+        .split(/[,\s、]+/)
+        .map((t) => t.trim())
+        .filter(Boolean)
+        .slice(0, 5),
+      authorName: auth.name,
+      postedAt: new Date().toISOString(),
+      commentCount: 0,
+      comments: [],
+    };
+
+    onSubmit(thread);
+    setDraft({ title: "", body: "", category: "授業づくり", tags: "" });
+    setOpen(false);
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="lg" className="w-full gap-2">
           <PenSquare className="h-4 w-4" />
-          新規スレッドを投稿
+          新しい投稿をする
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>新しい相談を投稿</DialogTitle>
+          <DialogTitle>新しい投稿</DialogTitle>
           <DialogDescription>
-            このフォームはモックです。投稿後は一覧上に即時反映されます。
+            {auth.isLoggedIn ? (
+              <>
+                <span className="font-medium text-foreground">{auth.name}</span>
+                {" "}として投稿します
+              </>
+            ) : (
+              "投稿するにはログインが必要です"
+            )}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="forum-title">タイトル</Label>
-            <Input
-              id="forum-title"
-              value={composer.title}
-              onChange={(e) => setComposer((p) => ({ ...p, title: e.target.value }))}
-              placeholder="相談したいテーマを入力"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="forum-body">本文</Label>
-            <Textarea
-              id="forum-body"
-              rows={6}
-              value={composer.body}
-              onChange={(e) => setComposer((p) => ({ ...p, body: e.target.value }))}
-              placeholder="状況や背景、相談したいポイントを書いてください"
-            />
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
+        {auth.isLoggedIn ? (
+          <div className="space-y-4">
             <div className="space-y-2">
-              <Label>カテゴリ</Label>
-              <Select
-                value={composer.category}
-                onValueChange={(v) => setComposer((p) => ({ ...p, category: v }))}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="カテゴリを選択" />
-                </SelectTrigger>
-                <SelectContent>
-                  {FORUM_CATEGORIES.filter((c) => c !== "すべて").map((c) => (
-                    <SelectItem key={c} value={c}>{c}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="new-title">タイトル</Label>
+              <Input
+                id="new-title"
+                value={draft.title}
+                onChange={(e) => setDraft((p) => ({ ...p, title: e.target.value }))}
+                placeholder="相談・共有したいテーマを入力"
+              />
             </div>
 
             <div className="space-y-2">
-              <Label>投稿者属性</Label>
-              <Select
-                value={composer.role}
-                disabled={composer.anonymous}
-                onValueChange={(v) => setComposer((p) => ({ ...p, role: v as CommunityRole }))}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="属性を選択" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(COMMUNITY_ROLE_LABELS)
-                    .filter(([r]) => r !== "anonymous")
-                    .map(([r, l]) => (
-                      <SelectItem key={r} value={r}>{l}</SelectItem>
+              <Label htmlFor="new-body">本文</Label>
+              <Textarea
+                id="new-body"
+                rows={6}
+                value={draft.body}
+                onChange={(e) => setDraft((p) => ({ ...p, body: e.target.value }))}
+                placeholder="状況や背景を具体的に書いてください"
+                className="resize-none"
+              />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>カテゴリ</Label>
+                <Select
+                  value={draft.category}
+                  onValueChange={(v) => setDraft((p) => ({ ...p, category: v }))}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FORUM_CATEGORIES.filter((c) => c !== "すべて").map((c) => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
                     ))}
-                </SelectContent>
-              </Select>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="new-tags">タグ（任意・カンマ区切り）</Label>
+                <Input
+                  id="new-tags"
+                  value={draft.tags}
+                  onChange={(e) => setDraft((p) => ({ ...p, tags: e.target.value }))}
+                  placeholder="例: ICT, 数学, 中学校"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setOpen(false)}>キャンセル</Button>
+              <Button
+                onClick={handleSubmit}
+                disabled={!draft.title.trim() || !draft.body.trim()}
+              >
+                投稿する
+              </Button>
             </div>
           </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="forum-name">表示名</Label>
-              <Input
-                id="forum-name"
-                value={composer.name}
-                disabled={composer.anonymous}
-                onChange={(e) => setComposer((p) => ({ ...p, name: e.target.value }))}
-                placeholder="例: 都内中学校教員"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="forum-tags">タグ（カンマ区切り）</Label>
-              <Input
-                id="forum-tags"
-                value={composer.tags}
-                onChange={(e) => setComposer((p) => ({ ...p, tags: e.target.value }))}
-                placeholder="例: ICT, 学級経営, 不登校"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="forum-anonymous"
-              checked={composer.anonymous}
-              onCheckedChange={(checked) =>
-                setComposer((p) => ({ ...p, anonymous: checked === true }))
-              }
-            />
-            <Label htmlFor="forum-anonymous">匿名で投稿する</Label>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setIsOpen(false)}>閉じる</Button>
-            <Button onClick={onSubmit} disabled={!composer.title.trim() || !composer.body.trim()}>
-              投稿する
+        ) : (
+          <div className="flex flex-col items-center gap-4 py-6 text-center">
+            <p className="text-sm text-muted-foreground">
+              投稿するにはログインが必要です
+            </p>
+            <Button asChild>
+              <Link href="/login">
+                <LogIn className="h-4 w-4" />
+                ログインする
+              </Link>
             </Button>
           </div>
-        </div>
+        )}
       </DialogContent>
     </Dialog>
   );
 }
 
-export function ForumClient({ initialThreads }: { initialThreads: ForumThread[] }) {
-  const [threads, setThreads] = useState(initialThreads);
+// ─── メインコンポーネント ───────────────────────────────────
+export function ForumClient() {
+  const auth = useAuthUser();
+  const [threads, setThreads] = useState<ForumThread[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("すべて");
   const [selectedTag, setSelectedTag] = useState<string>("すべて");
   const [sortBy, setSortBy] =
     useState<(typeof FORUM_SORT_OPTIONS)[number]["value"]>("newest");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [composer, setComposer] = useState<ThreadComposerState>(createDefaultThreadComposer());
+  const [openThread, setOpenThread] = useState<ForumThread | null>(null);
 
-  const allTags = useMemo(
-    () => ["すべて", ...Array.from(new Set(threads.flatMap((t) => t.tags))).sort()],
-    [threads]
-  );
+  const allTags = useMemo(() => {
+    const tags = Array.from(new Set(threads.flatMap((t) => t.tags))).sort();
+    return tags.length > 0 ? ["すべて", ...tags] : [];
+  }, [threads]);
 
   const filteredThreads = useMemo(() => {
     const base = threads.filter((t) => {
@@ -240,162 +366,102 @@ export function ForumClient({ initialThreads }: { initialThreads: ForumThread[] 
     });
     return [...base].sort((a, b) =>
       sortBy === "popular"
-        ? b.viewCount + b.replyCount * 20 - (a.viewCount + a.replyCount * 20)
+        ? b.commentCount - a.commentCount
         : new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime()
     );
   }, [threads, selectedCategory, selectedTag, sortBy]);
 
-  const handleSubmitThread = () => {
-    if (!composer.title.trim() || !composer.body.trim()) return;
-
-    const role = composer.anonymous ? "anonymous" : composer.role;
-    const name = composer.anonymous
-      ? "匿名ユーザー"
-      : composer.name.trim() || `${COMMUNITY_ROLE_LABELS[composer.role]}ユーザー`;
-
-    const next: ForumThread = {
-      id: `forum-draft-${Date.now()}`,
-      title: composer.title.trim(),
-      summary: composer.body.trim().slice(0, 70),
-      body: composer.body.trim(),
-      category: composer.category,
-      tags: composer.tags
-        .split(/[,\s、]+/)
-        .map((t) => t.trim())
-        .filter(Boolean)
-        .slice(0, 5),
-      authorName: name,
-      authorRole: role,
-      postedAt: new Date().toISOString(),
-      replyCount: 0,
-      viewCount: 1,
-      comments: [],
-    };
-
-    setThreads((prev) => [next, ...prev]);
-    setComposer(createDefaultThreadComposer());
-    setIsDialogOpen(false);
-  };
-
   const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
+    const m: Record<string, number> = {};
     for (const t of threads) {
-      counts[t.category] = (counts[t.category] ?? 0) + 1;
+      m[t.category] = (m[t.category] ?? 0) + 1;
     }
-    return counts;
+    return m;
   }, [threads]);
 
-  const totalComments = threads.reduce((sum, t) => sum + t.replyCount, 0);
+  const handleNewThread = (thread: ForumThread) => {
+    setThreads((prev) => [thread, ...prev]);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
-      {/* ─── ヒーローセクション ─── */}
-      <section className="relative overflow-hidden border-b bg-gradient-to-br from-primary/10 via-primary/5 to-background">
+      {/* ─── ヘッダー ─── */}
+      <section className="relative overflow-hidden border-b bg-gradient-to-br from-primary/8 via-primary/4 to-background">
         <div className="container py-12 md:py-16">
-          <div className="mx-auto max-w-3xl text-center">
-            <Badge variant="secondary" className="mb-4 gap-1.5 px-3 py-1 text-xs">
-              <Sparkles className="h-3 w-3" />
-              新機能モック
-            </Badge>
-            <h1 className="mb-4 text-4xl font-bold tracking-tight text-foreground md:text-5xl">
+          <div className="mx-auto max-w-2xl text-center">
+            <h1 className="mb-4 text-4xl font-bold tracking-tight md:text-5xl">
               教育悩み相談室
             </h1>
-            <p className="mx-auto mb-8 max-w-2xl text-lg leading-8 text-muted-foreground">
-              教員・保護者・学生・研究者が教育に関する悩みや実践知を持ち寄る、
-              オープンなQ&Aコミュニティです。
+            <p className="mb-8 text-base leading-8 text-muted-foreground">
+              教員・保護者・学生が、教育に関する悩みや実践知を持ち寄って話し合えるコミュニティです。
             </p>
-
-            {/* 統計バッジ */}
-            <div className="mb-8 flex flex-wrap items-center justify-center gap-4 text-sm">
-              <div className="flex items-center gap-2 rounded-full border bg-background/80 px-4 py-2 shadow-sm backdrop-blur-sm">
-                <MessageCircle className="h-4 w-4 text-primary" />
-                <span className="font-medium">{threads.length}</span>
-                <span className="text-muted-foreground">スレッド</span>
-              </div>
-              <div className="flex items-center gap-2 rounded-full border bg-background/80 px-4 py-2 shadow-sm backdrop-blur-sm">
-                <MessageSquare className="h-4 w-4 text-primary" />
-                <span className="font-medium">{totalComments}</span>
-                <span className="text-muted-foreground">回答</span>
-              </div>
-              <div className="flex items-center gap-2 rounded-full border bg-background/80 px-4 py-2 shadow-sm backdrop-blur-sm">
-                <Users className="h-4 w-4 text-primary" />
-                <span className="font-medium">5</span>
-                <span className="text-muted-foreground">種の属性</span>
-              </div>
+            <div className="flex flex-wrap items-center justify-center gap-3 text-sm">
+              <span className="rounded-full border bg-background/80 px-4 py-2 backdrop-blur-sm">
+                投稿数 {threads.length}
+              </span>
             </div>
-
-            <NewThreadDialog
-              composer={composer}
-              setComposer={setComposer}
-              isOpen={isDialogOpen}
-              setIsOpen={setIsDialogOpen}
-              onSubmit={handleSubmitThread}
-            />
           </div>
         </div>
-        {/* 背景の装飾 */}
-        <div className="pointer-events-none absolute -top-24 -right-24 h-96 w-96 rounded-full bg-primary/5 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-12 -left-12 h-64 w-64 rounded-full bg-primary/8 blur-2xl" />
+        <div className="pointer-events-none absolute -top-20 -right-20 h-80 w-80 rounded-full bg-primary/5 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-10 -left-10 h-60 w-60 rounded-full bg-primary/5 blur-2xl" />
       </section>
 
       {/* ─── メインコンテンツ ─── */}
       <div className="container py-8">
-        <div className="grid gap-8 lg:grid-cols-[1fr_280px]">
+        <div className="grid gap-8 lg:grid-cols-[1fr_260px]">
           {/* ── 左：フィルタ + スレッド一覧 ── */}
-          <div className="min-w-0 space-y-6">
-            {/* フィルタ */}
+          <div className="min-w-0 space-y-5">
+            {/* フィルタバー */}
             <Card className="border shadow-sm">
-              <CardContent className="space-y-4 p-5">
+              <CardContent className="space-y-4 p-4">
                 {/* カテゴリ */}
-                <div className="space-y-2.5">
-                  <p className="text-sm font-semibold text-foreground/80">カテゴリで絞る</p>
-                  <div className="flex flex-wrap gap-2">
-                    {FORUM_CATEGORIES.map((cat) => (
-                      <button
-                        key={cat}
-                        type="button"
-                        onClick={() => setSelectedCategory(cat)}
-                        className={`rounded-full border px-3.5 py-1 text-sm font-medium transition-all ${
-                          selectedCategory === cat
-                            ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                            : "border-border bg-background text-foreground hover:border-primary/40 hover:bg-primary/5"
-                        }`}
-                      >
-                        {cat}
-                        {cat !== "すべて" && categoryCounts[cat]
-                          ? ` (${categoryCounts[cat]})`
-                          : ""}
-                      </button>
-                    ))}
-                  </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {FORUM_CATEGORIES.map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setSelectedCategory(cat)}
+                      className={[
+                        "rounded-full border px-3.5 py-1 text-xs font-medium transition-all",
+                        selectedCategory === cat
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-background text-foreground hover:border-primary/40 hover:bg-primary/5",
+                      ].join(" ")}
+                    >
+                      {cat}
+                      {cat !== "すべて" && categoryCounts[cat]
+                        ? ` (${categoryCounts[cat]})`
+                        : ""}
+                    </button>
+                  ))}
                 </div>
 
-                {/* タグ */}
-                <div className="space-y-2.5">
-                  <p className="text-sm font-semibold text-foreground/80">タグで絞る</p>
-                  <div className="flex flex-wrap gap-2">
+                {/* タグ（存在する場合のみ表示） */}
+                {allTags.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-muted-foreground">タグ:</span>
                     {allTags.map((tag) => (
                       <button
                         key={tag}
                         type="button"
                         onClick={() => setSelectedTag(tag)}
-                        className={`rounded-full border px-3 py-1 text-xs font-medium transition-all ${
+                        className={[
+                          "rounded-full border px-2.5 py-0.5 text-xs font-medium transition-all",
                           selectedTag === tag
                             ? "border-primary/60 bg-primary/10 text-primary"
-                            : "border-border bg-muted/30 text-muted-foreground hover:border-primary/30 hover:text-foreground"
-                        }`}
+                            : "border-border bg-muted/30 text-muted-foreground hover:text-foreground",
+                        ].join(" ")}
                       >
-                        #{tag === "すべて" ? "すべてのタグ" : tag}
+                        #{tag === "すべて" ? "すべて" : tag}
                       </button>
                     ))}
                   </div>
-                </div>
+                )}
 
-                {/* 件数・並び替え */}
-                <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-sm text-muted-foreground">
-                    <span className="font-bold text-foreground">{filteredThreads.length}</span>
-                    {" "}件のスレッド
+                {/* 件数と並び替え */}
+                <div className="flex items-center justify-between border-t pt-3">
+                  <p className="text-xs text-muted-foreground">
+                    {filteredThreads.length} 件の投稿
                   </p>
                   <Tabs
                     value={sortBy}
@@ -403,13 +469,13 @@ export function ForumClient({ initialThreads }: { initialThreads: ForumThread[] 
                       setSortBy(v as (typeof FORUM_SORT_OPTIONS)[number]["value"])
                     }
                   >
-                    <TabsList className="h-8">
-                      <TabsTrigger value="newest" className="h-6 px-3 text-xs">
+                    <TabsList className="h-7">
+                      <TabsTrigger value="newest" className="h-5 px-2.5 text-xs">
                         新着順
                       </TabsTrigger>
-                      <TabsTrigger value="popular" className="h-6 px-3 text-xs">
+                      <TabsTrigger value="popular" className="h-5 px-2.5 text-xs">
                         <Flame className="mr-1 h-3 w-3" />
-                        人気順
+                        コメント順
                       </TabsTrigger>
                     </TabsList>
                   </Tabs>
@@ -418,158 +484,122 @@ export function ForumClient({ initialThreads }: { initialThreads: ForumThread[] 
             </Card>
 
             {/* スレッドリスト */}
-            <div className="space-y-3">
-              {filteredThreads.map((thread) => (
-                <ThreadCard key={thread.id} thread={thread} />
-              ))}
-
-              {filteredThreads.length === 0 && (
-                <Card>
-                  <CardContent className="py-16 text-center">
-                    <MessageCircle className="mx-auto mb-4 h-12 w-12 text-muted-foreground/40" />
-                    <p className="text-base font-semibold">条件に合うスレッドがありません</p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      カテゴリやタグを変更してお試しください。
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
+            {filteredThreads.length === 0 ? (
+              <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed bg-muted/20 py-16 text-center">
+                <MessageSquare className="h-12 w-12 text-muted-foreground/30" />
+                <div>
+                  <p className="text-base font-medium">まだ投稿がありません</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    最初の投稿をしてコミュニティを始めましょう
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredThreads.map((thread) => (
+                  <ThreadCard
+                    key={thread.id}
+                    thread={thread}
+                    onClick={() => setOpenThread(thread)}
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
           {/* ── 右：サイドバー ── */}
           <div className="space-y-5 lg:sticky lg:top-20 lg:self-start">
-            {/* 新規投稿CTA */}
+            {/* 投稿CTA */}
             <Card className="border-primary/20 bg-primary/5">
               <CardContent className="space-y-3 p-5">
-                <div className="flex items-center gap-2">
-                  <PenSquare className="h-5 w-5 text-primary" />
-                  <p className="font-semibold">あなたも相談してみましょう</p>
+                <div>
+                  <p className="font-semibold">あなたも投稿しましょう</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    教育現場の悩みや気づきを気軽に共有できます
+                  </p>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  教育現場の悩みや気づきを気軽に共有できます。匿名投稿も可能です。
-                </p>
-                <NewThreadDialog
-                  composer={composer}
-                  setComposer={setComposer}
-                  isOpen={isDialogOpen}
-                  setIsOpen={setIsDialogOpen}
-                  onSubmit={handleSubmitThread}
-                />
+                <NewThreadDialog auth={auth} onSubmit={handleNewThread} />
               </CardContent>
             </Card>
 
             {/* カテゴリ別件数 */}
-            <Card>
-              <CardHeader className="pb-3 pt-4">
-                <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                  <TrendingUp className="h-4 w-4 text-primary" />
-                  カテゴリ別スレッド数
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-1 pb-4">
-                {FORUM_CATEGORIES.filter((c) => c !== "すべて").map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => {
-                      setSelectedCategory(cat);
-                      window.scrollTo({ top: 0, behavior: "smooth" });
-                    }}
-                    className="flex w-full items-center justify-between rounded-md px-2 py-2 text-sm transition-colors hover:bg-muted/60"
-                  >
-                    <span
-                      className={
-                        selectedCategory === cat ? "font-medium text-primary" : "text-foreground"
-                      }
+            {Object.keys(categoryCounts).length > 0 && (
+              <Card>
+                <CardHeader className="pb-2 pt-4">
+                  <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                    <TrendingUp className="h-4 w-4 text-primary" />
+                    カテゴリ別
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-0.5 pb-4">
+                  {FORUM_CATEGORIES.filter((c) => c !== "すべて").map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setSelectedCategory(cat)}
+                      className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-muted/60"
                     >
-                      {cat}
-                    </span>
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                      {categoryCounts[cat] ?? 0}
-                    </span>
-                  </button>
-                ))}
-              </CardContent>
-            </Card>
+                      <span
+                        className={
+                          selectedCategory === cat
+                            ? "font-medium text-primary"
+                            : "text-foreground"
+                        }
+                      >
+                        {cat}
+                      </span>
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                        {categoryCounts[cat] ?? 0}
+                      </span>
+                    </button>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
 
-            {/* 投稿者属性について */}
+            {/* このページについて */}
             <Card>
-              <CardHeader className="pb-3 pt-4">
-                <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                  <Users className="h-4 w-4 text-primary" />
-                  投稿者の属性バッジ
-                </CardTitle>
-                <CardDescription className="text-xs">
-                  回答者の立場がひと目でわかります
-                </CardDescription>
+              <CardHeader className="pb-2 pt-4">
+                <CardTitle className="text-sm font-semibold">このページについて</CardTitle>
               </CardHeader>
-              <CardContent className="flex flex-col gap-2 pb-4">
-                {(
-                  [
-                    ["teacher", "教員"],
-                    ["student", "学生"],
-                    ["expert", "専門家"],
-                    ["guardian", "保護者"],
-                    ["general", "一般"],
-                    ["anonymous", "匿名"],
-                  ] as const
-                ).map(([role, label]) => (
-                  <div key={role} className="flex items-center gap-2">
-                    <RoleBadge role={role} />
-                    <span className="text-xs text-muted-foreground">{label}</span>
-                  </div>
-                ))}
+              <CardContent className="pb-4">
+                <CardDescription className="text-xs leading-6">
+                  教育悩み相談室は、教員・保護者・学生が教育に関する話題を投稿し、
+                  コメントを通じてコミュニティ内で議論できるスペースです。
+                  現在はモックUIです。
+                </CardDescription>
               </CardContent>
             </Card>
           </div>
         </div>
       </div>
-    </div>
-  );
-}
 
-function ThreadCard({ thread }: { thread: ForumThread }) {
-  return (
-    <Card className="group overflow-hidden transition-all duration-200 hover:border-primary/40 hover:shadow-md">
-      <CardHeader className="pb-3">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <Badge variant="secondary" className="text-xs">{thread.category}</Badge>
-          <RoleBadge role={thread.authorRole} />
-          <span className="text-xs text-muted-foreground">{thread.authorName}</span>
-          <span className="text-xs text-muted-foreground">{formatDate(thread.postedAt)}</span>
-        </div>
-        <CardTitle className="mt-2 text-base leading-7 group-hover:text-primary transition-colors">
-          {thread.title}
-        </CardTitle>
-        <CardDescription className="line-clamp-2 text-sm leading-6">
-          {thread.summary}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="pt-0">
-        <div className="flex flex-wrap gap-1.5 mb-4">
-          {thread.tags.map((tag) => (
-            <Badge key={tag} variant="outline" className="text-xs">
-              #{tag}
-            </Badge>
-          ))}
-        </div>
-        <div className="flex items-center justify-between">
-          <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <MessageSquare className="h-3.5 w-3.5" />
-              返信 {thread.replyCount}
-            </span>
-            <span className="flex items-center gap-1">
-              <Eye className="h-3.5 w-3.5" />
-              閲覧 {thread.viewCount}
-            </span>
+      {/* ─── スレッド詳細 Sheet ─── */}
+      <Sheet open={!!openThread} onOpenChange={(o) => { if (!o) setOpenThread(null); }}>
+        <SheetContent
+          side="right"
+          className="flex w-full flex-col gap-0 overflow-y-auto p-0 sm:max-w-2xl"
+        >
+          <SheetHeader className="sticky top-0 z-10 border-b bg-background px-6 py-4">
+            <div className="flex items-start justify-between gap-3">
+              <SheetTitle className="text-left text-base leading-6">
+                {openThread?.title}
+              </SheetTitle>
+              <button
+                type="button"
+                onClick={() => setOpenThread(null)}
+                className="shrink-0 rounded-sm p-1 text-muted-foreground opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring"
+                aria-label="閉じる"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto px-6 py-5">
+            {openThread && <ThreadDetailContent thread={openThread} />}
           </div>
-          <Button asChild size="sm" variant="outline" className="text-xs">
-            <Link href={`/forum/${thread.id}`}>スレッドを見る →</Link>
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+        </SheetContent>
+      </Sheet>
+    </div>
   );
 }

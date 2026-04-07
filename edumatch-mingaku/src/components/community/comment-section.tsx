@@ -1,58 +1,40 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import {
-  Award,
-  ChevronDown,
-  ChevronUp,
-  CornerDownRight,
-  MessageSquare,
-  Send,
-  ThumbsUp,
-} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { CornerDownRight, LogIn, Send, ThumbsUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  COMMUNITY_ROLE_LABELS,
-  type CommunityComment,
-  type CommunityRole,
-} from "@/lib/mock-community";
+import { type CommunityComment } from "@/lib/mock-community";
 import { cn } from "@/lib/utils";
-import { RoleBadge } from "./role-badge";
 
-type ComposerState = {
-  name: string;
-  body: string;
-  role: CommunityRole;
-  anonymous: boolean;
-};
+// ─── 認証フック ─────────────────────────────────────────────
+function useAuthUser() {
+  const [authUser, setAuthUser] = useState<{
+    name: string;
+    isLoading: boolean;
+    isLoggedIn: boolean;
+  }>({ name: "", isLoading: true, isLoggedIn: false });
 
-const roleOptions: CommunityRole[] = [
-  "teacher",
-  "student",
-  "expert",
-  "guardian",
-  "general",
-];
+  useEffect(() => {
+    fetch("/api/auth/me", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        const name =
+          data?.profile?.name ?? data?.user?.email?.split("@")[0] ?? null;
+        setAuthUser({ name: name ?? "", isLoading: false, isLoggedIn: !!name });
+      })
+      .catch(() =>
+        setAuthUser({ name: "", isLoading: false, isLoggedIn: false })
+      );
+  }, []);
 
+  return authUser;
+}
+
+// ─── ユーティリティ ────────────────────────────────────────
 function formatDate(dateString: string) {
   return new Intl.DateTimeFormat("ja-JP", {
     year: "numeric",
@@ -64,138 +46,146 @@ function formatDate(dateString: string) {
   }).format(new Date(dateString));
 }
 
-function createDefaultComposerState(): ComposerState {
-  return { name: "", body: "", role: "general", anonymous: false };
-}
-
 function updateCommentTree(
   comments: CommunityComment[],
   targetId: string,
-  updater: (comment: CommunityComment) => CommunityComment
+  updater: (c: CommunityComment) => CommunityComment
 ): CommunityComment[] {
-  return comments.map((comment) => {
-    if (comment.id === targetId) return updater(comment);
-    if (!comment.replies?.length) return comment;
-    return {
-      ...comment,
-      replies: updateCommentTree(comment.replies, targetId, updater),
-    };
+  return comments.map((c) => {
+    if (c.id === targetId) return updater(c);
+    if (!c.replies?.length) return c;
+    return { ...c, replies: updateCommentTree(c.replies, targetId, updater) };
   });
 }
 
-function buildAuthorName(form: ComposerState) {
-  if (form.anonymous) return "匿名ユーザー";
-  if (form.name.trim()) return form.name.trim();
-  return `${COMMUNITY_ROLE_LABELS[form.role]}ユーザー`;
+// ─── 投稿者アバター ────────────────────────────────────────
+function AuthorAvatar({ name }: { name: string }) {
+  const initial = name.charAt(0) || "?";
+  return (
+    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+      {initial}
+    </div>
+  );
 }
 
-function buildAuthorRole(form: ComposerState): CommunityRole {
-  return form.anonymous ? "anonymous" : form.role;
+// ─── コメント1件 ───────────────────────────────────────────
+function CommentCard({
+  comment,
+  depth = 0,
+  likedIds,
+  onLike,
+  onReply,
+  isReplyOpen,
+}: {
+  comment: CommunityComment;
+  depth?: number;
+  likedIds: Set<string>;
+  onLike: (id: string) => void;
+  onReply: (id: string | null) => void;
+  isReplyOpen?: boolean;
+}) {
+  const isLiked = likedIds.has(comment.id);
+
+  return (
+    <div className={cn("flex gap-3", depth > 0 && "ml-11")}>
+      <AuthorAvatar name={comment.authorName} />
+      <div className="min-w-0 flex-1 space-y-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-semibold">{comment.authorName}</span>
+          <span className="text-xs text-muted-foreground">
+            {formatDate(comment.postedAt)}
+          </span>
+        </div>
+
+        <p className="whitespace-pre-wrap text-sm leading-7 text-foreground/90">
+          {comment.body}
+        </p>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onLike(comment.id)}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors",
+              isLiked
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary"
+            )}
+          >
+            <ThumbsUp className="h-3 w-3" />
+            参考になった {comment.helpfulCount > 0 ? comment.helpfulCount : ""}
+          </button>
+
+          {depth === 0 && (
+            <button
+              type="button"
+              onClick={() => onReply(isReplyOpen ? null : comment.id)}
+              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <CornerDownRight className="h-3 w-3" />
+              返信
+            </button>
+          )}
+        </div>
+
+        {comment.replies?.map((reply) => (
+          <CommentCard
+            key={reply.id}
+            comment={reply}
+            depth={depth + 1}
+            likedIds={likedIds}
+            onLike={onLike}
+            onReply={onReply}
+          />
+        ))}
+      </div>
+    </div>
+  );
 }
 
-function CommentComposer({
-  composerKey,
+// ─── 入力フォーム ──────────────────────────────────────────
+function ComposerBox({
+  userName,
+  placeholder,
   submitLabel,
-  form,
-  onFormChange,
   onSubmit,
   compact = false,
 }: {
-  composerKey: string;
+  userName: string;
+  placeholder: string;
   submitLabel: string;
-  form: ComposerState;
-  onFormChange: (form: ComposerState) => void;
-  onSubmit: () => void;
+  onSubmit: (body: string) => void;
   compact?: boolean;
 }) {
+  const [body, setBody] = useState("");
+
+  const handleSubmit = () => {
+    if (!body.trim()) return;
+    onSubmit(body.trim());
+    setBody("");
+  };
+
   return (
-    <div className={cn("space-y-4", compact && "rounded-xl border bg-muted/30 p-4")}>
+    <div className={cn("space-y-3", compact && "pl-11")}>
       {!compact && (
-        <div className={cn("grid gap-3", "md:grid-cols-2")}>
-          <div className="space-y-1.5">
-            <Label htmlFor={`${composerKey}-name`} className="text-sm">
-              表示名
-            </Label>
-            <Input
-              id={`${composerKey}-name`}
-              placeholder="例: 教育現場の先生"
-              value={form.name}
-              disabled={form.anonymous}
-              onChange={(e) => onFormChange({ ...form, name: e.target.value })}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-sm">投稿者属性</Label>
-            <Select
-              value={form.role}
-              onValueChange={(v) => onFormChange({ ...form, role: v as CommunityRole })}
-              disabled={form.anonymous}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="属性を選択" />
-              </SelectTrigger>
-              <SelectContent>
-                {roleOptions.map((role) => (
-                  <SelectItem key={role} value={role}>
-                    {COMMUNITY_ROLE_LABELS[role]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+        <p className="text-xs text-muted-foreground">
+          <span className="font-medium text-foreground">{userName}</span>
+          {" "}としてコメントします
+        </p>
       )}
-
-      <div className="space-y-1.5">
-        <Label htmlFor={`${composerKey}-body`} className="text-sm">
-          {compact ? "返信内容" : "本文"}
-        </Label>
-        <Textarea
-          id={`${composerKey}-body`}
-          value={form.body}
-          onChange={(e) => onFormChange({ ...form, body: e.target.value })}
-          placeholder={
-            compact
-              ? "返信内容を入力してください"
-              : "コミュニティに共有したい意見や体験を書いてください"
-          }
-          rows={compact ? 3 : 5}
-          className="resize-none"
-        />
-      </div>
-
-      {!compact && (
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id={`${composerKey}-anon`}
-            checked={form.anonymous}
-            onCheckedChange={(c) => onFormChange({ ...form, anonymous: c === true })}
-          />
-          <Label htmlFor={`${composerKey}-anon`} className="cursor-pointer text-sm">
-            匿名で投稿する
-          </Label>
-        </div>
-      )}
-
-      <div className="flex items-center justify-between">
-        {compact && (
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id={`${composerKey}-anon`}
-              checked={form.anonymous}
-              onCheckedChange={(c) => onFormChange({ ...form, anonymous: c === true })}
-            />
-            <Label htmlFor={`${composerKey}-anon`} className="cursor-pointer text-xs">
-              匿名
-            </Label>
-          </div>
-        )}
+      <Textarea
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        placeholder={placeholder}
+        rows={compact ? 2 : 4}
+        className="resize-none"
+      />
+      <div className="flex justify-end">
         <Button
           type="button"
-          size={compact ? "sm" : "default"}
-          onClick={onSubmit}
-          disabled={!form.body.trim()}
-          className={cn(!compact && "w-full sm:w-auto", compact && "ml-auto")}
+          size="sm"
+          onClick={handleSubmit}
+          disabled={!body.trim()}
         >
           <Send className="h-3.5 w-3.5" />
           {submitLabel}
@@ -205,295 +195,145 @@ function CommentComposer({
   );
 }
 
-function CommentCard({
-  comment,
-  depth = 0,
-  bestAnswerId,
-  likedCommentIds,
-  onHelpfulToggle,
-  onReplyClick,
-  onBestAnswerToggle,
-  allowBestAnswer,
-  isReplyOpen,
-}: {
-  comment: CommunityComment;
-  depth?: number;
-  bestAnswerId?: string;
-  likedCommentIds: Set<string>;
-  onHelpfulToggle: (id: string) => void;
-  onReplyClick: (id: string | null) => void;
-  onBestAnswerToggle?: (id: string) => void;
-  allowBestAnswer?: boolean;
-  isReplyOpen?: boolean;
-}) {
-  const isBestAnswer = bestAnswerId === comment.id;
-  const isLiked = likedCommentIds.has(comment.id);
-
-  return (
-    <div
-      className={cn(
-        "space-y-3 rounded-xl border bg-card p-4 shadow-xs",
-        depth > 0 && "ml-4 border-l-2 border-l-primary/15 bg-muted/20 shadow-none",
-        isBestAnswer && "border-emerald-200 bg-emerald-50/40"
-      )}
-    >
-      {/* ヘッダー */}
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="space-y-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-semibold text-sm">{comment.authorName}</span>
-            <RoleBadge role={comment.authorRole} />
-            {isBestAnswer && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
-                <Award className="h-3 w-3" />
-                ベストアンサー
-              </span>
-            )}
-          </div>
-          <p className="text-xs text-muted-foreground">{formatDate(comment.postedAt)}</p>
-        </div>
-      </div>
-
-      {/* 本文 */}
-      <p className="whitespace-pre-wrap text-sm leading-7 text-foreground/90">
-        {comment.body}
-      </p>
-
-      {/* アクションボタン */}
-      <div className="flex flex-wrap items-center gap-2 pt-1">
-        <Button
-          type="button"
-          size="sm"
-          variant={isLiked ? "default" : "outline"}
-          className="h-7 gap-1.5 rounded-full px-3 text-xs"
-          onClick={() => onHelpfulToggle(comment.id)}
-        >
-          <ThumbsUp className="h-3 w-3" />
-          参考になった {comment.helpfulCount}
-        </Button>
-
-        {depth === 0 && (
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="h-7 gap-1.5 rounded-full px-3 text-xs"
-            onClick={() => onReplyClick(isReplyOpen ? null : comment.id)}
-          >
-            <CornerDownRight className="h-3 w-3" />
-            返信する
-            {isReplyOpen ? (
-              <ChevronUp className="h-3 w-3" />
-            ) : (
-              <ChevronDown className="h-3 w-3" />
-            )}
-          </Button>
-        )}
-
-        {allowBestAnswer && depth === 0 && onBestAnswerToggle && (
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="h-7 gap-1.5 rounded-full px-3 text-xs"
-            onClick={() => onBestAnswerToggle(comment.id)}
-          >
-            <Award className="h-3 w-3" />
-            {isBestAnswer ? "解除" : "ベストアンサーに選ぶ"}
-          </Button>
-        )}
-      </div>
-
-      {/* ネストした返信 */}
-      {comment.replies?.length ? (
-        <div className="space-y-3 pt-1">
-          {comment.replies.map((reply) => (
-            <CommentCard
-              key={reply.id}
-              comment={reply}
-              depth={depth + 1}
-              bestAnswerId={bestAnswerId}
-              likedCommentIds={likedCommentIds}
-              onHelpfulToggle={onHelpfulToggle}
-              onReplyClick={onReplyClick}
-              onBestAnswerToggle={onBestAnswerToggle}
-              allowBestAnswer={allowBestAnswer}
-            />
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
+// ─── メインコンポーネント ───────────────────────────────────
 export function CommentSection({
-  title = "コメント",
-  description,
-  initialComments,
-  emptyMessage,
-  composerTitle,
-  composerDescription,
-  submitLabel,
-  allowBestAnswer = false,
-  initialBestAnswerId,
+  initialComments = [],
+  placeholder = "コミュニティに共有したい意見や体験を書いてください",
+  submitLabel = "コメントを投稿",
+  emptyMessage = "まだコメントはありません。最初の投稿をしてみましょう。",
 }: {
-  title?: string;
-  description?: string;
-  initialComments: CommunityComment[];
-  emptyMessage?: string;
-  composerTitle?: string;
-  composerDescription?: string;
+  initialComments?: CommunityComment[];
+  placeholder?: string;
   submitLabel?: string;
-  allowBestAnswer?: boolean;
-  initialBestAnswerId?: string;
+  emptyMessage?: string;
 }) {
-  const [comments, setComments] = useState(initialComments);
-  const [bestAnswerId, setBestAnswerId] = useState(initialBestAnswerId);
-  const [likedCommentIds, setLikedCommentIds] = useState<Set<string>>(new Set());
-  const [composerForm, setComposerForm] = useState(createDefaultComposerState());
+  const { name, isLoading, isLoggedIn } = useAuthUser();
+  const [comments, setComments] = useState<CommunityComment[]>(initialComments);
+  const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
-  const [replyForm, setReplyForm] = useState(createDefaultComposerState());
 
-  const commentCount = useMemo(
-    () =>
-      comments.reduce((count, comment) => count + 1 + (comment.replies?.length ?? 0), 0),
+  const total = useMemo(
+    () => comments.reduce((n, c) => n + 1 + (c.replies?.length ?? 0), 0),
     [comments]
   );
 
-  const handleHelpfulToggle = (id: string) => {
-    const isLiked = likedCommentIds.has(id);
-    setLikedCommentIds((prev) => {
+  const handleLike = (id: string) => {
+    const liked = likedIds.has(id);
+    setLikedIds((prev) => {
       const next = new Set(prev);
-      if (isLiked) { next.delete(id); } else { next.add(id); }
+      if (liked) { next.delete(id); } else { next.add(id); }
       return next;
     });
     setComments((prev) =>
       updateCommentTree(prev, id, (c) => ({
         ...c,
-        helpfulCount: Math.max(0, c.helpfulCount + (isLiked ? -1 : 1)),
+        helpfulCount: Math.max(0, c.helpfulCount + (liked ? -1 : 1)),
       }))
     );
   };
 
-  const handleCommentSubmit = () => {
-    if (!composerForm.body.trim()) return;
+  const handleComment = (body: string) => {
     const next: CommunityComment = {
-      id: `comment-${Date.now()}`,
-      authorName: buildAuthorName(composerForm),
-      authorRole: buildAuthorRole(composerForm),
+      id: `c-${Date.now()}`,
+      authorName: name,
       postedAt: new Date().toISOString(),
-      body: composerForm.body.trim(),
+      body,
       helpfulCount: 0,
       replies: [],
     };
-    setComments((prev) => [next, ...prev]);
-    setComposerForm(createDefaultComposerState());
+    setComments((prev) => [...prev, next]);
   };
 
-  const handleReplySubmit = () => {
-    if (!replyingTo || !replyForm.body.trim()) return;
+  const handleReply = (parentId: string, body: string) => {
     const reply: CommunityComment = {
-      id: `reply-${Date.now()}`,
-      authorName: buildAuthorName(replyForm),
-      authorRole: buildAuthorRole(replyForm),
+      id: `r-${Date.now()}`,
+      authorName: name,
       postedAt: new Date().toISOString(),
-      body: replyForm.body.trim(),
+      body,
       helpfulCount: 0,
     };
     setComments((prev) =>
-      updateCommentTree(prev, replyingTo, (c) => ({
+      updateCommentTree(prev, parentId, (c) => ({
         ...c,
         replies: [...(c.replies ?? []), reply],
       }))
     );
     setReplyingTo(null);
-    setReplyForm(createDefaultComposerState());
   };
 
   return (
-    <div className="space-y-6">
-      {/* 投稿フォームカード */}
-      <Card className="border-primary/20 bg-primary/5 shadow-sm">
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <MessageSquare className="h-4 w-4 text-primary" />
-            {composerTitle ?? "コメントを投稿する"}
-          </CardTitle>
-          <CardDescription className="text-xs">
-            {composerDescription ?? "教育現場での経験や意見を共有できます。"}
-          </CardDescription>
-        </CardHeader>
-        <Separator className="bg-primary/10" />
-        <CardContent className="pt-5">
-          <CommentComposer
-            composerKey="main"
-            submitLabel={submitLabel ?? "コメントを投稿"}
-            form={composerForm}
-            onFormChange={setComposerForm}
-            onSubmit={handleCommentSubmit}
-          />
-        </CardContent>
-      </Card>
+    <div className="space-y-5">
+      {/* 投稿エリア */}
+      {isLoading ? (
+        <div className="h-10 animate-pulse rounded-lg bg-muted" />
+      ) : isLoggedIn ? (
+        <Card className="border bg-background shadow-sm">
+          <CardContent className="p-4">
+            <ComposerBox
+              userName={name}
+              placeholder={placeholder}
+              submitLabel={submitLabel}
+              onSubmit={handleComment}
+            />
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="border bg-muted/30">
+          <CardContent className="flex flex-col items-center gap-3 py-6 text-center">
+            <p className="text-sm text-muted-foreground">
+              コメントするにはログインが必要です
+            </p>
+            <Button asChild size="sm" variant="default">
+              <Link href="/login">
+                <LogIn className="h-4 w-4" />
+                ログインする
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* コメント一覧ヘッダー */}
+      {total > 0 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold">
+            コメント <span className="text-muted-foreground font-normal">{total}件</span>
+          </p>
+        </div>
+      )}
 
       {/* コメント一覧 */}
-      <div className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h2 className="text-lg font-semibold">{title}</h2>
-            {description && (
-              <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>
-            )}
-          </div>
-          <span className="rounded-full border bg-muted/40 px-3 py-1 text-xs font-medium text-muted-foreground">
-            {commentCount} 件
-          </span>
+      {comments.length === 0 ? (
+        <p className="py-8 text-center text-sm text-muted-foreground">{emptyMessage}</p>
+      ) : (
+        <div className="space-y-5">
+          {comments.map((comment) => (
+            <div key={comment.id} className="space-y-3">
+              <CommentCard
+                comment={comment}
+                likedIds={likedIds}
+                onLike={handleLike}
+                onReply={(id) => {
+                  setReplyingTo(id);
+                }}
+                isReplyOpen={replyingTo === comment.id}
+              />
+              {replyingTo === comment.id && isLoggedIn && (
+                <>
+                  <Separator className="ml-11" />
+                  <ComposerBox
+                    userName={name}
+                    placeholder="返信を入力してください"
+                    submitLabel="返信を投稿"
+                    onSubmit={(body) => handleReply(comment.id, body)}
+                    compact
+                  />
+                </>
+              )}
+            </div>
+          ))}
         </div>
-
-        {comments.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center text-sm text-muted-foreground">
-              {emptyMessage ?? "まだコメントはありません。最初の投稿をしてみましょう。"}
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-4">
-            {comments.map((comment) => (
-              <div key={comment.id} className="space-y-3">
-                <CommentCard
-                  comment={comment}
-                  bestAnswerId={bestAnswerId}
-                  likedCommentIds={likedCommentIds}
-                  onHelpfulToggle={handleHelpfulToggle}
-                  onReplyClick={(id) => {
-                    setReplyingTo(id);
-                    if (id === null) setReplyForm(createDefaultComposerState());
-                  }}
-                  onBestAnswerToggle={
-                    allowBestAnswer
-                      ? (id) => setBestAnswerId((prev) => (prev === id ? undefined : id))
-                      : undefined
-                  }
-                  allowBestAnswer={allowBestAnswer}
-                  isReplyOpen={replyingTo === comment.id}
-                />
-
-                {replyingTo === comment.id && (
-                  <div className="ml-4">
-                    <CommentComposer
-                      composerKey={`reply-${comment.id}`}
-                      submitLabel="返信を投稿"
-                      form={replyForm}
-                      onFormChange={setReplyForm}
-                      onSubmit={handleReplySubmit}
-                      compact
-                    />
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }

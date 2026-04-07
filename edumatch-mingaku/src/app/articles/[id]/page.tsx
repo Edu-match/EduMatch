@@ -17,7 +17,6 @@ import { ShareButton } from "@/components/ui/share-button";
 import { ThumbnailOrTitle } from "@/components/ui/thumbnail-or-title";
 import { ImageWithUrlError } from "@/components/ui/image-with-url-error";
 import { ArticleCommentSection } from "@/components/community/article-comment-section";
-import { createMockArticleComments } from "@/lib/mock-community";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +54,6 @@ export default async function ArticleDetailPage({
 
   const category = post.category || "未分類";
   const authorName = post.author_display_name ?? post.provider?.name ?? "エデュマッチ事務局";
-  const articleComments = createMockArticleComments(post.id, post.title);
 
   return (
     <div className="container py-8">
@@ -225,7 +223,7 @@ export default async function ArticleDetailPage({
         </Card>
 
         <div className="mb-8">
-          <ArticleCommentSection comments={articleComments} />
+          <ArticleCommentSection />
         </div>
 
         {/* 関連記事 */}

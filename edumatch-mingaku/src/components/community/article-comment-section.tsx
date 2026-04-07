@@ -1,20 +1,14 @@
-import type { CommunityComment } from "@/lib/mock-community";
 import { CommentSection } from "./comment-section";
 
-export function ArticleCommentSection({
-  comments,
-}: {
-  comments: CommunityComment[];
-}) {
+export function ArticleCommentSection() {
   return (
-    <CommentSection
-      title="記事へのコメント"
-      description="記事の感想や実践への応用、補足情報などを気軽に共有できます。"
-      initialComments={comments}
-      emptyMessage="まだコメントはありません。最初の感想を投稿してみましょう。"
-      composerTitle="この記事にコメントする"
-      composerDescription="投稿者属性の選択や匿名投稿に対応したモックUIです。"
-      submitLabel="コメントを投稿"
-    />
+    <div className="space-y-4">
+      <h2 className="text-xl font-bold">コメント</h2>
+      <CommentSection
+        placeholder="記事の感想・補足・実践への応用など、気軽にコメントしてください"
+        submitLabel="コメントを投稿"
+        emptyMessage="まだコメントはありません。最初のコメントをしてみましょう。"
+      />
+    </div>
   );
 }
