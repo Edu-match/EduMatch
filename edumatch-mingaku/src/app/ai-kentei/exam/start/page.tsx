@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
-import { ArrowLeft, ArrowRight, Brain, AlertCircle, FlaskConical, Settings } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Brain, AlertCircle, FlaskConical } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function ExamStartPage() {
@@ -15,12 +15,11 @@ export default function ExamStartPage() {
   const [agreed, setAgreed] = useState(false)
   const [loading, setLoading] = useState(false)
   const [testLoading, setTestLoading] = useState(false)
-  const [setupLoading, setSetupLoading] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
-    fetch('/api/auth/me')
-      .then((res) => res.ok ? res.json() : null)
+    fetch('/api/auth/me', { credentials: 'include' })
+      .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data?.profile?.role === 'ADMIN') setIsAdmin(true)
       })
@@ -47,37 +46,24 @@ export default function ExamStartPage() {
     }
   }
 
-  const handleSetup = async () => {
-    setSetupLoading(true)
-    try {
-      const response = await fetch('/api/ai-kentei/setup', { method: 'POST' })
-      const data = await response.json()
-      if (response.ok) {
-        toast.success('セットアップ完了')
-        data.results?.forEach((r: string) => toast.info(r, { duration: 4000 }))
-      } else {
-        toast.error(data.error ?? 'セットアップに失敗しました')
-      }
-    } catch {
-      toast.error('セットアップに失敗しました')
-    } finally {
-      setSetupLoading(false)
-    }
-  }
-
   const handleAdminTest = async () => {
     setTestLoading(true)
     try {
-      const response = await fetch('/api/ai-kentei/exam/test', { method: 'POST' })
+      const response = await fetch('/api/ai-kentei/exam/test', {
+        method: 'POST',
+        credentials: 'include',
+      })
+      const data = await response.json().catch(() => ({}))
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error ?? 'テストセッションの作成に失敗しました')
+        throw new Error(
+          typeof data.error === 'string' ? data.error : 'テストセッションの作成に失敗しました'
+        )
       }
-      const data = await response.json()
       toast.success('テスト合格セッションを作成しました')
       router.push(`/ai-kentei/exam/${data.sessionId}/result`)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'テストの作成に失敗しました。')
+    } finally {
       setTestLoading(false)
     }
   }
@@ -104,48 +90,28 @@ export default function ExamStartPage() {
             トップに戻る
           </Link>
 
-          {/* ADMIN tools */}
+          {/* ADMIN: 問題バンクが空でも合格フローを試せる */}
           {isAdmin && (
-            <div className="mb-6 space-y-2">
-              <div className="p-4 bg-accent/20 border border-accent/30 rounded-lg">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-start gap-3">
-                    <Settings className="h-5 w-5 text-accent-foreground mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-accent-foreground">ADMINセットアップ</p>
-                      <p className="text-xs text-muted-foreground">テーブル作成＋問題を自動投入（初回のみ）</p>
-                    </div>
+            <div className="mb-6 p-4 bg-accent/20 border border-accent/30 rounded-lg">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <FlaskConical className="h-5 w-5 text-accent-foreground mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-accent-foreground">ADMINテストモード</p>
+                    <p className="text-xs text-muted-foreground">
+                      問題の有無に関係なく、合格済みセッションを作成して認定証フローを確認できます
+                    </p>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleSetup}
-                    disabled={setupLoading}
-                    className="shrink-0"
-                  >
-                    {setupLoading ? 'セットアップ中...' : 'セットアップ実行'}
-                  </Button>
                 </div>
-              </div>
-              <div className="p-4 bg-accent/20 border border-accent/30 rounded-lg">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-start gap-3">
-                    <FlaskConical className="h-5 w-5 text-accent-foreground mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-accent-foreground">ADMINテストモード</p>
-                      <p className="text-xs text-muted-foreground">問題をスキップして合格済みセッションを作成します</p>
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleAdminTest}
-                    disabled={testLoading}
-                    className="shrink-0"
-                  >
-                    {testLoading ? '作成中...' : '問題スキップ'}
-                  </Button>
-                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void handleAdminTest()}
+                  disabled={testLoading}
+                  className="shrink-0"
+                >
+                  {testLoading ? '作成中...' : '問題スキップ'}
+                </Button>
               </div>
             </div>
           )}

@@ -1,10 +1,11 @@
-import { createClient } from '@/utils/supabase/server'
 import { NextResponse } from 'next/server'
 import { nanoid } from 'nanoid'
 import { getCurrentUser, getCurrentProfile } from '@/lib/auth'
+import { createServiceRoleClient } from '@/utils/supabase/server-admin'
 
 /**
  * ADMIN専用：問題なしで合格済みセッションを作成する（テスト・動作確認用）
+ * 問題バンクが空でも動作します（DBテーブルが存在し、サービスロールキーが設定されていることが前提）。
  */
 export async function POST() {
   const user = await getCurrentUser()
@@ -13,35 +14,43 @@ export async function POST() {
   }
 
   const profile = await getCurrentProfile()
-  if (!profile) {
-    return NextResponse.json({ error: 'プロフィールが見つかりません' }, { status: 403 })
-  }
-  if (profile.role !== 'ADMIN') {
-    return NextResponse.json({ error: `ADMIN権限が必要です（現在: ${profile.role}）` }, { status: 403 })
+  if (!profile || profile.role !== 'ADMIN') {
+    return NextResponse.json(
+      { error: 'ADMIN権限が必要です' },
+      { status: 403 }
+    )
   }
 
-  const supabase = await createClient()
+  let supabase
+  try {
+    supabase = createServiceRoleClient()
+  } catch (e) {
+    console.error('Service role client:', e)
+    return NextResponse.json(
+      { error: 'サーバー設定（SUPABASE_SERVICE_ROLE_KEY）が不足しています' },
+      { status: 500 }
+    )
+  }
+
   const sessionId = nanoid(12)
 
-  const { error: sessionError } = await supabase
-    .from('ai_kentei_exam_sessions')
-    .insert({
-      session_id: sessionId,
-      user_id: user.id,
-      selected_question_ids: [],
-      answers: {},
-      score: 25,
-      passed: true,
-    })
+  const { error: sessionError } = await supabase.from('ai_kentei_exam_sessions').insert({
+    session_id: sessionId,
+    user_id: user.id,
+    selected_question_ids: [],
+    answers: {},
+    score: 25,
+    passed: true,
+  })
 
   if (sessionError) {
     console.error('Test session error:', sessionError)
-    // テーブルが存在しない場合のメッセージ
-    const isTableMissing = sessionError.message?.includes('does not exist') || sessionError.code === '42P01'
+    const isTableMissing =
+      sessionError.message?.includes('does not exist') || sessionError.code === '42P01'
     return NextResponse.json(
       {
         error: isTableMissing
-          ? 'テーブルが未作成です。/api/ai-kentei/setup を実行してください'
+          ? 'ai_kentei_exam_sessions テーブルがありません。Supabase のマイグレーションを実行してください。'
           : `セッション作成エラー: ${sessionError.message}`,
         code: sessionError.code,
       },
