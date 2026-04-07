@@ -7,6 +7,7 @@ export async function GET(
 ) {
   try {
     const { sessionId } = await params
+    console.log('Result API - fetching session:', sessionId)
     const supabase = await createClient()
 
     const { data: session, error: sessionError } = await supabase
@@ -15,7 +16,10 @@ export async function GET(
       .eq('session_id', sessionId)
       .single()
 
+    console.log('Result API - session query:', { session, sessionError })
+
     if (sessionError || !session) {
+      console.error('Session not found:', sessionError?.message)
       return NextResponse.json(
         { error: 'セッションが見つかりません' },
         { status: 404 }
@@ -23,6 +27,7 @@ export async function GET(
     }
 
     if (session.score === null) {
+      console.error('Session not completed:', { sessionId })
       return NextResponse.json(
         { error: 'この試験はまだ完了していません' },
         { status: 400 }
@@ -30,6 +35,7 @@ export async function GET(
     }
 
     const questionIds = session.selected_question_ids as string[]
+    console.log('Result API - question IDs:', questionIds)
 
     // テストセッションは問題なし
     let orderedQuestions: unknown[] = []
@@ -39,7 +45,10 @@ export async function GET(
         .select('id, question_text, options, correct_answer, explanation, tag')
         .in('id', questionIds)
 
+      console.log('Result API - questions query:', { count: questions?.length, questionsError })
+
       if (questionsError || !questions) {
+        console.error('Questions fetch error:', questionsError?.message)
         return NextResponse.json(
           { error: '問題の取得に失敗しました' },
           { status: 500 }
@@ -51,7 +60,7 @@ export async function GET(
         .filter(Boolean)
     }
 
-    return NextResponse.json({
+    const response = {
       session: {
         sessionId: session.session_id,
         answers: session.answers,
@@ -59,9 +68,11 @@ export async function GET(
         passed: session.passed,
       },
       questions: orderedQuestions,
-    })
+    }
+    console.log('Result API - returning:', { sessionId, score: session.score, passed: session.passed, questionCount: orderedQuestions.length })
+    return NextResponse.json(response)
   } catch (error) {
-    console.error('Unexpected error:', error)
+    console.error('Unexpected error in result API:', error)
     return NextResponse.json(
       { error: '予期しないエラーが発生しました' },
       { status: 500 }

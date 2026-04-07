@@ -43,14 +43,19 @@ export default function ResultPage({ params }: { params: Promise<{ sessionId: st
   useEffect(() => {
     const fetchResultData = async () => {
       try {
+        console.log('Fetching result for session:', resolvedParams.sessionId)
         const response = await fetch(`/api/ai-kentei/exam/${resolvedParams.sessionId}/result`)
         if (!response.ok) {
-          throw new Error('Failed to fetch result data')
+          const errorData = await response.json().catch(() => ({}))
+          console.error('Result fetch failed:', { status: response.status, error: errorData })
+          throw new Error(errorData.error || 'Failed to fetch result data')
         }
         const data = await response.json()
+        console.log('Result data:', data)
         setResultData(data)
-      } catch {
-        toast.error('結果の取得に失敗しました')
+      } catch (err) {
+        console.error('Error fetching result:', err)
+        toast.error(err instanceof Error ? err.message : '結果の取得に失敗しました')
         router.push('/ai-kentei')
       } finally {
         setLoading(false)

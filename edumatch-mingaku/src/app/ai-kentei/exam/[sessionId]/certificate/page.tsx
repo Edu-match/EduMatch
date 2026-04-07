@@ -58,9 +58,14 @@ export default function CertificatePage({ params }: { params: Promise<{ sessionI
   useEffect(() => {
     const fetchData = async () => {
       try {
+        console.log('Certificate page - fetching result for session:', resolvedParams.sessionId)
         const response = await fetch(`/api/ai-kentei/exam/${resolvedParams.sessionId}/result`)
-        if (!response.ok) throw new Error('Failed to fetch data')
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData.error || 'Failed to fetch data')
+        }
         const data = await response.json()
+        console.log('Certificate - result data:', data)
 
         if (!data.session.passed) {
           toast.error('合格者のみ認定証を発行できます')
@@ -91,8 +96,9 @@ export default function CertificatePage({ params }: { params: Promise<{ sessionI
             }
           }
         }
-      } catch {
-        toast.error('データの取得に失敗しました')
+      } catch (err) {
+        console.error('Certificate fetch error:', err)
+        toast.error(err instanceof Error ? err.message : 'データの取得に失敗しました')
         router.push('/ai-kentei')
       } finally {
         setLoading(false)

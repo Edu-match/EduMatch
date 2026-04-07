@@ -33,6 +33,7 @@ export async function POST() {
   }
 
   const sessionId = nanoid(12)
+  console.log('Test API - creating session:', { sessionId, userId: user.id })
 
   const { error: sessionError } = await supabase.from('ai_kentei_exam_sessions').insert({
     session_id: sessionId,
@@ -42,6 +43,8 @@ export async function POST() {
     score: 25,
     passed: true,
   })
+
+  console.log('Test API - insert result:', { sessionError })
 
   if (sessionError) {
     console.error('Test session error:', sessionError)
@@ -58,5 +61,6 @@ export async function POST() {
     )
   }
 
+  console.log('Test API - success, returning:', { sessionId })
   return NextResponse.json({ sessionId })
 }

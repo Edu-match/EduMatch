@@ -54,14 +54,20 @@ export default function ExamStartPage() {
         credentials: 'include',
       })
       const data = await response.json().catch(() => ({}))
+      console.log('Test API response:', { status: response.status, data })
       if (!response.ok) {
         throw new Error(
           typeof data.error === 'string' ? data.error : 'テストセッションの作成に失敗しました'
         )
       }
+      if (!data.sessionId) {
+        throw new Error('セッションIDが返されていません')
+      }
       toast.success('テスト合格セッションを作成しました')
+      console.log('Navigating to:', `/ai-kentei/exam/${data.sessionId}/result`)
       router.push(`/ai-kentei/exam/${data.sessionId}/result`)
     } catch (err) {
+      console.error('Test skip error:', err)
       toast.error(err instanceof Error ? err.message : 'テストの作成に失敗しました。')
     } finally {
       setTestLoading(false)
