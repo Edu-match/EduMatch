@@ -67,7 +67,23 @@ const TAGS = [
   '学校運営',
 ]
 
-function emptyForm() {
+type Difficulty = 'easy' | 'medium' | 'hard'
+type QuestionFormStatus = 'draft' | 'published'
+
+interface QuestionFormState {
+  question_text: string
+  opt0: string
+  opt1: string
+  opt2: string
+  opt3: string
+  correct_answer: string
+  explanation: string
+  tag: string
+  difficulty: Difficulty
+  status: QuestionFormStatus
+}
+
+function emptyForm(): QuestionFormState {
   return {
     question_text: '',
     opt0: '',
@@ -77,9 +93,13 @@ function emptyForm() {
     correct_answer: '',
     explanation: '',
     tag: '',
-    difficulty: 'medium' as const,
-    status: 'draft' as const,
+    difficulty: 'medium',
+    status: 'draft',
   }
+}
+
+function normalizeDifficulty(v: string): Difficulty {
+  return v === 'easy' || v === 'hard' ? v : 'medium'
 }
 
 export function AiKenteiQuestionsManager() {
@@ -88,7 +108,7 @@ export function AiKenteiQuestionsManager() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<AiKenteiQuestionRow | null>(null)
   const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState(emptyForm())
+  const [form, setForm] = useState<QuestionFormState>(emptyForm())
   const [deleteTarget, setDeleteTarget] = useState<AiKenteiQuestionRow | null>(null)
   const [deleting, setDeleting] = useState(false)
 
@@ -130,8 +150,8 @@ export function AiKenteiQuestionsManager() {
       correct_answer: q.correct_answer,
       explanation: q.explanation ?? '',
       tag: q.tag ?? '',
-      difficulty: (q.difficulty === 'easy' || q.difficulty === 'hard' ? q.difficulty : 'medium') as 'easy' | 'medium' | 'hard',
-      status: (q.status === 'published' ? 'published' : 'draft') as 'draft' | 'published',
+      difficulty: normalizeDifficulty(q.difficulty),
+      status: q.status === 'published' ? 'published' : 'draft',
     })
     setDialogOpen(true)
   }
@@ -404,7 +424,7 @@ export function AiKenteiQuestionsManager() {
                 <Select
                   value={form.difficulty}
                   onValueChange={(v) =>
-                    setForm((f) => ({ ...f, difficulty: v as typeof f.difficulty }))
+                    setForm((f) => ({ ...f, difficulty: v as Difficulty }))
                   }
                 >
                   <SelectTrigger>
@@ -422,7 +442,7 @@ export function AiKenteiQuestionsManager() {
               <Label>状態</Label>
               <Select
                 value={form.status}
-                onValueChange={(v) => setForm((f) => ({ ...f, status: v as typeof f.status }))}
+                onValueChange={(v) => setForm((f) => ({ ...f, status: v as QuestionFormStatus }))}
               >
                 <SelectTrigger>
                   <SelectValue />
