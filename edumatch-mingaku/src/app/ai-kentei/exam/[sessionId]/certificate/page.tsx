@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { Share2, Camera, Loader2, ArrowLeft, Eye, Award } from 'lucide-react'
+import { Brain, Share2, Camera, Loader2, ArrowLeft, Eye, Award } from 'lucide-react'
 import { toast } from 'sonner'
 import { CertificatePreview } from '@/components/ai-kentei/certificate-preview'
 import { createSupabaseBrowserClient } from '@/utils/supabase/client'
@@ -51,7 +51,6 @@ export default function CertificatePage({ params }: { params: Promise<{ sessionI
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // 試験結果取得
         const response = await fetch(`/api/ai-kentei/exam/${resolvedParams.sessionId}/result`)
         if (!response.ok) throw new Error('Failed to fetch data')
         const data = await response.json()
@@ -65,11 +64,10 @@ export default function CertificatePage({ params }: { params: Promise<{ sessionI
         setCertificateData({
           sessionId: data.session.sessionId,
           score: data.session.score,
-          totalQuestions: data.questions.length,
+          totalQuestions: data.questions.length > 0 ? data.questions.length : 25,
           passedAt: new Date().toISOString(),
         })
 
-        // ログインユーザー情報取得
         const supabase = createSupabaseBrowserClient()
         const { data: { user } } = await supabase.auth.getUser()
         if (user) {
@@ -77,12 +75,11 @@ export default function CertificatePage({ params }: { params: Promise<{ sessionI
           if (res.ok) {
             const profileData = await res.json()
             if (profileData.name) {
-              const info: ProfileInfo = {
+              setProfileInfo({
                 displayName: profileData.name ?? null,
                 legalName: profileData.legal_name ?? null,
                 email: profileData.email ?? user.email ?? null,
-              }
-              setProfileInfo(info)
+              })
               setNameType('display')
             }
           }
@@ -170,9 +167,8 @@ export default function CertificatePage({ params }: { params: Promise<{ sessionI
 
   if (loading) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-        <p className="text-sm text-muted-foreground">データを読み込んでいます...</p>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
   }
@@ -180,193 +176,203 @@ export default function CertificatePage({ params }: { params: Promise<{ sessionI
   if (!certificateData) return null
 
   return (
-    <div className="container py-8 md:py-12">
-      <div className="max-w-4xl mx-auto">
-        <Link
-          href={`/ai-kentei/exam/${resolvedParams.sessionId}/result`}
-          className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          結果に戻る
-        </Link>
+    <div className="min-h-screen bg-background">
+      {/* Sub Header */}
+      <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm">
+        <div className="container mx-auto px-4 h-14 flex items-center justify-between">
+          <Link href="/ai-kentei" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+            <Brain className="h-6 w-6 text-primary" />
+            <span className="font-medium text-sm">一般社団法人 教育AI活用協会</span>
+          </Link>
+        </div>
+      </header>
 
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Form */}
-          <Card className="h-fit border-0 shadow-md">
-            <CardHeader className="border-b pb-4">
-              <div className="flex items-center gap-3 mb-1">
-                <div className="w-9 h-9 rounded-lg bg-amber-500 flex items-center justify-center">
-                  <Award className="h-4 w-4 text-white" />
-                </div>
-              </div>
-              <CardTitle className="text-xl">認定証の発行</CardTitle>
-              <CardDescription>
-                認定証に表示する情報を入力してください
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Name selection */}
-              <div className="space-y-3">
-                <Label>認定証に表示する名前</Label>
+      <main className="container mx-auto px-4 py-8 md:py-12">
+        <div className="max-w-4xl mx-auto">
+          <Link
+            href={`/ai-kentei/exam/${resolvedParams.sessionId}/result`}
+            className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            結果に戻る
+          </Link>
 
-                {profileInfo ? (
-                  <RadioGroup
-                    value={nameType}
-                    onValueChange={(v) => setNameType(v as NameType)}
-                    className="space-y-2"
-                  >
-                    {profileInfo.displayName && (
-                      <div className="flex items-center space-x-2 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer">
-                        <RadioGroupItem value="display" id="name-display" disabled={!!certificateId} />
-                        <Label htmlFor="name-display" className="cursor-pointer flex-1">
-                          <span className="text-xs text-muted-foreground block">表示名</span>
-                          <span className="font-medium">{profileInfo.displayName}</span>
-                        </Label>
-                      </div>
-                    )}
-                    {profileInfo.legalName && (
-                      <div className="flex items-center space-x-2 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer">
-                        <RadioGroupItem value="legal" id="name-legal" disabled={!!certificateId} />
-                        <Label htmlFor="name-legal" className="cursor-pointer flex-1">
-                          <span className="text-xs text-muted-foreground block">本名</span>
-                          <span className="font-medium">{profileInfo.legalName}</span>
-                        </Label>
-                      </div>
-                    )}
-                    <div className="flex items-center space-x-2 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer">
-                      <RadioGroupItem value="custom" id="name-custom" disabled={!!certificateId} />
-                      <Label htmlFor="name-custom" className="cursor-pointer flex-1">
-                        <span className="text-xs text-muted-foreground block">手動入力</span>
-                      </Label>
-                    </div>
-                  </RadioGroup>
-                ) : null}
-
-                {(!profileInfo || nameType === 'custom') && (
-                  <Input
-                    placeholder="山田 太郎"
-                    value={customName}
-                    onChange={(e) => setCustomName(e.target.value)}
-                    disabled={!!certificateId}
-                  />
-                )}
-                <p className="text-xs text-muted-foreground">
-                  認定証に表示される名前です。本名でなくても構いません。
-                </p>
-                {profileInfo?.email && (
-                  <p className="text-xs text-blue-600 dark:text-blue-400">
-                    ✉ 発行後、{profileInfo.email} に認定証をメール送信します
-                  </p>
-                )}
-              </div>
-
-              {/* Photo upload */}
-              <div className="space-y-2">
-                <Label>プロフィール写真（任意）</Label>
-                <div className="flex items-center gap-4">
-                  <div
-                    className="w-20 h-20 rounded-full bg-muted border-2 border-dashed border-border flex items-center justify-center overflow-hidden cursor-pointer hover:border-primary/50 transition-colors"
-                    onClick={() => !certificateId && fileInputRef.current?.click()}
-                  >
-                    {photoUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={photoUrl} alt="プロフィール" className="w-full h-full object-cover" />
-                    ) : (
-                      <Camera className="h-6 w-6 text-muted-foreground" />
-                    )}
-                  </div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handlePhotoUpload}
-                    disabled={!!certificateId}
-                  />
-                  <div className="text-sm text-muted-foreground">
-                    <p>クリックして写真をアップロード</p>
-                    <p className="text-xs">JPG, PNG (最大5MB)</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Actions */}
-              {!certificateId ? (
-                <Button
-                  onClick={handleGenerateCertificate}
-                  disabled={generating || !resolvedName.trim()}
-                  className="w-full bg-blue-600 hover:bg-blue-700"
-                  size="lg"
-                >
-                  {generating ? (
-                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />発行中...</>
-                  ) : <><Award className="mr-2 h-4 w-4" />認定証を発行する</>}
-                </Button>
-              ) : (
+          <div className="grid lg:grid-cols-2 gap-8">
+            {/* Form */}
+            <Card className="border-border/50 h-fit">
+              <CardHeader>
+                <CardTitle className="text-xl">認定証の発行</CardTitle>
+                <CardDescription>
+                  認定証に表示する情報を入力してください
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Name selection */}
                 <div className="space-y-3">
-                  <Button onClick={handleShare} className="w-full bg-blue-600 hover:bg-blue-700" size="lg">
-                    <Share2 className="mr-2 h-4 w-4" />
-                    共有する
-                  </Button>
+                  <Label>認定証に表示する名前</Label>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <Button variant="outline" asChild>
-                      <a
-                        href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`${typeof window !== 'undefined' ? window.location.origin : ''}/ai-kentei/c/${shareSlug}`)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <svg className="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                          <path fillRule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" clipRule="evenodd" />
-                        </svg>
-                        Facebook
-                      </a>
+                  {profileInfo && (
+                    <RadioGroup
+                      value={nameType}
+                      onValueChange={(v) => setNameType(v as NameType)}
+                      className="space-y-2"
+                    >
+                      {profileInfo.displayName && (
+                        <div className={`flex items-center space-x-3 p-3 rounded-lg border transition-colors cursor-pointer ${nameType === 'display' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}>
+                          <RadioGroupItem value="display" id="name-display" disabled={!!certificateId} />
+                          <Label htmlFor="name-display" className="cursor-pointer flex-1">
+                            <span className="text-xs text-muted-foreground block">表示名</span>
+                            <span className="font-medium">{profileInfo.displayName}</span>
+                          </Label>
+                        </div>
+                      )}
+                      {profileInfo.legalName && (
+                        <div className={`flex items-center space-x-3 p-3 rounded-lg border transition-colors cursor-pointer ${nameType === 'legal' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}>
+                          <RadioGroupItem value="legal" id="name-legal" disabled={!!certificateId} />
+                          <Label htmlFor="name-legal" className="cursor-pointer flex-1">
+                            <span className="text-xs text-muted-foreground block">本名</span>
+                            <span className="font-medium">{profileInfo.legalName}</span>
+                          </Label>
+                        </div>
+                      )}
+                      <div className={`flex items-center space-x-3 p-3 rounded-lg border transition-colors cursor-pointer ${nameType === 'custom' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}>
+                        <RadioGroupItem value="custom" id="name-custom" disabled={!!certificateId} />
+                        <Label htmlFor="name-custom" className="cursor-pointer flex-1">
+                          <span className="text-xs text-muted-foreground block">手動入力</span>
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  )}
+
+                  {(!profileInfo || nameType === 'custom') && (
+                    <Input
+                      placeholder="山田 太郎"
+                      value={customName}
+                      onChange={(e) => setCustomName(e.target.value)}
+                      disabled={!!certificateId}
+                    />
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    認定証に表示される名前です。本名でなくても構いません。
+                  </p>
+                  {profileInfo?.email && (
+                    <p className="text-xs text-primary">
+                      ✉ 発行後、{profileInfo.email} に認定証をメール送信します
+                    </p>
+                  )}
+                </div>
+
+                {/* Photo upload */}
+                <div className="space-y-2">
+                  <Label>プロフィール写真（任意）</Label>
+                  <div className="flex items-center gap-4">
+                    <div
+                      className="w-20 h-20 rounded-full bg-muted border-2 border-dashed border-border flex items-center justify-center overflow-hidden cursor-pointer hover:border-primary/50 transition-colors"
+                      onClick={() => !certificateId && fileInputRef.current?.click()}
+                    >
+                      {photoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={photoUrl} alt="プロフィール" className="w-full h-full object-cover" />
+                      ) : (
+                        <Camera className="h-6 w-6 text-muted-foreground" />
+                      )}
+                    </div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handlePhotoUpload}
+                      disabled={!!certificateId}
+                    />
+                    <div className="text-sm text-muted-foreground">
+                      <p>クリックして写真をアップロード</p>
+                      <p className="text-xs">JPG, PNG (最大5MB)</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                {!certificateId ? (
+                  <Button
+                    onClick={handleGenerateCertificate}
+                    disabled={generating || !resolvedName.trim()}
+                    className="w-full"
+                    size="lg"
+                  >
+                    {generating ? (
+                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" />発行中...</>
+                    ) : (
+                      <>認定証を発行する</>
+                    )}
+                  </Button>
+                ) : (
+                  <div className="space-y-3">
+                    <Button onClick={handleShare} className="w-full" size="lg">
+                      <Share2 className="mr-2 h-4 w-4" />
+                      共有する
                     </Button>
-                    <Button variant="outline" asChild>
-                      <a
-                        href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`${resolvedName}さんが生成AI活用ガイドライン検定に合格しました！`)}&url=${encodeURIComponent(`${typeof window !== 'undefined' ? window.location.origin : ''}/ai-kentei/c/${shareSlug}`)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <svg className="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                        </svg>
-                        X (Twitter)
-                      </a>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <Button variant="outline" asChild>
+                        <a
+                          href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`${typeof window !== 'undefined' ? window.location.origin : ''}/ai-kentei/c/${shareSlug}`)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <svg className="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                            <path fillRule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" clipRule="evenodd" />
+                          </svg>
+                          Facebook
+                        </a>
+                      </Button>
+                      <Button variant="outline" asChild>
+                        <a
+                          href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`${resolvedName}さんが生成AI活用ガイドライン検定に合格しました！`)}&url=${encodeURIComponent(`${typeof window !== 'undefined' ? window.location.origin : ''}/ai-kentei/c/${shareSlug}`)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <svg className="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                          </svg>
+                          X (Twitter)
+                        </a>
+                      </Button>
+                    </div>
+
+                    <Button variant="outline" className="w-full" asChild>
+                      <Link href={`/ai-kentei/c/${shareSlug}`} target="_blank">
+                        <Eye className="mr-2 h-4 w-4" />
+                        認定証を表示
+                      </Link>
+                    </Button>
+
+                    <Button variant="outline" className="w-full" asChild>
+                      <Link href="/mypage">
+                        <Award className="mr-2 h-4 w-4" />
+                        マイページで確認する
+                      </Link>
                     </Button>
                   </div>
+                )}
+              </CardContent>
+            </Card>
 
-                  <Button variant="outline" className="w-full" asChild>
-                    <Link href={`/ai-kentei/c/${shareSlug}`} target="_blank">
-                      <Eye className="mr-2 h-4 w-4" />
-                      認定証を表示
-                    </Link>
-                  </Button>
-
-                  <Button variant="outline" className="w-full" asChild>
-                    <Link href="/mypage">
-                      マイページで確認する
-                    </Link>
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Preview */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">プレビュー</h3>
-            <CertificatePreview
-              name={resolvedName || 'お名前'}
-              photoUrl={photoUrl}
-              score={certificateData.score}
-              totalQuestions={certificateData.totalQuestions}
-              date={new Date(certificateData.passedAt)}
-              certificateId={certificateId}
-            />
+            {/* Preview */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-foreground">プレビュー</h3>
+              <CertificatePreview
+                name={resolvedName || 'お名前'}
+                photoUrl={photoUrl}
+                score={certificateData.score}
+                totalQuestions={certificateData.totalQuestions}
+                date={new Date(certificateData.passedAt)}
+                certificateId={certificateId}
+              />
+            </div>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   )
 }

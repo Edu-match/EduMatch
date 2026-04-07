@@ -13,9 +13,21 @@ export function MaintenanceAwareLayout({
 }) {
   const pathname = usePathname();
   const isMaintenance = pathname === "/maintenance";
+  const isAiKentei = pathname.startsWith("/ai-kentei");
 
   if (isMaintenance) {
     return <div className="min-h-screen flex flex-col">{children}</div>;
+  }
+
+  if (isAiKentei) {
+    return (
+      <div className="flex min-h-screen flex-col w-full">
+        <Header />
+        <main className="flex-1 pt-16 w-full">
+          {children}
+        </main>
+      </div>
+    );
   }
 
   return (

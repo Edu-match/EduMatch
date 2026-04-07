@@ -21,16 +21,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     .single()
 
   if (!certificate) {
-    return { title: '認定証が見つかりません | エデュマッチ AI検定' }
+    return { title: '認定証が見つかりません | 一般社団法人 教育AI活用協会' }
   }
 
   return {
-    title: `${certificate.public_display_name}さんの認定証 | エデュマッチ AI検定`,
+    title: `${certificate.public_display_name}さんの認定証 | 一般社団法人 教育AI活用協会`,
     description: `${certificate.public_display_name}さんは生成AI活用ガイドライン検定に合格しました。スコア: ${certificate.score}/25`,
     openGraph: {
       title: `${certificate.public_display_name}さんの認定証`,
       description: `生成AI活用ガイドライン検定に合格しました！スコア: ${certificate.score}/25`,
       type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${certificate.public_display_name}さんの認定証`,
+      description: `生成AI活用ガイドライン検定に合格しました！スコア: ${certificate.score}/25`,
     },
   }
 }
@@ -51,38 +56,63 @@ export default async function PublicCertificatePage({ params }: Props) {
   }
 
   return (
-    <div className="container py-8 md:py-12">
-      <div className="max-w-2xl mx-auto">
-        {/* Verified Badge */}
-        <div className="flex items-center justify-center gap-3 mb-8">
-          <div className="inline-flex items-center gap-2 bg-amber-100 text-amber-700 border border-amber-200 rounded-full px-4 py-2 text-sm font-semibold">
-            <Award className="h-4 w-4" />
-            認定証
+    <div className="min-h-screen bg-background">
+      {/* Sub Header */}
+      <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm">
+        <div className="container mx-auto px-4 h-14 flex items-center justify-between">
+          <Link href="/ai-kentei" className="flex items-center gap-2">
+            <Brain className="h-6 w-6 text-primary" />
+            <span className="font-medium text-sm">一般社団法人 教育AI活用協会</span>
+          </Link>
+        </div>
+      </header>
+
+      <main className="container mx-auto px-4 py-8 md:py-12">
+        <div className="max-w-2xl mx-auto">
+          {/* Verified Badge */}
+          <div className="flex items-center justify-center gap-2 mb-6 text-primary">
+            <Award className="h-5 w-5" />
+            <span className="text-sm font-medium">認定証</span>
+          </div>
+
+          {/* Certificate */}
+          <CertificatePreview
+            name={certificate.public_display_name}
+            photoUrl={certificate.photo_url}
+            score={certificate.score}
+            totalQuestions={25}
+            date={new Date(certificate.passed_at)}
+            certificateId={certificate.certificate_id}
+          />
+
+          {/* CTA */}
+          <div className="mt-8 text-center space-y-4">
+            <p className="text-muted-foreground">
+              あなたも検定に挑戦してみませんか？
+            </p>
+            <Button asChild size="lg">
+              <Link href="/ai-kentei/exam/start">
+                検定を受ける
+              </Link>
+            </Button>
           </div>
         </div>
+      </main>
 
-        {/* Certificate */}
-        <CertificatePreview
-          name={certificate.public_display_name}
-          photoUrl={certificate.photo_url}
-          score={certificate.score}
-          totalQuestions={25}
-          date={new Date(certificate.passed_at)}
-          certificateId={certificate.certificate_id}
-        />
-
-        {/* CTA */}
-        <div className="mt-10 text-center bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-2xl p-8">
-          <Brain className="h-10 w-10 text-blue-200 mx-auto mb-3" />
-          <p className="font-semibold text-lg mb-1">あなたも挑戦しませんか？</p>
-          <p className="text-blue-200 text-sm mb-5">
-            生成AI活用ガイドライン検定は無料で何度でも受験できます
-          </p>
-          <Button asChild size="lg" className="bg-white text-blue-700 hover:bg-blue-50 font-semibold">
-            <Link href="/ai-kentei/exam/start">検定を受ける</Link>
-          </Button>
+      {/* Footer */}
+      <footer className="border-t border-border/50 mt-16">
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <Brain className="h-5 w-5 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">一般社団法人 教育AI活用協会</span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              文部科学省「初等中等教育段階における生成AIの利用に関する暫定的なガイドライン」に基づく
+            </p>
+          </div>
         </div>
-      </div>
+      </footer>
     </div>
   )
 }

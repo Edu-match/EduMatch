@@ -2,12 +2,15 @@
 
 import { useEffect, useState, use, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Label } from '@/components/ui/label'
+import { Brain, ChevronRight, AlertTriangle, Loader2, Clock } from 'lucide-react'
+import { toast } from 'sonner'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,8 +21,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { ChevronRight, AlertTriangle, Loader2, Clock, Brain } from 'lucide-react'
-import { toast } from 'sonner'
 
 interface Question {
   id: string
@@ -27,6 +28,7 @@ interface Question {
   options: string[]
   tag: string | null
   difficulty: string
+  polarity: string
 }
 
 interface ExamData {
@@ -61,12 +63,16 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
     const fetchExamData = async () => {
       try {
         const response = await fetch(`/api/ai-kentei/exam/${resolvedParams.sessionId}`)
-        if (!response.ok) throw new Error('Failed to fetch exam data')
+        if (!response.ok) {
+          throw new Error('Failed to fetch exam data')
+        }
         const data = await response.json()
+
         if (data.session.isCompleted) {
           router.push(`/ai-kentei/exam/${resolvedParams.sessionId}/result`)
           return
         }
+
         setExamData(data)
         setAnswers(data.session.answers || {})
       } catch {
@@ -76,11 +82,14 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
         setLoading(false)
       }
     }
+
     fetchExamData()
   }, [resolvedParams.sessionId, router])
 
+  // Timer effect - 20 seconds per question
   useEffect(() => {
     if (!timerStarted || loading || submitting) return
+
     const interval = setInterval(() => {
       setQuestionTimeRemaining((prev) => {
         if (prev <= 1) {
@@ -96,16 +105,39 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
         return prev - 1
       })
     }, 1000)
+
     return () => clearInterval(interval)
   }, [timerStarted, loading, submitting, examData])
 
   useEffect(() => {
-    if (timerStarted && !submitting) setQuestionTimeRemaining(20)
+    if (timerStarted && !submitting) {
+      setQuestionTimeRemaining(20)
+    }
   }, [currentIndex, timerStarted, submitting])
 
   useEffect(() => {
-    if (examData && !timerStarted) setTimerStarted(true)
+    if (examData && !timerStarted) {
+      setTimerStarted(true)
+    }
   }, [examData, timerStarted])
+
+  const saveAnswers = async (newAnswers: Record<string, string>) => {
+    try {
+      await fetch(`/api/ai-kentei/exam/${resolvedParams.sessionId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ answers: newAnswers }),
+      })
+    } catch {
+      // Silent fail for auto-save
+    }
+  }
+
+  const handleAnswerChange = (questionId: string, answer: string) => {
+    const newAnswers = { ...answers, [questionId]: answer }
+    setAnswers(newAnswers)
+    saveAnswers(newAnswers)
+  }
 
   useEffect(() => {
     if (autoSubmitTriggered && !submitting) {
@@ -117,32 +149,20 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ answers: answersRef.current }),
           })
-          if (!response.ok) throw new Error('Failed')
+
+          if (!response.ok) {
+            throw new Error('Failed to submit exam')
+          }
+
           router.push(`/ai-kentei/exam/${resolvedParams.sessionId}/result`)
         } catch {
-          toast.error('提出に失敗しました')
+          toast.error('提出に失敗しました。もう一度お試しください。')
           setSubmitting(false)
         }
       }
       submitExam()
     }
   }, [autoSubmitTriggered, submitting, resolvedParams.sessionId, router])
-
-  const saveAnswers = async (newAnswers: Record<string, string>) => {
-    try {
-      await fetch(`/api/ai-kentei/exam/${resolvedParams.sessionId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answers: newAnswers }),
-      })
-    } catch { /* silent */ }
-  }
-
-  const handleAnswerChange = (questionId: string, answer: string) => {
-    const newAnswers = { ...answers, [questionId]: answer }
-    setAnswers(newAnswers)
-    saveAnswers(newAnswers)
-  }
 
   const handleSubmit = async () => {
     setSubmitting(true)
@@ -152,169 +172,169 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ answers: answersRef.current }),
       })
-      if (!response.ok) throw new Error('Failed')
+
+      if (!response.ok) {
+        throw new Error('Failed to submit exam')
+      }
+
       router.push(`/ai-kentei/exam/${resolvedParams.sessionId}/result`)
     } catch {
-      toast.error('提出に失敗しました')
+      toast.error('提出に失敗しました。もう一度お試しください。')
       setSubmitting(false)
     }
   }
 
   if (loading) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">
-        <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center">
-          <Brain className="h-6 w-6 text-white animate-pulse" />
-        </div>
-        <p className="text-muted-foreground text-sm">問題を読み込んでいます...</p>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
   }
 
-  if (!examData) return null
+  if (!examData) {
+    return null
+  }
 
   const currentQuestion = examData.questions[currentIndex]
   const answeredCount = Object.keys(answers).length
   const progress = (answeredCount / examData.questions.length) * 100
 
-  const timerColor =
-    questionTimeRemaining <= 5
-      ? 'bg-red-100 text-red-600 border-red-200 animate-pulse'
-      : questionTimeRemaining <= 10
-      ? 'bg-amber-100 text-amber-600 border-amber-200'
-      : 'bg-blue-50 text-blue-600 border-blue-200'
-
   return (
-    <div className="container py-4 md:py-6">
-      <div className="max-w-3xl mx-auto">
-        {/* Header bar */}
-        <div className="flex items-center justify-between mb-4 gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
-              <Brain className="h-4 w-4 text-white" />
+    <div className="min-h-screen bg-background">
+      {/* Sub Header */}
+      <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-16 z-40">
+        <div className="container mx-auto px-4 h-14 flex items-center justify-between">
+          <Link href="/ai-kentei" className="flex items-center gap-2">
+            <Brain className="h-6 w-6 text-primary" />
+            <span className="font-medium text-sm hidden sm:inline">一般社団法人 教育AI活用協会</span>
+          </Link>
+          <div className="flex items-center gap-2 sm:gap-4">
+            {/* Per-Question Timer Display */}
+            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-sm font-medium transition-colors ${
+              questionTimeRemaining <= 5
+                ? 'bg-destructive/10 text-destructive animate-pulse'
+                : questionTimeRemaining <= 10
+                ? 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400'
+                : 'bg-primary/10 text-primary'
+            }`}>
+              <Clock className="h-4 w-4" />
+              <span className="w-6 text-center">{questionTimeRemaining}</span>
+              <span className="text-xs opacity-70">秒</span>
             </div>
-            <span className="text-sm font-medium text-muted-foreground">
-              問題 <span className="text-foreground font-bold">{currentIndex + 1}</span> / {examData.questions.length}
-            </span>
-            <span className="text-xs text-muted-foreground hidden sm:inline">
-              ({answeredCount}問回答済み)
+            <span className="text-sm text-muted-foreground hidden sm:inline">
+              {answeredCount} / {examData.questions.length} 問回答済み
             </span>
           </div>
-          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-mono font-semibold border ${timerColor}`}>
-            <Clock className="h-4 w-4" />
-            <span className="w-5 text-center">{questionTimeRemaining}</span>
-            <span className="text-xs opacity-70">秒</span>
-          </div>
         </div>
+      </header>
 
-        {/* Progress bar */}
-        <div className="mb-5">
-          <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
-            <span>進捗</span>
-            <span className="font-medium">{Math.round(progress)}%</span>
+      <main className="container mx-auto px-4 py-6 md:py-8">
+        <div className="max-w-3xl mx-auto">
+          {/* Progress */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-foreground">
+                問題 {currentIndex + 1} / {examData.questions.length}
+              </span>
+              <span className="text-sm text-muted-foreground">
+                進捗 {Math.round(progress)}%
+              </span>
+            </div>
+            <Progress value={progress} className="h-2" />
           </div>
-          <div className="h-2 bg-blue-100 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-blue-600 rounded-full transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-        </div>
 
-        {/* Question Card */}
-        <Card className="mb-5 border-0 shadow-md">
-          <CardHeader className="pb-4 border-b bg-gradient-to-r from-blue-600 to-indigo-600 rounded-t-xl text-white">
-            <div className="flex items-center gap-2 mb-2">
-              {currentQuestion.tag && (
-                <Badge className="bg-white/20 text-white border-0 text-xs hover:bg-white/20">
-                  {currentQuestion.tag}
+          {/* Question Card */}
+          <Card className="border-border/50 mb-6">
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-2 mb-2">
+                {currentQuestion.tag && (
+                  <Badge variant="secondary" className="text-xs">
+                    {currentQuestion.tag}
+                  </Badge>
+                )}
+                <Badge
+                  variant="outline"
+                  className={`text-xs ${
+                    currentQuestion.difficulty === 'easy'
+                      ? 'border-green-500 text-green-600'
+                      : currentQuestion.difficulty === 'hard'
+                      ? 'border-red-500 text-red-600'
+                      : 'border-yellow-500 text-yellow-600'
+                  }`}
+                >
+                  {currentQuestion.difficulty === 'easy' ? '基本' : currentQuestion.difficulty === 'hard' ? '応用' : '標準'}
                 </Badge>
-              )}
-              <Badge
-                className={`text-xs border-0 ${
-                  currentQuestion.difficulty === 'easy'
-                    ? 'bg-green-500/30 text-green-100'
-                    : currentQuestion.difficulty === 'hard'
-                    ? 'bg-red-400/30 text-red-100'
-                    : 'bg-amber-400/30 text-amber-100'
-                }`}
+              </div>
+              <CardTitle className="text-lg md:text-xl leading-relaxed">
+                {currentQuestion.question_text}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <RadioGroup
+                value={answers[currentQuestion.id] || ''}
+                onValueChange={(value) => handleAnswerChange(currentQuestion.id, value)}
+                className="space-y-3"
               >
-                {currentQuestion.difficulty === 'easy' ? '基本' : currentQuestion.difficulty === 'hard' ? '応用' : '標準'}
-              </Badge>
-            </div>
-            <CardTitle className="text-base md:text-lg leading-relaxed text-white font-medium">
-              {currentQuestion.question_text}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-5">
-            <RadioGroup
-              value={answers[currentQuestion.id] || ''}
-              onValueChange={(value) => handleAnswerChange(currentQuestion.id, value)}
-              className="space-y-3"
-            >
-              {currentQuestion.options.map((option, index) => {
-                const isSelected = answers[currentQuestion.id] === option
-                return (
+                {currentQuestion.options.map((option, index) => (
                   <div
                     key={index}
-                    className={`flex items-start space-x-3 p-4 rounded-xl border-2 transition-all cursor-pointer ${
-                      isSelected
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30'
-                        : 'border-border hover:border-blue-300 hover:bg-blue-50/50 dark:hover:bg-blue-950/10'
+                    className={`flex items-start space-x-3 p-4 rounded-lg border transition-colors cursor-pointer ${
+                      answers[currentQuestion.id] === option
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-primary/50 hover:bg-muted/50'
                     }`}
                     onClick={() => handleAnswerChange(currentQuestion.id, option)}
                   >
                     <RadioGroupItem value={option} id={`option-${index}`} className="mt-0.5" />
-                    <Label
-                      htmlFor={`option-${index}`}
-                      className={`flex-1 cursor-pointer leading-relaxed text-sm ${isSelected ? 'text-blue-700 dark:text-blue-300 font-medium' : ''}`}
-                    >
+                    <Label htmlFor={`option-${index}`} className="flex-1 cursor-pointer leading-relaxed">
                       {option}
                     </Label>
                   </div>
-                )
-              })}
-            </RadioGroup>
-          </CardContent>
-        </Card>
+                ))}
+              </RadioGroup>
+            </CardContent>
+          </Card>
 
-        {/* Navigation */}
-        <div className="flex justify-between items-center">
-          <Button
-            variant="outline"
-            onClick={() => setCurrentIndex(Math.max(0, currentIndex - 1))}
-            disabled={currentIndex === 0}
-          >
-            前の問題
-          </Button>
-          {currentIndex === examData.questions.length - 1 ? (
-            <Button
-              onClick={() => setShowSubmitDialog(true)}
-              disabled={submitting}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              {submitting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />提出中...</> : '試験を提出する'}
-            </Button>
-          ) : (
-            <Button
-              onClick={() => setCurrentIndex(Math.min(examData.questions.length - 1, currentIndex + 1))}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              次の問題へ
-              <ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
-          )}
+          {/* Navigation */}
+          <div className="flex justify-end">
+            {currentIndex === examData.questions.length - 1 ? (
+              <Button
+                onClick={() => setShowSubmitDialog(true)}
+                disabled={submitting}
+                size="lg"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    提出中...
+                  </>
+                ) : (
+                  '試験を提出する'
+                )}
+              </Button>
+            ) : (
+              <Button
+                onClick={() => setCurrentIndex(Math.min(examData.questions.length - 1, currentIndex + 1))}
+                size="lg"
+              >
+                次の問題へ
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            )}
+          </div>
         </div>
-      </div>
+      </main>
 
+      {/* Submit Dialog */}
       <AlertDialog open={showSubmitDialog} onOpenChange={setShowSubmitDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              <AlertTriangle className="h-5 w-5 text-accent" />
               試験を提出しますか？
             </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-1">
+            <AlertDialogDescription className="space-y-2">
               <p>
                 {answeredCount === examData.questions.length
                   ? 'すべての問題に回答済みです。'
@@ -325,11 +345,7 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>キャンセル</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleSubmit}
-              disabled={submitting}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
+            <AlertDialogAction onClick={handleSubmit} disabled={submitting}>
               {submitting ? '提出中...' : '提出する'}
             </AlertDialogAction>
           </AlertDialogFooter>
