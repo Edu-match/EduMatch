@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   Award,
   ListChecks,
+  MessageCircle,
 } from "lucide-react";
 
 /** 一般ユーザー向けメニュー（全員閲覧用） */
@@ -22,6 +23,7 @@ const generalItems = [
   { href: "/", label: "ホーム", icon: Home },
   { href: "/services", label: "サービス一覧", icon: Search },
   { href: "/articles", label: "記事一覧", icon: Newspaper },
+  { href: "/forum", label: "教育悩み相談室", icon: MessageCircle },
   { href: "/events", label: "セミナー・イベント情報", icon: Calendar },
   { href: "/companies", label: "掲載企業一覧", icon: Building2 },
   { href: "/compare", label: "サービス比較", icon: Scale },

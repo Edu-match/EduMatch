@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import {
   Award,
+  ChevronDown,
+  ChevronUp,
   CornerDownRight,
   MessageSquare,
   Send,
@@ -26,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import {
   COMMUNITY_ROLE_LABELS,
@@ -62,12 +65,7 @@ function formatDate(dateString: string) {
 }
 
 function createDefaultComposerState(): ComposerState {
-  return {
-    name: "",
-    body: "",
-    role: "general",
-    anonymous: false,
-  };
+  return { name: "", body: "", role: "general", anonymous: false };
 }
 
 function updateCommentTree(
@@ -76,14 +74,8 @@ function updateCommentTree(
   updater: (comment: CommunityComment) => CommunityComment
 ): CommunityComment[] {
   return comments.map((comment) => {
-    if (comment.id === targetId) {
-      return updater(comment);
-    }
-
-    if (!comment.replies?.length) {
-      return comment;
-    }
-
+    if (comment.id === targetId) return updater(comment);
+    if (!comment.replies?.length) return comment;
     return {
       ...comment,
       replies: updateCommentTree(comment.replies, targetId, updater),
@@ -92,14 +84,8 @@ function updateCommentTree(
 }
 
 function buildAuthorName(form: ComposerState) {
-  if (form.anonymous) {
-    return "匿名ユーザー";
-  }
-
-  if (form.name.trim()) {
-    return form.name.trim();
-  }
-
+  if (form.anonymous) return "匿名ユーザー";
+  if (form.name.trim()) return form.name.trim();
   return `${COMMUNITY_ROLE_LABELS[form.role]}ユーザー`;
 }
 
@@ -108,16 +94,14 @@ function buildAuthorRole(form: ComposerState): CommunityRole {
 }
 
 function CommentComposer({
-  title,
-  description,
+  composerKey,
   submitLabel,
   form,
   onFormChange,
   onSubmit,
   compact = false,
 }: {
-  title: string;
-  description?: string;
+  composerKey: string;
   submitLabel: string;
   form: ComposerState;
   onFormChange: (form: ComposerState) => void;
@@ -125,80 +109,98 @@ function CommentComposer({
   compact?: boolean;
 }) {
   return (
-    <div className={cn("space-y-4", compact && "rounded-lg border bg-muted/30 p-4")}>
-      <div className="space-y-1">
-        <h3 className={cn("font-semibold", compact ? "text-sm" : "text-base")}>{title}</h3>
-        {description ? (
-          <p className="text-sm text-muted-foreground">{description}</p>
-        ) : null}
-      </div>
-
-      <div className={cn("grid gap-4", compact ? "md:grid-cols-1" : "md:grid-cols-2")}>
-        <div className="space-y-2">
-          <Label htmlFor={`${title}-name`}>表示名</Label>
-          <Input
-            id={`${title}-name`}
-            placeholder="例: 教育現場の先生"
-            value={form.name}
-            disabled={form.anonymous}
-            onChange={(event) => onFormChange({ ...form, name: event.target.value })}
-          />
+    <div className={cn("space-y-4", compact && "rounded-xl border bg-muted/30 p-4")}>
+      {!compact && (
+        <div className={cn("grid gap-3", "md:grid-cols-2")}>
+          <div className="space-y-1.5">
+            <Label htmlFor={`${composerKey}-name`} className="text-sm">
+              表示名
+            </Label>
+            <Input
+              id={`${composerKey}-name`}
+              placeholder="例: 教育現場の先生"
+              value={form.name}
+              disabled={form.anonymous}
+              onChange={(e) => onFormChange({ ...form, name: e.target.value })}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-sm">投稿者属性</Label>
+            <Select
+              value={form.role}
+              onValueChange={(v) => onFormChange({ ...form, role: v as CommunityRole })}
+              disabled={form.anonymous}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="属性を選択" />
+              </SelectTrigger>
+              <SelectContent>
+                {roleOptions.map((role) => (
+                  <SelectItem key={role} value={role}>
+                    {COMMUNITY_ROLE_LABELS[role]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
+      )}
 
-        <div className="space-y-2">
-          <Label>投稿者属性</Label>
-          <Select
-            value={form.role}
-            onValueChange={(value) =>
-              onFormChange({ ...form, role: value as CommunityRole })
-            }
-            disabled={form.anonymous}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="属性を選択" />
-            </SelectTrigger>
-            <SelectContent>
-              {roleOptions.map((role) => (
-                <SelectItem key={role} value={role}>
-                  {COMMUNITY_ROLE_LABELS[role]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <Checkbox
-          id={`${title}-anonymous`}
-          checked={form.anonymous}
-          onCheckedChange={(checked) =>
-            onFormChange({ ...form, anonymous: checked === true })
-          }
-        />
-        <Label htmlFor={`${title}-anonymous`}>匿名で投稿する</Label>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor={`${title}-body`}>本文</Label>
+      <div className="space-y-1.5">
+        <Label htmlFor={`${composerKey}-body`} className="text-sm">
+          {compact ? "返信内容" : "本文"}
+        </Label>
         <Textarea
-          id={`${title}-body`}
+          id={`${composerKey}-body`}
           value={form.body}
-          onChange={(event) => onFormChange({ ...form, body: event.target.value })}
-          placeholder="コミュニティに共有したい意見や体験を書いてください"
+          onChange={(e) => onFormChange({ ...form, body: e.target.value })}
+          placeholder={
+            compact
+              ? "返信内容を入力してください"
+              : "コミュニティに共有したい意見や体験を書いてください"
+          }
           rows={compact ? 3 : 5}
+          className="resize-none"
         />
       </div>
 
-      <Button
-        type="button"
-        onClick={onSubmit}
-        disabled={!form.body.trim()}
-        className="w-full sm:w-auto"
-      >
-        <Send className="h-4 w-4" />
-        {submitLabel}
-      </Button>
+      {!compact && (
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id={`${composerKey}-anon`}
+            checked={form.anonymous}
+            onCheckedChange={(c) => onFormChange({ ...form, anonymous: c === true })}
+          />
+          <Label htmlFor={`${composerKey}-anon`} className="cursor-pointer text-sm">
+            匿名で投稿する
+          </Label>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between">
+        {compact && (
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id={`${composerKey}-anon`}
+              checked={form.anonymous}
+              onCheckedChange={(c) => onFormChange({ ...form, anonymous: c === true })}
+            />
+            <Label htmlFor={`${composerKey}-anon`} className="cursor-pointer text-xs">
+              匿名
+            </Label>
+          </div>
+        )}
+        <Button
+          type="button"
+          size={compact ? "sm" : "default"}
+          onClick={onSubmit}
+          disabled={!form.body.trim()}
+          className={cn(!compact && "w-full sm:w-auto", compact && "ml-auto")}
+        >
+          <Send className="h-3.5 w-3.5" />
+          {submitLabel}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -212,79 +214,99 @@ function CommentCard({
   onReplyClick,
   onBestAnswerToggle,
   allowBestAnswer,
+  isReplyOpen,
 }: {
   comment: CommunityComment;
   depth?: number;
   bestAnswerId?: string;
   likedCommentIds: Set<string>;
   onHelpfulToggle: (id: string) => void;
-  onReplyClick: (id: string) => void;
+  onReplyClick: (id: string | null) => void;
   onBestAnswerToggle?: (id: string) => void;
   allowBestAnswer?: boolean;
+  isReplyOpen?: boolean;
 }) {
   const isBestAnswer = bestAnswerId === comment.id;
   const isLiked = likedCommentIds.has(comment.id);
 
   return (
-    <div className={cn("space-y-3 rounded-xl border bg-card p-4", depth > 0 && "ml-6")}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-2">
+    <div
+      className={cn(
+        "space-y-3 rounded-xl border bg-card p-4 shadow-xs",
+        depth > 0 && "ml-4 border-l-2 border-l-primary/15 bg-muted/20 shadow-none",
+        isBestAnswer && "border-emerald-200 bg-emerald-50/40"
+      )}
+    >
+      {/* ヘッダー */}
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-semibold">{comment.authorName}</span>
+            <span className="font-semibold text-sm">{comment.authorName}</span>
             <RoleBadge role={comment.authorRole} />
-            {isBestAnswer ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-800">
-                <Award className="h-3.5 w-3.5" />
+            {isBestAnswer && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
+                <Award className="h-3 w-3" />
                 ベストアンサー
               </span>
-            ) : null}
+            )}
           </div>
           <p className="text-xs text-muted-foreground">{formatDate(comment.postedAt)}</p>
         </div>
       </div>
 
+      {/* 本文 */}
       <p className="whitespace-pre-wrap text-sm leading-7 text-foreground/90">
         {comment.body}
       </p>
 
-      <div className="flex flex-wrap items-center gap-2">
+      {/* アクションボタン */}
+      <div className="flex flex-wrap items-center gap-2 pt-1">
         <Button
           type="button"
           size="sm"
           variant={isLiked ? "default" : "outline"}
+          className="h-7 gap-1.5 rounded-full px-3 text-xs"
           onClick={() => onHelpfulToggle(comment.id)}
         >
-          <ThumbsUp className="h-4 w-4" />
+          <ThumbsUp className="h-3 w-3" />
           参考になった {comment.helpfulCount}
         </Button>
 
-        {depth === 0 ? (
+        {depth === 0 && (
           <Button
             type="button"
             size="sm"
             variant="ghost"
-            onClick={() => onReplyClick(comment.id)}
+            className="h-7 gap-1.5 rounded-full px-3 text-xs"
+            onClick={() => onReplyClick(isReplyOpen ? null : comment.id)}
           >
-            <CornerDownRight className="h-4 w-4" />
+            <CornerDownRight className="h-3 w-3" />
             返信する
+            {isReplyOpen ? (
+              <ChevronUp className="h-3 w-3" />
+            ) : (
+              <ChevronDown className="h-3 w-3" />
+            )}
           </Button>
-        ) : null}
+        )}
 
-        {allowBestAnswer && depth === 0 && onBestAnswerToggle ? (
+        {allowBestAnswer && depth === 0 && onBestAnswerToggle && (
           <Button
             type="button"
             size="sm"
             variant="ghost"
+            className="h-7 gap-1.5 rounded-full px-3 text-xs"
             onClick={() => onBestAnswerToggle(comment.id)}
           >
-            <Award className="h-4 w-4" />
-            {isBestAnswer ? "ベストアンサー解除" : "ベストアンサーにする"}
+            <Award className="h-3 w-3" />
+            {isBestAnswer ? "解除" : "ベストアンサーに選ぶ"}
           </Button>
-        ) : null}
+        )}
       </div>
 
+      {/* ネストした返信 */}
       {comment.replies?.length ? (
-        <div className="space-y-3 border-l border-dashed border-border/80 pl-2">
+        <div className="space-y-3 pt-1">
           {comment.replies.map((reply) => (
             <CommentCard
               key={reply.id}
@@ -332,39 +354,30 @@ export function CommentSection({
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyForm, setReplyForm] = useState(createDefaultComposerState());
 
-  const commentCount = useMemo(() => {
-    return comments.reduce((count, comment) => {
-      return count + 1 + (comment.replies?.length ?? 0);
-    }, 0);
-  }, [comments]);
+  const commentCount = useMemo(
+    () =>
+      comments.reduce((count, comment) => count + 1 + (comment.replies?.length ?? 0), 0),
+    [comments]
+  );
 
   const handleHelpfulToggle = (id: string) => {
     const isLiked = likedCommentIds.has(id);
-
     setLikedCommentIds((prev) => {
       const next = new Set(prev);
-      if (isLiked) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
+      if (isLiked) { next.delete(id); } else { next.add(id); }
       return next;
     });
-
     setComments((prev) =>
-      updateCommentTree(prev, id, (comment) => ({
-        ...comment,
-        helpfulCount: Math.max(0, comment.helpfulCount + (isLiked ? -1 : 1)),
+      updateCommentTree(prev, id, (c) => ({
+        ...c,
+        helpfulCount: Math.max(0, c.helpfulCount + (isLiked ? -1 : 1)),
       }))
     );
   };
 
   const handleCommentSubmit = () => {
-    if (!composerForm.body.trim()) {
-      return;
-    }
-
-    const nextComment: CommunityComment = {
+    if (!composerForm.body.trim()) return;
+    const next: CommunityComment = {
       id: `comment-${Date.now()}`,
       authorName: buildAuthorName(composerForm),
       authorRole: buildAuthorRole(composerForm),
@@ -373,16 +386,12 @@ export function CommentSection({
       helpfulCount: 0,
       replies: [],
     };
-
-    setComments((prev) => [nextComment, ...prev]);
+    setComments((prev) => [next, ...prev]);
     setComposerForm(createDefaultComposerState());
   };
 
   const handleReplySubmit = () => {
-    if (!replyingTo || !replyForm.body.trim()) {
-      return;
-    }
-
+    if (!replyingTo || !replyForm.body.trim()) return;
     const reply: CommunityComment = {
       id: `reply-${Date.now()}`,
       authorName: buildAuthorName(replyForm),
@@ -391,11 +400,10 @@ export function CommentSection({
       body: replyForm.body.trim(),
       helpfulCount: 0,
     };
-
     setComments((prev) =>
-      updateCommentTree(prev, replyingTo, (comment) => ({
-        ...comment,
-        replies: [...(comment.replies ?? []), reply],
+      updateCommentTree(prev, replyingTo, (c) => ({
+        ...c,
+        replies: [...(c.replies ?? []), reply],
       }))
     );
     setReplyingTo(null);
@@ -404,20 +412,21 @@ export function CommentSection({
 
   return (
     <div className="space-y-6">
-      <Card className="border-primary/20 bg-primary/5">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <MessageSquare className="h-5 w-5 text-primary" />
+      {/* 投稿フォームカード */}
+      <Card className="border-primary/20 bg-primary/5 shadow-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <MessageSquare className="h-4 w-4 text-primary" />
             {composerTitle ?? "コメントを投稿する"}
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-xs">
             {composerDescription ?? "教育現場での経験や意見を共有できます。"}
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <Separator className="bg-primary/10" />
+        <CardContent className="pt-5">
           <CommentComposer
-            title={composerTitle ?? "新しいコメント"}
-            description={composerDescription}
+            composerKey="main"
             submitLabel={submitLabel ?? "コメントを投稿"}
             form={composerForm}
             onFormChange={setComposerForm}
@@ -426,17 +435,18 @@ export function CommentSection({
         </CardContent>
       </Card>
 
+      {/* コメント一覧 */}
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h2 className="text-xl font-semibold">{title}</h2>
-            {description ? (
-              <p className="text-sm text-muted-foreground">{description}</p>
-            ) : null}
+            <h2 className="text-lg font-semibold">{title}</h2>
+            {description && (
+              <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>
+            )}
           </div>
-          <div className="rounded-full border bg-muted/40 px-3 py-1 text-sm text-muted-foreground">
-            {commentCount}件
-          </div>
+          <span className="rounded-full border bg-muted/40 px-3 py-1 text-xs font-medium text-muted-foreground">
+            {commentCount} 件
+          </span>
         </div>
 
         {comments.length === 0 ? (
@@ -454,25 +464,31 @@ export function CommentSection({
                   bestAnswerId={bestAnswerId}
                   likedCommentIds={likedCommentIds}
                   onHelpfulToggle={handleHelpfulToggle}
-                  onReplyClick={setReplyingTo}
+                  onReplyClick={(id) => {
+                    setReplyingTo(id);
+                    if (id === null) setReplyForm(createDefaultComposerState());
+                  }}
                   onBestAnswerToggle={
                     allowBestAnswer
                       ? (id) => setBestAnswerId((prev) => (prev === id ? undefined : id))
                       : undefined
                   }
                   allowBestAnswer={allowBestAnswer}
+                  isReplyOpen={replyingTo === comment.id}
                 />
 
-                {replyingTo === comment.id ? (
-                  <CommentComposer
-                    title="返信を入力"
-                    submitLabel="返信を投稿"
-                    form={replyForm}
-                    onFormChange={setReplyForm}
-                    onSubmit={handleReplySubmit}
-                    compact
-                  />
-                ) : null}
+                {replyingTo === comment.id && (
+                  <div className="ml-4">
+                    <CommentComposer
+                      composerKey={`reply-${comment.id}`}
+                      submitLabel="返信を投稿"
+                      form={replyForm}
+                      onFormChange={setReplyForm}
+                      onSubmit={handleReplySubmit}
+                      compact
+                    />
+                  </div>
+                )}
               </div>
             ))}
           </div>

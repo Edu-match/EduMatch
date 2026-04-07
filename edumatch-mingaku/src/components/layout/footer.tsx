@@ -9,6 +9,7 @@ export function Footer() {
       { href: "/articles", label: "記事一覧" },
       { href: "/services", label: "サービス一覧" },
       { href: "/events", label: "セミナー・イベント情報" },
+      { href: "/forum", label: "教育悩み相談室" },
     ],
     company: [
       { href: "/about", label: "運営について" },
