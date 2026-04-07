@@ -123,3 +123,37 @@ export async function markInAppNotificationReadFromForm(formData: FormData): Pro
   if (typeof raw !== "string" || !raw) return;
   await markInAppNotificationRead(raw);
 }
+
+/**
+ * 「エデュマッチ」のプレオープンお知らせ以外をすべてクリア
+ */
+export async function clearOtherNotifications(): Promise<void> {
+  const user = await requireAuth();
+  
+  // 「エデュマッチ」または「プレオープン」を含む通知を取得
+  const preOpenNotifications = await prisma.inAppNotification.findMany({
+    where: {
+      user_id: user.id,
+      OR: [
+        { title: { contains: 'エデュマッチ' } },
+        { title: { contains: 'プレオープン' } },
+      ],
+    },
+    select: { id: true },
+  });
+
+  const preOpenIds = new Set(
+    preOpenNotifications.map((n) => n.id)
+  );
+
+  // それ以外の通知をすべて削除
+  await prisma.inAppNotification.deleteMany({
+    where: {
+      user_id: user.id,
+      id: { notIn: Array.from(preOpenIds) },
+    },
+  });
+
+  revalidatePath("/mypage");
+  revalidatePath("/notifications");
+}

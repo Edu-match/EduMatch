@@ -1,15 +1,37 @@
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Bell } from "lucide-react";
+import { Bell, Trash2 } from "lucide-react";
 import { getInAppNotificationsForCurrentUser } from "@/app/_actions/in-app-notifications";
 import { InAppNotificationReadLink } from "@/components/notifications/in-app-notification-read-link";
 import { formatInAppNotificationTitle } from "@/lib/in-app-notification-constants";
+import { clearOtherNotifications } from "@/app/_actions/in-app-notifications";
 
 type Props = {
   /** カードに表示する最大件数 */
   limit?: number;
 };
+
+async function ClearNotificationsButton() {
+  const handleClear = async () => {
+    "use server";
+    await clearOtherNotifications();
+  };
+
+  return (
+    <form action={handleClear}>
+      <Button
+        type="submit"
+        variant="ghost"
+        size="sm"
+        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+      >
+        <Trash2 className="h-4 w-4 mr-1" />
+        クリア
+      </Button>
+    </form>
+  );
+}
 
 export async function InAppNotificationsCard({ limit = 8 }: Props) {
   const rows = await getInAppNotificationsForCurrentUser(limit);
@@ -21,9 +43,12 @@ export async function InAppNotificationsCard({ limit = 8 }: Props) {
           <Bell className="h-5 w-5" />
           通知
         </CardTitle>
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/notifications">すべて</Link>
-        </Button>
+        <div className="flex gap-1">
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/notifications">すべて</Link>
+          </Button>
+          {rows.length > 0 && <ClearNotificationsButton />}
+        </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">

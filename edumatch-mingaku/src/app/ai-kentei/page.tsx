@@ -1,16 +1,26 @@
+'use client'
+
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { BookOpen, Award, Clock, CheckCircle, Brain, Shield } from 'lucide-react'
-import type { Metadata } from 'next'
-
-export const metadata: Metadata = {
-  title: 'AI検定 - 生成AI活用ガイドライン検定',
-  description: '学校における生成AIの適切な活用方法を学び、理解度を確認できる検定試験です。合格者には認定証を発行します。',
-}
+import { BookOpen, Award, Clock, CheckCircle, Brain, Shield, Lock } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 export default function AiKenteiPage() {
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/auth/me', { credentials: 'include' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.profile?.role === 'ADMIN') setIsAdmin(true)
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
   return (
     <div className="min-h-screen bg-background">
       {/* Sub Header */}
@@ -38,13 +48,23 @@ export default function AiKenteiPage() {
               学校における生成AIの適切な活用方法を学び、理解度を確認できる検定試験です。
               合格者には認定証を発行します。
             </p>
-            <div className="flex justify-center">
-              <Button asChild size="lg" className="text-base px-8">
-                <Link href="/ai-kentei/exam/start">
-                  <BookOpen className="mr-2 h-5 w-5" />
-                  検定を受ける
-                </Link>
-              </Button>
+            <div className="flex flex-col items-center gap-4">
+              {!loading && !isAdmin ? (
+                <>
+                  <div className="text-lg font-semibold text-primary">Coming Soon</div>
+                  <Button disabled size="lg" className="text-base px-8">
+                    <Lock className="mr-2 h-5 w-5" />
+                    検定を受ける（準備中）
+                  </Button>
+                </>
+              ) : (
+                <Button asChild size="lg" className="text-base px-8">
+                  <Link href="/ai-kentei/exam/start">
+                    <BookOpen className="mr-2 h-5 w-5" />
+                    検定を受ける
+                  </Link>
+                </Button>
+              )}
             </div>
           </section>
 
@@ -130,11 +150,21 @@ export default function AiKenteiPage() {
               50問の問題バンクからランダムに25問が出題されます。
               何度でも受験可能です。
             </p>
-            <Button asChild size="lg" className="text-base px-8">
-              <Link href="/ai-kentei/exam/start">
-                検定を開始する
-              </Link>
-            </Button>
+            {!loading && !isAdmin ? (
+              <>
+                <p className="text-primary font-semibold mb-4">Coming Soon</p>
+                <Button disabled size="lg" className="text-base px-8">
+                  <Lock className="mr-2 h-5 w-5" />
+                  検定を開始する
+                </Button>
+              </>
+            ) : (
+              <Button asChild size="lg" className="text-base px-8">
+                <Link href="/ai-kentei/exam/start">
+                  検定を開始する
+                </Link>
+              </Button>
+            )}
           </section>
         </div>
       </main>
