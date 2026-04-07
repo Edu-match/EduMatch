@@ -549,7 +549,7 @@ export function ProfileRegisterForm({
   return (
     <div className="container py-8">
       <Button variant="ghost" asChild className="mb-4">
-        <Link href="/dashboard">
+        <Link href="/mypage">
           <ArrowLeft className="h-4 w-4 mr-2" />
           マイページに戻る
         </Link>
