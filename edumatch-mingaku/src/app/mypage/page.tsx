@@ -7,25 +7,22 @@ import {
   Clock,
   FileBadge2,
   Star,
-  Bell,
   Settings,
   ArrowRight,
   Eye,
-  FileText,
-  TrendingUp,
   Heart,
-  CreditCard,
   Bot,
   User,
   ChevronRight,
+  Award,
 } from "lucide-react";
+import { AiKenteiCertificatesCompact } from "@/components/ai-kentei/certificates-compact";
 import { ChatHistoryCompact } from "@/components/dashboard/chat-history-compact";
 import { requireAuth, getCurrentProfile } from "@/lib/auth";
 import { getRecentViewHistory } from "@/app/_actions";
 import { RequestListCompact } from "@/components/dashboard/request-list-compact";
 import { FavoritesCompact } from "@/components/dashboard/favorites-compact";
 import { MyReviewsCompact } from "@/components/dashboard/my-reviews-compact";
-import { getCurrentSubscription } from "@/app/_actions/subscription";
 import { getMyReviews } from "@/app/_actions/reviews";
 import { InAppNotificationsCard } from "@/components/dashboard/in-app-notifications-card";
 import { FEATURES } from "@/lib/features";
@@ -56,8 +53,6 @@ export default async function MyPage() {
 
   const recentlyViewed = await getRecentViewHistory(user.id, 5);
   const myReviews = FEATURES.REVIEWS ? await getMyReviews() : [];
-
-  const subscription = await getCurrentSubscription();
 
   return (
     <div className="container py-8">
@@ -225,6 +220,25 @@ export default async function MyPage() {
           </Card>
           )}
 
+          {/* AI検定 認定証 */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Award className="h-5 w-5 text-amber-500" />
+                AI検定 認定証
+              </CardTitle>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/ai-kentei">
+                  検定を受ける
+                  <ArrowRight className="h-4 w-4 ml-1" />
+                </Link>
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <AiKenteiCertificatesCompact />
+            </CardContent>
+          </Card>
+
           {/* AIチャット履歴 */}
           <Card>
             <CardHeader>
@@ -240,106 +254,11 @@ export default async function MyPage() {
               <ChatHistoryCompact />
             </CardContent>
           </Card>
-
-          {/* 導入検討進捗 */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" />
-                導入検討の進捗
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground py-2">準備中です。今後、検討中のサービス・進捗がここに表示されます。</p>
-            </CardContent>
-          </Card>
         </div>
 
         {/* サイドバー */}
         <div className="space-y-6">
           <InAppNotificationsCard />
-
-          {/* クイックアクション */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">クイックアクション</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Button variant="outline" className="w-full justify-start" asChild>
-                <Link href="/request-info">
-                  <FileText className="h-4 w-4 mr-2" />
-                  資料請求
-                </Link>
-              </Button>
-              <Button variant="outline" className="w-full justify-start" asChild>
-                <Link href="/consultation">
-                  <Bell className="h-4 w-4 mr-2" />
-                  無料相談予約
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* プラン情報 */}
-          <Card className="border-primary/20 bg-primary/5">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <CreditCard className="h-5 w-5" />
-                ご利用プラン
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="mb-4 flex items-center gap-2">
-                <Badge
-                  className={
-                    subscription?.isActive
-                      ? "bg-green-100 text-green-800 hover:bg-green-100"
-                      : ""
-                  }
-                >
-                  {subscription?.planName || "フリー"}プラン
-                </Badge>
-                {subscription?.isActive && (
-                  <Badge variant="outline" className="text-green-600 border-green-300">
-                    有効
-                  </Badge>
-                )}
-                {subscription?.isCanceled && (
-                  <Badge variant="outline" className="text-orange-600 border-orange-300">
-                    キャンセル予定
-                  </Badge>
-                )}
-              </div>
-              {subscription?.currentPeriodEnd && (
-                <p className="text-xs text-muted-foreground mb-2">
-                  {subscription.isCanceled ? "利用可能期限" : "次回請求日"}:{" "}
-                  {new Date(subscription.currentPeriodEnd).toLocaleDateString("ja-JP")}
-                </p>
-              )}
-              {(!subscription || subscription.plan === "FREE" || !subscription.isActive) ? (
-                <>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    アップグレードすると、すべての機能が利用できます。
-                  </p>
-                  <Button className="w-full" asChild>
-                    <Link href="/plans">プランを見る</Link>
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    プランの変更・キャンセルは管理ページから行えます。
-                  </p>
-                  <Button className="w-full" variant="outline" asChild>
-                    <Link href="/dashboard/subscription">
-                      サブスクリプション管理
-                      <ArrowRight className="h-4 w-4 ml-2" />
-                    </Link>
-                  </Button>
-                </>
-              )}
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>

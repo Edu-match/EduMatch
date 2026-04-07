@@ -13,6 +13,7 @@ import {
   PenSquare,
   FileText,
   ShieldCheck,
+  Award,
 } from "lucide-react";
 
 /** 一般ユーザー向けメニュー（全員閲覧用） */
@@ -23,6 +24,7 @@ const generalItems = [
   { href: "/events", label: "セミナー・イベント情報", icon: Calendar },
   { href: "/companies", label: "掲載企業一覧", icon: Building2 },
   { href: "/compare", label: "サービス比較", icon: Scale },
+  { href: "/ai-kentei", label: "AI検定", icon: Award },
   { href: "/help", label: "ヘルプ", icon: HelpCircle },
 ];
 

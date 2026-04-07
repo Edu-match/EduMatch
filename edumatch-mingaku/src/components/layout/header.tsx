@@ -299,7 +299,7 @@ export function Header() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
                   className="cursor-pointer"
-                  onSelect={() => router.push("/dashboard")}
+                  onSelect={() => router.push("/mypage")}
                 >
                   <User className="mr-2 h-4 w-4" />
                   マイページ
@@ -415,7 +415,7 @@ export function Header() {
                       </div>
                     </div>
                     <Link
-                      href="/dashboard"
+                      href="/mypage"
                       className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground"
                     >
                       <User className="h-4 w-4" />
