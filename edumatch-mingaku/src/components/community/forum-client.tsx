@@ -1,14 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
+  CheckCircle2,
+  Circle,
   Flame,
+  HelpCircle,
   LogIn,
   MessageSquare,
   PenSquare,
   TrendingUp,
   X,
 } from "lucide-react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -49,51 +53,18 @@ import {
   FORUM_SORT_OPTIONS,
   type ForumThread,
 } from "@/lib/mock-community";
-import { CommentSection } from "./comment-section";
-import Link from "next/link";
+import { AnswerSection, formatDate, useAuthUser } from "./answer-section";
 
-// ─── 認証フック ────────────────────────────────────────────
-function useAuthUser() {
-  const [auth, setAuth] = useState<{
-    name: string;
-    isLoading: boolean;
-    isLoggedIn: boolean;
-  }>({ name: "", isLoading: true, isLoggedIn: false });
-
-  useEffect(() => {
-    fetch("/api/auth/me", { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        const name =
-          data?.profile?.name ?? data?.user?.email?.split("@")[0] ?? null;
-        setAuth({ name: name ?? "", isLoading: false, isLoggedIn: !!name });
-      })
-      .catch(() => setAuth({ name: "", isLoading: false, isLoggedIn: false }));
-  }, []);
-
-  return auth;
-}
-
-// ─── ユーティリティ ────────────────────────────────────────
-function formatDate(dateString: string) {
-  return new Intl.DateTimeFormat("ja-JP", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Asia/Tokyo",
-  }).format(new Date(dateString));
-}
-
-// ─── スレッドカード ────────────────────────────────────────
-function ThreadCard({
+// ─── 質問カード ────────────────────────────────────────────
+function QuestionCard({
   thread,
   onClick,
 }: {
   thread: ForumThread;
   onClick: () => void;
 }) {
+  const isResolved = !!thread.bestAnswerId;
+
   return (
     <button
       type="button"
@@ -101,14 +72,25 @@ function ThreadCard({
       className="w-full rounded-xl border bg-card text-left shadow-xs transition-all duration-150 hover:border-primary/40 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <div className="p-5">
-        {/* メタ情報 */}
+        {/* ステータス・カテゴリ・メタ */}
         <div className="mb-3 flex flex-wrap items-center gap-2">
+          {isResolved ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+              <CheckCircle2 className="h-3 w-3" />
+              解決済み
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-semibold text-orange-600">
+              <Circle className="h-3 w-3" />
+              受付中
+            </span>
+          )}
           <Badge variant="secondary" className="text-xs">{thread.category}</Badge>
           <span className="text-xs text-muted-foreground">{thread.authorName}</span>
           <span className="text-xs text-muted-foreground">{formatDate(thread.postedAt)}</span>
         </div>
 
-        {/* タイトル */}
+        {/* タイトル（質問として読めるスタイル） */}
         <p className="mb-2 text-base font-semibold leading-7">{thread.title}</p>
 
         {/* 本文プレビュー */}
@@ -132,12 +114,10 @@ function ThreadCard({
 
         {/* フッター */}
         <div className="flex items-center justify-between">
-          <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <MessageSquare className="h-3.5 w-3.5" />
-              コメント {thread.commentCount}
-            </span>
-          </div>
+          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <MessageSquare className="h-3.5 w-3.5" />
+            回答 {thread.answerCount}
+          </span>
           <span className="text-xs font-medium text-primary">詳細を見る →</span>
         </div>
       </div>
@@ -145,54 +125,70 @@ function ThreadCard({
   );
 }
 
-// ─── スレッド詳細 Sheet 内コンテンツ ──────────────────────
-function ThreadDetailContent({ thread }: { thread: ForumThread }) {
+// ─── Sheet内：質問詳細 ─────────────────────────────────────
+function QuestionDetailContent({
+  thread,
+  onBestAnswerChange,
+}: {
+  thread: ForumThread;
+  onBestAnswerChange: (id: string | undefined) => void;
+}) {
+  const isResolved = !!thread.bestAnswerId;
+
   return (
     <div className="flex flex-col gap-6">
-      {/* ヘッダー情報 */}
-      <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary" className="text-xs">{thread.category}</Badge>
-          <span className="text-xs text-muted-foreground">{thread.authorName}</span>
-          <span className="text-xs text-muted-foreground">{formatDate(thread.postedAt)}</span>
-        </div>
-        <h2 className="text-lg font-semibold leading-8">{thread.title}</h2>
-        {thread.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {thread.tags.map((tag) => (
-              <span
-                key={tag}
-                className="rounded-full border bg-muted/40 px-2.5 py-0.5 text-xs text-muted-foreground"
-              >
-                #{tag}
-              </span>
-            ))}
-          </div>
+      {/* ステータス・カテゴリ */}
+      <div className="flex flex-wrap items-center gap-2">
+        {isResolved ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            解決済み
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-3 py-1 text-xs font-semibold text-orange-600">
+            <Circle className="h-3.5 w-3.5" />
+            受付中
+          </span>
         )}
+        <Badge variant="secondary" className="text-xs">{thread.category}</Badge>
+        {thread.tags.map((tag) => (
+          <span
+            key={tag}
+            className="rounded-full border bg-muted/40 px-2.5 py-0.5 text-xs text-muted-foreground"
+          >
+            #{tag}
+          </span>
+        ))}
       </div>
 
-      {/* 本文 */}
-      <div className="rounded-xl bg-muted/40 px-5 py-4">
+      {/* 質問者・日時 */}
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+          {thread.authorName.charAt(0)}
+        </div>
+        <span>{thread.authorName}</span>
+        <span className="text-xs">{formatDate(thread.postedAt)}</span>
+      </div>
+
+      {/* 質問本文 */}
+      <div className="rounded-xl bg-muted/40 px-6 py-5">
         <p className="whitespace-pre-wrap text-sm leading-8">{thread.body}</p>
       </div>
 
       <Separator />
 
-      {/* コメントセクション */}
-      <div className="space-y-4">
-        <p className="text-sm font-semibold">コメント</p>
-        <CommentSection
-          initialComments={thread.comments}
-          placeholder="この投稿に関して意見や情報を共有しましょう"
-          submitLabel="コメントを投稿"
-          emptyMessage="まだコメントはありません。最初の投稿をしてみましょう。"
-        />
-      </div>
+      {/* 回答セクション */}
+      <AnswerSection
+        initialAnswers={thread.answers}
+        questionAuthorName={thread.authorName}
+        initialBestAnswerId={thread.bestAnswerId}
+        onBestAnswerChange={onBestAnswerChange}
+      />
     </div>
   );
 }
 
-// ─── 新規投稿ダイアログ ────────────────────────────────────
+// ─── 新規質問ダイアログ ────────────────────────────────────
 type DraftState = {
   title: string;
   body: string;
@@ -200,7 +196,7 @@ type DraftState = {
   tags: string;
 };
 
-function NewThreadDialog({
+function NewQuestionDialog({
   auth,
   onSubmit,
 }: {
@@ -219,7 +215,7 @@ function NewThreadDialog({
     if (!draft.title.trim() || !draft.body.trim()) return;
 
     const thread: ForumThread = {
-      id: `thread-${Date.now()}`,
+      id: `q-${Date.now()}`,
       title: draft.title.trim(),
       body: draft.body.trim(),
       category: draft.category,
@@ -230,8 +226,8 @@ function NewThreadDialog({
         .slice(0, 5),
       authorName: auth.name,
       postedAt: new Date().toISOString(),
-      commentCount: 0,
-      comments: [],
+      answerCount: 0,
+      answers: [],
     };
 
     onSubmit(thread);
@@ -244,12 +240,12 @@ function NewThreadDialog({
       <DialogTrigger asChild>
         <Button size="lg" className="w-full gap-2">
           <PenSquare className="h-4 w-4" />
-          新しい投稿をする
+          質問する
         </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>新しい投稿</DialogTitle>
+          <DialogTitle>質問する</DialogTitle>
           <DialogDescription>
             {auth.isLoggedIn ? (
               <>
@@ -257,7 +253,7 @@ function NewThreadDialog({
                 {" "}として投稿します
               </>
             ) : (
-              "投稿するにはログインが必要です"
+              "質問するにはログインが必要です"
             )}
           </DialogDescription>
         </DialogHeader>
@@ -265,23 +261,23 @@ function NewThreadDialog({
         {auth.isLoggedIn ? (
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="new-title">タイトル</Label>
+              <Label htmlFor="q-title">タイトル（質問の概要）</Label>
               <Input
-                id="new-title"
+                id="q-title"
                 value={draft.title}
                 onChange={(e) => setDraft((p) => ({ ...p, title: e.target.value }))}
-                placeholder="相談・共有したいテーマを入力"
+                placeholder="例: 不登校傾向の生徒への最初のアプローチ方法は？"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="new-body">本文</Label>
+              <Label htmlFor="q-body">詳細・補足</Label>
               <Textarea
-                id="new-body"
+                id="q-body"
                 rows={6}
                 value={draft.body}
                 onChange={(e) => setDraft((p) => ({ ...p, body: e.target.value }))}
-                placeholder="状況や背景を具体的に書いてください"
+                placeholder="状況・背景・試したことなどを具体的に書いてください"
                 className="resize-none"
               />
             </div>
@@ -305,9 +301,9 @@ function NewThreadDialog({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="new-tags">タグ（任意・カンマ区切り）</Label>
+                <Label htmlFor="q-tags">タグ（任意・カンマ区切り）</Label>
                 <Input
-                  id="new-tags"
+                  id="q-tags"
                   value={draft.tags}
                   onChange={(e) => setDraft((p) => ({ ...p, tags: e.target.value }))}
                   placeholder="例: ICT, 数学, 中学校"
@@ -321,14 +317,14 @@ function NewThreadDialog({
                 onClick={handleSubmit}
                 disabled={!draft.title.trim() || !draft.body.trim()}
               >
-                投稿する
+                質問を投稿する
               </Button>
             </div>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-4 py-6 text-center">
             <p className="text-sm text-muted-foreground">
-              投稿するにはログインが必要です
+              質問するにはログインが必要です
             </p>
             <Button asChild>
               <Link href="/login">
@@ -362,13 +358,14 @@ export function ForumClient() {
     const base = threads.filter((t) => {
       const matchCat = selectedCategory === "すべて" || t.category === selectedCategory;
       const matchTag = selectedTag === "すべて" || t.tags.includes(selectedTag);
-      return matchCat && matchTag;
+      const matchUnsolved = sortBy !== "unsolved" || !t.bestAnswerId;
+      return matchCat && matchTag && matchUnsolved;
     });
-    return [...base].sort((a, b) =>
-      sortBy === "popular"
-        ? b.commentCount - a.commentCount
-        : new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime()
-    );
+
+    return [...base].sort((a, b) => {
+      if (sortBy === "popular") return b.answerCount - a.answerCount;
+      return new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime();
+    });
   }, [threads, selectedCategory, selectedTag, sortBy]);
 
   const categoryCounts = useMemo(() => {
@@ -379,8 +376,20 @@ export function ForumClient() {
     return m;
   }, [threads]);
 
+  const resolvedCount = threads.filter((t) => t.bestAnswerId).length;
+  const openCount = threads.length - resolvedCount;
+
   const handleNewThread = (thread: ForumThread) => {
     setThreads((prev) => [thread, ...prev]);
+  };
+
+  const handleBestAnswerChange = (threadId: string, bestId: string | undefined) => {
+    setThreads((prev) =>
+      prev.map((t) => (t.id === threadId ? { ...t, bestAnswerId: bestId } : t))
+    );
+    if (openThread?.id === threadId) {
+      setOpenThread((prev) => (prev ? { ...prev, bestAnswerId: bestId } : null));
+    }
   };
 
   return (
@@ -389,17 +398,31 @@ export function ForumClient() {
       <section className="relative overflow-hidden border-b bg-gradient-to-br from-primary/8 via-primary/4 to-background">
         <div className="container py-12 md:py-16">
           <div className="mx-auto max-w-2xl text-center">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border bg-background/80 px-4 py-1.5 text-xs text-muted-foreground backdrop-blur-sm">
+              <HelpCircle className="h-3.5 w-3.5 text-primary" />
+              みんなで解決！Q&Aコミュニティ
+            </div>
             <h1 className="mb-4 text-4xl font-bold tracking-tight md:text-5xl">
               教育悩み相談室
             </h1>
             <p className="mb-8 text-base leading-8 text-muted-foreground">
-              教員・保護者・学生が、教育に関する悩みや実践知を持ち寄って話し合えるコミュニティです。
+              教育に関する疑問・悩みを投稿すると、教員・保護者・専門家がコミュニティで回答してくれます。
             </p>
-            <div className="flex flex-wrap items-center justify-center gap-3 text-sm">
-              <span className="rounded-full border bg-background/80 px-4 py-2 backdrop-blur-sm">
-                投稿数 {threads.length}
-              </span>
-            </div>
+
+            {/* 統計 */}
+            {threads.length > 0 && (
+              <div className="mb-8 flex flex-wrap items-center justify-center gap-3 text-sm">
+                <span className="rounded-full border bg-background/80 px-4 py-2 backdrop-blur-sm">
+                  質問数 <strong>{threads.length}</strong>
+                </span>
+                <span className="rounded-full border bg-background/80 px-4 py-2 backdrop-blur-sm">
+                  <span className="text-orange-600 font-semibold">受付中</span> {openCount}
+                </span>
+                <span className="rounded-full border bg-background/80 px-4 py-2 backdrop-blur-sm">
+                  <span className="text-emerald-600 font-semibold">解決済み</span> {resolvedCount}
+                </span>
+              </div>
+            )}
           </div>
         </div>
         <div className="pointer-events-none absolute -top-20 -right-20 h-80 w-80 rounded-full bg-primary/5 blur-3xl" />
@@ -409,9 +432,9 @@ export function ForumClient() {
       {/* ─── メインコンテンツ ─── */}
       <div className="container py-8">
         <div className="grid gap-8 lg:grid-cols-[1fr_260px]">
-          {/* ── 左：フィルタ + スレッド一覧 ── */}
+          {/* ── 左：フィルタ + 質問一覧 ── */}
           <div className="min-w-0 space-y-5">
-            {/* フィルタバー */}
+            {/* フィルタ */}
             <Card className="border shadow-sm">
               <CardContent className="space-y-4 p-4">
                 {/* カテゴリ */}
@@ -436,7 +459,7 @@ export function ForumClient() {
                   ))}
                 </div>
 
-                {/* タグ（存在する場合のみ表示） */}
+                {/* タグ */}
                 {allTags.length > 0 && (
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs text-muted-foreground">タグ:</span>
@@ -458,10 +481,10 @@ export function ForumClient() {
                   </div>
                 )}
 
-                {/* 件数と並び替え */}
+                {/* 件数・並び替え */}
                 <div className="flex items-center justify-between border-t pt-3">
                   <p className="text-xs text-muted-foreground">
-                    {filteredThreads.length} 件の投稿
+                    {filteredThreads.length} 件の質問
                   </p>
                   <Tabs
                     value={sortBy}
@@ -475,7 +498,10 @@ export function ForumClient() {
                       </TabsTrigger>
                       <TabsTrigger value="popular" className="h-5 px-2.5 text-xs">
                         <Flame className="mr-1 h-3 w-3" />
-                        コメント順
+                        回答順
+                      </TabsTrigger>
+                      <TabsTrigger value="unsolved" className="h-5 px-2.5 text-xs">
+                        未解決
                       </TabsTrigger>
                     </TabsList>
                   </Tabs>
@@ -483,21 +509,25 @@ export function ForumClient() {
               </CardContent>
             </Card>
 
-            {/* スレッドリスト */}
+            {/* 質問リスト */}
             {filteredThreads.length === 0 ? (
               <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed bg-muted/20 py-16 text-center">
-                <MessageSquare className="h-12 w-12 text-muted-foreground/30" />
+                <HelpCircle className="h-12 w-12 text-muted-foreground/30" />
                 <div>
-                  <p className="text-base font-medium">まだ投稿がありません</p>
+                  <p className="text-base font-medium">
+                    {sortBy === "unsolved" ? "未解決の質問はありません" : "まだ質問がありません"}
+                  </p>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    最初の投稿をしてコミュニティを始めましょう
+                    {sortBy === "unsolved"
+                      ? "すべての質問が解決済みです"
+                      : "最初の質問を投稿してコミュニティを始めましょう"}
                   </p>
                 </div>
               </div>
             ) : (
               <div className="space-y-3">
                 {filteredThreads.map((thread) => (
-                  <ThreadCard
+                  <QuestionCard
                     key={thread.id}
                     thread={thread}
                     onClick={() => setOpenThread(thread)}
@@ -509,16 +539,16 @@ export function ForumClient() {
 
           {/* ── 右：サイドバー ── */}
           <div className="space-y-5 lg:sticky lg:top-20 lg:self-start">
-            {/* 投稿CTA */}
+            {/* 質問CTA */}
             <Card className="border-primary/20 bg-primary/5">
               <CardContent className="space-y-3 p-5">
                 <div>
-                  <p className="font-semibold">あなたも投稿しましょう</p>
+                  <p className="font-semibold">質問してみましょう</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    教育現場の悩みや気づきを気軽に共有できます
+                    教育現場の悩みをコミュニティが一緒に考えます
                   </p>
                 </div>
-                <NewThreadDialog auth={auth} onSubmit={handleNewThread} />
+                <NewQuestionDialog auth={auth} onSubmit={handleNewThread} />
               </CardContent>
             </Card>
 
@@ -560,13 +590,13 @@ export function ForumClient() {
             {/* このページについて */}
             <Card>
               <CardHeader className="pb-2 pt-4">
-                <CardTitle className="text-sm font-semibold">このページについて</CardTitle>
+                <CardTitle className="text-sm font-semibold">使い方</CardTitle>
               </CardHeader>
               <CardContent className="pb-4">
-                <CardDescription className="text-xs leading-6">
-                  教育悩み相談室は、教員・保護者・学生が教育に関する話題を投稿し、
-                  コメントを通じてコミュニティ内で議論できるスペースです。
-                  現在はモックUIです。
+                <CardDescription className="space-y-2 text-xs leading-6">
+                  <p>① 「質問する」ボタンから質問を投稿</p>
+                  <p>② コミュニティメンバーが回答</p>
+                  <p>③ 役立った回答を「ベストアンサー」に選択すると解決済みになります</p>
                 </CardDescription>
               </CardContent>
             </Card>
@@ -574,21 +604,40 @@ export function ForumClient() {
         </div>
       </div>
 
-      {/* ─── スレッド詳細 Sheet ─── */}
+      {/* ─── 質問詳細 Sheet ─── */}
       <Sheet open={!!openThread} onOpenChange={(o) => { if (!o) setOpenThread(null); }}>
         <SheetContent
           side="right"
-          className="flex w-full flex-col gap-0 overflow-y-auto p-0 sm:max-w-2xl"
+          className="flex w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl"
         >
           <SheetHeader className="sticky top-0 z-10 border-b bg-background px-6 py-4">
             <div className="flex items-start justify-between gap-3">
-              <SheetTitle className="text-left text-base leading-6">
-                {openThread?.title}
-              </SheetTitle>
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  {openThread && (
+                    <>
+                      {openThread.bestAnswerId ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+                          <CheckCircle2 className="h-3 w-3" />
+                          解決済み
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-semibold text-orange-600">
+                          <Circle className="h-3 w-3" />
+                          受付中
+                        </span>
+                      )}
+                    </>
+                  )}
+                </div>
+                <SheetTitle className="text-left text-base leading-6">
+                  {openThread?.title}
+                </SheetTitle>
+              </div>
               <button
                 type="button"
                 onClick={() => setOpenThread(null)}
-                className="shrink-0 rounded-sm p-1 text-muted-foreground opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring"
+                className="shrink-0 rounded-sm p-1 text-muted-foreground opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring"
                 aria-label="閉じる"
               >
                 <X className="h-4 w-4" />
@@ -596,7 +645,14 @@ export function ForumClient() {
             </div>
           </SheetHeader>
           <div className="flex-1 overflow-y-auto px-6 py-5">
-            {openThread && <ThreadDetailContent thread={openThread} />}
+            {openThread && (
+              <QuestionDetailContent
+                thread={openThread}
+                onBestAnswerChange={(id) =>
+                  handleBestAnswerChange(openThread.id, id)
+                }
+              />
+            )}
           </div>
         </SheetContent>
       </Sheet>

@@ -1,10 +1,10 @@
-export type CommunityComment = {
+export type ForumAnswer = {
   id: string;
   authorName: string;
   postedAt: string;
   body: string;
   helpfulCount: number;
-  replies?: CommunityComment[];
+  replies?: ForumAnswer[];
 };
 
 export type ForumThread = {
@@ -15,8 +15,19 @@ export type ForumThread = {
   tags: string[];
   authorName: string;
   postedAt: string;
-  commentCount: number;
-  comments: CommunityComment[];
+  answerCount: number;
+  bestAnswerId?: string;
+  answers: ForumAnswer[];
+};
+
+/** 記事コメント用（フォーラムとは別） */
+export type CommunityComment = {
+  id: string;
+  authorName: string;
+  postedAt: string;
+  body: string;
+  helpfulCount: number;
+  replies?: CommunityComment[];
 };
 
 export const FORUM_CATEGORIES = [
@@ -31,5 +42,6 @@ export const FORUM_CATEGORIES = [
 
 export const FORUM_SORT_OPTIONS = [
   { value: "newest", label: "新着順" },
-  { value: "popular", label: "コメント多い順" },
+  { value: "popular", label: "回答多い順" },
+  { value: "unsolved", label: "未解決のみ" },
 ] as const;
