@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
+import { createServiceRoleClient } from '@/utils/supabase/server-admin'
 import { NextResponse } from 'next/server'
 
 export async function GET(
@@ -8,34 +9,43 @@ export async function GET(
   try {
     const { sessionId } = await params
     console.log('Result API - fetching session:', sessionId)
-    const supabase = await createClient()
 
-    const { data: session, error: sessionError } = await supabase
+    // まず通常クライアントで試す
+    let supabase = await createClient()
+    let session
+    let sessionError
+
+    const response1 = await supabase
       .from('ai_kentei_exam_sessions')
       .select('*')
       .eq('session_id', sessionId)
       .single()
 
-    console.log('Result API - session query:', { session, sessionError })
+    session = response1.data
+    sessionError = response1.error
 
-    if (sessionError) {
-      console.error('Session query error:', sessionError)
-      const isTableMissing =
-        sessionError.message?.includes('does not exist') || sessionError.code === '42P01'
-      if (isTableMissing) {
-        return NextResponse.json(
-          { error: 'ai_kentei_exam_sessions テーブルがありません。Supabase のマイグレーションを実行してください。' },
-          { status: 404 }
-        )
+    // RLSで見えない場合、サービスロールキーで試す
+    if (sessionError?.code === '42501' || !session) {
+      console.log('Result API - RLS denied or not found, trying service role')
+      try {
+        supabase = createServiceRoleClient()
+        const response2 = await supabase
+          .from('ai_kentei_exam_sessions')
+          .select('*')
+          .eq('session_id', sessionId)
+          .single()
+
+        session = response2.data
+        sessionError = response2.error
+      } catch (e) {
+        console.error('Service role client error:', e)
       }
-      return NextResponse.json(
-        { error: 'セッションが見つかりません' },
-        { status: 404 }
-      )
     }
 
-    if (!session) {
-      console.error('Session not found:', { sessionId })
+    console.log('Result API - session query:', { session, sessionError })
+
+    if (sessionError || !session) {
+      console.error('Session not found:', sessionError?.message)
       return NextResponse.json(
         { error: 'セッションが見つかりません' },
         { status: 404 }

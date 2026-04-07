@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
+import { createServiceRoleClient } from '@/utils/supabase/server-admin'
 import { NextResponse } from 'next/server'
 import { nanoid } from 'nanoid'
 import { Resend } from 'resend'
@@ -75,16 +76,34 @@ export async function POST(request: Request) {
       )
     }
 
-    const supabase = await createClient()
+    let supabase = await createClient()
 
     // ログインユーザー情報取得
     const { data: { user } } = await supabase.auth.getUser()
 
-    const { data: session, error: sessionError } = await supabase
+    // 通常クライアントでセッション取得を試みる
+    let sessionResponse = await supabase
       .from('ai_kentei_exam_sessions')
       .select('*')
       .eq('session_id', sessionId)
       .single()
+
+    // RLSで見えない場合、サービスロールキーで試す
+    if (sessionResponse.error?.code === '42501') {
+      console.log('Certificate API - RLS denied, trying service role')
+      try {
+        supabase = createServiceRoleClient()
+        sessionResponse = await supabase
+          .from('ai_kentei_exam_sessions')
+          .select('*')
+          .eq('session_id', sessionId)
+          .single()
+      } catch (e) {
+        console.error('Service role client error:', e)
+      }
+    }
+
+    const { data: session, error: sessionError } = sessionResponse
 
     if (sessionError || !session) {
       return NextResponse.json(

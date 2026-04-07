@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server'
 import { nanoid } from 'nanoid'
 import { getCurrentUser, getCurrentProfile } from '@/lib/auth'
-import { createClient } from '@/utils/supabase/server'
+import { createServiceRoleClient } from '@/utils/supabase/server-admin'
 
 /**
  * ADMIN専用：問題なしで合格済みセッションを作成する（テスト・動作確認用）
  * 問題バンクが空でも動作します（DBテーブルが存在することが前提）。
+ * RLSをバイパスするため、サービスロールキーを使用します。
  */
 export async function POST() {
   const user = await getCurrentUser()
@@ -21,12 +22,21 @@ export async function POST() {
     )
   }
 
-  const supabase = await createClient()
+  let supabase
+  try {
+    supabase = createServiceRoleClient()
+  } catch (e) {
+    console.error('Service role client error:', e)
+    return NextResponse.json(
+      { error: 'サーバー設定（SUPABASE_SERVICE_ROLE_KEY）が不足しています' },
+      { status: 500 }
+    )
+  }
 
   const sessionId = nanoid(12)
   console.log('Test API - creating session:', { sessionId, userId: user.id })
 
-  // 試験セッションを作成（問題なし、スコアと合格フラグはセット）
+  // サービスロールキーでセッションを作成（RLSをバイパス）
   const { data, error: sessionError } = await supabase
     .from('ai_kentei_exam_sessions')
     .insert({
@@ -43,12 +53,9 @@ export async function POST() {
 
   if (sessionError) {
     console.error('Test session error:', sessionError)
-    const isTableMissing = sessionError.code === '42P01'
     return NextResponse.json(
       {
-        error: isTableMissing
-          ? 'ai_kentei_exam_sessions テーブルがありません。Supabase のマイグレーションを実行してください。'
-          : `セッション作成エラー: ${sessionError.message}`,
+        error: `セッション作成エラー: ${sessionError.message}`,
       },
       { status: 500 }
     )
