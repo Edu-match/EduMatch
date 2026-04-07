@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import { nanoid } from 'nanoid'
 import { getCurrentUser, getCurrentProfile } from '@/lib/auth'
-import { createServiceRoleClient } from '@/utils/supabase/server-admin'
+import { createClient } from '@/utils/supabase/server'
 
 /**
  * ADMIN専用：問題なしで合格済みセッションを作成する（テスト・動作確認用）
- * 問題バンクが空でも動作します（DBテーブルが存在し、サービスロールキーが設定されていることが前提）。
+ * 問題バンクが空でも動作します（DBテーブルが存在することが前提）。
  */
 export async function POST() {
   const user = await getCurrentUser()
@@ -21,41 +21,34 @@ export async function POST() {
     )
   }
 
-  let supabase
-  try {
-    supabase = createServiceRoleClient()
-  } catch (e) {
-    console.error('Service role client:', e)
-    return NextResponse.json(
-      { error: 'サーバー設定（SUPABASE_SERVICE_ROLE_KEY）が不足しています' },
-      { status: 500 }
-    )
-  }
+  const supabase = await createClient()
 
   const sessionId = nanoid(12)
   console.log('Test API - creating session:', { sessionId, userId: user.id })
 
-  const { error: sessionError } = await supabase.from('ai_kentei_exam_sessions').insert({
-    session_id: sessionId,
-    user_id: user.id,
-    selected_question_ids: [],
-    answers: {},
-    score: 25,
-    passed: true,
-  })
+  // 試験セッションを作成（問題なし、スコアと合格フラグはセット）
+  const { data, error: sessionError } = await supabase
+    .from('ai_kentei_exam_sessions')
+    .insert({
+      session_id: sessionId,
+      user_id: user.id,
+      selected_question_ids: [],
+      answers: {},
+      score: 25,
+      passed: true,
+    })
+    .select()
 
-  console.log('Test API - insert result:', { sessionError })
+  console.log('Test API - insert result:', { data, error: sessionError })
 
   if (sessionError) {
     console.error('Test session error:', sessionError)
-    const isTableMissing =
-      sessionError.message?.includes('does not exist') || sessionError.code === '42P01'
+    const isTableMissing = sessionError.code === '42P01'
     return NextResponse.json(
       {
         error: isTableMissing
           ? 'ai_kentei_exam_sessions テーブルがありません。Supabase のマイグレーションを実行してください。'
           : `セッション作成エラー: ${sessionError.message}`,
-        code: sessionError.code,
       },
       { status: 500 }
     )

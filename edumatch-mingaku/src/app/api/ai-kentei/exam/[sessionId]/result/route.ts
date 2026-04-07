@@ -18,8 +18,24 @@ export async function GET(
 
     console.log('Result API - session query:', { session, sessionError })
 
-    if (sessionError || !session) {
-      console.error('Session not found:', sessionError?.message)
+    if (sessionError) {
+      console.error('Session query error:', sessionError)
+      const isTableMissing =
+        sessionError.message?.includes('does not exist') || sessionError.code === '42P01'
+      if (isTableMissing) {
+        return NextResponse.json(
+          { error: 'ai_kentei_exam_sessions テーブルがありません。Supabase のマイグレーションを実行してください。' },
+          { status: 404 }
+        )
+      }
+      return NextResponse.json(
+        { error: 'セッションが見つかりません' },
+        { status: 404 }
+      )
+    }
+
+    if (!session) {
+      console.error('Session not found:', { sessionId })
       return NextResponse.json(
         { error: 'セッションが見つかりません' },
         { status: 404 }
