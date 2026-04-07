@@ -30,21 +30,26 @@ export async function GET(
     }
 
     const questionIds = session.selected_question_ids as string[]
-    const { data: questions, error: questionsError } = await supabase
-      .from('ai_kentei_questions')
-      .select('id, question_text, options, correct_answer, explanation, tag')
-      .in('id', questionIds)
 
-    if (questionsError || !questions) {
-      return NextResponse.json(
-        { error: '問題の取得に失敗しました' },
-        { status: 500 }
-      )
+    // テストセッションは問題なし
+    let orderedQuestions: unknown[] = []
+    if (questionIds.length > 0) {
+      const { data: questions, error: questionsError } = await supabase
+        .from('ai_kentei_questions')
+        .select('id, question_text, options, correct_answer, explanation, tag')
+        .in('id', questionIds)
+
+      if (questionsError || !questions) {
+        return NextResponse.json(
+          { error: '問題の取得に失敗しました' },
+          { status: 500 }
+        )
+      }
+
+      orderedQuestions = questionIds
+        .map((id) => questions.find((q) => q.id === id))
+        .filter(Boolean)
     }
-
-    const orderedQuestions = questionIds
-      .map((id) => questions.find((q) => q.id === id))
-      .filter(Boolean)
 
     return NextResponse.json({
       session: {

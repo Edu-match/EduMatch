@@ -82,8 +82,8 @@ export function AiKenteiCertificatesCompact() {
           key={cert.id}
           className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
         >
-          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center">
-            <Award className="h-5 w-5 text-amber-500" />
+          <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-sm">
+            <Award className="h-5 w-5 text-white" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-medium text-sm truncate">

@@ -18,7 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { ChevronRight, AlertTriangle, Loader2, Clock } from 'lucide-react'
+import { ChevronRight, AlertTriangle, Loader2, Clock, Brain } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface Question {
@@ -63,12 +63,10 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
         const response = await fetch(`/api/ai-kentei/exam/${resolvedParams.sessionId}`)
         if (!response.ok) throw new Error('Failed to fetch exam data')
         const data = await response.json()
-
         if (data.session.isCompleted) {
           router.push(`/ai-kentei/exam/${resolvedParams.sessionId}/result`)
           return
         }
-
         setExamData(data)
         setAnswers(data.session.answers || {})
       } catch {
@@ -81,10 +79,8 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
     fetchExamData()
   }, [resolvedParams.sessionId, router])
 
-  // 1問20秒タイマー
   useEffect(() => {
     if (!timerStarted || loading || submitting) return
-
     const interval = setInterval(() => {
       setQuestionTimeRemaining((prev) => {
         if (prev <= 1) {
@@ -100,11 +96,9 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
         return prev - 1
       })
     }, 1000)
-
     return () => clearInterval(interval)
   }, [timerStarted, loading, submitting, examData])
 
-  // 問題切り替え時にタイマーリセット
   useEffect(() => {
     if (timerStarted && !submitting) setQuestionTimeRemaining(20)
   }, [currentIndex, timerStarted, submitting])
@@ -113,7 +107,6 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
     if (examData && !timerStarted) setTimerStarted(true)
   }, [examData, timerStarted])
 
-  // 自動提出
   useEffect(() => {
     if (autoSubmitTriggered && !submitting) {
       const submitExam = async () => {
@@ -124,10 +117,10 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ answers: answersRef.current }),
           })
-          if (!response.ok) throw new Error('Failed to submit exam')
+          if (!response.ok) throw new Error('Failed')
           router.push(`/ai-kentei/exam/${resolvedParams.sessionId}/result`)
         } catch {
-          toast.error('提出に失敗しました。もう一度お試しください。')
+          toast.error('提出に失敗しました')
           setSubmitting(false)
         }
       }
@@ -142,9 +135,7 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ answers: newAnswers }),
       })
-    } catch {
-      // Silent fail for auto-save
-    }
+    } catch { /* silent */ }
   }
 
   const handleAnswerChange = (questionId: string, answer: string) => {
@@ -161,18 +152,21 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ answers: answersRef.current }),
       })
-      if (!response.ok) throw new Error('Failed to submit exam')
+      if (!response.ok) throw new Error('Failed')
       router.push(`/ai-kentei/exam/${resolvedParams.sessionId}/result`)
     } catch {
-      toast.error('提出に失敗しました。もう一度お試しください。')
+      toast.error('提出に失敗しました')
       setSubmitting(false)
     }
   }
 
   if (loading) {
     return (
-      <div className="min-h-[50vh] flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">
+        <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center">
+          <Brain className="h-6 w-6 text-white animate-pulse" />
+        </div>
+        <p className="text-muted-foreground text-sm">問題を読み込んでいます...</p>
       </div>
     )
   }
@@ -183,98 +177,128 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
   const answeredCount = Object.keys(answers).length
   const progress = (answeredCount / examData.questions.length) * 100
 
+  const timerColor =
+    questionTimeRemaining <= 5
+      ? 'bg-red-100 text-red-600 border-red-200 animate-pulse'
+      : questionTimeRemaining <= 10
+      ? 'bg-amber-100 text-amber-600 border-amber-200'
+      : 'bg-blue-50 text-blue-600 border-blue-200'
+
   return (
     <div className="container py-4 md:py-6">
       <div className="max-w-3xl mx-auto">
-        {/* Timer and progress bar */}
+        {/* Header bar */}
         <div className="flex items-center justify-between mb-4 gap-4">
-          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-            <span>問題 {currentIndex + 1} / {examData.questions.length}</span>
-            <span>({answeredCount}問回答済み)</span>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
+              <Brain className="h-4 w-4 text-white" />
+            </div>
+            <span className="text-sm font-medium text-muted-foreground">
+              問題 <span className="text-foreground font-bold">{currentIndex + 1}</span> / {examData.questions.length}
+            </span>
+            <span className="text-xs text-muted-foreground hidden sm:inline">
+              ({answeredCount}問回答済み)
+            </span>
           </div>
-          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-sm font-medium transition-colors ${
-            questionTimeRemaining <= 5
-              ? 'bg-destructive/10 text-destructive animate-pulse'
-              : questionTimeRemaining <= 10
-              ? 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400'
-              : 'bg-primary/10 text-primary'
-          }`}>
+          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-mono font-semibold border ${timerColor}`}>
             <Clock className="h-4 w-4" />
-            <span className="w-6 text-center">{questionTimeRemaining}</span>
+            <span className="w-5 text-center">{questionTimeRemaining}</span>
             <span className="text-xs opacity-70">秒</span>
           </div>
         </div>
 
-        <div className="mb-6">
-          <Progress value={progress} className="h-2" />
+        {/* Progress bar */}
+        <div className="mb-5">
+          <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
+            <span>進捗</span>
+            <span className="font-medium">{Math.round(progress)}%</span>
+          </div>
+          <div className="h-2 bg-blue-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-blue-600 rounded-full transition-all duration-300"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
         </div>
 
         {/* Question Card */}
-        <Card className="mb-6">
-          <CardHeader className="pb-4">
+        <Card className="mb-5 border-0 shadow-md">
+          <CardHeader className="pb-4 border-b bg-gradient-to-r from-blue-600 to-indigo-600 rounded-t-xl text-white">
             <div className="flex items-center gap-2 mb-2">
               {currentQuestion.tag && (
-                <Badge variant="secondary" className="text-xs">{currentQuestion.tag}</Badge>
+                <Badge className="bg-white/20 text-white border-0 text-xs hover:bg-white/20">
+                  {currentQuestion.tag}
+                </Badge>
               )}
               <Badge
-                variant="outline"
-                className={`text-xs ${
+                className={`text-xs border-0 ${
                   currentQuestion.difficulty === 'easy'
-                    ? 'border-green-500 text-green-600'
+                    ? 'bg-green-500/30 text-green-100'
                     : currentQuestion.difficulty === 'hard'
-                    ? 'border-red-500 text-red-600'
-                    : 'border-yellow-500 text-yellow-600'
+                    ? 'bg-red-400/30 text-red-100'
+                    : 'bg-amber-400/30 text-amber-100'
                 }`}
               >
                 {currentQuestion.difficulty === 'easy' ? '基本' : currentQuestion.difficulty === 'hard' ? '応用' : '標準'}
               </Badge>
             </div>
-            <CardTitle className="text-lg md:text-xl leading-relaxed">
+            <CardTitle className="text-base md:text-lg leading-relaxed text-white font-medium">
               {currentQuestion.question_text}
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-5">
             <RadioGroup
               value={answers[currentQuestion.id] || ''}
               onValueChange={(value) => handleAnswerChange(currentQuestion.id, value)}
               className="space-y-3"
             >
-              {currentQuestion.options.map((option, index) => (
-                <div
-                  key={index}
-                  className={`flex items-start space-x-3 p-4 rounded-lg border transition-colors cursor-pointer ${
-                    answers[currentQuestion.id] === option
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border hover:border-primary/50 hover:bg-muted/50'
-                  }`}
-                  onClick={() => handleAnswerChange(currentQuestion.id, option)}
-                >
-                  <RadioGroupItem value={option} id={`option-${index}`} className="mt-0.5" />
-                  <Label htmlFor={`option-${index}`} className="flex-1 cursor-pointer leading-relaxed">
-                    {option}
-                  </Label>
-                </div>
-              ))}
+              {currentQuestion.options.map((option, index) => {
+                const isSelected = answers[currentQuestion.id] === option
+                return (
+                  <div
+                    key={index}
+                    className={`flex items-start space-x-3 p-4 rounded-xl border-2 transition-all cursor-pointer ${
+                      isSelected
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30'
+                        : 'border-border hover:border-blue-300 hover:bg-blue-50/50 dark:hover:bg-blue-950/10'
+                    }`}
+                    onClick={() => handleAnswerChange(currentQuestion.id, option)}
+                  >
+                    <RadioGroupItem value={option} id={`option-${index}`} className="mt-0.5" />
+                    <Label
+                      htmlFor={`option-${index}`}
+                      className={`flex-1 cursor-pointer leading-relaxed text-sm ${isSelected ? 'text-blue-700 dark:text-blue-300 font-medium' : ''}`}
+                    >
+                      {option}
+                    </Label>
+                  </div>
+                )
+              })}
             </RadioGroup>
           </CardContent>
         </Card>
 
         {/* Navigation */}
-        <div className="flex justify-end">
+        <div className="flex justify-between items-center">
+          <Button
+            variant="outline"
+            onClick={() => setCurrentIndex(Math.max(0, currentIndex - 1))}
+            disabled={currentIndex === 0}
+          >
+            前の問題
+          </Button>
           {currentIndex === examData.questions.length - 1 ? (
             <Button
               onClick={() => setShowSubmitDialog(true)}
               disabled={submitting}
-              size="lg"
+              className="bg-blue-600 hover:bg-blue-700"
             >
-              {submitting ? (
-                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />提出中...</>
-              ) : '試験を提出する'}
+              {submitting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />提出中...</> : '試験を提出する'}
             </Button>
           ) : (
             <Button
               onClick={() => setCurrentIndex(Math.min(examData.questions.length - 1, currentIndex + 1))}
-              size="lg"
+              className="bg-blue-600 hover:bg-blue-700"
             >
               次の問題へ
               <ChevronRight className="h-4 w-4 ml-1" />
@@ -283,7 +307,6 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
         </div>
       </div>
 
-      {/* Submit Dialog */}
       <AlertDialog open={showSubmitDialog} onOpenChange={setShowSubmitDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -291,7 +314,7 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
               <AlertTriangle className="h-5 w-5 text-amber-500" />
               試験を提出しますか？
             </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-2">
+            <AlertDialogDescription className="space-y-1">
               <p>
                 {answeredCount === examData.questions.length
                   ? 'すべての問題に回答済みです。'
@@ -302,7 +325,11 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>キャンセル</AlertDialogCancel>
-            <AlertDialogAction onClick={handleSubmit} disabled={submitting}>
+            <AlertDialogAction
+              onClick={handleSubmit}
+              disabled={submitting}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
               {submitting ? '提出中...' : '提出する'}
             </AlertDialogAction>
           </AlertDialogFooter>

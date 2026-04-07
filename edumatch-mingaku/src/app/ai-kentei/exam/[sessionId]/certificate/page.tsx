@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { Share2, Camera, Loader2, ArrowLeft, Eye } from 'lucide-react'
+import { Share2, Camera, Loader2, ArrowLeft, Eye, Award } from 'lucide-react'
 import { toast } from 'sonner'
 import { CertificatePreview } from '@/components/ai-kentei/certificate-preview'
 import { createSupabaseBrowserClient } from '@/utils/supabase/client'
@@ -170,8 +170,9 @@ export default function CertificatePage({ params }: { params: Promise<{ sessionI
 
   if (loading) {
     return (
-      <div className="min-h-[50vh] flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <p className="text-sm text-muted-foreground">データを読み込んでいます...</p>
       </div>
     )
   }
@@ -191,8 +192,13 @@ export default function CertificatePage({ params }: { params: Promise<{ sessionI
 
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Form */}
-          <Card className="h-fit">
-            <CardHeader>
+          <Card className="h-fit border-0 shadow-md">
+            <CardHeader className="border-b pb-4">
+              <div className="flex items-center gap-3 mb-1">
+                <div className="w-9 h-9 rounded-lg bg-amber-500 flex items-center justify-center">
+                  <Award className="h-4 w-4 text-white" />
+                </div>
+              </div>
               <CardTitle className="text-xl">認定証の発行</CardTitle>
               <CardDescription>
                 認定証に表示する情報を入力してください
@@ -289,16 +295,16 @@ export default function CertificatePage({ params }: { params: Promise<{ sessionI
                 <Button
                   onClick={handleGenerateCertificate}
                   disabled={generating || !resolvedName.trim()}
-                  className="w-full"
+                  className="w-full bg-blue-600 hover:bg-blue-700"
                   size="lg"
                 >
                   {generating ? (
                     <><Loader2 className="mr-2 h-4 w-4 animate-spin" />発行中...</>
-                  ) : '認定証を発行する'}
+                  ) : <><Award className="mr-2 h-4 w-4" />認定証を発行する</>}
                 </Button>
               ) : (
                 <div className="space-y-3">
-                  <Button onClick={handleShare} className="w-full" size="lg">
+                  <Button onClick={handleShare} className="w-full bg-blue-600 hover:bg-blue-700" size="lg">
                     <Share2 className="mr-2 h-4 w-4" />
                     共有する
                   </Button>
