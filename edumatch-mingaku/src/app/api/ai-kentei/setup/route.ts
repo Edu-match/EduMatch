@@ -359,7 +359,7 @@ async function seedSampleQuestions() {
   for (const q of questions) {
     await prisma.$executeRawUnsafe(
       `INSERT INTO ai_kentei_questions (question_text, options, correct_answer, explanation, tag, difficulty, status, reviewed_by_human)
-       VALUES ($1, $2::jsonb, $3, $4, $5, $6, 'active', true)`,
+       VALUES ($1, $2::jsonb, $3, $4, $5, $6, 'published', true)`,
       q.text,
       JSON.stringify(q.opts),
       q.ans,

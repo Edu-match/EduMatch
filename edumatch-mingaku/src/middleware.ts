@@ -42,7 +42,6 @@ const protectedPaths = [
   "/payment",
   "/request-info",
   "/admin", // /admin 配下はログイン必須。ADMIN 判定は各ページで DB の Profile.role を使用
-  "/ai-kentei/admin", // AI検定管理画面はログイン必須。ADMIN 判定はページで実施
 ];
 
 // 認証済みユーザーがアクセスすべきでないパス
