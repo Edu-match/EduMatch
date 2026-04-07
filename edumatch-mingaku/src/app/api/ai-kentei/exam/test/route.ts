@@ -13,8 +13,11 @@ export async function POST() {
   }
 
   const profile = await getCurrentProfile()
-  if (profile?.role !== 'ADMIN') {
-    return NextResponse.json({ error: 'ADMIN権限が必要です' }, { status: 403 })
+  if (!profile) {
+    return NextResponse.json({ error: 'プロフィールが見つかりません' }, { status: 403 })
+  }
+  if (profile.role !== 'ADMIN') {
+    return NextResponse.json({ error: `ADMIN権限が必要です（現在: ${profile.role}）` }, { status: 403 })
   }
 
   const supabase = await createClient()
@@ -32,9 +35,16 @@ export async function POST() {
     })
 
   if (sessionError) {
-    console.error('Error creating test session:', sessionError)
+    console.error('Test session error:', sessionError)
+    // テーブルが存在しない場合のメッセージ
+    const isTableMissing = sessionError.message?.includes('does not exist') || sessionError.code === '42P01'
     return NextResponse.json(
-      { error: 'テストセッションの作成に失敗しました' },
+      {
+        error: isTableMissing
+          ? 'テーブルが未作成です。/api/ai-kentei/setup を実行してください'
+          : `セッション作成エラー: ${sessionError.message}`,
+        code: sessionError.code,
+      },
       { status: 500 }
     )
   }

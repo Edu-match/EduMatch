@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
-import { ArrowLeft, ArrowRight, Brain, AlertCircle, FlaskConical } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Brain, AlertCircle, FlaskConical, Settings } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function ExamStartPage() {
@@ -15,6 +15,7 @@ export default function ExamStartPage() {
   const [agreed, setAgreed] = useState(false)
   const [loading, setLoading] = useState(false)
   const [testLoading, setTestLoading] = useState(false)
+  const [setupLoading, setSetupLoading] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
@@ -43,6 +44,24 @@ export default function ExamStartPage() {
     } catch (err) {
       toast.error(err instanceof Error ? err.message : '試験の開始に失敗しました。')
       setLoading(false)
+    }
+  }
+
+  const handleSetup = async () => {
+    setSetupLoading(true)
+    try {
+      const response = await fetch('/api/ai-kentei/setup', { method: 'POST' })
+      const data = await response.json()
+      if (response.ok) {
+        toast.success('セットアップ完了')
+        data.results?.forEach((r: string) => toast.info(r, { duration: 4000 }))
+      } else {
+        toast.error(data.error ?? 'セットアップに失敗しました')
+      }
+    } catch {
+      toast.error('セットアップに失敗しました')
+    } finally {
+      setSetupLoading(false)
     }
   }
 
@@ -85,26 +104,48 @@ export default function ExamStartPage() {
             トップに戻る
           </Link>
 
-          {/* ADMIN test skip button */}
+          {/* ADMIN tools */}
           {isAdmin && (
-            <div className="mb-6 p-4 bg-accent/20 border border-accent/30 rounded-lg">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-start gap-3">
-                  <FlaskConical className="h-5 w-5 text-accent-foreground mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium text-accent-foreground">ADMINテストモード</p>
-                    <p className="text-xs text-muted-foreground">問題をスキップして合格済みセッションを作成します</p>
+            <div className="mb-6 space-y-2">
+              <div className="p-4 bg-accent/20 border border-accent/30 rounded-lg">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-start gap-3">
+                    <Settings className="h-5 w-5 text-accent-foreground mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-accent-foreground">ADMINセットアップ</p>
+                      <p className="text-xs text-muted-foreground">テーブル作成＋問題を自動投入（初回のみ）</p>
+                    </div>
                   </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSetup}
+                    disabled={setupLoading}
+                    className="shrink-0"
+                  >
+                    {setupLoading ? 'セットアップ中...' : 'セットアップ実行'}
+                  </Button>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleAdminTest}
-                  disabled={testLoading}
-                  className="shrink-0"
-                >
-                  {testLoading ? '作成中...' : '問題スキップ'}
-                </Button>
+              </div>
+              <div className="p-4 bg-accent/20 border border-accent/30 rounded-lg">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-start gap-3">
+                    <FlaskConical className="h-5 w-5 text-accent-foreground mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-accent-foreground">ADMINテストモード</p>
+                      <p className="text-xs text-muted-foreground">問題をスキップして合格済みセッションを作成します</p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAdminTest}
+                    disabled={testLoading}
+                    className="shrink-0"
+                  >
+                    {testLoading ? '作成中...' : '問題スキップ'}
+                  </Button>
+                </div>
               </div>
             </div>
           )}
