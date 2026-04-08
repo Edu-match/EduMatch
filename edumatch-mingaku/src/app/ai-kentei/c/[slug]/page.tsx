@@ -1,10 +1,10 @@
-import { createClient } from '@/utils/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Award, Brain } from 'lucide-react'
 import { CertificatePreview } from '@/components/ai-kentei/certificate-preview'
 import type { Metadata } from 'next'
+import { getAiKenteiDb } from '@/lib/ai-kentei-db'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -12,7 +12,7 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
-  const supabase = await createClient()
+  const supabase = await getAiKenteiDb()
 
   const { data: certificate } = await supabase
     .from('ai_kentei_certificates')
@@ -42,7 +42,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function PublicCertificatePage({ params }: Props) {
   const { slug } = await params
-  const supabase = await createClient()
+  const supabase = await getAiKenteiDb()
 
   const { data: certificate, error } = await supabase
     .from('ai_kentei_certificates')

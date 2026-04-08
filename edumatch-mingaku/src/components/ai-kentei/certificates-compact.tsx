@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Award, ExternalLink } from 'lucide-react'
-import { createSupabaseBrowserClient } from '@/utils/supabase/client'
 
 interface Certificate {
   id: string
@@ -24,23 +23,13 @@ export function AiKenteiCertificatesCompact() {
   useEffect(() => {
     const fetchCertificates = async () => {
       try {
-        const supabase = createSupabaseBrowserClient()
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) {
-          setLoading(false)
-          return
-        }
-
-        const { data, error } = await supabase
-          .from('ai_kentei_certificates')
-          .select('id, certificate_id, public_display_name, score, passed_at, share_slug, is_public')
-          .eq('user_id', user.id)
-          .order('passed_at', { ascending: false })
-          .limit(5)
-
-        if (!error && data) {
-          setCertificates(data)
-        }
+        const res = await fetch('/api/ai-kentei/certificates', {
+          method: 'GET',
+          cache: 'no-store',
+        })
+        const payload = await res.json()
+        if (!res.ok) return
+        setCertificates(payload.certificates ?? [])
       } catch {
         // Silent fail
       } finally {
