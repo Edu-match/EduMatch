@@ -6,7 +6,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { LoginForm } from "@/components/auth/login-form";
 import { SignupForm } from "@/components/auth/signup-form";
 
-function LoginPageContent() {
+function safeRedirect(next: string | undefined): string {
+  if (typeof next !== "string" || !next.startsWith("/") || next.startsWith("//")) {
+    return "/";
+  }
+  return next;
+}
+
+function LoginPageContent({ redirectTo }: { redirectTo: string }) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background via-background to-muted/30 px-4 py-12">
       <div className="w-full max-w-2xl">
@@ -47,11 +54,11 @@ function LoginPageContent() {
               </TabsList>
 
               <TabsContent value="login" className="mt-0 focus-visible:outline-none">
-                <LoginForm />
+                <LoginForm redirectTo={redirectTo} />
               </TabsContent>
 
               <TabsContent value="signup" className="mt-0 focus-visible:outline-none">
-                <SignupForm />
+                <SignupForm redirectTo={redirectTo} />
               </TabsContent>
             </Tabs>
           </CardContent>
@@ -65,7 +72,14 @@ function LoginPageContent() {
   );
 }
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  const sp = await searchParams;
+  const redirectTo = safeRedirect(sp.next);
+
   return (
     <Suspense
       fallback={
@@ -74,7 +88,7 @@ export default function LoginPage() {
         </div>
       }
     >
-      <LoginPageContent />
+      <LoginPageContent redirectTo={redirectTo} />
     </Suspense>
   );
 }

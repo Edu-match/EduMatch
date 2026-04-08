@@ -7,24 +7,42 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
-import { ArrowLeft, ArrowRight, Brain, AlertCircle, FlaskConical } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Brain, AlertCircle, FlaskConical, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+
+const EXAM_START_PATH = '/ai-kentei/exam/start'
 
 export default function ExamStartPage() {
   const router = useRouter()
+  const [authReady, setAuthReady] = useState(false)
   const [agreed, setAgreed] = useState(false)
   const [loading, setLoading] = useState(false)
   const [testLoading, setTestLoading] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
+    let cancelled = false
     fetch('/api/auth/me', { credentials: 'include' })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (data?.profile?.role === 'ADMIN') setIsAdmin(true)
+        if (cancelled) return
+        if (!data?.profile) {
+          toast.info('AI検定を受けるには、無料会員登録（ログイン）が必要です。')
+          router.replace(`/login?next=${encodeURIComponent(EXAM_START_PATH)}`)
+          return
+        }
+        setAuthReady(true)
+        if (data.profile.role === 'ADMIN') setIsAdmin(true)
       })
-      .catch(() => {})
-  }, [])
+      .catch(() => {
+        if (cancelled) return
+        toast.info('AI検定を受けるには、無料会員登録（ログイン）が必要です。')
+        router.replace(`/login?next=${encodeURIComponent(EXAM_START_PATH)}`)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [router])
 
   const handleStartExam = async () => {
     if (!agreed) {
@@ -72,6 +90,14 @@ export default function ExamStartPage() {
     } finally {
       setTestLoading(false)
     }
+  }
+
+  if (!authReady) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" aria-label="読み込み中" />
+      </div>
+    )
   }
 
   return (

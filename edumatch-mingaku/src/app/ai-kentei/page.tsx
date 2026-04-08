@@ -1,25 +1,42 @@
 'use client'
 
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { BookOpen, Award, Clock, CheckCircle, Brain, Shield, Lock } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
+
+const EXAM_START_PATH = '/ai-kentei/exam/start'
 
 export default function AiKenteiPage() {
+  const router = useRouter()
   const [isAdmin, setIsAdmin] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     fetch('/api/auth/me', { credentials: 'include' })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (data?.profile?.role === 'ADMIN') setIsAdmin(true)
+        if (data?.profile) {
+          setIsLoggedIn(true)
+          if (data.profile.role === 'ADMIN') setIsAdmin(true)
+        }
       })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
+
+  const goToExamStart = () => {
+    if (!isLoggedIn) {
+      toast.info('AI検定を受けるには、無料会員登録（ログイン）が必要です。')
+      router.push(`/login?next=${encodeURIComponent(EXAM_START_PATH)}`)
+      return
+    }
+    router.push(EXAM_START_PATH)
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -58,12 +75,15 @@ export default function AiKenteiPage() {
                   </Button>
                 </>
               ) : (
-                <Button asChild size="lg" className="text-base px-8">
-                  <Link href="/ai-kentei/exam/start">
+                <div className="flex flex-col items-center gap-2">
+                  <Button type="button" size="lg" className="text-base px-8" onClick={goToExamStart}>
                     <BookOpen className="mr-2 h-5 w-5" />
                     検定を受ける
-                  </Link>
-                </Button>
+                  </Button>
+                  <p className="text-xs text-muted-foreground max-w-md">
+                    受験にはエデュマッチへの無料会員登録（ログイン）が必要です。
+                  </p>
+                </div>
               )}
             </div>
           </section>
@@ -159,11 +179,14 @@ export default function AiKenteiPage() {
                 </Button>
               </>
             ) : (
-              <Button asChild size="lg" className="text-base px-8">
-                <Link href="/ai-kentei/exam/start">
+              <div className="flex flex-col items-center gap-2">
+                <Button type="button" size="lg" className="text-base px-8" onClick={goToExamStart}>
                   検定を開始する
-                </Link>
-              </Button>
+                </Button>
+                <p className="text-xs text-muted-foreground max-w-md">
+                  受験にはエデュマッチへの無料会員登録（ログイン）が必要です。
+                </p>
+              </div>
             )}
           </section>
         </div>
