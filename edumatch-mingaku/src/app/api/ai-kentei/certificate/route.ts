@@ -76,10 +76,16 @@ export async function POST(request: Request) {
       )
     }
 
-    let supabase = await createClient()
+    const supabase = await createClient()
 
     // ログインユーザー情報取得
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return NextResponse.json({ error: 'ログインが必要です' }, { status: 401 })
+    }
 
     // 通常クライアントでセッション取得を試みる
     let sessionResponse = await supabase
@@ -88,18 +94,17 @@ export async function POST(request: Request) {
       .eq('session_id', sessionId)
       .single()
 
-    // RLSで見えない場合、サービスロールキーで試す
-    if (sessionResponse.error?.code === '42501') {
-      console.log('Certificate API - RLS denied, trying service role')
+    // RLS・0件（PGRST116）などで見えない場合はサービスロールで再取得（問題スキップ等）
+    if (sessionResponse.error || !sessionResponse.data) {
       try {
-        supabase = createServiceRoleClient()
-        sessionResponse = await supabase
+        const admin = createServiceRoleClient()
+        sessionResponse = await admin
           .from('ai_kentei_exam_sessions')
           .select('*')
           .eq('session_id', sessionId)
           .single()
       } catch (e) {
-        console.error('Service role client error:', e)
+        console.error('Certificate API service role session fetch:', e)
       }
     }
 
@@ -112,6 +117,14 @@ export async function POST(request: Request) {
       )
     }
 
+    // 他ユーザーのセッションで認定証を発行させない
+    if (session.user_id && session.user_id !== user.id) {
+      return NextResponse.json(
+        { error: 'このセッションにアクセスできません' },
+        { status: 403 }
+      )
+    }
+
     if (!session.passed) {
       return NextResponse.json(
         { error: '合格者のみ認定証を発行できます' },
@@ -119,8 +132,17 @@ export async function POST(request: Request) {
       )
     }
 
+    // 認定証テーブルは RLS で書き込めない場合があるため、検証後はサービスロールで操作
+    let db
+    try {
+      db = createServiceRoleClient()
+    } catch (e) {
+      console.error('Certificate API: service role unavailable, using user client', e)
+      db = supabase
+    }
+
     // 既存の認定証を確認
-    const { data: existingCert } = await supabase
+    const { data: existingCert } = await db
       .from('ai_kentei_certificates')
       .select('*')
       .eq('exam_session_id', session.id)
@@ -137,7 +159,7 @@ export async function POST(request: Request) {
     const certificateId = `CERT-${nanoid(8).toUpperCase()}`
     const shareSlug = nanoid(10)
 
-    const { error: createError } = await supabase
+    const { error: createError } = await db
       .from('ai_kentei_certificates')
       .insert({
         certificate_id: certificateId,
@@ -173,7 +195,7 @@ export async function POST(request: Request) {
           isPublicPage
         )
         // email_sent フラグを更新
-        await supabase
+        await db
           .from('ai_kentei_certificates')
           .update({ email_sent: true })
           .eq('certificate_id', certificateId)
