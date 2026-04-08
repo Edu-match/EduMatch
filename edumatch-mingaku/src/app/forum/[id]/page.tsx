@@ -1,15 +1,33 @@
 import { notFound } from "next/navigation";
+import { ForumRoomClient } from "@/components/community/forum-room-client";
+import { FORUM_ROOMS, getRoomById } from "@/lib/mock-forum";
 
-/**
- * スレッド詳細ページ
- * モック段階ではURLから直接アクセスすると 404 になります。
- * DB 接続後に実装予定です。
- */
-export default async function ForumThreadPage({
+export function generateStaticParams() {
+  return FORUM_ROOMS.map((room) => ({ id: room.id }));
+}
+
+export async function generateMetadata({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await params;
-  notFound();
+  const { id } = await params;
+  const room = getRoomById(id);
+  if (!room) return {};
+  return {
+    title: `${room.name} | AIUEO 井戸端会議 | エデュマッチ`,
+    description: room.description,
+  };
+}
+
+export default async function ForumRoomPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const room = getRoomById(id);
+  if (!room) notFound();
+
+  return <ForumRoomClient room={room} />;
 }
