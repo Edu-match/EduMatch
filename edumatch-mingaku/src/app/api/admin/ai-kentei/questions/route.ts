@@ -1,4 +1,4 @@
-import { createClient } from '@/utils/supabase/server'
+import { getAiKenteiDb } from '@/lib/ai-kentei-db'
 import { NextResponse } from 'next/server'
 import { getCurrentUser, getCurrentProfile } from '@/lib/auth'
 
@@ -14,7 +14,7 @@ export async function GET() {
     return NextResponse.json({ error: 'ADMIN権限が必要です' }, { status: 403 })
   }
 
-  const supabase = await createClient()
+  const supabase = await getAiKenteiDb()
   const { data: questions, error } = await supabase
     .from('ai_kentei_questions')
     .select('*')
@@ -78,7 +78,7 @@ export async function POST(request: Request) {
   const statusVal = status === 'published' || status === 'draft' ? status : 'draft'
   const diff = ['easy', 'medium', 'hard'].includes(difficulty ?? '') ? difficulty! : 'medium'
 
-  const supabase = await createClient()
+  const supabase = await getAiKenteiDb()
 
   const { data: row, error } = await supabase
     .from('ai_kentei_questions')

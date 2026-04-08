@@ -70,17 +70,21 @@ const TAGS = [
 type Difficulty = 'easy' | 'medium' | 'hard'
 type QuestionFormStatus = 'draft' | 'published'
 
+type Polarity = 'normal' | 'reverse'
+
 interface QuestionFormState {
   question_text: string
   opt0: string
   opt1: string
   opt2: string
   opt3: string
+  opt4: string
   correct_answer: string
   explanation: string
   tag: string
   difficulty: Difficulty
   status: QuestionFormStatus
+  polarity: Polarity
 }
 
 function emptyForm(): QuestionFormState {
@@ -90,11 +94,13 @@ function emptyForm(): QuestionFormState {
     opt1: '',
     opt2: '',
     opt3: '',
+    opt4: '',
     correct_answer: '',
     explanation: '',
     tag: '',
     difficulty: 'medium',
     status: 'draft',
+    polarity: 'normal',
   }
 }
 
@@ -147,17 +153,21 @@ export function AiKenteiQuestionsManager() {
       opt1: opts[1] ?? '',
       opt2: opts[2] ?? '',
       opt3: opts[3] ?? '',
+      opt4: opts[4] ?? '',
       correct_answer: q.correct_answer,
       explanation: q.explanation ?? '',
       tag: q.tag ?? '',
       difficulty: normalizeDifficulty(q.difficulty),
       status: q.status === 'published' ? 'published' : 'draft',
+      polarity: q.polarity === 'reverse' ? 'reverse' : 'normal',
     })
     setDialogOpen(true)
   }
 
   const buildOptions = () => {
-    return [form.opt0, form.opt1, form.opt2, form.opt3].map((s) => s.trim()).filter(Boolean)
+    return [form.opt0, form.opt1, form.opt2, form.opt3, form.opt4]
+      .map((s) => s.trim())
+      .filter(Boolean)
   }
 
   const handleSave = async () => {
@@ -185,6 +195,7 @@ export function AiKenteiQuestionsManager() {
             tag: form.tag.trim() || null,
             difficulty: form.difficulty,
             status: form.status,
+            polarity: form.polarity,
           }),
         })
         const data = await res.json()
@@ -202,6 +213,7 @@ export function AiKenteiQuestionsManager() {
             tag: form.tag.trim() || null,
             difficulty: form.difficulty,
             status: form.status,
+            polarity: form.polarity,
           }),
         })
         const data = await res.json()
@@ -359,7 +371,7 @@ export function AiKenteiQuestionsManager() {
                 placeholder="問題文を入力"
               />
             </div>
-            {[0, 1, 2, 3].map((i) => (
+            {[0, 1, 2, 3, 4].map((i) => (
               <div key={i} className="space-y-1">
                 <Label htmlFor={`opt-${i}`}>選択肢 {i + 1}</Label>
                 <Input
@@ -450,6 +462,21 @@ export function AiKenteiQuestionsManager() {
                 <SelectContent>
                   <SelectItem value="draft">下書き（出題されません）</SelectItem>
                   <SelectItem value="published">公開（出題プールに含む）</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>問いの極性</Label>
+              <Select
+                value={form.polarity}
+                onValueChange={(v) => setForm((f) => ({ ...f, polarity: v as Polarity }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="normal">通常（正しい選択肢を選ぶ）</SelectItem>
+                  <SelectItem value="reverse">逆転（誤りを選ぶ）</SelectItem>
                 </SelectContent>
               </Select>
             </div>

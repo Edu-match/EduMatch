@@ -1,4 +1,4 @@
-import { createClient } from '@/utils/supabase/server'
+import { getAiKenteiDb } from '@/lib/ai-kentei-db'
 import { NextResponse } from 'next/server'
 import { getCurrentUser, getCurrentProfile } from '@/lib/auth'
 
@@ -25,7 +25,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'JSON が不正です' }, { status: 400 })
   }
 
-  const supabase = await createClient()
+  const supabase = await getAiKenteiDb()
 
   const update: Record<string, unknown> = {}
 
@@ -95,7 +95,7 @@ export async function DELETE(
   }
 
   const { id } = await params
-  const supabase = await createClient()
+  const supabase = await getAiKenteiDb()
 
   const { error } = await supabase.from('ai_kentei_questions').delete().eq('id', id)
 

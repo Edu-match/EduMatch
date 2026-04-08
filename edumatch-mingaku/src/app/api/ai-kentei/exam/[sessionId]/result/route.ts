@@ -1,5 +1,4 @@
-import { createClient } from '@/utils/supabase/server'
-import { createServiceRoleClient } from '@/utils/supabase/server-admin'
+import { getAiKenteiDb } from '@/lib/ai-kentei-db'
 import { NextResponse } from 'next/server'
 
 export async function GET(
@@ -10,37 +9,13 @@ export async function GET(
     const { sessionId } = await params
     console.log('Result API - fetching session:', sessionId)
 
-    // まず通常クライアントで試す
-    let supabase = await createClient()
-    let session
-    let sessionError
+    const supabase = await getAiKenteiDb()
 
-    const response1 = await supabase
+    const { data: session, error: sessionError } = await supabase
       .from('ai_kentei_exam_sessions')
       .select('*')
       .eq('session_id', sessionId)
       .single()
-
-    session = response1.data
-    sessionError = response1.error
-
-    // RLSで見えない場合、サービスロールキーで試す
-    if (sessionError?.code === '42501' || !session) {
-      console.log('Result API - RLS denied or not found, trying service role')
-      try {
-        supabase = createServiceRoleClient()
-        const response2 = await supabase
-          .from('ai_kentei_exam_sessions')
-          .select('*')
-          .eq('session_id', sessionId)
-          .single()
-
-        session = response2.data
-        sessionError = response2.error
-      } catch (e) {
-        console.error('Service role client error:', e)
-      }
-    }
 
     console.log('Result API - session query:', { session, sessionError })
 
@@ -63,7 +38,6 @@ export async function GET(
     const questionIds = session.selected_question_ids as string[]
     console.log('Result API - question IDs:', questionIds)
 
-    // テストセッションは問題なし
     let orderedQuestions: unknown[] = []
     if (questionIds.length > 0) {
       const { data: questions, error: questionsError } = await supabase

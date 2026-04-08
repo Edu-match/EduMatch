@@ -1,13 +1,14 @@
 import { createClient } from '@/utils/supabase/server'
+import { getAiKenteiDb } from '@/lib/ai-kentei-db'
 import { NextResponse } from 'next/server'
 import { nanoid } from 'nanoid'
 
 export async function POST() {
   try {
-    const supabase = await createClient()
+    const authClient = await createClient()
+    const { data: { user } } = await authClient.auth.getUser()
 
-    // ログインユーザーのIDを取得（任意）
-    const { data: { user } } = await supabase.auth.getUser()
+    const supabase = await getAiKenteiDb()
 
     // 公開済み問題IDを最大50件取得
     const { data: questions, error: questionsError } = await supabase

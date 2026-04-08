@@ -1,4 +1,4 @@
-import { createClient } from '@/utils/supabase/server'
+import { getAiKenteiDb } from '@/lib/ai-kentei-db'
 import { NextResponse } from 'next/server'
 
 export async function POST(
@@ -10,7 +10,7 @@ export async function POST(
     const body = await request.json()
     const { answers } = body
 
-    const supabase = await createClient()
+    const supabase = await getAiKenteiDb()
 
     const { data: session, error: sessionError } = await supabase
       .from('ai_kentei_exam_sessions')
