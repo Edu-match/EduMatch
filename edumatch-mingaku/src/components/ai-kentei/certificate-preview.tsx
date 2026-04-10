@@ -1,6 +1,7 @@
 'use client'
 
 import { Award } from 'lucide-react'
+import { certificateMincho } from '@/lib/fonts/certificate-mincho'
 
 interface CertificatePreviewProps {
   name: string
@@ -28,7 +29,9 @@ export function CertificatePreview({
   }
 
   return (
-    <div className="relative overflow-hidden rounded-2xl shadow-2xl bg-[radial-gradient(1200px_circle_at_top,#fff7ed,transparent)]">
+    <div
+      className={`relative overflow-hidden rounded-2xl shadow-2xl bg-[radial-gradient(1200px_circle_at_top,#fff7ed,transparent)] ${certificateMincho.className}`}
+    >
       {/* Parchment */}
       <div className="absolute inset-0 bg-gradient-to-br from-[#fff8e7] via-[#fffdf7] to-[#f7efe0]" />
       <div className="absolute inset-0 opacity-[0.08] [background-image:repeating-linear-gradient(135deg,#000,transparent_2px,transparent_10px)]" />
@@ -58,7 +61,7 @@ export function CertificatePreview({
           </div>
 
           <div className="space-y-2">
-            <h2 className="text-4xl md:text-5xl font-extrabold tracking-[0.15em] text-[#3b2a14]">
+            <h2 className="text-4xl md:text-5xl font-semibold tracking-[0.2em] text-[#3b2a14]">
               認 定 証
             </h2>
             <p className="text-sm md:text-base text-[#6b4e26] font-medium">
@@ -75,16 +78,15 @@ export function CertificatePreview({
             </div>
           ) : null}
 
-          <div className="space-y-2">
-            <p className="text-sm text-[#6b4e26]">上記の者</p>
-            <p className="text-3xl md:text-4xl font-bold text-[#2a1c0c] tracking-wide">
+          <div className="space-y-1">
+            <p className="text-3xl md:text-4xl font-semibold text-[#2a1c0c] tracking-wide">
               {name}
             </p>
-            <p className="text-sm text-[#6b4e26]">殿</p>
+            <p className="text-base text-[#6b4e26]">殿</p>
           </div>
 
           <div className="mx-auto max-w-md rounded-xl bg-white/60 border border-[#b08d57]/25 px-6 py-5">
-            <p className="text-sm md:text-base text-[#2a1c0c] leading-relaxed">
+            <p className="text-sm md:text-base text-[#2a1c0c] leading-relaxed font-medium">
               学校における生成AI活用ガイドラインについて
               <br />
               十分な理解を有することを認定します
@@ -94,7 +96,7 @@ export function CertificatePreview({
           <div className="flex items-center justify-center gap-6 pt-2">
             <div className="text-center">
               <p className="text-xs text-[#6b4e26]">スコア</p>
-              <p className="text-2xl font-bold text-[#2a1c0c]">
+              <p className="text-2xl font-semibold text-[#2a1c0c]">
                 {score} / {totalQuestions}
               </p>
             </div>
@@ -106,7 +108,7 @@ export function CertificatePreview({
           </div>
 
           <div className="pt-3">
-            <p className="text-sm font-semibold text-[#2a1c0c]">一般社団法人 教育AI活用協会</p>
+            <p className="text-sm font-medium text-[#2a1c0c]">一般社団法人 教育AI活用協会</p>
             {certificateId ? (
               <p className="mt-2 text-[11px] text-[#6b4e26] font-mono tracking-wider">
                 Certificate ID: {certificateId}
