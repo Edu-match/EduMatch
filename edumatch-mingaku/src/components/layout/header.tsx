@@ -111,7 +111,6 @@ export function Header() {
 
   const navLinks = [
     { href: "/articles", label: "記事一覧" },
-    { href: "/forum", label: "教育悩み相談室" },
     { href: "/services", label: "サービス一覧" },
     { href: "/events", label: "セミナー・イベント情報" },
     { href: "/companies", label: "掲載企業" },
