@@ -3,6 +3,9 @@ import { type NextRequest, NextResponse } from "next/server";
 
 // --- Basic認証（本番公開前テスト用）---
 const BASIC_AUTH_ENABLED = process.env.NEXT_PUBLIC_IS_RELEASED !== "true";
+/** Vercel Preview（PR・ブランチURL）は環境変数未設定でもサイトを確認できるようにメンテ強制を外す */
+const SKIP_MAINTENANCE_FOR_VERCEL_PREVIEW =
+  process.env.VERCEL_ENV === "preview";
 const BASIC_AUTH_USER = process.env.BASIC_AUTH_USER ?? "preview";
 const BASIC_AUTH_PASSWORD = process.env.BASIC_AUTH_PASSWORD ?? "preview2025";
 const MAINTENANCE_BYPASS_COOKIE = "edumatch_maintenance_bypass";
@@ -51,7 +54,8 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // NEXT_PUBLIC_IS_RELEASED が false のとき: 最初の画面は常にメンテナンス。管理者は「管理者」から Basic 認証で入場
-  if (BASIC_AUTH_ENABLED) {
+  // （Vercel の Preview デプロイでは PR 確認のためメンテに閉じない）
+  if (BASIC_AUTH_ENABLED && !SKIP_MAINTENANCE_FOR_VERCEL_PREVIEW) {
     if (pathname === "/maintenance") {
       return NextResponse.next();
     }
