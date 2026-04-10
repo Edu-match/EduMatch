@@ -201,9 +201,9 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
   const progress = (answeredCount / examData.questions.length) * 100
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Sub Header */}
-      <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-16 z-40">
+    <div className="flex min-h-[calc(100dvh-4rem)] flex-col bg-background">
+      {/* Sub Header — below global fixed header (h-16); extra spacing in main avoids card clipping */}
+      <header className="sticky top-16 z-40 shrink-0 border-b border-border/50 bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 h-14 flex items-center justify-between">
           <Link href="/ai-kentei" className="flex items-center gap-2">
             <Brain className="h-6 w-6 text-primary" />
@@ -229,8 +229,8 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-6 md:py-8">
-        <div className="max-w-3xl mx-auto">
+      <main className="container mx-auto flex-1 px-4 pb-8 pt-5 md:pb-10 md:pt-8">
+        <div className="relative z-0 mx-auto max-w-3xl">
           {/* Progress */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-2">

@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { BookOpen, Award, Clock, CheckCircle, Brain, Shield, Lock } from 'lucide-react'
+import { BookOpen, Award, Clock, CheckCircle, Brain, Shield } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -12,7 +12,6 @@ const EXAM_START_PATH = '/ai-kentei/exam/start'
 
 export default function AiKenteiPage() {
   const router = useRouter()
-  const [isAdmin, setIsAdmin] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [loading, setLoading] = useState(true)
 
@@ -22,7 +21,6 @@ export default function AiKenteiPage() {
       .then((data) => {
         if (data?.profile) {
           setIsLoggedIn(true)
-          if (data.profile.role === 'ADMIN') setIsAdmin(true)
         }
       })
       .catch(() => {})
@@ -66,15 +64,7 @@ export default function AiKenteiPage() {
               合格者には認定証を発行します。
             </p>
             <div className="flex flex-col items-center gap-4">
-              {!loading && !isAdmin ? (
-                <>
-                  <div className="text-lg font-semibold text-primary">Coming Soon</div>
-                  <Button disabled size="lg" className="text-base px-8">
-                    <Lock className="mr-2 h-5 w-5" />
-                    検定を受ける（準備中）
-                  </Button>
-                </>
-              ) : (
+              {!loading ? (
                 <div className="flex flex-col items-center gap-2">
                   <Button type="button" size="lg" className="text-base px-8" onClick={goToExamStart}>
                     <BookOpen className="mr-2 h-5 w-5" />
@@ -84,6 +74,8 @@ export default function AiKenteiPage() {
                     受験にはエデュマッチへの無料会員登録（ログイン）が必要です。
                   </p>
                 </div>
+              ) : (
+                <div className="h-10" aria-hidden />
               )}
             </div>
           </section>
@@ -170,15 +162,7 @@ export default function AiKenteiPage() {
               50問の問題バンクからランダムに25問が出題されます。
               何度でも受験可能です。
             </p>
-            {!loading && !isAdmin ? (
-              <>
-                <p className="text-primary font-semibold mb-4">Coming Soon</p>
-                <Button disabled size="lg" className="text-base px-8">
-                  <Lock className="mr-2 h-5 w-5" />
-                  検定を開始する
-                </Button>
-              </>
-            ) : (
+            {!loading ? (
               <div className="flex flex-col items-center gap-2">
                 <Button type="button" size="lg" className="text-base px-8" onClick={goToExamStart}>
                   検定を開始する
@@ -187,6 +171,8 @@ export default function AiKenteiPage() {
                   受験にはエデュマッチへの無料会員登録（ログイン）が必要です。
                 </p>
               </div>
+            ) : (
+              <div className="h-10" aria-hidden />
             )}
           </section>
         </div>

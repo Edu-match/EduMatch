@@ -48,7 +48,7 @@ export function CertificatePreview({
       <div className="absolute bottom-5 right-5 h-10 w-10 border-r-2 border-b-2 border-[#b08d57]/70 rounded-br-lg" />
 
       {/* Content */}
-      <div className="relative z-10 px-8 py-10 md:px-12 md:py-12 text-center">
+      <div className="relative z-10 px-8 pb-10 pt-12 text-center md:px-12 md:pb-12 md:pt-14">
         <div className="mx-auto max-w-xl space-y-6">
           <div className="flex items-center justify-center gap-3 text-[#7c5d2b]">
             <div className="h-px w-10 bg-[#b08d57]/50" />
@@ -64,8 +64,10 @@ export function CertificatePreview({
             <h2 className="text-4xl md:text-5xl font-semibold tracking-[0.2em] text-[#3b2a14]">
               認 定 証
             </h2>
-            <p className="text-sm md:text-base text-[#6b4e26] font-medium">
-              生成AI活用ガイドライン検定（教育AI活用ビギナー部門）
+            <p className="text-sm md:text-base text-[#6b4e26] font-medium leading-snug">
+              生成AI活用ガイドライン検定
+              <br />
+              （教育AI活用ビギナー部門）
             </p>
           </div>
 
@@ -85,11 +87,9 @@ export function CertificatePreview({
             <p className="text-base text-[#6b4e26]">殿</p>
           </div>
 
-          <div className="mx-auto max-w-md rounded-xl bg-white/60 border border-[#b08d57]/25 px-6 py-5">
-            <p className="text-sm md:text-base text-[#2a1c0c] leading-relaxed font-medium">
-              学校における生成AI活用ガイドラインについて
-              <br />
-              十分な理解を有することを認定します
+          <div className="mx-auto max-w-lg rounded-xl bg-white/60 border border-[#b08d57]/25 px-4 py-4 md:px-6 md:py-5">
+            <p className="text-[11px] sm:text-xs md:text-sm text-[#2a1c0c] leading-snug font-medium text-balance">
+              学校における生成AI活用ガイドラインについて十分な理解を有することを認定します
             </p>
           </div>
 
