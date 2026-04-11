@@ -11,6 +11,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Label } from '@/components/ui/label'
 import { Brain, ChevronRight, AlertTriangle, Loader2, Clock } from 'lucide-react'
 import { toast } from 'sonner'
+import { AI_KENTEI_QUESTION_TIME_SECONDS } from '@/lib/ai-kentei-constants'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -51,7 +52,7 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [showSubmitDialog, setShowSubmitDialog] = useState(false)
-  const [questionTimeRemaining, setQuestionTimeRemaining] = useState(20)
+  const [questionTimeRemaining, setQuestionTimeRemaining] = useState(AI_KENTEI_QUESTION_TIME_SECONDS)
   const [timerStarted, setTimerStarted] = useState(false)
   const [autoSubmitTriggered, setAutoSubmitTriggered] = useState(false)
   const answersRef = useRef(answers)
@@ -86,7 +87,7 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
     fetchExamData()
   }, [resolvedParams.sessionId, router])
 
-  // Timer effect - 20 seconds per question
+  // Timer effect — per-question limit (see AI_KENTEI_QUESTION_TIME_SECONDS)
   useEffect(() => {
     if (!timerStarted || loading || submitting) return
 
@@ -95,7 +96,7 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
         if (prev <= 1) {
           if (examData && currentIndexRef.current < examData.questions.length - 1) {
             setCurrentIndex(currentIndexRef.current + 1)
-            return 20
+            return AI_KENTEI_QUESTION_TIME_SECONDS
           } else {
             clearInterval(interval)
             setAutoSubmitTriggered(true)
@@ -111,7 +112,7 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
 
   useEffect(() => {
     if (timerStarted && !submitting) {
-      setQuestionTimeRemaining(20)
+      setQuestionTimeRemaining(AI_KENTEI_QUESTION_TIME_SECONDS)
     }
   }, [currentIndex, timerStarted, submitting])
 
@@ -211,16 +212,26 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
           </Link>
           <div className="flex items-center gap-2 sm:gap-4">
             {/* Per-Question Timer Display */}
-            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-sm font-medium transition-colors ${
-              questionTimeRemaining <= 5
-                ? 'bg-destructive/10 text-destructive animate-pulse'
-                : questionTimeRemaining <= 10
-                ? 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400'
-                : 'bg-primary/10 text-primary'
-            }`}>
-              <Clock className="h-4 w-4" />
-              <span className="w-6 text-center">{questionTimeRemaining}</span>
-              <span className="text-xs opacity-70">秒</span>
+            <div
+              className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 font-mono text-sm font-medium transition-colors sm:gap-2 sm:px-3 ${
+                questionTimeRemaining <= 5
+                  ? 'bg-destructive/10 text-destructive animate-pulse'
+                  : questionTimeRemaining <= 10
+                    ? 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400'
+                    : 'bg-primary/10 text-primary'
+              }`}
+              role="status"
+              aria-live="polite"
+              aria-label={`この問題の残り時間 ${questionTimeRemaining} 秒`}
+            >
+              <span className="shrink-0 whitespace-nowrap text-[10px] font-sans font-semibold leading-none text-foreground/85 sm:text-xs">
+                1問の残り
+              </span>
+              <div className="flex items-center gap-1">
+                <Clock className="h-4 w-4 shrink-0" aria-hidden />
+                <span className="w-6 text-center tabular-nums">{questionTimeRemaining}</span>
+                <span className="text-xs opacity-70">秒</span>
+              </div>
             </div>
             <span className="text-sm text-muted-foreground hidden sm:inline">
               {answeredCount} / {examData.questions.length} 問回答済み
@@ -242,6 +253,19 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
               </span>
             </div>
             <Progress value={progress} className="h-2" />
+          </div>
+
+          <div className="mb-5 flex gap-3 rounded-lg border border-amber-500/45 bg-amber-50 px-3 py-3 text-sm text-amber-950 shadow-sm dark:border-amber-500/35 dark:bg-amber-950/45 dark:text-amber-50 md:px-4">
+            <Clock className="h-5 w-5 shrink-0 text-amber-700 dark:text-amber-300" aria-hidden />
+            <div className="min-w-0 space-y-1.5">
+              <p className="font-semibold leading-snug">
+                1問あたり {AI_KENTEI_QUESTION_TIME_SECONDS}秒の解答制限があります
+              </p>
+              <p className="text-xs leading-relaxed opacity-95">
+                残り時間は<strong className="font-semibold">画面上部</strong>
+                のタイマーをご確認ください。0秒になると未回答でも自動的に次の問題へ進みます（最終問題では試験が提出されます）。
+              </p>
+            </div>
           </div>
 
           {/* Question Card */}
@@ -297,30 +321,40 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
           </Card>
 
           {/* Navigation */}
-          <div className="flex justify-end">
+          <div className="flex flex-col items-end gap-2">
             {currentIndex === examData.questions.length - 1 ? (
-              <Button
-                onClick={() => setShowSubmitDialog(true)}
-                disabled={submitting}
-                size="lg"
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    提出中...
-                  </>
-                ) : (
-                  '試験を提出する'
-                )}
-              </Button>
+              <>
+                <Button
+                  onClick={() => setShowSubmitDialog(true)}
+                  disabled={submitting}
+                  size="lg"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      提出中...
+                    </>
+                  ) : (
+                    '試験を提出する'
+                  )}
+                </Button>
+                <p className="max-w-md text-right text-xs text-muted-foreground">
+                  最終問題でも時間切れになると自動で提出されます。
+                </p>
+              </>
             ) : (
-              <Button
-                onClick={() => setCurrentIndex(Math.min(examData.questions.length - 1, currentIndex + 1))}
-                size="lg"
-              >
-                次の問題へ
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
+              <>
+                <Button
+                  onClick={() => setCurrentIndex(Math.min(examData.questions.length - 1, currentIndex + 1))}
+                  size="lg"
+                >
+                  次の問題へ
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+                <p className="max-w-md text-right text-xs text-muted-foreground">
+                  「次の問題へ」を押す前に、上部の残り時間にご注意ください。時間切れでも自動で次へ進みます。
+                </p>
+              </>
             )}
           </div>
         </div>

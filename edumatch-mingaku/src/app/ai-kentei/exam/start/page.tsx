@@ -9,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { ArrowLeft, ArrowRight, Brain, AlertCircle, FlaskConical, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { AI_KENTEI_QUESTION_TIME_SECONDS } from '@/lib/ai-kentei-constants'
 
 const EXAM_START_PATH = '/ai-kentei/exam/start'
 
@@ -174,6 +175,13 @@ export default function ExamStartPage() {
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-primary mt-0.5">•</span>
+                    <span>
+                      1問あたりの解答制限：<strong className="text-foreground font-semibold">{AI_KENTEI_QUESTION_TIME_SECONDS}秒</strong>
+                      （時間切れで自動的に次の問題へ進みます）
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary mt-0.5">•</span>
                     <span>目安時間：約15分</span>
                   </li>
                   <li className="flex items-start gap-2">
@@ -199,15 +207,21 @@ export default function ExamStartPage() {
               </div>
 
               {/* Agreement */}
-              <div className="flex items-start space-x-3">
-                <Checkbox
-                  id="agreement"
-                  checked={agreed}
-                  onCheckedChange={(checked) => setAgreed(checked as boolean)}
-                />
-                <Label htmlFor="agreement" className="text-sm leading-relaxed cursor-pointer">
-                  上記の内容を確認し、検定試験を開始することに同意します
-                </Label>
+              <div className="rounded-lg border-2 border-primary/50 bg-primary/10 p-4 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="agreement"
+                    checked={agreed}
+                    onCheckedChange={(checked) => setAgreed(checked as boolean)}
+                    className="mt-0.5 size-5 shrink-0 rounded-[5px] border-2 border-primary bg-background shadow-sm data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+                  />
+                  <Label
+                    htmlFor="agreement"
+                    className="text-sm font-medium leading-relaxed text-foreground cursor-pointer"
+                  >
+                    上記の内容を確認し、検定試験を開始することに同意します
+                  </Label>
+                </div>
               </div>
 
               {/* Start Button */}
