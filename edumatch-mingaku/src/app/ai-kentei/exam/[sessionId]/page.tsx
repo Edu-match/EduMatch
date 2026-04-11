@@ -201,46 +201,65 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
   const answeredCount = Object.keys(answers).length
   const progress = (answeredCount / examData.questions.length) * 100
 
+  const timerUrgent = questionTimeRemaining <= 5
+  const timerWarn = questionTimeRemaining <= 10 && questionTimeRemaining > 5
+
   return (
     <div className="flex min-h-[calc(100dvh-4rem)] flex-col bg-background">
-      {/* Sub Header — below global fixed header (h-16); extra spacing in main avoids card clipping */}
-      <header className="sticky top-16 z-40 shrink-0 border-b border-border/50 bg-card/50 backdrop-blur-sm">
-        <div className="container mx-auto px-4 h-14 flex items-center justify-between">
-          <Link href="/ai-kentei" className="flex items-center gap-2">
-            <Brain className="h-6 w-6 text-primary" />
-            <span className="font-medium text-sm hidden sm:inline">一般社団法人 教育AI活用協会</span>
+      {/* グローバルヘッダー直下に固定 — スクロールしても常に表示 */}
+      <header className="fixed top-16 left-0 right-0 z-40 border-b border-border/60 bg-background/95 shadow-md backdrop-blur-md supports-[backdrop-filter]:bg-background/90">
+        <div className="container mx-auto flex items-center justify-between gap-3 px-4 py-2 md:gap-6 md:py-3">
+          <Link
+            href="/ai-kentei"
+            className="flex shrink-0 items-center justify-center rounded-lg p-1.5 text-primary hover:bg-muted/70"
+            aria-label="AI検定トップへ"
+          >
+            <Brain className="h-7 w-7 md:h-8 md:w-8" />
           </Link>
-          <div className="flex items-center gap-2 sm:gap-4">
-            {/* Per-Question Timer Display */}
-            <div
-              className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 font-mono text-sm font-medium transition-colors sm:gap-2 sm:px-3 ${
-                questionTimeRemaining <= 5
-                  ? 'bg-destructive/10 text-destructive animate-pulse'
-                  : questionTimeRemaining <= 10
-                    ? 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400'
-                    : 'bg-primary/10 text-primary'
-              }`}
-              role="status"
-              aria-live="polite"
-              aria-label={`この問題の残り時間 ${questionTimeRemaining} 秒`}
-            >
-              <span className="shrink-0 whitespace-nowrap text-[10px] font-sans font-semibold leading-none text-foreground/85 sm:text-xs">
-                1問の残り
-              </span>
-              <div className="flex items-center gap-1">
-                <Clock className="h-4 w-4 shrink-0" aria-hidden />
-                <span className="w-6 text-center tabular-nums">{questionTimeRemaining}</span>
-                <span className="text-xs opacity-70">秒</span>
+
+          <div
+            className={`flex min-w-0 flex-1 flex-col items-center gap-1 rounded-xl border-2 px-3 py-2 text-center shadow-sm transition-colors sm:max-w-lg sm:gap-1.5 sm:px-6 sm:py-3 ${
+              timerUrgent
+                ? 'border-destructive/60 bg-destructive/10 animate-pulse'
+                : timerWarn
+                  ? 'border-yellow-500/60 bg-yellow-500/10'
+                  : 'border-primary/45 bg-primary/10'
+            }`}
+            role="status"
+            aria-live="polite"
+            aria-label={`この問題の残り時間 ${questionTimeRemaining} 秒`}
+          >
+            <div className="flex flex-col items-center gap-0.5">
+              <div className="flex items-center gap-1.5">
+                <Clock className="h-5 w-5 shrink-0 opacity-80 md:h-6 md:w-6" aria-hidden />
+                <span className="text-sm font-bold text-foreground md:text-base">1問の解答残り時間</span>
               </div>
+              <span className="text-[10px] text-muted-foreground md:text-xs">
+                各問{AI_KENTEI_QUESTION_TIME_SECONDS}秒で自動的に次の問題へ
+              </span>
             </div>
-            <span className="text-sm text-muted-foreground hidden sm:inline">
-              {answeredCount} / {examData.questions.length} 問回答済み
+            <div className="flex items-baseline justify-center gap-0.5 sm:justify-center">
+              <span className="text-4xl font-bold tabular-nums leading-none tracking-tight md:text-5xl">
+                {questionTimeRemaining}
+              </span>
+              <span className="text-lg font-semibold md:text-xl">秒</span>
+            </div>
+            <p className="text-center text-[10px] leading-tight text-muted-foreground md:text-xs">
+              0になると自動で次へ（最終問題は自動提出）
+            </p>
+          </div>
+
+          <div className="hidden w-24 shrink-0 flex-col items-end text-right text-xs text-muted-foreground sm:flex md:w-28 md:text-sm">
+            <span className="font-medium tabular-nums text-foreground">
+              {answeredCount} / {examData.questions.length}
             </span>
+            <span>問回答済み</span>
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto flex-1 px-4 pb-8 pt-5 md:pb-10 md:pt-8">
+      {/* fixed ヘッダー分の余白（高さに合わせて確保） */}
+      <main className="container mx-auto flex-1 px-4 pb-8 pt-36 md:pt-40 md:pb-10">
         <div className="relative z-0 mx-auto max-w-3xl">
           {/* Progress */}
           <div className="mb-6">
@@ -255,18 +274,9 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
             <Progress value={progress} className="h-2" />
           </div>
 
-          <div className="mb-5 flex gap-3 rounded-lg border border-amber-500/45 bg-amber-50 px-3 py-3 text-sm text-amber-950 shadow-sm dark:border-amber-500/35 dark:bg-amber-950/45 dark:text-amber-50 md:px-4">
-            <Clock className="h-5 w-5 shrink-0 text-amber-700 dark:text-amber-300" aria-hidden />
-            <div className="min-w-0 space-y-1.5">
-              <p className="font-semibold leading-snug">
-                1問あたり {AI_KENTEI_QUESTION_TIME_SECONDS}秒の解答制限があります
-              </p>
-              <p className="text-xs leading-relaxed opacity-95">
-                残り時間は<strong className="font-semibold">画面上部</strong>
-                のタイマーをご確認ください。0秒になると未回答でも自動的に次の問題へ進みます（最終問題では試験が提出されます）。
-              </p>
-            </div>
-          </div>
+          <p className="mb-4 text-center text-xs text-muted-foreground sm:hidden">
+            {answeredCount} / {examData.questions.length} 問回答済み
+          </p>
 
           {/* Question Card */}
           <Card className="border-border/50 mb-6">
@@ -321,40 +331,30 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
           </Card>
 
           {/* Navigation */}
-          <div className="flex flex-col items-end gap-2">
+          <div className="flex justify-end">
             {currentIndex === examData.questions.length - 1 ? (
-              <>
-                <Button
-                  onClick={() => setShowSubmitDialog(true)}
-                  disabled={submitting}
-                  size="lg"
-                >
-                  {submitting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      提出中...
-                    </>
-                  ) : (
-                    '試験を提出する'
-                  )}
-                </Button>
-                <p className="max-w-md text-right text-xs text-muted-foreground">
-                  最終問題でも時間切れになると自動で提出されます。
-                </p>
-              </>
+              <Button
+                onClick={() => setShowSubmitDialog(true)}
+                disabled={submitting}
+                size="lg"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    提出中...
+                  </>
+                ) : (
+                  '試験を提出する'
+                )}
+              </Button>
             ) : (
-              <>
-                <Button
-                  onClick={() => setCurrentIndex(Math.min(examData.questions.length - 1, currentIndex + 1))}
-                  size="lg"
-                >
-                  次の問題へ
-                  <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
-                <p className="max-w-md text-right text-xs text-muted-foreground">
-                  「次の問題へ」を押す前に、上部の残り時間にご注意ください。時間切れでも自動で次へ進みます。
-                </p>
-              </>
+              <Button
+                onClick={() => setCurrentIndex(Math.min(examData.questions.length - 1, currentIndex + 1))}
+                size="lg"
+              >
+                次の問題へ
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
             )}
           </div>
         </div>
