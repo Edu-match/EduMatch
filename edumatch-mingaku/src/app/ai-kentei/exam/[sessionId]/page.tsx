@@ -256,8 +256,8 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
         </div>
       </header>
 
-      {/* 2段ヘッダー分の余白を確保 */}
-      <main className="container mx-auto px-4 pb-8 pt-24 md:pb-10">
+      {/* 固定ヘッダーの下に十分な余白を確保 */}
+      <main className="container mx-auto px-4 pb-8 pt-28 md:pb-10">
         <div className="mx-auto max-w-3xl">
           {/* Question Card */}
           <Card className="border-border/50 mb-6">
