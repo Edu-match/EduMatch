@@ -206,60 +206,46 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
 
   return (
     <div className="flex min-h-[calc(100dvh-4rem)] flex-col bg-background">
-      {/* グローバルヘッダー直下に固定 — スクロールしても常に表示 */}
-      <header className="fixed top-16 left-0 right-0 z-40 border-b border-border/60 bg-background/95 shadow-md backdrop-blur-md supports-[backdrop-filter]:bg-background/90">
-        <div className="container mx-auto flex items-center justify-between gap-3 px-4 py-2 md:gap-6 md:py-3">
+      {/* sticky — グローバルヘッダー(h-16)直下に貼り付き、スクロールしても常に表示 */}
+      <header className="sticky top-16 z-40 shrink-0 border-b border-border/50 bg-background/95 shadow-sm backdrop-blur-sm">
+        <div className="container mx-auto flex h-14 items-center justify-between gap-3 px-4">
           <Link
             href="/ai-kentei"
-            className="flex shrink-0 items-center justify-center rounded-lg p-1.5 text-primary hover:bg-muted/70"
+            className="flex shrink-0 items-center justify-center rounded-md p-1 text-primary hover:bg-muted/60"
             aria-label="AI検定トップへ"
           >
-            <Brain className="h-7 w-7 md:h-8 md:w-8" />
+            <Brain className="h-6 w-6" />
           </Link>
 
+          {/* タイマー — 1行でコンパクトに、残り秒数を大きめに */}
           <div
-            className={`flex min-w-0 flex-1 flex-col items-center gap-1 rounded-xl border-2 px-3 py-2 text-center shadow-sm transition-colors sm:max-w-lg sm:gap-1.5 sm:px-6 sm:py-3 ${
+            className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 transition-colors ${
               timerUrgent
-                ? 'border-destructive/60 bg-destructive/10 animate-pulse'
+                ? 'border-destructive/60 bg-destructive/10 text-destructive animate-pulse'
                 : timerWarn
-                  ? 'border-yellow-500/60 bg-yellow-500/10'
-                  : 'border-primary/45 bg-primary/10'
+                  ? 'border-yellow-500/60 bg-yellow-50 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-300'
+                  : 'border-primary/40 bg-primary/10 text-primary'
             }`}
             role="status"
             aria-live="polite"
             aria-label={`この問題の残り時間 ${questionTimeRemaining} 秒`}
           >
-            <div className="flex flex-col items-center gap-0.5">
-              <div className="flex items-center gap-1.5">
-                <Clock className="h-5 w-5 shrink-0 opacity-80 md:h-6 md:w-6" aria-hidden />
-                <span className="text-sm font-bold text-foreground md:text-base">1問の解答残り時間</span>
-              </div>
-              <span className="text-[10px] text-muted-foreground md:text-xs">
-                各問{AI_KENTEI_QUESTION_TIME_SECONDS}秒で自動的に次の問題へ
-              </span>
-            </div>
-            <div className="flex items-baseline justify-center gap-0.5 sm:justify-center">
-              <span className="text-4xl font-bold tabular-nums leading-none tracking-tight md:text-5xl">
-                {questionTimeRemaining}
-              </span>
-              <span className="text-lg font-semibold md:text-xl">秒</span>
-            </div>
-            <p className="text-center text-[10px] leading-tight text-muted-foreground md:text-xs">
-              0になると自動で次へ（最終問題は自動提出）
-            </p>
+            <Clock className="h-4 w-4 shrink-0" aria-hidden />
+            <span className="hidden text-xs font-semibold sm:inline">
+              1問の残り時間（{AI_KENTEI_QUESTION_TIME_SECONDS}秒制限）
+            </span>
+            <span className="text-[11px] font-semibold sm:hidden">1問の残り</span>
+            <span className="text-2xl font-bold tabular-nums leading-none">{questionTimeRemaining}</span>
+            <span className="text-sm font-semibold">秒</span>
           </div>
 
-          <div className="hidden w-24 shrink-0 flex-col items-end text-right text-xs text-muted-foreground sm:flex md:w-28 md:text-sm">
-            <span className="font-medium tabular-nums text-foreground">
-              {answeredCount} / {examData.questions.length}
-            </span>
-            <span>問回答済み</span>
-          </div>
+          <span className="shrink-0 text-sm text-muted-foreground">
+            {answeredCount}&nbsp;/&nbsp;{examData.questions.length}&nbsp;問
+          </span>
         </div>
       </header>
 
-      {/* fixed ヘッダー分の余白（高さに合わせて確保） */}
-      <main className="container mx-auto flex-1 px-4 pb-8 pt-36 md:pt-40 md:pb-10">
+      <main className="container mx-auto flex-1 px-4 pb-8 pt-6 md:pb-10 md:pt-8">
         <div className="relative z-0 mx-auto max-w-3xl">
           {/* Progress */}
           <div className="mb-6">
@@ -273,10 +259,6 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
             </div>
             <Progress value={progress} className="h-2" />
           </div>
-
-          <p className="mb-4 text-center text-xs text-muted-foreground sm:hidden">
-            {answeredCount} / {examData.questions.length} 問回答済み
-          </p>
 
           {/* Question Card */}
           <Card className="border-border/50 mb-6">
