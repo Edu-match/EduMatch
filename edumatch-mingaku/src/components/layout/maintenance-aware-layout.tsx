@@ -13,9 +13,25 @@ export function MaintenanceAwareLayout({
 }) {
   const pathname = usePathname();
   const isMaintenance = pathname === "/maintenance";
+  // AI検定ページはサイドバーなし・独自ヘッダーを使う
+  const isAiKentei = pathname.startsWith("/ai-kentei");
 
   if (isMaintenance) {
     return <div className="min-h-screen flex flex-col">{children}</div>;
+  }
+
+  if (isAiKentei) {
+    return (
+      <>
+        <div className="flex min-h-screen flex-col w-full">
+          <Header />
+          <div className="flex-1 pt-16">
+            <main className="w-full">{children}</main>
+          </div>
+        </div>
+        <ChatbotWidget />
+      </>
+    );
   }
 
   return (

@@ -205,10 +205,10 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
   const timerWarn = questionTimeRemaining <= 10 && questionTimeRemaining > 5
 
   return (
-    <div className="flex min-h-[calc(100dvh-4rem)] flex-col bg-background">
-      {/* sticky — グローバルヘッダー(h-16)直下に貼り付き、スクロールしても常に表示 */}
-      <header className="sticky top-16 z-40 shrink-0 border-b border-border/50 bg-background/95 shadow-sm backdrop-blur-sm">
-        <div className="container mx-auto flex h-14 items-center justify-between gap-3 px-4">
+    <div className="min-h-screen bg-background">
+      {/* グローバルヘッダー(h-16=64px)直下に固定。overflow-x:hidden 親でも sticky が壊れないよう fixed を使用 */}
+      <header className="fixed left-0 right-0 top-16 z-40 h-14 border-b border-border/50 bg-background/95 shadow-sm backdrop-blur-sm">
+        <div className="container mx-auto flex h-full items-center justify-between gap-3 px-4">
           <Link
             href="/ai-kentei"
             className="flex shrink-0 items-center justify-center rounded-md p-1 text-primary hover:bg-muted/60"
@@ -217,7 +217,7 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
             <Brain className="h-6 w-6" />
           </Link>
 
-          {/* タイマー — 1行でコンパクトに、残り秒数を大きめに */}
+          {/* タイマー */}
           <div
             className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 transition-colors ${
               timerUrgent
@@ -245,8 +245,9 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
         </div>
       </header>
 
-      <main className="container mx-auto flex-1 px-4 pb-8 pt-6 md:pb-10 md:pt-8">
-        <div className="relative z-0 mx-auto max-w-3xl">
+      {/* fixed サブヘッダー h-14(56px) 分を pt-14 で押し下げる */}
+      <main className="container mx-auto px-4 pb-8 pt-14 md:pb-10">
+        <div className="mx-auto max-w-3xl">
           {/* Progress */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-2">
