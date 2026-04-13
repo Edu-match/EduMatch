@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
-import { ArrowLeft, ArrowRight, Brain, AlertCircle, FlaskConical, Loader2 } from 'lucide-react'
+import { ArrowLeft, ArrowRight, AlertCircle, FlaskConical, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { AI_KENTEI_QUESTION_TIME_SECONDS } from '@/lib/ai-kentei-constants'
 
@@ -103,16 +103,6 @@ export default function ExamStartPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Sub Header */}
-      <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm">
-        <div className="container mx-auto px-4 h-14 flex items-center justify-between">
-          <Link href="/ai-kentei" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <Brain className="h-6 w-6 text-primary" />
-            <span className="font-medium text-sm">一般社団法人 教育AI活用協会</span>
-          </Link>
-        </div>
-      </header>
-
       <main className="container mx-auto px-4 py-12">
         <div className="max-w-2xl mx-auto">
           <Link

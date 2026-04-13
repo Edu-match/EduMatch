@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { BookOpen, Award, Clock, CheckCircle, Brain, Shield } from 'lucide-react'
+import { BookOpen, Award, Clock, CheckCircle, Shield } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -38,16 +38,6 @@ export default function AiKenteiPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Sub Header */}
-      <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm">
-        <div className="container mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Brain className="h-6 w-6 text-primary" />
-            <span className="font-medium text-sm">一般社団法人 教育AI活用協会</span>
-          </div>
-        </div>
-      </header>
-
       {/* Hero Section */}
       <main className="container mx-auto px-4 py-12">
         <div className="max-w-4xl mx-auto">
@@ -182,10 +172,7 @@ export default function AiKenteiPage() {
       <footer className="border-t border-border/50 mt-16">
         <div className="container mx-auto px-4 py-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <Brain className="h-5 w-5 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">一般社団法人 教育AI活用協会</span>
-            </div>
+            <span className="text-sm text-muted-foreground">一般社団法人 教育AI活用協会</span>
             <p className="text-sm text-muted-foreground">
               文部科学省「初等中等教育段階における生成AIの利用に関する暫定的なガイドライン」に基づく
             </p>

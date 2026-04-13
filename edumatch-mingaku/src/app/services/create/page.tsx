@@ -81,6 +81,7 @@ export default function ServiceCreatePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
   const [lastSavedText, setLastSavedText] = useState("未保存");
+  const [editorResetKey, setEditorResetKey] = useState(0);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
@@ -138,6 +139,7 @@ export default function ServiceCreatePage() {
     setYoutubeUrl("");
     setThumbnailUrl("");
     setContent("");
+    setEditorResetKey((prev) => prev + 1);
     setLastSaved(null);
   };
 
@@ -287,7 +289,7 @@ export default function ServiceCreatePage() {
             <span className={`text-sm ${canSubmit ? "text-muted-foreground" : "text-destructive"}`}>
               合計: {totalWordCount.toLocaleString()} 文字
             </span>
-            <Button variant="ghost" size="sm" onClick={clearDraft}>
+            <Button type="button" variant="ghost" size="sm" onClick={clearDraft}>
               クリア
             </Button>
             <Button variant="outline" size="sm" onClick={saveLocalDraft} disabled={isSaving || isSubmitting}>
@@ -536,6 +538,7 @@ export default function ServiceCreatePage() {
           </CardHeader>
           <CardContent>
             <ContentEditorWithImport
+              key={`service-editor-${editorResetKey}`}
               content={content}
               onChange={setContent}
               parseToBlocks={contentToBlocks}

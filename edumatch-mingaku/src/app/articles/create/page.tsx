@@ -133,6 +133,7 @@ export default function ArticleCreatePage() {
   const [lastSaved, setLastSaved] = useState<Date | null>(() => draft?.savedAt ? new Date(draft.savedAt) : null);
   const [isSaving, setIsSaving] = useState(false);
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+  const [editorResetKey, setEditorResetKey] = useState(0);
   const [userProfile, setUserProfile] = useState<{ name: string; avatar_url: string | null; email: string } | null>(null);
   const [generatedArticle, setGeneratedArticle] = useState<GeneratedArticle | null>(null);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
@@ -415,6 +416,7 @@ export default function ArticleCreatePage() {
       setThumbnailTemplateKind("domestic");
       setHomeNewsTab("NONE");
       setContent("");
+      setEditorResetKey((prev) => prev + 1);
       setLastSaved(null);
     }
   };
@@ -499,7 +501,7 @@ export default function ArticleCreatePage() {
             <span className={`text-sm ${canSubmit ? "text-muted-foreground" : "text-destructive"}`}>
               合計: {totalWordCount.toLocaleString()} 文字
             </span>
-            <Button variant="ghost" size="sm" onClick={clearDraft}>
+            <Button type="button" variant="ghost" size="sm" onClick={clearDraft}>
               クリア
             </Button>
             <Button variant="outline" size="sm" onClick={saveDraft} disabled={isSaving || isSubmitting}>
@@ -798,6 +800,7 @@ export default function ArticleCreatePage() {
                   </CardHeader>
                   <CardContent>
                     <ContentEditorWithImport
+                      key={`article-editor-${editorResetKey}`}
                       content={content}
                       onChange={setContent}
                       parseToBlocks={(c) => contentToBlocks(c)}
