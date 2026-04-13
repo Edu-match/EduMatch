@@ -26,6 +26,9 @@ const MAX_UNDO_STACK = 100;
 export function htmlToMarkdown(html: string): string {
   if (!html || html === "<br>" || html === "<div><br></div>") return "";
   let md = turndown.turndown(html).replace(/\u200B/g, "");
+  // Turndown が通常テキストの "1. " を "1\\. " にエスケープすることがあり、
+  // 編集中に意図しないバックスラッシュが見えるため戻す。
+  md = md.replace(/(^|\n)(\s*\d+)\\\.(\s)/g, "$1$2.$3");
   if (!md.replace(/[\s\u00a0]/g, "")) return "";
   // 先頭の空白のみ除去（.trim() は行末の Markdown 改行「  \n」まで消してしまう）
   return md.replace(/^\s+/, "");

@@ -351,8 +351,17 @@ export function BlockEditor({
   } | null>(null);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const textInputRefs = useRef<Record<string, HTMLInputElement | HTMLTextAreaElement | HTMLElement | null>>({});
+  const lastPointerDownTargetRef = useRef<EventTarget | null>(null);
   const blocksRef = useRef(blocks);
   blocksRef.current = blocks;
+
+  useEffect(() => {
+    const handlePointerDown = (event: PointerEvent) => {
+      lastPointerDownTargetRef.current = event.target;
+    };
+    window.addEventListener("pointerdown", handlePointerDown, true);
+    return () => window.removeEventListener("pointerdown", handlePointerDown, true);
+  }, []);
   
   // 全体の文字数を計算
   const calculateTotalLength = useCallback((blocksToCheck: ContentBlock[]) => {
@@ -1037,10 +1046,19 @@ export function BlockEditor({
   /** タブ切替・ドロップダウン等で blur したときは自動変換しない（本文の誤変換・増殖を防ぐ） */
   const scheduleTryAutoConvertParagraph = useCallback(
     (block: ContentBlock, md: string, e: React.FocusEvent<HTMLDivElement>) => {
-      if (isFocusMovedToTabOrOverlay(e.relatedTarget)) return;
+      const movedToTabsOrOverlay =
+        isFocusMovedToTabOrOverlay(e.relatedTarget) ||
+        (e.relatedTarget == null &&
+          isFocusMovedToTabOrOverlay(lastPointerDownTargetRef.current));
+      if (movedToTabsOrOverlay) return;
       requestAnimationFrame(() => {
         const ae = document.activeElement;
-        if (ae instanceof HTMLElement && isFocusMovedToTabOrOverlay(ae)) return;
+        if (
+          (ae instanceof HTMLElement && isFocusMovedToTabOrOverlay(ae)) ||
+          isFocusMovedToTabOrOverlay(lastPointerDownTargetRef.current)
+        ) {
+          return;
+        }
         tryAutoConvertParagraph(block, md);
       });
     },
