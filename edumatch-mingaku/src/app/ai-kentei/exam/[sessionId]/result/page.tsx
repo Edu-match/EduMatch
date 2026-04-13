@@ -159,17 +159,17 @@ export default function ResultPage({ params }: { params: Promise<{ sessionId: st
             </CardContent>
           </Card>
 
-          <Card className="mb-8 border-border/50">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-xl">受験お疲れさまでした。</CardTitle>
-              <CardDescription className="text-base leading-relaxed">
+          <Card className="mb-8 border-border/50 bg-muted/30">
+            <CardHeader className="pb-3 text-center">
+              <CardTitle className="text-xl md:text-2xl">受験お疲れさまでした。</CardTitle>
+              <CardDescription className="text-base leading-relaxed text-pretty text-center">
                 アンケートにご協力ください。
                 いただいたご意見は、今後の問題改善・資格の充実に活用させていただきます。
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">所要時間：約1分</p>
-              <Button asChild variant="outline" size="lg">
+            <CardContent className="flex flex-col items-center gap-4 text-center">
+              <p className="text-sm font-medium text-muted-foreground">所要時間：約1分</p>
+              <Button asChild size="lg" className="w-full max-w-sm">
                 <a
                   href="https://forms.gle/uXVaTN9788rUG1yJ6"
                   target="_blank"
@@ -178,7 +178,7 @@ export default function ResultPage({ params }: { params: Promise<{ sessionId: st
                   アンケートに回答する
                 </a>
               </Button>
-              <p className="text-xs break-all text-muted-foreground">
+              <p className="max-w-md text-xs text-muted-foreground break-all">
                 https://forms.gle/uXVaTN9788rUG1yJ6
               </p>
             </CardContent>
