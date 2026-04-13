@@ -1065,7 +1065,7 @@ export function BlockEditor({
               onChange={(c) => updateBlock(block.id, { content: c })}
               refCallback={(el) => { textInputRefs.current[block.id] = el; }}
               placeholder="大見出しを入力..."
-              className={`flex-1 min-w-0 text-4xl font-normal outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground [&_strong]:font-bold`}
+              className={`flex-1 min-w-0 text-4xl font-bold outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground`}
               style={{ textAlign: block.align }}
             />
             <span className="text-xs text-muted-foreground whitespace-nowrap">
@@ -1082,7 +1082,7 @@ export function BlockEditor({
               onChange={(c) => updateBlock(block.id, { content: c })}
               refCallback={(el) => { textInputRefs.current[block.id] = el; }}
               placeholder="中見出しを入力..."
-              className={`flex-1 min-w-0 text-2xl font-normal outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground [&_strong]:font-bold`}
+              className={`flex-1 min-w-0 text-2xl font-bold outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground`}
               style={{ textAlign: block.align }}
             />
             <span className="text-xs text-muted-foreground whitespace-nowrap">
@@ -1099,7 +1099,7 @@ export function BlockEditor({
               onChange={(c) => updateBlock(block.id, { content: c })}
               refCallback={(el) => { textInputRefs.current[block.id] = el; }}
               placeholder="小見出しを入力..."
-              className={`flex-1 min-w-0 text-xl font-normal outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground [&_strong]:font-bold`}
+              className={`flex-1 min-w-0 text-xl font-bold outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground`}
               style={{ textAlign: block.align }}
             />
             <span className="text-xs text-muted-foreground whitespace-nowrap">

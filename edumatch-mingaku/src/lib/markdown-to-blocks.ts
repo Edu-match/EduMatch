@@ -2,6 +2,10 @@ import type { ContentBlock } from "@/components/editor/block-editor";
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
+function removeStraySlashLines(content: string): string {
+  return content.replace(/(^|\n)[ \t]*\/[ \t]*(?=\n|$)/g, "$1");
+}
+
 /** 箇条書き行（-, *, + のいずれか + スペース。GFM 互換） */
 function isBulletListLine(trimmed: string): boolean {
   return /^[-*+] /.test(trimmed);
@@ -35,7 +39,8 @@ export const RAW_MARKDOWN_PREFIX = "__EDUMATCH_RAW_MARKDOWN__\n";
  * ※ プレフィックス付きの場合は1つの markdown ブロックとしてそのまま返す
  */
 export function contentToBlocks(content: string): ContentBlock[] {
-  const trimmed = content.trim();
+  const normalized = removeStraySlashLines(content);
+  const trimmed = normalized.trim();
   if (trimmed.startsWith(RAW_MARKDOWN_PREFIX)) {
     return [
       {
@@ -47,7 +52,7 @@ export function contentToBlocks(content: string): ContentBlock[] {
   }
 
   const blocks: ContentBlock[] = [];
-  const lines = content.split(/\r?\n/);
+  const lines = normalized.split(/\r?\n/);
 
   let i = 0;
   while (i < lines.length) {

@@ -24,19 +24,63 @@ import { isImportedContent } from "@/lib/imported-content";
 import { createService, uploadImage } from "@/app/_actions";
 import { SERVICE_CATEGORIES } from "@/lib/categories";
 import { ImageWithUrlError } from "@/components/ui/image-with-url-error";
-import { Image as ImageIcon, Loader2, Save, Send, Building2, School, Eye, FileText } from "lucide-react";
+import {
+  Image as ImageIcon,
+  Loader2,
+  Save,
+  Send,
+  Building2,
+  School,
+  Eye,
+  FileText,
+  Check,
+  Clock,
+  AlertCircle,
+  CheckCircle2,
+} from "lucide-react";
+
+const STORAGE_KEY = "edumatch-service-draft";
+
+interface ServiceDraft {
+  title: string;
+  description: string;
+  category: string;
+  priceInfo: string;
+  youtubeUrl: string;
+  thumbnailUrl: string;
+  content: string;
+  savedAt: string;
+}
+
+function loadDraftFromStorage(): ServiceDraft | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? (JSON.parse(saved) as ServiceDraft) : null;
+  } catch (e) {
+    console.warn("Failed to load service draft:", e);
+    return null;
+  }
+}
 
 export default function ServiceCreatePage() {
   const router = useRouter();
+  const [draft] = useState<ServiceDraft | null>(() => loadDraftFromStorage());
   const [activeTab, setActiveTab] = useState("edit");
 
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("");
-  const [priceInfo, setPriceInfo] = useState("");
-  const [youtubeUrl, setYoutubeUrl] = useState("");
-  const [thumbnailUrl, setThumbnailUrl] = useState("");
-  const [content, setContent] = useState("");
+  const [title, setTitle] = useState(() => draft?.title || "");
+  const [description, setDescription] = useState(() => draft?.description || "");
+  const [category, setCategory] = useState(() => draft?.category || "");
+  const [priceInfo, setPriceInfo] = useState(() => draft?.priceInfo || "");
+  const [youtubeUrl, setYoutubeUrl] = useState(() => draft?.youtubeUrl || "");
+  const [thumbnailUrl, setThumbnailUrl] = useState(() => draft?.thumbnailUrl || "");
+  const [content, setContent] = useState(() => draft?.content || "");
+  const [lastSaved, setLastSaved] = useState<Date | null>(() =>
+    draft?.savedAt ? new Date(draft.savedAt) : null
+  );
+  const [isSaving, setIsSaving] = useState(false);
+  const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+  const [lastSavedText, setLastSavedText] = useState("未保存");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
@@ -60,6 +104,43 @@ export default function ServiceCreatePage() {
   const isContentValid = contentLength <= CONTENT_MAX_LENGTH;
   const canSubmit = isTitleValid && isDescriptionValid && isContentValid && title.trim().length > 0 && description.trim().length > 0 && category.trim().length > 0 && content.trim().length > 0;
 
+  const saveLocalDraft = () => {
+    setIsSaving(true);
+    try {
+      const nextDraft: ServiceDraft = {
+        title,
+        description,
+        category,
+        priceInfo,
+        youtubeUrl,
+        thumbnailUrl,
+        content,
+        savedAt: new Date().toISOString(),
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextDraft));
+      setLastSaved(new Date());
+      setShowSaveSuccess(true);
+      setTimeout(() => setShowSaveSuccess(false), 2000);
+    } catch (e) {
+      console.error("Failed to save service draft:", e);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const clearDraft = () => {
+    if (!confirm("下書きを削除してもよろしいですか？")) return;
+    localStorage.removeItem(STORAGE_KEY);
+    setTitle("");
+    setDescription("");
+    setCategory("");
+    setPriceInfo("");
+    setYoutubeUrl("");
+    setThumbnailUrl("");
+    setContent("");
+    setLastSaved(null);
+  };
+
   // ユーザープロフィールを取得
   useEffect(() => {
     async function fetchProfile() {
@@ -80,6 +161,50 @@ export default function ServiceCreatePage() {
     }
     fetchProfile();
   }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!title && !description && !content) return;
+      try {
+        const nextDraft: ServiceDraft = {
+          title,
+          description,
+          category,
+          priceInfo,
+          youtubeUrl,
+          thumbnailUrl,
+          content,
+          savedAt: new Date().toISOString(),
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(nextDraft));
+      } catch (e) {
+        console.error("Service auto-save failed:", e);
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [title, description, category, priceInfo, youtubeUrl, thumbnailUrl, content]);
+
+  useEffect(() => {
+    const updateLastSavedText = () => {
+      if (!lastSaved) {
+        setLastSavedText("未保存");
+        return;
+      }
+      const diff = Math.floor((Date.now() - lastSaved.getTime()) / 1000);
+      if (diff < 60) {
+        setLastSavedText("たった今");
+      } else if (diff < 3600) {
+        setLastSavedText(`${Math.floor(diff / 60)}分前`);
+      } else {
+        setLastSavedText(
+          lastSaved.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })
+        );
+      }
+    };
+    updateLastSavedText();
+    const interval = setInterval(updateLastSavedText, 60000);
+    return () => clearInterval(interval);
+  }, [lastSaved]);
 
   async function submit(publishType: "draft" | "submit") {
     if (!title.trim()) {
@@ -119,6 +244,7 @@ export default function ServiceCreatePage() {
       });
 
       if (result.success && result.serviceId) {
+        localStorage.removeItem(STORAGE_KEY);
         toast.success(
           publishType === "submit" ? "投稿申請を受け付けました" : "下書きを保存しました",
           { description: publishType === "submit" ? "管理者の承認後に公開されます。" : undefined }
@@ -143,11 +269,35 @@ export default function ServiceCreatePage() {
         <div className="container flex items-center justify-between h-16">
           <div className="flex items-center gap-4">
             <h1 className="text-lg font-semibold">サービスを投稿</h1>
-            <Badge variant="outline" className={`text-xs ${canSubmit ? "" : "border-destructive text-destructive"}`}>
-              合計: {totalWordCount.toLocaleString()} 文字
+            <Badge variant="outline" className="text-xs">
+              {showSaveSuccess ? (
+                <>
+                  <Check className="h-3 w-3 mr-1 text-green-500" />
+                  保存しました
+                </>
+              ) : (
+                <>
+                  <Clock className="h-3 w-3 mr-1" />
+                  自動保存: {lastSavedText}
+                </>
+              )}
             </Badge>
           </div>
           <div className="flex items-center gap-2">
+            <span className={`text-sm ${canSubmit ? "text-muted-foreground" : "text-destructive"}`}>
+              合計: {totalWordCount.toLocaleString()} 文字
+            </span>
+            <Button variant="ghost" size="sm" onClick={clearDraft}>
+              クリア
+            </Button>
+            <Button variant="outline" size="sm" onClick={saveLocalDraft} disabled={isSaving || isSubmitting}>
+              {isSaving ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4 mr-2" />
+              )}
+              ローカル保存
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -460,7 +610,50 @@ export default function ServiceCreatePage() {
             </div>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">公開前チェック</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <CheckItem checked={title.trim().length > 0} label="サービス名を入力" />
+              <CheckItem checked={description.trim().length > 0} label="概要を入力" />
+              <CheckItem checked={thumbnailUrl.trim().length > 0} label="サムネイル画像を設定" />
+              <CheckItem checked={content.trim().length > 0} label="本文を作成" />
+              <CheckItem checked={category.trim().length > 0} label="カテゴリを選択" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <AlertCircle className="h-4 w-4" />
+              投稿ガイドライン
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2 text-sm text-muted-foreground">
+              <li>・特徴だけでなく導入後の効果を具体的に記載してください</li>
+              <li>・価格と問い合わせ方法を明確にしてください</li>
+              <li>・誇大広告や誤解を招く表現は避けてください</li>
+              <li>・公開前に編集部による審査があります</li>
+            </ul>
+          </CardContent>
+        </Card>
       </div>
+    </div>
+  );
+}
+
+function CheckItem({ checked, label }: { checked: boolean; label: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <CheckCircle2 className={`h-4 w-4 ${checked ? "text-green-500" : "text-gray-300"}`} />
+      <span className={`text-sm ${checked ? "text-foreground" : "text-muted-foreground"}`}>
+        {label}
+      </span>
     </div>
   );
 }

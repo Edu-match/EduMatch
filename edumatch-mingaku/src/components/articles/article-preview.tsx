@@ -87,7 +87,7 @@ export function ArticlePreview({
                 return (
                   <h4
                     key={block.id}
-                    className="text-xl font-semibold mt-4 mb-2"
+                    className="text-xl font-bold mt-4 mb-2"
                     style={{ textAlign: block.align }}
                   >
                     {renderInlineMarkdown(block.content)}

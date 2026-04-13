@@ -162,7 +162,7 @@ function MarkdownLikeContent({ text }: { text: string }) {
       nodes.push(
         <h3
           key={`md-${keyIndex++}`}
-          className="mt-6 mb-2 text-lg font-semibold text-foreground scroll-mt-20"
+          className="mt-4 mb-2 text-xl font-bold text-foreground scroll-mt-20"
         >
           {renderInlineMarkdown(trimmed.slice(4))}
         </h3>
@@ -174,7 +174,7 @@ function MarkdownLikeContent({ text }: { text: string }) {
       nodes.push(
         <h2
           key={`md-${keyIndex++}`}
-          className="mt-8 mb-3 text-xl font-semibold text-foreground scroll-mt-20 border-b border-border/60 pb-1"
+          className="mt-6 mb-3 text-2xl font-bold text-foreground scroll-mt-20"
         >
           {renderInlineMarkdown(trimmed.slice(3))}
         </h2>
@@ -186,7 +186,7 @@ function MarkdownLikeContent({ text }: { text: string }) {
       nodes.push(
         <h1
           key={`md-${keyIndex++}`}
-          className="mt-8 mb-3 text-2xl font-bold text-foreground scroll-mt-20"
+          className="mt-8 mb-4 text-3xl font-bold text-foreground scroll-mt-20"
         >
           {renderInlineMarkdown(trimmed.slice(2))}
         </h1>
@@ -272,38 +272,20 @@ function MarkdownLikeContent({ text }: { text: string }) {
       i += 1;
     }
     if (paragraphLines.length > 0) {
-      const singleLine = paragraphLines.length === 1 ? paragraphLines[0].trim() : "";
-      // # を使っていない本文向け：短い単独行（目安 45 文字以下）を見出し風に表示
-      const looksLikeHeading =
-        singleLine &&
-        singleLine.length <= 45 &&
-        !singleLine.endsWith("。") &&
-        !singleLine.endsWith("、");
-      if (looksLikeHeading) {
-        nodes.push(
-          <h3
-            key={`md-${keyIndex++}`}
-            className="mt-6 mb-2 text-lg font-semibold text-foreground scroll-mt-20"
-          >
-            {renderInlineMarkdown(singleLine)}
-          </h3>
-        );
-      } else {
-        const paraText = paragraphLines.join("\n");
-        nodes.push(
-          <p
-            key={`md-${keyIndex++}`}
-            className="text-base text-foreground leading-relaxed mb-4 last:mb-0"
-          >
-            {paraText.split("\n").map((line, idx) => (
-              <React.Fragment key={idx}>
-                {idx > 0 && <br />}
-                {renderInlineMarkdown(line)}
-              </React.Fragment>
-            ))}
-          </p>
-        );
-      }
+      const paraText = paragraphLines.join("\n");
+      nodes.push(
+        <p
+          key={`md-${keyIndex++}`}
+          className="text-base text-foreground leading-relaxed mb-4 last:mb-0"
+        >
+          {paraText.split("\n").map((line, idx) => (
+            <React.Fragment key={idx}>
+              {idx > 0 && <br />}
+              {renderInlineMarkdown(line)}
+            </React.Fragment>
+          ))}
+        </p>
+      );
     }
   }
 
