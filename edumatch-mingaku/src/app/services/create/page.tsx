@@ -130,6 +130,7 @@ export default function ServiceCreatePage() {
   };
 
   const clearDraft = () => {
+    if (!confirm("本当に削除しますか？入力中の内容が失われます。")) return;
     localStorage.removeItem(STORAGE_KEY);
     setTitle("");
     setDescription("");

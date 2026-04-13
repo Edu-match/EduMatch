@@ -404,6 +404,7 @@ export default function ArticleCreatePage() {
   }, [generatedArticle, applyThumbnailFromTemplate, homeNewsTab]);
 
   const clearDraft = () => {
+    if (!confirm("本当に削除しますか？入力中の内容が失われます。")) return;
     localStorage.removeItem(STORAGE_KEY);
     setTitle("");
     setLeadText("");
