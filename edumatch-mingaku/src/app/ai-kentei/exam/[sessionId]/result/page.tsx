@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Brain, Trophy, XCircle, RotateCcw, Award, ChevronDown, ChevronUp, Home, Loader2 } from 'lucide-react'
+import { Trophy, XCircle, RotateCcw, Award, ChevronDown, ChevronUp, Home, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   Collapsible,
@@ -93,16 +93,6 @@ export default function ResultPage({ params }: { params: Promise<{ sessionId: st
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Sub Header */}
-      <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm">
-        <div className="container mx-auto px-4 h-14 flex items-center justify-between">
-          <Link href="/ai-kentei" className="flex items-center gap-2">
-            <Brain className="h-6 w-6 text-primary" />
-            <span className="font-medium text-sm">一般社団法人 教育AI活用協会</span>
-          </Link>
-        </div>
-      </header>
-
       <main className="container mx-auto px-4 py-8 md:py-12">
         <div className="max-w-3xl mx-auto">
           {/* Result Card */}

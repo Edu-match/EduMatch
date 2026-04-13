@@ -404,21 +404,22 @@ export default function ArticleCreatePage() {
   }, [generatedArticle, applyThumbnailFromTemplate, homeNewsTab]);
 
   const clearDraft = () => {
-    if (confirm("下書きを削除してもよろしいですか？")) {
-      localStorage.removeItem(STORAGE_KEY);
-      setTitle("");
-      setLeadText("");
-      setCategory("");
-      toast.info("下書きを削除しました");
-      setTags("");
-      setPublishType("draft");
-      setThumbnailUrl("");
-      setThumbnailTemplateKind("domestic");
-      setHomeNewsTab("NONE");
-      setContent("");
-      setEditorResetKey((prev) => prev + 1);
-      setLastSaved(null);
-    }
+    localStorage.removeItem(STORAGE_KEY);
+    setTitle("");
+    setLeadText("");
+    setCategory("");
+    setTags("");
+    setPublishType("draft");
+    setThumbnailUrl("");
+    setThumbnailTemplateKind("domestic");
+    setHomeNewsTab("NONE");
+    setContent("");
+    setGeneratedArticle(null);
+    setAiPanelOpen(false);
+    setActiveTab("edit");
+    setEditorResetKey((prev) => prev + 1);
+    setLastSaved(null);
+    toast.info("入力内容をクリアしました");
   };
 
   // 文字数カウント

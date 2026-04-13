@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { Brain, Share2, Camera, Loader2, ArrowLeft, Eye, Award, Info } from 'lucide-react'
+import { Share2, Camera, Loader2, ArrowLeft, Eye, Award, Info } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
 import { CertificatePreview } from '@/components/ai-kentei/certificate-preview'
@@ -198,16 +198,6 @@ export default function CertificatePage({ params }: { params: Promise<{ sessionI
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Sub Header */}
-      <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm">
-        <div className="container mx-auto px-4 h-14 flex items-center justify-between">
-          <Link href="/ai-kentei" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <Brain className="h-6 w-6 text-primary" />
-            <span className="font-medium text-sm">一般社団法人 教育AI活用協会</span>
-          </Link>
-        </div>
-      </header>
-
       <main className="container mx-auto px-4 py-8 md:py-12">
         <div className="max-w-4xl mx-auto">
           <Link

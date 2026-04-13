@@ -130,7 +130,6 @@ export default function ServiceCreatePage() {
   };
 
   const clearDraft = () => {
-    if (!confirm("下書きを削除してもよろしいですか？")) return;
     localStorage.removeItem(STORAGE_KEY);
     setTitle("");
     setDescription("");
@@ -139,8 +138,10 @@ export default function ServiceCreatePage() {
     setYoutubeUrl("");
     setThumbnailUrl("");
     setContent("");
+    setActiveTab("edit");
     setEditorResetKey((prev) => prev + 1);
     setLastSaved(null);
+    toast.info("入力内容をクリアしました");
   };
 
   // ユーザープロフィールを取得

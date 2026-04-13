@@ -9,7 +9,7 @@ import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Label } from '@/components/ui/label'
-import { Brain, ChevronRight, AlertTriangle, Loader2, Clock } from 'lucide-react'
+import { ChevronRight, AlertTriangle, Loader2, Clock } from 'lucide-react'
 import { toast } from 'sonner'
 import { AI_KENTEI_QUESTION_TIME_SECONDS } from '@/lib/ai-kentei-constants'
 import {
@@ -212,10 +212,10 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
           <div className="flex items-center justify-between gap-3">
             <Link
               href="/ai-kentei"
-              className="flex shrink-0 items-center justify-center rounded-md p-1 text-primary hover:bg-muted/60"
+              className="shrink-0 rounded-md px-2 py-1 text-sm font-medium text-primary hover:bg-muted/60"
               aria-label="AI検定トップへ"
             >
-              <Brain className="h-6 w-6" />
+              AI検定トップへ
             </Link>
 
             <div
