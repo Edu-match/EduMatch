@@ -163,8 +163,9 @@ export default function ResultPage({ params }: { params: Promise<{ sessionId: st
             <CardHeader className="pb-3 text-center">
               <CardTitle className="text-xl md:text-2xl">受験お疲れさまでした。</CardTitle>
               <CardDescription className="text-base leading-relaxed text-pretty text-center">
-                アンケートにご協力ください。
+                アンケートにご協力ください。<br />
                 いただいたご意見は、今後の問題改善・資格の充実に活用させていただきます。
+           
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col items-center gap-4 text-center">
