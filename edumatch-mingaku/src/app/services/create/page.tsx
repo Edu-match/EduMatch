@@ -10,6 +10,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -82,6 +92,7 @@ export default function ServiceCreatePage() {
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
   const [lastSavedText, setLastSavedText] = useState("未保存");
   const [editorResetKey, setEditorResetKey] = useState(0);
+  const [showClearDialog, setShowClearDialog] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
@@ -130,7 +141,6 @@ export default function ServiceCreatePage() {
   };
 
   const clearDraft = () => {
-    if (!confirm("本当に削除しますか？入力中の内容が失われます。")) return;
     localStorage.removeItem(STORAGE_KEY);
     setTitle("");
     setDescription("");
@@ -291,7 +301,12 @@ export default function ServiceCreatePage() {
             <span className={`text-sm ${canSubmit ? "text-muted-foreground" : "text-destructive"}`}>
               合計: {totalWordCount.toLocaleString()} 文字
             </span>
-            <Button type="button" variant="ghost" size="sm" onClick={clearDraft}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowClearDialog(true)}
+            >
               クリア
             </Button>
             <Button variant="outline" size="sm" onClick={saveLocalDraft} disabled={isSaving || isSubmitting}>
@@ -648,6 +663,25 @@ export default function ServiceCreatePage() {
           </CardContent>
         </Card>
       </div>
+      <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>入力内容を削除しますか？</AlertDialogTitle>
+            <AlertDialogDescription>
+              本文・タイトル・設定中の内容がクリアされます。この操作は取り消せません。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>キャンセル</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={clearDraft}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              削除する
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
