@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
-import { getCurrentProfile } from '@/lib/auth'
+import { getCurrentUserProfile } from '@/app/_actions/user'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  const profile = await getCurrentProfile()
+  const profile = await getCurrentUserProfile()
   if (!profile) {
     return NextResponse.json({ profile: null })
   }

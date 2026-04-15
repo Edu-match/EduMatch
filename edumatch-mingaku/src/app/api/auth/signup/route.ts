@@ -53,13 +53,16 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient();
 
+    const registrationKind = userType === "provider" ? "service_business" : "general";
+
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: emailStr,
       password,
       options: {
         data: {
           name: provisionalName,
-          role: userType === "provider" ? "PROVIDER" : "VIEWER",
+          role: "VIEWER",
+          registration_kind: registrationKind,
         },
       },
     });
@@ -78,9 +81,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Profileテーブルにレコードを作成（signUp直後に実行し、roleを確実に設定）
-    // トリガーより先にAPI側で作成/更新することで、正しいroleを保証する
-    const role = userType === "provider" ? "PROVIDER" : "VIEWER";
+    // Profile は共通1行のみ（一般／事業者の別は GeneralUser / ServiceBusiness）。role は常に VIEWER
+    const role = "VIEWER" as const;
     try {
       await prisma.profile.upsert({
         where: {
@@ -90,9 +92,6 @@ export async function POST(request: NextRequest) {
           id: authData.user.id,
           name: provisionalName,
           email: emailStr,
-          legal_name: null,
-          organization: null,
-          organization_type: null,
           role,
           subscription_status: "INACTIVE",
         },
@@ -120,6 +119,7 @@ export async function POST(request: NextRequest) {
           ...authData.user.user_metadata,
           role,
           name: provisionalName,
+          registration_kind: registrationKind,
         },
       });
       

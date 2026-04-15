@@ -119,13 +119,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const expectedRole = userType === "provider" ? "PROVIDER" : "VIEWER";
-    // ADMIN は閲覧者・投稿者のどちらでログインしても許可
-    if (existingProfile.role !== expectedRole && existingProfile.role !== "ADMIN") {
-      return NextResponse.json(
-        { error: `このアカウントは${existingProfile.role === "PROVIDER" ? "投稿者" : "閲覧者"}アカウントです。正しいアカウントタイプでログインしてください。` },
-        { status: 403 }
-      );
+    const hasServiceBusiness = await prisma.serviceBusiness.findUnique({
+      where: { id: data.user.id },
+      select: { id: true },
+    });
+    const isProviderAccount = !!hasServiceBusiness;
+    // ADMIN はどちらの入口でも許可。事業者は ServiceBusiness 行、閲覧者はその行が無いこと
+    if (existingProfile.role !== "ADMIN") {
+      if (userType === "provider" && !isProviderAccount) {
+        return NextResponse.json(
+          {
+            error:
+              "このアカウントは一般ユーザーとして登録されています。閲覧者としてログインするか、サービス事業者としてプロフィール登録を完了してください。",
+          },
+          { status: 403 }
+        );
+      }
+      if (userType === "viewer" && isProviderAccount) {
+        return NextResponse.json(
+          {
+            error:
+              "このアカウントはサービス事業者として登録されています。サービス事業者としてログインしてください。",
+          },
+          { status: 403 }
+        );
+      }
     }
 
     return NextResponse.json({

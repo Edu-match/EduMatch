@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { createServiceRoleClient } from "@/utils/supabase/server-admin";
 import { prisma } from "@/lib/prisma";
 import { getSiteOrigin } from "@/lib/site-url";
 
@@ -38,8 +39,7 @@ export async function GET(request: NextRequest) {
       // DB接続エラーでも続行（Profileなしとして扱う）
     }
 
-    // ロールを決定
-    const expectedRole = userType === "provider" ? "PROVIDER" : "VIEWER";
+    const registrationKind = userType === "provider" ? "service_business" : "general";
 
     // 本番ではNEXT_PUBLIC_SITE_URLを使用（localhostへ飛ばないようにする）
     const origin = getSiteOrigin(new URL(request.url).origin);
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
             id: data.user.id,
             name,
             email: data.user.email || "",
-            role: expectedRole,
+            role: "VIEWER",
             subscription_status: "INACTIVE",
             avatar_url: userMetadata.avatar_url || userMetadata.picture || null,
           },
@@ -65,6 +65,19 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(
           new URL("/auth/login?error=profile_creation_failed", origin)
         );
+      }
+
+      try {
+        const admin = createServiceRoleClient();
+        await admin.auth.admin.updateUserById(data.user.id, {
+          user_metadata: {
+            ...userMetadata,
+            role: "VIEWER",
+            registration_kind: registrationKind,
+          },
+        });
+      } catch (metaErr) {
+        console.error("OAuth user_metadata update:", metaErr);
       }
 
       // 初回登録は必ずプロフィール設定へ（名前・住所などを登録）

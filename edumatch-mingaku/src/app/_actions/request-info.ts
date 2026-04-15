@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
+import { getCurrentUserProfile } from "@/app/_actions/user";
 import { getServiceById } from "./services";
 import { Resend } from "resend";
 
@@ -70,20 +71,21 @@ export async function submitMaterialRequest(
 ): Promise<SubmitMaterialRequestResult> {
   try {
     const user = await requireAuth();
-    const profile = await prisma.profile.findUnique({ where: { id: user.id } });
-    if (!profile) return { success: false, error: "プロフィールが見つかりません" };
+    const viewerProfile = await getCurrentUserProfile();
+    if (!viewerProfile) return { success: false, error: "プロフィールが見つかりません" };
 
     const service = await getServiceById(input.serviceId);
     if (!service) return { success: false, error: "サービスが見つかりません" };
 
-    const deliveryName = (input.deliveryName ?? profile.name).trim();
-    const deliveryEmail = (input.deliveryEmail ?? profile.email).trim();
-    const deliveryOrganization = input.deliveryOrganization ?? profile.organization ?? null;
-    const deliveryPhone = input.deliveryPhone ?? profile.phone;
+    const deliveryName = (input.deliveryName ?? viewerProfile.name).trim();
+    const deliveryEmail = (input.deliveryEmail ?? viewerProfile.email).trim();
+    const deliveryOrganization =
+      input.deliveryOrganization ?? viewerProfile.organization ?? null;
+    const deliveryPhone = input.deliveryPhone ?? viewerProfile.phone;
 
     if (!deliveryEmail) return { success: false, error: "送信先メールアドレスを入力してください" };
     if (!deliveryName) return { success: false, error: "お名前を入力してください" };
-    const org = (deliveryOrganization ?? profile.organization ?? "").trim();
+    const org = (deliveryOrganization ?? viewerProfile.organization ?? "").trim();
     if (!org) return { success: false, error: "塾名・学校名等を入力してください" };
 
     const req = await prisma.materialRequest.create({
@@ -106,8 +108,8 @@ export async function submitMaterialRequest(
     const provider = service.provider;
     const providerEmails: string[] = [
       provider?.email,
-      (provider as { notification_email_2?: string | null } | undefined)?.notification_email_2,
-      (provider as { notification_email_3?: string | null } | undefined)?.notification_email_3,
+      provider?.notification_email_2,
+      provider?.notification_email_3,
     ]
       .filter((e): e is string => typeof e === "string" && e.trim().length > 0);
     const providerEmailsUnique = [...new Set(providerEmails)];

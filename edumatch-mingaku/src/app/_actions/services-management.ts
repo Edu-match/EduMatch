@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { getCurrentProfile } from "@/lib/auth";
+import { canManageProviderContent } from "@/lib/provider-access";
 import { revalidatePath } from "next/cache";
 import { serviceSchema, type ServiceFormData } from "@/lib/validations/service";
 import { normalizeImageUrl } from "@/lib/image-url-utils";
@@ -21,11 +22,10 @@ export async function createServiceManagement(data: ServiceFormData) {
       };
     }
 
-    // 投稿者 or ADMIN 権限チェック
-    if (profile.role !== "PROVIDER" && profile.role !== "ADMIN") {
+    if (!(await canManageProviderContent(profile))) {
       return {
         success: false,
-        error: "サービスを投稿するには投稿者アカウントが必要です",
+        error: "サービスを投稿するにはサービス事業者としてプロフィール登録を完了してください",
       };
     }
 

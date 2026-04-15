@@ -8,31 +8,19 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+/// ログイン共通の1行。一般ユーザー / サービス事業者の別は GeneralUser / ServiceBusiness で判別（role は既定 VIEWER、管理者のみ ADMIN）
 model Profile {
   id                              String            @id @db.Uuid
   role                            Role              @default(VIEWER)
   name                            String
   email                           String            @unique
-  /// 資料請求通知の追加送信先（最大2件。email と合わせて最大3件に送信）
-  notification_email_2            String?
-  notification_email_3            String?
   avatar_url                      String?
   subscription_status             String            @default("INACTIVE")
   created_at                      DateTime          @default(now())
   updated_at                      DateTime          @updatedAt
-  address                         String?
-  city                            String?
   phone                           String?
-  postal_code                     String?
-  prefecture                      String?
   bio                             String?
   website                         String?
-  /// 塾名・学校名（資料請求の送付先表示用）
-  organization                    String?
-  /// 本人確認・運営用の本名（表示名とは別）
-  legal_name                      String?
-  /// 所属組織の区分（elementary 等、`organization-types` と一致）
-  organization_type               String?
   subscription_plan               String?
   stripe_customer_id              String?           @unique
   stripe_subscription_id          String?
@@ -48,9 +36,40 @@ model Profile {
   view_histories                  ViewHistory[]
   chat_sessions                   ChatSession[]
   in_app_notifications           InAppNotification[]
+  generalUser                     GeneralUser?
+  serviceBusiness                 ServiceBusiness?
 
   @@index([email])
   @@index([stripe_customer_id])
+}
+
+/// 一般ユーザー専用プロフィール（所属・年代など）。Profile と 1:1
+model GeneralUser {
+  id                 String   @id @db.Uuid
+  profile            Profile  @relation(fields: [id], references: [id], onDelete: Cascade)
+  legal_name         String?
+  age                String?
+  organization       String?
+  organization_type  String?
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+}
+
+/// サービス事業者専用（資料請求通知先・事業者住所など）。Profile と 1:1。行があれば投稿者機能を許可
+model ServiceBusiness {
+  id                    String   @id @db.Uuid
+  profile               Profile  @relation(fields: [id], references: [id], onDelete: Cascade)
+  legal_name            String?
+  organization          String?
+  organization_type     String?
+  notification_email_2  String?
+  notification_email_3  String?
+  address               String?
+  city                  String?
+  postal_code           String?
+  prefecture            String?
+  created_at            DateTime @default(now())
+  updated_at            DateTime @updatedAt
 }
 
 /// サイト内通知（「通知」一覧・マイページ）

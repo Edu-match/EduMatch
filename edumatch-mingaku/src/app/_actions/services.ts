@@ -5,11 +5,54 @@ import { isImportedContent } from "@/lib/imported-content";
 import { normalizeImageUrl, validateImageUrl } from "@/lib/image-url-utils";
 import { createClient } from "@/utils/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
-import type { Service, Profile, Role } from "@prisma/client";
+import type { Service, Role } from "@prisma/client";
 
 export type ServiceWithProvider = Service & {
-  provider: Pick<Profile, "id" | "name" | "email" | "avatar_url" | "notification_email_2" | "notification_email_3">;
+  provider: {
+    id: string;
+    name: string;
+    email: string;
+    avatar_url: string | null;
+    notification_email_2: string | null;
+    notification_email_3: string | null;
+  };
 };
+
+type ProviderWithBusinessRow = {
+  id: string;
+  name: string;
+  email: string;
+  avatar_url: string | null;
+  serviceBusiness: {
+    notification_email_2: string | null;
+    notification_email_3: string | null;
+  } | null;
+};
+
+function flattenServiceProvider(
+  p: ProviderWithBusinessRow | null,
+  fallbackProviderId: string
+): ServiceWithProvider["provider"] {
+  if (!p) {
+    return {
+      id: fallbackProviderId,
+      name: "提供者",
+      email: "",
+      avatar_url: null,
+      notification_email_2: null,
+      notification_email_3: null,
+    };
+  }
+  const sb = p.serviceBusiness;
+  return {
+    id: p.id,
+    name: p.name,
+    email: p.email,
+    avatar_url: p.avatar_url,
+    notification_email_2: sb?.notification_email_2 ?? null,
+    notification_email_3: sb?.notification_email_3 ?? null,
+  };
+}
 
 export type ContentBlock = {
   id: string;
@@ -297,8 +340,9 @@ export async function getAllServices(): Promise<ServiceWithProvider[]> {
             name: true,
             email: true,
             avatar_url: true,
-            notification_email_2: true,
-            notification_email_3: true,
+            serviceBusiness: {
+              select: { notification_email_2: true, notification_email_3: true },
+            },
           },
         },
       },
@@ -310,7 +354,7 @@ export async function getAllServices(): Promise<ServiceWithProvider[]> {
 
     return services.map((s) => ({
       ...s,
-      provider: s.provider || { id: s.provider_id, name: "提供者", email: "", avatar_url: null, notification_email_2: null, notification_email_3: null },
+      provider: flattenServiceProvider(s.provider as ProviderWithBusinessRow | null, s.provider_id),
     }));
   } catch (error) {
     if (isDbUnavailable(error)) {
@@ -350,8 +394,9 @@ export async function getPopularServices(limit: number = 5): Promise<ServiceWith
             name: true,
             email: true,
             avatar_url: true,
-            notification_email_2: true,
-            notification_email_3: true,
+            serviceBusiness: {
+              select: { notification_email_2: true, notification_email_3: true },
+            },
           },
         },
       },
@@ -364,7 +409,7 @@ export async function getPopularServices(limit: number = 5): Promise<ServiceWith
 
     return services.map((s) => ({
       ...s,
-      provider: s.provider || { id: s.provider_id, name: "提供者", email: "", avatar_url: null, notification_email_2: null, notification_email_3: null },
+      provider: flattenServiceProvider(s.provider as ProviderWithBusinessRow | null, s.provider_id),
     }));
   } catch (error) {
     if (isDbUnavailable(error)) {
@@ -393,8 +438,9 @@ export async function getServiceById(id: string): Promise<ServiceWithProvider | 
             name: true,
             email: true,
             avatar_url: true,
-            notification_email_2: true,
-            notification_email_3: true,
+            serviceBusiness: {
+              select: { notification_email_2: true, notification_email_3: true },
+            },
           },
         },
       },
@@ -427,7 +473,10 @@ export async function getServiceById(id: string): Promise<ServiceWithProvider | 
 
     return {
       ...service,
-      provider: service.provider || { id: service.provider_id, name: "提供者", email: "", avatar_url: null, notification_email_2: null, notification_email_3: null },
+      provider: flattenServiceProvider(
+        service.provider as ProviderWithBusinessRow | null,
+        service.provider_id
+      ),
     };
   } catch (error) {
     if (isDbUnavailable(error)) {
@@ -471,8 +520,9 @@ export async function getServicesByCategory(category: string): Promise<ServiceWi
             name: true,
             email: true,
             avatar_url: true,
-            notification_email_2: true,
-            notification_email_3: true,
+            serviceBusiness: {
+              select: { notification_email_2: true, notification_email_3: true },
+            },
           },
         },
       },
@@ -483,7 +533,7 @@ export async function getServicesByCategory(category: string): Promise<ServiceWi
 
     return services.map((s) => ({
       ...s,
-      provider: s.provider || { id: s.provider_id, name: "提供者", email: "", avatar_url: null, notification_email_2: null, notification_email_3: null },
+      provider: flattenServiceProvider(s.provider as ProviderWithBusinessRow | null, s.provider_id),
     }));
   } catch (error) {
     if (isDbUnavailable(error)) {
@@ -505,22 +555,23 @@ export async function createService(input: CreateServiceInput): Promise<CreateSe
     const { user, error } = await requireAuthedUser();
     if (!user) return { success: false, error };
 
-    // Profileが存在しない場合は作成
+    let profile: { role: Role } | null = null;
     try {
-      let profile = await prisma.profile.findUnique({ where: { id: user.id } });
+      profile = await prisma.profile.findUnique({ where: { id: user.id }, select: { role: true } });
       if (!profile) {
         const meta = user.user_metadata || {};
         const name = meta.name || meta.full_name || user.email?.split("@")[0] || "ユーザー";
-        profile = await prisma.profile.create({
+        await prisma.profile.create({
           data: {
             id: user.id,
             name,
             email: user.email || "",
-            role: "PROVIDER",
+            role: "VIEWER",
             subscription_status: "INACTIVE",
             avatar_url: meta.avatar_url || meta.picture || null,
           },
         });
+        profile = { role: "VIEWER" };
       }
     } catch (e) {
       if (isDbUnavailable(e)) {
@@ -528,6 +579,17 @@ export async function createService(input: CreateServiceInput): Promise<CreateSe
       }
       console.error("Profile ensure error:", e);
       return { success: false, error: "ユーザー情報の取得に失敗しました。プロフィールを登録してください。" };
+    }
+
+    const hasBusiness = await prisma.serviceBusiness.findUnique({
+      where: { id: user.id },
+      select: { id: true },
+    });
+    if (profile.role !== ("ADMIN" as Role) && !hasBusiness) {
+      return {
+        success: false,
+        error: "サービスを投稿する権限がありません。サービス事業者としてプロフィール登録を完了してください。",
+      };
     }
 
     if (input.thumbnailUrl?.trim()) {
@@ -687,8 +749,9 @@ export async function getPendingServices(): Promise<ServiceWithProvider[]> {
             name: true,
             email: true,
             avatar_url: true,
-            notification_email_2: true,
-            notification_email_3: true,
+            serviceBusiness: {
+              select: { notification_email_2: true, notification_email_3: true },
+            },
           },
         },
       },
@@ -698,7 +761,7 @@ export async function getPendingServices(): Promise<ServiceWithProvider[]> {
 
     return services.map((s) => ({
       ...s,
-      provider: s.provider || { id: s.provider_id, name: "提供者", email: "", avatar_url: null, notification_email_2: null, notification_email_3: null },
+      provider: flattenServiceProvider(s.provider as ProviderWithBusinessRow | null, s.provider_id),
     }));
   } catch (e) {
     console.error("Error fetching pending services:", e);

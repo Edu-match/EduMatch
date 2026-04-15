@@ -1,32 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { createServiceRoleClient } from "@/utils/supabase/server-admin";
 import { prisma } from "@/lib/prisma";
 import { Role } from "@prisma/client";
 import { getSiteOrigin } from "@/lib/site-url";
 
 export const dynamic = "force-dynamic";
 
+/** レガシー OAuth コールバック（/api/auth/google 以外から呼ばれる場合のフォールバック） */
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const { searchParams } = requestUrl;
   const code = searchParams.get("code");
-    const redirectTo = searchParams.get("redirect_to") || "/";
+  const redirectTo = searchParams.get("redirect_to") || "/";
   const origin = getSiteOrigin(requestUrl.origin);
 
   if (code) {
     const supabase = await createClient();
 
-    // OAuthコードをセッションに交換
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error && data.user) {
-      // Profileテーブルにレコードが存在するか確認
       try {
         const existingProfile = await prisma.profile.findUnique({
           where: { id: data.user.id },
         });
 
-        // Profileが存在しない場合は作成し、初回は必ずプロフィール設定へ
         if (!existingProfile) {
           const userMetadata = data.user.user_metadata || {};
           const name =
@@ -35,11 +34,8 @@ export async function GET(request: NextRequest) {
             data.user.email?.split("@")[0] ||
             "ユーザー";
 
-          // roleを判定（user_metadataから取得、デフォルトはVIEWER）
           let role: Role = Role.VIEWER;
-          if (userMetadata.role === "PROVIDER") {
-            role = Role.PROVIDER;
-          } else if (userMetadata.role === "ADMIN") {
+          if (userMetadata.role === "ADMIN") {
             role = Role.ADMIN;
           }
 
@@ -47,26 +43,26 @@ export async function GET(request: NextRequest) {
             data: {
               id: data.user.id,
               name,
-              legal_name:
-                typeof userMetadata.legal_name === "string"
-                  ? userMetadata.legal_name.trim() || null
-                  : null,
               email: data.user.email || "",
-              organization:
-                typeof userMetadata.organization === "string"
-                  ? userMetadata.organization.trim() || null
-                  : null,
-              organization_type:
-                typeof userMetadata.organization_type === "string"
-                  ? userMetadata.organization_type.trim() || null
-                  : null,
               role,
               subscription_status: "INACTIVE",
               avatar_url: userMetadata.avatar_url || userMetadata.picture || null,
             },
           });
 
-          // 初回登録時は必ずプロフィール設定（名前・連絡先など）へ誘導
+          try {
+            const admin = createServiceRoleClient();
+            await admin.auth.admin.updateUserById(data.user.id, {
+              user_metadata: {
+                ...userMetadata,
+                registration_kind: "general",
+                role: role === Role.ADMIN ? "ADMIN" : "VIEWER",
+              },
+            });
+          } catch (metaErr) {
+            console.error("Legacy OAuth user_metadata update:", metaErr);
+          }
+
           const registerUrl = new URL("/profile/register", origin);
           registerUrl.searchParams.set("first", "1");
           if (redirectTo && redirectTo !== "/") {
@@ -76,15 +72,12 @@ export async function GET(request: NextRequest) {
         }
       } catch (profileError) {
         console.error("Profile creation error:", profileError);
-        // Profile作成に失敗しても続行
       }
 
-      // リダイレクト先を決定
       return NextResponse.redirect(new URL(redirectTo, origin));
     }
   }
 
-  // エラーの場合はログインページにリダイレクト（本番URLを使用）
   return NextResponse.redirect(
     new URL("/login?message=" + encodeURIComponent("認証に失敗しました。もう一度お試しください。"), origin)
   );

@@ -6,6 +6,7 @@ import { normalizeImageUrl, validateImageUrl } from "@/lib/image-url-utils";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/utils/supabase/server";
 import type { HomeNewsTab, Post, Profile, Role } from "@prisma/client";
+import { canManageProviderContent } from "@/lib/provider-access";
 
 export type PostWithProvider = Post & {
   provider: Pick<Profile, "id" | "name" | "avatar_url">;
@@ -170,23 +171,22 @@ export async function createPost(input: CreatePostInput): Promise<CreatePostResu
     const { user, error } = await requireAuthedUser();
     if (!user) return { success: false, error };
     
-    // Profileが存在するか確認し、存在しない場合は作成
+    let profile: Profile | null = null;
     try {
-      let profile = await prisma.profile.findUnique({
+      profile = await prisma.profile.findUnique({
         where: { id: user.id },
       });
-      
+
       if (!profile) {
-        // Profileが存在しない場合は作成
         const userMetadata = user.user_metadata || {};
         const name = userMetadata.name || userMetadata.full_name || user.email?.split("@")[0] || "ユーザー";
-        
+
         profile = await prisma.profile.create({
           data: {
             id: user.id,
             name,
             email: user.email || "",
-            role: "PROVIDER",
+            role: "VIEWER",
             subscription_status: "INACTIVE",
             avatar_url: userMetadata.avatar_url || userMetadata.picture || null,
           },
@@ -194,18 +194,25 @@ export async function createPost(input: CreatePostInput): Promise<CreatePostResu
       }
     } catch (dbError) {
       if (isDbUnavailable(dbError)) {
-        return { 
-          success: false, 
-          error: "データベースに接続できません。しばらく待ってから再度お試しください。" 
+        return {
+          success: false,
+          error: "データベースに接続できません。しばらく待ってから再度お試しください。",
         };
       }
       console.error("Profile lookup/creation error:", dbError);
-      return { 
-        success: false, 
-        error: "ユーザー情報の取得に失敗しました。プロフィールを登録してください。" 
+      return {
+        success: false,
+        error: "ユーザー情報の取得に失敗しました。プロフィールを登録してください。",
       };
     }
-    
+
+    if (!(await canManageProviderContent(profile))) {
+      return {
+        success: false,
+        error: "記事を投稿するにはサービス事業者としてプロフィール登録を完了してください。",
+      };
+    }
+
     if (input.thumbnailUrl?.trim()) {
       const v = validateImageUrl(input.thumbnailUrl);
       if (!v.ok) return { success: false, error: v.error };

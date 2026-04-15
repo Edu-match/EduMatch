@@ -31,11 +31,13 @@ import { uploadImage } from "@/app/_actions";
 import {
   ORGANIZATION_TYPE_OPTIONS,
   organizationTypeLabel,
+  AGE_OPTIONS,
 } from "@/lib/organization-types";
 
 export type InitialProfile = {
   name: string;
   legal_name?: string | null;
+  age?: string | null;
   email: string;
   avatar_url?: string | null;
   phone: string | null;
@@ -45,6 +47,9 @@ export type InitialProfile = {
   website?: string | null;
   notification_email_2?: string | null;
   notification_email_3?: string | null;
+  role?: string;
+  is_service_business?: boolean;
+  registration_kind?: "general" | "service_business" | null;
 };
 
 const steps = [
@@ -84,6 +89,7 @@ export function ProfileRegisterForm({
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const [legalName, setLegalName] = useState(initialProfile?.legal_name ?? "");
+  const [age, setAge] = useState(initialProfile?.age ?? "");
   const [name, setName] = useState(initialProfile?.name ?? "");
   const [avatarUrl, setAvatarUrl] = useState(initialProfile?.avatar_url ?? "");
   const [email] = useState(initialProfile?.email ?? "");
@@ -101,6 +107,10 @@ export function ProfileRegisterForm({
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const avatarFileInputRef = useRef<HTMLInputElement>(null);
+
+  const isProvider =
+    initialProfile?.is_service_business === true ||
+    initialProfile?.registration_kind === "service_business";
 
   const toggleInterest = (interest: string) => {
     if (selectedInterests.includes(interest)) {
@@ -178,6 +188,21 @@ export function ProfileRegisterForm({
               <Input value={legalName} onChange={(e) => setLegalName(e.target.value)} />
             </div>
             <div className="space-y-2">
+              <label className="text-sm font-medium">年齢（年代）</label>
+              <Select value={age} onValueChange={setAge}>
+                <SelectTrigger>
+                  <SelectValue placeholder="選択してください" />
+                </SelectTrigger>
+                <SelectContent>
+                  {AGE_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
               <label className="text-sm font-medium">
                 表示名（ニックネーム） <span className="text-red-500">*</span>
               </label>
@@ -208,13 +233,17 @@ export function ProfileRegisterForm({
           <div className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                所属組織 <span className="text-red-500">*</span>
+                所属 <span className="text-red-500">*</span>
               </label>
-              <Input value={organization} onChange={(e) => setOrganization(e.target.value)} />
+              <Input
+                placeholder={isProvider ? "塾名・学校名など" : "学校名、学年、保護者など"}
+                value={organization}
+                onChange={(e) => setOrganization(e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                組織の種類 <span className="text-red-500">*</span>
+                所属の種類 <span className="text-red-500">*</span>
               </label>
               <Select value={schoolType} onValueChange={setSchoolType}>
                 <SelectTrigger>
@@ -229,21 +258,23 @@ export function ProfileRegisterForm({
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">役職・職種</label>
-              <Select value={role} onValueChange={setRole}>
-                <SelectTrigger>
-                  <SelectValue placeholder="選択してください" />
-                </SelectTrigger>
-                <SelectContent>
-                  {roles.map((r) => (
-                    <SelectItem key={r.value} value={r.value}>
-                      {r.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {isProvider && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">役職・職種</label>
+                <Select value={role} onValueChange={setRole}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="選択してください" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {roles.map((r) => (
+                      <SelectItem key={r.value} value={r.value}>
+                        {r.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="space-y-2">
               <label className="text-sm font-medium">所在地</label>
               <Input
@@ -256,6 +287,11 @@ export function ProfileRegisterForm({
         );
 
       case 3:
+        if (!isProvider) {
+          // 一般ユーザーの場合はこのステップをスキップして次へ
+          setCurrentStep(4);
+          return null;
+        }
         return (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground mb-4">
@@ -364,6 +400,10 @@ export function ProfileRegisterForm({
                     <span className="text-muted-foreground shrink-0">名前</span>
                     <span className="text-right break-all">{legalName || "未入力"}</span>
                   </div>
+                  <div className="flex justify-between gap-4">
+                    <span className="text-muted-foreground shrink-0">年齢</span>
+                    <span>{AGE_OPTIONS.find(o => o.value === age)?.label || "未入力"}</span>
+                  </div>
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between gap-4">
                       <span className="text-muted-foreground">表示名（ニックネーム）</span>
@@ -389,19 +429,21 @@ export function ProfileRegisterForm({
               </h3>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">所属組織</span>
+                  <span className="text-muted-foreground">所属</span>
                   <span>{organization || "未入力"}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">組織の種類</span>
+                  <span className="text-muted-foreground">所属の種類</span>
                   <span>{organizationTypeLabel(schoolType) || "未入力"}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">役職・職種</span>
-                  <span>
-                    {roles.find((r) => r.value === role)?.label || "未入力"}
-                  </span>
-                </div>
+                {isProvider && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">役職・職種</span>
+                    <span>
+                      {roles.find((r) => r.value === role)?.label || "未入力"}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">所在地</span>
                   <span>{location || "未入力"}</span>
@@ -409,30 +451,32 @@ export function ProfileRegisterForm({
               </div>
             </div>
 
-            <div className="p-4 rounded-lg bg-muted/50">
-              <h3 className="font-medium mb-3 flex items-center gap-2">
-                <MapPin className="h-4 w-4" />
-                連絡先（資料請求の通知先）
-              </h3>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">電話番号</span>
-                  <span>{phone || "未入力"}</span>
+            {isProvider && (
+              <div className="p-4 rounded-lg bg-muted/50">
+                <h3 className="font-medium mb-3 flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  連絡先（資料請求の通知先）
+                </h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">電話番号</span>
+                    <span>{phone || "未入力"}</span>
+                  </div>
+                  {(notificationEmail2 || notificationEmail3) && (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">通知用メール2</span>
+                        <span>{notificationEmail2 || "—"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">通知用メール3</span>
+                        <span>{notificationEmail3 || "—"}</span>
+                      </div>
+                    </>
+                  )}
                 </div>
-                {(notificationEmail2 || notificationEmail3) && (
-                  <>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">通知用メール2</span>
-                      <span>{notificationEmail2 || "—"}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">通知用メール3</span>
-                      <span>{notificationEmail3 || "—"}</span>
-                    </div>
-                  </>
-                )}
               </div>
-            </div>
+            )}
 
             <div className="p-4 rounded-lg bg-muted/50">
               <h3 className="font-medium mb-3 flex items-center gap-2">
@@ -495,20 +539,31 @@ export function ProfileRegisterForm({
       }
     } else if (currentStep === 2) {
       if (!organization.trim()) {
-        setValidationError("所属組織を入力してください。");
+        setValidationError("所属を入力してください。");
         return;
       }
       if (!schoolType) {
-        setValidationError("組織の種類を選択してください。");
+        setValidationError("所属の種類を選択してください。");
         return;
       }
     }
-    setCurrentStep(currentStep + 1);
+    
+    // 一般ユーザーの場合、ステップ2の次はステップ4へ
+    if (currentStep === 2 && !isProvider) {
+      setCurrentStep(4);
+    } else {
+      setCurrentStep(currentStep + 1);
+    }
   };
 
   const handleBack = () => {
     setValidationError(null);
-    setCurrentStep(currentStep - 1);
+    // 一般ユーザーの場合、ステップ4の戻る先はステップ2
+    if (currentStep === 4 && !isProvider) {
+      setCurrentStep(2);
+    } else {
+      setCurrentStep(currentStep - 1);
+    }
   };
 
   const handleSave = async () => {
@@ -522,25 +577,26 @@ export function ProfileRegisterForm({
       return;
     }
     if (!organization.trim()) {
-      setValidationError("所属組織を入力してください。");
+      setValidationError("所属を入力してください。");
       return;
     }
     if (!schoolType) {
-      setValidationError("組織の種類を選択してください。");
+      setValidationError("所属の種類を選択してください。");
       return;
     }
     setSaving(true);
     const { success } = await updateProfile({
       name: name || undefined,
       legal_name: legalName.trim(),
+      age: age || null,
       avatar_url: avatarUrl.trim() || null,
       phone: phone || null,
       organization: organization?.trim() || null,
       organization_type: schoolType || null,
       bio: bio || null,
       website: website || null,
-      notification_email_2: notificationEmail2.trim() || null,
-      notification_email_3: notificationEmail3.trim() || null,
+      notification_email_2: isProvider ? (notificationEmail2.trim() || null) : null,
+      notification_email_3: isProvider ? (notificationEmail3.trim() || null) : null,
     });
     setSaving(false);
     if (success) router.push(nextUrl ?? "/dashboard");

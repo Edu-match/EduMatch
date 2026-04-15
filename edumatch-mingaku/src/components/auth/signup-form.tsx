@@ -17,12 +17,11 @@ type Props = {
   redirectTo?: string;
 };
 
-/** 新規登録は閲覧者のみ。投稿者登録はオフのため常に viewer で送信 */
-const SIGNUP_USER_TYPE = "viewer" as const;
-
+/** 新規登録時にユーザータイプを選択可能にする */
 export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
+  const [userType, setUserType] = useState<"viewer" | "provider">("viewer");
 
   const {
     register,
@@ -45,7 +44,7 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
         body: JSON.stringify({
           email: data.email,
           password: data.password,
-          userType: SIGNUP_USER_TYPE,
+          userType: userType,
         }),
       });
 
@@ -90,11 +89,37 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
   const handleGoogleSignup = () => {
     window.location.href = `/api/auth/google?redirect_to=${encodeURIComponent(
       redirectTo
-    )}&userType=${SIGNUP_USER_TYPE}`;
+    )}&userType=${userType}`;
   };
 
   return (
     <div className="space-y-6">
+      {/* ユーザータイプ選択 */}
+      <div className="grid grid-cols-2 gap-2 p-1 bg-muted rounded-lg">
+        <button
+          type="button"
+          onClick={() => setUserType("viewer")}
+          className={`py-2 text-sm font-medium rounded-md transition-all ${
+            userType === "viewer"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          一般ユーザー
+        </button>
+        <button
+          type="button"
+          onClick={() => setUserType("provider")}
+          className={`py-2 text-sm font-medium rounded-md transition-all ${
+            userType === "provider"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          サービス事業者
+        </button>
+      </div>
+
       {/* Google登録 */}
       <div className="space-y-5">
         <Button

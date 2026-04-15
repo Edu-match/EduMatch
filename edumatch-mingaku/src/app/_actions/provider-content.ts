@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { getCurrentProfile } from "@/lib/auth";
+import { canManageProviderContent } from "@/lib/provider-access";
 
 export type ProviderArticle = {
   id: string;
@@ -31,7 +32,7 @@ export async function getProviderArticles() {
   try {
     const profile = await getCurrentProfile();
     
-    if (!profile || (profile.role !== "PROVIDER" && profile.role !== "ADMIN")) {
+    if (!profile || !(await canManageProviderContent(profile))) {
       return [];
     }
 
@@ -71,7 +72,7 @@ export async function getProviderServices() {
   try {
     const profile = await getCurrentProfile();
     
-    if (!profile || (profile.role !== "PROVIDER" && profile.role !== "ADMIN")) {
+    if (!profile || !(await canManageProviderContent(profile))) {
       return [];
     }
 
@@ -110,7 +111,7 @@ export async function getProviderStats() {
   try {
     const profile = await getCurrentProfile();
     
-    if (!profile || (profile.role !== "PROVIDER" && profile.role !== "ADMIN")) {
+    if (!profile || !(await canManageProviderContent(profile))) {
       return {
         totalArticles: 0,
         publishedArticles: 0,

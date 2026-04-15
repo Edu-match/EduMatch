@@ -21,7 +21,7 @@ async function main() {
       id: randomUUID(),
       name: "株式会社エデュテック",
       email: "info@edutech.example.com",
-      role: Role.PROVIDER,
+      role: Role.VIEWER,
       avatar_url: "https://placehold.co/100x100/e0f2fe/0369a1?text=ET",
       subscription_status: "ACTIVE",
     },
@@ -29,7 +29,7 @@ async function main() {
       id: randomUUID(),
       name: "スマートスクール株式会社",
       email: "contact@smartschool.example.com",
-      role: Role.PROVIDER,
+      role: Role.VIEWER,
       avatar_url: "https://placehold.co/100x100/fef3c7/ca8a04?text=SS",
       subscription_status: "ACTIVE",
     },
@@ -37,7 +37,7 @@ async function main() {
       id: randomUUID(),
       name: "ラーニングテック合同会社",
       email: "hello@learningtech.example.com",
-      role: Role.PROVIDER,
+      role: Role.VIEWER,
       avatar_url: "https://placehold.co/100x100/d9f99d/65a30d?text=LT",
       subscription_status: "ACTIVE",
     },
@@ -45,7 +45,7 @@ async function main() {
       id: randomUUID(),
       name: "デジタル教育研究所",
       email: "support@digital-edu.example.com",
-      role: Role.PROVIDER,
+      role: Role.VIEWER,
       avatar_url: "https://placehold.co/100x100/fed7aa/ea580c?text=DE",
       subscription_status: "ACTIVE",
     },
@@ -53,7 +53,7 @@ async function main() {
       id: randomUUID(),
       name: "次世代学習システム株式会社",
       email: "info@nextgen-learn.example.com",
-      role: Role.PROVIDER,
+      role: Role.VIEWER,
       avatar_url: "https://placehold.co/100x100/bfdbfe/2563eb?text=NL",
       subscription_status: "ACTIVE",
     },
@@ -61,6 +61,12 @@ async function main() {
 
   for (const provider of providers) {
     await prisma.profile.create({ data: provider });
+    await prisma.serviceBusiness.create({
+      data: {
+        id: provider.id,
+        organization: provider.name,
+      },
+    });
   }
   console.log(`✅ ${providers.length}件のプロファイルを作成しました`);
 

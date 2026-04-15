@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
 
 /**
  * 現在のユーザーを取得します（同一リクエスト内で1回だけ実行）
@@ -49,14 +50,26 @@ export const getCurrentProfile = cache(async () => {
 });
 
 /**
- * 投稿者（PROVIDER）専用ページ用。認証済みかつ role が PROVIDER でない場合は /dashboard へリダイレクトします。
+ * サービス事業者（ServiceBusiness 行あり）または ADMIN 専用。
+ * DB の Profile.role は VIEWER のまま。事業者判定は ServiceBusiness の存在で行う。
  */
 export async function requireProvider() {
   const user = await requireAuth();
   const profile = await getCurrentProfile();
-  // ADMIN も投稿者ページにアクセスできるようにする
-  if (profile?.role !== "PROVIDER" && profile?.role !== "ADMIN") {
-    redirect("/dashboard?message=" + encodeURIComponent("投稿者として利用するには、新規登録時に「投稿者として利用」を選択して登録する必要があります。"));
+  if (profile?.role === "ADMIN") {
+    return { user, profile };
+  }
+  const business = await prisma.serviceBusiness.findUnique({
+    where: { id: user.id },
+    select: { id: true },
+  });
+  if (!business) {
+    redirect(
+      "/dashboard?message=" +
+        encodeURIComponent(
+          "投稿者として利用するには、新規登録時に「サービス事業者」を選択して登録し、プロフィールを完了してください。"
+        )
+    );
   }
   return { user, profile };
 }

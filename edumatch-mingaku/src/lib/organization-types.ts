@@ -4,6 +4,8 @@ export const ORGANIZATION_TYPE_VALUES = [
   "high-school",
   "university",
   "company",
+  "parent",
+  "student",
   "other",
 ] as const;
 
@@ -15,7 +17,18 @@ export const ORGANIZATION_TYPE_OPTIONS: { value: OrganizationTypeValue; label: s
   { value: "high-school", label: "高等学校" },
   { value: "university", label: "大学・専門学校" },
   { value: "company", label: "企業・EdTech事業者" },
+  { value: "parent", label: "保護者" },
+  { value: "student", label: "学生" },
   { value: "other", label: "その他" },
+];
+
+export const AGE_OPTIONS = [
+  { value: "10s", label: "10代" },
+  { value: "20s", label: "20代" },
+  { value: "30s", label: "30代" },
+  { value: "40s", label: "40代" },
+  { value: "50s", label: "50代" },
+  { value: "60s", label: "60代以上" },
 ];
 
 export function organizationTypeLabel(value: string | null | undefined): string {
