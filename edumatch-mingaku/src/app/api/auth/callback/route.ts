@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { createRouteHandlerSupabaseForOAuth } from "@/utils/supabase/server";
 import { createServiceRoleClient } from "@/utils/supabase/server-admin";
 import { prisma } from "@/lib/prisma";
-import { getSiteOrigin } from "@/lib/site-url";
 import { FEATURES } from "@/lib/features";
 import { syncExtensionTablesForRegistrationKind } from "@/lib/registration-profile";
 import { Role } from "@prisma/client";
@@ -10,7 +9,7 @@ import { Role } from "@prisma/client";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  const origin = getSiteOrigin(new URL(request.url).origin);
+  const origin = new URL(request.url).origin;
 
   try {
     const { searchParams } = new URL(request.url);

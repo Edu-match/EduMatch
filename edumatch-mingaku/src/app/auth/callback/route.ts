@@ -3,7 +3,6 @@ import { createRouteHandlerSupabaseForOAuth } from "@/utils/supabase/server";
 import { createServiceRoleClient } from "@/utils/supabase/server-admin";
 import { prisma } from "@/lib/prisma";
 import { Role } from "@prisma/client";
-import { getSiteOrigin } from "@/lib/site-url";
 import { syncExtensionTablesForRegistrationKind } from "@/lib/registration-profile";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +13,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = requestUrl;
   const code = searchParams.get("code");
   const redirectTo = searchParams.get("redirect_to") || "/";
-  const origin = getSiteOrigin(requestUrl.origin);
+  const origin = requestUrl.origin;
 
   if (!code) {
     return NextResponse.redirect(
