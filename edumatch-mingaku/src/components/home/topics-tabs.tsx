@@ -111,8 +111,9 @@ type Props = {
 };
 
 export function TopicsTabs({ articles, services, videos }: Props) {
-  const domesticArticles = articles.filter((a) => a.newsTab === "DOMESTIC");
-  const internationalArticles = articles.filter((a) => a.newsTab === "INTERNATIONAL");
+  const allArticles = articles.slice(0, 10);
+  const domesticArticles = articles.filter((a) => a.newsTab === "DOMESTIC").slice(0, 10);
+  const internationalArticles = articles.filter((a) => a.newsTab === "INTERNATIONAL").slice(0, 10);
 
   const triggerClass =
     "rounded-none border-b-2 border-transparent data-[state=active]:border-[#1d4ed8] data-[state=active]:bg-transparent px-4 py-2 text-sm";
@@ -128,8 +129,8 @@ export function TopicsTabs({ articles, services, videos }: Props) {
       </div>
       <div className="p-3">
         <TabsContent value="all" className="mt-0 space-y-0">
-          {articles.length > 0 ? (
-            articles.map((a) => <ArticleListItem key={a.id} article={a} />)
+          {allArticles.length > 0 ? (
+            allArticles.map((a) => <ArticleListItem key={a.id} article={a} />)
           ) : (
             <p className="text-center text-muted-foreground py-4">記事がありません</p>
           )}

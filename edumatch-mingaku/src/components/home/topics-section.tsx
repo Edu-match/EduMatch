@@ -83,12 +83,13 @@ async function fetchYouTubeVideos(): Promise<VideoItem[]> {
 
 export async function TopicsSection() {
   const [posts, services, videos] = await Promise.all([
-    getLatestArticlesForTopics(10),
+    // タブ振り分け用に少し多めに取得してから、表示側で各タブ件数を制御する
+    getLatestArticlesForTopics(80),
     getAllServices(),
     fetchYouTubeVideos(),
   ]);
 
-  const articles: ArticleItem[] = posts.slice(0, 10).map((post) => ({
+  const articles: ArticleItem[] = posts.map((post) => ({
     id: post.id,
     title: post.title,
     image: post.thumbnail_url ?? undefined,
