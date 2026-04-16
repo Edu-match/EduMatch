@@ -3,7 +3,9 @@ import { createClient } from "@/utils/supabase/server";
 import { createServiceRoleClient } from "@/utils/supabase/server-admin";
 import { prisma } from "@/lib/prisma";
 import { getSiteOrigin } from "@/lib/site-url";
+import { FEATURES } from "@/lib/features";
 import { syncExtensionTablesForRegistrationKind } from "@/lib/registration-profile";
+import { Role } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +14,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get("code");
     const redirectTo = searchParams.get("redirect_to") || "/";
-    const userType = searchParams.get("userType") || "viewer"; // viewer or provider
+    const userTypeParam = searchParams.get("userType") || "viewer";
 
     if (!code) {
       const origin = getSiteOrigin(new URL(request.url).origin);
@@ -21,7 +23,6 @@ export async function GET(request: NextRequest) {
 
     const supabase = await createClient();
 
-    // OAuthコードをセッションに交換
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (error || !data.user) {
@@ -29,44 +30,51 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL("/login?error=oauth_error", origin));
     }
 
-    // Profileテーブルにレコードが存在するか確認
-    let existingProfile = null;
+    const origin = getSiteOrigin(new URL(request.url).origin);
+    const userId = data.user.id;
+
+    const providerSignupAllowed =
+      userTypeParam === "provider" && FEATURES.PROVIDER_REGISTRATION;
+    const registrationKind = providerSignupAllowed
+      ? ("service_business" as const)
+      : ("general" as const);
+    const manualKind = registrationKind === "service_business" ? "corporate" : "general";
+    const role: Role = providerSignupAllowed ? Role.PROVIDER : Role.VIEWER;
+    const authRoleStr = role === Role.PROVIDER ? "PROVIDER" : "VIEWER";
+
+    const userMetadata = data.user.user_metadata || {};
+    const name =
+      userMetadata.name ||
+      userMetadata.full_name ||
+      data.user.email?.split("@")[0] ||
+      "ユーザー";
+
+    let profileRow = null;
     try {
-      existingProfile = await prisma.profile.findUnique({
-        where: { id: data.user.id },
+      profileRow = await prisma.profile.findUnique({
+        where: { id: userId },
+        include: { generalProfile: true, corporateProfile: true },
       });
     } catch (dbError) {
       console.error("Profile lookup error:", dbError);
-      // DB接続エラーでも続行（Profileなしとして扱う）
     }
 
-    const registrationKind =
-      userType === "provider" ? ("service_business" as const) : ("general" as const);
-    const manualKind = registrationKind === "service_business" ? "corporate" : "general";
-
-    // 本番ではNEXT_PUBLIC_SITE_URLを使用（localhostへ飛ばないようにする）
-    const origin = getSiteOrigin(new URL(request.url).origin);
-
-    const userMetadata = data.user.user_metadata || {};
-    const name = userMetadata.name || userMetadata.full_name || data.user.email?.split("@")[0] || "ユーザー";
-
-    // Profileが存在しない場合は作成（登録種別に応じて GeneralProfile / CorporateProfile も同時作成）
-    if (!existingProfile) {
+    if (!profileRow) {
       try {
-        existingProfile = await prisma.$transaction(async (tx) => {
-          const p = await tx.profile.create({
+        await prisma.$transaction(async (tx) => {
+          await tx.profile.create({
             data: {
-              id: data.user.id,
+              id: userId,
               name,
               email: data.user.email || "",
-              role: "VIEWER",
+              role,
               subscription_status: "INACTIVE",
               avatar_url: userMetadata.avatar_url || userMetadata.picture || null,
               manual_profile_kind: manualKind,
+              onboarding_completed_at: null,
             },
           });
-          await syncExtensionTablesForRegistrationKind(tx, data.user.id, registrationKind);
-          return p;
+          await syncExtensionTablesForRegistrationKind(tx, userId, registrationKind);
         });
       } catch (profileError) {
         console.error("Profile creation error:", profileError);
@@ -77,10 +85,10 @@ export async function GET(request: NextRequest) {
 
       try {
         const admin = createServiceRoleClient();
-        await admin.auth.admin.updateUserById(data.user.id, {
+        await admin.auth.admin.updateUserById(userId, {
           user_metadata: {
             ...userMetadata,
-            role: "VIEWER",
+            role: authRoleStr,
             registration_kind: registrationKind,
           },
         });
@@ -88,7 +96,6 @@ export async function GET(request: NextRequest) {
         console.error("OAuth user_metadata update:", metaErr);
       }
 
-      // 初回登録は必ずプロフィール設定へ（名前・住所などを登録）
       const registerUrl = new URL("/profile/register", origin);
       registerUrl.searchParams.set("first", "1");
       if (redirectTo && redirectTo !== "/") {
@@ -97,8 +104,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(registerUrl);
     }
 
-    // 既存ユーザーは登録時のroleを維持する（ログイン画面で選んだ「閲覧者/投稿者」では上書きしない）
-    // 新規登録時のみ expectedRole で Profile を作成している
+    // 既存プロフィール: 初回オンボーディング未完了なら登録フローへ（空の拡張行だけの場合も含む）
+    if (!profileRow.onboarding_completed_at) {
+      const registerUrl = new URL("/profile/register", origin);
+      registerUrl.searchParams.set("first", "1");
+      if (redirectTo && redirectTo !== "/") {
+        registerUrl.searchParams.set("next", redirectTo);
+      }
+      return NextResponse.redirect(registerUrl);
+    }
 
     return NextResponse.redirect(new URL(redirectTo, origin));
   } catch (error) {

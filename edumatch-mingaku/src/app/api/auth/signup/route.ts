@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { createServiceRoleClient } from "@/utils/supabase/server-admin";
+import { Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getPasswordErrors } from "@/lib/password";
+import { FEATURES } from "@/lib/features";
 import { syncExtensionTablesForRegistrationKind } from "@/lib/registration-profile";
 
 export const dynamic = "force-dynamic";
@@ -32,6 +34,13 @@ export async function POST(request: NextRequest) {
   try {
     const { email, password, userType } = await request.json();
 
+    if (userType === "provider" && !FEATURES.PROVIDER_REGISTRATION) {
+      return NextResponse.json(
+        { error: "現在、事業者向けの新規登録は受け付けていません。" },
+        { status: 403 }
+      );
+    }
+
     if (!email || !password) {
       return NextResponse.json(
         { error: "メールアドレスとパスワードを入力してください" },
@@ -57,6 +66,9 @@ export async function POST(request: NextRequest) {
     const registrationKind =
       userType === "provider" ? ("service_business" as const) : ("general" as const);
     const manualKind = registrationKind === "service_business" ? "corporate" : "general";
+    const role: Role =
+      userType === "provider" ? Role.PROVIDER : Role.VIEWER;
+    const authRoleStr = role === Role.PROVIDER ? "PROVIDER" : "VIEWER";
 
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: emailStr,
@@ -64,7 +76,7 @@ export async function POST(request: NextRequest) {
       options: {
         data: {
           name: provisionalName,
-          role: "VIEWER",
+          role: authRoleStr,
           registration_kind: registrationKind,
         },
       },
@@ -84,8 +96,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Profile は共通1行。一般／企業の別は GeneralProfile / CorporateProfile（登録時に作成）。role は常に VIEWER
-    const role = "VIEWER" as const;
+    // Profile：一般は VIEWER、事業者は PROVIDER。拡張テーブルは登録種別で作成。初回オンボーディングは未完了のまま
     const userId = authData.user.id;
     try {
       await prisma.$transaction(async (tx) => {
@@ -100,6 +111,7 @@ export async function POST(request: NextRequest) {
             role,
             subscription_status: "INACTIVE",
             manual_profile_kind: manualKind,
+            onboarding_completed_at: null,
           },
           update: {
             name: provisionalName,
@@ -126,7 +138,7 @@ export async function POST(request: NextRequest) {
         email_confirm: true,
         user_metadata: {
           ...authData.user.user_metadata,
-          role,
+          role: authRoleStr,
           name: provisionalName,
           registration_kind: registrationKind,
         },

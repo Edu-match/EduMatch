@@ -35,3 +35,15 @@ export function organizationTypeLabel(value: string | null | undefined): string 
   if (!value) return "";
   return ORGANIZATION_TYPE_OPTIONS.find((o) => o.value === value)?.label ?? value;
 }
+
+/** 「その他」選択時の補足があれば括弧付きで表示 */
+export function formatOrganizationTypeDisplay(
+  type: string | null | undefined,
+  other: string | null | undefined
+): string {
+  const base = organizationTypeLabel(type);
+  if (type === "other" && other?.trim()) {
+    return `${base}（${other.trim()}）`;
+  }
+  return base;
+}

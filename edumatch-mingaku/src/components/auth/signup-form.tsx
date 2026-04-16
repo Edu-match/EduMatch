@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { signupSchema, type SignupInput } from "@/lib/validations/auth";
 import { toast } from "sonner";
 import { createSupabaseBrowserClient } from "@/utils/supabase/client";
+import { FEATURES } from "@/lib/features";
 
 type Props = {
   onSuccess?: () => void;
@@ -23,6 +24,8 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [userType, setUserType] = useState<"viewer" | "provider">("viewer");
+  const allowProvider = FEATURES.PROVIDER_REGISTRATION;
+  const effectiveUserType: "viewer" | "provider" = allowProvider ? userType : "viewer";
 
   const {
     register,
@@ -45,7 +48,7 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
         body: JSON.stringify({
           email: data.email,
           password: data.password,
-          userType: userType,
+          userType: effectiveUserType,
         }),
       });
 
@@ -77,7 +80,7 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
       }
 
       toast.success(
-        userType === "provider"
+        effectiveUserType === "provider"
           ? "事業者として登録しました。続けて事業者プロフィールを入力してください。"
           : "一般利用として登録しました。続けてプロフィールを入力してください。"
       );
@@ -94,7 +97,7 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
   const handleGoogleSignup = () => {
     window.location.href = `/api/auth/google?redirect_to=${encodeURIComponent(
       redirectTo
-    )}&userType=${userType}`;
+    )}&userType=${effectiveUserType}`;
   };
 
   return (
@@ -102,9 +105,6 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
       <div className="space-y-3">
         <div>
           <p className="text-sm font-semibold text-foreground">登録の種類を選んでください</p>
-          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-            あとから変更できます。選んだ種類に合わせてプロフィール入力項目が切り替わります。
-          </p>
         </div>
         <div
           className="grid gap-3 sm:grid-cols-2"
@@ -114,11 +114,11 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
           <button
             type="button"
             role="radio"
-            aria-checked={userType === "viewer"}
+            aria-checked={effectiveUserType === "viewer"}
             onClick={() => setUserType("viewer")}
             className={cn(
               "relative text-left rounded-xl border p-4 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-              userType === "viewer"
+              effectiveUserType === "viewer"
                 ? "border-primary bg-primary/5 shadow-sm"
                 : "border-border bg-card hover:bg-muted/40"
             )}
@@ -126,7 +126,7 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
             <span
               className={cn(
                 "absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full border text-xs",
-                userType === "viewer"
+                effectiveUserType === "viewer"
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-muted-foreground/30 text-transparent"
               )}
@@ -137,7 +137,7 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
             <UserCircle2
               className={cn(
                 "h-8 w-8 mb-2",
-                userType === "viewer" ? "text-primary" : "text-muted-foreground"
+                effectiveUserType === "viewer" ? "text-primary" : "text-muted-foreground"
               )}
             />
             <span className="block text-sm font-semibold text-foreground">一般利用</span>
@@ -145,45 +145,64 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
               個人・保護者・学生など。サービスの検索・比較・資料請求に利用します。
             </span>
           </button>
-          <button
-            type="button"
-            role="radio"
-            aria-checked={userType === "provider"}
-            onClick={() => setUserType("provider")}
-            className={cn(
-              "relative text-left rounded-xl border p-4 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-              userType === "provider"
-                ? "border-primary bg-primary/5 shadow-sm"
-                : "border-border bg-card hover:bg-muted/40"
-            )}
-          >
-            <span
+          {allowProvider ? (
+            <button
+              type="button"
+              role="radio"
+              aria-checked={userType === "provider"}
+              onClick={() => setUserType("provider")}
               className={cn(
-                "absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full border text-xs",
+                "relative text-left rounded-xl border p-4 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
                 userType === "provider"
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-muted-foreground/30 text-transparent"
+                  ? "border-primary bg-primary/5 shadow-sm"
+                  : "border-border bg-card hover:bg-muted/40"
               )}
-              aria-hidden
             >
-              <Check className="h-3.5 w-3.5" />
-            </span>
-            <Building2
-              className={cn(
-                "h-8 w-8 mb-2",
-                userType === "provider" ? "text-primary" : "text-muted-foreground"
-              )}
-            />
-            <span className="block text-sm font-semibold text-foreground">事業者・団体</span>
-            <span className="mt-1 block text-xs text-muted-foreground leading-relaxed">
-              EdTech事業者や教育関連団体。サービス掲載・投稿・問い合わせ受付に利用します。
-            </span>
-          </button>
+              <span
+                className={cn(
+                  "absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full border text-xs",
+                  userType === "provider"
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-muted-foreground/30 text-transparent"
+                )}
+                aria-hidden
+              >
+                <Check className="h-3.5 w-3.5" />
+              </span>
+              <Building2
+                className={cn(
+                  "h-8 w-8 mb-2",
+                  userType === "provider" ? "text-primary" : "text-muted-foreground"
+                )}
+              />
+              <span className="block text-sm font-semibold text-foreground">事業者・団体</span>
+              <span className="mt-1 block text-xs text-muted-foreground leading-relaxed">
+                EdTech事業者や教育関連団体。サービス掲載・投稿・問い合わせ受付に利用します。
+              </span>
+            </button>
+          ) : (
+            <div
+              className="relative text-left rounded-xl border border-dashed border-muted-foreground/30 bg-muted/20 p-4 opacity-80"
+              aria-disabled
+              title="現在、事業者向けの新規登録は受け付けていません"
+            >
+              <Building2 className="h-8 w-8 mb-2 text-muted-foreground" />
+              <span className="block text-sm font-semibold text-muted-foreground">事業者・団体</span>
+              <span className="mt-1 block text-xs text-muted-foreground leading-relaxed">
+                EdTech事業者や教育関連団体向け（現在は新規受付を停止しています）。
+              </span>
+              <span className="mt-2 inline-block rounded-md bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                受付停止中
+              </span>
+            </div>
+          )}
         </div>
         <p className="text-xs text-muted-foreground text-center sm:text-left">
           選択中:{" "}
           <span className="font-medium text-foreground">
-            {userType === "provider" ? "事業者・団体（企業向けプロフィール）" : "一般利用"}
+            {effectiveUserType === "provider"
+              ? "事業者・団体（企業向けプロフィール）"
+              : "一般利用（閲覧者・VIEWER）"}
           </span>
         </p>
       </div>

@@ -50,6 +50,7 @@ export async function GET(request: NextRequest) {
                 subscription_status: "INACTIVE",
                 avatar_url: userMetadata.avatar_url || userMetadata.picture || null,
                 manual_profile_kind: "general",
+                onboarding_completed_at: role === Role.ADMIN ? new Date() : null,
               },
             });
             await syncExtensionTablesForRegistrationKind(tx, data.user.id, "general");
@@ -68,6 +69,9 @@ export async function GET(request: NextRequest) {
             console.error("Legacy OAuth user_metadata update:", metaErr);
           }
 
+          if (role === Role.ADMIN) {
+            return NextResponse.redirect(new URL(redirectTo, origin));
+          }
           const registerUrl = new URL("/profile/register", origin);
           registerUrl.searchParams.set("first", "1");
           if (redirectTo && redirectTo !== "/") {

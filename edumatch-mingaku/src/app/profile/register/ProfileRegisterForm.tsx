@@ -30,7 +30,7 @@ import { updateProfile } from "@/app/_actions";
 import { uploadImage } from "@/app/_actions";
 import {
   ORGANIZATION_TYPE_OPTIONS,
-  organizationTypeLabel,
+  formatOrganizationTypeDisplay,
   AGE_OPTIONS,
 } from "@/lib/organization-types";
 
@@ -43,6 +43,7 @@ export type InitialProfile = {
   phone: string | null;
   organization?: string | null;
   organization_type?: string | null;
+  organization_type_other?: string | null;
   bio?: string | null;
   website?: string | null;
   notification_email_2?: string | null;
@@ -96,6 +97,9 @@ export function ProfileRegisterForm({
   const [phone, setPhone] = useState(initialProfile?.phone ?? "");
   const [organization, setOrganization] = useState(initialProfile?.organization ?? "");
   const [schoolType, setSchoolType] = useState(initialProfile?.organization_type ?? "");
+  const [organizationTypeOther, setOrganizationTypeOther] = useState(
+    initialProfile?.organization_type_other ?? ""
+  );
   const [role, setRole] = useState("");
   const [location, setLocation] = useState("");
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
@@ -258,6 +262,19 @@ export function ProfileRegisterForm({
                 </SelectContent>
               </Select>
             </div>
+            {schoolType === "other" && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">その他の内容（任意）</label>
+                <Input
+                  placeholder="例: フリーランス、NPO、学習塾など"
+                  value={organizationTypeOther}
+                  onChange={(e) => setOrganizationTypeOther(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  「その他」を選んだ場合のみ、補足を入力できます。
+                </p>
+              </div>
+            )}
             {isProvider && (
               <div className="space-y-2">
                 <label className="text-sm font-medium">役職・職種</label>
@@ -432,9 +449,12 @@ export function ProfileRegisterForm({
                   <span className="text-muted-foreground">所属</span>
                   <span>{organization || "未入力"}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">所属の種類</span>
-                  <span>{organizationTypeLabel(schoolType) || "未入力"}</span>
+                <div className="flex justify-between gap-4">
+                  <span className="text-muted-foreground shrink-0">所属の種類</span>
+                  <span className="text-right break-words">
+                    {formatOrganizationTypeDisplay(schoolType, organizationTypeOther) ||
+                      "未入力"}
+                  </span>
                 </div>
                 {isProvider && (
                   <div className="flex justify-between">
@@ -593,10 +613,13 @@ export function ProfileRegisterForm({
       phone: phone || null,
       organization: organization?.trim() || null,
       organization_type: schoolType || null,
+      organization_type_other:
+        schoolType === "other" ? organizationTypeOther.trim() || null : null,
       bio: bio || null,
       website: website || null,
       notification_email_2: isProvider ? (notificationEmail2.trim() || null) : null,
       notification_email_3: isProvider ? (notificationEmail3.trim() || null) : null,
+      completeInitialSetup: true,
     });
     setSaving(false);
     if (success) router.push(nextUrl ?? "/dashboard");
@@ -620,7 +643,7 @@ export function ProfileRegisterForm({
                 : "一般利用として登録済みです。表示名・所属・関心分野などを入力してください。"}
             </p>
             <p className="text-sm text-muted-foreground mt-1">
-              内容はあとからマイページのプロフィール設定から変更できます。
+              表示名や所属などはあとから変更できます。一般利用と事業者の登録種別を切り替えることはできません。
             </p>
           </div>
         )}

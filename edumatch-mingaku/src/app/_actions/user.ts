@@ -26,6 +26,8 @@ export type CurrentUserProfile = {
   role: string;
   /** CorporateProfile 行がある（企業ユーザー・投稿者機能） */
   is_corporate_profile: boolean;
+  /** 所属「その他」の補足（任意） */
+  organization_type_other: string | null;
   /** 初回プロフィール前: user_metadata の登録種別 */
   registration_kind: "general" | "service_business" | null;
 };
@@ -60,6 +62,9 @@ export async function getCurrentUserProfile(): Promise<CurrentUserProfile | null
     : (g?.organization_type ?? null);
   const legal_name = is_corporate_profile ? (c?.legal_name ?? null) : (g?.legal_name ?? null);
   const age = g?.age ?? null;
+  const organization_type_other = is_corporate_profile
+    ? (c?.organization_type_other ?? null)
+    : (g?.organization_type_other ?? null);
 
   return {
     name: full.name,
@@ -76,6 +81,7 @@ export async function getCurrentUserProfile(): Promise<CurrentUserProfile | null
     notification_email_3: c?.notification_email_3 ?? null,
     role: full.role,
     is_corporate_profile,
+    organization_type_other,
     registration_kind,
   };
 }
@@ -150,10 +156,14 @@ export type UpdateProfileInput = {
   phone?: string | null;
   organization?: string | null;
   organization_type?: string | null;
+  /** 所属の種類が「その他」のときの補足（任意） */
+  organization_type_other?: string | null;
   bio?: string | null;
   website?: string | null;
   notification_email_2?: string | null;
   notification_email_3?: string | null;
+  /** 初回プロフィール登録ウィザード完了時に true */
+  completeInitialSetup?: boolean;
 };
 
 function resolveProfileTarget(
@@ -166,8 +176,10 @@ function resolveProfileTarget(
 ): "general" | "service_business" {
   // 管理者は常に一般側（GeneralProfile）。企業用 CorporateProfile は持たない。
   if (full.role === "ADMIN") return "general";
+  // 既にどちらかの拡張行がある場合はそこに固定（アカウント種別の切り替え不可）
   if (full.corporateProfile) return "service_business";
   if (full.generalProfile) return "general";
+  // 拡張がまだ無いときのみメタデータで初回を決める（レガシー・移行用）
   if (registration_kind === "service_business") return "service_business";
   return "general";
 }
@@ -201,8 +213,16 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
           ...(input.phone !== undefined && { phone: input.phone || null }),
           ...(input.bio !== undefined && { bio: input.bio || null }),
           ...(input.website !== undefined && { website: input.website || null }),
+          ...(input.completeInitialSetup === true && {
+            onboarding_completed_at: new Date(),
+          }),
         },
       });
+
+      const orgOther =
+        input.organization_type_other !== undefined
+          ? input.organization_type_other?.trim() || null
+          : undefined;
 
       if (target === "service_business") {
         await tx.corporateProfile.upsert({
@@ -212,6 +232,7 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
             legal_name: input.legal_name?.trim() || null,
             organization: input.organization?.trim() || null,
             organization_type: input.organization_type?.trim() || null,
+            ...(orgOther !== undefined && { organization_type_other: orgOther }),
             notification_email_2: input.notification_email_2?.trim() || null,
             notification_email_3: input.notification_email_3?.trim() || null,
           },
@@ -225,6 +246,7 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
             ...(input.organization_type !== undefined && {
               organization_type: input.organization_type?.trim() || null,
             }),
+            ...(orgOther !== undefined && { organization_type_other: orgOther }),
             ...(input.notification_email_2 !== undefined && {
               notification_email_2: input.notification_email_2?.trim() || null,
             }),
@@ -243,6 +265,7 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
             age: input.age || null,
             organization: input.organization?.trim() || null,
             organization_type: input.organization_type?.trim() || null,
+            ...(orgOther !== undefined && { organization_type_other: orgOther }),
           },
           update: {
             ...(input.legal_name !== undefined && {
@@ -255,6 +278,7 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
             ...(input.organization_type !== undefined && {
               organization_type: input.organization_type?.trim() || null,
             }),
+            ...(orgOther !== undefined && { organization_type_other: orgOther }),
           },
         });
         await tx.corporateProfile.deleteMany({ where: { id: user.id } });

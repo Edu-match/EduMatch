@@ -123,7 +123,8 @@ export async function POST(request: NextRequest) {
       where: { id: data.user.id },
       select: { id: true },
     });
-    const isProviderAccount = !!hasCorporateProfile;
+    const isProviderAccount =
+      !!hasCorporateProfile || existingProfile.role === "PROVIDER";
     // ADMIN はどちらの入口でも許可。企業ユーザーは CorporateProfile 行、閲覧者はその行が無いこと
     if (existingProfile.role !== "ADMIN") {
       if (userType === "provider" && !isProviderAccount) {

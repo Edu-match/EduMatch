@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 /**
  * 認証済みユーザーのプロフィール（role等）とAIナビゲーター同意状態を返す。
  * 同意状態は Profile テーブルの ai_navigator_agreed_at から取得。
- * 事業者は DB 上 role は VIEWER のため、メニュー用に role を PROVIDER として返す（ADMIN はそのまま）。
+ * メニュー用: ADMIN のまま、DB が PROVIDER または CorporateProfile ありなら PROVIDER、それ以外は VIEWER。
  */
 export async function GET() {
   const profile = await getCurrentProfile();
@@ -25,7 +25,11 @@ export async function GET() {
           select: { id: true },
         }));
   const uiRole =
-    profile.role === "ADMIN" ? "ADMIN" : hasCorporate ? "PROVIDER" : profile.role;
+    profile.role === "ADMIN"
+      ? "ADMIN"
+      : profile.role === "PROVIDER" || hasCorporate
+        ? "PROVIDER"
+        : "VIEWER";
 
   return NextResponse.json({
     profile: {

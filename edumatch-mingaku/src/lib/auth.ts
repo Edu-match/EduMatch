@@ -50,13 +50,15 @@ export const getCurrentProfile = cache(async () => {
 });
 
 /**
- * 企業ユーザー（CorporateProfile 行あり）または ADMIN 専用。
- * DB の Profile.role は VIEWER のまま。企業判定は CorporateProfile の存在で行う。
+ * 投稿者向け（CorporateProfile 行あり、または Profile.role が PROVIDER）、または ADMIN。
  */
 export async function requireProvider() {
   const user = await requireAuth();
   const profile = await getCurrentProfile();
   if (profile?.role === "ADMIN") {
+    return { user, profile };
+  }
+  if (profile?.role === "PROVIDER") {
     return { user, profile };
   }
   const corporate = await prisma.corporateProfile.findUnique({
@@ -67,7 +69,7 @@ export async function requireProvider() {
     redirect(
       "/dashboard?message=" +
         encodeURIComponent(
-          "投稿者として利用するには、新規登録時に「サービス事業者」を選択して登録し、プロフィールを完了してください。"
+          "投稿者として利用するには、事業者として登録し、プロフィールを完了してください。"
         )
     );
   }

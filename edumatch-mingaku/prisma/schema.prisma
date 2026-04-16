@@ -8,7 +8,7 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-/// ログイン共通の1行。一般 / 企業の別は GeneralProfile / CorporateProfile で判別（role は既定 VIEWER、管理者のみ ADMIN）
+/// ログイン共通の1行。一般は VIEWER、事業者は PROVIDER、管理者は ADMIN。拡張は GeneralProfile / CorporateProfile
 model Profile {
   id                              String            @id @db.Uuid
   role                            Role              @default(VIEWER)
@@ -31,6 +31,8 @@ model Profile {
   ai_navigator_agreed_at           DateTime?
   /// Table Editor 用: 手動で general | corporate（ジョブで GeneralProfile / CorporateProfile に反映）
   manual_profile_kind              String?
+  /// 初回プロフィール設定完了日時。null の間は OAuth 後も登録ウィザードへ誘導する
+  onboarding_completed_at         DateTime?
   material_requests               MaterialRequest[]
   posts                           Post[]
   reviews                         Review[]
@@ -53,6 +55,8 @@ model GeneralProfile {
   age                String?
   organization       String?
   organization_type  String?
+  /// 所属の種類が「その他」のときの補足（任意）
+  organization_type_other String?
   created_at         DateTime @default(now())
   updated_at         DateTime @updatedAt
 }
@@ -64,6 +68,8 @@ model CorporateProfile {
   legal_name            String?
   organization          String?
   organization_type     String?
+  /// 所属の種類が「その他」のときの補足（任意）
+  organization_type_other String?
   notification_email_2  String?
   notification_email_3  String?
   address               String?
