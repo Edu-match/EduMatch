@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/utils/supabase/server";
+import { createRouteHandlerSupabaseForOAuth } from "@/utils/supabase/server";
 import { createServiceRoleClient } from "@/utils/supabase/server-admin";
 import { prisma } from "@/lib/prisma";
 import { getSiteOrigin } from "@/lib/site-url";
@@ -10,6 +10,8 @@ import { Role } from "@prisma/client";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
+  const origin = getSiteOrigin(new URL(request.url).origin);
+
   try {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get("code");
@@ -17,20 +19,23 @@ export async function GET(request: NextRequest) {
     const userTypeParam = searchParams.get("userType") || "viewer";
 
     if (!code) {
-      const origin = getSiteOrigin(new URL(request.url).origin);
       return NextResponse.redirect(new URL("/login?error=oauth_error", origin));
     }
 
-    const supabase = await createClient();
+    const { supabase, applySessionCookies } = createRouteHandlerSupabaseForOAuth(request);
 
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (error || !data.user) {
-      const origin = getSiteOrigin(new URL(request.url).origin);
       return NextResponse.redirect(new URL("/login?error=oauth_error", origin));
     }
 
-    const origin = getSiteOrigin(new URL(request.url).origin);
+    const redirectWithSession = (target: URL) => {
+      const res = NextResponse.redirect(target);
+      applySessionCookies(res);
+      return res;
+    };
+
     const userId = data.user.id;
 
     const providerSignupAllowed =
@@ -78,7 +83,7 @@ export async function GET(request: NextRequest) {
         });
       } catch (profileError) {
         console.error("Profile creation error:", profileError);
-        return NextResponse.redirect(
+        return redirectWithSession(
           new URL("/auth/login?error=profile_creation_failed", origin)
         );
       }
@@ -101,25 +106,21 @@ export async function GET(request: NextRequest) {
       if (redirectTo && redirectTo !== "/") {
         registerUrl.searchParams.set("next", redirectTo);
       }
-      return NextResponse.redirect(registerUrl);
+      return redirectWithSession(registerUrl);
     }
 
-    // 既存プロフィール: 初回オンボーディング未完了なら登録フローへ（空の拡張行だけの場合も含む）
     if (!profileRow.onboarding_completed_at) {
       const registerUrl = new URL("/profile/register", origin);
       registerUrl.searchParams.set("first", "1");
       if (redirectTo && redirectTo !== "/") {
         registerUrl.searchParams.set("next", redirectTo);
       }
-      return NextResponse.redirect(registerUrl);
+      return redirectWithSession(registerUrl);
     }
 
-    return NextResponse.redirect(new URL(redirectTo, origin));
+    return redirectWithSession(new URL(redirectTo, origin));
   } catch (error) {
     console.error("Callback error:", error);
-    const origin = getSiteOrigin(
-      typeof request.url === "string" ? new URL(request.url).origin : undefined
-    );
     return NextResponse.redirect(
       new URL("/auth/login?error=callback_error", origin)
     );

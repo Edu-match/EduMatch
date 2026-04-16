@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/utils/supabase/server";
+import { createRouteHandlerSupabaseForOAuth } from "@/utils/supabase/server";
 import { createServiceRoleClient } from "@/utils/supabase/server-admin";
 import { prisma } from "@/lib/prisma";
 import { Role } from "@prisma/client";
@@ -16,78 +16,88 @@ export async function GET(request: NextRequest) {
   const redirectTo = searchParams.get("redirect_to") || "/";
   const origin = getSiteOrigin(requestUrl.origin);
 
-  if (code) {
-    const supabase = await createClient();
-
-    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-
-    if (!error && data.user) {
-      try {
-        const existingProfile = await prisma.profile.findUnique({
-          where: { id: data.user.id },
-        });
-
-        if (!existingProfile) {
-          const userMetadata = data.user.user_metadata || {};
-          const name =
-            userMetadata.name ||
-            userMetadata.full_name ||
-            data.user.email?.split("@")[0] ||
-            "ユーザー";
-
-          let role: Role = Role.VIEWER;
-          if (userMetadata.role === "ADMIN") {
-            role = Role.ADMIN;
-          }
-
-          await prisma.$transaction(async (tx) => {
-            await tx.profile.create({
-              data: {
-                id: data.user.id,
-                name,
-                email: data.user.email || "",
-                role,
-                subscription_status: "INACTIVE",
-                avatar_url: userMetadata.avatar_url || userMetadata.picture || null,
-                manual_profile_kind: "general",
-                onboarding_completed_at: role === Role.ADMIN ? new Date() : null,
-              },
-            });
-            await syncExtensionTablesForRegistrationKind(tx, data.user.id, "general");
-          });
-
-          try {
-            const admin = createServiceRoleClient();
-            await admin.auth.admin.updateUserById(data.user.id, {
-              user_metadata: {
-                ...userMetadata,
-                registration_kind: "general",
-                role: role === Role.ADMIN ? "ADMIN" : "VIEWER",
-              },
-            });
-          } catch (metaErr) {
-            console.error("Legacy OAuth user_metadata update:", metaErr);
-          }
-
-          if (role === Role.ADMIN) {
-            return NextResponse.redirect(new URL(redirectTo, origin));
-          }
-          const registerUrl = new URL("/profile/register", origin);
-          registerUrl.searchParams.set("first", "1");
-          if (redirectTo && redirectTo !== "/") {
-            registerUrl.searchParams.set("next", redirectTo);
-          }
-          return NextResponse.redirect(registerUrl);
-        }
-      } catch (profileError) {
-        console.error("Profile creation error:", profileError);
-      }
-
-      return NextResponse.redirect(new URL(redirectTo, origin));
-    }
+  if (!code) {
+    return NextResponse.redirect(
+      new URL("/login?message=" + encodeURIComponent("認証に失敗しました。もう一度お試しください。"), origin)
+    );
   }
 
-  return NextResponse.redirect(
-    new URL("/login?message=" + encodeURIComponent("認証に失敗しました。もう一度お試しください。"), origin)
-  );
+  const { supabase, applySessionCookies } = createRouteHandlerSupabaseForOAuth(request);
+
+  const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+
+  if (error || !data.user) {
+    return NextResponse.redirect(
+      new URL("/login?message=" + encodeURIComponent("認証に失敗しました。もう一度お試しください。"), origin)
+    );
+  }
+
+  const redirectWithSession = (target: URL) => {
+    const res = NextResponse.redirect(target);
+    applySessionCookies(res);
+    return res;
+  };
+
+  try {
+    const existingProfile = await prisma.profile.findUnique({
+      where: { id: data.user.id },
+    });
+
+    if (!existingProfile) {
+      const userMetadata = data.user.user_metadata || {};
+      const name =
+        userMetadata.name ||
+        userMetadata.full_name ||
+        data.user.email?.split("@")[0] ||
+        "ユーザー";
+
+      let role: Role = Role.VIEWER;
+      if (userMetadata.role === "ADMIN") {
+        role = Role.ADMIN;
+      }
+
+      await prisma.$transaction(async (tx) => {
+        await tx.profile.create({
+          data: {
+            id: data.user.id,
+            name,
+            email: data.user.email || "",
+            role,
+            subscription_status: "INACTIVE",
+            avatar_url: userMetadata.avatar_url || userMetadata.picture || null,
+            manual_profile_kind: "general",
+            onboarding_completed_at: role === Role.ADMIN ? new Date() : null,
+          },
+        });
+        await syncExtensionTablesForRegistrationKind(tx, data.user.id, "general");
+      });
+
+      try {
+        const admin = createServiceRoleClient();
+        await admin.auth.admin.updateUserById(data.user.id, {
+          user_metadata: {
+            ...userMetadata,
+            registration_kind: "general",
+            role: role === Role.ADMIN ? "ADMIN" : "VIEWER",
+          },
+        });
+      } catch (metaErr) {
+        console.error("Legacy OAuth user_metadata update:", metaErr);
+      }
+
+      if (role === Role.ADMIN) {
+        return redirectWithSession(new URL(redirectTo, origin));
+      }
+      const registerUrl = new URL("/profile/register", origin);
+      registerUrl.searchParams.set("first", "1");
+      if (redirectTo && redirectTo !== "/") {
+        registerUrl.searchParams.set("next", redirectTo);
+      }
+      return redirectWithSession(registerUrl);
+    }
+  } catch (profileError) {
+    console.error("Profile creation error:", profileError);
+  }
+
+  return redirectWithSession(new URL(redirectTo, origin));
 }
