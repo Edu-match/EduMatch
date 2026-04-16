@@ -4,6 +4,7 @@ import { createServiceRoleClient } from "@/utils/supabase/server-admin";
 import { prisma } from "@/lib/prisma";
 import { Role } from "@prisma/client";
 import { getSiteOrigin } from "@/lib/site-url";
+import { syncExtensionTablesForRegistrationKind } from "@/lib/registration-profile";
 
 export const dynamic = "force-dynamic";
 
@@ -39,15 +40,19 @@ export async function GET(request: NextRequest) {
             role = Role.ADMIN;
           }
 
-          await prisma.profile.create({
-            data: {
-              id: data.user.id,
-              name,
-              email: data.user.email || "",
-              role,
-              subscription_status: "INACTIVE",
-              avatar_url: userMetadata.avatar_url || userMetadata.picture || null,
-            },
+          await prisma.$transaction(async (tx) => {
+            await tx.profile.create({
+              data: {
+                id: data.user.id,
+                name,
+                email: data.user.email || "",
+                role,
+                subscription_status: "INACTIVE",
+                avatar_url: userMetadata.avatar_url || userMetadata.picture || null,
+                manual_profile_kind: "general",
+              },
+            });
+            await syncExtensionTablesForRegistrationKind(tx, data.user.id, "general");
           });
 
           try {

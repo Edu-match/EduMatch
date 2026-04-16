@@ -61,7 +61,7 @@ async function main() {
 
   for (const provider of providers) {
     await prisma.profile.create({ data: provider });
-    await prisma.serviceBusiness.create({
+    await prisma.corporateProfile.create({
       data: {
         id: provider.id,
         organization: provider.name,

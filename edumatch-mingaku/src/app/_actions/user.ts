@@ -24,8 +24,8 @@ export type CurrentUserProfile = {
   notification_email_2: string | null;
   notification_email_3: string | null;
   role: string;
-  /** DB に ServiceBusiness 行がある（投稿者・事業者機能） */
-  is_service_business: boolean;
+  /** CorporateProfile 行がある（企業ユーザー・投稿者機能） */
+  is_corporate_profile: boolean;
   /** 初回プロフィール前: user_metadata の登録種別 */
   registration_kind: "general" | "service_business" | null;
 };
@@ -36,7 +36,7 @@ export async function getCurrentUserProfile(): Promise<CurrentUserProfile | null
 
   const full = await prisma.profile.findUnique({
     where: { id: profile.id },
-    include: { generalUser: true, serviceBusiness: true },
+    include: { generalProfile: true, corporateProfile: true },
   });
   if (!full) return null;
 
@@ -49,15 +49,16 @@ export async function getCurrentUserProfile(): Promise<CurrentUserProfile | null
   const registration_kind =
     rkRaw === "service_business" || rkRaw === "general" ? rkRaw : null;
 
-  const g = full.generalUser;
-  const s = full.serviceBusiness;
-  const is_service_business = !!s;
+  const g = full.generalProfile;
+  const c = full.corporateProfile;
+  // ADMIN は常に一般表示（DB に誤った CorporateProfile が残っていても無視）
+  const is_corporate_profile = full.role === "ADMIN" ? false : !!c;
 
-  const organization = is_service_business ? (s?.organization ?? null) : (g?.organization ?? null);
-  const organization_type = is_service_business
-    ? (s?.organization_type ?? null)
+  const organization = is_corporate_profile ? (c?.organization ?? null) : (g?.organization ?? null);
+  const organization_type = is_corporate_profile
+    ? (c?.organization_type ?? null)
     : (g?.organization_type ?? null);
-  const legal_name = is_service_business ? (s?.legal_name ?? null) : (g?.legal_name ?? null);
+  const legal_name = is_corporate_profile ? (c?.legal_name ?? null) : (g?.legal_name ?? null);
   const age = g?.age ?? null;
 
   return {
@@ -71,10 +72,10 @@ export async function getCurrentUserProfile(): Promise<CurrentUserProfile | null
     organization_type,
     bio: full.bio,
     website: full.website,
-    notification_email_2: s?.notification_email_2 ?? null,
-    notification_email_3: s?.notification_email_3 ?? null,
+    notification_email_2: c?.notification_email_2 ?? null,
+    notification_email_3: c?.notification_email_3 ?? null,
     role: full.role,
-    is_service_business,
+    is_corporate_profile,
     registration_kind,
   };
 }
@@ -157,13 +158,16 @@ export type UpdateProfileInput = {
 
 function resolveProfileTarget(
   full: {
-    generalUser: { id: string } | null;
-    serviceBusiness: { id: string } | null;
+    role: string;
+    generalProfile: { id: string } | null;
+    corporateProfile: { id: string } | null;
   },
   registration_kind: "general" | "service_business" | null
 ): "general" | "service_business" {
-  if (full.serviceBusiness) return "service_business";
-  if (full.generalUser) return "general";
+  // 管理者は常に一般側（GeneralProfile）。企業用 CorporateProfile は持たない。
+  if (full.role === "ADMIN") return "general";
+  if (full.corporateProfile) return "service_business";
+  if (full.generalProfile) return "general";
   if (registration_kind === "service_business") return "service_business";
   return "general";
 }
@@ -173,7 +177,7 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
     const user = await requireAuth();
     const full = await prisma.profile.findUnique({
       where: { id: user.id },
-      include: { generalUser: true, serviceBusiness: true },
+      include: { generalProfile: true, corporateProfile: true },
     });
     if (!full) return { success: false, error: "プロフィールが見つかりません" };
 
@@ -201,7 +205,7 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
       });
 
       if (target === "service_business") {
-        await tx.serviceBusiness.upsert({
+        await tx.corporateProfile.upsert({
           where: { id: user.id },
           create: {
             id: user.id,
@@ -229,9 +233,9 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
             }),
           },
         });
-        await tx.generalUser.deleteMany({ where: { id: user.id } });
+        await tx.generalProfile.deleteMany({ where: { id: user.id } });
       } else {
-        await tx.generalUser.upsert({
+        await tx.generalProfile.upsert({
           where: { id: user.id },
           create: {
             id: user.id,
@@ -253,7 +257,7 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
             }),
           },
         });
-        await tx.serviceBusiness.deleteMany({ where: { id: user.id } });
+        await tx.corporateProfile.deleteMany({ where: { id: user.id } });
       }
     });
 

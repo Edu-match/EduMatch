@@ -8,7 +8,7 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-/// ログイン共通の1行。一般ユーザー / サービス事業者の別は GeneralUser / ServiceBusiness で判別（role は既定 VIEWER、管理者のみ ADMIN）
+/// ログイン共通の1行。一般 / 企業の別は GeneralProfile / CorporateProfile で判別（role は既定 VIEWER、管理者のみ ADMIN）
 model Profile {
   id                              String            @id @db.Uuid
   role                            Role              @default(VIEWER)
@@ -29,6 +29,8 @@ model Profile {
   chat_usage_events                Json?
   /// AIナビゲーター利用規約に同意した日時（null = 未同意）
   ai_navigator_agreed_at           DateTime?
+  /// Table Editor 用: 手動で general | corporate（ジョブで GeneralProfile / CorporateProfile に反映）
+  manual_profile_kind              String?
   material_requests               MaterialRequest[]
   posts                           Post[]
   reviews                         Review[]
@@ -36,15 +38,15 @@ model Profile {
   view_histories                  ViewHistory[]
   chat_sessions                   ChatSession[]
   in_app_notifications           InAppNotification[]
-  generalUser                     GeneralUser?
-  serviceBusiness                 ServiceBusiness?
+  generalProfile                  GeneralProfile?
+  corporateProfile                CorporateProfile?
 
   @@index([email])
   @@index([stripe_customer_id])
 }
 
-/// 一般ユーザー専用プロフィール（所属・年代など）。Profile と 1:1
-model GeneralUser {
+/// 一般ユーザー向け拡張（所属・年代など）。Profile と 1:1
+model GeneralProfile {
   id                 String   @id @db.Uuid
   profile            Profile  @relation(fields: [id], references: [id], onDelete: Cascade)
   legal_name         String?
@@ -55,8 +57,8 @@ model GeneralUser {
   updated_at         DateTime @updatedAt
 }
 
-/// サービス事業者専用（資料請求通知先・事業者住所など）。Profile と 1:1。行があれば投稿者機能を許可
-model ServiceBusiness {
+/// 企業ユーザー向け拡張（資料請求通知先・事業者住所など）。Profile と 1:1。行があれば投稿・サービス掲載を許可
+model CorporateProfile {
   id                    String   @id @db.Uuid
   profile               Profile  @relation(fields: [id], references: [id], onDelete: Cascade)
   legal_name            String?

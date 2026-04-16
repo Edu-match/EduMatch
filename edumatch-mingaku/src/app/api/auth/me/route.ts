@@ -17,15 +17,15 @@ export async function GET() {
       { status: 200 }
     );
   }
-  const hasBusiness =
+  const hasCorporate =
     profile.role === "ADMIN"
       ? false
-      : !!(await prisma.serviceBusiness.findUnique({
+      : !!(await prisma.corporateProfile.findUnique({
           where: { id: profile.id },
           select: { id: true },
         }));
   const uiRole =
-    profile.role === "ADMIN" ? "ADMIN" : hasBusiness ? "PROVIDER" : profile.role;
+    profile.role === "ADMIN" ? "ADMIN" : hasCorporate ? "PROVIDER" : profile.role;
 
   return NextResponse.json({
     profile: {
@@ -34,7 +34,7 @@ export async function GET() {
       email: profile.email,
       avatar_url: profile.avatar_url,
       role: uiRole,
-      is_service_business: hasBusiness,
+      is_corporate_profile: hasCorporate,
     },
     ai_navigator_agreed: !!profile.ai_navigator_agreed_at,
   });

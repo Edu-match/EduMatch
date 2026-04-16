@@ -119,12 +119,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const hasServiceBusiness = await prisma.serviceBusiness.findUnique({
+    const hasCorporateProfile = await prisma.corporateProfile.findUnique({
       where: { id: data.user.id },
       select: { id: true },
     });
-    const isProviderAccount = !!hasServiceBusiness;
-    // ADMIN はどちらの入口でも許可。事業者は ServiceBusiness 行、閲覧者はその行が無いこと
+    const isProviderAccount = !!hasCorporateProfile;
+    // ADMIN はどちらの入口でも許可。企業ユーザーは CorporateProfile 行、閲覧者はその行が無いこと
     if (existingProfile.role !== "ADMIN") {
       if (userType === "provider" && !isProviderAccount) {
         return NextResponse.json(

@@ -48,7 +48,7 @@ export type InitialProfile = {
   notification_email_2?: string | null;
   notification_email_3?: string | null;
   role?: string;
-  is_service_business?: boolean;
+  is_corporate_profile?: boolean;
   registration_kind?: "general" | "service_business" | null;
 };
 
@@ -109,7 +109,7 @@ export function ProfileRegisterForm({
   const avatarFileInputRef = useRef<HTMLInputElement>(null);
 
   const isProvider =
-    initialProfile?.is_service_business === true ||
+    initialProfile?.is_corporate_profile === true ||
     initialProfile?.registration_kind === "service_business";
 
   const toggleInterest = (interest: string) => {
@@ -615,17 +615,21 @@ export function ProfileRegisterForm({
         {isFirstTime && (
           <div className="mb-6 p-4 rounded-lg bg-primary/10 border border-primary/20 text-center">
             <p className="font-medium text-primary">
-              アカウント登録が完了しました。続けて名前・所属・表示名などを入力してください（Google登録と同じ流れです）。
+              {isProvider
+                ? "事業者アカウントとして登録済みです。事業者名・所属・資料請求の通知先まで入力してください。"
+                : "一般利用として登録済みです。表示名・所属・関心分野などを入力してください。"}
             </p>
             <p className="text-sm text-muted-foreground mt-1">
-              あとからプロフィール設定から変更・追加入力できます。
+              内容はあとからマイページのプロフィール設定から変更できます。
             </p>
           </div>
         )}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold mb-2">アカウント設定</h1>
           <p className="text-muted-foreground">
-            表示名やプロフィール画像、連絡先などを設定できます
+            {isProvider
+              ? "掲載・投稿に使う事業者情報と、資料請求の通知先を設定します"
+              : "サイト上の表示名・所属・関心分野などを設定します"}
           </p>
         </div>
 

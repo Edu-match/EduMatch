@@ -3,6 +3,7 @@ import { createClient } from "@/utils/supabase/server";
 import { createServiceRoleClient } from "@/utils/supabase/server-admin";
 import { prisma } from "@/lib/prisma";
 import { getPasswordErrors } from "@/lib/password";
+import { syncExtensionTablesForRegistrationKind } from "@/lib/registration-profile";
 
 export const dynamic = "force-dynamic";
 
@@ -53,7 +54,9 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient();
 
-    const registrationKind = userType === "provider" ? "service_business" : "general";
+    const registrationKind =
+      userType === "provider" ? ("service_business" as const) : ("general" as const);
+    const manualKind = registrationKind === "service_business" ? "corporate" : "general";
 
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: emailStr,
@@ -81,26 +84,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Profile は共通1行のみ（一般／事業者の別は GeneralUser / ServiceBusiness）。role は常に VIEWER
+    // Profile は共通1行。一般／企業の別は GeneralProfile / CorporateProfile（登録時に作成）。role は常に VIEWER
     const role = "VIEWER" as const;
+    const userId = authData.user.id;
     try {
-      await prisma.profile.upsert({
-        where: {
-          id: authData.user.id,
-        },
-        create: {
-          id: authData.user.id,
-          name: provisionalName,
-          email: emailStr,
-          role,
-          subscription_status: "INACTIVE",
-        },
-        update: {
-          name: provisionalName,
-          role,
-        },
+      await prisma.$transaction(async (tx) => {
+        await tx.profile.upsert({
+          where: {
+            id: userId,
+          },
+          create: {
+            id: userId,
+            name: provisionalName,
+            email: emailStr,
+            role,
+            subscription_status: "INACTIVE",
+            manual_profile_kind: manualKind,
+          },
+          update: {
+            name: provisionalName,
+            role,
+            manual_profile_kind: manualKind,
+          },
+        });
+        await syncExtensionTablesForRegistrationKind(tx, userId, registrationKind);
       });
-      console.log("Profile created/updated successfully:", authData.user.id, "role:", role);
+      console.log("Profile created/updated successfully:", userId, "role:", role);
     } catch (profileError) {
       console.error("Profile creation error:", profileError);
       return NextResponse.json(

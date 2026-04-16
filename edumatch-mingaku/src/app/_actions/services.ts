@@ -18,19 +18,19 @@ export type ServiceWithProvider = Service & {
   };
 };
 
-type ProviderWithBusinessRow = {
+type ProviderWithCorporateRow = {
   id: string;
   name: string;
   email: string;
   avatar_url: string | null;
-  serviceBusiness: {
+  corporateProfile: {
     notification_email_2: string | null;
     notification_email_3: string | null;
   } | null;
 };
 
 function flattenServiceProvider(
-  p: ProviderWithBusinessRow | null,
+  p: ProviderWithCorporateRow | null,
   fallbackProviderId: string
 ): ServiceWithProvider["provider"] {
   if (!p) {
@@ -43,14 +43,14 @@ function flattenServiceProvider(
       notification_email_3: null,
     };
   }
-  const sb = p.serviceBusiness;
+  const cp = p.corporateProfile;
   return {
     id: p.id,
     name: p.name,
     email: p.email,
     avatar_url: p.avatar_url,
-    notification_email_2: sb?.notification_email_2 ?? null,
-    notification_email_3: sb?.notification_email_3 ?? null,
+    notification_email_2: cp?.notification_email_2 ?? null,
+    notification_email_3: cp?.notification_email_3 ?? null,
   };
 }
 
@@ -340,7 +340,7 @@ export async function getAllServices(): Promise<ServiceWithProvider[]> {
             name: true,
             email: true,
             avatar_url: true,
-            serviceBusiness: {
+            corporateProfile: {
               select: { notification_email_2: true, notification_email_3: true },
             },
           },
@@ -354,7 +354,7 @@ export async function getAllServices(): Promise<ServiceWithProvider[]> {
 
     return services.map((s) => ({
       ...s,
-      provider: flattenServiceProvider(s.provider as ProviderWithBusinessRow | null, s.provider_id),
+      provider: flattenServiceProvider(s.provider as ProviderWithCorporateRow | null, s.provider_id),
     }));
   } catch (error) {
     if (isDbUnavailable(error)) {
@@ -394,7 +394,7 @@ export async function getPopularServices(limit: number = 5): Promise<ServiceWith
             name: true,
             email: true,
             avatar_url: true,
-            serviceBusiness: {
+            corporateProfile: {
               select: { notification_email_2: true, notification_email_3: true },
             },
           },
@@ -409,7 +409,7 @@ export async function getPopularServices(limit: number = 5): Promise<ServiceWith
 
     return services.map((s) => ({
       ...s,
-      provider: flattenServiceProvider(s.provider as ProviderWithBusinessRow | null, s.provider_id),
+      provider: flattenServiceProvider(s.provider as ProviderWithCorporateRow | null, s.provider_id),
     }));
   } catch (error) {
     if (isDbUnavailable(error)) {
@@ -438,7 +438,7 @@ export async function getServiceById(id: string): Promise<ServiceWithProvider | 
             name: true,
             email: true,
             avatar_url: true,
-            serviceBusiness: {
+            corporateProfile: {
               select: { notification_email_2: true, notification_email_3: true },
             },
           },
@@ -474,7 +474,7 @@ export async function getServiceById(id: string): Promise<ServiceWithProvider | 
     return {
       ...service,
       provider: flattenServiceProvider(
-        service.provider as ProviderWithBusinessRow | null,
+        service.provider as ProviderWithCorporateRow | null,
         service.provider_id
       ),
     };
@@ -520,7 +520,7 @@ export async function getServicesByCategory(category: string): Promise<ServiceWi
             name: true,
             email: true,
             avatar_url: true,
-            serviceBusiness: {
+            corporateProfile: {
               select: { notification_email_2: true, notification_email_3: true },
             },
           },
@@ -533,7 +533,7 @@ export async function getServicesByCategory(category: string): Promise<ServiceWi
 
     return services.map((s) => ({
       ...s,
-      provider: flattenServiceProvider(s.provider as ProviderWithBusinessRow | null, s.provider_id),
+      provider: flattenServiceProvider(s.provider as ProviderWithCorporateRow | null, s.provider_id),
     }));
   } catch (error) {
     if (isDbUnavailable(error)) {
@@ -581,11 +581,11 @@ export async function createService(input: CreateServiceInput): Promise<CreateSe
       return { success: false, error: "ユーザー情報の取得に失敗しました。プロフィールを登録してください。" };
     }
 
-    const hasBusiness = await prisma.serviceBusiness.findUnique({
+    const hasCorporate = await prisma.corporateProfile.findUnique({
       where: { id: user.id },
       select: { id: true },
     });
-    if (profile.role !== ("ADMIN" as Role) && !hasBusiness) {
+    if (profile.role !== ("ADMIN" as Role) && !hasCorporate) {
       return {
         success: false,
         error: "サービスを投稿する権限がありません。サービス事業者としてプロフィール登録を完了してください。",
@@ -749,7 +749,7 @@ export async function getPendingServices(): Promise<ServiceWithProvider[]> {
             name: true,
             email: true,
             avatar_url: true,
-            serviceBusiness: {
+            corporateProfile: {
               select: { notification_email_2: true, notification_email_3: true },
             },
           },
@@ -761,7 +761,7 @@ export async function getPendingServices(): Promise<ServiceWithProvider[]> {
 
     return services.map((s) => ({
       ...s,
-      provider: flattenServiceProvider(s.provider as ProviderWithBusinessRow | null, s.provider_id),
+      provider: flattenServiceProvider(s.provider as ProviderWithCorporateRow | null, s.provider_id),
     }));
   } catch (e) {
     console.error("Error fetching pending services:", e);

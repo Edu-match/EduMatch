@@ -3,6 +3,7 @@ import { createClient } from "@/utils/supabase/server";
 import { createServiceRoleClient } from "@/utils/supabase/server-admin";
 import { prisma } from "@/lib/prisma";
 import { getSiteOrigin } from "@/lib/site-url";
+import { syncExtensionTablesForRegistrationKind } from "@/lib/registration-profile";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +40,9 @@ export async function GET(request: NextRequest) {
       // DB接続エラーでも続行（Profileなしとして扱う）
     }
 
-    const registrationKind = userType === "provider" ? "service_business" : "general";
+    const registrationKind =
+      userType === "provider" ? ("service_business" as const) : ("general" as const);
+    const manualKind = registrationKind === "service_business" ? "corporate" : "general";
 
     // 本番ではNEXT_PUBLIC_SITE_URLを使用（localhostへ飛ばないようにする）
     const origin = getSiteOrigin(new URL(request.url).origin);
@@ -47,18 +50,23 @@ export async function GET(request: NextRequest) {
     const userMetadata = data.user.user_metadata || {};
     const name = userMetadata.name || userMetadata.full_name || data.user.email?.split("@")[0] || "ユーザー";
 
-    // Profileが存在しない場合は作成
+    // Profileが存在しない場合は作成（登録種別に応じて GeneralProfile / CorporateProfile も同時作成）
     if (!existingProfile) {
       try {
-        existingProfile = await prisma.profile.create({
-          data: {
-            id: data.user.id,
-            name,
-            email: data.user.email || "",
-            role: "VIEWER",
-            subscription_status: "INACTIVE",
-            avatar_url: userMetadata.avatar_url || userMetadata.picture || null,
-          },
+        existingProfile = await prisma.$transaction(async (tx) => {
+          const p = await tx.profile.create({
+            data: {
+              id: data.user.id,
+              name,
+              email: data.user.email || "",
+              role: "VIEWER",
+              subscription_status: "INACTIVE",
+              avatar_url: userMetadata.avatar_url || userMetadata.picture || null,
+              manual_profile_kind: manualKind,
+            },
+          });
+          await syncExtensionTablesForRegistrationKind(tx, data.user.id, registrationKind);
+          return p;
         });
       } catch (profileError) {
         console.error("Profile creation error:", profileError);

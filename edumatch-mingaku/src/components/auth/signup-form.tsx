@@ -7,7 +7,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Mail, Lock, Loader2, Chrome, AlertCircle } from "lucide-react";
+import { Mail, Lock, Loader2, Chrome, AlertCircle, Building2, UserCircle2, Check } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { signupSchema, type SignupInput } from "@/lib/validations/auth";
 import { toast } from "sonner";
 import { createSupabaseBrowserClient } from "@/utils/supabase/client";
@@ -75,7 +76,11 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
         await new Promise(resolve => setTimeout(resolve, 500));
       }
 
-      toast.success("登録が完了しました。次にプロフィールを登録してください。");
+      toast.success(
+        userType === "provider"
+          ? "事業者として登録しました。続けて事業者プロフィールを入力してください。"
+          : "一般利用として登録しました。続けてプロフィールを入力してください。"
+      );
       
       // クライアントサイドでリダイレクト（セッションCookieが確実に設定されるように）
       const profileUrl = "/profile/register?first=1";
@@ -94,30 +99,93 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* ユーザータイプ選択 */}
-      <div className="grid grid-cols-2 gap-2 p-1 bg-muted rounded-lg">
-        <button
-          type="button"
-          onClick={() => setUserType("viewer")}
-          className={`py-2 text-sm font-medium rounded-md transition-all ${
-            userType === "viewer"
-              ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
+      <div className="space-y-3">
+        <div>
+          <p className="text-sm font-semibold text-foreground">登録の種類を選んでください</p>
+          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+            あとから変更できます。選んだ種類に合わせてプロフィール入力項目が切り替わります。
+          </p>
+        </div>
+        <div
+          className="grid gap-3 sm:grid-cols-2"
+          role="radiogroup"
+          aria-label="新規登録の種類"
         >
-          一般ユーザー
-        </button>
-        <button
-          type="button"
-          onClick={() => setUserType("provider")}
-          className={`py-2 text-sm font-medium rounded-md transition-all ${
-            userType === "provider"
-              ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          サービス事業者
-        </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={userType === "viewer"}
+            onClick={() => setUserType("viewer")}
+            className={cn(
+              "relative text-left rounded-xl border p-4 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+              userType === "viewer"
+                ? "border-primary bg-primary/5 shadow-sm"
+                : "border-border bg-card hover:bg-muted/40"
+            )}
+          >
+            <span
+              className={cn(
+                "absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full border text-xs",
+                userType === "viewer"
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-muted-foreground/30 text-transparent"
+              )}
+              aria-hidden
+            >
+              <Check className="h-3.5 w-3.5" />
+            </span>
+            <UserCircle2
+              className={cn(
+                "h-8 w-8 mb-2",
+                userType === "viewer" ? "text-primary" : "text-muted-foreground"
+              )}
+            />
+            <span className="block text-sm font-semibold text-foreground">一般利用</span>
+            <span className="mt-1 block text-xs text-muted-foreground leading-relaxed">
+              個人・保護者・学生など。サービスの検索・比較・資料請求に利用します。
+            </span>
+          </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={userType === "provider"}
+            onClick={() => setUserType("provider")}
+            className={cn(
+              "relative text-left rounded-xl border p-4 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+              userType === "provider"
+                ? "border-primary bg-primary/5 shadow-sm"
+                : "border-border bg-card hover:bg-muted/40"
+            )}
+          >
+            <span
+              className={cn(
+                "absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full border text-xs",
+                userType === "provider"
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-muted-foreground/30 text-transparent"
+              )}
+              aria-hidden
+            >
+              <Check className="h-3.5 w-3.5" />
+            </span>
+            <Building2
+              className={cn(
+                "h-8 w-8 mb-2",
+                userType === "provider" ? "text-primary" : "text-muted-foreground"
+              )}
+            />
+            <span className="block text-sm font-semibold text-foreground">事業者・団体</span>
+            <span className="mt-1 block text-xs text-muted-foreground leading-relaxed">
+              EdTech事業者や教育関連団体。サービス掲載・投稿・問い合わせ受付に利用します。
+            </span>
+          </button>
+        </div>
+        <p className="text-xs text-muted-foreground text-center sm:text-left">
+          選択中:{" "}
+          <span className="font-medium text-foreground">
+            {userType === "provider" ? "事業者・団体（企業向けプロフィール）" : "一般利用"}
+          </span>
+        </p>
       </div>
 
       {/* Google登録 */}
