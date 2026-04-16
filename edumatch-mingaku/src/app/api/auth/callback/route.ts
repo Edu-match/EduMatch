@@ -108,6 +108,33 @@ export async function GET(request: NextRequest) {
       return redirectWithSession(registerUrl);
     }
 
+    // 既存 Profile で拡張行が両方無い場合は補修してから進める
+    if (!profileRow.generalProfile && !profileRow.corporateProfile) {
+      const inferredKind =
+        profileRow.manual_profile_kind === "corporate" ||
+        profileRow.role === "PROVIDER" ||
+        userMetadata.registration_kind === "service_business"
+          ? ("service_business" as const)
+          : ("general" as const);
+      try {
+        await prisma.$transaction(async (tx) => {
+          await syncExtensionTablesForRegistrationKind(tx, userId, inferredKind);
+        });
+        profileRow = await prisma.profile.findUnique({
+          where: { id: userId },
+          include: { generalProfile: true, corporateProfile: true },
+        });
+      } catch (repairErr) {
+        console.error("Profile extension repair error:", repairErr);
+      }
+    }
+
+    if (!profileRow) {
+      return redirectWithSession(
+        new URL("/auth/login?error=profile_creation_failed", origin)
+      );
+    }
+
     if (!profileRow.onboarding_completed_at) {
       const registerUrl = new URL("/profile/register", origin);
       registerUrl.searchParams.set("first", "1");

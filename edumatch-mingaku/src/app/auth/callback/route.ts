@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
   try {
     const existingProfile = await prisma.profile.findUnique({
       where: { id: data.user.id },
+      include: { generalProfile: true, corporateProfile: true },
     });
 
     if (!existingProfile) {
@@ -93,6 +94,20 @@ export async function GET(request: NextRequest) {
         registerUrl.searchParams.set("next", redirectTo);
       }
       return redirectWithSession(registerUrl);
+    } else if (!existingProfile.generalProfile && !existingProfile.corporateProfile) {
+      const inferredKind =
+        existingProfile.manual_profile_kind === "corporate" ||
+        existingProfile.role === "PROVIDER" ||
+        data.user.user_metadata?.registration_kind === "service_business"
+          ? "service_business"
+          : "general";
+      try {
+        await prisma.$transaction(async (tx) => {
+          await syncExtensionTablesForRegistrationKind(tx, data.user.id, inferredKind);
+        });
+      } catch (repairErr) {
+        console.error("Legacy profile extension repair error:", repairErr);
+      }
     }
   } catch (profileError) {
     console.error("Profile creation error:", profileError);

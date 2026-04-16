@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { effectiveIsCorporateProfile } from "@/lib/manual-profile-kind";
+import { syncExtensionTablesForRegistrationKind } from "@/lib/registration-profile";
 
 export const dynamic = "force-dynamic";
 
@@ -81,6 +82,7 @@ export async function POST(request: NextRequest) {
     try {
       existingProfile = await prisma.profile.findUnique({
         where: { id: data.user.id },
+        include: { generalProfile: true, corporateProfile: true },
       });
     } catch (dbError) {
       console.error("Profile lookup error:", dbError);
@@ -92,16 +94,28 @@ export async function POST(request: NextRequest) {
       const userMetadata = data.user.user_metadata || {};
       const name = userMetadata.name || userMetadata.full_name || data.user.email?.split("@")[0] || "ユーザー";
 
+      const registrationKind =
+        userMetadata.registration_kind === "service_business" ? "service_business" : "general";
+      const manualKind = registrationKind === "service_business" ? "corporate" : "general";
+      const profileRole = registrationKind === "service_business" ? "PROVIDER" : "VIEWER";
+
       try {
-        existingProfile = await prisma.profile.create({
-          data: {
-            id: data.user.id,
-            name,
-            email: data.user.email || "",
-            role: "VIEWER",
-            subscription_status: "INACTIVE",
-            avatar_url: userMetadata.avatar_url || userMetadata.picture || null,
-          },
+        existingProfile = await prisma.$transaction(async (tx) => {
+          const p = await tx.profile.create({
+            data: {
+              id: data.user.id,
+              name,
+              email: data.user.email || "",
+              role: profileRole,
+              subscription_status: "INACTIVE",
+              avatar_url: userMetadata.avatar_url || userMetadata.picture || null,
+              manual_profile_kind: manualKind,
+              onboarding_completed_at: null,
+            },
+            include: { generalProfile: true, corporateProfile: true },
+          });
+          await syncExtensionTablesForRegistrationKind(tx, data.user.id, registrationKind);
+          return p;
         });
       } catch (profileError) {
         console.error("Profile creation error:", profileError);
@@ -113,6 +127,35 @@ export async function POST(request: NextRequest) {
     }
 
     // ロールチェック（必須）
+    if (!existingProfile) {
+      return NextResponse.json(
+        { error: "プロフィールが見つかりませんでした" },
+        { status: 404 }
+      );
+    }
+
+    // 旧データや途中失敗で拡張行が無い場合は、ログイン時に自動補修する
+    if (!existingProfile.generalProfile && !existingProfile.corporateProfile) {
+      const userMetadata = data.user.user_metadata || {};
+      const inferredKind =
+        existingProfile.manual_profile_kind === "corporate" ||
+        existingProfile.role === "PROVIDER" ||
+        userMetadata.registration_kind === "service_business"
+          ? "service_business"
+          : "general";
+      try {
+        await prisma.$transaction(async (tx) => {
+          await syncExtensionTablesForRegistrationKind(tx, data.user.id, inferredKind);
+        });
+        existingProfile = await prisma.profile.findUnique({
+          where: { id: data.user.id },
+          include: { generalProfile: true, corporateProfile: true },
+        });
+      } catch (repairErr) {
+        console.error("Profile extension repair error:", repairErr);
+      }
+    }
+
     if (!existingProfile) {
       return NextResponse.json(
         { error: "プロフィールが見つかりませんでした" },
