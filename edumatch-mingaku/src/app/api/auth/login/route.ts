@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { effectiveIsCorporateProfile } from "@/lib/manual-profile-kind";
 
 export const dynamic = "force-dynamic";
 
@@ -123,9 +124,12 @@ export async function POST(request: NextRequest) {
       where: { id: data.user.id },
       select: { id: true },
     });
-    const isProviderAccount =
-      !!hasCorporateProfile || existingProfile.role === "PROVIDER";
-    // ADMIN はどちらの入口でも許可。企業ユーザーは CorporateProfile 行、閲覧者はその行が無いこと
+    const isProviderAccount = effectiveIsCorporateProfile(
+      existingProfile.role,
+      existingProfile.manual_profile_kind,
+      !!hasCorporateProfile
+    );
+    // ADMIN はどちらの入口でも許可。事業者判定は manual_profile_kind・Corporate 行・role を参照
     if (existingProfile.role !== "ADMIN") {
       if (userType === "provider" && !isProviderAccount) {
         return NextResponse.json(

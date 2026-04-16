@@ -2,6 +2,7 @@ import { cache } from "react";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { effectiveIsCorporateProfile } from "@/lib/manual-profile-kind";
 
 /**
  * 現在のユーザーを取得します（同一リクエスト内で1回だけ実行）
@@ -50,22 +51,24 @@ export const getCurrentProfile = cache(async () => {
 });
 
 /**
- * 投稿者向け（CorporateProfile 行あり、または Profile.role が PROVIDER）、または ADMIN。
+ * 投稿者向け（manual_profile_kind / Corporate 行 / PROVIDER を総合判定）、または ADMIN。
  */
 export async function requireProvider() {
   const user = await requireAuth();
   const profile = await getCurrentProfile();
-  if (profile?.role === "ADMIN") {
+  if (!profile) {
+    redirect("/auth/login");
+  }
+  if (profile.role === "ADMIN") {
     return { user, profile };
   }
-  if (profile?.role === "PROVIDER") {
-    return { user, profile };
-  }
-  const corporate = await prisma.corporateProfile.findUnique({
+  const hasCorp = !!(await prisma.corporateProfile.findUnique({
     where: { id: user.id },
     select: { id: true },
-  });
-  if (!corporate) {
+  }));
+  if (
+    !effectiveIsCorporateProfile(profile.role, profile.manual_profile_kind, hasCorp)
+  ) {
     redirect(
       "/dashboard?message=" +
         encodeURIComponent(

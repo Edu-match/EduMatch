@@ -4,6 +4,10 @@ import { getCurrentProfile } from "@/lib/auth";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/utils/supabase/server";
+import {
+  effectiveIsCorporateProfile,
+  resolveProfileExtensionTarget,
+} from "@/lib/manual-profile-kind";
 
 export async function getCurrentUserRole() {
   const profile = await getCurrentProfile();
@@ -53,18 +57,25 @@ export async function getCurrentUserProfile(): Promise<CurrentUserProfile | null
 
   const g = full.generalProfile;
   const c = full.corporateProfile;
-  // ADMIN は常に一般表示（DB に誤った CorporateProfile が残っていても無視）
-  const is_corporate_profile = full.role === "ADMIN" ? false : !!c;
+  const is_corporate_profile = effectiveIsCorporateProfile(
+    full.role,
+    full.manual_profile_kind,
+    !!c
+  );
 
-  const organization = is_corporate_profile ? (c?.organization ?? null) : (g?.organization ?? null);
+  const organization = is_corporate_profile
+    ? (c?.organization ?? g?.organization ?? null)
+    : (g?.organization ?? c?.organization ?? null);
   const organization_type = is_corporate_profile
-    ? (c?.organization_type ?? null)
-    : (g?.organization_type ?? null);
-  const legal_name = is_corporate_profile ? (c?.legal_name ?? null) : (g?.legal_name ?? null);
+    ? (c?.organization_type ?? g?.organization_type ?? null)
+    : (g?.organization_type ?? c?.organization_type ?? null);
+  const legal_name = is_corporate_profile
+    ? (c?.legal_name ?? g?.legal_name ?? null)
+    : (g?.legal_name ?? c?.legal_name ?? null);
   const age = g?.age ?? null;
   const organization_type_other = is_corporate_profile
-    ? (c?.organization_type_other ?? null)
-    : (g?.organization_type_other ?? null);
+    ? (c?.organization_type_other ?? g?.organization_type_other ?? null)
+    : (g?.organization_type_other ?? c?.organization_type_other ?? null);
 
   return {
     name: full.name,
@@ -77,8 +88,8 @@ export async function getCurrentUserProfile(): Promise<CurrentUserProfile | null
     organization_type,
     bio: full.bio,
     website: full.website,
-    notification_email_2: c?.notification_email_2 ?? null,
-    notification_email_3: c?.notification_email_3 ?? null,
+    notification_email_2: is_corporate_profile ? (c?.notification_email_2 ?? null) : null,
+    notification_email_3: is_corporate_profile ? (c?.notification_email_3 ?? null) : null,
     role: full.role,
     is_corporate_profile,
     organization_type_other,
@@ -166,23 +177,6 @@ export type UpdateProfileInput = {
   completeInitialSetup?: boolean;
 };
 
-function resolveProfileTarget(
-  full: {
-    role: string;
-    generalProfile: { id: string } | null;
-    corporateProfile: { id: string } | null;
-  },
-  registration_kind: "general" | "service_business" | null
-): "general" | "service_business" {
-  // 管理者は常に一般側（GeneralProfile）。企業用 CorporateProfile は持たない。
-  if (full.role === "ADMIN") return "general";
-  // 既にどちらかの拡張行がある場合はそこに固定（アカウント種別の切り替え不可）
-  if (full.corporateProfile) return "service_business";
-  if (full.generalProfile) return "general";
-  // 拡張がまだ無いときのみメタデータで初回を決める（レガシー・移行用）
-  if (registration_kind === "service_business") return "service_business";
-  return "general";
-}
 
 export async function updateProfile(input: UpdateProfileInput): Promise<{ success: boolean; error?: string }> {
   try {
@@ -202,7 +196,13 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
     const registration_kind =
       rkRaw === "service_business" || rkRaw === "general" ? rkRaw : null;
 
-    const target = resolveProfileTarget(full, registration_kind);
+    const target = resolveProfileExtensionTarget(
+      full.role,
+      full.manual_profile_kind,
+      !!full.generalProfile,
+      !!full.corporateProfile,
+      registration_kind
+    );
 
     await prisma.$transaction(async (tx) => {
       await tx.profile.update({
