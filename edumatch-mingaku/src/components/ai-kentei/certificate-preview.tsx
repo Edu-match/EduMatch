@@ -20,7 +20,7 @@ interface CertificatePreviewProps {
  */
 const OVERLAY = {
   name: {
-    right: '35%',
+    right: '31%',
     top: '27%',
     maxHeight: '38%',
     fontSize: 'clamp(0.78rem, 2.15cqi, 1.28rem)',
@@ -31,7 +31,7 @@ const OVERLAY = {
     fontSize: 'clamp(0.72rem, 1.85cqi, 1.15rem)',
   },
   date: {
-    right: '83%',
+    right: '85%',
     top: '38%',
     fontSize: 'clamp(0.68rem, 1.65cqi, 1.05rem)',
   },
