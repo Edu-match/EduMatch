@@ -43,9 +43,9 @@ export function CertificatePreview({
     >
       <img src="/ai-kentei/certificate-template.png" alt="" className="absolute inset-0 h-full w-full object-cover" />
 
-      {/* 氏名のみ（テンプレの「殿」列と縦方向で揃える。サイズは本文より一段大きい程度に抑える） */}
+      {/* 氏名のみ（テンプレの「殿」直上になるよう下げ、本文列から離すためやや右へ） */}
       <div
-        className="absolute right-[33.5%] top-[22%] max-h-[46%] overflow-hidden text-[#4a2d12]"
+        className="absolute right-[30.2%] top-[29%] max-h-[40%] overflow-hidden text-[#4a2d12]"
         style={verticalStyle}
       >
         <span
@@ -56,9 +56,9 @@ export function CertificatePreview({
         </span>
       </div>
 
-      {/* スコア値（「スコア」ラベルの左列・やや下） */}
+      {/* スコア値（日付列と離すため中央寄り＝ right を小さく） */}
       <div
-        className="absolute right-[67.2%] top-[34%] text-[#4a2d12]"
+        className="absolute right-[59.5%] top-[35.5%] text-[#4a2d12]"
         style={verticalStyle}
       >
         <span className="font-semibold" style={{ fontSize: 'clamp(0.72rem, 1.85cqi, 1.15rem)', lineHeight: 1.15 }}>
@@ -66,9 +66,9 @@ export function CertificatePreview({
         </span>
       </div>
 
-      {/* 認定日値（「認定日」ラベルの下から開始して重なり回避） */}
+      {/* 認定日値（ラベル「認定日」と重ならないよう下げ、左端に寄りすぎないよう right を下げる） */}
       <div
-        className="absolute right-[81.2%] top-[31%] text-[#4a2d12]"
+        className="absolute right-[74.8%] top-[39.5%] text-[#4a2d12]"
         style={verticalStyle}
       >
         <span style={{ fontSize: 'clamp(0.68rem, 1.65cqi, 1.05rem)', lineHeight: 1.38 }}>
