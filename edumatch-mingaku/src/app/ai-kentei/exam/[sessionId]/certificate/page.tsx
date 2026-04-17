@@ -208,8 +208,8 @@ export default function CertificatePage({ params }: { params: Promise<{ sessionI
             結果に戻る
           </Link>
 
-          <div className="grid lg:grid-cols-2 gap-8">
-            {/* Form */}
+          <div className="flex flex-col gap-10">
+            {/* Form — プレビューは下で全幅（16:9 の高さを確保し重なりを防ぐ） */}
             <Card className="border-border/50 h-fit">
               <CardHeader>
                 <CardTitle className="text-xl">認定証の発行</CardTitle>
@@ -427,8 +427,8 @@ export default function CertificatePage({ params }: { params: Promise<{ sessionI
               </CardContent>
             </Card>
 
-            {/* Preview */}
-            <div className="space-y-4">
+            {/* Preview — 全幅で 16:9 の余裕を確保 */}
+            <div className="space-y-4 w-full min-w-0">
               <h3 className="text-lg font-semibold text-foreground">プレビュー</h3>
               <CertificatePreview
                 name={resolvedName || 'お名前'}
