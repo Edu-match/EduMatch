@@ -31,7 +31,7 @@ const OVERLAY = {
     fontSize: 'clamp(0.72rem, 1.85cqi, 1.15rem)',
   },
   date: {
-    right: '85%',
+    right: '75%',
     top: '50%',
     fontSize: 'clamp(0.68rem, 1.65cqi, 1.05rem)',
   },
