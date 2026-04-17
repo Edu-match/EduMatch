@@ -199,7 +199,7 @@ export default function CertificatePage({ params }: { params: Promise<{ sessionI
   return (
     <div className="min-h-screen bg-background">
       <main className="container mx-auto px-4 py-8 md:py-12">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <Link
             href={`/ai-kentei/exam/${resolvedParams.sessionId}/result`}
             className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors"
@@ -208,9 +208,8 @@ export default function CertificatePage({ params }: { params: Promise<{ sessionI
             結果に戻る
           </Link>
 
-          <div className="flex flex-col gap-10">
-            {/* Form — プレビューは下で全幅（16:9 の高さを確保し重なりを防ぐ） */}
-            <Card className="border-border/50 h-fit">
+          <div className="grid gap-8 lg:grid-cols-2 lg:items-start">
+            <Card className="border-border/50 h-fit min-w-0">
               <CardHeader>
                 <CardTitle className="text-xl">認定証の発行</CardTitle>
                 <CardDescription>
@@ -427,8 +426,7 @@ export default function CertificatePage({ params }: { params: Promise<{ sessionI
               </CardContent>
             </Card>
 
-            {/* Preview — 全幅で 16:9 の余裕を確保 */}
-            <div className="space-y-4 w-full min-w-0">
+            <div className="space-y-4 min-w-0 lg:sticky lg:top-24">
               <h3 className="text-lg font-semibold text-foreground">プレビュー</h3>
               <CertificatePreview
                 name={resolvedName || 'お名前'}
