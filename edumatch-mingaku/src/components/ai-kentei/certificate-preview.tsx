@@ -85,7 +85,7 @@ export function CertificatePreview({
         </span>
       </div>
 
-      {/* ② スコア数値のみ（ラベル「スコア」は背景） */}
+      {/* ② スコア数値（例: ２０／２５。ラベル「スコア」は背景） */}
       <div
         className="absolute text-[#4a2d12]"
         style={{
