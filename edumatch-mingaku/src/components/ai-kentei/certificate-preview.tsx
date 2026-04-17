@@ -1,5 +1,6 @@
 'use client'
 
+import type { CSSProperties } from 'react'
 import { certificateMincho } from '@/lib/fonts/certificate-mincho'
 
 interface CertificatePreviewProps {
@@ -9,6 +10,35 @@ interface CertificatePreviewProps {
   totalQuestions: number
   date: Date
   certificateId?: string | null
+}
+
+/**
+ * 背景画像 `public/ai-kentei/certificate-template.png` 上の可変テキスト位置。
+ * 氏名・スコア・認定日は互いに無関係。ここだけを画像に合わせて調整する。
+ * （% は証書コンテナの幅・高さ基準の absolute 配置）
+ */
+const OVERLAY = {
+  name: {
+    right: '29%',
+    top: '27%',
+    maxHeight: '38%',
+    fontSize: 'clamp(0.78rem, 2.15cqi, 1.28rem)',
+  },
+  score: {
+    right: '61%',
+    top: '36%',
+    fontSize: 'clamp(0.72rem, 1.85cqi, 1.15rem)',
+  },
+  date: {
+    right: '76%',
+    top: '38%',
+    fontSize: 'clamp(0.68rem, 1.65cqi, 1.05rem)',
+  },
+} as const
+
+const verticalTategaki: CSSProperties = {
+  writingMode: 'vertical-rl',
+  textOrientation: 'upright',
 }
 
 export function CertificatePreview({
@@ -25,16 +55,12 @@ export function CertificatePreview({
       month: 'long',
       day: 'numeric',
     }).format(d)
+
   const toFullWidthDigits = (value: string) =>
     value.replace(/\d/g, (digit) => String.fromCharCode(digit.charCodeAt(0) + 0xfee0))
 
   void photoUrl
   void certificateId
-
-  const verticalStyle = {
-    writingMode: 'vertical-rl' as const,
-    textOrientation: 'upright' as const,
-  }
 
   return (
     <div
@@ -43,35 +69,45 @@ export function CertificatePreview({
     >
       <img src="/ai-kentei/certificate-template.png" alt="" className="absolute inset-0 h-full w-full object-cover" />
 
-      {/* 氏名のみ（テンプレの「殿」直上になるよう下げ、本文列から離すためやや右へ） */}
+      {/* ① 氏名（テンプレの「殿」との位置は画像側が正。ここは名前のみ） */}
       <div
-        className="absolute right-[30.2%] top-[29%] max-h-[40%] overflow-hidden text-[#4a2d12]"
-        style={verticalStyle}
+        className="absolute overflow-hidden text-[#4a2d12]"
+        style={{
+          ...verticalTategaki,
+          right: OVERLAY.name.right,
+          top: OVERLAY.name.top,
+          maxHeight: OVERLAY.name.maxHeight,
+        }}
       >
-        <span
-          className="font-semibold tracking-[0.03em]"
-          style={{ fontSize: 'clamp(0.78rem, 2.15cqi, 1.28rem)', lineHeight: 1.06 }}
-        >
+        <span className="font-semibold tracking-[0.03em]" style={{ fontSize: OVERLAY.name.fontSize, lineHeight: 1.06 }}>
           {name || '受験者名'}
         </span>
       </div>
 
-      {/* スコア値（日付列と離すため中央寄り＝ right を小さく） */}
+      {/* ② スコア数値のみ（ラベル「スコア」は背景） */}
       <div
-        className="absolute right-[59.5%] top-[35.5%] text-[#4a2d12]"
-        style={verticalStyle}
+        className="absolute text-[#4a2d12]"
+        style={{
+          ...verticalTategaki,
+          right: OVERLAY.score.right,
+          top: OVERLAY.score.top,
+        }}
       >
-        <span className="font-semibold" style={{ fontSize: 'clamp(0.72rem, 1.85cqi, 1.15rem)', lineHeight: 1.15 }}>
-          {toFullWidthDigits(`${score}`)}／{toFullWidthDigits(`${totalQuestions}`)}
+        <span className="font-semibold" style={{ fontSize: OVERLAY.score.fontSize, lineHeight: 1.15 }}>
+          {toFullWidthDigits(String(score))}／{toFullWidthDigits(String(totalQuestions))}
         </span>
       </div>
 
-      {/* 認定日値（ラベル「認定日」と重ならないよう下げ、左端に寄りすぎないよう right を下げる） */}
+      {/* ③ 認定日の値のみ（ラベル「認定日」は背景） */}
       <div
-        className="absolute right-[74.8%] top-[39.5%] text-[#4a2d12]"
-        style={verticalStyle}
+        className="absolute text-[#4a2d12]"
+        style={{
+          ...verticalTategaki,
+          right: OVERLAY.date.right,
+          top: OVERLAY.date.top,
+        }}
       >
-        <span style={{ fontSize: 'clamp(0.68rem, 1.65cqi, 1.05rem)', lineHeight: 1.38 }}>
+        <span style={{ fontSize: OVERLAY.date.fontSize, lineHeight: 1.38 }}>
           {toFullWidthDigits(formatDate(date))}
         </span>
       </div>
