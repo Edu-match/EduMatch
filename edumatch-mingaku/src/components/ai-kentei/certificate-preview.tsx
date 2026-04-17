@@ -15,22 +15,23 @@ interface CertificatePreviewProps {
 /**
  * 背景画像 `public/ai-kentei/certificate-template.png` 上の可変テキスト位置。
  * 氏名・スコア・認定日は互いに無関係。ここだけを画像に合わせて調整する。
- * （% は証書コンテナの幅・高さ基準の absolute 配置）
+ *
+ * `right` はコンテナ右端からの距離。値を大きくするとブロック全体が左へ寄る。
  */
 const OVERLAY = {
   name: {
-    right: '29%',
+    right: '35%',
     top: '27%',
     maxHeight: '38%',
     fontSize: 'clamp(0.78rem, 2.15cqi, 1.28rem)',
   },
   score: {
-    right: '61%',
+    right: '68%',
     top: '36%',
     fontSize: 'clamp(0.72rem, 1.85cqi, 1.15rem)',
   },
   date: {
-    right: '76%',
+    right: '83%',
     top: '38%',
     fontSize: 'clamp(0.68rem, 1.65cqi, 1.05rem)',
   },
