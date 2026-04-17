@@ -157,6 +157,7 @@ function MarkdownLikeContent({ text }: { text: string }) {
   while (i < lines.length) {
     const line = lines[i];
     const trimmed = line.trimEnd();
+    const normalized = trimmed.trim();
 
     if (trimmed.startsWith("### ")) {
       nodes.push(
@@ -195,8 +196,14 @@ function MarkdownLikeContent({ text }: { text: string }) {
       continue;
     }
 
+    if (normalized === "---") {
+      nodes.push(<hr key={`md-${keyIndex++}`} className="my-8 border-t-2 border-gray-200" />);
+      i += 1;
+      continue;
+    }
+
     // 空行はスキップ
-    if (trimmed === "") {
+    if (normalized === "") {
       i += 1;
       continue;
     }
@@ -263,11 +270,12 @@ function MarkdownLikeContent({ text }: { text: string }) {
       s.startsWith("# ") || s.startsWith("## ") || s.startsWith("### ");
     const isListLine = (s: string) =>
       s.startsWith("- ") || (s.startsWith("* ") && s.length > 2) || /^\d+\.\s+/.test(s);
+    const isDividerLine = (s: string) => s.trim() === "---";
     const paragraphLines: string[] = [];
     while (i < lines.length) {
       const ln = lines[i];
       const t = ln.trimEnd();
-      if (t === "" || isHeadingLine(t) || isListLine(t)) break;
+      if (t.trim() === "" || isHeadingLine(t) || isListLine(t) || isDividerLine(t)) break;
       paragraphLines.push(ln);
       i += 1;
     }
