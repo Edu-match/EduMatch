@@ -25,13 +25,15 @@ export function CertificatePreview({
       month: 'long',
       day: 'numeric',
     }).format(d)
+  const toFullWidthDigits = (value: string) =>
+    value.replace(/\d/g, (digit) => String.fromCharCode(digit.charCodeAt(0) + 0xfee0))
 
   void photoUrl
   void certificateId
 
   const verticalStyle = {
     writingMode: 'vertical-rl' as const,
-    textOrientation: 'mixed' as const,
+    textOrientation: 'upright' as const,
   }
 
   return (
@@ -43,31 +45,34 @@ export function CertificatePreview({
 
       {/* 氏名（テンプレ側の「殿」と組み合わせて ○○ 殿 にする） */}
       <div
-        className="absolute right-[36.4%] top-[17%] text-[#4a2d12]"
+        className="absolute right-[38.1%] top-[15.2%] text-[#4a2d12]"
         style={verticalStyle}
       >
-        <span className="font-semibold tracking-[0.04em]" style={{ fontSize: 'clamp(1.35rem, 4.1cqi, 2.75rem)', lineHeight: 1.12 }}>
+        <span
+          className="font-semibold tracking-[0.02em]"
+          style={{ fontSize: 'clamp(1.15rem, 3.35cqi, 2.25rem)', lineHeight: 1.08 }}
+        >
           {name || '受験者名'}
         </span>
       </div>
 
       {/* スコア値 */}
       <div
-        className="absolute right-[70.6%] top-[30.5%] text-[#4a2d12]"
+        className="absolute right-[68.9%] top-[31.8%] text-[#4a2d12]"
         style={verticalStyle}
       >
-        <span className="font-semibold" style={{ fontSize: 'clamp(1rem, 2.6cqi, 1.8rem)', lineHeight: 1.2 }}>
-          {score}／{totalQuestions}
+        <span className="font-semibold" style={{ fontSize: 'clamp(0.85rem, 2.1cqi, 1.4rem)', lineHeight: 1.18 }}>
+          {toFullWidthDigits(`${score}`)}／{toFullWidthDigits(`${totalQuestions}`)}
         </span>
       </div>
 
       {/* 認定日値 */}
       <div
-        className="absolute right-[82.3%] top-[27.5%] text-[#4a2d12]"
+        className="absolute right-[82.1%] top-[27.4%] text-[#4a2d12]"
         style={verticalStyle}
       >
-        <span style={{ fontSize: 'clamp(0.85rem, 2cqi, 1.35rem)', lineHeight: 1.45 }}>
-          {formatDate(date)}
+        <span style={{ fontSize: 'clamp(0.72rem, 1.72cqi, 1.12rem)', lineHeight: 1.42 }}>
+          {toFullWidthDigits(formatDate(date))}
         </span>
       </div>
     </div>
