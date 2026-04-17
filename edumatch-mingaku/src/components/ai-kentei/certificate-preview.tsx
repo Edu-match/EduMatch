@@ -26,15 +26,16 @@ export function CertificatePreview({
       day: 'numeric',
     }).format(d)
 
+  void photoUrl
+  void certificateId
+
+  const verticalColumnStyle = {
+    writingMode: 'vertical-rl' as const,
+    textOrientation: 'mixed' as const,
+  }
+
   return (
-    /*
-     * container-type: inline-size → 子要素で cqi (container inline) 単位が使える
-     * cqi は横幅の % → 証書のサイズに追従する responsive font
-     */
-    <div
-      className={`relative w-full aspect-video overflow-hidden rounded-lg shadow-2xl [container-type:inline-size] ${certificateMincho.className}`}
-      lang="ja"
-    >
+    <div className={`relative w-full aspect-video overflow-hidden rounded-lg shadow-2xl ${certificateMincho.className}`} lang="ja">
       {/* 和紙地 */}
       <div className="absolute inset-0 bg-[#faf6ef]" />
       <div className="absolute inset-0 opacity-[0.04] [background-image:repeating-linear-gradient(135deg,#5c4030_0px,transparent_1px,transparent_12px)]" />
@@ -49,182 +50,140 @@ export function CertificatePreview({
       <div className="absolute bottom-3 left-3 h-5 w-5 border-b-2 border-l-2 border-[#8b6914]" />
       <div className="absolute bottom-3 right-3 h-5 w-5 border-b-2 border-r-2 border-[#8b6914]" />
 
-      {/*
-       * 縦書き列レイアウト（右→左）
-       *
-       * ルール:
-       *   • flex コンテナに writing-mode を付けない（flex 主軸が変わって崩れる）
-       *   • 各列に個別に writing-mode: vertical-rl をインラインスタイルで付ける
-       *   • h-full を各列に付ける（writing-mode 要素は align-items:stretch が
-       *     効かないブラウザがあるため明示的に物理的高さを固定する）
-       *   • flex-row-reverse → DOM 先頭が右端になる
-       *   • フォントサイズは cqi 単位でコンテナ幅に追従させる
-       */}
-      <div
-        className="absolute flex flex-row-reverse overflow-hidden"
-        style={{
-          inset: '5%',
-          height: '90%',
-          gap: '1.8%',
-        }}
-      >
-
-        {/* ① 認定証（右端・超大） */}
+      <div className="absolute inset-[4.5%]">
         <div
-          className="shrink-0 h-full overflow-hidden flex items-center justify-center"
-          style={{
-            writingMode: 'vertical-rl',
-            paddingInline: '0.8%',
-          }}
+          className="absolute bottom-[5%] right-[24%] top-[5%] w-px bg-[#c7ab73]/70"
+        />
+
+        <div
+          className="absolute right-[6.5%] top-1/2 -translate-y-1/2 text-[#4a2d12]"
+          style={verticalColumnStyle}
         >
           <span
-            className="font-bold text-[#3b2a14]"
-            style={{
-              fontSize: 'clamp(2rem, 9cqi, 4rem)',
-              letterSpacing: '0.2em',
-            }}
+            className="font-semibold tracking-[0.06em]"
+            style={{ fontSize: 'clamp(2.9rem, 8vw, 5.7rem)', lineHeight: 1.02 }}
           >
             認定証
           </span>
         </div>
 
-        {/* 縦仕切り */}
-        <div className="shrink-0 h-full w-px bg-[#b08d57]/50 self-center" />
-
-        {/* ② 検定名（長いので自然に 2 列に折り返す） */}
         <div
-          className="shrink-0 h-full overflow-hidden"
-          style={{
-            writingMode: 'vertical-rl',
-            fontSize: 'clamp(7px, 2cqi, 12px)',
-            lineHeight: 1.9,
-            color: '#4a3720',
-            paddingTop: '6%',
-          }}
+          className="absolute right-[14.2%] top-[9%] text-[#6a4c24]"
+          style={verticalColumnStyle}
         >
-          生成AI活用ガイドライン検定（教育AI活用ビギナー部門）
-        </div>
-
-        {/* ③ 氏名 ＋ 殿 */}
-        <div
-          className="shrink-0 h-full overflow-hidden flex items-center"
-          style={{ writingMode: 'vertical-rl' }}
-        >
-          {name ? (
-            <span
-              className="font-bold text-[#1a1008]"
-              style={{
-                fontSize: 'clamp(0.8rem, 3cqi, 1.4rem)',
-                letterSpacing: '0.08em',
-              }}
-            >
-              {name}
-              <span
-                style={{ fontSize: '0.55em', color: '#5c4030', marginLeft: '0.25em' }}
-              >
-                殿
-              </span>
-            </span>
-          ) : (
-            <span
-              style={{
-                fontSize: 'clamp(0.75rem, 2.5cqi, 1.2rem)',
-                color: '#5c4030',
-              }}
-            >
-              殿
-            </span>
-          )}
-        </div>
-
-        {/* ④ 認定本文（残りスペースを使い、長ければ自動で複数列に折り返す） */}
-        <div
-          className="flex-1 h-full overflow-hidden"
-          style={{
-            writingMode: 'vertical-rl',
-            fontSize: 'clamp(7px, 2cqi, 12px)',
-            lineHeight: 1.9,
-            color: '#2a1c0c',
-            paddingTop: '6%',
-          }}
-        >
-          学校における生成AI活用ガイドラインについて十分な理解を有することを認定します
-        </div>
-
-        {/* ⑤ スコア */}
-        <div
-          className="shrink-0 h-full overflow-hidden"
-          style={{
-            writingMode: 'vertical-rl',
-            fontSize: 'clamp(7px, 2cqi, 12px)',
-            color: '#2a1c0c',
-            paddingTop: '6%',
-          }}
-        >
-          <span style={{ color: '#6b4e26' }}>スコア</span>
-          <span style={{ fontWeight: 'bold' }}>
-            {'\u3000'}{score}／{totalQuestions}
+          <span style={{ fontSize: 'clamp(1.4rem, 3.2vw, 2.3rem)', lineHeight: 1.35 }}>
+            生成AI活用ガイドライン検定（教育AI
           </span>
         </div>
 
-        {/* ⑥ 認定日 */}
         <div
-          className="shrink-0 h-full overflow-hidden"
-          style={{
-            writingMode: 'vertical-rl',
-            fontSize: 'clamp(7px, 1.8cqi, 11px)',
-            color: '#2a1c0c',
-            paddingTop: '6%',
-          }}
+          className="absolute right-[19.4%] top-[14%] text-[#6a4c24]"
+          style={verticalColumnStyle}
         >
-          <span style={{ color: '#6b4e26' }}>認定日</span>
-          <span>{'\u3000'}{formatDate(date)}</span>
+          <span style={{ fontSize: 'clamp(1.2rem, 2.8vw, 2rem)', lineHeight: 1.35 }}>
+            活用ビギナー部門）
+          </span>
         </div>
 
-        {/* ⑦ 発行元 ＋ 認定印（左端） */}
         <div
-          className="shrink-0 h-full flex flex-col items-center"
-          style={{ paddingBlock: '6%', gap: '8%' }}
+          className="absolute right-[32.5%] top-[9%] text-[#4a2d12]"
+          style={verticalColumnStyle}
         >
-          <div
-            style={{
-              writingMode: 'vertical-rl',
-              fontSize: 'clamp(6px, 1.8cqi, 11px)',
-              color: '#2a1c0c',
-              lineHeight: 1.9,
-            }}
+          <span
+            className="font-semibold tracking-[0.04em]"
+            style={{ fontSize: 'clamp(1.8rem, 4.8vw, 3.6rem)', lineHeight: 1.2 }}
           >
-            一般社団法人{'\u3000'}教育AI活用協会
-          </div>
-
-          {/* 写真（設定済みの場合） */}
-          {photoUrl ? (
-            <div
-              className="overflow-hidden rounded-full border-2 border-[#b08d57]/55 bg-white/80 mt-auto"
-              style={{ width: '4cqi', height: '4cqi', minWidth: '2rem', minHeight: '2rem' }}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={photoUrl} alt="" className="h-full w-full object-cover" />
-            </div>
-          ) : null}
-
-          {/* 認定印 */}
-          <div
-            className="relative border-2 border-[#c81e1e]/55 mt-auto"
-            style={{ width: '4cqi', height: '4cqi', minWidth: '2rem', minHeight: '2rem' }}
-          >
-            <div className="absolute inset-0 bg-[#c81e1e]/06" />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span
-                className="font-bold text-[#b91c1c]"
-                style={{ fontSize: 'clamp(7px, 1.5cqi, 10px)', letterSpacing: '0.08em' }}
-              >
-                認定
-              </span>
-            </div>
-          </div>
+            {name || '受験者名'}
+          </span>
         </div>
 
+        <div
+          className="absolute right-[38.4%] top-[34%] text-[#6a4c24]"
+          style={verticalColumnStyle}
+        >
+          <span style={{ fontSize: 'clamp(1.4rem, 3vw, 2.2rem)', lineHeight: 1.2 }}>殿</span>
+        </div>
+
+        <div
+          className="absolute right-[43.5%] top-[15%] text-[#5b4528]"
+          style={verticalColumnStyle}
+        >
+          <span style={{ fontSize: 'clamp(1rem, 2.3vw, 1.65rem)', lineHeight: 1.55 }}>
+            学校における生成AI活用ガイドライン
+          </span>
+        </div>
+
+        <div
+          className="absolute right-[49.2%] top-[8%] text-[#5b4528]"
+          style={verticalColumnStyle}
+        >
+          <span style={{ fontSize: 'clamp(1rem, 2.3vw, 1.65rem)', lineHeight: 1.55 }}>
+            について十分な理解を有することを認
+          </span>
+        </div>
+
+        <div
+          className="absolute right-[54.8%] top-[27%] text-[#5b4528]"
+          style={verticalColumnStyle}
+        >
+          <span style={{ fontSize: 'clamp(1rem, 2.3vw, 1.65rem)', lineHeight: 1.55 }}>
+            定します
+          </span>
+        </div>
+
+        <div
+          className="absolute right-[66.5%] top-[39%] text-[#6a4c24]"
+          style={verticalColumnStyle}
+        >
+          <span
+            className="font-semibold tracking-[0.04em]"
+            style={{ fontSize: 'clamp(1.4rem, 3.5vw, 2.5rem)', lineHeight: 1.25 }}
+          >
+            スコア
+          </span>
+        </div>
+
+        <div
+          className="absolute right-[72.3%] top-[31%] text-[#4a2d12]"
+          style={verticalColumnStyle}
+        >
+          <span
+            className="font-semibold"
+            style={{ fontSize: 'clamp(1.1rem, 2.8vw, 2rem)', lineHeight: 1.3 }}
+          >
+            {score}／{totalQuestions}
+          </span>
+        </div>
+
+        <div
+          className="absolute right-[79.8%] top-[38%] text-[#6a4c24]"
+          style={verticalColumnStyle}
+        >
+          <span
+            className="font-semibold tracking-[0.04em]"
+            style={{ fontSize: 'clamp(1.25rem, 3.1vw, 2.2rem)', lineHeight: 1.25 }}
+          >
+            認定日
+          </span>
+        </div>
+
+        <div
+          className="absolute right-[84.9%] top-[27%] text-[#4a2d12]"
+          style={verticalColumnStyle}
+        >
+          <span style={{ fontSize: 'clamp(0.95rem, 2.25vw, 1.55rem)', lineHeight: 1.45 }}>
+            {formatDate(date)}
+          </span>
+        </div>
+
+        <div
+          className="absolute left-[3.5%] top-[18%] text-[#5b4528]"
+          style={verticalColumnStyle}
+        >
+          <span style={{ fontSize: 'clamp(0.95rem, 2.1vw, 1.45rem)', lineHeight: 1.6 }}>
+            一般社団法人　教育AI活用協会
+          </span>
+        </div>
       </div>
     </div>
   )
