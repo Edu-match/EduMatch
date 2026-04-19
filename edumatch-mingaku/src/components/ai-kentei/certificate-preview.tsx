@@ -19,6 +19,12 @@ interface CertificatePreviewProps {
  * `right` はコンテナ右端からの距離。値を大きくするとブロック全体が左へ寄る。
  */
 const OVERLAY = {
+  /** 氏名の上あたり（同じ縦列）。right は氏名と揃える */
+  photo: {
+    right: '31.5%',
+    top: '19%',
+    size: 'clamp(2.25rem, 8.5cqi, 3.5rem)',
+  },
   name: {
     right: '32.3%',
     top: '38%',
@@ -71,15 +77,20 @@ export function CertificatePreview({
 
       {photoUrl ? (
         <div
-          className="absolute bottom-[6%] left-[3%] z-10 overflow-hidden rounded-full border-2 border-[#b08d57]/60 bg-white/90 shadow-sm"
-          style={{ width: 'clamp(2.5rem, 10cqi, 4rem)', height: 'clamp(2.5rem, 10cqi, 4rem)' }}
+          className="absolute z-10 overflow-hidden rounded-full border-2 border-[#b08d57]/60 bg-white/90 shadow-sm"
+          style={{
+            right: OVERLAY.photo.right,
+            top: OVERLAY.photo.top,
+            width: OVERLAY.photo.size,
+            height: OVERLAY.photo.size,
+          }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={photoUrl} alt="" className="h-full w-full object-cover" />
         </div>
       ) : null}
 
-      {/* ① 氏名（テンプレの「殿」との位置は画像側が正。ここは名前のみ） */}
+      {/* ① 氏名（写真の下〜「殿」列。テンプレの「殿」との位置は画像側が正） */}
       <div
         className="absolute overflow-hidden text-[#4a2d12]"
         style={{
