@@ -670,7 +670,7 @@ export function AiKenteiQuestionsManager() {
               </Select>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="shrink-0 gap-2 border-t px-6 py-4 sm:justify-end">
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               キャンセル
             </Button>
@@ -704,10 +704,10 @@ export function AiKenteiQuestionsManager() {
 
       {/* CSV一括インポートダイアログ */}
       <Dialog open={csvDialogOpen} onOpenChange={(o) => { if (!csvImporting) setCsvDialogOpen(o) }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="flex h-auto max-h-[min(90dvh,calc(100dvh-1.5rem))] w-[min(42rem,calc(100vw-1.5rem))] max-w-[min(42rem,calc(100vw-1.5rem))] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(42rem,calc(100vw-1.5rem))]">
+          <DialogHeader className="shrink-0 space-y-2 px-6 pt-6 pr-14 text-left">
             <DialogTitle className="flex items-center gap-2">
-              <Upload className="h-5 w-5" />
+              <Upload className="h-5 w-5 shrink-0" />
               CSVで問題を一括追加
             </DialogTitle>
             <DialogDescription>
@@ -715,23 +715,30 @@ export function AiKenteiQuestionsManager() {
             </DialogDescription>
           </DialogHeader>
 
+          <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-6 pb-4">
           {/* CSV形式説明 */}
           <div className="rounded-md border bg-muted/40 p-4 space-y-3">
             <div className="flex items-center gap-2 text-sm font-medium">
               <FileText className="h-4 w-4 shrink-0" />
               CSVファイルの形式
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground break-words">
               1行目はヘッダー行（省略可）。文字コードは UTF-8。カンマ区切り。値にカンマ・改行が含まれる場合はダブルクォートで囲んでください。
             </p>
-            <div className="overflow-x-auto">
-              <table className="text-xs w-full border-collapse">
+            <div className="-mx-1 overflow-x-auto px-1">
+              <table className="text-xs w-full min-w-0 table-fixed border-collapse">
+                <colgroup>
+                  <col className="w-[2rem]" />
+                  <col className="w-[7.5rem]" />
+                  <col className="w-[2.25rem]" />
+                  <col />
+                </colgroup>
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left p-1 font-medium">列</th>
-                    <th className="text-left p-1 font-medium">列名</th>
-                    <th className="text-left p-1 font-medium">必須</th>
-                    <th className="text-left p-1 font-medium">説明・許容値</th>
+                    <th className="p-1 text-left font-medium align-bottom">列</th>
+                    <th className="p-1 text-left font-medium align-bottom">列名</th>
+                    <th className="p-1 text-center font-medium align-bottom">必須</th>
+                    <th className="p-1 text-left font-medium align-bottom">説明・許容値</th>
                   </tr>
                 </thead>
                 <tbody className="text-muted-foreground">
@@ -744,34 +751,37 @@ export function AiKenteiQuestionsManager() {
                     ['6', 'option5', '', '選択肢5（空欄可）'],
                     ['7', 'correct_answer', '◎', '正解（選択肢のいずれかと完全一致）'],
                     ['8', 'explanation', '', '解説（空欄可）'],
-                    ['9', 'tag', '', `タグ（${TAGS.join(' / ')} / 空欄可）`],
+                    ['9', 'tag', '', `タグ（例: ${TAGS[0]} など。空欄可）`],
                     ['10', 'difficulty', '', 'easy / medium（省略時） / hard'],
                     ['11', 'status', '', 'draft（省略時） / published'],
                     ['12', 'polarity', '', 'normal（省略時） / reverse'],
                   ].map(([col, name, req, desc]) => (
                     <tr key={col} className="border-b last:border-0">
-                      <td className="p-1">{col}</td>
-                      <td className="p-1 font-mono">{name}</td>
-                      <td className="p-1 text-center">{req}</td>
-                      <td className="p-1">{desc}</td>
+                      <td className="p-1 align-top">{col}</td>
+                      <td className="break-all p-1 align-top font-mono">{name}</td>
+                      <td className="p-1 text-center align-top">{req}</td>
+                      <td className="break-words p-1 align-top">{desc}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+            <p className="text-[11px] text-muted-foreground break-words">
+              タグの候補: {TAGS.join('、')}
+            </p>
             <div className="text-xs text-muted-foreground space-y-1">
               <p className="font-medium text-foreground">記入例（1行目はヘッダー、省略可）:</p>
-              <pre className="bg-background rounded p-2 overflow-x-auto text-[11px] leading-relaxed">{`question_text,option1,option2,option3,option4,option5,correct_answer,explanation,tag,difficulty,status,polarity
+              <pre className="bg-background max-w-full rounded p-2 text-[11px] leading-relaxed whitespace-pre-wrap break-all">{`question_text,option1,option2,option3,option4,option5,correct_answer,explanation,tag,difficulty,status,polarity
 AIが生成した文章を人間が書いたように見せることを何と呼ぶか？,ディープフェイク,AIウォッシング,ハルシネーション,プロンプトインジェクション,,ディープフェイク,AIが生成したコンテンツを人間が作成したように偽ること,情報リテラシー,medium,published,normal`}</pre>
             </div>
           </div>
 
-          <Separator />
+          <Separator className="my-4" />
 
           {/* ファイル選択 */}
           <div className="space-y-2">
             <Label>CSVファイルを選択</Label>
-            <div className="flex items-center gap-3">
+            <div className="flex min-w-0 flex-wrap items-center gap-3">
               <input
                 ref={csvFileRef}
                 type="file"
@@ -798,12 +808,12 @@ AIが生成した文章を人間が書いたように見せることを何と呼
 
           {/* エラー表示 */}
           {csvErrors.length > 0 && (
-            <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 space-y-1">
+            <div className="mt-4 rounded-md border border-destructive/40 bg-destructive/5 p-3 space-y-1">
               <div className="flex items-center gap-2 text-sm font-medium text-destructive">
-                <AlertCircle className="h-4 w-4" />
+                <AlertCircle className="h-4 w-4 shrink-0" />
                 {csvErrors.length}件の問題が検出されました（該当行はスキップされます）
               </div>
-              <ul className="text-xs text-destructive space-y-0.5 max-h-28 overflow-y-auto">
+              <ul className="max-h-28 space-y-0.5 overflow-y-auto text-xs text-destructive break-words">
                 {csvErrors.map((e, i) => (
                   <li key={i}>行 {e.line}: {e.message}</li>
                 ))}
@@ -813,13 +823,13 @@ AIが生成した文章を人間が書いたように見せることを何と呼
 
           {/* プレビュー */}
           {csvRows.length > 0 && (
-            <div className="space-y-2">
+            <div className="mt-4 space-y-2">
               <p className="text-sm font-medium">プレビュー（最初の3件）</p>
               <div className="space-y-2">
                 {csvRows.slice(0, 3).map((row, i) => (
-                  <div key={i} className="rounded border p-2 text-xs space-y-1">
-                    <p className="font-medium line-clamp-2">{row.question_text}</p>
-                    <p className="text-muted-foreground">
+                  <div key={i} className="space-y-1 rounded border p-2 text-xs">
+                    <p className="line-clamp-2 font-medium break-words">{row.question_text}</p>
+                    <p className="break-words text-muted-foreground">
                       選択肢: {row.options.join(' / ')} ｜ 正解: {row.correct_answer}
                       {row.tag && ` ｜ タグ: ${row.tag}`}
                       {` ｜ ${row.difficulty} ｜ ${row.status === 'published' ? '公開' : '下書き'}`}
@@ -835,14 +845,15 @@ AIが生成した文章を人間が書いたように見せることを何と呼
 
           {/* 結果表示 */}
           {csvImportResults && (
-            <div className={`rounded-md border p-3 flex items-center gap-2 text-sm ${csvImportResults.failed === 0 ? 'border-green-400/40 bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400' : 'border-amber-400/40 bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400'}`}>
+            <div className={`mt-4 flex items-center gap-2 rounded-md border p-3 text-sm break-words ${csvImportResults.failed === 0 ? 'border-green-400/40 bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400' : 'border-amber-400/40 bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400'}`}>
               <CheckCircle2 className="h-4 w-4 shrink-0" />
               {csvImportResults.success}件追加完了
               {csvImportResults.failed > 0 && `（${csvImportResults.failed}件失敗）`}
             </div>
           )}
 
-          <DialogFooter>
+          </div>
+          <DialogFooter className="shrink-0 gap-2 border-t px-6 py-4 sm:justify-end">
             <Button variant="outline" onClick={() => setCsvDialogOpen(false)} disabled={csvImporting}>
               閉じる
             </Button>
