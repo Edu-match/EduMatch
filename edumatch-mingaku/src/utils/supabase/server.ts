@@ -1,38 +1,35 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import type { NextRequest, NextResponse } from "next/server";
-import { createServerSupabaseStub } from "@/utils/supabase/missing-env-stub";
 
 export async function createClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? "";
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? "";
-  if (!url || !key) {
-    return createServerSupabaseStub();
-  }
-
   const cookieStore = await cookies();
 
-  return createServerClient(url, key, {
-    cookies: {
-      get(name: string) {
-        return cookieStore.get(name)?.value;
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          try {
+            cookieStore.set({ name, value, ...options });
+          } catch {
+            // Server Components may not allow setting cookies.
+          }
+        },
+        remove(name: string, options: CookieOptions) {
+          try {
+            cookieStore.set({ name, value: "", ...options });
+          } catch {
+            // Server Components may not allow setting cookies.
+          }
+        },
       },
-      set(name: string, value: string, options: CookieOptions) {
-        try {
-          cookieStore.set({ name, value, ...options });
-        } catch {
-          // Server Components may not allow setting cookies.
-        }
-      },
-      remove(name: string, options: CookieOptions) {
-        try {
-          cookieStore.set({ name, value: "", ...options });
-        } catch {
-          // Server Components may not allow setting cookies.
-        }
-      },
-    },
-  });
+    }
+  );
 }
 
 /**
