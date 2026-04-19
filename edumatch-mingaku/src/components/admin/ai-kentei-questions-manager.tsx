@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -32,6 +32,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { Separator } from '@/components/ui/separator'
 import {
   Select,
   SelectContent,
@@ -40,7 +41,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, Pencil, Plus, Trash2, ArrowLeft } from 'lucide-react'
+import { Loader2, Pencil, Plus, Trash2, ArrowLeft, Upload, FileText, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 export interface AiKenteiQuestionRow {
@@ -104,6 +105,131 @@ function emptyForm(): QuestionFormState {
   }
 }
 
+// CSV format:
+// question_text,option1,option2,option3,option4,option5,correct_answer,explanation,tag,difficulty,status,polarity
+// option3/4/5 are optional (can be empty)
+// correct_answer must match one of the options exactly
+// difficulty: easy|medium|hard  status: draft|published  polarity: normal|reverse
+
+const CSV_HEADERS = [
+  'question_text',
+  'option1',
+  'option2',
+  'option3',
+  'option4',
+  'option5',
+  'correct_answer',
+  'explanation',
+  'tag',
+  'difficulty',
+  'status',
+  'polarity',
+] as const
+
+interface CsvRow {
+  question_text: string
+  options: string[]
+  correct_answer: string
+  explanation: string
+  tag: string
+  difficulty: string
+  status: string
+  polarity: string
+}
+
+interface CsvParseResult {
+  rows: CsvRow[]
+  errors: Array<{ line: number; message: string }>
+}
+
+function parseQuestionsCsv(text: string): CsvParseResult {
+  const rows: CsvRow[] = []
+  const errors: Array<{ line: number; message: string }> = []
+
+  // Split by newlines, handle \r\n
+  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
+  if (lines.length === 0) {
+    errors.push({ line: 0, message: 'ファイルが空です' })
+    return { rows, errors }
+  }
+
+  // Check header
+  const headerLine = lines[0].toLowerCase()
+  const hasHeader =
+    headerLine.startsWith('question_text') || headerLine.startsWith('"question_text')
+  const dataLines = hasHeader ? lines.slice(1) : lines
+
+  for (let i = 0; i < dataLines.length; i++) {
+    const lineNum = hasHeader ? i + 2 : i + 1
+    const line = dataLines[i]
+    if (!line) continue
+
+    const cols = parseCsvLine(line)
+    if (cols.length < 7) {
+      errors.push({ line: lineNum, message: `列数が不足しています（${cols.length}列 / 最低7列必要）` })
+      continue
+    }
+
+    const [question_text, opt1, opt2, opt3, opt4, opt5, correct_answer, explanation = '', tag = '', difficulty = 'medium', status = 'draft', polarity = 'normal'] = cols
+
+    if (!question_text.trim()) {
+      errors.push({ line: lineNum, message: '問題文が空です' })
+      continue
+    }
+
+    const options = [opt1, opt2, opt3, opt4, opt5]
+      .map((o) => o.trim())
+      .filter(Boolean)
+
+    if (options.length < 2) {
+      errors.push({ line: lineNum, message: '選択肢が2つ未満です' })
+      continue
+    }
+
+    if (!correct_answer.trim() || !options.includes(correct_answer.trim())) {
+      errors.push({ line: lineNum, message: `正解「${correct_answer}」が選択肢に含まれていません` })
+      continue
+    }
+
+    rows.push({
+      question_text: question_text.trim(),
+      options,
+      correct_answer: correct_answer.trim(),
+      explanation: explanation.trim(),
+      tag: tag.trim(),
+      difficulty: ['easy', 'medium', 'hard'].includes(difficulty.trim()) ? difficulty.trim() : 'medium',
+      status: ['draft', 'published'].includes(status.trim()) ? status.trim() : 'draft',
+      polarity: status.trim() === 'reverse' ? 'reverse' : (polarity.trim() === 'reverse' ? 'reverse' : 'normal'),
+    })
+  }
+
+  return { rows, errors }
+}
+
+/** RFC 4180-compatible single line CSV parser */
+function parseCsvLine(line: string): string[] {
+  const cols: string[] = []
+  let cur = ''
+  let inQuotes = false
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i]
+    if (inQuotes) {
+      if (ch === '"') {
+        if (line[i + 1] === '"') { cur += '"'; i++ }
+        else inQuotes = false
+      } else {
+        cur += ch
+      }
+    } else {
+      if (ch === '"') { inQuotes = true }
+      else if (ch === ',') { cols.push(cur); cur = '' }
+      else { cur += ch }
+    }
+  }
+  cols.push(cur)
+  return cols
+}
+
 function normalizeDifficulty(v: string): Difficulty {
   return v === 'easy' || v === 'hard' ? v : 'medium'
 }
@@ -117,6 +243,14 @@ export function AiKenteiQuestionsManager() {
   const [form, setForm] = useState<QuestionFormState>(emptyForm())
   const [deleteTarget, setDeleteTarget] = useState<AiKenteiQuestionRow | null>(null)
   const [deleting, setDeleting] = useState(false)
+
+  // CSV import state
+  const [csvDialogOpen, setCsvDialogOpen] = useState(false)
+  const [csvRows, setCsvRows] = useState<CsvRow[]>([])
+  const [csvErrors, setCsvErrors] = useState<Array<{ line: number; message: string }>>([])
+  const [csvImporting, setCsvImporting] = useState(false)
+  const [csvImportResults, setCsvImportResults] = useState<{ success: number; failed: number } | null>(null)
+  const csvFileRef = useRef<HTMLInputElement>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -248,6 +382,55 @@ export function AiKenteiQuestionsManager() {
     }
   }
 
+  const openCsvDialog = () => {
+    setCsvRows([])
+    setCsvErrors([])
+    setCsvImportResults(null)
+    setCsvDialogOpen(true)
+  }
+
+  const handleCsvFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setCsvImportResults(null)
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string
+      const { rows, errors } = parseQuestionsCsv(text)
+      setCsvRows(rows)
+      setCsvErrors(errors)
+    }
+    reader.readAsText(file, 'utf-8')
+    e.target.value = ''
+  }
+
+  const handleCsvImport = async () => {
+    if (csvRows.length === 0) return
+    setCsvImporting(true)
+    let success = 0
+    let failed = 0
+    for (const row of csvRows) {
+      try {
+        const res = await fetch('/api/admin/ai-kentei/questions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(row),
+        })
+        if (res.ok) { success++ } else { failed++ }
+      } catch {
+        failed++
+      }
+    }
+    setCsvImportResults({ success, failed })
+    setCsvImporting(false)
+    if (success > 0) {
+      toast.success(`${success}件を追加しました${failed > 0 ? `（${failed}件失敗）` : ''}`)
+      await load()
+    } else {
+      toast.error('インポートに失敗しました')
+    }
+  }
+
   const correctSelectOptions = buildOptions()
 
   return (
@@ -259,10 +442,16 @@ export function AiKenteiQuestionsManager() {
             管理者メニューへ
           </Link>
         </Button>
-        <Button onClick={openCreate} className="shrink-0">
-          <Plus className="h-4 w-4 mr-2" />
-          問題を追加
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={openCsvDialog} className="shrink-0">
+            <Upload className="h-4 w-4 mr-2" />
+            CSVで一括追加
+          </Button>
+          <Button onClick={openCreate} className="shrink-0">
+            <Plus className="h-4 w-4 mr-2" />
+            問題を追加
+          </Button>
+        </div>
       </div>
 
       <Card className="mb-6 border-amber-200 bg-amber-50/50 dark:bg-amber-950/20">
@@ -512,6 +701,164 @@ export function AiKenteiQuestionsManager() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* CSV一括インポートダイアログ */}
+      <Dialog open={csvDialogOpen} onOpenChange={(o) => { if (!csvImporting) setCsvDialogOpen(o) }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Upload className="h-5 w-5" />
+              CSVで問題を一括追加
+            </DialogTitle>
+            <DialogDescription>
+              CSVファイルを選択すると内容を確認してから一括登録できます。
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* CSV形式説明 */}
+          <div className="rounded-md border bg-muted/40 p-4 space-y-3">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <FileText className="h-4 w-4 shrink-0" />
+              CSVファイルの形式
+            </div>
+            <p className="text-xs text-muted-foreground">
+              1行目はヘッダー行（省略可）。文字コードは UTF-8。カンマ区切り。値にカンマ・改行が含まれる場合はダブルクォートで囲んでください。
+            </p>
+            <div className="overflow-x-auto">
+              <table className="text-xs w-full border-collapse">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left p-1 font-medium">列</th>
+                    <th className="text-left p-1 font-medium">列名</th>
+                    <th className="text-left p-1 font-medium">必須</th>
+                    <th className="text-left p-1 font-medium">説明・許容値</th>
+                  </tr>
+                </thead>
+                <tbody className="text-muted-foreground">
+                  {[
+                    ['1', 'question_text', '◎', '問題文'],
+                    ['2', 'option1', '◎', '選択肢1'],
+                    ['3', 'option2', '◎', '選択肢2'],
+                    ['4', 'option3', '', '選択肢3（空欄可）'],
+                    ['5', 'option4', '', '選択肢4（空欄可）'],
+                    ['6', 'option5', '', '選択肢5（空欄可）'],
+                    ['7', 'correct_answer', '◎', '正解（選択肢のいずれかと完全一致）'],
+                    ['8', 'explanation', '', '解説（空欄可）'],
+                    ['9', 'tag', '', `タグ（${TAGS.join(' / ')} / 空欄可）`],
+                    ['10', 'difficulty', '', 'easy / medium（省略時） / hard'],
+                    ['11', 'status', '', 'draft（省略時） / published'],
+                    ['12', 'polarity', '', 'normal（省略時） / reverse'],
+                  ].map(([col, name, req, desc]) => (
+                    <tr key={col} className="border-b last:border-0">
+                      <td className="p-1">{col}</td>
+                      <td className="p-1 font-mono">{name}</td>
+                      <td className="p-1 text-center">{req}</td>
+                      <td className="p-1">{desc}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="text-xs text-muted-foreground space-y-1">
+              <p className="font-medium text-foreground">記入例（1行目はヘッダー、省略可）:</p>
+              <pre className="bg-background rounded p-2 overflow-x-auto text-[11px] leading-relaxed">{`question_text,option1,option2,option3,option4,option5,correct_answer,explanation,tag,difficulty,status,polarity
+AIが生成した文章を人間が書いたように見せることを何と呼ぶか？,ディープフェイク,AIウォッシング,ハルシネーション,プロンプトインジェクション,,ディープフェイク,AIが生成したコンテンツを人間が作成したように偽ること,情報リテラシー,medium,published,normal`}</pre>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* ファイル選択 */}
+          <div className="space-y-2">
+            <Label>CSVファイルを選択</Label>
+            <div className="flex items-center gap-3">
+              <input
+                ref={csvFileRef}
+                type="file"
+                accept=".csv,text/csv"
+                className="hidden"
+                onChange={handleCsvFileChange}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => csvFileRef.current?.click()}
+                disabled={csvImporting}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                ファイルを選択
+              </Button>
+              {csvRows.length > 0 && (
+                <span className="text-sm text-muted-foreground">
+                  {csvRows.length}件 読み込み済み
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* エラー表示 */}
+          {csvErrors.length > 0 && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 space-y-1">
+              <div className="flex items-center gap-2 text-sm font-medium text-destructive">
+                <AlertCircle className="h-4 w-4" />
+                {csvErrors.length}件の問題が検出されました（該当行はスキップされます）
+              </div>
+              <ul className="text-xs text-destructive space-y-0.5 max-h-28 overflow-y-auto">
+                {csvErrors.map((e, i) => (
+                  <li key={i}>行 {e.line}: {e.message}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* プレビュー */}
+          {csvRows.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">プレビュー（最初の3件）</p>
+              <div className="space-y-2">
+                {csvRows.slice(0, 3).map((row, i) => (
+                  <div key={i} className="rounded border p-2 text-xs space-y-1">
+                    <p className="font-medium line-clamp-2">{row.question_text}</p>
+                    <p className="text-muted-foreground">
+                      選択肢: {row.options.join(' / ')} ｜ 正解: {row.correct_answer}
+                      {row.tag && ` ｜ タグ: ${row.tag}`}
+                      {` ｜ ${row.difficulty} ｜ ${row.status === 'published' ? '公開' : '下書き'}`}
+                    </p>
+                  </div>
+                ))}
+                {csvRows.length > 3 && (
+                  <p className="text-xs text-muted-foreground">… 他 {csvRows.length - 3} 件</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* 結果表示 */}
+          {csvImportResults && (
+            <div className={`rounded-md border p-3 flex items-center gap-2 text-sm ${csvImportResults.failed === 0 ? 'border-green-400/40 bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400' : 'border-amber-400/40 bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400'}`}>
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+              {csvImportResults.success}件追加完了
+              {csvImportResults.failed > 0 && `（${csvImportResults.failed}件失敗）`}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCsvDialogOpen(false)} disabled={csvImporting}>
+              閉じる
+            </Button>
+            <Button
+              onClick={() => void handleCsvImport()}
+              disabled={csvRows.length === 0 || csvImporting || !!csvImportResults}
+            >
+              {csvImporting ? (
+                <><Loader2 className="h-4 w-4 animate-spin mr-2" />インポート中…</>
+              ) : (
+                `${csvRows.length}件をインポート`
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

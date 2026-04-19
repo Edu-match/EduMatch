@@ -29,6 +29,10 @@ model Profile {
   chat_usage_events                Json?
   /// AIナビゲーター利用規約に同意した日時（null = 未同意）
   ai_navigator_agreed_at           DateTime?
+  /// 関心のあるカテゴリ（複数選択）
+  interests                        String[]  @default([])
+  /// 関心カテゴリで「その他」を選んだときの自由記述（最大100文字）
+  interest_other                   String?
   /// Table Editor 用: 手動で general | corporate（ジョブで GeneralProfile / CorporateProfile に反映）
   manual_profile_kind              String?
   /// 初回プロフィール設定完了日時。null の間は OAuth 後も登録ウィザードへ誘導する

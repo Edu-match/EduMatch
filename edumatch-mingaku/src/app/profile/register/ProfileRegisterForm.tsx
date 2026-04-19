@@ -51,6 +51,8 @@ export type InitialProfile = {
   role?: string;
   is_corporate_profile?: boolean;
   registration_kind?: "general" | "service_business" | null;
+  interests?: string[];
+  interest_other?: string | null;
 };
 
 const steps = [
@@ -64,8 +66,10 @@ const steps = [
 const interests = [
   "学習管理", "コミュニケーション", "評価・分析", "協働学習",
   "プログラミング教育", "オンライン授業", "AI活用", "データ分析",
-  "学校DX", "働き方改革",
+  "学校DX", "働き方改革", "その他",
 ];
+
+const INTEREST_OTHER_MAX = 100;
 
 const roles = [
   { value: "teacher", label: "教員" },
@@ -102,7 +106,12 @@ export function ProfileRegisterForm({
   );
   const [role, setRole] = useState("");
   const [location, setLocation] = useState("");
-  const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
+  const [selectedInterests, setSelectedInterests] = useState<string[]>(
+    initialProfile?.interests ?? []
+  );
+  const [interestOther, setInterestOther] = useState(
+    initialProfile?.interest_other ?? ""
+  );
   const [bio, setBio] = useState(initialProfile?.bio ?? "");
   const [website, setWebsite] = useState(initialProfile?.website ?? "");
   const [notificationEmail2, setNotificationEmail2] = useState(initialProfile?.notification_email_2 ?? "");
@@ -370,6 +379,19 @@ export function ProfileRegisterForm({
                   </button>
                 ))}
               </div>
+              {selectedInterests.includes("その他") && (
+                <div className="mt-2 space-y-1">
+                  <Input
+                    placeholder="関心分野を自由に記入してください（例：特別支援教育、生涯学習など）"
+                    value={interestOther}
+                    maxLength={INTEREST_OTHER_MAX}
+                    onChange={(e) => setInterestOther(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground text-right">
+                    {interestOther.length}/{INTEREST_OTHER_MAX}文字
+                  </p>
+                </div>
+              )}
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">
@@ -519,6 +541,11 @@ export function ProfileRegisterForm({
                       <span className="text-muted-foreground">未選択</span>
                     )}
                   </div>
+                  {selectedInterests.includes("その他") && interestOther && (
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      その他の内容: {interestOther}
+                    </p>
+                  )}
                 </div>
                 {bio && (
                   <div>
@@ -619,6 +646,10 @@ export function ProfileRegisterForm({
       website: website || null,
       notification_email_2: isProvider ? (notificationEmail2.trim() || null) : null,
       notification_email_3: isProvider ? (notificationEmail3.trim() || null) : null,
+      interests: selectedInterests,
+      interest_other: selectedInterests.includes("その他")
+        ? interestOther.trim() || null
+        : null,
       completeInitialSetup: true,
     });
     setSaving(false);

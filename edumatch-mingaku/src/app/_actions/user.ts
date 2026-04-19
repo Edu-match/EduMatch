@@ -34,6 +34,10 @@ export type CurrentUserProfile = {
   organization_type_other: string | null;
   /** 初回プロフィール前: user_metadata の登録種別 */
   registration_kind: "general" | "service_business" | null;
+  /** 関心のあるカテゴリ（複数選択） */
+  interests: string[];
+  /** 関心カテゴリ「その他」の自由記述 */
+  interest_other: string | null;
 };
 
 export async function getCurrentUserProfile(): Promise<CurrentUserProfile | null> {
@@ -94,6 +98,8 @@ export async function getCurrentUserProfile(): Promise<CurrentUserProfile | null
     is_corporate_profile,
     organization_type_other,
     registration_kind,
+    interests: full.interests ?? [],
+    interest_other: full.interest_other ?? null,
   };
 }
 
@@ -173,6 +179,10 @@ export type UpdateProfileInput = {
   website?: string | null;
   notification_email_2?: string | null;
   notification_email_3?: string | null;
+  /** 関心のあるカテゴリ（複数選択） */
+  interests?: string[];
+  /** 関心カテゴリ「その他」の自由記述（最大100文字） */
+  interest_other?: string | null;
   /** 初回プロフィール登録ウィザード完了時に true */
   completeInitialSetup?: boolean;
 };
@@ -213,6 +223,10 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
           ...(input.phone !== undefined && { phone: input.phone || null }),
           ...(input.bio !== undefined && { bio: input.bio || null }),
           ...(input.website !== undefined && { website: input.website || null }),
+          ...(input.interests !== undefined && { interests: input.interests }),
+          ...(input.interest_other !== undefined && {
+            interest_other: input.interest_other?.trim() || null,
+          }),
           ...(input.completeInitialSetup === true && {
             onboarding_completed_at: new Date(),
           }),
