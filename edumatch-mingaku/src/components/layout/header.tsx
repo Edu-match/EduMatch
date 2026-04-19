@@ -5,9 +5,20 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import {
-  Menu, LogOut, User, LayoutDashboard, Settings,
-  ChevronDown, UserPlus, LogIn, FileText, Bell,
-  MessageSquare, CheckCircle, Calendar, Newspaper
+  Menu,
+  LogOut,
+  User,
+  LayoutDashboard,
+  Settings,
+  ChevronDown,
+  UserPlus,
+  LogIn,
+  FileText,
+  Bell,
+  MessageSquare,
+  CheckCircle,
+  Calendar,
+  Newspaper,
 } from "lucide-react";
 import { useRequestList } from "@/components/request-list/request-list-context";
 import { Button } from "@/components/ui/button";
@@ -466,8 +477,29 @@ export function Header() {
                         className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground"
                       >
                         <LayoutDashboard className="h-4 w-4" />
-                        投稿者ダッシュボード
+                        {userRole === "ADMIN" ? "管理者ダッシュボード" : "投稿者ダッシュボード"}
                       </Link>
+                    )}
+                    {userRole === "ADMIN" && (
+                      <>
+                        <div className="border-t pt-2 mt-1">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-0 pb-2">管理メニュー</p>
+                          <div className="space-y-2">
+                            <Link href="/admin/approvals" className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground">
+                              <CheckCircle className="h-4 w-4 text-amber-600" />承認キュー
+                            </Link>
+                            <Link href="/admin/forum" className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground">
+                              <MessageSquare className="h-4 w-4 text-blue-600" />井戸端会議管理
+                            </Link>
+                            <Link href="/admin/events" className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground">
+                              <Calendar className="h-4 w-4 text-emerald-600" />イベント管理
+                            </Link>
+                            <Link href="/admin/site-updates" className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground">
+                              <Newspaper className="h-4 w-4 text-slate-600" />運営記事管理
+                            </Link>
+                          </div>
+                        </div>
+                      </>
                     )}
                     <Link
                       href="/profile/register"
