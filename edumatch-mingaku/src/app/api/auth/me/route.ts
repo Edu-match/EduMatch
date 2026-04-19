@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentProfile, getCurrentUser } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { effectiveIsCorporateProfile } from "@/lib/manual-profile-kind";
 
@@ -12,13 +12,32 @@ export const dynamic = "force-dynamic";
  */
 export async function GET() {
   const user = await getCurrentUser();
-  const profile = await getCurrentProfile();
+  if (!user) {
+    return NextResponse.json(
+      { profile: null, ai_navigator_agreed: false, _debug: { step: "no_user" } },
+      { status: 200 }
+    );
+  }
+
+  let profile = null;
+  let prismaError: string | null = null;
+  try {
+    profile = await prisma.profile.findUnique({ where: { id: user.id } });
+  } catch (e) {
+    prismaError = e instanceof Error ? e.message : String(e);
+  }
+
   if (!profile) {
     return NextResponse.json(
       {
         profile: null,
         ai_navigator_agreed: false,
-        _debug: { user_id: user?.id ?? null, user_email: user?.email ?? null },
+        _debug: {
+          step: "no_profile",
+          user_id: user.id,
+          prisma_error: prismaError,
+          db_url_set: !!(process.env.DATABASE_URL),
+        },
       },
       { status: 200 }
     );
