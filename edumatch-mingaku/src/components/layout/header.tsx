@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { 
-  Menu, LogOut, User, LayoutDashboard, Settings, 
-  ChevronDown, UserPlus, LogIn, FileText, Bell
+import {
+  Menu, LogOut, User, LayoutDashboard, Settings,
+  ChevronDown, UserPlus, LogIn, FileText, Bell,
+  MessageSquare, CheckCircle, Calendar, Newspaper
 } from "lucide-react";
 import { useRequestList } from "@/components/request-list/request-list-context";
 import { Button } from "@/components/ui/button";
@@ -111,6 +112,7 @@ export function Header() {
 
   const navLinks = [
     { href: "/articles", label: "記事一覧" },
+    { href: "/forum", label: "教育悩み相談室" },
     { href: "/services", label: "サービス一覧" },
     { href: "/events", label: "セミナー・イベント情報" },
     { href: "/companies", label: "掲載企業" },
@@ -305,7 +307,7 @@ export function Header() {
                   マイページ
                 </DropdownMenuItem>
                 {(userRole === "PROVIDER" || userRole === "ADMIN") && (
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     className="cursor-pointer"
                     onSelect={() => router.push("/provider-dashboard")}
                   >
@@ -313,7 +315,44 @@ export function Header() {
                     {userRole === "ADMIN" ? "管理者ダッシュボード" : "投稿者ダッシュボード"}
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuItem 
+                {userRole === "ADMIN" && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-2 py-1">
+                      管理メニュー
+                    </DropdownMenuLabel>
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onSelect={() => router.push("/admin/approvals")}
+                    >
+                      <CheckCircle className="mr-2 h-4 w-4 text-amber-600" />
+                      承認キュー
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onSelect={() => router.push("/admin/forum")}
+                    >
+                      <MessageSquare className="mr-2 h-4 w-4 text-blue-600" />
+                      井戸端会議管理
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onSelect={() => router.push("/admin/events")}
+                    >
+                      <Calendar className="mr-2 h-4 w-4 text-emerald-600" />
+                      イベント管理
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onSelect={() => router.push("/admin/site-updates")}
+                    >
+                      <Newspaper className="mr-2 h-4 w-4 text-slate-600" />
+                      運営記事管理
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+                <DropdownMenuItem
                   className="cursor-pointer"
                   onSelect={() => router.push("/profile/register")}
                 >

@@ -15,6 +15,10 @@ import {
   XCircle,
   BarChart3,
   LayoutDashboard,
+  MessageSquare,
+  Calendar,
+  Newspaper,
+  Settings,
 } from "lucide-react";
 import {
   getProviderArticles,
@@ -247,6 +251,52 @@ export async function ProviderDashboard({
                 <Button asChild variant="outline" size="sm">
                   <Link href="/admin/approvals">承認キューをすべて見る</Link>
                 </Button>
+              </CardContent>
+            </Card>
+          </section>
+        )}
+
+        {/* 管理者向け: クイックリンク */}
+        {isAdmin && (
+          <section className="mb-10">
+            <Card className="overflow-hidden">
+              <CardHeader className="pb-3 pt-4">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Settings className="h-4 w-4 text-primary" />
+                  管理メニュー
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pb-5">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <Link
+                    href="/admin/approvals"
+                    className="flex flex-col items-center gap-2 rounded-xl border bg-muted/30 p-4 text-center text-sm font-medium hover:bg-muted/60 transition-colors"
+                  >
+                    <CheckCircle className="h-6 w-6 text-amber-600" />
+                    承認キュー
+                  </Link>
+                  <Link
+                    href="/admin/forum"
+                    className="flex flex-col items-center gap-2 rounded-xl border bg-muted/30 p-4 text-center text-sm font-medium hover:bg-muted/60 transition-colors"
+                  >
+                    <MessageSquare className="h-6 w-6 text-blue-600" />
+                    井戸端会議管理
+                  </Link>
+                  <Link
+                    href="/admin/events"
+                    className="flex flex-col items-center gap-2 rounded-xl border bg-muted/30 p-4 text-center text-sm font-medium hover:bg-muted/60 transition-colors"
+                  >
+                    <Calendar className="h-6 w-6 text-emerald-600" />
+                    イベント管理
+                  </Link>
+                  <Link
+                    href="/admin/site-updates"
+                    className="flex flex-col items-center gap-2 rounded-xl border bg-muted/30 p-4 text-center text-sm font-medium hover:bg-muted/60 transition-colors"
+                  >
+                    <Newspaper className="h-6 w-6 text-slate-600" />
+                    運営記事管理
+                  </Link>
+                </div>
               </CardContent>
             </Card>
           </section>
