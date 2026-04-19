@@ -29,6 +29,9 @@ interface ProfileInfo {
 
 type NameType = 'display' | 'legal' | 'custom'
 
+/** 認定証に載せる写真: なし / アカウントの画像 / この場でアップロード */
+type PhotoSource = 'none' | 'account' | 'upload'
+
 export default function CertificatePage({ params }: { params: Promise<{ sessionId: string }> }) {
   const resolvedParams = use(params)
   const router = useRouter()
@@ -37,7 +40,11 @@ export default function CertificatePage({ params }: { params: Promise<{ sessionI
   const [loading, setLoading] = useState(true)
   const [nameType, setNameType] = useState<NameType>('custom')
   const [customName, setCustomName] = useState('')
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
+  /** アカウントに保存されているプロフィール画像URL */
+  const [accountAvatarUrl, setAccountAvatarUrl] = useState<string | null>(null)
+  /** アップロードした画像（data URL） */
+  const [uploadedPhotoUrl, setUploadedPhotoUrl] = useState<string | null>(null)
+  const [photoSource, setPhotoSource] = useState<PhotoSource>('none')
   const [generating, setGenerating] = useState(false)
   const [certificateId, setCertificateId] = useState<string | null>(null)
   const [shareSlug, setShareSlug] = useState<string | null>(null)
@@ -54,6 +61,13 @@ export default function CertificatePage({ params }: { params: Promise<{ sessionI
     if (nameType === 'legal') return profileInfo?.legalName ?? customName
     return customName
   })()
+
+  const effectivePhotoUrl: string | null =
+    photoSource === 'account'
+      ? accountAvatarUrl
+      : photoSource === 'upload'
+        ? uploadedPhotoUrl
+        : null
 
   useEffect(() => {
     const fetchData = async () => {
@@ -86,6 +100,13 @@ export default function CertificatePage({ params }: { params: Promise<{ sessionI
           const res = await fetch('/api/ai-kentei/profile')
           if (res.ok) {
             const profileData = await res.json()
+            const av = typeof profileData.avatar_url === 'string' && profileData.avatar_url.trim() !== ''
+              ? profileData.avatar_url.trim()
+              : null
+            setAccountAvatarUrl(av)
+            if (av) {
+              setPhotoSource('account')
+            }
             if (profileData.name) {
               setProfileInfo({
                 displayName: profileData.name ?? null,
@@ -115,9 +136,13 @@ export default function CertificatePage({ params }: { params: Promise<{ sessionI
         return
       }
       const reader = new FileReader()
-      reader.onloadend = () => setPhotoUrl(reader.result as string)
+      reader.onloadend = () => {
+        setUploadedPhotoUrl(reader.result as string)
+        setPhotoSource('upload')
+      }
       reader.readAsDataURL(file)
     }
+    event.target.value = ''
   }
 
   const handleGenerateCertificate = async () => {
@@ -134,7 +159,7 @@ export default function CertificatePage({ params }: { params: Promise<{ sessionI
         body: JSON.stringify({
           sessionId: resolvedParams.sessionId,
           displayName: resolvedName.trim(),
-          photoUrl,
+          photoUrl: effectivePhotoUrl,
           nameType,
           isPublic: isPublicPage,
         }),
@@ -326,17 +351,56 @@ export default function CertificatePage({ params }: { params: Promise<{ sessionI
                   )}
                 </div>
 
-                {/* Photo upload */}
-                <div className="space-y-2">
-                  <Label>プロフィール写真（任意）</Label>
-                  <div className="flex items-center gap-4">
+                {/* プロフィール写真 */}
+                <div className="space-y-3">
+                  <Label>認定証に載せる写真</Label>
+                  <RadioGroup
+                    value={photoSource}
+                    onValueChange={(v) => {
+                      if (certificateId) return
+                      setPhotoSource(v as PhotoSource)
+                    }}
+                    className="space-y-2"
+                    disabled={!!certificateId}
+                  >
                     <div
-                      className="w-20 h-20 rounded-full bg-muted border-2 border-dashed border-border flex items-center justify-center overflow-hidden cursor-pointer hover:border-primary/50 transition-colors"
-                      onClick={() => !certificateId && fileInputRef.current?.click()}
+                      className={`flex items-center space-x-3 rounded-lg border p-3 transition-colors ${photoSource === 'none' ? 'border-primary bg-primary/5' : 'border-border'}`}
                     >
-                      {photoUrl ? (
+                      <RadioGroupItem value="none" id="photo-none" disabled={!!certificateId} />
+                      <Label htmlFor="photo-none" className="flex-1 cursor-pointer text-sm">
+                        写真を載せない
+                      </Label>
+                    </div>
+                    {accountAvatarUrl ? (
+                      <div
+                        className={`flex items-center space-x-3 rounded-lg border p-3 transition-colors ${photoSource === 'account' ? 'border-primary bg-primary/5' : 'border-border'}`}
+                      >
+                        <RadioGroupItem value="account" id="photo-account" disabled={!!certificateId} />
+                        <Label htmlFor="photo-account" className="flex-1 cursor-pointer">
+                          <span className="text-xs text-muted-foreground block">アカウントのプロフィール画像</span>
+                          <span className="text-sm">登録中の画像をそのまま使う</span>
+                        </Label>
+                      </div>
+                    ) : null}
+                    <div
+                      className={`flex items-center space-x-3 rounded-lg border p-3 transition-colors ${photoSource === 'upload' ? 'border-primary bg-primary/5' : 'border-border'}`}
+                    >
+                      <RadioGroupItem value="upload" id="photo-upload" disabled={!!certificateId} />
+                      <Label htmlFor="photo-upload" className="flex-1 cursor-pointer text-sm">
+                        この場で画像をアップロード
+                      </Label>
+                    </div>
+                  </RadioGroup>
+
+                  <div className="flex flex-wrap items-center gap-4">
+                    <div
+                      className="h-20 w-20 shrink-0 overflow-hidden rounded-full border-2 border-dashed border-border bg-muted flex items-center justify-center cursor-pointer hover:border-primary/50 transition-colors"
+                      onClick={() => !certificateId && photoSource === 'upload' && fileInputRef.current?.click()}
+                      role={!certificateId && photoSource === 'upload' ? 'button' : undefined}
+                    >
+                      {effectivePhotoUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={photoUrl} alt="プロフィール" className="w-full h-full object-cover" />
+                        <img src={effectivePhotoUrl} alt="" className="h-full w-full object-cover" />
                       ) : (
                         <Camera className="h-6 w-6 text-muted-foreground" />
                       )}
@@ -347,11 +411,19 @@ export default function CertificatePage({ params }: { params: Promise<{ sessionI
                       accept="image/*"
                       className="hidden"
                       onChange={handlePhotoUpload}
-                      disabled={!!certificateId}
+                      disabled={!!certificateId || photoSource !== 'upload'}
                     />
-                    <div className="text-sm text-muted-foreground">
-                      <p>クリックして写真をアップロード</p>
-                      <p className="text-xs">JPG, PNG (最大5MB)</p>
+                    <div className="min-w-0 text-sm text-muted-foreground">
+                      {photoSource === 'upload' ? (
+                        <>
+                          <p>プレビューをクリックして写真を選べます</p>
+                          <p className="text-xs">JPG, PNG（最大5MB）</p>
+                        </>
+                      ) : photoSource === 'account' ? (
+                        <p className="text-xs">マイページのプロフィール画像が認定証に表示されます</p>
+                      ) : (
+                        <p className="text-xs">認定証には写真を表示しません</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -430,7 +502,7 @@ export default function CertificatePage({ params }: { params: Promise<{ sessionI
               <h3 className="text-lg font-semibold text-foreground">プレビュー</h3>
               <CertificatePreview
                 name={resolvedName || 'お名前'}
-                photoUrl={photoUrl}
+                photoUrl={effectivePhotoUrl}
                 score={certificateData.score}
                 totalQuestions={certificateData.totalQuestions}
                 date={new Date(certificateData.passedAt)}

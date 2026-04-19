@@ -13,5 +13,6 @@ export async function GET() {
     name: profile.name,
     legal_name: profile.legal_name ?? null,
     email: profile.email,
+    avatar_url: profile.avatar_url ?? null,
   })
 }

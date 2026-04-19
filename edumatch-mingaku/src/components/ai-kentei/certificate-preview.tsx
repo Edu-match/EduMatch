@@ -60,7 +60,6 @@ export function CertificatePreview({
   const toFullWidthDigits = (value: string) =>
     value.replace(/\d/g, (digit) => String.fromCharCode(digit.charCodeAt(0) + 0xfee0))
 
-  void photoUrl
   void certificateId
 
   return (
@@ -69,6 +68,16 @@ export function CertificatePreview({
       lang="ja"
     >
       <img src="/ai-kentei/certificate-template.png" alt="" className="absolute inset-0 h-full w-full object-cover" />
+
+      {photoUrl ? (
+        <div
+          className="absolute bottom-[6%] left-[3%] z-10 overflow-hidden rounded-full border-2 border-[#b08d57]/60 bg-white/90 shadow-sm"
+          style={{ width: 'clamp(2.5rem, 10cqi, 4rem)', height: 'clamp(2.5rem, 10cqi, 4rem)' }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={photoUrl} alt="" className="h-full w-full object-cover" />
+        </div>
+      ) : null}
 
       {/* ① 氏名（テンプレの「殿」との位置は画像側が正。ここは名前のみ） */}
       <div
