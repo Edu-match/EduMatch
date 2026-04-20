@@ -241,17 +241,33 @@ export async function POST(req: NextRequest) {
 
   // 全モード共通：ユーザーの最後のメッセージでDBを検索し、コンテキストを注入
   const lastUserMsg = messages.filter((m) => m.role === "user").at(-1)?.content ?? "";
-  const { services: searchSvcs, articles: searchArts } = await searchRelevantContent(lastUserMsg, 5);
+  const { services: searchSvcs, articles: searchArts, knowledge: searchKnowledge } =
+    await searchRelevantContent(lastUserMsg, 5);
   const searchResults = [...searchSvcs, ...searchArts].filter(
     (r) => !explicitContexts.some((e) => e.id === r.id)
   );
   const allContexts = [...explicitContexts, ...searchResults];
 
-  if (allContexts.length > 0) {
-    const contextText = allContexts
-      .map((c, i) => `【${c.type === "article" ? "記事" : "サービス"} ${i + 1}】\n${c.content}`)
-      .join("\n\n");
-    systemPrompt = SYSTEM_WITH_CONTEXT(mode, contextText);
+  const knowledgeSections = searchKnowledge;
+
+  if (allContexts.length > 0 || knowledgeSections.length > 0) {
+    const siteContextText =
+      allContexts.length > 0
+        ? allContexts
+            .map((c, i) => `【${c.type === "article" ? "記事" : "サービス"} ${i + 1}】\n${c.content}`)
+            .join("\n\n")
+        : "";
+
+    const knowledgeContextText =
+      knowledgeSections.length > 0
+        ? "\n\n## 公的文書・理論的根拠の参照\n以下の公的文書・ガイドラインの該当箇所を必要に応じて引用し、「〇〇（文書名）によれば」と明示して回答に根拠を示してください。\n\n" +
+          knowledgeSections
+            .map((k, i) => `【公的文書 ${i + 1}】\n${k.content}`)
+            .join("\n\n")
+        : "";
+
+    const combinedContextText = siteContextText + knowledgeContextText;
+    systemPrompt = SYSTEM_WITH_CONTEXT(mode, combinedContextText);
   }
 
   // ─── ユーザーメッセージ変換（最後のユーザー発言をモード別プロンプトに変換） ─
