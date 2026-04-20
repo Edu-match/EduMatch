@@ -10,6 +10,7 @@ export type SiteUpdateContentBlock = {
   url?: string;
   caption?: string;
   items?: string[];
+  start?: number;
 };
 
 const genId = () => Math.random().toString(36).slice(2, 11);
@@ -64,12 +65,19 @@ export function bodyToBlocks(body: string): SiteUpdateContentBlock[] {
       continue;
     }
     if (/^\d+\.\s+/.test(trimmed)) {
+      const startMatch = trimmed.match(/^(\d+)\.\s+/);
       const ordered: string[] = [];
       while (i < lines.length && /^\d+\.\s+/.test(lines[i].trim())) {
         ordered.push(lines[i].trim().replace(/^\d+\.\s+/, ""));
         i++;
       }
-      blocks.push({ id: genId(), type: "ordered-list", content: "", items: ordered });
+      blocks.push({
+        id: genId(),
+        type: "ordered-list",
+        content: "",
+        items: ordered,
+        start: startMatch ? Math.max(1, Number(startMatch[1])) : 1,
+      });
       continue;
     }
     if (trimmed.startsWith("- ")) {
@@ -111,7 +119,7 @@ export function blocksToBody(blocks: SiteUpdateContentBlock[]): string {
         block.items?.forEach((item) => parts.push(`- ${item}`));
         break;
       case "ordered-list":
-        block.items?.forEach((item, i) => parts.push(`${i + 1}. ${item}`));
+        block.items?.forEach((item, i) => parts.push(`${(block.start ?? 1) + i}. ${item}`));
         break;
       case "image":
         if (block.url) parts.push(`![${block.caption || "画像"}](${block.url})`);

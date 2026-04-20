@@ -70,6 +70,7 @@ export interface ContentBlock {
   url?: string;
   caption?: string;
   items?: string[];
+  start?: number;
 }
 
 interface BlockEditorProps {
@@ -121,7 +122,6 @@ function MarkdownBlockField({
     typingGroupMs: UNDO_TYPING_MERGE_MS,
   });
   const text = block.content ?? "";
-  const lines = text.split(/\n/);
   return (
     <div className="space-y-2">
       <Textarea
@@ -146,27 +146,19 @@ function MarkdownBlockField({
         onClick={(e) => e.stopPropagation()}
       />
       {text.length > 0 && (
-        <div className="prose prose-sm max-w-none border-t pt-3 mt-3 space-y-0">
-          {lines.map((line, i) =>
-            line === "" ? (
-              <div key={i} className="min-h-[1em]" aria-hidden />
-            ) : (
-              <div key={i} className="py-0.5">
-                <ReactMarkdown
-                  remarkPlugins={[remarkBreaks]}
-                  components={{
-                    a: ({ children, ...props }) => (
-                      <span className="text-blue-600 underline cursor-default" {...props}>
-                        {children}
-                      </span>
-                    ),
-                  }}
-                >
-                  {line}
-                </ReactMarkdown>
-              </div>
-            )
-          )}
+        <div className="prose prose-sm max-w-none border-t pt-3 mt-3">
+          <ReactMarkdown
+            remarkPlugins={[remarkBreaks]}
+            components={{
+              a: ({ children, ...props }) => (
+                <span className="text-blue-600 underline cursor-default" {...props}>
+                  {children}
+                </span>
+              ),
+            }}
+          >
+            {text}
+          </ReactMarkdown>
         </div>
       )}
     </div>
@@ -395,6 +387,7 @@ export function BlockEditor({
         content: "",
         align: "left",
         items: type === "bulletList" || type === "numberedList" ? [""] : undefined,
+        start: type === "numberedList" ? 1 : undefined,
       };
       const newBlocks = [...blocks];
       newBlocks.splice(index, 0, newBlock);
@@ -863,11 +856,13 @@ export function BlockEditor({
           };
           break;
         case "numberedList":
+          const firstOrderedMatch = text.match(/^\s*(\d+)\.\s+/);
           converted = {
             ...block,
             type: "numberedList",
             content: "",
             items: text ? text.split(/\n/).filter(Boolean) : items.length > 0 ? items : [""],
+            start: firstOrderedMatch ? Math.max(1, Number(firstOrderedMatch[1])) : 1,
           };
           break;
         case "divider":
@@ -1029,6 +1024,7 @@ export function BlockEditor({
       }
       const orderedMatch = firstLine.match(/^\d+\.\s+(.*)$/);
       if (orderedMatch) {
+        const startMatch = firstLine.match(/^(\d+)\.\s+/);
         const items: string[] = [];
         for (const line of lines) {
           const m = line.trim().match(/^\d+\.\s+(.*)$/);
@@ -1036,7 +1032,14 @@ export function BlockEditor({
           else break;
         }
         replaceBlockWithBlocks(block.id, [
-          { ...block, type: "numberedList", content: "", items: items.length > 0 ? items : [""], id: generateId() },
+          {
+            ...block,
+            type: "numberedList",
+            content: "",
+            items: items.length > 0 ? items : [""],
+            start: startMatch ? Math.max(1, Number(startMatch[1])) : 1,
+            id: generateId(),
+          },
         ]);
       }
     },
@@ -1328,7 +1331,7 @@ export function BlockEditor({
             {(block.items || [""]).map((item, itemIndex) => (
               <div key={itemIndex} className="flex items-center gap-2">
                 <span className="text-muted-foreground w-6 text-right">
-                  {block.type === "numberedList" ? `${itemIndex + 1}.` : "•"}
+                  {block.type === "numberedList" ? `${(block.start ?? 1) + itemIndex}.` : "•"}
                 </span>
                 <BlockListItemInput
                   block={block}
@@ -1652,6 +1655,24 @@ export function BlockEditor({
                         <SplitSquareVertical className="h-4 w-4 mr-1.5" />
                         選択したテキストをブロックにする
                       </Button>
+                    )}
+                    {block.type === "numberedList" && (
+                      <div className="ml-2 flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">開始番号</span>
+                        <Input
+                          type="number"
+                          min={1}
+                          value={block.start ?? 1}
+                          onChange={(e) => {
+                            const next = Number.parseInt(e.target.value, 10);
+                            updateBlock(block.id, {
+                              start: Number.isFinite(next) && next > 0 ? next : 1,
+                            });
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="h-8 w-20"
+                        />
+                      </div>
                     )}
                   </div>
                 )}

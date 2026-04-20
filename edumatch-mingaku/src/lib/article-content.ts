@@ -39,7 +39,7 @@ export function blocksToArticleContent(
         break;
       case "numberedList":
         if (block.items) {
-          block.items.forEach((item, i) => parts.push(`${i + 1}. ${item}`));
+          block.items.forEach((item, i) => parts.push(`${(block.start ?? 1) + i}. ${item}`));
         }
         break;
       case "image":

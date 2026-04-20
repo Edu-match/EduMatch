@@ -170,7 +170,7 @@ export function ArticlePreview({
                 );
               case "numberedList":
                 return (
-                  <ol key={block.id} className="list-decimal pl-6 my-4 space-y-1">
+                  <ol key={block.id} start={block.start ?? 1} className="list-decimal pl-6 my-4 space-y-1">
                     {block.items?.map((item, i) => (
                       <li key={i}>{renderInlineMarkdown(item)}</li>
                     ))}
