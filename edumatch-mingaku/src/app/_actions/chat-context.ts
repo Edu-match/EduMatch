@@ -207,12 +207,21 @@ export async function searchRelevantContent(
 }
 
 const SOURCE_TYPE_LABEL: Record<string, string> = {
-  curriculum: "学習指導要領",
-  mext_guideline: "文科省ガイドライン",
-  oecd_compass: "OECD Learning Compass 2030",
-  school_standard: "学校設置基準",
-  education_plan: "教育振興基本計画",
-  other: "公的文書",
+  curriculum_elementary: "学習指導要領（小学校）",
+  curriculum_middle:     "学習指導要領（中学校）",
+  curriculum_high:       "学習指導要領（高等学校）",
+  mext_giga:             "GIGAスクール構想関連",
+  mext_digital:          "デジタル教育・教科書",
+  mext_special:          "特別支援教育",
+  mext_guideline:        "文科省ガイドライン",
+  oecd_learning:         "OECD ラーニングコンパス 2030",
+  oecd_teaching:         "OECD ティーチングコンパス",
+  oecd_other:            "OECD その他",
+  school_standard:       "学校設置基準",
+  education_plan:        "教育振興基本計画",
+  cue_answer:            "中央教育審議会答申",
+  law_education:         "教育基本法・学校教育法",
+  other:                 "公的文書",
 };
 
 /**

@@ -369,10 +369,12 @@ enum HomeNewsTab {
 model KnowledgeDocument {
   id          String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   title       String
-  /// curriculum | mext_guideline | oecd_compass | school_standard | education_plan | other
-  source_type String
-  source_url  String?
-  description String?
+  /// curriculum_elementary | curriculum_middle | curriculum_high | mext_giga | mext_digital | mext_special | mext_guideline | oecd_learning | oecd_teaching | oecd_other | school_standard | education_plan | cue_answer | law_education | other
+  source_type       String
+  /// source_type = 'other' のときの自由記述
+  source_type_other String?
+  source_url        String?
+  description       String?
   created_at  DateTime       @default(now()) @db.Timestamptz(6)
   chunks      KnowledgeChunk[]
 

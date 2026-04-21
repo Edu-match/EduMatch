@@ -12,11 +12,20 @@ const CHUNK_OVERLAP_TOKENS = 50;
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
 
 const VALID_SOURCE_TYPES = [
-  "curriculum",
+  "curriculum_elementary",
+  "curriculum_middle",
+  "curriculum_high",
+  "mext_giga",
+  "mext_digital",
+  "mext_special",
   "mext_guideline",
-  "oecd_compass",
+  "oecd_learning",
+  "oecd_teaching",
+  "oecd_other",
   "school_standard",
   "education_plan",
+  "cue_answer",
+  "law_education",
   "other",
 ] as const;
 
@@ -121,6 +130,7 @@ export async function POST(req: NextRequest) {
   const file = formData.get("file") as File | null;
   const title = (formData.get("title") as string | null)?.trim();
   const sourceType = (formData.get("source_type") as string | null)?.trim() as SourceType | undefined;
+  const sourceTypeOther = (formData.get("source_type_other") as string | null)?.trim() || null;
   const sourceUrl = (formData.get("source_url") as string | null)?.trim() || null;
   const description = (formData.get("description") as string | null)?.trim() || null;
 
@@ -129,6 +139,9 @@ export async function POST(req: NextRequest) {
   }
   if (!sourceType || !VALID_SOURCE_TYPES.includes(sourceType)) {
     return NextResponse.json({ error: "有効な文書種別を指定してください" }, { status: 400 });
+  }
+  if (sourceType === "other" && !sourceTypeOther) {
+    return NextResponse.json({ error: "「その他」を選んだ場合は種別名を入力してください" }, { status: 400 });
   }
   if (!file) {
     return NextResponse.json({ error: "ファイルを選択してください" }, { status: 400 });
@@ -193,7 +206,13 @@ export async function POST(req: NextRequest) {
 
   // KnowledgeDocument 登録（Prisma 経由）
   const doc = await prisma.knowledgeDocument.create({
-    data: { title, source_type: sourceType, source_url: sourceUrl, description },
+    data: {
+      title,
+      source_type: sourceType,
+      source_type_other: sourceType === "other" ? sourceTypeOther : null,
+      source_url: sourceUrl,
+      description,
+    },
   });
 
   // KnowledgeChunk + embedding 登録（pgvector は Prisma Unsupported のため Supabase client で INSERT）
