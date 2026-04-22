@@ -51,6 +51,18 @@ export const getCurrentProfile = cache(async () => {
 });
 
 /**
+ * 管理者専用ガード。ADMIN ロール以外はトップページにリダイレクトします。
+ */
+export async function requireAdmin() {
+  const user = await requireAuth();
+  const profile = await getCurrentProfile();
+  if (!profile || profile.role !== "ADMIN") {
+    redirect("/");
+  }
+  return { user, profile };
+}
+
+/**
  * 投稿者向け（manual_profile_kind / Corporate 行 / PROVIDER を総合判定）、または ADMIN。
  */
 export async function requireProvider() {
