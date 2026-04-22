@@ -7,13 +7,7 @@
 -- 1) pgvector
 create extension if not exists vector;
 
--- 2) 既存ポリシー（再実行用）
-drop policy if exists "admin_all_knowledge_documents" on public.knowledge_documents;
-drop policy if exists "authenticated_read_knowledge_documents" on public.knowledge_documents;
-drop policy if exists "admin_all_knowledge_chunks" on public.knowledge_chunks;
-drop policy if exists "authenticated_read_knowledge_chunks" on public.knowledge_chunks;
-
--- 3) 文書メタデータ
+-- 2) 文書メタデータ
 create table if not exists public.knowledge_documents (
   id                uuid primary key default gen_random_uuid(),
   title             text not null,
@@ -40,17 +34,13 @@ create table if not exists public.knowledge_documents (
       'law_education',
       'other'
     )
-  ),
-  constraint knowledge_documents_other_requires_label check (
-    (source_type <> 'other')
-    or (source_type = 'other' and source_type_other is not null and length(trim(source_type_other)) > 0)
   )
 );
 
 comment on table public.knowledge_documents is 'RAG用 教育公的文書メタデータ';
 comment on column public.knowledge_documents.source_type_other is 'source_type = other のときの自由記述ラベル';
 
--- 4) チャンク + ベクトル
+-- 3) チャンク + ベクトル
 create table if not exists public.knowledge_chunks (
   id          uuid primary key default gen_random_uuid(),
   document_id uuid not null references public.knowledge_documents (id) on delete cascade,
@@ -64,10 +54,16 @@ create table if not exists public.knowledge_chunks (
 create index if not exists knowledge_chunks_document_id_idx
   on public.knowledge_chunks (document_id);
 
--- 5) 類似検索用インデックス（コサイン距離 / HNSW）
+-- 4) 類似検索用インデックス（コサイン距離 / HNSW）
 create index if not exists knowledge_chunks_embedding_hnsw_idx
   on public.knowledge_chunks
   using hnsw (embedding vector_cosine_ops);
+
+-- 5) 再実行用: 既存ポリシーを削除（テーブル作成後にのみ実行する）
+drop policy if exists "admin_all_knowledge_documents" on public.knowledge_documents;
+drop policy if exists "authenticated_read_knowledge_documents" on public.knowledge_documents;
+drop policy if exists "admin_all_knowledge_chunks" on public.knowledge_chunks;
+drop policy if exists "authenticated_read_knowledge_chunks" on public.knowledge_chunks;
 
 -- 6) RLS
 alter table public.knowledge_documents enable row level security;

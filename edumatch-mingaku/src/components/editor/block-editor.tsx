@@ -40,6 +40,10 @@ import remarkBreaks from "remark-breaks";
 import { contentToBlocks } from "@/lib/markdown-to-blocks";
 import { isFocusMovedToTabOrOverlay } from "@/lib/focus-moved-to-ui-overlay";
 import { RichTextEditable, htmlToMarkdown } from "@/components/editor/rich-text-editable";
+import {
+  formatMarkdownInlineLink,
+  parseEntireStringAsMarkdownLink,
+} from "@/lib/markdown-inline-links";
 import { useUndoRedoTextField, UNDO_TYPING_MERGE_MS } from "@/components/editor/use-undo-redo-text-field";
 import {
   DropdownMenu,
@@ -590,9 +594,9 @@ export function BlockEditor({
           return;
         }
         selected = inputEl.value.slice(start, end);
-        const linkMatch = selected.match(/^\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)$/);
-        if (linkMatch) {
-          const plainText = linkMatch[1] || linkMatch[2];
+        const parsedLink = parseEntireStringAsMarkdownLink(selected);
+        if (parsedLink) {
+          const plainText = parsedLink.label || parsedLink.url;
           const val = inputEl.value;
           const newContent = val.slice(0, start) + plainText + val.slice(end);
           if (targetItemIndex !== undefined && block?.items) {
@@ -639,7 +643,8 @@ export function BlockEditor({
       const val = inputEl.value;
       const before = val.slice(0, start);
       const after = val.slice(end);
-      const newContent = before + `[${selected}](${href})` + after;
+      const mdLink = formatMarkdownInlineLink(selected, href);
+      const newContent = before + mdLink + after;
       if (targetItemIndex !== undefined && block?.items) {
         const newItems = [...block.items];
         newItems[targetItemIndex] = newContent;
@@ -651,7 +656,7 @@ export function BlockEditor({
         const newEl = textInputRefs.current[refKey] as HTMLInputElement | HTMLTextAreaElement | null;
         if (newEl && "setSelectionRange" in newEl) {
           newEl.focus();
-          const newPos = start + selected.length + 4 + href.length;
+          const newPos = start + mdLink.length;
           newEl.setSelectionRange(newPos, newPos);
         }
       });
@@ -730,8 +735,8 @@ export function BlockEditor({
         }
         if (!mediaUrl) {
           const t = sel.toString().trim();
-          const linkMatch = t.match(/^\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)$/);
-          if (linkMatch && isYoutube(linkMatch[2])) mediaUrl = linkMatch[2];
+          const asMd = parseEntireStringAsMarkdownLink(t);
+          if (asMd && isYoutube(asMd.url)) mediaUrl = asMd.url;
           else if (/^https?:\/\//.test(t) && isYoutube(t)) mediaUrl = t;
         }
         if (!mediaUrl) {
@@ -766,9 +771,9 @@ export function BlockEditor({
       const val = inputEl.value;
       const selected = val.slice(start, end);
       const trimmed = selected.trim();
-      const linkMatch = trimmed.match(/^\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)$/);
+      const asMd = parseEntireStringAsMarkdownLink(trimmed);
       let mediaUrl: string | null = null;
-      if (linkMatch && isYoutube(linkMatch[2])) mediaUrl = linkMatch[2];
+      if (asMd && isYoutube(asMd.url)) mediaUrl = asMd.url;
       else if (/^https?:\/\//.test(trimmed) && isYoutube(trimmed)) mediaUrl = trimmed;
       if (!mediaUrl) {
         toast.info("YouTubeの「[表示名](URL)」形式のリンクまたはURLを選択してください");

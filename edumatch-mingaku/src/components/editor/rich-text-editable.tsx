@@ -28,6 +28,7 @@ export function htmlToMarkdown(html: string): string {
   let md = turndown.turndown(html).replace(/\u200B/g, "");
   // Turndown がリンク先 URL 内に不要なバックスラッシュを入れることがあり、
   // 保存・再表示で `https:\/\/` のように増殖するため除去する。
+  md = md.replace(/\]\(<(https?:[^>]+)>\)/g, (_, rawUrl: string) => `](<${rawUrl.replace(/\\/g, "")}>)`);
   md = md.replace(/\]\((https?:[^)\s]+)\)/g, (_, rawUrl: string) => `](${rawUrl.replace(/\\/g, "")})`);
   // Turndown が通常テキストの "1. " を "1\\. " にエスケープすることがあり、
   // 編集中に意図しないバックスラッシュが見えるため戻す。

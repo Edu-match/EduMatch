@@ -1,67 +1,82 @@
 import React from "react";
+import { findMarkdownInlineLinks } from "@/lib/markdown-inline-links";
 
 /**
- * インライン Markdown（**太字** *斜体* ~~取り消し線~~ [text](url)）を React ノードに変換
- * リンクは target="_blank" でクリック可能
+ * 太字・斜体・取消しのみ（構造リンクなし）
  */
-export function renderInlineMarkdown(text: string): React.ReactNode {
+function renderInlineFormattingOnly(text: string): React.ReactNode {
   if (!text) return null;
   const parts: React.ReactNode[] = [];
   let lastIndex = 0;
-  // [text](url) を先に、**bold**、~~strikethrough~~、*italic* の順でマッチ
-  const regex = /\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)|\*\*(.+?)\*\*|~~(.+?)~~|\*([^*]+)\*/g;
-  let m;
+  const regex = /\*\*(.+?)\*\*|~~(.+?)~~|\*([^*]+)\*/g;
+  let m: RegExpExecArray | null;
   let key = 0;
   while ((m = regex.exec(text)) !== null) {
     if (m.index > lastIndex) {
       parts.push(
-        <React.Fragment key={`t-${key++}`}>
-          {text.slice(lastIndex, m.index)}
-        </React.Fragment>
+        <React.Fragment key={`p-${key++}`}>{text.slice(lastIndex, m.index)}</React.Fragment>
       );
     }
-    if (m[1] !== undefined && m[2] !== undefined) {
-      // [text](url) リンク
-      const linkText = m[1] || m[2];
+    if (m[1] !== undefined) {
       parts.push(
-        <a
-          key={`l-${key++}`}
-          href={m[2]}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-600 underline hover:text-blue-700"
-        >
-          {renderInlineMarkdown(linkText)}
-        </a>
+        <strong key={`b-${key++}`}>{renderInlineFormattingOnly(m[1])}</strong>
+      );
+    } else if (m[2] !== undefined) {
+      parts.push(
+        <del key={`s-${key++}`}>{renderInlineFormattingOnly(m[2])}</del>
       );
     } else if (m[3] !== undefined) {
-      // **bold**
-      parts.push(
-        <strong key={`b-${key++}`}>
-          {renderInlineMarkdown(m[3])}
-        </strong>
-      );
-    } else if (m[4] !== undefined) {
-      // ~~strikethrough~~
-      parts.push(
-        <del key={`s-${key++}`}>
-          {renderInlineMarkdown(m[4])}
-        </del>
-      );
-    } else if (m[5] !== undefined) {
-      // *italic*
-      parts.push(
-        <em key={`i-${key++}`}>
-          {m[5]}
-        </em>
-      );
+      parts.push(<em key={`i-${key++}`}>{m[3]}</em>);
     }
     lastIndex = regex.lastIndex;
   }
   if (lastIndex < text.length) {
     parts.push(
+      <React.Fragment key={`p-${key++}`}>{text.slice(lastIndex)}</React.Fragment>
+    );
+  }
+  if (parts.length === 0) return null;
+  return parts.length === 1 ? parts[0] : <>{parts}</>;
+}
+
+/**
+ * インライン Markdown（**太字** *斜体* ~~取り消し線~~ [text](url)）を React ノードに変換
+ * リンクは target="_blank"
+ */
+export function renderInlineMarkdown(text: string): React.ReactNode {
+  if (!text) return null;
+  const links = findMarkdownInlineLinks(text);
+  if (links.length === 0) {
+    return renderInlineFormattingOnly(text);
+  }
+  const parts: React.ReactNode[] = [];
+  let pos = 0;
+  let key = 0;
+  for (const link of links) {
+    if (link.start > pos) {
+      parts.push(
+        <React.Fragment key={`t-${key++}`}>
+          {renderInlineFormattingOnly(text.slice(pos, link.start))}
+        </React.Fragment>
+      );
+    }
+    parts.push(
+      <a
+        key={`l-${key++}`}
+        href={link.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-blue-600 underline hover:text-blue-700"
+      >
+        {renderInlineMarkdown(link.label)}
+      </a>
+    );
+    pos = link.end;
+  }
+  if (pos < text.length) {
+    parts.push(
       <React.Fragment key={`t-${key++}`}>
-        {text.slice(lastIndex)}
+        {renderInlineFormattingOnly(text.slice(pos))}
       </React.Fragment>
     );
   }
