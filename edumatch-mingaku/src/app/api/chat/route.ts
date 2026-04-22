@@ -380,6 +380,7 @@ export async function POST(req: NextRequest) {
         "Content-Type": "text/plain; charset=utf-8",
         "Cache-Control": "no-cache",
         "X-Content-Type-Options": "nosniff",
+        "X-RAG-Knowledge-Hits": String(knowledgeHits.length),
       },
     });
   } catch (error) {

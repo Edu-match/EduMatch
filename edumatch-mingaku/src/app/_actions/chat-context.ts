@@ -1,8 +1,8 @@
-"use server";
-
 import OpenAI from "openai";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/utils/supabase/server";
+import { createServiceRoleClient } from "@/utils/supabase/server-admin";
 
 export type ChatContextItem = {
   id: string;
@@ -100,20 +100,59 @@ export async function getArticleContextForChat(
   }
 }
 
+function supabaseForKnowledgeSearch(): SupabaseClient {
+  if (
+    process.env.SUPABASE_SERVICE_ROLE_KEY &&
+    process.env.NEXT_PUBLIC_SUPABASE_URL
+  ) {
+    try {
+      return createServiceRoleClient();
+    } catch (e) {
+      console.error("searchKnowledgeChunks: service role client failed", e);
+    }
+  }
+  throw new Error("sync_cookie_client");
+}
+
+async function supabaseForKnowledgeSearchAsync(): Promise<SupabaseClient> {
+  try {
+    return supabaseForKnowledgeSearch();
+  } catch {
+    return createClient();
+  }
+}
+
+async function rpcMatchKnowledge(
+  supabase: SupabaseClient,
+  queryEmbedding: number[],
+  matchCount: number,
+  matchThreshold: number
+) {
+  return supabase.rpc("match_knowledge_chunks", {
+    query_embedding: `[${queryEmbedding.join(",")}]`,
+    match_count: matchCount,
+    match_threshold: matchThreshold,
+  });
+}
+
 /**
- * pgvector で登録済み公的文書チャンクを取得（常にチャット API から呼ぶ）
+ * pgvector で登録済み公的文書チャンクを取得（チャット API から呼ぶ）
+ * - 可能なら service role で RPC（Cookie 無しでも安定、RLS 越えて読める）
+ * - 閾値は段階的に下げて再試行（0.72 だとヒットゼロになりやすい）
  */
 export async function searchKnowledgeChunks(
   query: string,
-  matchCount = 5,
-  matchThreshold = 0.72
+  matchCount = 8
 ): Promise<ChatContextItem[]> {
   const q = query.trim();
   if (q.length < 2) return [];
 
   try {
     const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) return [];
+    if (!apiKey) {
+      console.warn("searchKnowledgeChunks: OPENAI_API_KEY missing");
+      return [];
+    }
 
     const openai = new OpenAI({ apiKey });
     const embeddingResponse = await openai.embeddings.create({
@@ -124,19 +163,32 @@ export async function searchKnowledgeChunks(
     const queryEmbedding = embeddingResponse.data[0]?.embedding;
     if (!queryEmbedding) return [];
 
-    const supabase = await createClient();
-    const { data, error } = await supabase.rpc("match_knowledge_chunks", {
-      query_embedding: `[${queryEmbedding.join(",")}]`,
-      match_count: matchCount,
-      match_threshold: matchThreshold,
-    });
+    const supabase = await supabaseForKnowledgeSearchAsync();
 
-    if (error || !data) {
-      console.error("searchKnowledgeChunks error:", error);
+    const tiers = [0.45, 0.32, 0.2] as const;
+    let rows: KnowledgeChunkResult[] | null = null;
+    for (const th of tiers) {
+      const { data, error } = await rpcMatchKnowledge(
+        supabase,
+        queryEmbedding,
+        matchCount,
+        th
+      );
+      if (error) {
+        console.error("searchKnowledgeChunks rpc error:", error);
+        break;
+      }
+      if (data && data.length > 0) {
+        rows = data as KnowledgeChunkResult[];
+        break;
+      }
+    }
+
+    if (!rows || rows.length === 0) {
       return [];
     }
 
-    return (data as KnowledgeChunkResult[]).map((row) => ({
+    return rows.map((row) => ({
       id: row.id,
       type: "knowledge" as const,
       title: row.doc_title,
