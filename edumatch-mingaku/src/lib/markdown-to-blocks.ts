@@ -2,8 +2,9 @@ import type { ContentBlock } from "@/components/editor/block-editor";
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
+/** 単独の `/` や `///` のみの行（貼り付けゴミ・変換ゴミ）を除去 */
 function removeStraySlashLines(content: string): string {
-  return content.replace(/(^|\n)[ \t]*\/[ \t]*(?=\n|$)/g, "$1");
+  return content.replace(/(^|\n)[ \t]*\/+[ \t]*(?=\n|$)/g, "$1");
 }
 
 /** 箇条書き行（-, *, + のいずれか + スペース。GFM 互換） */

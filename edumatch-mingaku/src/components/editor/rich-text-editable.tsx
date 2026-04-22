@@ -26,6 +26,9 @@ const MAX_UNDO_STACK = 100;
 export function htmlToMarkdown(html: string): string {
   if (!html || html === "<br>" || html === "<div><br></div>") return "";
   let md = turndown.turndown(html).replace(/\u200B/g, "");
+  // Turndown がリンク先 URL 内に不要なバックスラッシュを入れることがあり、
+  // 保存・再表示で `https:\/\/` のように増殖するため除去する。
+  md = md.replace(/\]\((https?:[^)\s]+)\)/g, (_, rawUrl: string) => `](${rawUrl.replace(/\\/g, "")})`);
   // Turndown が通常テキストの "1. " を "1\\. " にエスケープすることがあり、
   // 編集中に意図しないバックスラッシュが見えるため戻す。
   md = md.replace(/(^|\n)(\s*\d+)\\\.(\s)/g, "$1$2.$3");

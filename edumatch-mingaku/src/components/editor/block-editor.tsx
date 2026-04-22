@@ -33,6 +33,7 @@ import {
   Strikethrough,
   SplitSquareVertical,
   Link,
+  Youtube,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
@@ -656,6 +657,142 @@ export function BlockEditor({
       });
     },
     [blocks, updateBlock]
+  );
+
+  /** 選択中の YouTube リンク／URL を本文から外し、その直後に動画ブロックを挿入する */
+  const replaceSelectionWithLinkedMedia = useCallback(
+    (blockId: string, itemIndex?: number) => {
+      const block = blocks.find((b) => b.id === blockId);
+      if (!block) return;
+      let refKey = blockId;
+      let targetItemIndex: number | undefined = itemIndex;
+      if (block.items && itemIndex === undefined) {
+        for (let i = 0; i < block.items.length; i++) {
+          const k = `${blockId}-${i}`;
+          if (textInputRefs.current[k] === document.activeElement) {
+            refKey = k;
+            targetItemIndex = i;
+            break;
+          }
+        }
+        if (targetItemIndex === undefined) {
+          refKey = `${blockId}-0`;
+          targetItemIndex = 0;
+        }
+      } else if (itemIndex !== undefined) {
+        refKey = `${blockId}-${itemIndex}`;
+      }
+      const el = (textInputRefs.current[refKey] ?? textInputRefs.current[blockId]) as HTMLElement | null;
+      if (!el) return;
+
+      const isYoutube = (u: string) => extractYouTubeId(u.trim()).length === 11;
+
+      const insertAfter = (baseBlocks: ContentBlock[], updatedBlock: ContentBlock, url: string) => {
+        const idx = baseBlocks.findIndex((b) => b.id === blockId);
+        if (idx < 0) return;
+        const videoBlock: ContentBlock = {
+          id: generateId(),
+          type: "video",
+          content: "",
+          url,
+          align: "left",
+        };
+        const nb = baseBlocks.map((b) => (b.id === blockId ? updatedBlock : b));
+        nb.splice(idx + 1, 0, videoBlock);
+        if (maxLength !== undefined && calculateTotalLength(nb) > maxLength) {
+          toast.error("文字数制限のため動画ブロックを追加できません");
+          return;
+        }
+        onChange(nb);
+        setActiveBlockId(videoBlock.id);
+      };
+
+      if (el.isContentEditable) {
+        const sel = window.getSelection();
+        if (!sel || sel.rangeCount === 0) return;
+        let range = sel.getRangeAt(0);
+        const container = range.commonAncestorContainer;
+        const node =
+          container.nodeType === Node.TEXT_NODE ? container.parentElement : (container as HTMLElement);
+        const anchor = node?.closest?.("a[href]");
+
+        let mediaUrl: string | null = null;
+        if (anchor instanceof HTMLAnchorElement && el.contains(anchor)) {
+          const href = anchor.getAttribute("href") || "";
+          if (isYoutube(href)) {
+            mediaUrl = href;
+            const r = document.createRange();
+            r.selectNode(anchor);
+            sel.removeAllRanges();
+            sel.addRange(r);
+            range = r;
+          }
+        }
+        if (!mediaUrl) {
+          const t = sel.toString().trim();
+          const linkMatch = t.match(/^\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)$/);
+          if (linkMatch && isYoutube(linkMatch[2])) mediaUrl = linkMatch[2];
+          else if (/^https?:\/\//.test(t) && isYoutube(t)) mediaUrl = t;
+        }
+        if (!mediaUrl) {
+          toast.info("YouTubeのリンクまたはURLを選択してください（リンク内ならクリック位置でも可）");
+          return;
+        }
+        const fragToMd = (frag: DocumentFragment) => {
+          const div = document.createElement("div");
+          div.appendChild(frag);
+          return htmlToMarkdown(div.innerHTML);
+        };
+        const preRange = document.createRange();
+        preRange.selectNodeContents(el);
+        preRange.setEnd(range.startContainer, range.startOffset);
+        const before = fragToMd(preRange.cloneContents()).trimEnd();
+        const postRange = document.createRange();
+        postRange.selectNodeContents(el);
+        postRange.setStart(range.endContainer, range.endOffset);
+        const after = fragToMd(postRange.cloneContents()).trimStart();
+        const newMd = [before, after].filter(Boolean).join("\n\n") || "";
+        insertAfter(blocks, { ...block, content: newMd }, mediaUrl);
+        return;
+      }
+
+      const inputEl = el as HTMLInputElement | HTMLTextAreaElement;
+      const start = inputEl.selectionStart ?? 0;
+      const end = inputEl.selectionEnd ?? 0;
+      if (start === end) {
+        toast.info("置き換えるYouTubeのリンクまたはURLを選択してください");
+        return;
+      }
+      const val = inputEl.value;
+      const selected = val.slice(start, end);
+      const trimmed = selected.trim();
+      const linkMatch = trimmed.match(/^\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)$/);
+      let mediaUrl: string | null = null;
+      if (linkMatch && isYoutube(linkMatch[2])) mediaUrl = linkMatch[2];
+      else if (/^https?:\/\//.test(trimmed) && isYoutube(trimmed)) mediaUrl = trimmed;
+      if (!mediaUrl) {
+        toast.info("YouTubeの「[表示名](URL)」形式のリンクまたはURLを選択してください");
+        return;
+      }
+      const before = val.slice(0, start);
+      const after = val.slice(end);
+      const newVal = before + after;
+      if (targetItemIndex !== undefined && block.items) {
+        const newItems = [...block.items];
+        newItems[targetItemIndex] = newVal;
+        insertAfter(blocks, { ...block, items: newItems }, mediaUrl);
+      } else {
+        insertAfter(blocks, { ...block, content: newVal }, mediaUrl);
+      }
+      requestAnimationFrame(() => {
+        const newEl = textInputRefs.current[refKey] as HTMLInputElement | HTMLTextAreaElement | null;
+        if (newEl && "setSelectionRange" in newEl) {
+          newEl.focus();
+          newEl.setSelectionRange(start, start);
+        }
+      });
+    },
+    [blocks, onChange, maxLength, calculateTotalLength]
   );
 
   /** 選択したテキストを新しいブロックとして分離 */
@@ -1640,6 +1777,17 @@ export function BlockEditor({
                       }}
                     >
                       <Link className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      title="選択したYouTubeを動画ブロックに置き換え（出典リンク用）"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        replaceSelectionWithLinkedMedia(block.id);
+                      }}
+                    >
+                      <Youtube className="h-4 w-4" />
                     </Button>
                     {/* 選択時に「ブロックに変換」ボタンを表示 */}
                     {selectionBubble?.blockId === block.id && (
