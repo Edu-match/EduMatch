@@ -11,11 +11,16 @@ export type AutoActivation = {
 };
 
 type AiPanelContextValue = {
+  /** デスクトップAIサイドパネルの開閉 */
   open: boolean;
   setOpen: (open: boolean) => void;
-  toggle: () => void;
+  /** モバイルドロワーの開閉 */
   mobileOpen: boolean;
   setMobileOpen: (open: boolean) => void;
+  /** 左サイドバーの開閉（AIパネルと連携） */
+  sidebarOpen: boolean;
+  setSidebarOpen: (open: boolean) => void;
+  /** 記事読了時の自動アクティベーション */
   pendingActivation: AutoActivation | null;
   clearActivation: () => void;
   triggerArticleComplete: (articleId: string, articleTitle: string) => void;
@@ -24,9 +29,10 @@ type AiPanelContextValue = {
 const AiPanelContext = createContext<AiPanelContextValue>({
   open: true,
   setOpen: () => {},
-  toggle: () => {},
   mobileOpen: false,
   setMobileOpen: () => {},
+  sidebarOpen: true,
+  setSidebarOpen: () => {},
   pendingActivation: null,
   clearActivation: () => {},
   triggerArticleComplete: () => {},
@@ -35,6 +41,7 @@ const AiPanelContext = createContext<AiPanelContextValue>({
 export function AiPanelProvider({ children }: { children: React.ReactNode }) {
   const [open, setOpenState] = useState(true);
   const [mobileOpen, setMobileOpenState] = useState(false);
+  const [sidebarOpen, setSidebarOpenState] = useState(true);
   const [pendingActivation, setPendingActivation] = useState<AutoActivation | null>(null);
   const initialized = useRef(false);
 
@@ -52,6 +59,8 @@ export function AiPanelProvider({ children }: { children: React.ReactNode }) {
 
   const setOpen = useCallback((next: boolean) => {
     setOpenState(next);
+    // AIパネルを開くとサイドバーを閉じる（スペース確保）
+    if (next) setSidebarOpenState(false);
     try {
       localStorage.setItem(STORAGE_KEY, String(next));
     } catch {
@@ -63,9 +72,14 @@ export function AiPanelProvider({ children }: { children: React.ReactNode }) {
     setMobileOpenState(next);
   }, []);
 
-  const toggle = useCallback(() => {
-    setOpen(!open);
-  }, [open, setOpen]);
+  /** サイドバーを開くとAIパネルを閉じる（相互排他） */
+  const setSidebarOpen = useCallback(
+    (next: boolean) => {
+      setSidebarOpenState(next);
+      if (next) setOpen(false);
+    },
+    [setOpen]
+  );
 
   const clearActivation = useCallback(() => {
     setPendingActivation(null);
@@ -86,9 +100,10 @@ export function AiPanelProvider({ children }: { children: React.ReactNode }) {
       value={{
         open,
         setOpen,
-        toggle,
         mobileOpen,
         setMobileOpen,
+        sidebarOpen,
+        setSidebarOpen,
         pendingActivation,
         clearActivation,
         triggerArticleComplete,
