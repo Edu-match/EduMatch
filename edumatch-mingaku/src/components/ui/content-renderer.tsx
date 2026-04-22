@@ -7,6 +7,11 @@ import { renderInlineMarkdown } from "@/lib/inline-markdown";
 import { YouTubeEmbed } from "./youtube-embed";
 import { RAW_MARKDOWN_PREFIX } from "@/lib/markdown-to-blocks";
 import { ImageWithUrlError } from "@/components/ui/image-with-url-error";
+import {
+  decodeYoutubePlaceholderAt,
+  encodeYoutubePlaceholder,
+  repairLeakedYoutubePlaceholdersInMarkdown,
+} from "@/lib/youtube-content-placeholder";
 
 function stripRawMarkdownPrefix(content: string): string {
   const trimmed = content.trimStart();
@@ -24,7 +29,6 @@ type ContentBlock = {
 /** YouTube URL のみ抽出してプレースホルダーに置換（HTML本文用） */
 function extractYoutubeOnly(content: string): ContentBlock[] {
   const youtubePattern = /(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})(?:[^\s"'<>]*))/gi;
-  const blocks: ContentBlock[] = [];
   const matches: Array<{ index: number; length: number; url: string }> = [];
   let m: RegExpExecArray | null;
   while ((m = youtubePattern.exec(content)) !== null) {
@@ -35,19 +39,54 @@ function extractYoutubeOnly(content: string): ContentBlock[] {
   for (const match of matches) {
     processed =
       processed.substring(0, match.index) +
-      `__YOUTUBE__${match.url}__` +
+      encodeYoutubePlaceholder(match.url) +
       processed.substring(match.index + match.length);
   }
-  const parts = processed.split(/(__YOUTUBE__[^_]+__)/);
-  for (const part of parts) {
-    if (part.startsWith("__YOUTUBE__")) {
-      const url = part.match(/__YOUTUBE__([^_]+)__/)?.[1];
-      if (url) blocks.push({ type: "youtube", content: url });
-    } else if (part.trim()) {
-      blocks.push({ type: "text", content: part });
+  return splitProcessedContentIntoBlocks(processed);
+}
+
+/** __YOUTUBE__… と __IMAGE__… を順に分解（YouTube は ID に _ があっても安全） */
+function splitProcessedContentIntoBlocks(processedContent: string): ContentBlock[] {
+  const blocks: ContentBlock[] = [];
+  let pos = 0;
+  const imgRe = /^__IMAGE__([^_]+)__ALT__([^_]+)__/;
+  while (pos < processedContent.length) {
+    const ytIdx = processedContent.indexOf("__YOUTUBE__", pos);
+    const imIdx = processedContent.indexOf("__IMAGE__", pos);
+    const nextYt = ytIdx === -1 ? Infinity : ytIdx;
+    const nextIm = imIdx === -1 ? Infinity : imIdx;
+    const next = Math.min(nextYt, nextIm);
+    if (next === Infinity) {
+      const rest = processedContent.slice(pos);
+      if (rest.trim()) blocks.push({ type: "text", content: rest });
+      break;
+    }
+    if (next > pos) {
+      const before = processedContent.slice(pos, next);
+      if (before.trim()) blocks.push({ type: "text", content: before });
+    }
+    if (next === nextYt) {
+      const dec = decodeYoutubePlaceholderAt(processedContent, next);
+      if (dec) {
+        blocks.push({ type: "youtube", content: dec.url });
+        pos = dec.end;
+      } else {
+        pos = next + 1;
+      }
+      continue;
+    }
+    const slice = processedContent.slice(next);
+    const im = slice.match(imgRe);
+    if (im) {
+      blocks.push({ type: "image", content: im[1], alt: im[2] || "画像" });
+      pos = next + im[0].length;
+    } else {
+      pos = next + 1;
     }
   }
-  if (blocks.length === 0) blocks.push({ type: "text", content });
+  if (blocks.length === 0) {
+    blocks.push({ type: "text", content: processedContent });
+  }
   return blocks;
 }
 
@@ -56,23 +95,23 @@ function extractYoutubeOnly(content: string): ContentBlock[] {
  * HTML本文の場合は画像置換を行わず、YouTubeのみ抽出する
  */
 function parseContent(content: string): ContentBlock[] {
-  if (looksLikeHtml(content)) {
-    return extractYoutubeOnly(content);
+  const text = repairLeakedYoutubePlaceholdersInMarkdown(content);
+  if (looksLikeHtml(text)) {
+    return extractYoutubeOnly(text);
   }
 
-  const blocks: ContentBlock[] = [];
   const youtubePattern = /(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})(?:[^\s]*))/gi;
   // ![alt](url) 形式：拡張子付きURL に加え、Google Drive / GitHub も画像として認識
   const markdownImagePattern =
     /!\[([^\]]*)\]\((https?:\/\/[^\s)]+(?:\.(?:jpg|jpeg|png|gif|webp|svg)(?:\?[^\s)]*)?)?)\)/gi;
   const plainImageUrlPattern = /(https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif|webp|svg)(?:\?[^\s]*)?)/gi;
 
-  let processedContent = content;
+  let processedContent = text;
 
   const youtubeMatches: Array<{ index: number; length: number; url: string }> = [];
   let youtubeMatch;
   const youtubeRegex = new RegExp(youtubePattern);
-  while ((youtubeMatch = youtubeRegex.exec(content)) !== null) {
+  while ((youtubeMatch = youtubeRegex.exec(text)) !== null) {
     youtubeMatches.push({
       index: youtubeMatch.index,
       length: youtubeMatch[0].length,
@@ -83,7 +122,7 @@ function parseContent(content: string): ContentBlock[] {
   for (const match of youtubeMatches) {
     processedContent =
       processedContent.substring(0, match.index) +
-      `__YOUTUBE__${match.url}__` +
+      encodeYoutubePlaceholder(match.url) +
       processedContent.substring(match.index + match.length);
   }
 
@@ -127,22 +166,7 @@ function parseContent(content: string): ContentBlock[] {
       processedContent.substring(match.index + match.length);
   }
 
-  const parts = processedContent.split(/(__YOUTUBE__[^_]+__|__IMAGE__[^_]+__ALT__[^_]+__)/);
-  for (const part of parts) {
-    if (part.startsWith("__YOUTUBE__")) {
-      const url = part.match(/__YOUTUBE__([^_]+)__/)?.[1];
-      if (url) blocks.push({ type: "youtube", content: url });
-    } else if (part.startsWith("__IMAGE__")) {
-      const [, url, alt] = part.match(/__IMAGE__([^_]+)__ALT__([^_]+)__/) || [];
-      if (url) blocks.push({ type: "image", content: url, alt: alt || "画像" });
-    } else if (part.trim()) {
-      blocks.push({ type: "text", content: part });
-    }
-  }
-  if (blocks.length === 0) {
-    blocks.push({ type: "text", content });
-  }
-  return blocks;
+  return splitProcessedContentIntoBlocks(processedContent);
 }
 
 /**

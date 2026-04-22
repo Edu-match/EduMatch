@@ -1,5 +1,8 @@
 import React from "react";
-import { findMarkdownInlineLinks } from "@/lib/markdown-inline-links";
+import {
+  findMarkdownInlineLinks,
+  unescapeMarkdownDisplayText,
+} from "@/lib/markdown-inline-links";
 
 /**
  * 太字・斜体・取消しのみ（構造リンクなし）
@@ -45,9 +48,10 @@ function renderInlineFormattingOnly(text: string): React.ReactNode {
  */
 export function renderInlineMarkdown(text: string): React.ReactNode {
   if (!text) return null;
-  const links = findMarkdownInlineLinks(text);
+  const t = unescapeMarkdownDisplayText(text);
+  const links = findMarkdownInlineLinks(t);
   if (links.length === 0) {
-    return renderInlineFormattingOnly(text);
+    return renderInlineFormattingOnly(t);
   }
   const parts: React.ReactNode[] = [];
   let pos = 0;
@@ -56,7 +60,7 @@ export function renderInlineMarkdown(text: string): React.ReactNode {
     if (link.start > pos) {
       parts.push(
         <React.Fragment key={`t-${key++}`}>
-          {renderInlineFormattingOnly(text.slice(pos, link.start))}
+          {renderInlineFormattingOnly(t.slice(pos, link.start))}
         </React.Fragment>
       );
     }
@@ -73,10 +77,10 @@ export function renderInlineMarkdown(text: string): React.ReactNode {
     );
     pos = link.end;
   }
-  if (pos < text.length) {
+  if (pos < t.length) {
     parts.push(
       <React.Fragment key={`t-${key++}`}>
-        {renderInlineFormattingOnly(text.slice(pos))}
+        {renderInlineFormattingOnly(t.slice(pos))}
       </React.Fragment>
     );
   }

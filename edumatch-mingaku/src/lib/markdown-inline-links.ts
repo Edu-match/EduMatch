@@ -15,6 +15,11 @@ export type MarkdownInlineLinkMatch = {
   url: string;
 };
 
+/** Turndown 等が付与する \_ などを表示用に戻す */
+export function unescapeMarkdownDisplayText(s: string): string {
+  return s.replace(/\\([\\`*_{}[\]()#+\-.!|])/g, "$1");
+}
+
 /** リンク先を Markdown の () 内に安全に書く（必要なら <...> で囲む） */
 export function formatMarkdownInlineLink(label: string, href: string): string {
   const t = href.trim();

@@ -7,6 +7,7 @@
 import {
   escapeHtmlAttr,
   findMarkdownInlineLinks,
+  unescapeMarkdownDisplayText,
 } from "@/lib/markdown-inline-links";
 
 function escapeHtmlText(s: string): string {
@@ -25,19 +26,20 @@ function formatInlineNoStructuralLinks(md: string): string {
 
 export function inlineMarkdownToHtml(md: string): string {
   if (!md) return "";
-  const links = findMarkdownInlineLinks(md);
+  const t = unescapeMarkdownDisplayText(md);
+  const links = findMarkdownInlineLinks(t);
   if (links.length === 0) {
-    return formatInlineNoStructuralLinks(md);
+    return formatInlineNoStructuralLinks(t);
   }
   let out = "";
   let pos = 0;
   for (const link of links) {
-    out += formatInlineNoStructuralLinks(md.slice(pos, link.start));
+    out += formatInlineNoStructuralLinks(t.slice(pos, link.start));
     const labelHtml = inlineMarkdownToHtml(link.label);
     const href = escapeHtmlAttr(link.url);
     out += `<a href="${href}" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline hover:text-blue-700">${labelHtml}</a>`;
     pos = link.end;
   }
-  out += formatInlineNoStructuralLinks(md.slice(pos));
+  out += formatInlineNoStructuralLinks(t.slice(pos));
   return out;
 }
