@@ -357,7 +357,19 @@ export function ChatbotWidget() {
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
     requestAnimationFrame(() => {
-      listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior });
+      const el = listRef.current;
+      if (!el) return;
+      el.scrollTo({ top: el.scrollHeight, behavior });
+    });
+  }, []);
+
+  /** ストリーミング追従用: キュー後に再度ピン状態を見てからスクロール（ユーザーが上に読んでいるときは邪魔しない） */
+  const scrollToBottomIfStillPinned = useCallback(() => {
+    requestAnimationFrame(() => {
+      if (!stickToBottomRef.current) return;
+      const el = listRef.current;
+      if (!el) return;
+      el.scrollTo({ top: el.scrollHeight, behavior: "instant" });
     });
   }, []);
 
@@ -583,7 +595,7 @@ export function ChatbotWidget() {
         if (done) break;
         accumulated += decoder.decode(value, { stream: true });
         setMessages((prev) => prev.map((m) => (m.id === botMsgId ? { ...m, content: accumulated } : m)));
-        if (stickToBottomRef.current) scrollToBottom();
+        scrollToBottomIfStillPinned();
       }
       setMessages((prev) => {
         const updated = prev.map((m) => (m.id === botMsgId ? { ...m, streaming: false } : m));
