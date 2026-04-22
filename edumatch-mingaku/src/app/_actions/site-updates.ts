@@ -121,6 +121,7 @@ export async function createSiteUpdate(input: CreateSiteUpdateInput): Promise<Cr
         title: row.title,
         link: row.link,
       });
+      revalidatePath("/admin/site-updates");
       revalidatePath("/dashboard");
       revalidatePath("/mypage");
       revalidatePath("/notifications");
@@ -164,6 +165,9 @@ export async function updateSiteUpdate(input: UpdateSiteUpdateInput): Promise<Cr
         updated_at: new Date(),
       },
     });
+    revalidatePath("/admin/site-updates");
+    revalidatePath("/dashboard");
+    revalidatePath("/mypage");
     return { success: true, id: input.id };
   } catch (error) {
     console.error("Failed to update site update:", error);

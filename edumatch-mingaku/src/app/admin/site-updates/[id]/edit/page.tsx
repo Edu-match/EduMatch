@@ -34,6 +34,7 @@ export default async function EditSiteUpdatePage({
       id={id}
       defaultTitle={item.title}
       defaultBody={item.body}
+      defaultExcerpt={item.excerpt ?? ""}
       defaultPublishedAt={publishedAtLocal}
       defaultLink={item.link ?? ""}
       defaultThumbnailUrl={item.thumbnail_url ?? ""}
