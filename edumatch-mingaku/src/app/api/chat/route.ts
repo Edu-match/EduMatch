@@ -81,20 +81,53 @@ Markdown形式で論点を整理して返す。日本語で。`,
 Markdown形式で読みやすく整理。日本語で。`,
 };
 
-// ─── コンテキスト付きシステムプロンプト ─────────────────────────────────────
+// ─── 公的文書 RAG・引用ルール（全モードで常に付与）────────────────────────────
 
-const SYSTEM_WITH_CONTEXT = (mode: ChatMode, contextText: string): string => {
-  if (mode === "navigator") {
-    return `${SYSTEM_PROMPTS[mode]}
+const RAG_AND_PUBLIC_DOC_RULES = `## 公的文書・制度に関する回答ルール
+- **下記「公的文書参照（RAG）」に抜粋がある場合は必ず参照**し、「〇〇（文書名・学習指導要領等）によれば…」「文科省の整理では…」「OECD の枠組みでは…」のように**根拠と文書名を明示**して述べる。一般論だけで終えない。
+- 抜粋と**矛盾する断定はしない**。参照が足りないときは「参照範囲では…／原文・最新の文科省等の公表で確認が必要」と補足する。
+- RAG に**該当抜粋がない**場合でも、教育政策・法令・指導要領・設置基準・国際比較の話題では、**冒頭または適宜**「公的な制度・文書上は一般的に…（最新の取扱いは関係省庁・教育委員会の公表で確認）」の形で触れる。
+- サイト内の記事・サービスと併用する場合も、**制度・根拠の説明では公的文書の整理を先に**述べるとよい。`;
 
-## サイト内の参照候補（回答に役立つ場合は自然に織り交ぜること）
-${contextText}`;
+function formatKnowledgeBlock(items: ChatContextItem[]): string {
+  return items
+    .map((k, i) => `【公的文書 ${i + 1}】\n${k.content}`)
+    .join("\n\n");
+}
+
+function buildSystemPrompt(
+  mode: ChatMode,
+  siteContextItems: ChatContextItem[],
+  knowledgeItems: ChatContextItem[]
+): string {
+  const sections: string[] = [SYSTEM_PROMPTS[mode], RAG_AND_PUBLIC_DOC_RULES];
+
+  if (siteContextItems.length > 0) {
+    const siteText = siteContextItems
+      .map((c, i) => {
+        const label = c.type === "article" ? "記事" : "サービス";
+        return `【${label} ${i + 1}】\n${c.content}`;
+      })
+      .join("\n\n");
+    sections.push(
+      mode === "navigator"
+        ? `## サイト内の参照候補（記事・サービス）\n${siteText}`
+        : `## 参照コンテンツ（記事・サービス）\n${siteText}`
+    );
   }
-  return `${SYSTEM_PROMPTS[mode]}
 
-## 参照コンテンツ
-${contextText}`;
-};
+  if (knowledgeItems.length > 0) {
+    sections.push(
+      `## 公的文書参照（RAG・登録済み抜粋）\n以下を**答えの根拠として優先的に引用**し、文書名・種別を明示して述べること。\n\n${formatKnowledgeBlock(knowledgeItems)}`
+    );
+  } else {
+    sections.push(
+      `## 公的文書参照（RAG）\n今回の発話に該当する**登録済み抜粋は見つかりませんでした**。それでも制度・校務・指導要領・法令・ガイドラインに関する話題では、上記ルールに従い、**「一般的には…／最新は公式資料の確認が必要」**の形で公的な位置づけを可能な範囲で述べてください。`
+    );
+  }
+
+  return sections.join("\n\n");
+}
 
 // ─── ユーザーメッセージ変換（変数埋め込み型プロンプト） ──────────────────────
 
@@ -224,10 +257,7 @@ export async function POST(req: NextRequest) {
     data: { chat_usage_events: updated as Prisma.InputJsonValue },
   });
 
-  // ─── システムプロンプト構築 ───────────────────────────────────────────────
-  let systemPrompt = SYSTEM_PROMPTS[mode];
-
-  // 明示的に添付されたコンテキスト（クリップ添付）
+  // ─── システムプロンプト構築（サイト検索 + 公的文書 RAG は常に付与）──────────
   const explicitContexts: ChatContextItem[] = [];
   if (contextItems && contextItems.length > 0) {
     for (const item of contextItems.slice(0, 10)) {
@@ -239,36 +269,15 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // 全モード共通：ユーザーの最後のメッセージでDBを検索し、コンテキストを注入
   const lastUserMsg = messages.filter((m) => m.role === "user").at(-1)?.content ?? "";
-  const { services: searchSvcs, articles: searchArts, knowledge: searchKnowledge } =
+  const { services: searchSvcs, articles: searchArts, knowledge: knowledgeHits } =
     await searchRelevantContent(lastUserMsg, 5);
   const searchResults = [...searchSvcs, ...searchArts].filter(
     (r) => !explicitContexts.some((e) => e.id === r.id)
   );
-  const allContexts = [...explicitContexts, ...searchResults];
+  const siteContextItems = [...explicitContexts, ...searchResults];
 
-  const knowledgeSections = searchKnowledge;
-
-  if (allContexts.length > 0 || knowledgeSections.length > 0) {
-    const siteContextText =
-      allContexts.length > 0
-        ? allContexts
-            .map((c, i) => `【${c.type === "article" ? "記事" : "サービス"} ${i + 1}】\n${c.content}`)
-            .join("\n\n")
-        : "";
-
-    const knowledgeContextText =
-      knowledgeSections.length > 0
-        ? "\n\n## 公的文書・理論的根拠の参照\n以下の公的文書・ガイドラインの該当箇所を必要に応じて引用し、「〇〇（文書名）によれば」と明示して回答に根拠を示してください。\n\n" +
-          knowledgeSections
-            .map((k, i) => `【公的文書 ${i + 1}】\n${k.content}`)
-            .join("\n\n")
-        : "";
-
-    const combinedContextText = siteContextText + knowledgeContextText;
-    systemPrompt = SYSTEM_WITH_CONTEXT(mode, combinedContextText);
-  }
+  const systemPrompt = buildSystemPrompt(mode, siteContextItems, knowledgeHits);
 
   // ─── ユーザーメッセージ変換（最後のユーザー発言をモード別プロンプトに変換） ─
   const trimmedRaw = messages.slice(-20);

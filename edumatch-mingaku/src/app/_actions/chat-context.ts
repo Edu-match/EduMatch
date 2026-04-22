@@ -1,8 +1,8 @@
 "use server";
 
+import OpenAI from "openai";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/utils/supabase/server";
-import OpenAI from "openai";
 
 export type ChatContextItem = {
   id: string;
@@ -19,6 +19,24 @@ export type KnowledgeChunkResult = {
   similarity: number;
   doc_title: string;
   doc_source_type: string;
+};
+
+const SOURCE_TYPE_LABEL: Record<string, string> = {
+  curriculum_elementary: "学習指導要領（小学校）",
+  curriculum_middle: "学習指導要領（中学校）",
+  curriculum_high: "学習指導要領（高等学校）",
+  mext_giga: "GIGAスクール構想関連",
+  mext_digital: "デジタル教育・教科書",
+  mext_special: "特別支援教育",
+  mext_guideline: "文科省ガイドライン",
+  oecd_learning: "OECD ラーニングコンパス 2030",
+  oecd_teaching: "OECD ティーチングコンパス",
+  oecd_other: "OECD その他",
+  school_standard: "学校設置基準",
+  education_plan: "教育振興基本計画",
+  cue_answer: "中央教育審議会答申",
+  law_education: "教育基本法・学校教育法",
+  other: "公的文書（その他）",
 };
 
 function stripHtml(html: string): string {
@@ -83,15 +101,72 @@ export async function getArticleContextForChat(
 }
 
 /**
- * ナビゲーターモード用：ユーザーの質問キーワードでサービス・記事を検索して返す。
- * pgvector でナレッジ文書も検索し knowledge として返す。
+ * pgvector で登録済み公的文書チャンクを取得（常にチャット API から呼ぶ）
+ */
+export async function searchKnowledgeChunks(
+  query: string,
+  matchCount = 5,
+  matchThreshold = 0.72
+): Promise<ChatContextItem[]> {
+  const q = query.trim();
+  if (q.length < 2) return [];
+
+  try {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) return [];
+
+    const openai = new OpenAI({ apiKey });
+    const embeddingResponse = await openai.embeddings.create({
+      model: "text-embedding-3-small",
+      input: q.slice(0, 8000),
+      dimensions: 1536,
+    });
+    const queryEmbedding = embeddingResponse.data[0]?.embedding;
+    if (!queryEmbedding) return [];
+
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("match_knowledge_chunks", {
+      query_embedding: `[${queryEmbedding.join(",")}]`,
+      match_count: matchCount,
+      match_threshold: matchThreshold,
+    });
+
+    if (error || !data) {
+      console.error("searchKnowledgeChunks error:", error);
+      return [];
+    }
+
+    return (data as KnowledgeChunkResult[]).map((row) => ({
+      id: row.id,
+      type: "knowledge" as const,
+      title: row.doc_title,
+      content: truncate(
+        [
+          `文書: ${row.doc_title}`,
+          `種別: ${SOURCE_TYPE_LABEL[row.doc_source_type] ?? row.doc_source_type}`,
+          `\n${row.content}`,
+        ].join("\n"),
+        1400
+      ),
+    }));
+  } catch (error) {
+    console.error("searchKnowledgeChunks error:", error);
+    return [];
+  }
+}
+
+/**
+ * ユーザーの発話でサービス・記事を検索し、あわせて公的文書（RAG）を常に取得する
  */
 export async function searchRelevantContent(
   query: string,
   limit = 4
-): Promise<{ services: ChatContextItem[]; articles: ChatContextItem[]; knowledge: ChatContextItem[] }> {
+): Promise<{
+  services: ChatContextItem[];
+  articles: ChatContextItem[];
+  knowledge: ChatContextItem[];
+}> {
   try {
-    // クエリからキーワードを抽出（2文字以上）
     const keywords = query
       .replace(/[。、！？「」【】\s]+/g, " ")
       .trim()
@@ -100,17 +175,19 @@ export async function searchRelevantContent(
       .slice(0, 6);
 
     if (keywords.length === 0) {
-      // キーワードなし → 人気サービス上位を返す
-      const services = await prisma.service.findMany({
-        where: { OR: [{ status: "APPROVED" }, { is_published: true }] },
-        select: {
-          id: true, title: true, description: true,
-          category: true, tags: true, price_info: true,
-          provider: { select: { name: true } },
-        },
-        orderBy: { created_at: "desc" },
-        take: limit,
-      });
+      const [services, knowledge] = await Promise.all([
+        prisma.service.findMany({
+          where: { OR: [{ status: "APPROVED" }, { is_published: true }] },
+          select: {
+            id: true, title: true, description: true,
+            category: true, tags: true, price_info: true,
+            provider: { select: { name: true } },
+          },
+          orderBy: { created_at: "desc" },
+          take: limit,
+        }),
+        searchKnowledgeChunks(query),
+      ]);
       return {
         services: services.map((s) => ({
           id: s.id,
@@ -127,7 +204,7 @@ export async function searchRelevantContent(
           ),
         })),
         articles: [],
-        knowledge: [],
+        knowledge,
       };
     }
 
@@ -203,76 +280,6 @@ export async function searchRelevantContent(
   } catch (error) {
     console.error("searchRelevantContent error:", error);
     return { services: [], articles: [], knowledge: [] };
-  }
-}
-
-const SOURCE_TYPE_LABEL: Record<string, string> = {
-  curriculum_elementary: "学習指導要領（小学校）",
-  curriculum_middle:     "学習指導要領（中学校）",
-  curriculum_high:       "学習指導要領（高等学校）",
-  mext_giga:             "GIGAスクール構想関連",
-  mext_digital:          "デジタル教育・教科書",
-  mext_special:          "特別支援教育",
-  mext_guideline:        "文科省ガイドライン",
-  oecd_learning:         "OECD ラーニングコンパス 2030",
-  oecd_teaching:         "OECD ティーチングコンパス",
-  oecd_other:            "OECD その他",
-  school_standard:       "学校設置基準",
-  education_plan:        "教育振興基本計画",
-  cue_answer:            "中央教育審議会答申",
-  law_education:         "教育基本法・学校教育法",
-  other:                 "公的文書",
-};
-
-/**
- * pgvector 類似度検索でナレッジチャンクを取得する
- */
-export async function searchKnowledgeChunks(
-  query: string,
-  matchCount = 3,
-  matchThreshold = 0.75
-): Promise<ChatContextItem[]> {
-  try {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) return [];
-
-    const openai = new OpenAI({ apiKey });
-    const embeddingResponse = await openai.embeddings.create({
-      model: "text-embedding-3-small",
-      input: query,
-      dimensions: 1536,
-    });
-    const queryEmbedding = embeddingResponse.data[0]?.embedding;
-    if (!queryEmbedding) return [];
-
-    const supabase = await createClient();
-    const { data, error } = await supabase.rpc("match_knowledge_chunks", {
-      query_embedding: `[${queryEmbedding.join(",")}]`,
-      match_count: matchCount,
-      match_threshold: matchThreshold,
-    });
-
-    if (error || !data) {
-      console.error("searchKnowledgeChunks error:", error);
-      return [];
-    }
-
-    return (data as KnowledgeChunkResult[]).map((row) => ({
-      id: row.id,
-      type: "knowledge" as const,
-      title: row.doc_title,
-      content: truncate(
-        [
-          `文書: ${row.doc_title}`,
-          `種別: ${SOURCE_TYPE_LABEL[row.doc_source_type] ?? row.doc_source_type}`,
-          `\n${row.content}`,
-        ].join("\n"),
-        1200
-      ),
-    }));
-  } catch (error) {
-    console.error("searchKnowledgeChunks error:", error);
-    return [];
   }
 }
 
