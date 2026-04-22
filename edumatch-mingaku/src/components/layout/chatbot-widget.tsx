@@ -320,8 +320,6 @@ export function ChatbotWidget() {
   const [chatMode, setChatMode] = useState<ChatMode | null>(null);
 
   const listRef = useRef<HTMLDivElement | null>(null);
-  /** ユーザーが下端付近にいるときだけストリーミング追従（上に読み返しているときは固定） */
-  const stickToBottomRef = useRef(true);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -350,38 +348,14 @@ export function ChatbotWidget() {
     if (open) fetchAuth();
   }, [open, fetchAuth]);
 
-  const isNearBottom = useCallback((el: HTMLDivElement | null, threshold = 120) => {
-    if (!el) return true;
-    return el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
-  }, []);
-
-  const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
+  const scrollToBottom = useCallback(() => {
     requestAnimationFrame(() => {
-      const el = listRef.current;
-      if (!el) return;
-      el.scrollTo({ top: el.scrollHeight, behavior });
+      listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
     });
   }, []);
-
-  /** ストリーミング追従用: キュー後に再度ピン状態を見てからスクロール（ユーザーが上に読んでいるときは邪魔しない） */
-  const scrollToBottomIfStillPinned = useCallback(() => {
-    requestAnimationFrame(() => {
-      if (!stickToBottomRef.current) return;
-      const el = listRef.current;
-      if (!el) return;
-      el.scrollTo({ top: el.scrollHeight, behavior: "instant" });
-    });
-  }, []);
-
-  const handleMessagesScroll = useCallback(() => {
-    stickToBottomRef.current = isNearBottom(listRef.current);
-  }, [isNearBottom]);
 
   useEffect(() => {
-    if (open) {
-      stickToBottomRef.current = true;
-      scrollToBottom("instant");
-    }
+    if (open) scrollToBottom();
   }, [open, messages.length, scrollToBottom]);
 
   useEffect(() => {
@@ -399,6 +373,15 @@ export function ChatbotWidget() {
       })
       .catch(() => {});
   }, [open, userId, messages.length]);
+
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
 
   // 問い合わせフォーム等の「AIチャットを開く」ボタンから開けるようにする
   useEffect(() => {
@@ -551,7 +534,6 @@ export function ChatbotWidget() {
     const botMsgId = `a-${Date.now()}`;
     const botMsg: ChatMsg = { id: botMsgId, role: "assistant", content: "", streaming: true };
 
-    stickToBottomRef.current = true;
     setMessages((prev) => [...prev, userMsg, botMsg]);
     if (!overrideText) setInput("");
     setEditingMessageId(null);
@@ -595,7 +577,7 @@ export function ChatbotWidget() {
         if (done) break;
         accumulated += decoder.decode(value, { stream: true });
         setMessages((prev) => prev.map((m) => (m.id === botMsgId ? { ...m, content: accumulated } : m)));
-        scrollToBottomIfStillPinned();
+        scrollToBottom();
       }
       setMessages((prev) => {
         const updated = prev.map((m) => (m.id === botMsgId ? { ...m, streaming: false } : m));
@@ -741,11 +723,7 @@ export function ChatbotWidget() {
 
       {view === "chat" && userId && hasAgreed && chatMode && (
         <>
-          <div
-            ref={listRef}
-            onScroll={handleMessagesScroll}
-            className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 min-h-0 overscroll-contain touch-pan-y"
-          >
+          <div ref={listRef} className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 min-h-0">
             <div className="space-y-4">
               {messages.length === 0 && (
                 <>

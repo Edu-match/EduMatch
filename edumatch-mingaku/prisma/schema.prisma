@@ -364,35 +364,3 @@ enum HomeNewsTab {
   INTERNATIONAL /// 海外ニュース
   WEEKLY       /// 週間ニュース
 }
-
-/// 教育公的文書などのナレッジ文書（RAG参照源）
-model KnowledgeDocument {
-  id          String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  title       String
-  /// curriculum_elementary | curriculum_middle | curriculum_high | mext_giga | mext_digital | mext_special | mext_guideline | oecd_learning | oecd_teaching | oecd_other | school_standard | education_plan | cue_answer | law_education | other
-  source_type       String
-  /// source_type = 'other' のときの自由記述
-  source_type_other String?
-  source_url        String?
-  description       String?
-  created_at  DateTime       @default(now()) @db.Timestamptz(6)
-  chunks      KnowledgeChunk[]
-
-  @@map("knowledge_documents")
-}
-
-/// 文書をチャンク分割したテキスト断片（ベクトル埋め込み付き）
-model KnowledgeChunk {
-  id          String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  document_id String            @db.Uuid
-  chunk_index Int
-  content     String
-  /// pgvector vector(1536) — Prisma では Unsupported として管理し、挿入は Supabase client 経由で行う
-  embedding   Unsupported("vector(1536)")?
-  created_at  DateTime          @default(now()) @db.Timestamptz(6)
-  document    KnowledgeDocument @relation(fields: [document_id], references: [id], onDelete: Cascade)
-
-  @@unique([document_id, chunk_index])
-  @@index([document_id])
-  @@map("knowledge_chunks")
-}
