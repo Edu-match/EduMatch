@@ -11,6 +11,7 @@ import {
 } from "@/lib/imported-content";
 import { ImportedContentRenderer } from "@/components/content/imported-content-renderer";
 import { ImageWithUrlError } from "@/components/ui/image-with-url-error";
+import { markdownAnchorWithVideoEmbed } from "@/components/content/markdown-video-embed-link";
 function extractYouTubeId(url: string): string {
   const match = url.match(
     /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/
@@ -169,17 +170,7 @@ export function BlocksContentPreview({ content }: { content: string }) {
                 <ReactMarkdown
                   remarkPlugins={[remarkBreaks]}
                   components={{
-                    a: ({ href, children, ...props }) => (
-                      <a
-                        href={href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 underline hover:text-blue-700"
-                        {...props}
-                      >
-                        {children}
-                      </a>
-                    ),
+                    ...markdownAnchorWithVideoEmbed(),
                   }}
                 >
                   {block.content ?? ""}

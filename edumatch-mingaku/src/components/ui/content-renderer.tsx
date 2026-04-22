@@ -7,11 +7,8 @@ import { renderInlineMarkdown } from "@/lib/inline-markdown";
 import { YouTubeEmbed } from "./youtube-embed";
 import { RAW_MARKDOWN_PREFIX } from "@/lib/markdown-to-blocks";
 import { ImageWithUrlError } from "@/components/ui/image-with-url-error";
-import {
-  decodeYoutubePlaceholderAt,
-  encodeYoutubePlaceholder,
-  repairLeakedYoutubePlaceholdersInMarkdown,
-} from "@/lib/youtube-content-placeholder";
+import { repairLeakedYoutubePlaceholdersInMarkdown } from "@/lib/youtube-content-placeholder";
+import { matchVideoEmbedMarkdownLine } from "@/lib/video-embed-markdown";
 
 function stripRawMarkdownPrefix(content: string): string {
   const trimmed = content.trimStart();
@@ -21,73 +18,14 @@ function stripRawMarkdownPrefix(content: string): string {
 }
 
 type ContentBlock = {
-  type: "text" | "image" | "youtube";
+  type: "text" | "image";
   content: string;
   alt?: string;
 };
 
-/** YouTube URL のみ抽出してプレースホルダーに置換（HTML本文用） */
+/** HTML 本文は YouTube を自動検出しない */
 function extractYoutubeOnly(content: string): ContentBlock[] {
-  const youtubePattern = /(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})(?:[^\s"'<>]*))/gi;
-  const matches: Array<{ index: number; length: number; url: string }> = [];
-  let m: RegExpExecArray | null;
-  while ((m = youtubePattern.exec(content)) !== null) {
-    matches.push({ index: m.index, length: m[0].length, url: m[0] });
-  }
-  matches.reverse();
-  let processed = content;
-  for (const match of matches) {
-    processed =
-      processed.substring(0, match.index) +
-      encodeYoutubePlaceholder(match.url) +
-      processed.substring(match.index + match.length);
-  }
-  return splitProcessedContentIntoBlocks(processed);
-}
-
-/** __YOUTUBE__… と __IMAGE__… を順に分解（YouTube は ID に _ があっても安全） */
-function splitProcessedContentIntoBlocks(processedContent: string): ContentBlock[] {
-  const blocks: ContentBlock[] = [];
-  let pos = 0;
-  const imgRe = /^__IMAGE__([^_]+)__ALT__([^_]+)__/;
-  while (pos < processedContent.length) {
-    const ytIdx = processedContent.indexOf("__YOUTUBE__", pos);
-    const imIdx = processedContent.indexOf("__IMAGE__", pos);
-    const nextYt = ytIdx === -1 ? Infinity : ytIdx;
-    const nextIm = imIdx === -1 ? Infinity : imIdx;
-    const next = Math.min(nextYt, nextIm);
-    if (next === Infinity) {
-      const rest = processedContent.slice(pos);
-      if (rest.trim()) blocks.push({ type: "text", content: rest });
-      break;
-    }
-    if (next > pos) {
-      const before = processedContent.slice(pos, next);
-      if (before.trim()) blocks.push({ type: "text", content: before });
-    }
-    if (next === nextYt) {
-      const dec = decodeYoutubePlaceholderAt(processedContent, next);
-      if (dec) {
-        blocks.push({ type: "youtube", content: dec.url });
-        pos = dec.end;
-      } else {
-        pos = next + 1;
-      }
-      continue;
-    }
-    const slice = processedContent.slice(next);
-    const im = slice.match(imgRe);
-    if (im) {
-      blocks.push({ type: "image", content: im[1], alt: im[2] || "画像" });
-      pos = next + im[0].length;
-    } else {
-      pos = next + 1;
-    }
-  }
-  if (blocks.length === 0) {
-    blocks.push({ type: "text", content: processedContent });
-  }
-  return blocks;
+  return [{ type: "text", content: content || "" }];
 }
 
 /**
@@ -100,31 +38,13 @@ function parseContent(content: string): ContentBlock[] {
     return extractYoutubeOnly(text);
   }
 
-  const youtubePattern = /(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})(?:[^\s]*))/gi;
+  const blocks: ContentBlock[] = [];
   // ![alt](url) 形式：拡張子付きURL に加え、Google Drive / GitHub も画像として認識
   const markdownImagePattern =
     /!\[([^\]]*)\]\((https?:\/\/[^\s)]+(?:\.(?:jpg|jpeg|png|gif|webp|svg)(?:\?[^\s)]*)?)?)\)/gi;
   const plainImageUrlPattern = /(https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif|webp|svg)(?:\?[^\s]*)?)/gi;
 
   let processedContent = text;
-
-  const youtubeMatches: Array<{ index: number; length: number; url: string }> = [];
-  let youtubeMatch;
-  const youtubeRegex = new RegExp(youtubePattern);
-  while ((youtubeMatch = youtubeRegex.exec(text)) !== null) {
-    youtubeMatches.push({
-      index: youtubeMatch.index,
-      length: youtubeMatch[0].length,
-      url: youtubeMatch[0],
-    });
-  }
-  youtubeMatches.reverse();
-  for (const match of youtubeMatches) {
-    processedContent =
-      processedContent.substring(0, match.index) +
-      encodeYoutubePlaceholder(match.url) +
-      processedContent.substring(match.index + match.length);
-  }
 
   const markdownMatches: Array<{ index: number; length: number; url: string; alt: string }> = [];
   let markdownMatch;
@@ -150,7 +70,7 @@ function parseContent(content: string): ContentBlock[] {
   const plainRegex = new RegExp(plainImageUrlPattern);
   while ((plainMatch = plainRegex.exec(processedContent)) !== null) {
     const beforeText = processedContent.substring(Math.max(0, plainMatch.index - 15), plainMatch.index);
-    if (!beforeText.includes("__IMAGE__") && !beforeText.includes("__YOUTUBE__")) {
+    if (!beforeText.includes("__IMAGE__")) {
       plainMatches.push({
         index: plainMatch.index,
         length: plainMatch[0].length,
@@ -166,7 +86,43 @@ function parseContent(content: string): ContentBlock[] {
       processedContent.substring(match.index + match.length);
   }
 
-  return splitProcessedContentIntoBlocks(processedContent);
+  const parts = processedContent.split(/(__IMAGE__[^_]+__ALT__[^_]+__)/);
+  for (const part of parts) {
+    if (part.startsWith("__IMAGE__")) {
+      const [, url, alt] = part.match(/__IMAGE__([^_]+)__ALT__([^_]+)__/) || [];
+      if (url) blocks.push({ type: "image", content: url, alt: alt || "画像" });
+    } else if (part.trim()) {
+      blocks.push({ type: "text", content: part });
+    }
+  }
+  if (blocks.length === 0) {
+    blocks.push({ type: "text", content: text });
+  }
+  return blocks;
+}
+
+/** `[動画](URL)` のみ iframe＋URL表示。通常の YouTube リンクは renderInlineMarkdown 側 */
+function renderMarkdownLineOrVideo(line: string): React.ReactNode {
+  const vm = matchVideoEmbedMarkdownLine(line);
+  if (vm) {
+    const url = vm[1];
+    return (
+      <span className="block w-full max-w-3xl mx-auto not-prose">
+        <YouTubeEmbed url={url} title="埋め込み動画" />
+        <span className="mt-2 block text-sm text-muted-foreground break-all">
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary underline"
+          >
+            {url}
+          </a>
+        </span>
+      </span>
+    );
+  }
+  return renderInlineMarkdown(line);
 }
 
 /**
@@ -232,6 +188,17 @@ function MarkdownLikeContent({ text }: { text: string }) {
       continue;
     }
 
+    // 明示的な動画埋め込み行のみ iframe（ツールバー「動画化」で追加された [動画](URL)）
+    if (matchVideoEmbedMarkdownLine(trimmed)) {
+      nodes.push(
+        <div key={`md-${keyIndex++}`} className="my-6">
+          {renderMarkdownLineOrVideo(trimmed)}
+        </div>
+      );
+      i += 1;
+      continue;
+    }
+
     // 箇条書き（- または * で始まる行）
     if (trimmed.startsWith("- ") || (trimmed.startsWith("* ") && trimmed.length > 2)) {
       const items: string[] = [];
@@ -250,7 +217,7 @@ function MarkdownLikeContent({ text }: { text: string }) {
             className="list-disc list-inside text-base text-foreground leading-relaxed mb-4 space-y-1"
           >
             {items.map((item, j) => (
-              <li key={j}>{renderInlineMarkdown(item)}</li>
+              <li key={j}>{renderMarkdownLineOrVideo(item)}</li>
             ))}
           </ul>
         );
@@ -283,7 +250,7 @@ function MarkdownLikeContent({ text }: { text: string }) {
             className="list-decimal list-inside text-base text-foreground leading-relaxed mb-4 space-y-1"
           >
             {items.map((item, j) => (
-              <li key={j}>{renderInlineMarkdown(item)}</li>
+              <li key={j}>{renderMarkdownLineOrVideo(item)}</li>
             ))}
           </ol>
         );
@@ -315,7 +282,7 @@ function MarkdownLikeContent({ text }: { text: string }) {
           {paraText.split("\n").map((line, idx) => (
             <React.Fragment key={idx}>
               {idx > 0 && <br />}
-              {renderInlineMarkdown(line)}
+              {renderMarkdownLineOrVideo(line)}
             </React.Fragment>
           ))}
         </p>
@@ -344,14 +311,6 @@ export function ContentRenderer({ content, className }: ContentRendererProps) {
   return (
     <div className={className}>
       {blocks.map((block, index) => {
-        if (block.type === "youtube") {
-          return (
-            <div key={index} className="my-6">
-              <YouTubeEmbed url={block.content} title={`YouTube動画 ${index + 1}`} />
-            </div>
-          );
-        }
-        
         if (block.type === "image") {
           return (
             <div

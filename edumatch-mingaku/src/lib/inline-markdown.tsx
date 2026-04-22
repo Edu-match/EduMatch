@@ -4,6 +4,40 @@ import {
   unescapeMarkdownDisplayText,
 } from "@/lib/markdown-inline-links";
 
+/** 構文リンク以外のプレーン URL をクリック可能にする（末尾の句読点は除外） */
+function linkifyPlainTextWithHttps(text: string): React.ReactNode {
+  const re = /(https?:\/\/[^\s<>\[\]()]+)/g;
+  const out: React.ReactNode[] = [];
+  let last = 0;
+  let m: RegExpExecArray | null;
+  let k = 0;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) {
+      out.push(<React.Fragment key={`p-${k++}`}>{text.slice(last, m.index)}</React.Fragment>);
+    }
+    let href = m[1];
+    while (/[.,;:!?）】\]}>]+$/.test(href)) href = href.slice(0, -1);
+    if (href) {
+      out.push(
+        <a
+          key={`a-${k++}`}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 underline hover:text-blue-700 break-all"
+        >
+          {href}
+        </a>
+      );
+    }
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) {
+    out.push(<React.Fragment key={`p-${k++}`}>{text.slice(last)}</React.Fragment>);
+  }
+  return out.length === 0 ? text : out.length === 1 ? out[0] : <>{out}</>;
+}
+
 /**
  * 太字・斜体・取消しのみ（構造リンクなし）
  */
@@ -17,7 +51,9 @@ function renderInlineFormattingOnly(text: string): React.ReactNode {
   while ((m = regex.exec(text)) !== null) {
     if (m.index > lastIndex) {
       parts.push(
-        <React.Fragment key={`p-${key++}`}>{text.slice(lastIndex, m.index)}</React.Fragment>
+        <React.Fragment key={`t-${key++}`}>
+          {linkifyPlainTextWithHttps(text.slice(lastIndex, m.index))}
+        </React.Fragment>
       );
     }
     if (m[1] !== undefined) {
@@ -35,7 +71,9 @@ function renderInlineFormattingOnly(text: string): React.ReactNode {
   }
   if (lastIndex < text.length) {
     parts.push(
-      <React.Fragment key={`p-${key++}`}>{text.slice(lastIndex)}</React.Fragment>
+      <React.Fragment key={`t-${key++}`}>
+        {linkifyPlainTextWithHttps(text.slice(lastIndex))}
+      </React.Fragment>
     );
   }
   if (parts.length === 0) return null;

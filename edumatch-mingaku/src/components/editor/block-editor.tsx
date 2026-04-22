@@ -44,6 +44,9 @@ import {
   formatMarkdownInlineLink,
   parseEntireStringAsMarkdownLink,
 } from "@/lib/markdown-inline-links";
+import { YouTubeEmbed } from "@/components/ui/youtube-embed";
+import { linkChildrenToText } from "@/components/content/markdown-video-embed-link";
+import { matchVideoEmbedMarkdownLine } from "@/lib/video-embed-markdown";
 import { useUndoRedoTextField, UNDO_TYPING_MERGE_MS } from "@/components/editor/use-undo-redo-text-field";
 import {
   DropdownMenu,
@@ -155,11 +158,23 @@ function MarkdownBlockField({
           <ReactMarkdown
             remarkPlugins={[remarkBreaks]}
             components={{
-              a: ({ children, ...props }) => (
-                <span className="text-blue-600 underline cursor-default" {...props}>
-                  {children}
-                </span>
-              ),
+              a: ({ href, children, ...props }) => {
+                const label = linkChildrenToText(children).trim();
+                const line = href ? `[${label}](${href})` : "";
+                if (href && label === "動画" && matchVideoEmbedMarkdownLine(line)) {
+                  return (
+                    <span className="block my-4 not-prose w-full max-w-3xl mx-auto">
+                      <YouTubeEmbed url={href} title="動画" />
+                      <p className="mt-2 text-xs text-muted-foreground break-all">{href}</p>
+                    </span>
+                  );
+                }
+                return (
+                  <span className="text-blue-600 underline cursor-default" {...props}>
+                    {children}
+                  </span>
+                );
+              },
             }}
           >
             {text}
@@ -664,8 +679,11 @@ export function BlockEditor({
     [blocks, updateBlock]
   );
 
-  /** 選択中の YouTube リンク／URL を本文から外し、その直後に動画ブロックを挿入する */
-  const replaceSelectionWithLinkedMedia = useCallback(
+  /**
+   * 選択した YouTube URL／リンクの直後に動画ブロックを挿入する。
+   * 本文・リンクテキストは削除しない（URLもそのまま残す）。
+   */
+  const insertYoutubeVideoBlockAfter = useCallback(
     (blockId: string, itemIndex?: number) => {
       const block = blocks.find((b) => b.id === blockId);
       if (!block) return;
@@ -690,112 +708,65 @@ export function BlockEditor({
       const el = (textInputRefs.current[refKey] ?? textInputRefs.current[blockId]) as HTMLElement | null;
       if (!el) return;
 
-      const isYoutube = (u: string) => extractYouTubeId(u.trim()).length === 11;
+      const isYoutubeUrl = (u: string) => extractYouTubeId(u.trim()).length === 11;
 
-      const insertAfter = (baseBlocks: ContentBlock[], updatedBlock: ContentBlock, url: string) => {
-        const idx = baseBlocks.findIndex((b) => b.id === blockId);
-        if (idx < 0) return;
-        const videoBlock: ContentBlock = {
-          id: generateId(),
-          type: "video",
-          content: "",
-          url,
-          align: "left",
-        };
-        const nb = baseBlocks.map((b) => (b.id === blockId ? updatedBlock : b));
-        nb.splice(idx + 1, 0, videoBlock);
-        if (maxLength !== undefined && calculateTotalLength(nb) > maxLength) {
-          toast.error("文字数制限のため動画ブロックを追加できません");
-          return;
-        }
-        onChange(nb);
-        setActiveBlockId(videoBlock.id);
-      };
-
+      let mediaUrl: string | null = null;
       if (el.isContentEditable) {
         const sel = window.getSelection();
-        if (!sel || sel.rangeCount === 0) return;
-        let range = sel.getRangeAt(0);
-        const container = range.commonAncestorContainer;
+        if (!sel?.rangeCount) return;
+        const range = sel.getRangeAt(0);
         const node =
-          container.nodeType === Node.TEXT_NODE ? container.parentElement : (container as HTMLElement);
+          range.commonAncestorContainer.nodeType === Node.TEXT_NODE
+            ? range.commonAncestorContainer.parentElement
+            : (range.commonAncestorContainer as HTMLElement);
         const anchor = node?.closest?.("a[href]");
-
-        let mediaUrl: string | null = null;
         if (anchor instanceof HTMLAnchorElement && el.contains(anchor)) {
-          const href = anchor.getAttribute("href") || "";
-          if (isYoutube(href)) {
-            mediaUrl = href;
-            const r = document.createRange();
-            r.selectNode(anchor);
-            sel.removeAllRanges();
-            sel.addRange(r);
-            range = r;
-          }
+          const href = anchor.getAttribute("href")?.trim() ?? "";
+          if (href && isYoutubeUrl(href)) mediaUrl = href;
         }
         if (!mediaUrl) {
           const t = sel.toString().trim();
           const asMd = parseEntireStringAsMarkdownLink(t);
-          if (asMd && isYoutube(asMd.url)) mediaUrl = asMd.url;
-          else if (/^https?:\/\//.test(t) && isYoutube(t)) mediaUrl = t;
+          if (asMd && isYoutubeUrl(asMd.url)) mediaUrl = asMd.url;
+          else if (/^https?:\/\//.test(t) && isYoutubeUrl(t)) mediaUrl = t;
         }
-        if (!mediaUrl) {
-          toast.info("YouTubeのリンクまたはURLを選択してください（リンク内ならクリック位置でも可）");
+      } else if ("value" in el) {
+        const inputEl = el as HTMLInputElement | HTMLTextAreaElement;
+        const start = inputEl.selectionStart ?? 0;
+        const end = inputEl.selectionEnd ?? 0;
+        if (start === end) {
+          toast.info("YouTubeのリンクまたはURLを選択してください");
           return;
         }
-        const fragToMd = (frag: DocumentFragment) => {
-          const div = document.createElement("div");
-          div.appendChild(frag);
-          return htmlToMarkdown(div.innerHTML);
-        };
-        const preRange = document.createRange();
-        preRange.selectNodeContents(el);
-        preRange.setEnd(range.startContainer, range.startOffset);
-        const before = fragToMd(preRange.cloneContents()).trimEnd();
-        const postRange = document.createRange();
-        postRange.selectNodeContents(el);
-        postRange.setStart(range.endContainer, range.endOffset);
-        const after = fragToMd(postRange.cloneContents()).trimStart();
-        const newMd = [before, after].filter(Boolean).join("\n\n") || "";
-        insertAfter(blocks, { ...block, content: newMd }, mediaUrl);
+        const selected = inputEl.value.slice(start, end).trim();
+        const asMd = parseEntireStringAsMarkdownLink(selected);
+        if (asMd && isYoutubeUrl(asMd.url)) mediaUrl = asMd.url;
+        else if (/^https?:\/\//.test(selected) && isYoutubeUrl(selected)) mediaUrl = selected;
+      }
+
+      if (!mediaUrl) {
+        toast.info("YouTubeのURLまたは [表示名](URL) 形式のリンクを選択してください");
         return;
       }
 
-      const inputEl = el as HTMLInputElement | HTMLTextAreaElement;
-      const start = inputEl.selectionStart ?? 0;
-      const end = inputEl.selectionEnd ?? 0;
-      if (start === end) {
-        toast.info("置き換えるYouTubeのリンクまたはURLを選択してください");
+      const idx = blocks.findIndex((b) => b.id === blockId);
+      if (idx < 0) return;
+      const videoBlock: ContentBlock = {
+        id: generateId(),
+        type: "video",
+        content: "",
+        url: mediaUrl.trim(),
+        align: "left",
+      };
+      const nb = [...blocks];
+      nb.splice(idx + 1, 0, videoBlock);
+      if (maxLength !== undefined && calculateTotalLength(nb) > maxLength) {
+        toast.error("文字数制限のため動画ブロックを追加できません");
         return;
       }
-      const val = inputEl.value;
-      const selected = val.slice(start, end);
-      const trimmed = selected.trim();
-      const asMd = parseEntireStringAsMarkdownLink(trimmed);
-      let mediaUrl: string | null = null;
-      if (asMd && isYoutube(asMd.url)) mediaUrl = asMd.url;
-      else if (/^https?:\/\//.test(trimmed) && isYoutube(trimmed)) mediaUrl = trimmed;
-      if (!mediaUrl) {
-        toast.info("YouTubeの「[表示名](URL)」形式のリンクまたはURLを選択してください");
-        return;
-      }
-      const before = val.slice(0, start);
-      const after = val.slice(end);
-      const newVal = before + after;
-      if (targetItemIndex !== undefined && block.items) {
-        const newItems = [...block.items];
-        newItems[targetItemIndex] = newVal;
-        insertAfter(blocks, { ...block, items: newItems }, mediaUrl);
-      } else {
-        insertAfter(blocks, { ...block, content: newVal }, mediaUrl);
-      }
-      requestAnimationFrame(() => {
-        const newEl = textInputRefs.current[refKey] as HTMLInputElement | HTMLTextAreaElement | null;
-        if (newEl && "setSelectionRange" in newEl) {
-          newEl.focus();
-          newEl.setSelectionRange(start, start);
-        }
-      });
+      onChange(nb);
+      setActiveBlockId(videoBlock.id);
+      toast.success("動画ブロックを追加しました（本文のテキストはそのままです）");
     },
     [blocks, onChange, maxLength, calculateTotalLength]
   );
@@ -1786,10 +1757,10 @@ export function BlockEditor({
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      title="選択したYouTubeを動画ブロックに置き換え（出典リンク用）"
+                      title="選択したYouTubeの下に動画プレーヤーを追加（本文のURLは残します）"
                       onMouseDown={(e) => {
                         e.preventDefault();
-                        replaceSelectionWithLinkedMedia(block.id);
+                        insertYoutubeVideoBlockAfter(block.id);
                       }}
                     >
                       <Youtube className="h-4 w-4" />
