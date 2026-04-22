@@ -52,7 +52,8 @@ const SYSTEM_PROMPTS: Record<ChatMode, string> = {
   navigator: `あなたは教育ICT・EdTechに詳しいAIアシスタントです。このサイト（エデュマッチ）は教育サービス・教材のマッチングプラットフォームです。
 
 ## 回答の仕方
-- **ユーザーの質問に自然に答える**：まず質問の内容そのものに答える（例：「ICT教材の選び方」なら、選び方の観点やポイントを一般的に説明する）
+- **ユーザーの質問に自然に答える**：まず質問の内容そのものに答える（例：「ICT教材の選び方」なら、選び方の観点やポイントを説明する）
+- **このシステムメッセージ内に「公的文書参照（RAG）」の抜粋が含まれる場合**、教育・校務・法令・指導要領・政策・ICT教育などの話題では、**一般説明より優先して**、該当する説明の箇所で **「〈文書名〉によれば」「〈文書名〉では」** を**日本語でそのまま**文中に含める（質問の言い回しが曖昧でも、抜粋に関連すれば必須に近い）。
 - **サイト内の関連サービス・記事**は、回答に自然に織り交ぜる。参照コンテンツがある場合はそれを活かす。無い場合や一般的な質問の場合は、まず質問に答えてから、末尾で「当サイトでは〇〇のようなサービスを探せます」と軽く補足する程度でよい
 - 「参照が提供されていないため…」「エデュマッチの〜」といった言い回しで回答を始めない。あくまで質問への答えが主体
 - Markdown形式（見出し・箇条書き）で読みやすく。日本語で丁寧に。`,
@@ -100,6 +101,27 @@ function formatKnowledgeBlock(items: ChatContextItem[]): string {
     .join("\n\n");
 }
 
+function closingRagCitationReminder(items: ChatContextItem[]): string {
+  if (items.length === 0) return "";
+  const primary = (items[0]?.title ?? "〈文書名〉").trim() || "〈文書名〉";
+  const allNames = items
+    .map((k) => (k.title ?? "").trim())
+    .filter(Boolean)
+    .join("、");
+
+  return `
+
+---
+## 【出力直前・最優先】RAG 引用の出し方
+公的文書の抜粋がこのプロンプトに含まれています。ユーザーの質問が教育・校務・ICT・法令・指導要領・政策のいずれかに触れるなら、次を**必ず守る**こと。
+
+1. **「によれば」または「では」という語を、日本語で必ず1回以上**含める（例: 「${primary}によれば、」「${primary}では、」）。
+2. 該当する**最初の説明文**は、可能なら **「〈文書名〉によれば、」から始める**。
+3. 文書名は次のいずれかと一致させる: ${allNames}
+
+質問が挨拶や無関係な雑談のみのときはこのブロックは無視してよい。`;
+}
+
 function buildSystemPrompt(
   mode: ChatMode,
   siteContextItems: ChatContextItem[],
@@ -131,20 +153,35 @@ function buildSystemPrompt(
     );
   }
 
+  const closing = closingRagCitationReminder(knowledgeItems);
+  if (closing) sections.push(closing);
   return sections.join("\n\n");
 }
 
 // ─── ユーザーメッセージ変換（変数埋め込み型プロンプト） ──────────────────────
 
+function ragCitationUserSuffix(titles: string[]): string {
+  if (titles.length === 0) return "";
+  const first = titles[0]?.trim() || "（登録文書名）";
+  const list = titles
+    .map((t) => t.trim())
+    .filter(Boolean)
+    .slice(0, 6)
+    .join("、");
+  return `\n\n【このターンの出力条件】公的文書の検索抜粋がヒットしています。教育・校務・制度に関する回答では、必ず「${first}によれば」または「${first}では」と文書名を組み合わせた形を**本文に1回以上**含めてください。ヒット文書名: ${list}。`;
+}
+
 function buildEnhancedUserMessage(
   userInput: string,
   mode: ChatMode,
-  isFirstMessage: boolean
+  isFirstMessage: boolean,
+  ragDocTitles: string[] = []
 ): string {
   const q = userInput.trim();
+  const ragSuffix = ragCitationUserSuffix(ragDocTitles);
 
   if (mode === "navigator") {
-    return q;
+    return q + ragSuffix;
   }
 
   if (mode === "debate") {
@@ -152,12 +189,12 @@ function buildEnhancedUserMessage(
       return `【ディベート開始】ユーザーの立場・主張：
 「${q}」
 
-上記の立場に対して、正反対の立場を冒頭で宣言し、論理的根拠を挙げながら反論してください。`;
+上記の立場に対して、正反対の立場を冒頭で宣言し、論理的根拠を挙げながら反論してください。${ragSuffix}`;
     }
     return `【ユーザーの返答】
 「${q}」
 
-上記に対して、引き続き反対立場を堅持しながら切り返してください。`;
+上記に対して、引き続き反対立場を堅持しながら切り返してください。${ragSuffix}`;
   }
 
   if (mode === "discussion") {
@@ -165,15 +202,15 @@ function buildEnhancedUserMessage(
       return `【ディスカッション開始】ユーザーの提起：
 「${q}」
 
-まずこの意見・テーマに共感・肯定で受け止め、その上でさらに深められる論点や問いかけを返してください。`;
+まずこの意見・テーマに共感・肯定で受け止め、その上でさらに深められる論点や問いかけを返してください。${ragSuffix}`;
     }
     return `【ユーザーの続き】
 「${q}」
 
-共感しながら受け止め、さらに思考を深める問いや視点を返してください。`;
+共感しながら受け止め、さらに思考を深める問いや視点を返してください。${ragSuffix}`;
   }
 
-  return q;
+  return q + ragSuffix;
 }
 
 export async function GET() {
@@ -289,11 +326,15 @@ export async function POST(req: NextRequest) {
   const isFirstMessage = trimmedRaw.filter((m) => m.role === "user").length === 1;
   const lastUserIdx = [...trimmedRaw].map((m) => m.role).lastIndexOf("user");
 
+  const ragDocTitles = knowledgeHits
+    .map((k) => k.title.trim())
+    .filter((t) => t.length > 0);
+
   const trimmedMessages = trimmedRaw.map((m, i) => {
     if (i === lastUserIdx && m.role === "user") {
       return {
         role: "user" as const,
-        content: buildEnhancedUserMessage(m.content, mode, isFirstMessage),
+        content: buildEnhancedUserMessage(m.content, mode, isFirstMessage, ragDocTitles),
       };
     }
     return { role: m.role as "user" | "assistant", content: m.content };
@@ -301,6 +342,7 @@ export async function POST(req: NextRequest) {
 
   const openai = new OpenAI({ apiKey });
   const model = "gpt-5.4-mini";
+  const temperature = knowledgeHits.length > 0 ? 0.55 : 0.8;
 
   try {
     const stream = await openai.chat.completions.create({
@@ -310,7 +352,7 @@ export async function POST(req: NextRequest) {
         { role: "system", content: systemPrompt },
         ...trimmedMessages,
       ],
-      temperature: 0.8,
+      temperature,
       max_completion_tokens: 2048,
     });
 
