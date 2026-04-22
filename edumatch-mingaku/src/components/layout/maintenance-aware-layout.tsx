@@ -1,16 +1,24 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { SideMenu } from "@/components/layout/side-menu";
 import { ChatbotWidget } from "@/components/layout/chatbot-widget";
 import { AiPanelProvider, useAiPanel } from "@/components/layout/ai-panel-context";
-import { Bot } from "lucide-react";
+import { Bot, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function AiPanelLayout({ children }: { children: React.ReactNode }) {
-  const { open, setOpen, mobileOpen, setMobileOpen, sidebarOpen, setSidebarOpen } = useAiPanel();
+  const { open, setOpen, mobileOpen, setMobileOpen } = useAiPanel();
+  // サイドバーの開閉状態（デフォルト: 開）
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // AIパネルの開閉に連動してサイドバーを開閉
+  useEffect(() => {
+    setSidebarOpen(!open);
+  }, [open]);
 
   return (
     <div className="flex min-h-screen flex-col w-full">
@@ -19,13 +27,39 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
       {/* Desktop + tablet content row */}
       <div className="flex-1 flex min-w-0 pt-16">
 
-        {/* Left sidebar インライン表示 */}
-        {sidebarOpen && !open && (
-          <aside className="hidden lg:block lg:w-64 lg:p-4 lg:pt-6 flex-shrink-0">
+        {/* ハンバーガー列：常時表示の細い列としてレイアウトに組み込む */}
+        <div className="hidden lg:flex flex-col flex-shrink-0 w-10 pt-3 items-center">
+          <button
+            type="button"
+            onClick={() => setSidebarOpen((v) => !v)}
+            className="h-9 w-9 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors sticky top-20"
+            aria-label={sidebarOpen ? "サイドメニューを閉じる" : "サイドメニューを開く"}
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Left sidebar インライン表示（AIパネルが閉じているときのみ） */}
+        {!open && sidebarOpen && (
+          <aside className="hidden lg:block lg:w-60 lg:pr-4 lg:pt-6 flex-shrink-0">
             <div className="sticky top-20">
               <SideMenu />
             </div>
           </aside>
+        )}
+
+        {/* Left sidebar オーバーレイ表示（AIパネルが開いているとき） */}
+        {open && sidebarOpen && (
+          <>
+            <div
+              className="hidden lg:block fixed inset-0 z-30"
+              onClick={() => setSidebarOpen(false)}
+              aria-hidden
+            />
+            <div className="hidden lg:block fixed left-10 top-16 z-40 h-[calc(100vh-4rem)] w-60 bg-background border-r shadow-xl overflow-y-auto p-4 pt-6">
+              <SideMenu />
+            </div>
+          </>
         )}
 
         {/* Main content */}
