@@ -1,16 +1,24 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { SideMenu } from "@/components/layout/side-menu";
 import { ChatbotWidget } from "@/components/layout/chatbot-widget";
 import { AiPanelProvider, useAiPanel } from "@/components/layout/ai-panel-context";
-import { Bot } from "lucide-react";
+import { Bot, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function AiPanelLayout({ children }: { children: React.ReactNode }) {
   const { open, setOpen, mobileOpen, setMobileOpen } = useAiPanel();
+  // AIパネルが開いているとき、ハンバーガーで手動オーバーレイ表示する状態
+  const [sidebarOverlay, setSidebarOverlay] = useState(false);
+
+  // AIパネルが閉じたらオーバーレイも閉じる
+  useEffect(() => {
+    if (!open) setSidebarOverlay(false);
+  }, [open]);
 
   return (
     <div className="flex min-h-screen flex-col w-full">
@@ -18,17 +26,43 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
 
       {/* Desktop + tablet content row */}
       <div className="flex-1 flex min-w-0 pt-16">
-        {/* Left sidebar – AIパネルが開いているときは折りたたんで main に幅を譲る */}
+        {/* Left sidebar – AIパネルが開いているときは非表示にして main に幅を譲る */}
         <aside
           className={cn(
-            "hidden lg:block flex-shrink-0 overflow-hidden transition-all duration-300 ease-in-out",
-            open ? "lg:w-0" : "lg:w-64 lg:p-4 lg:pt-6"
+            "hidden lg:block flex-shrink-0 lg:p-4 lg:pt-6",
+            open ? "lg:hidden" : "lg:w-64"
           )}
         >
-          <div className="sticky top-20 w-64">
+          <div className="sticky top-20">
             <SideMenu />
           </div>
         </aside>
+
+        {/* AIパネルオープン時のハンバーガーボタン */}
+        {open && (
+          <button
+            type="button"
+            onClick={() => setSidebarOverlay((v) => !v)}
+            className="hidden lg:flex items-center justify-center h-8 w-8 mt-[1.1rem] ml-2 shrink-0 self-start rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            aria-label="サイドメニューを開く"
+          >
+            {sidebarOverlay ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        )}
+
+        {/* サイドバーオーバーレイ（AIパネル開中にハンバーガーで表示） */}
+        {open && sidebarOverlay && (
+          <>
+            <div
+              className="hidden lg:block fixed inset-0 z-30"
+              onClick={() => setSidebarOverlay(false)}
+              aria-hidden
+            />
+            <div className="hidden lg:block fixed left-0 top-16 z-40 h-[calc(100vh-4rem)] w-64 bg-background border-r shadow-xl overflow-y-auto p-4 pt-6">
+              <SideMenu />
+            </div>
+          </>
+        )}
 
         {/* Main content */}
         <main className="flex-1 min-w-0 overflow-x-hidden">
