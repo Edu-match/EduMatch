@@ -21,6 +21,7 @@ export async function getHomeSliderItems(limit: number = 12): Promise<HomeSlider
   try {
     const [siteUpdates, sliderArticles] = await Promise.all([
       prisma.siteUpdate.findMany({
+        where: { show_in_slider: true },
         orderBy: { published_at: "desc" },
         take: 5,
         select: {

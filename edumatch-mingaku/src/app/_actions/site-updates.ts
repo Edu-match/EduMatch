@@ -203,6 +203,31 @@ export async function deleteSiteUpdateAction(formData: FormData) {
   if (result.success) redirect(redirectTo);
 }
 
+/**
+ * スライダー表示フラグをトグル（ADMIN のみ）
+ */
+export async function toggleSiteUpdateSlider(
+  id: string,
+  showInSlider: boolean
+): Promise<{ success: boolean; error?: string }> {
+  const role = await getCurrentUserRole();
+  if (role !== "ADMIN") {
+    return { success: false, error: "管理者権限が必要です" };
+  }
+  try {
+    await prisma.siteUpdate.update({
+      where: { id },
+      data: { show_in_slider: showInSlider },
+    });
+    revalidatePath("/");
+    revalidatePath("/admin/site-updates");
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to toggle site update slider:", error);
+    return { success: false, error: "更新に失敗しました" };
+  }
+}
+
 function isDbUnavailable(error: unknown): boolean {
   const msg = error instanceof Error ? error.message : String(error);
   return /relation.*does not exist|table.*does not exist/i.test(msg) || msg.includes("P2021");
