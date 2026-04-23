@@ -31,8 +31,13 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
         <div className="hidden lg:flex flex-col flex-shrink-0 w-10 pt-3 items-center">
           <button
             type="button"
-            onClick={() => setSidebarOpen((v) => !v)}
-            className="h-9 w-9 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors sticky top-20"
+            onClick={() => {
+              const next = !sidebarOpen;
+              setSidebarOpen(next);
+              // 左メニューの開閉に連動してAIパネルも逆方向に開閉
+              setOpen(!next);
+            }}
+            className="h-9 w-9 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors sticky top-[5.5rem]"
             aria-label={sidebarOpen ? "サイドメニューを閉じる" : "サイドメニューを開く"}
           >
             <Menu className="h-5 w-5" />
@@ -41,8 +46,8 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
 
         {/* Left sidebar インライン表示（AIパネルが閉じているときのみ） */}
         {!open && sidebarOpen && (
-          <aside className="hidden lg:block lg:w-60 lg:pr-4 lg:pt-6 flex-shrink-0">
-            <div className="sticky top-20">
+          <aside className="hidden lg:block lg:w-60 lg:pr-4 flex-shrink-0 pt-10">
+            <div className="sticky top-24">
               <SideMenu />
             </div>
           </aside>
@@ -53,10 +58,10 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
           <>
             <div
               className="hidden lg:block fixed inset-0 z-30"
-              onClick={() => setSidebarOpen(false)}
+              onClick={() => { setSidebarOpen(false); setOpen(true); }}
               aria-hidden
             />
-            <div className="hidden lg:block fixed left-10 top-16 z-40 h-[calc(100vh-4rem)] w-60 bg-background border-r shadow-xl overflow-y-auto p-4 pt-6">
+            <div className="hidden lg:block fixed left-10 top-16 z-40 h-[calc(100vh-4rem)] w-60 bg-background border-r shadow-xl overflow-y-auto px-4 pt-10">
               <SideMenu />
             </div>
           </>
