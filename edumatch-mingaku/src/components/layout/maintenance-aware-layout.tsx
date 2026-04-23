@@ -37,7 +37,7 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
               // 左メニューの開閉に連動してAIパネルも逆方向に開閉
               setOpen(!next);
             }}
-            className="h-9 w-9 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors sticky top-[5.5rem]"
+            className="h-9 w-9 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors sticky top-[4.5rem]"
             aria-label={sidebarOpen ? "サイドメニューを閉じる" : "サイドメニューを開く"}
           >
             <Menu className="h-5 w-5" />
