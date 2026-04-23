@@ -21,7 +21,6 @@ import {
   Newspaper,
 } from "lucide-react";
 import { useRequestList } from "@/components/request-list/request-list-context";
-import { useAiPanel } from "@/components/layout/ai-panel-context";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -132,22 +131,9 @@ export function Header() {
 
   const displayName = userName || (userEmail ? userEmail.split("@")[0] : "ユーザー");
 
-  // サイドバー開閉をヘッダーから操作
-  const { sidebarOpen, setSidebarOpen } = useAiPanel();
-
   return (
     <header className="fixed top-0 left-0 right-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between gap-2 overflow-hidden">
-        {/* ハンバーガー：デスクトップ左上、サイドバーとAIパネルを連携制御 */}
-        <button
-          type="button"
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="hidden lg:flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex-shrink-0"
-          aria-label={sidebarOpen ? "サイドメニューを閉じる" : "サイドメニューを開く"}
-        >
-          <Menu className="h-5 w-5" />
-        </button>
-
         {/* Logo */}
         <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
           <Image
