@@ -132,7 +132,7 @@ async function rpcMatchKnowledge(
   // 文字列形式 "[0.1,0.2,...]" の方が確実に型変換される
   const embeddingStr = `[${queryEmbedding.join(",")}]`;
   return supabase.rpc("match_knowledge_chunks", {
-    query_embedding: embeddingStr,
+    query_embedding: queryEmbedding,
     match_count: matchCount,
     match_threshold: matchThreshold,
   });

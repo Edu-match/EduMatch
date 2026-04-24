@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { createClient } from "@/utils/supabase/server";
+import { createServiceRoleClient } from "@/utils/supabase/server-admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -201,8 +201,15 @@ export async function POST(req: NextRequest) {
     allEmbeddings.push(...embeddings);
   }
 
-  // Supabase クライアント（service_role ではなく認証済みセッション）
-  const supabase = await createClient();
+  if (allEmbeddings.length !== chunks.length) {
+    console.error(
+      `[knowledge/upload] Embedding count mismatch: chunks=${chunks.length}, embeddings=${allEmbeddings.length}`
+    );
+    return NextResponse.json(
+      { error: `Embeddingの生成件数が一致しません（chunks=${chunks.length}, embeddings=${allEmbeddings.length}）` },
+      { status: 500 }
+    );
+  }
 
   // KnowledgeDocument 登録（Prisma 経由）
   const doc = await prisma.knowledgeDocument.create({
@@ -215,12 +222,14 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  // KnowledgeChunk + embedding 登録（pgvector は Prisma Unsupported のため Supabase client で INSERT）
+  // KnowledgeChunk + embedding 登録（pgvector は Prisma Unsupported のため service_role client で INSERT）
+  const supabase = createServiceRoleClient();
+
   const rows = chunks.map((content, idx) => ({
     document_id: doc.id,
     chunk_index: idx,
     content,
-    embedding: `[${allEmbeddings[idx].join(",")}]`,
+    embedding: allEmbeddings[idx],
   }));
 
   const { error: insertError } = await supabase
