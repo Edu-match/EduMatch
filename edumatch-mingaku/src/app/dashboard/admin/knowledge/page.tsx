@@ -83,6 +83,7 @@ export default function AdminKnowledgePage() {
   const [documents, setDocuments] = useState<KnowledgeDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [reEmbedding, setReEmbedding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -96,6 +97,29 @@ export default function AdminKnowledgePage() {
     description: "",
   });
   const [file, setFile] = useState<File | null>(null);
+
+  const handleReEmbed = async () => {
+    if (!window.confirm("全チャンクの Embedding を再生成しますか？\n件数によっては数分かかります。")) return;
+    setError(null);
+    setSuccess(null);
+    setReEmbedding(true);
+    try {
+      const res = await fetch("/api/knowledge/re-embed", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Re-Embedding に失敗しました");
+        return;
+      }
+      setSuccess(
+        `Re-Embedding 完了: ${data.updated}件 更新 / ${data.failed}件 失敗（合計 ${data.total}件）`
+        + (data.errors?.length ? `\nエラー詳細: ${data.errors.join("; ")}` : "")
+      );
+    } catch {
+      setError("ネットワークエラーが発生しました");
+    } finally {
+      setReEmbedding(false);
+    }
+  };
 
   const fetchDocuments = useCallback(async () => {
     setLoading(true);
@@ -206,6 +230,32 @@ export default function AdminKnowledgePage() {
             <span className="text-xs text-gray-400">まだ文書が登録されていません</span>
           )}
         </div>
+        {/* Re-Embedding ボタン */}
+        {documents.length > 0 && (
+          <div className="mt-3 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleReEmbed}
+              disabled={reEmbedding}
+              className="inline-flex items-center gap-2 text-xs border border-amber-300 bg-amber-50 hover:bg-amber-100 disabled:bg-amber-50 disabled:opacity-60 text-amber-800 rounded-lg px-3 py-1.5 transition-colors"
+            >
+              {reEmbedding ? (
+                <>
+                  <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                  </svg>
+                  Embedding 再生成中…
+                </>
+              ) : (
+                "⚙️ 全チャンクの Embedding を再生成"
+              )}
+            </button>
+            <span className="text-xs text-gray-400">
+              ※ シードデータやダミー値が入っている場合は再生成してください
+            </span>
+          </div>
+        )}
       </div>
 
       {/* アップロードフォーム */}
