@@ -128,8 +128,11 @@ async function rpcMatchKnowledge(
   matchCount: number,
   matchThreshold: number
 ) {
+  // PostgREST は vector 型パラメータに対してテキスト→vector のキャストを使うため
+  // 文字列形式 "[0.1,0.2,...]" の方が確実に型変換される
+  const embeddingStr = `[${queryEmbedding.join(",")}]`;
   return supabase.rpc("match_knowledge_chunks", {
-    query_embedding: queryEmbedding,
+    query_embedding: embeddingStr,
     match_count: matchCount,
     match_threshold: matchThreshold,
   });
@@ -167,6 +170,7 @@ export async function searchKnowledgeChunks(
 
     const tiers = [0.45, 0.32, 0.2] as const;
     let rows: KnowledgeChunkResult[] | null = null;
+    let lastRpcError: unknown = null;
     for (const th of tiers) {
       const { data, error } = await rpcMatchKnowledge(
         supabase,
@@ -175,13 +179,22 @@ export async function searchKnowledgeChunks(
         th
       );
       if (error) {
-        console.error("searchKnowledgeChunks rpc error:", error);
+        lastRpcError = error;
+        console.error(
+          `searchKnowledgeChunks rpc error (threshold=${th}):`,
+          JSON.stringify(error)
+        );
+        // エラーが出てもループを継続せず打ち切る（同じエラーが繰り返されるため）
         break;
       }
+      console.log(`searchKnowledgeChunks: threshold=${th}, hits=${data?.length ?? 0}`);
       if (data && data.length > 0) {
         rows = data as KnowledgeChunkResult[];
         break;
       }
+    }
+    if (lastRpcError) {
+      console.error("searchKnowledgeChunks: all tiers failed, last error:", lastRpcError);
     }
 
     if (!rows || rows.length === 0) {

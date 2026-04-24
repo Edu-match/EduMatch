@@ -46,6 +46,7 @@ type ChatMsg = {
   role: "user" | "assistant";
   content: string;
   streaming?: boolean;
+  ragKnowledgeHits?: number;
 };
 
 type ContextItem = {
@@ -568,6 +569,14 @@ export function ChatbotWidget() {
         return;
       }
 
+      // レスポンスヘッダーから RAG ヒット数を読み取る
+      const ragHits = parseInt(resp.headers.get("X-RAG-Knowledge-Hits") ?? "0", 10);
+      if (ragHits > 0) {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === botMsgId ? { ...m, ragKnowledgeHits: ragHits } : m))
+        );
+      }
+
       const reader = resp.body?.getReader();
       if (!reader) throw new Error("No reader");
       const decoder = new TextDecoder();
@@ -782,15 +791,26 @@ export function ChatbotWidget() {
                         }`}
                       >
                       {m.role === "assistant" ? (
-                        m.content ? (
-                          <MarkdownContent text={m.content} />
-                        ) : m.streaming ? (
-                          <div className="flex items-center gap-1.5 py-0.5">
-                            <span className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce [animation-delay:0ms]" />
-                            <span className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce [animation-delay:150ms]" />
-                            <span className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce [animation-delay:300ms]" />
-                          </div>
-                        ) : null
+                        <>
+                          {m.streaming && !m.content && (
+                            <div className="flex items-center gap-1.5 py-0.5">
+                              <span className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce [animation-delay:0ms]" />
+                              <span className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce [animation-delay:150ms]" />
+                              <span className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce [animation-delay:300ms]" />
+                            </div>
+                          )}
+                          {m.ragKnowledgeHits !== undefined && m.ragKnowledgeHits > 0 && (
+                            <div className="flex items-center gap-1 text-[11px] text-indigo-600 dark:text-indigo-400 mb-1.5 font-medium">
+                              <BookOpen className="h-3 w-3 shrink-0" />
+                              <span>
+                                {m.streaming
+                                  ? "公的文書を参照しています..."
+                                  : `公的文書を参照して回答 (${m.ragKnowledgeHits}件)`}
+                              </span>
+                            </div>
+                          )}
+                          {m.content && <MarkdownContent text={m.content} />}
+                        </>
                       ) : (
                         <>
                           <div className="text-sm leading-relaxed whitespace-pre-wrap pr-8">{m.content}</div>
