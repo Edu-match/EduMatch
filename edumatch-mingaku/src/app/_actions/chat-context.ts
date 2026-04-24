@@ -129,7 +129,7 @@ async function rpcMatchKnowledge(
   matchThreshold: number
 ) {
   return supabase.rpc("match_knowledge_chunks", {
-    query_embedding: `[${queryEmbedding.join(",")}]`,
+    query_embedding: queryEmbedding,
     match_count: matchCount,
     match_threshold: matchThreshold,
   });
