@@ -47,12 +47,12 @@ export function HeroSlider({ items, isAdmin }: Props) {
     const item = items[0];
     return (
       <section className="rounded-xl overflow-hidden border mb-6 relative">
-        <Link href={item.url} className="block relative w-full aspect-video overflow-hidden bg-muted">
+        <Link href={item.url} className="block relative w-full aspect-[1200/500] max-h-[320px] overflow-hidden bg-muted">
           <Image
             src={item.thumbnailUrl || PLACEHOLDER}
             alt={item.title}
             fill
-            className="object-contain"
+            className="object-cover"
             sizes="(max-width: 768px) 100vw, 80vw"
             priority
             unoptimized
@@ -82,7 +82,7 @@ export function HeroSlider({ items, isAdmin }: Props) {
 
   return (
     <section className="rounded-xl overflow-hidden border mb-6 relative group">
-      <div className="relative w-full aspect-video overflow-hidden bg-muted">
+      <div className="relative w-full aspect-[1200/500] max-h-[320px] overflow-hidden bg-muted">
         {items.map((item, i) => (
           <Link
             key={`${item.type}-${item.id}`}
@@ -96,7 +96,7 @@ export function HeroSlider({ items, isAdmin }: Props) {
               src={item.thumbnailUrl || PLACEHOLDER}
               alt={item.title}
               fill
-              className="object-contain"
+              className="object-cover"
               sizes="(max-width: 768px) 100vw, 80vw"
               priority={i === 0}
               unoptimized
