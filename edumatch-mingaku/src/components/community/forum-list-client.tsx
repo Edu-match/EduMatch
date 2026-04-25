@@ -372,71 +372,79 @@ export function ForumListClient() {
       {/* ─── コンテンツエリア ─── */}
       <div id="forum-rooms" className="container space-y-6 py-8">
 
-        {/* ビュー切り替え + フィルター */}
-        <Card>
-          <CardContent className="p-4 sm:p-5">
-            <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
-              <div className="space-y-3">
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    className="pl-9"
-                    placeholder="部屋名・説明・今週のお題で検索"
-                  />
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {(Object.entries(CATEGORY_LABELS) as [CategoryKey, string][]).map(([key, label]) => (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => setCategory(key)}
-                      className={[
-                        "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-                        category === key
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border bg-background hover:border-primary/40",
-                      ].join(" ")}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+        {/* ビュー切り替え（共通） */}
+        <div className="flex items-center justify-end">
+          <div className="flex items-center gap-1 rounded-lg border bg-background p-1 shadow-xs">
+            <button
+              type="button"
+              title="トピックマップ"
+              aria-label="トピックマップ表示に切り替え"
+              aria-pressed={viewMode === "bubble"}
+              onClick={() => switchView("bubble")}
+              className={cn(
+                "flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors",
+                viewMode === "bubble"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:bg-muted"
+              )}
+            >
+              <LayoutGrid className="h-3.5 w-3.5" aria-hidden />
+              <span className="hidden sm:inline">マップ</span>
+            </button>
+            <button
+              type="button"
+              title="リスト"
+              aria-label="リスト表示に切り替え"
+              aria-pressed={viewMode === "list"}
+              onClick={() => switchView("list")}
+              className={cn(
+                "flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors",
+                viewMode === "list"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:bg-muted"
+              )}
+            >
+              <LayoutList className="h-3.5 w-3.5" aria-hidden />
+              <span className="hidden sm:inline">リスト</span>
+            </button>
+          </div>
+        </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-2 lg:flex-col lg:items-end">
-                {/* ビュー切り替えボタン */}
-                <div className="flex items-center gap-1 rounded-lg border p-1">
-                  <button
-                    type="button"
-                    title="バブルビュー"
-                    aria-label="バブルビューに切り替え"
-                    aria-pressed={viewMode === "bubble"}
-                    onClick={() => switchView("bubble")}
-                    className={cn(
-                      "flex h-7 w-7 items-center justify-center rounded-md transition-colors",
-                      viewMode === "bubble" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted"
-                    )}
-                  >
-                    <LayoutGrid className="h-4 w-4" aria-hidden />
-                  </button>
-                  <button
-                    type="button"
-                    title="リストビュー"
-                    aria-label="リストビューに切り替え"
-                    aria-pressed={viewMode === "list"}
-                    onClick={() => switchView("list")}
-                    className={cn(
-                      "flex h-7 w-7 items-center justify-center rounded-md transition-colors",
-                      viewMode === "list" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted"
-                    )}
-                  >
-                    <LayoutList className="h-4 w-4" aria-hidden />
-                  </button>
+        {/* リストビュー時のみ：検索 + フィルター + ソート */}
+        {viewMode === "list" && (
+          <Card>
+            <CardContent className="p-4 sm:p-5">
+              <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
+                <div className="space-y-3">
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      className="pl-9"
+                      placeholder="部屋名・説明・今週のお題で検索"
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {(Object.entries(CATEGORY_LABELS) as [CategoryKey, string][]).map(([key, label]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setCategory(key)}
+                        className={[
+                          "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+                          category === key
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-background hover:border-primary/40",
+                        ].join(" ")}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center justify-end gap-2">
                   <Tabs value={sort} onValueChange={(v) => setSort(v as SortKey)}>
                     <TabsList className="h-8">
                       <TabsTrigger value="popular" className="h-6 gap-1 px-3 text-xs">
@@ -457,9 +465,9 @@ export function ForumListClient() {
                   </Button>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         {loading ? (
           <div className="flex items-center justify-center py-20">
