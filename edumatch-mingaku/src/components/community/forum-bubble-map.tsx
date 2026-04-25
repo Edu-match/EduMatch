@@ -1,5 +1,5 @@
 /**
- * フォーラムバブルビューの静的レイアウト定義
+ * フォーラムトピックマップの静的レイアウト定義
  *
  * cx/cy は親コンテナに対するパーセンテージ (0-100)。
  * SVG の viewBox="0 0 100 100" と合わせることで
@@ -20,28 +20,28 @@ export type BubbleConnection = {
 };
 
 /**
- * 各部屋のバブル配置（PC / 広い画面）
- * 意図的にやや非対称な散らばり配置にする。
+ * 各部屋のカード配置（PC / 広い画面）
+ * 上下2段の緩やかなジグザグ。余白を多めに取り、リズムを揃える。
  */
 export const BUBBLE_POSITIONS: BubblePosition[] = [
-  { id: "ai-lesson",        cx: 22, cy: 27 }, // 左上
-  { id: "giga-school",      cx: 52, cy: 16 }, // 上中央
-  { id: "diverse-learning", cx: 81, cy: 34 }, // 右上
-  { id: "teacher-work",     cx: 34, cy: 68 }, // 左下
-  { id: "education-gap",    cx: 66, cy: 72 }, // 右下
-  { id: "ai-literacy",      cx: 13, cy: 73 }, // 左端下
+  { id: "ai-lesson",        cx: 18, cy: 32 }, // 上段-左
+  { id: "giga-school",      cx: 50, cy: 22 }, // 上段-中
+  { id: "diverse-learning", cx: 82, cy: 32 }, // 上段-右
+  { id: "teacher-work",     cx: 18, cy: 70 }, // 下段-左
+  { id: "education-gap",    cx: 50, cy: 80 }, // 下段-中
+  { id: "ai-literacy",      cx: 82, cy: 70 }, // 下段-右
 ];
 
 /**
- * モバイル用バブル配置（2列×3行、縦長コンテナ）
+ * モバイル用配置（縦に並べる）
  */
 export const BUBBLE_POSITIONS_MOBILE: BubblePosition[] = [
-  { id: "ai-lesson",        cx: 27, cy: 15 },
-  { id: "giga-school",      cx: 73, cy: 15 },
-  { id: "diverse-learning", cx: 27, cy: 48 },
-  { id: "teacher-work",     cx: 73, cy: 48 },
-  { id: "education-gap",    cx: 27, cy: 81 },
-  { id: "ai-literacy",      cx: 73, cy: 81 },
+  { id: "ai-lesson",        cx: 50, cy: 10 },
+  { id: "giga-school",      cx: 50, cy: 25 },
+  { id: "diverse-learning", cx: 50, cy: 42 },
+  { id: "teacher-work",     cx: 50, cy: 58 },
+  { id: "education-gap",    cx: 50, cy: 75 },
+  { id: "ai-literacy",      cx: 50, cy: 90 },
 ];
 
 /**
@@ -49,25 +49,24 @@ export const BUBBLE_POSITIONS_MOBILE: BubblePosition[] = [
  * 1部屋あたり最大2本まで。
  */
 export const BUBBLE_CONNECTIONS: BubbleConnection[] = [
-  { from: "ai-lesson",     to: "ai-literacy" },    // どちらもAI
-  { from: "ai-lesson",     to: "teacher-work" },   // 授業×働き方
-  { from: "giga-school",   to: "education-gap" },  // デジタルデバイド
-  { from: "giga-school",   to: "teacher-work" },   // 学校テクノロジー
-  { from: "diverse-learning", to: "education-gap" }, // 格差と多様性
+  { from: "ai-lesson",        to: "ai-literacy" },
+  { from: "ai-lesson",        to: "teacher-work" },
+  { from: "giga-school",      to: "education-gap" },
+  { from: "diverse-learning", to: "education-gap" },
 ];
 
 /**
- * 投稿数からバブルサイズ（px）を決定する。
- * PC / モバイルでそれぞれのサイズを持つ。
+ * 投稿数からカードサイズ感（縦の高さpx）を決める。
+ * 控えめな差にとどめる。
  */
 export function getBubbleSize(postCount: number): { pc: number; mobile: number } {
-  if (postCount >= 21) return { pc: 148, mobile: 118 };
-  if (postCount >= 6)  return { pc: 116, mobile: 94 };
-  return                      { pc: 88,  mobile: 72 };
+  if (postCount >= 21) return { pc: 132, mobile: 96 };
+  if (postCount >= 6)  return { pc: 116, mobile: 88 };
+  return                      { pc: 104, mobile: 80 };
 }
 
 /**
- * 直近24時間以内に投稿があるか（バブルのpulseアニメーション判定）
+ * 直近24時間以内に投稿があるか
  */
 export function isRoomActive(lastPostedAt: string): boolean {
   const diff = Date.now() - new Date(lastPostedAt).getTime();
