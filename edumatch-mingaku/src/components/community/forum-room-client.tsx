@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -10,6 +10,7 @@ import {
   Flame,
   Heart,
   LinkIcon,
+  Loader2,
   MessageSquare,
   PenSquare,
   Pin,
@@ -46,12 +47,22 @@ import {
   type ForumPost,
   type ForumReply,
   type ForumRoom,
-  getPinnedPosts,
-  getPostsByRoom,
 } from "@/lib/mock-forum";
 import { RelativeTime } from "@/components/community/relative-time";
 import { ForumRoomIcon, ROOM_BG_COLORS } from "@/components/community/forum-room-icon";
 import { useAuthUser } from "@/components/community/answer-section";
+
+// ─── セッションID（ゲストいいね用） ──────────────────────
+
+function getSessionId(): string {
+  if (typeof window === "undefined") return "";
+  let sid = sessionStorage.getItem("forum_session_id");
+  if (!sid) {
+    sid = `guest-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    sessionStorage.setItem("forum_session_id", sid);
+  }
+  return sid;
+}
 
 // ─── 定数 ────────────────────────────────────────────────
 
@@ -127,7 +138,6 @@ function AiStreamingReply({ streamText }: { streamText: string }) {
         </div>
         <p className="text-sm leading-7 whitespace-pre-wrap text-foreground">
           {streamText}
-          {/* カーソル点滅 */}
           <span className="inline-block w-0.5 h-4 bg-violet-500 ml-0.5 animate-pulse align-text-bottom" />
         </p>
       </div>
@@ -137,22 +147,41 @@ function AiStreamingReply({ streamText }: { streamText: string }) {
 
 // ─── 返信カード ───────────────────────────────────────────
 
-function ReplyCard({ reply, isAi }: { reply: ForumReply; isAi?: boolean }) {
+function ReplyCard({ reply, isAi }: { reply: ForumReply & { isAi?: boolean }; isAi?: boolean }) {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(reply.likeCount);
 
-  const toggleLike = () => {
-    setLikeCount((n) => (liked ? n - 1 : n + 1));
-    setLiked((v) => !v);
+  const toggleLike = async () => {
+    // 楽観的UI
+    const newLiked = !liked;
+    setLiked(newLiked);
+    setLikeCount((n) => (newLiked ? n + 1 : n - 1));
+
+    try {
+      await fetch("/api/forum/likes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          targetId: reply.id,
+          targetType: "reply",
+          sessionId: getSessionId(),
+        }),
+      });
+    } catch {
+      // ネットワークエラー時はロールバック
+      setLiked(!newLiked);
+      setLikeCount((n) => (newLiked ? n - 1 : n + 1));
+    }
   };
 
   return (
     <div className={`flex gap-3 pl-4 border-l-2 ${isAi ? "border-violet-200" : "border-muted"}`}>
-      <Avatar name={reply.authorName} role={reply.authorRole} isAi={isAi} />
+      <Avatar name={reply.authorName} role={reply.authorRole as AuthorRole} isAi={isAi} />
       <div className="flex-1 min-w-0">
         <div className="flex flex-wrap items-center gap-2 mb-1">
           <span className={`text-sm font-semibold ${isAi ? "text-violet-800" : ""}`}>{reply.authorName}</span>
-          {isAi ? <AiBadge /> : <RoleBadge role={reply.authorRole} />}
+          {isAi ? <AiBadge /> : <RoleBadge role={reply.authorRole as AuthorRole} />}
           <span className="text-xs text-muted-foreground">
             <RelativeTime iso={reply.postedAt} />
           </span>
@@ -171,22 +200,24 @@ function ReplyCard({ reply, isAi }: { reply: ForumReply; isAi?: boolean }) {
   );
 }
 
-// ─── 投稿カード ───────────────────────────────────────────
+// ─── 投稿カード（ストリーミング対応） ──────────────────────
 
-function PostCard({
+function PostCardWithStream({
   post,
-  pinned,
+  streamText,
+  roomId,
   roomName,
   weeklyTopic,
   aiDiscussion,
-  allPosts,
+  onReplyAdded,
 }: {
   post: ForumPost;
-  pinned?: boolean;
+  streamText: string | null;
+  roomId: string;
   roomName: string;
   weeklyTopic: string;
   aiDiscussion: boolean;
-  allPosts: ForumPost[];
+  onReplyAdded: (postId: string, reply: ForumReply) => void;
 }) {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(post.likeCount);
@@ -194,101 +225,109 @@ function PostCard({
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [replyText, setReplyText] = useState("");
   const [replyRole, setReplyRole] = useState<AuthorRole>("教員");
-  const [localReplies, setLocalReplies] = useState<(ForumReply & { isAi?: boolean })[]>(post.replies ?? []);
-  const [aiStreamText, setAiStreamText] = useState<string | null>(null);
+  const [submittingReply, setSubmittingReply] = useState(false);
 
-  const toggleLike = () => {
-    setLikeCount((n) => (liked ? n - 1 : n + 1));
-    setLiked((v) => !v);
+  const replies = post.replies ?? [];
+  const isStreaming = streamText !== null;
+  const autoOpenReplies = repliesOpen || isStreaming;
+  const hasReplies = replies.length > 0;
+
+  const toggleLike = async () => {
+    const newLiked = !liked;
+    setLiked(newLiked);
+    setLikeCount((n) => (newLiked ? n + 1 : n - 1));
+
+    try {
+      await fetch("/api/forum/likes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          targetId: post.id,
+          targetType: "post",
+          sessionId: getSessionId(),
+        }),
+      });
+    } catch {
+      setLiked(!newLiked);
+      setLikeCount((n) => (newLiked ? n - 1 : n + 1));
+    }
   };
 
-  const submitReply = () => {
-    if (!replyText.trim()) return;
-    const newReply: ForumReply = {
-      id: `r-${Date.now()}`,
-      authorName: replyRole === "匿名" ? "匿名ユーザー" : "あなた",
-      authorRole: replyRole,
-      body: replyText.trim(),
-      likeCount: 0,
-      postedAt: new Date().toISOString(),
-    };
-    setLocalReplies((prev) => [...prev, newReply]);
-    setReplyText("");
-    setShowReplyForm(false);
-    setRepliesOpen(true);
-  };
+  const submitReply = async () => {
+    if (!replyText.trim() || submittingReply) return;
+    setSubmittingReply(true);
 
-  // AI からの返信をこの投稿に追加（外部から呼ばれる）
-  const addAiReply = (body: string) => {
-    const aiReply: ForumReply & { isAi: boolean } = {
-      id: `ai-r-${Date.now()}`,
-      authorName: "AIファシリテーター",
-      authorRole: "専門家",
-      body,
-      likeCount: 0,
-      postedAt: new Date().toISOString(),
-      isAi: true,
-    };
-    setLocalReplies((prev) => [...prev, aiReply]);
-    setRepliesOpen(true);
-  };
+    const displayName = replyRole === "匿名" ? "匿名ユーザー" : "あなた";
 
-  // PostCard は ref 経由で addAiReply を外部公開しない
-  // 代わりに post.id ベースで親から制御するため、
-  // ここでは外部からの aiStreamText / aiReply を props で受け取る設計とする
+    try {
+      const res = await fetch(`/api/forum/posts/${post.id}/replies`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          authorName: displayName,
+          authorRole: replyRole,
+          replyBody: replyText.trim(),
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        onReplyAdded(post.id, data.reply);
+        setReplyText("");
+        setShowReplyForm(false);
+        setRepliesOpen(true);
+      }
+    } finally {
+      setSubmittingReply(false);
+    }
+  };
 
   return (
-    <div className={`rounded-xl border bg-card shadow-xs transition-shadow hover:shadow-sm ${pinned ? "border-amber-200 bg-amber-50/40" : ""}`}>
+    <div className={`rounded-xl border bg-card shadow-xs transition-shadow hover:shadow-sm ${post.isPinned ? "border-amber-200 bg-amber-50/40" : ""}`}>
       <div className="p-5">
-        {pinned && (
+        {post.isPinned && (
           <div className="mb-3 flex items-center gap-1.5 text-xs font-semibold text-amber-600">
-            <Pin className="h-3.5 w-3.5 fill-amber-500" />
-            注目投稿（運営ピックアップ）
+            <Pin className="h-3.5 w-3.5 fill-amber-500" />注目投稿（運営ピックアップ）
           </div>
         )}
 
         <div className="flex gap-3">
-          <Avatar name={post.authorName} role={post.authorRole} />
+          <Avatar name={post.authorName} role={post.authorRole as AuthorRole} />
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2 mb-1">
               <span className="text-sm font-semibold">{post.authorName}</span>
-              <RoleBadge role={post.authorRole} />
+              <RoleBadge role={post.authorRole as AuthorRole} />
               <span className="text-xs text-muted-foreground"><RelativeTime iso={post.postedAt} /></span>
             </div>
-
             <p className="text-sm leading-7 whitespace-pre-wrap">{post.body}</p>
-
             {post.relatedArticleUrl && (
               <a href={post.relatedArticleUrl} target="_blank" rel="noopener noreferrer"
                 className="mt-2 inline-flex items-center gap-1 text-xs text-primary hover:underline">
                 <LinkIcon className="h-3 w-3" />関連記事
               </a>
             )}
-
             <div className="mt-3 flex items-center gap-4">
               <button type="button" onClick={toggleLike}
                 className={`flex items-center gap-1 text-xs transition-colors ${liked ? "text-pink-500" : "text-muted-foreground hover:text-pink-500"}`}>
                 <Heart className={`h-3.5 w-3.5 ${liked ? "fill-pink-500" : ""}`} />
                 {likeCount}
               </button>
-
-              {localReplies.length > 0 ? (
+              {hasReplies || isStreaming ? (
                 <button type="button" onClick={() => setRepliesOpen((v) => !v)}
                   className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
                   <MessageSquare className="h-3.5 w-3.5" />
-                  {localReplies.length} 件の返信
-                  {repliesOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                  {replies.length + (isStreaming ? 1 : 0)} 件の返信
+                  {autoOpenReplies ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                 </button>
               ) : (
                 <span className="flex items-center gap-1 text-xs text-muted-foreground/60">
                   <MessageSquare className="h-3.5 w-3.5" />返信 0
                 </span>
               )}
-
               <button type="button" onClick={() => setShowReplyForm((v) => !v)}
-                className="text-xs text-primary hover:underline">
-                返信する
-              </button>
+                className="text-xs text-primary hover:underline">返信する</button>
             </div>
           </div>
         </div>
@@ -312,21 +351,43 @@ function PostCard({
               <Button variant="ghost" size="sm" onClick={() => { setShowReplyForm(false); setReplyText(""); }}>
                 <X className="h-3.5 w-3.5" />キャンセル
               </Button>
-              <Button size="sm" onClick={submitReply} disabled={!replyText.trim()}>返信する</Button>
+              <Button size="sm" onClick={submitReply} disabled={!replyText.trim() || submittingReply}>
+                {submittingReply && <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />}
+                返信する
+              </Button>
             </div>
           </div>
         )}
       </div>
 
-      {/* 返信一覧（ストリーミング中 or 確定済み） */}
-      {(repliesOpen && localReplies.length > 0) || aiStreamText !== null ? (
+      {/* 返信 + AIストリーミング */}
+      {(autoOpenReplies && (hasReplies || isStreaming)) && (
         <div className="border-t bg-muted/10 px-5 py-4 space-y-4">
-          {repliesOpen && localReplies.map((reply) => (
-            <ReplyCard key={reply.id} reply={reply} isAi={(reply as ForumReply & { isAi?: boolean }).isAi} />
+          {replies.map((reply) => (
+            <ReplyCard key={reply.id} reply={reply as ForumReply & { isAi?: boolean }} isAi={(reply as ForumReply & { isAi?: boolean }).isAi} />
           ))}
-          {aiStreamText !== null && <AiStreamingReply streamText={aiStreamText} />}
+          {isStreaming && streamText !== null && (
+            streamText === "" ? (
+              <div className="flex gap-3 pl-4 border-l-2 border-violet-200">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-violet-200 bg-violet-100 text-violet-700">
+                  <Bot className="h-4 w-4" />
+                </div>
+                <div className="flex items-center gap-2 py-2">
+                  <span className="text-xs text-violet-600 font-medium">AIファシリテーターが考えています</span>
+                  <span className="flex gap-1">
+                    {[0, 1, 2].map((i) => (
+                      <span key={i} className="inline-block h-1.5 w-1.5 rounded-full bg-violet-400 animate-bounce"
+                        style={{ animationDelay: `${i * 0.15}s` }} />
+                    ))}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <AiStreamingReply streamText={streamText} />
+            )
+          )}
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
@@ -339,31 +400,19 @@ function NewPostDialog({
   onSubmit,
   userName,
   isLoggedIn,
+  submitting,
 }: {
-  onSubmit: (post: ForumPost) => void;
+  onSubmit: (draft: PostDraft) => Promise<void>;
   userName: string;
   isLoggedIn: boolean;
+  submitting: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<PostDraft>({ body: "", authorRole: "教員", relatedArticleUrl: "" });
 
-  const handleSubmit = () => {
-    if (!draft.body.trim()) return;
-    const isAnon = draft.authorRole === "匿名";
-    const post: ForumPost = {
-      id: `post-${Date.now()}`,
-      roomId: "",
-      // ログイン済みかつ非匿名 → 表示名を使用、それ以外 → "匿名ユーザー"
-      authorName: isAnon ? "匿名ユーザー" : (isLoggedIn && userName ? userName : "ゲスト"),
-      authorRole: draft.authorRole,
-      body: draft.body.trim(),
-      likeCount: 0,
-      replyCount: 0,
-      postedAt: new Date().toISOString(),
-      relatedArticleUrl: draft.relatedArticleUrl.trim() || undefined,
-      replies: [],
-    };
-    onSubmit(post);
+  const handleSubmit = async () => {
+    if (!draft.body.trim() || submitting) return;
+    await onSubmit(draft);
     setDraft({ body: "", authorRole: "教員", relatedArticleUrl: "" });
     setOpen(false);
   };
@@ -381,7 +430,6 @@ function NewPostDialog({
           <DialogDescription>今週のお題や話題についてコメントしましょう</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          {/* 投稿者表示 */}
           <div className="flex items-center gap-2 rounded-lg bg-muted/40 px-3 py-2.5">
             <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
               {draft.authorRole === "匿名" ? "?" : (isLoggedIn && userName ? userName.charAt(0) : "G")}
@@ -431,7 +479,10 @@ function NewPostDialog({
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setOpen(false)}>キャンセル</Button>
-            <Button onClick={handleSubmit} disabled={!draft.body.trim()}>投稿する</Button>
+            <Button onClick={handleSubmit} disabled={!draft.body.trim() || submitting}>
+              {submitting && <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />}
+              投稿する
+            </Button>
           </div>
         </div>
       </DialogContent>
@@ -442,7 +493,7 @@ function NewPostDialog({
 // ─── AI ストリーミング hook ───────────────────────────────
 
 function useAiComment() {
-  const [pending, setPending] = useState<string | null>(null); // postId
+  const [pending, setPending] = useState<string | null>(null);
   const [streamTexts, setStreamTexts] = useState<Record<string, string>>({});
   const abortRef = useRef<AbortController | null>(null);
 
@@ -524,52 +575,110 @@ type SortKey = "newest" | "popular";
 export function ForumRoomClient({ room }: { room: ForumRoom }) {
   const auth = useAuthUser();
   const [sort, setSort] = useState<SortKey>("newest");
-  const [localPosts, setLocalPosts] = useState<ForumPost[]>(() => getPostsByRoom(room.id));
-
-  const pinnedPosts = useMemo(() => getPinnedPosts(room.id), [room.id]);
+  const [posts, setPosts] = useState<ForumPost[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const { pending: aiPending, streamTexts, generate } = useAiComment();
 
+  // 投稿一覧取得
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    fetch(`/api/forum/rooms/${room.id}/posts`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled && data.posts) setPosts(data.posts);
+      })
+      .catch(console.error)
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [room.id]);
+
+  const pinnedPosts = useMemo(() => posts.filter((p) => p.isPinned), [posts]);
+
   const regularPosts = useMemo<ForumPost[]>(() => {
-    const unpinned = localPosts.filter((p) => !p.isPinned);
+    const unpinned = posts.filter((p) => !p.isPinned);
     if (sort === "popular") return [...unpinned].sort((a, b) => b.likeCount - a.likeCount);
     return [...unpinned].sort((a, b) => new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime());
-  }, [localPosts, sort]);
+  }, [posts, sort]);
 
-  const handleNewPost = async (post: ForumPost) => {
-    const withRoom = { ...post, roomId: room.id };
-    setLocalPosts((prev) => [withRoom, ...prev]);
+  const handleNewPost = useCallback(async (draft: { body: string; authorRole: AuthorRole; relatedArticleUrl: string }) => {
+    if (submitting) return;
+    setSubmitting(true);
 
-    if (!room.aiDiscussion) return;
+    const isAnon = draft.authorRole === "匿名";
+    const authorName = isAnon ? "匿名ユーザー" : (auth.isLoggedIn && auth.name ? auth.name : "ゲスト");
 
-    // AI が返信を生成
-    const recentContext = localPosts.slice(0, 5).map((p) => ({ authorName: p.authorName, body: p.body }));
-    const aiText = await generate(
-      withRoom.id,
-      withRoom.body,
-      room.name,
-      room.weeklyTopic,
-      recentContext
-    );
+    try {
+      const res = await fetch(`/api/forum/rooms/${room.id}/posts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          authorName,
+          authorRole: draft.authorRole,
+          postBody: draft.body.trim(),
+          relatedArticleUrl: draft.relatedArticleUrl.trim() || undefined,
+        }),
+      });
 
-    if (aiText) {
-      // 確定済み AI 返信を投稿の replies に追加
-      setLocalPosts((prev) =>
-        prev.map((p) => {
-          if (p.id !== withRoom.id) return p;
-          const aiReply = {
-            id: `ai-r-${Date.now()}`,
-            authorName: "AIファシリテーター",
-            authorRole: "専門家" as AuthorRole,
-            body: aiText,
-            likeCount: 0,
-            postedAt: new Date().toISOString(),
-            isAi: true,
-          };
-          return { ...p, replies: [...(p.replies ?? []), aiReply] };
-        })
-      );
+      if (!res.ok) {
+        console.error("投稿に失敗しました", await res.text());
+        return;
+      }
+
+      const data = await res.json();
+      const newPost: ForumPost = data.post;
+      setPosts((prev) => [newPost, ...prev]);
+
+      if (!room.aiDiscussion) return;
+
+      const recentContext = posts.slice(0, 5).map((p) => ({ authorName: p.authorName, body: p.body }));
+      const aiText = await generate(newPost.id, newPost.body, room.name, room.weeklyTopic, recentContext);
+
+      if (aiText) {
+        // AI返信をDBにも保存
+        try {
+          await fetch(`/api/forum/posts/${newPost.id}/replies`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              authorName: "AIファシリテーター",
+              authorRole: "専門家",
+              replyBody: aiText,
+            }),
+          });
+        } catch {
+          // 保存失敗しても表示上は反映済み
+        }
+
+        const aiReply: ForumReply & { isAi: boolean } = {
+          id: `ai-r-${Date.now()}`,
+          authorName: "AIファシリテーター",
+          authorRole: "専門家",
+          body: aiText,
+          likeCount: 0,
+          postedAt: new Date().toISOString(),
+          isAi: true,
+        };
+        setPosts((prev) =>
+          prev.map((p) =>
+            p.id !== newPost.id ? p : { ...p, replies: [...(p.replies ?? []), aiReply] }
+          )
+        );
+      }
+    } finally {
+      setSubmitting(false);
     }
-  };
+  }, [auth, room, posts, generate, submitting]);
+
+  const handleReplyAdded = useCallback((postId: string, reply: ForumReply) => {
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id !== postId ? p : { ...p, replies: [...(p.replies ?? []), reply] }
+      )
+    );
+  }, []);
 
   const aiEnabled = !!room.aiDiscussion;
 
@@ -599,7 +708,7 @@ export function ForumRoomClient({ room }: { room: ForumRoom }) {
                 <p className="mt-1 text-sm text-muted-foreground">{room.description}</p>
                 <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
-                    <MessageSquare className="h-3.5 w-3.5" />{localPosts.length} 投稿
+                    <MessageSquare className="h-3.5 w-3.5" />{posts.length} 投稿
                   </span>
                   <span className="flex items-center gap-1">
                     <Users className="h-3.5 w-3.5" />{room.participantCount} 人参加
@@ -608,7 +717,7 @@ export function ForumRoomClient({ room }: { room: ForumRoom }) {
               </div>
             </div>
             <div className="shrink-0">
-              <NewPostDialog onSubmit={handleNewPost} userName={auth.name} isLoggedIn={auth.isLoggedIn} />
+              <NewPostDialog onSubmit={handleNewPost} userName={auth.name} isLoggedIn={auth.isLoggedIn} submitting={submitting} />
             </div>
           </div>
         </div>
@@ -627,7 +736,6 @@ export function ForumRoomClient({ room }: { room: ForumRoom }) {
         </div>
       </div>
 
-      {/* AI 有効時の案内バナー */}
       {aiEnabled && (
         <div className="border-b bg-violet-50/60">
           <div className="container py-3">
@@ -642,74 +750,73 @@ export function ForumRoomClient({ room }: { room: ForumRoom }) {
       {/* ─── コンテンツ ─── */}
       <div className="container py-8">
         <div className="mx-auto max-w-3xl space-y-6">
-          {/* 注目投稿 */}
-          {pinnedPosts.length > 0 && (
-            <div className="space-y-3">
-              {pinnedPosts.map((post) => (
-                <PostCard
-                  key={post.id}
-                  post={post}
-                  pinned
-                  roomName={room.name}
-                  weeklyTopic={room.weeklyTopic}
-                  aiDiscussion={aiEnabled}
-                  allPosts={localPosts}
-                />
-              ))}
+
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
-          )}
-
-          {/* ソート + 投稿一覧 */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">{regularPosts.length} 件の投稿</p>
-              <Tabs value={sort} onValueChange={(v) => setSort(v as SortKey)}>
-                <TabsList className="h-8">
-                  <TabsTrigger value="newest" className="h-6 px-3 text-xs">新着順</TabsTrigger>
-                  <TabsTrigger value="popular" className="h-6 gap-1 px-3 text-xs">
-                    <Flame className="h-3 w-3" />人気順
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </div>
-
-            {regularPosts.length === 0 ? (
-              <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed bg-muted/20 py-16 text-center">
-                <MessageSquare className="h-12 w-12 text-muted-foreground/30" />
-                <div>
-                  <p className="text-base font-medium">まだ投稿がありません</p>
-                  <p className="mt-1 text-sm text-muted-foreground">最初の投稿者になりましょう</p>
-                </div>
-                <NewPostDialog onSubmit={handleNewPost} userName={auth.name} isLoggedIn={auth.isLoggedIn} />
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {regularPosts.map((post) => {
-                  // この投稿がストリーミング中かどうか
-                  const isStreaming = aiPending === post.id;
-                  const streamingText = streamTexts[post.id] ?? null;
-
-                  // ストリーミング中は replies に一時的に「streaming」フラグ付きの空エントリを積む代わりに
-                  // PostCard 内の AiStreamingReply で表示させるため、
-                  // ストリーミング中は replies の末尾に streaming プレースホルダーを追加した post を渡す
-                  const postWithStream: ForumPost = isStreaming
-                    ? post // streaming はカード内で streamTexts から読む
-                    : post;
-
-                  return (
+          ) : (
+            <>
+              {/* 注目投稿 */}
+              {pinnedPosts.length > 0 && (
+                <div className="space-y-3">
+                  {pinnedPosts.map((post) => (
                     <PostCardWithStream
                       key={post.id}
-                      post={postWithStream}
-                      streamText={isStreaming ? (streamingText ?? "") : null}
+                      post={post}
+                      streamText={aiPending === post.id ? (streamTexts[post.id] ?? "") : null}
+                      roomId={room.id}
                       roomName={room.name}
                       weeklyTopic={room.weeklyTopic}
                       aiDiscussion={aiEnabled}
+                      onReplyAdded={handleReplyAdded}
                     />
-                  );
-                })}
+                  ))}
+                </div>
+              )}
+
+              {/* ソート + 投稿一覧 */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">{regularPosts.length} 件の投稿</p>
+                  <Tabs value={sort} onValueChange={(v) => setSort(v as SortKey)}>
+                    <TabsList className="h-8">
+                      <TabsTrigger value="newest" className="h-6 px-3 text-xs">新着順</TabsTrigger>
+                      <TabsTrigger value="popular" className="h-6 gap-1 px-3 text-xs">
+                        <Flame className="h-3 w-3" />人気順
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </div>
+
+                {regularPosts.length === 0 ? (
+                  <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed bg-muted/20 py-16 text-center">
+                    <MessageSquare className="h-12 w-12 text-muted-foreground/30" />
+                    <div>
+                      <p className="text-base font-medium">まだ投稿がありません</p>
+                      <p className="mt-1 text-sm text-muted-foreground">最初の投稿者になりましょう</p>
+                    </div>
+                    <NewPostDialog onSubmit={handleNewPost} userName={auth.name} isLoggedIn={auth.isLoggedIn} submitting={submitting} />
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {regularPosts.map((post) => (
+                      <PostCardWithStream
+                        key={post.id}
+                        post={post}
+                        streamText={aiPending === post.id ? (streamTexts[post.id] ?? "") : null}
+                        roomId={room.id}
+                        roomName={room.name}
+                        weeklyTopic={room.weeklyTopic}
+                        aiDiscussion={aiEnabled}
+                        onReplyAdded={handleReplyAdded}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </>
+          )}
 
           {/* 属性バッジ凡例 */}
           <Card className="border-dashed">
@@ -727,153 +834,6 @@ export function ForumRoomClient({ room }: { room: ForumRoom }) {
           </Card>
         </div>
       </div>
-    </div>
-  );
-}
-
-// ─── ストリーミング対応投稿カード（単純ラッパー） ─────────
-
-function PostCardWithStream({
-  post,
-  streamText,
-  roomName,
-  weeklyTopic,
-  aiDiscussion,
-}: {
-  post: ForumPost;
-  streamText: string | null;
-  roomName: string;
-  weeklyTopic: string;
-  aiDiscussion: boolean;
-}) {
-  const [liked, setLiked] = useState(false);
-  const [likeCount, setLikeCount] = useState(post.likeCount);
-  const [repliesOpen, setRepliesOpen] = useState(false);
-  const [showReplyForm, setShowReplyForm] = useState(false);
-  const [replyText, setReplyText] = useState("");
-  const [replyRole, setReplyRole] = useState<AuthorRole>("教員");
-
-  const replies: (ForumReply & { isAi?: boolean })[] = post.replies ?? [];
-
-  const toggleLike = () => {
-    setLikeCount((n) => (liked ? n - 1 : n + 1));
-    setLiked((v) => !v);
-  };
-
-  const submitReply = () => {
-    if (!replyText.trim()) return;
-    // ローカル state に追加はここでは難しいので実装上は親管理が望ましいが、
-    // シンプルに repliesOpen を開けるだけにする（既存の replies はそのまま）
-    setShowReplyForm(false);
-    setRepliesOpen(true);
-  };
-
-  const hasReplies = replies.length > 0;
-  const isStreaming = streamText !== null;
-  const autoOpenReplies = repliesOpen || isStreaming;
-
-  return (
-    <div className={`rounded-xl border bg-card shadow-xs transition-shadow hover:shadow-sm ${post.isPinned ? "border-amber-200 bg-amber-50/40" : ""}`}>
-      <div className="p-5">
-        {post.isPinned && (
-          <div className="mb-3 flex items-center gap-1.5 text-xs font-semibold text-amber-600">
-            <Pin className="h-3.5 w-3.5 fill-amber-500" />注目投稿（運営ピックアップ）
-          </div>
-        )}
-
-        <div className="flex gap-3">
-          <Avatar name={post.authorName} role={post.authorRole} />
-          <div className="flex-1 min-w-0">
-            <div className="flex flex-wrap items-center gap-2 mb-1">
-              <span className="text-sm font-semibold">{post.authorName}</span>
-              <RoleBadge role={post.authorRole} />
-              <span className="text-xs text-muted-foreground"><RelativeTime iso={post.postedAt} /></span>
-            </div>
-            <p className="text-sm leading-7 whitespace-pre-wrap">{post.body}</p>
-            {post.relatedArticleUrl && (
-              <a href={post.relatedArticleUrl} target="_blank" rel="noopener noreferrer"
-                className="mt-2 inline-flex items-center gap-1 text-xs text-primary hover:underline">
-                <LinkIcon className="h-3 w-3" />関連記事
-              </a>
-            )}
-            <div className="mt-3 flex items-center gap-4">
-              <button type="button" onClick={toggleLike}
-                className={`flex items-center gap-1 text-xs transition-colors ${liked ? "text-pink-500" : "text-muted-foreground hover:text-pink-500"}`}>
-                <Heart className={`h-3.5 w-3.5 ${liked ? "fill-pink-500" : ""}`} />
-                {likeCount}
-              </button>
-              {hasReplies || isStreaming ? (
-                <button type="button" onClick={() => setRepliesOpen((v) => !v)}
-                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                  <MessageSquare className="h-3.5 w-3.5" />
-                  {replies.length + (isStreaming ? 1 : 0)} 件の返信
-                  {autoOpenReplies ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                </button>
-              ) : (
-                <span className="flex items-center gap-1 text-xs text-muted-foreground/60">
-                  <MessageSquare className="h-3.5 w-3.5" />返信 0
-                </span>
-              )}
-              <button type="button" onClick={() => setShowReplyForm((v) => !v)}
-                className="text-xs text-primary hover:underline">返信する</button>
-            </div>
-          </div>
-        </div>
-
-        {showReplyForm && (
-          <div className="mt-4 ml-12 space-y-3 rounded-lg bg-muted/30 p-4">
-            <div className="flex items-center gap-2">
-              <Label className="text-xs shrink-0">属性</Label>
-              <Select value={replyRole} onValueChange={(v) => setReplyRole(v as AuthorRole)}>
-                <SelectTrigger className="h-7 w-32 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {AUTHOR_ROLES.map((r) => (
-                    <SelectItem key={r} value={r} className="text-xs">{r}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Textarea rows={3} value={replyText} onChange={(e) => setReplyText(e.target.value)}
-              placeholder="返信を入力..." className="resize-none text-sm" />
-            <div className="flex justify-end gap-2">
-              <Button variant="ghost" size="sm" onClick={() => { setShowReplyForm(false); setReplyText(""); }}>
-                <X className="h-3.5 w-3.5" />キャンセル
-              </Button>
-              <Button size="sm" onClick={submitReply} disabled={!replyText.trim()}>返信する</Button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* 返信 + AIストリーミング */}
-      {(autoOpenReplies && (hasReplies || isStreaming)) && (
-        <div className="border-t bg-muted/10 px-5 py-4 space-y-4">
-          {replies.map((reply) => (
-            <ReplyCard key={reply.id} reply={reply} isAi={reply.isAi} />
-          ))}
-          {isStreaming && streamText !== null && (
-            streamText === "" ? (
-              // まだテキストが来ていない → ローディング表示
-              <div className="flex gap-3 pl-4 border-l-2 border-violet-200">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-violet-200 bg-violet-100 text-violet-700">
-                  <Bot className="h-4 w-4" />
-                </div>
-                <div className="flex items-center gap-2 py-2">
-                  <span className="text-xs text-violet-600 font-medium">AIファシリテーターが考えています</span>
-                  <span className="flex gap-1">
-                    {[0, 1, 2].map((i) => (
-                      <span key={i} className="inline-block h-1.5 w-1.5 rounded-full bg-violet-400 animate-bounce"
-                        style={{ animationDelay: `${i * 0.15}s` }} />
-                    ))}
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <AiStreamingReply streamText={streamText} />
-            )
-          )}
-        </div>
-      )}
     </div>
   );
 }

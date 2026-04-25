@@ -669,6 +669,67 @@ https://www.youtube.com/watch?v=dQw4w9WgXcQ
   }
   console.log(`✅ ${posts.length}件の記事を作成しました`);
 
+  // フォーラム部屋（6部屋）の初期データ
+  const forumRooms = [
+    {
+      id: "ai-dx",
+      name: "教育AI・DX",
+      description: "生成AI活用、EdTech、デジタル化の実践や課題を語り合う場",
+      emoji: "🤖",
+      weekly_topic: "生成AIを授業で使ってみた——成功・失敗の体験談を聞かせてください",
+      ai_discussion: true,
+    },
+    {
+      id: "steam",
+      name: "探究・STEAM",
+      description: "探究学習・プロジェクト型・STEAM教育の実践を共有",
+      emoji: "🔬",
+      weekly_topic: "「探究がうまくいかない」よくある失敗パターンと打開策は？",
+      ai_discussion: false,
+    },
+    {
+      id: "management",
+      name: "学校経営・働き方",
+      description: "管理職・ミドルリーダーの悩み、働き方改革、組織づくりを議論",
+      emoji: "🏫",
+      weekly_topic: "残業削減に本当に効果があった施策——現場の声を集めます",
+      ai_discussion: false,
+    },
+    {
+      id: "policy",
+      name: "教育政策・制度",
+      description: "新学習指導要領・入試改革・教員免許更新など制度の読み解き",
+      emoji: "📜",
+      weekly_topic: "「高校情報科」必修化——現場はどう変わった？変わっていない？",
+      ai_discussion: false,
+    },
+    {
+      id: "diversity",
+      name: "多様な学び・支援",
+      description: "不登校・特別支援・インクルーシブ教育・フリースクールなど",
+      emoji: "🌈",
+      weekly_topic: "通常学級での発達特性のある子どもへのサポート——何が一番難しい？",
+      ai_discussion: false,
+    },
+    {
+      id: "global",
+      name: "国際・海外教育",
+      description: "海外教育事情・国際バカロレア・留学・グローバル人材育成",
+      emoji: "🌏",
+      weekly_topic: "日本とフィンランド、教育の「違い」を実感した瞬間は？",
+      ai_discussion: false,
+    },
+  ];
+
+  for (const room of forumRooms) {
+    await prisma.forumRoom.upsert({
+      where: { id: room.id },
+      update: {},
+      create: room,
+    });
+  }
+  console.log(`✅ ${forumRooms.length}件のフォーラム部屋を作成しました`);
+
   console.log("🎉 シードデータの投入が完了しました！");
 }
 

@@ -46,6 +46,10 @@ model Profile {
   in_app_notifications           InAppNotification[]
   generalProfile                  GeneralProfile?
   corporateProfile                CorporateProfile?
+  forum_rooms                     ForumRoom[]
+  forum_posts                     ForumPost[]
+  forum_replies                   ForumReply[]
+  forum_likes                     ForumLike[]
 
   @@index([email])
   @@index([stripe_customer_id])
@@ -332,6 +336,70 @@ model SeminarEvent {
 
   @@index([event_date])
   @@index([wp_post_id])
+}
+
+/// 井戸端会議（フォーラム）の部屋
+model ForumRoom {
+  id            String      @id
+  name          String
+  description   String      @default("")
+  emoji         String      @default("")
+  weekly_topic  String      @default("")
+  ai_discussion Boolean     @default(false)
+  created_by    String?     @db.Uuid
+  created_at    DateTime    @default(now())
+  updated_at    DateTime    @updatedAt
+  creator       Profile?    @relation(fields: [created_by], references: [id], onDelete: SetNull)
+  posts         ForumPost[]
+}
+
+/// 井戸端会議の投稿
+model ForumPost {
+  id                  String        @id @default(cuid())
+  room_id             String
+  author_id           String?       @db.Uuid
+  author_name         String
+  author_role         String        @default("一般")
+  body                String
+  related_article_url String?
+  is_pinned           Boolean       @default(false)
+  is_hidden           Boolean       @default(false)
+  created_at          DateTime      @default(now())
+  updated_at          DateTime      @updatedAt
+  room                ForumRoom     @relation(fields: [room_id], references: [id], onDelete: Cascade)
+  author              Profile?      @relation(fields: [author_id], references: [id], onDelete: SetNull)
+  replies             ForumReply[]
+
+  @@index([room_id, created_at(sort: Desc)])
+}
+
+/// 井戸端会議の返信
+model ForumReply {
+  id          String    @id @default(cuid())
+  post_id     String
+  author_id   String?   @db.Uuid
+  author_name String
+  author_role String    @default("一般")
+  body        String
+  created_at  DateTime  @default(now())
+  post        ForumPost @relation(fields: [post_id], references: [id], onDelete: Cascade)
+  author      Profile?  @relation(fields: [author_id], references: [id], onDelete: SetNull)
+
+  @@index([post_id, created_at(sort: Asc)])
+}
+
+/// 井戸端会議のいいね（投稿・返信共通）
+model ForumLike {
+  id          String    @id @default(cuid())
+  target_id   String
+  target_type String    /// "post" | "reply"
+  user_id     String?   @db.Uuid
+  session_id  String?
+  created_at  DateTime  @default(now())
+  user        Profile?  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([target_id, user_id])
+  @@index([target_id, target_type])
 }
 
 enum Role {

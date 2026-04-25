@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowUpRight,
@@ -17,6 +17,7 @@ import {
   Save,
   Flame,
   Zap,
+  Loader2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,7 +35,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { FORUM_ROOMS, type ForumRoom } from "@/lib/mock-forum";
+import type { ForumRoom } from "@/lib/mock-forum";
 import { RelativeTime } from "@/components/community/relative-time";
 import { ForumRoomIcon, ROOM_BG_COLORS } from "@/components/community/forum-room-icon";
 
@@ -153,27 +154,37 @@ function CreateRoomDialog({
   hero?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [draft, setDraft] = useState<NewRoomDraft>({ name: "", description: "", weeklyTopic: "", aiDiscussion: false });
 
   const isValid = draft.name.trim() && draft.weeklyTopic.trim();
 
-  const handleCreate = () => {
-    if (!isValid) return;
-    const slug = draft.name.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^\w-]/g, "");
-    const newRoom: ForumRoom = {
-      id: `${slug}-${Date.now()}`,
-      name: draft.name.trim(),
-      description: draft.description.trim(),
-      weeklyTopic: draft.weeklyTopic.trim(),
-      emoji: "",
-      postCount: 0,
-      participantCount: 0,
-      lastPostedAt: new Date().toISOString(),
-      aiDiscussion: draft.aiDiscussion,
-    };
-    onCreated(newRoom);
-    setDraft({ name: "", description: "", weeklyTopic: "", aiDiscussion: false });
-    setOpen(false);
+  const handleCreate = async () => {
+    if (!isValid || saving) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/forum/rooms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          name: draft.name.trim(),
+          description: draft.description.trim(),
+          weeklyTopic: draft.weeklyTopic.trim(),
+          aiDiscussion: draft.aiDiscussion,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        onCreated(data.room as ForumRoom);
+        setDraft({ name: "", description: "", weeklyTopic: "", aiDiscussion: false });
+        setOpen(false);
+      } else {
+        console.error("部屋作成に失敗しました", await res.text());
+      }
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -262,8 +273,8 @@ function CreateRoomDialog({
 
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="outline" onClick={() => setOpen(false)}>キャンセル</Button>
-            <Button onClick={handleCreate} disabled={!isValid}>
-              <Save className="h-3.5 w-3.5 mr-1" />
+            <Button onClick={handleCreate} disabled={!isValid || saving}>
+              {saving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1" />}
               作成する
             </Button>
           </div>
@@ -278,7 +289,23 @@ export function ForumListClient() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<CategoryKey>("all");
   const [activeOnly, setActiveOnly] = useState(false);
-  const [rooms, setRooms] = useState<ForumRoom[]>(FORUM_ROOMS);
+  const [rooms, setRooms] = useState<ForumRoom[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    fetch("/api/forum/rooms", { credentials: "include" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled && data.rooms) setRooms(data.rooms);
+      })
+      .catch(console.error)
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   const filteredRooms = useMemo<ForumRoom[]>(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -442,48 +469,58 @@ export function ForumListClient() {
           </CardContent>
         </Card>
 
-        <section>
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <h2 className="text-base font-semibold">注目ルーム</h2>
-            <p className="text-xs text-muted-foreground">投稿数と参加者数から自動ピックアップ</p>
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            {featuredRooms.map((room) => (
-              <RoomCard key={room.id} room={room} isFeatured />
-            ))}
-          </div>
-        </section>
+        ) : (
+          <>
+            {featuredRooms.length > 0 && (
+              <section>
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <h2 className="text-base font-semibold">注目ルーム</h2>
+                  <p className="text-xs text-muted-foreground">投稿数と参加者数から自動ピックアップ</p>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {featuredRooms.map((room) => (
+                    <RoomCard key={room.id} room={room} isFeatured />
+                  ))}
+                </div>
+              </section>
+            )}
 
-        <section>
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-base font-semibold">すべての部屋</h2>
-              <p className="text-xs text-muted-foreground">
-                条件に一致した部屋: {sortedRooms.length} / {rooms.length}
-              </p>
-            </div>
-          </div>
-
-          {sortedRooms.length === 0 ? (
-            <div className="rounded-xl border border-dashed bg-muted/20 px-6 py-12 text-center">
-              <p className="text-sm font-medium">該当する部屋が見つかりませんでした</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                キーワードやカテゴリを変更するか、新しい部屋を作成してください。
-              </p>
-              <div className="mt-4 flex justify-center">
-                <Button size="sm" variant="outline" onClick={() => { setQuery(""); setCategory("all"); setActiveOnly(false); }}>
-                  条件をリセット
-                </Button>
+            <section>
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-base font-semibold">すべての部屋</h2>
+                  <p className="text-xs text-muted-foreground">
+                    条件に一致した部屋: {sortedRooms.length} / {rooms.length}
+                  </p>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {sortedRooms.map((room) => (
-                <RoomCard key={room.id} room={room} />
-              ))}
-            </div>
-          )}
-        </section>
+
+              {sortedRooms.length === 0 ? (
+                <div className="rounded-xl border border-dashed bg-muted/20 px-6 py-12 text-center">
+                  <p className="text-sm font-medium">該当する部屋が見つかりませんでした</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    キーワードやカテゴリを変更するか、新しい部屋を作成してください。
+                  </p>
+                  <div className="mt-4 flex justify-center">
+                    <Button size="sm" variant="outline" onClick={() => { setQuery(""); setCategory("all"); setActiveOnly(false); }}>
+                      条件をリセット
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {sortedRooms.map((room) => (
+                    <RoomCard key={room.id} room={room} />
+                  ))}
+                </div>
+              )}
+            </section>
+          </>
+        )}
 
         <div className="rounded-xl border border-dashed bg-muted/20 px-6 py-8">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
