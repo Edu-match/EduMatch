@@ -105,18 +105,21 @@ function AiBadge() {
 
 // ─── アバター ──────────────────────────────────────────────
 
-function Avatar({ name, role, isAi }: { name: string; role: AuthorRole; isAi?: boolean }) {
+function Avatar({ name, role, isAi, size = "md" }: { name: string; role: AuthorRole; isAi?: boolean; size?: "sm" | "md" }) {
+  const dim = size === "sm" ? "h-9 w-9" : "h-11 w-11";
+  const iconSize = size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4";
+  const textSize = size === "sm" ? "text-xs" : "text-sm";
   if (isAi) {
     return (
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-violet-200 bg-violet-100 text-violet-700">
-        <Bot className="h-4 w-4" />
+      <div className={`flex ${dim} shrink-0 items-center justify-center rounded-full border border-violet-200 bg-violet-100 text-violet-700`}>
+        <Bot className={iconSize} />
       </div>
     );
   }
   const s = ROLE_STYLES[role];
   const initials = role === "匿名" ? "?" : name.charAt(0);
   return (
-    <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm font-bold ${s.bg} ${s.text} ${s.border}`}>
+    <div className={`flex ${dim} shrink-0 items-center justify-center rounded-full border font-bold ${s.bg} ${s.text} ${s.border} ${textSize}`}>
       {initials}
     </div>
   );
@@ -126,20 +129,27 @@ function Avatar({ name, role, isAi }: { name: string; role: AuthorRole; isAi?: b
 
 function AiStreamingReply({ streamText }: { streamText: string }) {
   return (
-    <div className="flex gap-3 pl-4 border-l-2 border-violet-200">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-violet-200 bg-violet-100 text-violet-700">
-        <Bot className="h-4 w-4" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex flex-wrap items-center gap-2 mb-1">
-          <span className="text-sm font-semibold text-violet-800">AIファシリテーター</span>
-          <AiBadge />
-          <span className="text-xs text-muted-foreground">たった今</span>
+    <div className="relative pl-7">
+      {/* シナプス縦線 */}
+      <span aria-hidden className="absolute left-3 top-0 bottom-0 w-px bg-violet-200" />
+      {/* 接続ドット */}
+      <span aria-hidden className="absolute left-2.5 top-5 h-1.5 w-1.5 rounded-full bg-violet-400" />
+
+      <div className="flex gap-3">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-violet-200 bg-violet-100 text-violet-700">
+          <Bot className="h-4 w-4" />
         </div>
-        <p className="text-sm leading-7 whitespace-pre-wrap text-foreground">
-          {streamText}
-          <span className="inline-block w-0.5 h-4 bg-violet-500 ml-0.5 animate-pulse align-text-bottom" />
-        </p>
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-2 mb-1">
+            <span className="text-sm font-semibold text-violet-800">AIファシリテーター</span>
+            <AiBadge />
+            <span className="text-xs text-muted-foreground">たった今</span>
+          </div>
+          <p className="text-sm leading-7 whitespace-pre-wrap text-foreground">
+            {streamText}
+            <span className="inline-block w-0.5 h-4 bg-violet-500 ml-0.5 animate-pulse align-text-bottom" />
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -176,25 +186,32 @@ function ReplyCard({ reply, isAi }: { reply: ForumReply & { isAi?: boolean }; is
   };
 
   return (
-    <div className={`flex gap-3 pl-4 border-l-2 ${isAi ? "border-violet-200" : "border-muted"}`}>
-      <Avatar name={reply.authorName} role={reply.authorRole as AuthorRole} isAi={isAi} />
-      <div className="flex-1 min-w-0">
-        <div className="flex flex-wrap items-center gap-2 mb-1">
-          <span className={`text-sm font-semibold ${isAi ? "text-violet-800" : ""}`}>{reply.authorName}</span>
-          {isAi ? <AiBadge /> : <RoleBadge role={reply.authorRole as AuthorRole} />}
-          <span className="text-xs text-muted-foreground">
-            <RelativeTime iso={reply.postedAt} />
-          </span>
+    <div className="relative pl-7">
+      {/* シナプス縦線 */}
+      <span aria-hidden className={`absolute left-3 top-0 bottom-0 w-px ${isAi ? "bg-violet-200" : "bg-muted"}`} />
+      {/* 接続ドット */}
+      <span aria-hidden className={`absolute left-2.5 top-5 h-1.5 w-1.5 rounded-full ${isAi ? "bg-violet-400" : "bg-muted-foreground/40"}`} />
+
+      <div className="flex gap-3">
+        <Avatar name={reply.authorName} role={reply.authorRole as AuthorRole} isAi={isAi} size="sm" />
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-2 mb-1">
+            <span className={`text-sm font-semibold ${isAi ? "text-violet-800" : ""}`}>{reply.authorName}</span>
+            {isAi ? <AiBadge /> : <RoleBadge role={reply.authorRole as AuthorRole} />}
+            <span className="text-xs text-muted-foreground">
+              <RelativeTime iso={reply.postedAt} />
+            </span>
+          </div>
+          <p className="text-sm leading-7 whitespace-pre-wrap">{reply.body}</p>
+          <button
+            type="button"
+            onClick={toggleLike}
+            className={`mt-2 flex items-center gap-1 text-xs transition-colors ${liked ? "text-pink-500" : "text-muted-foreground hover:text-pink-500"}`}
+          >
+            <Heart className={`h-3.5 w-3.5 ${liked ? "fill-pink-500" : ""}`} />
+            {likeCount}
+          </button>
         </div>
-        <p className="text-sm leading-7 whitespace-pre-wrap">{reply.body}</p>
-        <button
-          type="button"
-          onClick={toggleLike}
-          className={`mt-2 flex items-center gap-1 text-xs transition-colors ${liked ? "text-pink-500" : "text-muted-foreground hover:text-pink-500"}`}
-        >
-          <Heart className={`h-3.5 w-3.5 ${liked ? "fill-pink-500" : ""}`} />
-          {likeCount}
-        </button>
       </div>
     </div>
   );
@@ -285,13 +302,16 @@ function PostCardWithStream({
   };
 
   return (
-    <div className={`rounded-xl border bg-card shadow-xs transition-shadow hover:shadow-sm ${post.isPinned ? "border-amber-200 bg-amber-50/40" : ""}`}>
+    <div className={`rounded-xl border bg-card shadow-xs transition-shadow hover:shadow-sm ${post.isPinned ? "border-amber-300 bg-amber-50/60 shadow-amber-100/60" : ""}`}>
+      {/* 注目バナー */}
+      {post.isPinned && (
+        <div className="flex items-center gap-2 rounded-t-xl border-b border-amber-200 bg-amber-100/70 px-5 py-2">
+          <Pin className="h-3.5 w-3.5 fill-amber-500 text-amber-500" aria-hidden />
+          <span className="text-xs font-bold uppercase tracking-wider text-amber-700">注目</span>
+          <span className="ml-1 text-xs text-amber-600/80">運営ピックアップ</span>
+        </div>
+      )}
       <div className="p-5">
-        {post.isPinned && (
-          <div className="mb-3 flex items-center gap-1.5 text-xs font-semibold text-amber-600">
-            <Pin className="h-3.5 w-3.5 fill-amber-500" />注目投稿（運営ピックアップ）
-          </div>
-        )}
 
         <div className="flex gap-3">
           <Avatar name={post.authorName} role={post.authorRole as AuthorRole} />
@@ -368,18 +388,22 @@ function PostCardWithStream({
           ))}
           {isStreaming && streamText !== null && (
             streamText === "" ? (
-              <div className="flex gap-3 pl-4 border-l-2 border-violet-200">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-violet-200 bg-violet-100 text-violet-700">
-                  <Bot className="h-4 w-4" />
-                </div>
-                <div className="flex items-center gap-2 py-2">
-                  <span className="text-xs text-violet-600 font-medium">AIファシリテーターが考えています</span>
-                  <span className="flex gap-1">
-                    {[0, 1, 2].map((i) => (
-                      <span key={i} className="inline-block h-1.5 w-1.5 rounded-full bg-violet-400 animate-bounce"
-                        style={{ animationDelay: `${i * 0.15}s` }} />
-                    ))}
-                  </span>
+              <div className="relative pl-7">
+                <span aria-hidden className="absolute left-3 top-0 bottom-0 w-px bg-violet-200" />
+                <span aria-hidden className="absolute left-2.5 top-5 h-1.5 w-1.5 rounded-full bg-violet-400" />
+                <div className="flex gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-violet-200 bg-violet-100 text-violet-700">
+                    <Bot className="h-4 w-4" />
+                  </div>
+                  <div className="flex items-center gap-2 py-2">
+                    <span className="text-xs text-violet-600 font-medium">AIファシリテーターが考えています</span>
+                    <span className="flex gap-1">
+                      {[0, 1, 2].map((i) => (
+                        <span key={i} className="inline-block h-1.5 w-1.5 rounded-full bg-violet-400 animate-bounce"
+                          style={{ animationDelay: `${i * 0.15}s` }} />
+                      ))}
+                    </span>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -724,14 +748,23 @@ export function ForumRoomClient({ room }: { room: ForumRoom }) {
         <div className="pointer-events-none absolute -top-20 -right-20 h-80 w-80 rounded-full bg-primary/5 blur-3xl" />
       </section>
 
-      {/* ─── 今週のお題バナー ─── */}
-      <div className="border-b bg-gradient-to-r from-primary/10 via-primary/5 to-transparent">
-        <div className="container py-4">
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-            <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-primary whitespace-nowrap">
-              <Sparkles className="h-4 w-4" />今週のお題
-            </span>
-            <p className="text-sm font-medium leading-6 sm:text-base">{room.weeklyTopic}</p>
+      {/* ─── 今週のお題（大きな吹き出しボックス） ─── */}
+      <div className="border-b bg-gradient-to-r from-primary/8 via-primary/4 to-background/80">
+        <div className="container py-6">
+          <div className="mx-auto max-w-3xl">
+            <div className="relative rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 to-primary/5 px-6 py-5 shadow-sm">
+              <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-primary/70">
+                <Sparkles className="h-3.5 w-3.5" />
+                今週のお題
+              </p>
+              <p className="text-base font-semibold leading-7 sm:text-lg">{room.weeklyTopic}</p>
+              <p className="mt-2 text-xs text-muted-foreground">このテーマについて、あなたの経験や考えを投稿しよう</p>
+              {/* 吹き出しの尻尾 */}
+              <span
+                aria-hidden
+                className="absolute -bottom-2 left-10 h-4 w-4 rotate-45 border-b border-r border-primary/20 bg-gradient-to-br from-primary/5 to-primary/8"
+              />
+            </div>
           </div>
         </div>
       </div>
