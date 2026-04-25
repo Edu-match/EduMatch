@@ -10,7 +10,7 @@ create table if not exists public.forum_rooms (
   emoji           text        not null default '',
   weekly_topic    text        not null default '',
   ai_discussion   boolean     not null default false,
-  created_by      uuid        references public.profiles(id) on delete set null,
+  created_by      uuid        references public."Profile"(id) on delete set null,
   created_at      timestamptz not null default now(),
   updated_at      timestamptz not null default now()
 );
@@ -21,23 +21,24 @@ alter table public.forum_rooms enable row level security;
 create policy "forum_rooms_select" on public.forum_rooms
   for select using (true);
 
--- ログインユーザー（有料 or ADMIN）のみ作成
+-- ログインユーザーのみ作成
 create policy "forum_rooms_insert" on public.forum_rooms
   for insert with check (auth.uid() is not null);
 
--- 管理者のみ更新・削除
+-- 管理者のみ更新
 create policy "forum_rooms_update" on public.forum_rooms
   for update using (
     exists (
-      select 1 from public.profiles
+      select 1 from public."Profile"
       where id = auth.uid() and role = 'ADMIN'
     )
   );
 
+-- 管理者のみ削除
 create policy "forum_rooms_delete" on public.forum_rooms
   for delete using (
     exists (
-      select 1 from public.profiles
+      select 1 from public."Profile"
       where id = auth.uid() and role = 'ADMIN'
     )
   );
@@ -46,7 +47,7 @@ create policy "forum_rooms_delete" on public.forum_rooms
 create table if not exists public.forum_posts (
   id                  text        primary key default gen_random_uuid()::text,
   room_id             text        not null references public.forum_rooms(id) on delete cascade,
-  author_id           uuid        references public.profiles(id) on delete set null,
+  author_id           uuid        references public."Profile"(id) on delete set null,
   author_name         text        not null,
   author_role         text        not null default '一般',
   body                text        not null,
@@ -59,12 +60,12 @@ create table if not exists public.forum_posts (
 
 alter table public.forum_posts enable row level security;
 
--- 非表示でない投稿は誰でも読める
+-- 非表示でない投稿は誰でも読める（管理者は非表示も読める）
 create policy "forum_posts_select" on public.forum_posts
   for select using (
     is_hidden = false
     or exists (
-      select 1 from public.profiles
+      select 1 from public."Profile"
       where id = auth.uid() and role = 'ADMIN'
     )
   );
@@ -77,7 +78,7 @@ create policy "forum_posts_insert" on public.forum_posts
 create policy "forum_posts_update" on public.forum_posts
   for update using (
     exists (
-      select 1 from public.profiles
+      select 1 from public."Profile"
       where id = auth.uid() and role = 'ADMIN'
     )
   );
@@ -86,7 +87,7 @@ create policy "forum_posts_update" on public.forum_posts
 create policy "forum_posts_delete" on public.forum_posts
   for delete using (
     exists (
-      select 1 from public.profiles
+      select 1 from public."Profile"
       where id = auth.uid() and role = 'ADMIN'
     )
   );
@@ -98,7 +99,7 @@ create index if not exists forum_posts_room_id_created_at_idx
 create table if not exists public.forum_replies (
   id          text        primary key default gen_random_uuid()::text,
   post_id     text        not null references public.forum_posts(id) on delete cascade,
-  author_id   uuid        references public.profiles(id) on delete set null,
+  author_id   uuid        references public."Profile"(id) on delete set null,
   author_name text        not null,
   author_role text        not null default '一般',
   body        text        not null,
@@ -119,7 +120,7 @@ create policy "forum_replies_insert" on public.forum_replies
 create policy "forum_replies_delete" on public.forum_replies
   for delete using (
     exists (
-      select 1 from public.profiles
+      select 1 from public."Profile"
       where id = auth.uid() and role = 'ADMIN'
     )
   );
@@ -129,13 +130,11 @@ create index if not exists forum_replies_post_id_idx
 
 -- ─── forum_likes ──────────────────────────────────────────
 -- 投稿いいね と 返信いいね を1テーブルで管理
--- (post_id は forum_posts または forum_replies の id を入れる)
--- user_id か session_id のいずれかを必須にする
 create table if not exists public.forum_likes (
   id          text        primary key default gen_random_uuid()::text,
   target_id   text        not null,  -- forum_posts.id or forum_replies.id
   target_type text        not null,  -- 'post' | 'reply'
-  user_id     uuid        references public.profiles(id) on delete cascade,
+  user_id     uuid        references public."Profile"(id) on delete cascade,
   session_id  text,                  -- ゲスト用セッション識別子
   created_at  timestamptz not null default now(),
   -- ログインユーザーは (target_id, user_id) がユニーク
@@ -153,7 +152,7 @@ create policy "forum_likes_select" on public.forum_likes
 create policy "forum_likes_insert" on public.forum_likes
   for insert with check (true);
 
--- 自分のいいねのみ削除可能（ゲストは session_id で管理）
+-- 自分のいいねのみ削除可能
 create policy "forum_likes_delete" on public.forum_likes
   for delete using (
     user_id = auth.uid()
@@ -164,7 +163,7 @@ create index if not exists forum_likes_target_idx
   on public.forum_likes (target_id, target_type);
 
 -- ─── updated_at 自動更新トリガー ────────────────────────
-create or replace function public.set_updated_at()
+create or replace function public.forum_set_updated_at()
 returns trigger language plpgsql as $$
 begin
   new.updated_at = now();
@@ -174,8 +173,8 @@ $$;
 
 create trigger forum_rooms_set_updated_at
   before update on public.forum_rooms
-  for each row execute function public.set_updated_at();
+  for each row execute function public.forum_set_updated_at();
 
 create trigger forum_posts_set_updated_at
   before update on public.forum_posts
-  for each row execute function public.set_updated_at();
+  for each row execute function public.forum_set_updated_at();
