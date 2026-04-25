@@ -38,6 +38,7 @@
     "clsx": "^2.1.1",
     "csv-parse": "^6.1.0",
     "fast-xml-parser": "^5.3.6",
+    "html-to-image": "^1.11.13",
     "lucide-react": "^0.562.0",
     "nanoid": "^5.1.7",
     "next": "^16.2.3",
