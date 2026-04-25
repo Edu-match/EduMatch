@@ -351,6 +351,8 @@ model ForumRoom {
   updated_at    DateTime    @updatedAt
   creator       Profile?    @relation(fields: [created_by], references: [id], onDelete: SetNull)
   posts         ForumPost[]
+
+  @@map("forum_rooms")
 }
 
 /// 井戸端会議の投稿
@@ -371,6 +373,7 @@ model ForumPost {
   replies             ForumReply[]
 
   @@index([room_id, created_at(sort: Desc)])
+  @@map("forum_posts")
 }
 
 /// 井戸端会議の返信
@@ -386,6 +389,7 @@ model ForumReply {
   author      Profile?  @relation(fields: [author_id], references: [id], onDelete: SetNull)
 
   @@index([post_id, created_at(sort: Asc)])
+  @@map("forum_replies")
 }
 
 /// 井戸端会議のいいね（投稿・返信共通）
@@ -400,6 +404,7 @@ model ForumLike {
 
   @@unique([target_id, user_id])
   @@index([target_id, target_type])
+  @@map("forum_likes")
 }
 
 enum Role {
