@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, getCurrentProfile } from "@/lib/auth";
+import { getAiKenteiDb } from "@/lib/ai-kentei-db";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +59,7 @@ export async function GET(
       postedAt: post.created_at.toISOString(),
       isPinned: post.is_pinned,
       relatedArticleUrl: post.related_article_url ?? undefined,
+      aiKenteiPassed: post.ai_kentei_passed,
       replies: post.replies.map((r) => ({
         id: r.id,
         authorName: r.author_name,
@@ -65,6 +67,7 @@ export async function GET(
         body: r.body,
         likeCount: 0,
         postedAt: r.created_at.toISOString(),
+        aiKenteiPassed: r.ai_kentei_passed,
       })),
     }));
 
@@ -98,6 +101,23 @@ export async function POST(
     const user = await getCurrentUser();
     const profile = user ? await getCurrentProfile() : null;
 
+    // AI検定合格チェック
+    let aiKenteiPassed = false;
+    if (profile?.id) {
+      try {
+        const kenteiDb = await getAiKenteiDb();
+        const { data } = await kenteiDb
+          .from("ai_kentei_exam_sessions")
+          .select("passed")
+          .eq("user_id", profile.id)
+          .eq("passed", true)
+          .limit(1);
+        aiKenteiPassed = !!(data && data.length > 0);
+      } catch {
+        // AI検定DBへの接続失敗は無視
+      }
+    }
+
     const body = await req.json();
     const { authorName, authorRole, postBody, relatedArticleUrl } = body as {
       authorName: string;
@@ -122,6 +142,7 @@ export async function POST(
         author_role: authorRole ?? "一般",
         body: postBody.trim(),
         related_article_url: relatedArticleUrl?.trim() || null,
+        ai_kentei_passed: aiKenteiPassed,
       },
     });
 
@@ -137,6 +158,7 @@ export async function POST(
         postedAt: post.created_at.toISOString(),
         isPinned: post.is_pinned,
         relatedArticleUrl: post.related_article_url ?? undefined,
+        aiKenteiPassed: post.ai_kentei_passed,
         replies: [],
       },
     }, { status: 201 });

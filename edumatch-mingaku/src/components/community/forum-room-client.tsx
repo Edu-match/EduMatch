@@ -66,7 +66,23 @@ function getSessionId(): string {
 
 // ─── 定数 ────────────────────────────────────────────────
 
-const AUTHOR_ROLES: AuthorRole[] = ["教員", "学生", "専門家", "企業", "一般", "匿名"];
+/** アカウントの organization_type → AuthorRole 変換 */
+const ORG_TYPE_TO_ROLE: Record<string, AuthorRole> = {
+  elementary:  "教員",
+  "junior-high": "教員",
+  "high-school": "教員",
+  university:  "専門家",
+  company:     "企業",
+  parent:      "一般",
+  student:     "学生",
+  other:       "一般",
+};
+
+/** organization_type からフォーラム表示ロールを決定（不明時は "一般"） */
+function resolveAuthorRole(organizationType: string | null): AuthorRole {
+  if (!organizationType) return "一般";
+  return ORG_TYPE_TO_ROLE[organizationType] ?? "一般";
+}
 
 // ─── 属性バッジ ───────────────────────────────────────────
 
@@ -99,6 +115,20 @@ function AiBadge() {
     <span className="inline-flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-0.5 text-xs font-semibold text-violet-700">
       <Bot className="h-3 w-3" />
       AIファシリテーター
+    </span>
+  );
+}
+
+// ─── AI検定合格バッジ ──────────────────────────────────────
+
+function AiKenteiBadge() {
+  return (
+    <span
+      title="AI検定 合格者"
+      className="inline-flex items-center gap-0.5 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700"
+    >
+      <Sparkles className="h-2.5 w-2.5" />
+      AI検定合格
     </span>
   );
 }
@@ -198,6 +228,7 @@ function ReplyCard({ reply, isAi }: { reply: ForumReply & { isAi?: boolean }; is
           <div className="flex flex-wrap items-center gap-2 mb-1">
             <span className={`text-sm font-semibold ${isAi ? "text-violet-800" : ""}`}>{reply.authorName}</span>
             {isAi ? <AiBadge /> : <RoleBadge role={reply.authorRole as AuthorRole} />}
+            {!isAi && reply.aiKenteiPassed && <AiKenteiBadge />}
             <span className="text-xs text-muted-foreground">
               <RelativeTime iso={reply.postedAt} />
             </span>
@@ -230,6 +261,8 @@ function PostCardWithStream({
   userName,
   isLoggedIn,
   avatarUrl,
+  organizationType,
+  aiKenteiPassed,
 }: {
   post: ForumPost;
   streamText: string | null;
@@ -241,21 +274,17 @@ function PostCardWithStream({
   userName: string;
   isLoggedIn: boolean;
   avatarUrl?: string | null;
+  organizationType?: string | null;
+  aiKenteiPassed?: boolean;
 }) {
-  const defaultReplyName = isLoggedIn && userName ? userName : "";
+  const resolvedReplyRole = resolveAuthorRole(organizationType ?? null);
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(post.likeCount);
   const [repliesOpen, setRepliesOpen] = useState(false);
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [replyText, setReplyText] = useState("");
-  const [replyRole, setReplyRole] = useState<AuthorRole>("教員");
-  const [replyDisplayName, setReplyDisplayName] = useState(defaultReplyName);
+  const [isAnonReplyState, setIsAnonReplyState] = useState(false);
   const [submittingReply, setSubmittingReply] = useState(false);
-
-  // 返信フォームを開いたタイミングでアカウント表示名を反映
-  useEffect(() => {
-    if (showReplyForm) setReplyDisplayName(defaultReplyName);
-  }, [showReplyForm, defaultReplyName]);
 
   const replies = post.replies ?? [];
   const isStreaming = streamText !== null;
@@ -284,11 +313,9 @@ function PostCardWithStream({
     }
   };
 
-  const isAnonReply = replyRole === "匿名";
-  const canSubmitReply =
-    !!replyText.trim() &&
-    (isAnonReply || !!replyDisplayName.trim()) &&
-    !submittingReply;
+  const isAnonReply = isAnonReplyState;
+  const effectiveReplyRole: AuthorRole = isAnonReply ? "匿名" : resolvedReplyRole;
+  const canSubmitReply = !!replyText.trim() && !submittingReply;
 
   const submitReply = async () => {
     if (!canSubmitReply) return;
@@ -296,7 +323,7 @@ function PostCardWithStream({
 
     const authorName = isAnonReply
       ? "匿名ユーザー"
-      : (replyDisplayName.trim() || (isLoggedIn && userName ? userName : "ゲスト"));
+      : (isLoggedIn && userName ? userName : "ゲスト");
 
     try {
       const res = await fetch(`/api/forum/posts/${post.id}/replies`, {
@@ -305,7 +332,7 @@ function PostCardWithStream({
         credentials: "include",
         body: JSON.stringify({
           authorName,
-          authorRole: replyRole,
+          authorRole: effectiveReplyRole,
           replyBody: replyText.trim(),
         }),
       });
@@ -340,6 +367,7 @@ function PostCardWithStream({
             <div className="flex flex-wrap items-center gap-2 mb-1">
               <span className="text-sm font-semibold">{post.authorName}</span>
               <RoleBadge role={post.authorRole as AuthorRole} />
+              {post.aiKenteiPassed && <AiKenteiBadge />}
               <span className="text-xs text-muted-foreground"><RelativeTime iso={post.postedAt} /></span>
             </div>
             <p className="text-sm leading-7 whitespace-pre-wrap">{post.body}</p>
@@ -378,32 +406,34 @@ function PostCardWithStream({
             {/* 返信者情報 */}
             <div className="flex items-center gap-2.5 border-b bg-muted/20 px-4 py-2.5">
               <UserAvatar
-                name={isAnonReply ? "匿名" : replyDisplayName || (isLoggedIn ? userName : "ゲスト")}
+                name={isAnonReply ? "匿名" : (isLoggedIn ? userName : "ゲスト")}
                 avatarUrl={isAnonReply ? null : avatarUrl}
                 size={26}
                 isAnon={isAnonReply}
               />
               <span className="text-xs font-medium text-foreground">
-                {isAnonReply ? "匿名ユーザー" : (replyDisplayName || (isLoggedIn ? userName : "ゲスト"))}
+                {isAnonReply ? "匿名ユーザー" : (isLoggedIn ? userName : "ゲスト")}
               </span>
-              <span className="text-muted-foreground/40">·</span>
-              {/* 立場チップ（コンパクト） */}
-              <div className="flex flex-wrap gap-1">
-                {AUTHOR_ROLES.map((r) => (
-                  <button
-                    key={r}
-                    type="button"
-                    onClick={() => setReplyRole(r)}
-                    className={[
-                      "rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors",
-                      replyRole === r
-                        ? `${ROLE_STYLES[r].bg} ${ROLE_STYLES[r].text} ${ROLE_STYLES[r].border}`
-                        : "border-transparent text-muted-foreground hover:bg-muted",
-                    ].join(" ")}
-                  >
-                    {ROLE_STYLES[r].icon} {r}
-                  </button>
-                ))}
+              {!isAnonReply && (
+                <>
+                  <span className="text-muted-foreground/40">·</span>
+                  <RoleBadge role={effectiveReplyRole} />
+                  {aiKenteiPassed && <AiKenteiBadge />}
+                </>
+              )}
+              <div className="ml-auto">
+                <button
+                  type="button"
+                  onClick={() => setIsAnonReplyState((v) => !v)}
+                  className={[
+                    "rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors",
+                    isAnonReply
+                      ? `${ROLE_STYLES["匿名"].bg} ${ROLE_STYLES["匿名"].text} ${ROLE_STYLES["匿名"].border}`
+                      : "border-transparent text-muted-foreground hover:bg-muted",
+                  ].join(" ")}
+                >
+                  {ROLE_STYLES["匿名"].icon} 匿名
+                </button>
               </div>
             </div>
 
@@ -525,6 +555,8 @@ function NewPostDialog({
   isLoggedIn,
   weeklyTopic,
   submitting,
+  organizationType,
+  aiKenteiPassed,
 }: {
   onSubmit: (draft: PostDraft) => Promise<void>;
   userName: string;
@@ -532,31 +564,33 @@ function NewPostDialog({
   isLoggedIn: boolean;
   weeklyTopic: string;
   submitting: boolean;
+  organizationType?: string | null;
+  aiKenteiPassed?: boolean;
 }) {
+  const resolvedRole = resolveAuthorRole(organizationType ?? null);
   const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState<PostDraft>({
-    body: "",
-    authorRole: "教員",
-    relatedArticleUrl: "",
-    displayName: userName,
-  });
+  const [body, setBody] = useState("");
+  const [isAnon, setIsAnon] = useState(false);
+  const [relatedArticleUrl, setRelatedArticleUrl] = useState("");
   const [showUrl, setShowUrl] = useState(false);
 
   useEffect(() => {
     if (open) {
-      setDraft((p) => ({ ...p, body: "", displayName: userName, relatedArticleUrl: "" }));
+      setBody("");
+      setIsAnon(false);
+      setRelatedArticleUrl("");
       setShowUrl(false);
     }
-  }, [open, userName]);
+  }, [open]);
 
-  const isAnon = draft.authorRole === "匿名";
+  const effectiveRole: AuthorRole = isAnon ? "匿名" : resolvedRole;
   const displayName = isAnon ? "匿名ユーザー" : (userName || "ゲスト");
-  const remaining = MAX_BODY - draft.body.length;
-  const canSubmit = draft.body.trim().length > 0 && draft.body.length <= MAX_BODY && !submitting;
+  const remaining = MAX_BODY - body.length;
+  const canSubmit = body.trim().length > 0 && body.length <= MAX_BODY && !submitting;
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
-    await onSubmit({ ...draft, displayName });
+    await onSubmit({ body, authorRole: effectiveRole, relatedArticleUrl, displayName });
     setOpen(false);
   };
 
@@ -577,41 +611,55 @@ function NewPostDialog({
           </DialogDescription>
         </div>
 
+        {/* 投稿者情報バー */}
+        <div className="flex items-center gap-2.5 border-b bg-muted/20 px-6 py-2.5">
+          <UserAvatar name={displayName} avatarUrl={isAnon ? null : avatarUrl} size={28} isAnon={isAnon} />
+          <span className="text-xs font-medium text-foreground">{displayName}</span>
+          {!isAnon && (
+            <>
+              <span className="text-muted-foreground/40">·</span>
+              <RoleBadge role={effectiveRole} />
+              {aiKenteiPassed && <AiKenteiBadge />}
+            </>
+          )}
+          <div className="ml-auto">
+            <button
+              type="button"
+              onClick={() => setIsAnon((v) => !v)}
+              className={[
+                "rounded-full border px-2.5 py-0.5 text-[10px] font-medium transition-colors",
+                isAnon
+                  ? `${ROLE_STYLES["匿名"].bg} ${ROLE_STYLES["匿名"].text} ${ROLE_STYLES["匿名"].border}`
+                  : "border-transparent text-muted-foreground hover:bg-muted",
+              ].join(" ")}
+            >
+              {ROLE_STYLES["匿名"].icon} 匿名
+            </button>
+          </div>
+        </div>
+
         {/* 本文エリア */}
         <div className="px-6 pt-4 pb-3">
-          <div className="flex gap-3">
-            {/* アバター */}
-            <div className="shrink-0 pt-0.5">
-              <UserAvatar name={displayName} avatarUrl={avatarUrl} size={40} isAnon={isAnon} />
-            </div>
-
-            {/* テキストエリア */}
-            <div className="flex-1 min-w-0">
-              <p className="mb-2 text-sm font-medium text-foreground">
-                {displayName}
-              </p>
-              <textarea
-                id="post-body"
-                value={draft.body}
-                onChange={(e) => setDraft((p) => ({ ...p, body: e.target.value }))}
-                placeholder="今週のお題について、あなたの経験や意見を書いてください…"
-                rows={6}
-                maxLength={MAX_BODY + 50}
-                className="w-full resize-none bg-transparent text-sm leading-7 text-foreground placeholder:text-muted-foreground/60 outline-none"
-                autoFocus={open}
-              />
-            </div>
-          </div>
+          <textarea
+            id="post-body"
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder="今週のお題について、あなたの経験や意見を書いてください…"
+            rows={6}
+            maxLength={MAX_BODY + 50}
+            className="w-full resize-none bg-transparent text-sm leading-7 text-foreground placeholder:text-muted-foreground/60 outline-none"
+            autoFocus={open}
+          />
 
           {/* 関連URL（展開式） */}
           {showUrl && (
-            <div className="mt-3 ml-[52px]">
+            <div className="mt-3">
               <div className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
                 <LinkIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                 <Input
                   type="url"
-                  value={draft.relatedArticleUrl}
-                  onChange={(e) => setDraft((p) => ({ ...p, relatedArticleUrl: e.target.value }))}
+                  value={relatedArticleUrl}
+                  onChange={(e) => setRelatedArticleUrl(e.target.value)}
                   placeholder="https://... （関連記事のURL）"
                   className="h-7 border-0 bg-transparent p-0 text-xs shadow-none focus-visible:ring-0"
                 />
@@ -623,37 +671,18 @@ function NewPostDialog({
         {/* フッター */}
         <div className="border-t bg-muted/20 px-6 py-3">
           <div className="flex items-center justify-between gap-3">
-            {/* 左: 立場チップ + URLボタン */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              {AUTHOR_ROLES.map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => setDraft((p) => ({ ...p, authorRole: r }))}
-                  className={[
-                    "flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors",
-                    draft.authorRole === r
-                      ? `${ROLE_STYLES[r].bg} ${ROLE_STYLES[r].text} ${ROLE_STYLES[r].border} shadow-xs`
-                      : "border-transparent text-muted-foreground hover:bg-muted",
-                  ].join(" ")}
-                  aria-pressed={draft.authorRole === r}
-                >
-                  <span aria-hidden className="text-[10px]">{ROLE_STYLES[r].icon}</span>
-                  {r}
-                </button>
-              ))}
-              <button
-                type="button"
-                title="関連記事URLを追加"
-                onClick={() => setShowUrl((v) => !v)}
-                className={[
-                  "rounded-full border p-1.5 transition-colors",
-                  showUrl ? "border-primary/40 bg-primary/5 text-primary" : "border-transparent text-muted-foreground hover:bg-muted",
-                ].join(" ")}
-              >
-                <LinkIcon className="h-3 w-3" />
-              </button>
-            </div>
+            {/* 左: URLボタン */}
+            <button
+              type="button"
+              title="関連記事URLを追加"
+              onClick={() => setShowUrl((v) => !v)}
+              className={[
+                "rounded-full border p-1.5 transition-colors",
+                showUrl ? "border-primary/40 bg-primary/5 text-primary" : "border-transparent text-muted-foreground hover:bg-muted",
+              ].join(" ")}
+            >
+              <LinkIcon className="h-3 w-3" />
+            </button>
 
             {/* 右: 文字数 + 送信 */}
             <div className="flex shrink-0 items-center gap-3">
@@ -906,7 +935,16 @@ export function ForumRoomClient({ room }: { room: ForumRoom }) {
               </div>
             </div>
             <div className="shrink-0">
-              <NewPostDialog onSubmit={handleNewPost} userName={auth.name} avatarUrl={auth.avatarUrl} isLoggedIn={auth.isLoggedIn} weeklyTopic={room.weeklyTopic} submitting={submitting} />
+              <NewPostDialog
+                onSubmit={handleNewPost}
+                userName={auth.name}
+                avatarUrl={auth.avatarUrl}
+                isLoggedIn={auth.isLoggedIn}
+                weeklyTopic={room.weeklyTopic}
+                submitting={submitting}
+                organizationType={auth.organizationType}
+                aiKenteiPassed={auth.aiKenteiPassed}
+              />
             </div>
           </div>
         </div>
@@ -971,6 +1009,8 @@ export function ForumRoomClient({ room }: { room: ForumRoom }) {
                       userName={auth.name}
                       isLoggedIn={auth.isLoggedIn}
                       avatarUrl={auth.avatarUrl}
+                      organizationType={auth.organizationType}
+                      aiKenteiPassed={auth.aiKenteiPassed}
                     />
                   ))}
                 </div>
@@ -997,7 +1037,16 @@ export function ForumRoomClient({ room }: { room: ForumRoom }) {
                       <p className="text-base font-medium">まだ投稿がありません</p>
                       <p className="mt-1 text-sm text-muted-foreground">最初の投稿者になりましょう</p>
                     </div>
-                    <NewPostDialog onSubmit={handleNewPost} userName={auth.name} avatarUrl={auth.avatarUrl} isLoggedIn={auth.isLoggedIn} weeklyTopic={room.weeklyTopic} submitting={submitting} />
+                    <NewPostDialog
+                      onSubmit={handleNewPost}
+                      userName={auth.name}
+                      avatarUrl={auth.avatarUrl}
+                      isLoggedIn={auth.isLoggedIn}
+                      weeklyTopic={room.weeklyTopic}
+                      submitting={submitting}
+                      organizationType={auth.organizationType}
+                      aiKenteiPassed={auth.aiKenteiPassed}
+                    />
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -1014,6 +1063,8 @@ export function ForumRoomClient({ room }: { room: ForumRoom }) {
                         userName={auth.name}
                         isLoggedIn={auth.isLoggedIn}
                         avatarUrl={auth.avatarUrl}
+                        organizationType={auth.organizationType}
+                        aiKenteiPassed={auth.aiKenteiPassed}
                       />
                     ))}
                   </div>

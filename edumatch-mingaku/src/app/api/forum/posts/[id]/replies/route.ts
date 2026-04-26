@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, getCurrentProfile } from "@/lib/auth";
+import { getAiKenteiDb } from "@/lib/ai-kentei-db";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,7 @@ export async function GET(
         body: r.body,
         likeCount: likeMap[r.id] ?? 0,
         postedAt: r.created_at.toISOString(),
+        aiKenteiPassed: r.ai_kentei_passed,
       })),
     });
   } catch (err) {
@@ -62,6 +64,23 @@ export async function POST(
     const user = await getCurrentUser();
     const profile = user ? await getCurrentProfile() : null;
 
+    // AI検定合格チェック
+    let aiKenteiPassed = false;
+    if (profile?.id) {
+      try {
+        const kenteiDb = await getAiKenteiDb();
+        const { data } = await kenteiDb
+          .from("ai_kentei_exam_sessions")
+          .select("passed")
+          .eq("user_id", profile.id)
+          .eq("passed", true)
+          .limit(1);
+        aiKenteiPassed = !!(data && data.length > 0);
+      } catch {
+        // AI検定DBへの接続失敗は無視
+      }
+    }
+
     const body = await req.json();
     const { authorName, authorRole, replyBody } = body as {
       authorName: string;
@@ -84,6 +103,7 @@ export async function POST(
         author_name: authorName.trim(),
         author_role: authorRole ?? "一般",
         body: replyBody.trim(),
+        ai_kentei_passed: aiKenteiPassed,
       },
     });
 
@@ -95,6 +115,7 @@ export async function POST(
         body: reply.body,
         likeCount: 0,
         postedAt: reply.created_at.toISOString(),
+        aiKenteiPassed: reply.ai_kentei_passed,
       },
     }, { status: 201 });
   } catch (err) {

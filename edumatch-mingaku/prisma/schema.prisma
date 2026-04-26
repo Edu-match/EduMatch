@@ -366,6 +366,7 @@ model ForumPost {
   related_article_url String?
   is_pinned           Boolean       @default(false)
   is_hidden           Boolean       @default(false)
+  ai_kentei_passed    Boolean       @default(false)
   created_at          DateTime      @default(now())
   updated_at          DateTime      @updatedAt
   room                ForumRoom     @relation(fields: [room_id], references: [id], onDelete: Cascade)
@@ -382,9 +383,10 @@ model ForumReply {
   post_id     String
   author_id   String?   @db.Uuid
   author_name String
-  author_role String    @default("一般")
-  body        String
-  created_at  DateTime  @default(now())
+  author_role         String    @default("一般")
+  body                String
+  ai_kentei_passed    Boolean   @default(false)
+  created_at          DateTime  @default(now())
   post        ForumPost @relation(fields: [post_id], references: [id], onDelete: Cascade)
   author      Profile?  @relation(fields: [author_id], references: [id], onDelete: SetNull)
 

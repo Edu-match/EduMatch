@@ -22,9 +22,11 @@ export function useAuthUser() {
   const [auth, setAuth] = useState<{
     name: string;
     avatarUrl: string | null;
+    organizationType: string | null;
+    aiKenteiPassed: boolean;
     isLoading: boolean;
     isLoggedIn: boolean;
-  }>({ name: "", avatarUrl: null, isLoading: true, isLoggedIn: false });
+  }>({ name: "", avatarUrl: null, organizationType: null, aiKenteiPassed: false, isLoading: true, isLoggedIn: false });
 
   useEffect(() => {
     fetch("/api/auth/me", { credentials: "include" })
@@ -33,10 +35,12 @@ export function useAuthUser() {
         const name =
           data?.profile?.name ?? data?.user?.email?.split("@")[0] ?? null;
         const avatarUrl = data?.profile?.avatar_url ?? null;
-        setAuth({ name: name ?? "", avatarUrl, isLoading: false, isLoggedIn: !!name });
+        const organizationType = data?.profile?.organization_type ?? null;
+        const aiKenteiPassed = data?.profile?.ai_kentei_passed ?? false;
+        setAuth({ name: name ?? "", avatarUrl, organizationType, aiKenteiPassed, isLoading: false, isLoggedIn: !!name });
       })
       .catch(() =>
-        setAuth({ name: "", avatarUrl: null, isLoading: false, isLoggedIn: false })
+        setAuth({ name: "", avatarUrl: null, organizationType: null, aiKenteiPassed: false, isLoading: false, isLoggedIn: false })
       );
   }, []);
 

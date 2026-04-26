@@ -13,6 +13,7 @@ export type ForumPost = {
   postedAt: string;
   isPinned?: boolean;
   relatedArticleUrl?: string;
+  aiKenteiPassed?: boolean;
   replies?: ForumReply[];
 };
 
@@ -23,6 +24,7 @@ export type ForumReply = {
   body: string;
   likeCount: number;
   postedAt: string;
+  aiKenteiPassed?: boolean;
 };
 
 export type ForumRoom = {
