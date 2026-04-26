@@ -1,8 +1,7 @@
 export const ORGANIZATION_TYPE_VALUES = [
-  "elementary",
-  "junior-high",
-  "high-school",
-  "university",
+  "teacher",
+  "school-admin",
+  "education-support",
   "company",
   "parent",
   "student",
@@ -12,10 +11,9 @@ export const ORGANIZATION_TYPE_VALUES = [
 export type OrganizationTypeValue = (typeof ORGANIZATION_TYPE_VALUES)[number];
 
 export const ORGANIZATION_TYPE_OPTIONS: { value: OrganizationTypeValue; label: string }[] = [
-  { value: "elementary", label: "小学校" },
-  { value: "junior-high", label: "中学校" },
-  { value: "high-school", label: "高等学校" },
-  { value: "university", label: "大学・専門学校" },
+  { value: "teacher", label: "教員" },
+  { value: "school-admin", label: "学校管理職" },
+  { value: "education-support", label: "教育支援職（ICT支援員・事務など）" },
   { value: "company", label: "企業・EdTech事業者" },
   { value: "parent", label: "保護者" },
   { value: "student", label: "学生" },
@@ -33,7 +31,16 @@ export const AGE_OPTIONS = [
 
 export function organizationTypeLabel(value: string | null | undefined): string {
   if (!value) return "";
-  return ORGANIZATION_TYPE_OPTIONS.find((o) => o.value === value)?.label ?? value;
+  const current = ORGANIZATION_TYPE_OPTIONS.find((o) => o.value === value)?.label;
+  if (current) return current;
+  // 旧値の後方互換
+  const legacyMap: Record<string, string> = {
+    elementary: "教員",
+    "junior-high": "教員",
+    "high-school": "教員",
+    university: "教育支援職（ICT支援員・事務など）",
+  };
+  return legacyMap[value] ?? value;
 }
 
 /** 「その他」選択時の補足があれば括弧付きで表示 */

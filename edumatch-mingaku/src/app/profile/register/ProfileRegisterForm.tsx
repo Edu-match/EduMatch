@@ -256,7 +256,7 @@ export function ProfileRegisterForm({
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                所属の種類 <span className="text-red-500">*</span>
+                職業・役職 <span className="text-red-500">*</span>
               </label>
               <Select value={schoolType} onValueChange={setSchoolType}>
                 <SelectTrigger>
@@ -472,7 +472,7 @@ export function ProfileRegisterForm({
                   <span>{organization || "未入力"}</span>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <span className="text-muted-foreground shrink-0">所属の種類</span>
+                  <span className="text-muted-foreground shrink-0">職業・役職</span>
                   <span className="text-right break-words">
                     {formatOrganizationTypeDisplay(schoolType, organizationTypeOther) ||
                       "未入力"}
@@ -590,7 +590,7 @@ export function ProfileRegisterForm({
         return;
       }
       if (!schoolType) {
-        setValidationError("所属の種類を選択してください。");
+        setValidationError("職業・役職を選択してください。");
         return;
       }
     }
@@ -628,7 +628,7 @@ export function ProfileRegisterForm({
       return;
     }
     if (!schoolType) {
-      setValidationError("所属の種類を選択してください。");
+      setValidationError("職業・役職を選択してください。");
       return;
     }
     setSaving(true);
