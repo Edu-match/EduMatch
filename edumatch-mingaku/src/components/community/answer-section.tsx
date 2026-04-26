@@ -21,9 +21,10 @@ import { cn } from "@/lib/utils";
 export function useAuthUser() {
   const [auth, setAuth] = useState<{
     name: string;
+    avatarUrl: string | null;
     isLoading: boolean;
     isLoggedIn: boolean;
-  }>({ name: "", isLoading: true, isLoggedIn: false });
+  }>({ name: "", avatarUrl: null, isLoading: true, isLoggedIn: false });
 
   useEffect(() => {
     fetch("/api/auth/me", { credentials: "include" })
@@ -31,10 +32,11 @@ export function useAuthUser() {
       .then((data) => {
         const name =
           data?.profile?.name ?? data?.user?.email?.split("@")[0] ?? null;
-        setAuth({ name: name ?? "", isLoading: false, isLoggedIn: !!name });
+        const avatarUrl = data?.profile?.avatar_url ?? null;
+        setAuth({ name: name ?? "", avatarUrl, isLoading: false, isLoggedIn: !!name });
       })
       .catch(() =>
-        setAuth({ name: "", isLoading: false, isLoggedIn: false })
+        setAuth({ name: "", avatarUrl: null, isLoading: false, isLoggedIn: false })
       );
   }, []);
 

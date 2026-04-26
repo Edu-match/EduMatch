@@ -229,6 +229,7 @@ function PostCardWithStream({
   onReplyAdded,
   userName,
   isLoggedIn,
+  avatarUrl,
 }: {
   post: ForumPost;
   streamText: string | null;
@@ -239,6 +240,7 @@ function PostCardWithStream({
   onReplyAdded: (postId: string, reply: ForumReply) => void;
   userName: string;
   isLoggedIn: boolean;
+  avatarUrl?: string | null;
 }) {
   const defaultReplyName = isLoggedIn && userName ? userName : "";
   const [liked, setLiked] = useState(false);
@@ -372,40 +374,56 @@ function PostCardWithStream({
         </div>
 
         {showReplyForm && (
-          <div className="mt-4 ml-12 space-y-3 rounded-lg bg-muted/30 p-4">
-            <div className="flex flex-wrap items-center gap-3">
-              {!isAnonReply && (
-                <div className="flex items-center gap-2 min-w-0">
-                  <Label className="text-xs shrink-0">名前</Label>
-                  <Input
-                    value={replyDisplayName}
-                    onChange={(e) => setReplyDisplayName(e.target.value)}
-                    placeholder={isLoggedIn ? "アカウント名" : "お名前"}
-                    maxLength={40}
-                    className="h-7 w-44 text-xs"
-                  />
-                </div>
-              )}
-              <div className="flex items-center gap-2">
-                <Label className="text-xs shrink-0">立場</Label>
-                <Select value={replyRole} onValueChange={(v) => setReplyRole(v as AuthorRole)}>
-                  <SelectTrigger className="h-7 w-28 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {AUTHOR_ROLES.map((r) => (
-                      <SelectItem key={r} value={r} className="text-xs">{r}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+          <div className="mt-4 ml-12 overflow-hidden rounded-xl border bg-card">
+            {/* 返信者情報 */}
+            <div className="flex items-center gap-2.5 border-b bg-muted/20 px-4 py-2.5">
+              <UserAvatar
+                name={isAnonReply ? "匿名" : replyDisplayName || (isLoggedIn ? userName : "ゲスト")}
+                avatarUrl={isAnonReply ? null : avatarUrl}
+                size={26}
+                isAnon={isAnonReply}
+              />
+              <span className="text-xs font-medium text-foreground">
+                {isAnonReply ? "匿名ユーザー" : (replyDisplayName || (isLoggedIn ? userName : "ゲスト"))}
+              </span>
+              <span className="text-muted-foreground/40">·</span>
+              {/* 立場チップ（コンパクト） */}
+              <div className="flex flex-wrap gap-1">
+                {AUTHOR_ROLES.map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setReplyRole(r)}
+                    className={[
+                      "rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors",
+                      replyRole === r
+                        ? `${ROLE_STYLES[r].bg} ${ROLE_STYLES[r].text} ${ROLE_STYLES[r].border}`
+                        : "border-transparent text-muted-foreground hover:bg-muted",
+                    ].join(" ")}
+                  >
+                    {ROLE_STYLES[r].icon} {r}
+                  </button>
+                ))}
               </div>
             </div>
-            <Textarea rows={3} value={replyText} onChange={(e) => setReplyText(e.target.value)}
-              placeholder="返信を入力..." className="resize-none text-sm" />
-            <div className="flex justify-end gap-2">
-              <Button variant="ghost" size="sm" onClick={() => { setShowReplyForm(false); setReplyText(""); }}>
-                <X className="h-3.5 w-3.5" />キャンセル
+
+            {/* テキスト入力 */}
+            <textarea
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+              placeholder="返信を入力…"
+              rows={3}
+              className="w-full resize-none bg-transparent px-4 py-3 text-sm leading-6 outline-none placeholder:text-muted-foreground/50"
+              autoFocus
+            />
+
+            {/* フッター */}
+            <div className="flex items-center justify-end gap-2 border-t bg-muted/20 px-4 py-2">
+              <Button variant="ghost" size="sm" onClick={() => { setShowReplyForm(false); setReplyText(""); }} className="h-7 text-xs">
+                キャンセル
               </Button>
-              <Button size="sm" onClick={submitReply} disabled={!canSubmitReply}>
-                {submittingReply && <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />}
+              <Button size="sm" onClick={submitReply} disabled={!canSubmitReply} className="h-7 rounded-full px-4 text-xs gap-1.5">
+                {submittingReply && <Loader2 className="h-3 w-3 animate-spin" />}
                 返信する
               </Button>
             </div>
@@ -449,50 +467,96 @@ function PostCardWithStream({
   );
 }
 
+// ─── ユーザーアバター（画像 or イニシャル）────────────────
+
+function UserAvatar({
+  name,
+  avatarUrl,
+  size = 36,
+  isAnon = false,
+}: {
+  name: string;
+  avatarUrl?: string | null;
+  size?: number;
+  isAnon?: boolean;
+}) {
+  const dim = `h-[${size}px] w-[${size}px]`;
+  if (isAnon) {
+    return (
+      <div
+        style={{ width: size, height: size }}
+        className="flex shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground text-sm"
+      >
+        <span aria-hidden>🎭</span>
+      </div>
+    );
+  }
+  if (avatarUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={avatarUrl}
+        alt={name}
+        style={{ width: size, height: size }}
+        className="shrink-0 rounded-full object-cover ring-2 ring-primary/10"
+      />
+    );
+  }
+  return (
+    <div
+      style={{ width: size, height: size, fontSize: size * 0.38 }}
+      className="flex shrink-0 items-center justify-center rounded-full bg-primary/10 font-bold text-primary"
+    >
+      {name.charAt(0) || "?"}
+    </div>
+  );
+}
+
 // ─── 投稿フォームダイアログ ──────────────────────────────
 
 type PostDraft = { body: string; authorRole: AuthorRole; relatedArticleUrl: string; displayName: string };
 
+const MAX_BODY = 800;
+
 function NewPostDialog({
   onSubmit,
   userName,
+  avatarUrl,
   isLoggedIn,
+  weeklyTopic,
   submitting,
 }: {
   onSubmit: (draft: PostDraft) => Promise<void>;
   userName: string;
+  avatarUrl?: string | null;
   isLoggedIn: boolean;
+  weeklyTopic: string;
   submitting: boolean;
 }) {
-  const defaultName = isLoggedIn && userName ? userName : "";
-
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<PostDraft>({
     body: "",
     authorRole: "教員",
     relatedArticleUrl: "",
-    displayName: defaultName,
+    displayName: userName,
   });
+  const [showUrl, setShowUrl] = useState(false);
 
-  // 開閉時にアカウント表示名を反映
   useEffect(() => {
     if (open) {
-      setDraft((p) => ({ ...p, displayName: defaultName }));
+      setDraft((p) => ({ ...p, body: "", displayName: userName, relatedArticleUrl: "" }));
+      setShowUrl(false);
     }
-  }, [open, defaultName]);
+  }, [open, userName]);
 
   const isAnon = draft.authorRole === "匿名";
-  const previewName = isAnon
-    ? "匿名ユーザー"
-    : (draft.displayName.trim() || (isLoggedIn ? userName : "ゲスト"));
-  const previewInitial = isAnon ? "?" : (previewName.charAt(0) || "G");
-
-  const canSubmit = !!draft.body.trim() && (isAnon || !!draft.displayName.trim()) && !submitting;
+  const displayName = isAnon ? "匿名ユーザー" : (userName || "ゲスト");
+  const remaining = MAX_BODY - draft.body.length;
+  const canSubmit = draft.body.trim().length > 0 && draft.body.length <= MAX_BODY && !submitting;
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
-    await onSubmit(draft);
-    setDraft({ body: "", authorRole: "教員", relatedArticleUrl: "", displayName: defaultName });
+    await onSubmit({ ...draft, displayName });
     setOpen(false);
   };
 
@@ -503,100 +567,109 @@ function NewPostDialog({
           <PenSquare className="h-4 w-4" />投稿する
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>新しい投稿</DialogTitle>
-          <DialogDescription>今週のお題や話題についてコメントしましょう</DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4">
-          {/* 投稿者プレビュー */}
-          <div className="flex items-center gap-3 rounded-lg border bg-muted/30 px-3 py-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
-              {previewInitial}
+
+      <DialogContent className="gap-0 p-0 sm:max-w-xl overflow-hidden">
+        {/* ヘッダー */}
+        <div className="border-b px-6 py-4">
+          <DialogTitle className="text-base font-semibold">投稿する</DialogTitle>
+          <DialogDescription className="mt-0.5 text-xs text-muted-foreground line-clamp-1">
+            {weeklyTopic}
+          </DialogDescription>
+        </div>
+
+        {/* 本文エリア */}
+        <div className="px-6 pt-4 pb-3">
+          <div className="flex gap-3">
+            {/* アバター */}
+            <div className="shrink-0 pt-0.5">
+              <UserAvatar name={displayName} avatarUrl={avatarUrl} size={40} isAnon={isAnon} />
             </div>
+
+            {/* テキストエリア */}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{previewName}</p>
-              <p className="text-[10px] text-muted-foreground">この名前で投稿されます</p>
+              <p className="mb-2 text-sm font-medium text-foreground">
+                {displayName}
+              </p>
+              <textarea
+                id="post-body"
+                value={draft.body}
+                onChange={(e) => setDraft((p) => ({ ...p, body: e.target.value }))}
+                placeholder="今週のお題について、あなたの経験や意見を書いてください…"
+                rows={6}
+                maxLength={MAX_BODY + 50}
+                className="w-full resize-none bg-transparent text-sm leading-7 text-foreground placeholder:text-muted-foreground/60 outline-none"
+                autoFocus={open}
+              />
             </div>
           </div>
 
-          {/* 表示名 */}
-          {!isAnon && (
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="post-display-name">表示名</Label>
-                {isLoggedIn && userName && draft.displayName !== userName && (
-                  <button
-                    type="button"
-                    onClick={() => setDraft((p) => ({ ...p, displayName: userName }))}
-                    className="text-[11px] text-primary hover:underline"
-                  >
-                    アカウント名に戻す
-                  </button>
-                )}
+          {/* 関連URL（展開式） */}
+          {showUrl && (
+            <div className="mt-3 ml-[52px]">
+              <div className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
+                <LinkIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                <Input
+                  type="url"
+                  value={draft.relatedArticleUrl}
+                  onChange={(e) => setDraft((p) => ({ ...p, relatedArticleUrl: e.target.value }))}
+                  placeholder="https://... （関連記事のURL）"
+                  className="h-7 border-0 bg-transparent p-0 text-xs shadow-none focus-visible:ring-0"
+                />
               </div>
-              <Input
-                id="post-display-name"
-                value={draft.displayName}
-                onChange={(e) => setDraft((p) => ({ ...p, displayName: e.target.value }))}
-                placeholder={isLoggedIn ? "アカウント名で投稿（編集も可）" : "お名前を入力（必須）"}
-                maxLength={40}
-              />
-              <p className="text-[10px] text-muted-foreground">
-                {isLoggedIn
-                  ? "アカウントの表示名が初期値です。この投稿だけ別の名前にもできます。"
-                  : "投稿者として表示される名前を入力してください。"}
-              </p>
             </div>
           )}
+        </div>
 
-          {/* 立場 */}
-          <div className="space-y-1.5">
-            <Label>表示する立場</Label>
-            <Select value={draft.authorRole} onValueChange={(v) => setDraft((p) => ({ ...p, authorRole: v as AuthorRole }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {AUTHOR_ROLES.map((r) => (
-                  <SelectItem key={r} value={r}>
-                    <span className="flex items-center gap-2">
-                      <span>{ROLE_STYLES[r].icon}</span>
-                      {r}
-                      {r === "匿名" && <span className="text-xs text-muted-foreground">（名前を非表示）</span>}
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* 本文 */}
-          <div className="space-y-1.5">
-            <Label htmlFor="post-body">投稿内容</Label>
-            <Textarea id="post-body" rows={6} value={draft.body}
-              onChange={(e) => setDraft((p) => ({ ...p, body: e.target.value }))}
-              placeholder="今週のお題について、あなたの経験や意見を書いてください..."
-              className="resize-none" />
-          </div>
-
-          {/* 関連URL */}
-          <div className="space-y-1.5">
-            <Label htmlFor="post-url">
-              関連記事URL <span className="text-xs text-muted-foreground font-normal">（任意）</span>
-            </Label>
-            <div className="flex items-center gap-2">
-              <LinkIcon className="h-4 w-4 text-muted-foreground shrink-0" />
-              <Input id="post-url" type="url" value={draft.relatedArticleUrl}
-                onChange={(e) => setDraft((p) => ({ ...p, relatedArticleUrl: e.target.value }))}
-                placeholder="https://..." />
+        {/* フッター */}
+        <div className="border-t bg-muted/20 px-6 py-3">
+          <div className="flex items-center justify-between gap-3">
+            {/* 左: 立場チップ + URLボタン */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              {AUTHOR_ROLES.map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setDraft((p) => ({ ...p, authorRole: r }))}
+                  className={[
+                    "flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors",
+                    draft.authorRole === r
+                      ? `${ROLE_STYLES[r].bg} ${ROLE_STYLES[r].text} ${ROLE_STYLES[r].border} shadow-xs`
+                      : "border-transparent text-muted-foreground hover:bg-muted",
+                  ].join(" ")}
+                  aria-pressed={draft.authorRole === r}
+                >
+                  <span aria-hidden className="text-[10px]">{ROLE_STYLES[r].icon}</span>
+                  {r}
+                </button>
+              ))}
+              <button
+                type="button"
+                title="関連記事URLを追加"
+                onClick={() => setShowUrl((v) => !v)}
+                className={[
+                  "rounded-full border p-1.5 transition-colors",
+                  showUrl ? "border-primary/40 bg-primary/5 text-primary" : "border-transparent text-muted-foreground hover:bg-muted",
+                ].join(" ")}
+              >
+                <LinkIcon className="h-3 w-3" />
+              </button>
             </div>
-          </div>
 
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setOpen(false)}>キャンセル</Button>
-            <Button onClick={handleSubmit} disabled={!canSubmit}>
-              {submitting && <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />}
-              投稿する
-            </Button>
+            {/* 右: 文字数 + 送信 */}
+            <div className="flex shrink-0 items-center gap-3">
+              <span className={`text-[11px] tabular-nums ${remaining < 0 ? "text-destructive font-semibold" : remaining < 50 ? "text-amber-500" : "text-muted-foreground/60"}`}>
+                {remaining}
+              </span>
+              <Button
+                onClick={handleSubmit}
+                disabled={!canSubmit}
+                size="sm"
+                className="gap-1.5 rounded-full px-5"
+              >
+                {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PenSquare className="h-3.5 w-3.5" />}
+                投稿
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>
@@ -833,7 +906,7 @@ export function ForumRoomClient({ room }: { room: ForumRoom }) {
               </div>
             </div>
             <div className="shrink-0">
-              <NewPostDialog onSubmit={handleNewPost} userName={auth.name} isLoggedIn={auth.isLoggedIn} submitting={submitting} />
+              <NewPostDialog onSubmit={handleNewPost} userName={auth.name} avatarUrl={auth.avatarUrl} isLoggedIn={auth.isLoggedIn} weeklyTopic={room.weeklyTopic} submitting={submitting} />
             </div>
           </div>
         </div>
@@ -897,6 +970,7 @@ export function ForumRoomClient({ room }: { room: ForumRoom }) {
                       onReplyAdded={handleReplyAdded}
                       userName={auth.name}
                       isLoggedIn={auth.isLoggedIn}
+                      avatarUrl={auth.avatarUrl}
                     />
                   ))}
                 </div>
@@ -923,7 +997,7 @@ export function ForumRoomClient({ room }: { room: ForumRoom }) {
                       <p className="text-base font-medium">まだ投稿がありません</p>
                       <p className="mt-1 text-sm text-muted-foreground">最初の投稿者になりましょう</p>
                     </div>
-                    <NewPostDialog onSubmit={handleNewPost} userName={auth.name} isLoggedIn={auth.isLoggedIn} submitting={submitting} />
+                    <NewPostDialog onSubmit={handleNewPost} userName={auth.name} avatarUrl={auth.avatarUrl} isLoggedIn={auth.isLoggedIn} weeklyTopic={room.weeklyTopic} submitting={submitting} />
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -939,6 +1013,7 @@ export function ForumRoomClient({ room }: { room: ForumRoom }) {
                         onReplyAdded={handleReplyAdded}
                         userName={auth.name}
                         isLoggedIn={auth.isLoggedIn}
+                        avatarUrl={auth.avatarUrl}
                       />
                     ))}
                   </div>
