@@ -2,11 +2,14 @@
 
 export type AuthorRole = "教員" | "学生" | "専門家" | "企業" | "一般" | "匿名";
 
+/** 井戸端会議: 職業スラッグ・整形済み「その他（…）」・旧カテゴリ名など */
+export type ForumAuthorRoleStored = string;
+
 export type ForumPost = {
   id: string;
   roomId: string;
   authorName: string;
-  authorRole: AuthorRole;
+  authorRole: ForumAuthorRoleStored;
   body: string;
   likeCount: number;
   replyCount: number;
@@ -20,7 +23,7 @@ export type ForumPost = {
 export type ForumReply = {
   id: string;
   authorName: string;
-  authorRole: AuthorRole;
+  authorRole: ForumAuthorRoleStored;
   body: string;
   likeCount: number;
   postedAt: string;

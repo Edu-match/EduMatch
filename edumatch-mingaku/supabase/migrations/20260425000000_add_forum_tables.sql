@@ -54,6 +54,7 @@ create table if not exists public.forum_posts (
   related_article_url text,
   is_pinned           boolean     not null default false,
   is_hidden           boolean     not null default false,
+  ai_kentei_passed    boolean     not null default false,
   created_at          timestamptz not null default now(),
   updated_at          timestamptz not null default now()
 );
@@ -101,9 +102,10 @@ create table if not exists public.forum_replies (
   post_id     text        not null references public.forum_posts(id) on delete cascade,
   author_id   uuid        references public."Profile"(id) on delete set null,
   author_name text        not null,
-  author_role text        not null default '一般',
-  body        text        not null,
-  created_at  timestamptz not null default now()
+  author_role         text        not null default '一般',
+  body                text        not null,
+  ai_kentei_passed    boolean     not null default false,
+  created_at          timestamptz not null default now()
 );
 
 alter table public.forum_replies enable row level security;

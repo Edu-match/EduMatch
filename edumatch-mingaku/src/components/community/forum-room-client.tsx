@@ -43,11 +43,16 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  type AuthorRole,
   type ForumPost,
   type ForumReply,
   type ForumRoom,
 } from "@/lib/mock-forum";
+import {
+  type ForumOccupationVisual,
+  formatOrganizationTypeDisplay,
+  forumOccupationAvatarVisual,
+  forumOccupationBadgeText,
+} from "@/lib/organization-types";
 import { RelativeTime } from "@/components/community/relative-time";
 import { ForumRoomIcon, ROOM_BG_COLORS } from "@/components/community/forum-room-icon";
 import { useAuthUser } from "@/components/community/answer-section";
@@ -66,28 +71,8 @@ function getSessionId(): string {
 
 // ─── 定数 ────────────────────────────────────────────────
 
-/** アカウントの organization_type → AuthorRole 変換 */
-const ORG_TYPE_TO_ROLE: Record<string, AuthorRole> = {
-  elementary:  "教員",
-  "junior-high": "教員",
-  "high-school": "教員",
-  university:  "専門家",
-  company:     "企業",
-  parent:      "一般",
-  student:     "学生",
-  other:       "一般",
-};
-
-/** organization_type からフォーラム表示ロールを決定（不明時は "一般"） */
-function resolveAuthorRole(organizationType: string | null): AuthorRole {
-  if (!organizationType) return "一般";
-  return ORG_TYPE_TO_ROLE[organizationType] ?? "一般";
-}
-
-// ─── 属性バッジ ───────────────────────────────────────────
-
 const ROLE_STYLES: Record<
-  AuthorRole,
+  ForumOccupationVisual,
   { bg: string; text: string; border: string; icon: string }
 > = {
   教員: { bg: "bg-blue-100", text: "text-blue-700", border: "border-blue-200", icon: "🎓" },
@@ -98,12 +83,28 @@ const ROLE_STYLES: Record<
   匿名: { bg: "bg-gray-50", text: "text-gray-500", border: "border-gray-100", icon: "🎭" },
 };
 
-function RoleBadge({ role }: { role: AuthorRole }) {
-  const s = ROLE_STYLES[role];
+/** 返信・投稿フォームのプレビュー用（auth の職業・役職 → author_role 相当） */
+function forumRolePreviewFromProfile(
+  organizationType: string | null | undefined,
+  organizationTypeOther: string | null | undefined
+): string {
+  const t = organizationType?.trim();
+  if (!t) return "一般";
+  if (t === "other" && organizationTypeOther?.trim()) {
+    return formatOrganizationTypeDisplay("other", organizationTypeOther);
+  }
+  return t;
+}
+
+/** プロフィールの職業・役職（スラッグ）に応じたバッジ表示 */
+function OccupationBadge({ storedAuthorRole }: { storedAuthorRole: string }) {
+  const visual = forumOccupationAvatarVisual(storedAuthorRole);
+  const label = forumOccupationBadgeText(storedAuthorRole);
+  const s = ROLE_STYLES[visual];
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${s.bg} ${s.text} ${s.border}`}>
-      <span role="img" aria-label={role} className="text-[10px]">{s.icon}</span>
-      {role}
+    <span className={`inline-flex max-w-[min(100%,18rem)] items-center gap-1 truncate rounded-full border px-2.5 py-0.5 text-xs font-semibold ${s.bg} ${s.text} ${s.border}`}>
+      <span role="img" aria-hidden className="shrink-0 text-[10px]">{s.icon}</span>
+      <span className="truncate" title={label}>{label}</span>
     </span>
   );
 }
@@ -135,7 +136,17 @@ function AiKenteiBadge() {
 
 // ─── アバター ──────────────────────────────────────────────
 
-function Avatar({ name, role, isAi, size = "md" }: { name: string; role: AuthorRole; isAi?: boolean; size?: "sm" | "md" }) {
+function Avatar({
+  name,
+  storedAuthorRole,
+  isAi,
+  size = "md",
+}: {
+  name: string;
+  storedAuthorRole: string;
+  isAi?: boolean;
+  size?: "sm" | "md";
+}) {
   const dim = size === "sm" ? "h-9 w-9" : "h-11 w-11";
   const iconSize = size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4";
   const textSize = size === "sm" ? "text-xs" : "text-sm";
@@ -146,8 +157,9 @@ function Avatar({ name, role, isAi, size = "md" }: { name: string; role: AuthorR
       </div>
     );
   }
-  const s = ROLE_STYLES[role];
-  const initials = role === "匿名" ? "?" : name.charAt(0);
+  const visual = forumOccupationAvatarVisual(storedAuthorRole);
+  const s = ROLE_STYLES[visual];
+  const initials = visual === "匿名" ? "?" : name.charAt(0);
   return (
     <div className={`flex ${dim} shrink-0 items-center justify-center rounded-full border font-bold ${s.bg} ${s.text} ${s.border} ${textSize}`}>
       {initials}
@@ -188,6 +200,7 @@ function AiStreamingReply({ streamText }: { streamText: string }) {
 // ─── 返信カード ───────────────────────────────────────────
 
 function ReplyCard({ reply, isAi }: { reply: ForumReply & { isAi?: boolean }; isAi?: boolean }) {
+  const isAiReply = isAi || reply.authorName === "AIファシリテーター";
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(reply.likeCount);
 
@@ -218,17 +231,17 @@ function ReplyCard({ reply, isAi }: { reply: ForumReply & { isAi?: boolean }; is
   return (
     <div className="relative pl-7">
       {/* シナプス縦線 */}
-      <span aria-hidden className={`absolute left-3 top-0 bottom-0 w-px ${isAi ? "bg-violet-200" : "bg-muted"}`} />
+      <span aria-hidden className={`absolute left-3 top-0 bottom-0 w-px ${isAiReply ? "bg-violet-200" : "bg-muted"}`} />
       {/* 接続ドット */}
-      <span aria-hidden className={`absolute left-2.5 top-5 h-1.5 w-1.5 rounded-full ${isAi ? "bg-violet-400" : "bg-muted-foreground/40"}`} />
+      <span aria-hidden className={`absolute left-2.5 top-5 h-1.5 w-1.5 rounded-full ${isAiReply ? "bg-violet-400" : "bg-muted-foreground/40"}`} />
 
       <div className="flex gap-3">
-        <Avatar name={reply.authorName} role={reply.authorRole as AuthorRole} isAi={isAi} size="sm" />
+        <Avatar name={reply.authorName} storedAuthorRole={reply.authorRole} isAi={isAiReply} size="sm" />
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2 mb-1">
-            <span className={`text-sm font-semibold ${isAi ? "text-violet-800" : ""}`}>{reply.authorName}</span>
-            {isAi ? <AiBadge /> : <RoleBadge role={reply.authorRole as AuthorRole} />}
-            {!isAi && reply.aiKenteiPassed && <AiKenteiBadge />}
+            <span className={`text-sm font-semibold ${isAiReply ? "text-violet-800" : ""}`}>{reply.authorName}</span>
+            {isAiReply ? <AiBadge /> : <OccupationBadge storedAuthorRole={reply.authorRole} />}
+            {!isAiReply && reply.aiKenteiPassed && <AiKenteiBadge />}
             <span className="text-xs text-muted-foreground">
               <RelativeTime iso={reply.postedAt} />
             </span>
@@ -262,6 +275,7 @@ function PostCardWithStream({
   isLoggedIn,
   avatarUrl,
   organizationType,
+  organizationTypeOther,
   aiKenteiPassed,
 }: {
   post: ForumPost;
@@ -275,9 +289,10 @@ function PostCardWithStream({
   isLoggedIn: boolean;
   avatarUrl?: string | null;
   organizationType?: string | null;
+  organizationTypeOther?: string | null;
   aiKenteiPassed?: boolean;
 }) {
-  const resolvedReplyRole = resolveAuthorRole(organizationType ?? null);
+  const replyPreviewRole = forumRolePreviewFromProfile(organizationType, organizationTypeOther);
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(post.likeCount);
   const [repliesOpen, setRepliesOpen] = useState(false);
@@ -314,7 +329,8 @@ function PostCardWithStream({
   };
 
   const isAnonReply = isAnonReplyState;
-  const effectiveReplyRole: AuthorRole = isAnonReply ? "匿名" : resolvedReplyRole;
+  /** API はログイン時サーバー側で職業・役職を上書き。匿名判定用に送る */
+  const replyAuthorRoleForApi = isAnonReply ? "匿名" : "一般";
   const canSubmitReply = !!replyText.trim() && !submittingReply;
 
   const submitReply = async () => {
@@ -332,7 +348,7 @@ function PostCardWithStream({
         credentials: "include",
         body: JSON.stringify({
           authorName,
-          authorRole: effectiveReplyRole,
+          authorRole: replyAuthorRoleForApi,
           replyBody: replyText.trim(),
         }),
       });
@@ -362,11 +378,11 @@ function PostCardWithStream({
       <div className="p-5">
 
         <div className="flex gap-3">
-          <Avatar name={post.authorName} role={post.authorRole as AuthorRole} />
+          <Avatar name={post.authorName} storedAuthorRole={post.authorRole} />
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2 mb-1">
               <span className="text-sm font-semibold">{post.authorName}</span>
-              <RoleBadge role={post.authorRole as AuthorRole} />
+              <OccupationBadge storedAuthorRole={post.authorRole} />
               {post.aiKenteiPassed && <AiKenteiBadge />}
               <span className="text-xs text-muted-foreground"><RelativeTime iso={post.postedAt} /></span>
             </div>
@@ -417,7 +433,7 @@ function PostCardWithStream({
               {!isAnonReply && (
                 <>
                   <span className="text-muted-foreground/40">·</span>
-                  <RoleBadge role={effectiveReplyRole} />
+                  <OccupationBadge storedAuthorRole={replyPreviewRole} />
                   {aiKenteiPassed && <AiKenteiBadge />}
                 </>
               )}
@@ -544,7 +560,7 @@ function UserAvatar({
 
 // ─── 投稿フォームダイアログ ──────────────────────────────
 
-type PostDraft = { body: string; authorRole: AuthorRole; relatedArticleUrl: string; displayName: string };
+type PostDraft = { body: string; authorRole: string; relatedArticleUrl: string; displayName: string };
 
 const MAX_BODY = 800;
 
@@ -556,6 +572,7 @@ function NewPostDialog({
   weeklyTopic,
   submitting,
   organizationType,
+  organizationTypeOther,
   aiKenteiPassed,
 }: {
   onSubmit: (draft: PostDraft) => Promise<void>;
@@ -565,9 +582,10 @@ function NewPostDialog({
   weeklyTopic: string;
   submitting: boolean;
   organizationType?: string | null;
+  organizationTypeOther?: string | null;
   aiKenteiPassed?: boolean;
 }) {
-  const resolvedRole = resolveAuthorRole(organizationType ?? null);
+  const postPreviewRole = forumRolePreviewFromProfile(organizationType, organizationTypeOther);
   const [open, setOpen] = useState(false);
   const [body, setBody] = useState("");
   const [isAnon, setIsAnon] = useState(false);
@@ -583,14 +601,18 @@ function NewPostDialog({
     }
   }, [open]);
 
-  const effectiveRole: AuthorRole = isAnon ? "匿名" : resolvedRole;
   const displayName = isAnon ? "匿名ユーザー" : (userName || "ゲスト");
   const remaining = MAX_BODY - body.length;
   const canSubmit = body.trim().length > 0 && body.length <= MAX_BODY && !submitting;
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
-    await onSubmit({ body, authorRole: effectiveRole, relatedArticleUrl, displayName });
+    await onSubmit({
+      body,
+      authorRole: isAnon ? "匿名" : "一般",
+      relatedArticleUrl,
+      displayName,
+    });
     setOpen(false);
   };
 
@@ -618,7 +640,7 @@ function NewPostDialog({
           {!isAnon && (
             <>
               <span className="text-muted-foreground/40">·</span>
-              <RoleBadge role={effectiveRole} />
+              <OccupationBadge storedAuthorRole={postPreviewRole} />
               {aiKenteiPassed && <AiKenteiBadge />}
             </>
           )}
@@ -818,7 +840,7 @@ export function ForumRoomClient({ room }: { room: ForumRoom }) {
     return [...unpinned].sort((a, b) => new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime());
   }, [posts, sort]);
 
-  const handleNewPost = useCallback(async (draft: { body: string; authorRole: AuthorRole; relatedArticleUrl: string; displayName: string }) => {
+  const handleNewPost = useCallback(async (draft: { body: string; authorRole: string; relatedArticleUrl: string; displayName: string }) => {
     if (submitting) return;
     setSubmitting(true);
 
@@ -834,7 +856,7 @@ export function ForumRoomClient({ room }: { room: ForumRoom }) {
         credentials: "include",
         body: JSON.stringify({
           authorName,
-          authorRole: draft.authorRole,
+          authorRole: isAnon ? "匿名" : "一般",
           postBody: draft.body.trim(),
           relatedArticleUrl: draft.relatedArticleUrl.trim() || undefined,
         }),
@@ -943,6 +965,7 @@ export function ForumRoomClient({ room }: { room: ForumRoom }) {
                 weeklyTopic={room.weeklyTopic}
                 submitting={submitting}
                 organizationType={auth.organizationType}
+                organizationTypeOther={auth.organizationTypeOther}
                 aiKenteiPassed={auth.aiKenteiPassed}
               />
             </div>
@@ -1010,6 +1033,7 @@ export function ForumRoomClient({ room }: { room: ForumRoom }) {
                       isLoggedIn={auth.isLoggedIn}
                       avatarUrl={auth.avatarUrl}
                       organizationType={auth.organizationType}
+                      organizationTypeOther={auth.organizationTypeOther}
                       aiKenteiPassed={auth.aiKenteiPassed}
                     />
                   ))}
@@ -1045,6 +1069,7 @@ export function ForumRoomClient({ room }: { room: ForumRoom }) {
                       weeklyTopic={room.weeklyTopic}
                       submitting={submitting}
                       organizationType={auth.organizationType}
+                      organizationTypeOther={auth.organizationTypeOther}
                       aiKenteiPassed={auth.aiKenteiPassed}
                     />
                   </div>
@@ -1064,6 +1089,7 @@ export function ForumRoomClient({ room }: { room: ForumRoom }) {
                         isLoggedIn={auth.isLoggedIn}
                         avatarUrl={auth.avatarUrl}
                         organizationType={auth.organizationType}
+                        organizationTypeOther={auth.organizationTypeOther}
                         aiKenteiPassed={auth.aiKenteiPassed}
                       />
                     ))}
@@ -1079,10 +1105,15 @@ export function ForumRoomClient({ room }: { room: ForumRoom }) {
               <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
                 <TrendingUp className="h-3.5 w-3.5" />投稿者バッジの見方
               </p>
+              <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+                表示文言はアカウント設定の「職業・役職」に連動します。色は大まかな分類（教員・学生・企業など）です。
+              </p>
               <div className="flex flex-wrap gap-2">
-                {(Object.keys(ROLE_STYLES) as AuthorRole[]).map((role) => (
-                  <RoleBadge key={role} role={role} />
-                ))}
+                <OccupationBadge storedAuthorRole="elem-teacher" />
+                <OccupationBadge storedAuthorRole="univ-faculty" />
+                <OccupationBadge storedAuthorRole="student" />
+                <OccupationBadge storedAuthorRole="company" />
+                <OccupationBadge storedAuthorRole="一般" />
                 {aiEnabled && <AiBadge />}
               </div>
             </CardContent>

@@ -43,21 +43,21 @@ export async function GET() {
       { status: 200 }
     );
   }
-  const [generalProfile, hasCorpRow] = await Promise.all([
+  const [generalProfile, corporateRow] = await Promise.all([
     prisma.generalProfile.findUnique({
       where: { id: profile.id },
-      select: { organization_type: true },
+      select: { organization_type: true, organization_type_other: true },
     }),
     prisma.corporateProfile.findUnique({
       where: { id: profile.id },
-      select: { id: true, organization_type: true },
+      select: { id: true, organization_type: true, organization_type_other: true },
     }),
   ]);
 
   const treatAsCorporate = effectiveIsCorporateProfile(
     profile.role,
     profile.manual_profile_kind,
-    !!hasCorpRow
+    !!corporateRow
   );
   const uiRole =
     profile.role === "ADMIN"
@@ -66,10 +66,13 @@ export async function GET() {
         ? "PROVIDER"
         : "VIEWER";
 
-  // organization_type: 企業ユーザーは "company" 固定、一般ユーザーは GeneralProfile から取得
   const organizationType: string | null = treatAsCorporate
-    ? "company"
+    ? (corporateRow?.organization_type?.trim() || "company")
     : (generalProfile?.organization_type ?? null);
+
+  const organization_type_other: string | null = treatAsCorporate
+    ? (corporateRow?.organization_type_other ?? null)
+    : (generalProfile?.organization_type_other ?? null);
 
   // AI検定合格チェック（別DBのため失敗しても無視）
   let aiKenteiPassed = false;
@@ -95,6 +98,7 @@ export async function GET() {
       role: uiRole,
       is_corporate_profile: treatAsCorporate,
       organization_type: organizationType,
+      organization_type_other,
       ai_kentei_passed: aiKenteiPassed,
     },
     ai_navigator_agreed: !!profile.ai_navigator_agreed_at,

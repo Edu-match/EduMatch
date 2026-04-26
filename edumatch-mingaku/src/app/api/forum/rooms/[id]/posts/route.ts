@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, getCurrentProfile } from "@/lib/auth";
 import { getAiKenteiDb } from "@/lib/ai-kentei-db";
+import { getForumAuthorRoleForUser } from "@/lib/forum-author-profile";
 
 export const dynamic = "force-dynamic";
 
@@ -134,12 +135,25 @@ export async function POST(
       return NextResponse.json({ error: "authorName is required" }, { status: 400 });
     }
 
+    const trimmedName = authorName.trim();
+    const isAnon = trimmedName === "匿名ユーザー" || authorRole === "匿名";
+    let resolvedAuthorRole = "一般";
+    if (isAnon) {
+      resolvedAuthorRole = "匿名";
+    } else if (profile?.id) {
+      resolvedAuthorRole = await getForumAuthorRoleForUser(profile.id);
+    } else {
+      const guest = authorRole?.trim();
+      resolvedAuthorRole =
+        guest && guest.length <= 120 && guest !== "匿名" ? guest : "一般";
+    }
+
     const post = await prisma.forumPost.create({
       data: {
         room_id: roomId,
         author_id: profile?.id ?? null,
-        author_name: authorName.trim(),
-        author_role: authorRole ?? "一般",
+        author_name: trimmedName,
+        author_role: resolvedAuthorRole,
         body: postBody.trim(),
         related_article_url: relatedArticleUrl?.trim() || null,
         ai_kentei_passed: aiKenteiPassed,
