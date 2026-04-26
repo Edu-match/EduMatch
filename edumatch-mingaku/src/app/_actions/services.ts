@@ -56,12 +56,13 @@ function flattenServiceProvider(
 
 export type ContentBlock = {
   id: string;
-  type: "heading1" | "heading2" | "heading3" | "paragraph" | "image" | "video" | "quote" | "divider" | "list" | "ordered-list" | "markdown";
+  type: "heading1" | "heading2" | "heading3" | "paragraph" | "image" | "video" | "quote" | "divider" | "list" | "ordered-list" | "bulletList" | "numberedList" | "markdown";
   content: string;
   align?: "left" | "center" | "right";
   url?: string;
   caption?: string;
   items?: string[];
+  start?: number;
 };
 
 export type CreateServiceInput = {
@@ -99,10 +100,12 @@ function blocksToContent(blocks: ContentBlock[]): string {
         parts.push(`> ${block.content}`);
         break;
       case "list":
+      case "bulletList":
         block.items?.forEach((item) => parts.push(`- ${item}`));
         break;
       case "ordered-list":
-        block.items?.forEach((item, i) => parts.push(`${i + 1}. ${item}`));
+      case "numberedList":
+        block.items?.forEach((item, i) => parts.push(`${(block.start ?? 1) + i}. ${item}`));
         break;
       case "image":
         if (block.url) parts.push(`![${block.caption || "画像"}](${block.url})`);

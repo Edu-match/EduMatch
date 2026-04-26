@@ -19,6 +19,7 @@ import {
   CheckCircle,
   Calendar,
   Newspaper,
+  BookOpen,
 } from "lucide-react";
 import { useRequestList } from "@/components/request-list/request-list-context";
 import { Button } from "@/components/ui/button";
@@ -360,6 +361,13 @@ export function Header() {
                       <Newspaper className="mr-2 h-4 w-4 text-slate-600" />
                       運営記事管理
                     </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onSelect={() => router.push("/dashboard/admin/knowledge")}
+                    >
+                      <BookOpen className="mr-2 h-4 w-4 text-indigo-600" />
+                      ナレッジ文書管理
+                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
                   </>
                 )}
@@ -496,6 +504,9 @@ export function Header() {
                             </Link>
                             <Link href="/admin/site-updates" className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground">
                               <Newspaper className="h-4 w-4 text-slate-600" />運営記事管理
+                            </Link>
+                            <Link href="/dashboard/admin/knowledge" className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground">
+                              <BookOpen className="h-4 w-4 text-indigo-600" />ナレッジ文書管理
                             </Link>
                           </div>
                         </div>

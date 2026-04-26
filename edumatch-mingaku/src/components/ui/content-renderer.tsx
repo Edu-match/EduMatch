@@ -237,6 +237,7 @@ function MarkdownLikeContent({ text }: { text: string }) {
     // 番号付きリスト（1. 2. など）
     const orderedMatch = trimmed.match(/^(\d+)\.\s+(.*)$/);
     if (orderedMatch) {
+      const start = Math.max(1, Number(orderedMatch[1]));
       const items: string[] = [];
       while (i < lines.length) {
         const t = lines[i].trimEnd();
@@ -254,6 +255,7 @@ function MarkdownLikeContent({ text }: { text: string }) {
         nodes.push(
           <ol
             key={`md-${keyIndex++}`}
+            start={start}
             className="list-decimal list-inside text-base text-foreground leading-relaxed mb-4 space-y-1"
           >
             {items.map((item, j) => (

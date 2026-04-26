@@ -237,14 +237,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let body: { url?: string };
+  let body: { url?: string; additionalPrompt?: string };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "リクエスト形式が無効です" }, { status: 400 });
   }
 
-  const { url } = body;
+  const { url, additionalPrompt } = body;
   if (!url || typeof url !== "string") {
     return NextResponse.json({ error: "URLが指定されていません" }, { status: 400 });
   }
@@ -367,7 +367,13 @@ export async function POST(req: NextRequest) {
         { role: "system", content: SYSTEM_PROMPT },
         {
           role: "user",
-          content: `以下のWebページ（URL: ${parsedUrl.toString()}）の内容を元に、EduMatch向け記事を生成してください。\n\n---\n${pageText}\n---`,
+          content: [
+            `以下のWebページ（URL: ${parsedUrl.toString()}）の内容を元に、EduMatch向け記事を生成してください。`,
+            ...(additionalPrompt?.trim()
+              ? [`\n## 追加条件・指示\n${additionalPrompt.trim()}`]
+              : []),
+            `\n---\n${pageText}\n---`,
+          ].join("\n"),
         },
       ],
       temperature: 0.7,

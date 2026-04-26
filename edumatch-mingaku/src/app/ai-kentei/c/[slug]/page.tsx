@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Award } from 'lucide-react'
 import { CertificatePreview } from '@/components/ai-kentei/certificate-preview'
+import { CertificateDownloadButton } from '@/components/ai-kentei/certificate-download-button'
 import type { Metadata } from 'next'
 import { getAiKenteiDb } from '@/lib/ai-kentei-db'
 
@@ -66,17 +67,24 @@ export default async function PublicCertificatePage({ params }: Props) {
           </div>
 
           {/* Certificate */}
-          <CertificatePreview
-            name={certificate.public_display_name}
-            photoUrl={certificate.photo_url}
-            score={certificate.score}
-            totalQuestions={25}
-            date={new Date(certificate.passed_at)}
-            certificateId={certificate.certificate_id}
-          />
+          <div id="ai-kentei-public-certificate-canvas">
+            <CertificatePreview
+              name={certificate.public_display_name}
+              photoUrl={certificate.photo_url}
+              score={certificate.score}
+              totalQuestions={25}
+              date={new Date(certificate.passed_at)}
+              certificateId={certificate.certificate_id}
+            />
+          </div>
 
           {/* CTA */}
           <div className="mt-8 text-center space-y-4">
+            <CertificateDownloadButton
+              targetId="ai-kentei-public-certificate-canvas"
+              fileName={`ai-kentei-certificate-${certificate.certificate_id}.png`}
+              className="w-full sm:w-auto"
+            />
             <p className="text-muted-foreground">
               あなたも検定に挑戦してみませんか？
             </p>

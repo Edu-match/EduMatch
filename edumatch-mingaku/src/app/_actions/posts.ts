@@ -21,6 +21,7 @@ export type ContentBlock = {
   url?: string;
   caption?: string;
   items?: string[];
+  start?: number;
 };
 
 // 記事作成のInput型
@@ -113,7 +114,7 @@ function blocksToContent(blocks: ContentBlock[], leadText: string): string {
       case "ordered-list":
       case "numberedList":
         if (block.items) {
-          block.items.forEach((item, i) => parts.push(`${i + 1}. ${item}`));
+          block.items.forEach((item, i) => parts.push(`${(block.start ?? 1) + i}. ${item}`));
         }
         break;
       case "image":
