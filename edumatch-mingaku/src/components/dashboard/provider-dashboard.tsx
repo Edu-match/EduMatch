@@ -14,7 +14,13 @@ import {
   CheckCircle,
   XCircle,
   BarChart3,
+  Bot,
   LayoutDashboard,
+  Settings,
+  Calendar,
+  Newspaper,
+  Activity,
+  BookOpen,
 } from "lucide-react";
 import {
   getProviderArticles,
@@ -251,6 +257,67 @@ export async function ProviderDashboard({
             </Card>
           </section>
         )}
+
+        {/* 管理者向け: クイックリンク */}
+        {isAdmin && (
+          <section className="mb-10">
+            <Card className="overflow-hidden">
+              <CardHeader className="pb-3 pt-4">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Settings className="h-4 w-4 text-primary" />
+                  管理メニュー
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pb-5">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                  <Link
+                    href="/admin/approvals"
+                    className="flex flex-col items-center gap-2 rounded-xl border bg-muted/30 p-4 text-center text-sm font-medium hover:bg-muted/60 transition-colors"
+                  >
+                    <CheckCircle className="h-6 w-6 text-amber-600" />
+                    承認キュー
+                  </Link>
+                  <Link
+                    href="/admin/events"
+                    className="flex flex-col items-center gap-2 rounded-xl border bg-muted/30 p-4 text-center text-sm font-medium hover:bg-muted/60 transition-colors"
+                  >
+                    <Calendar className="h-6 w-6 text-emerald-600" />
+                    イベント管理
+                  </Link>
+                  <Link
+                    href="/admin/site-updates"
+                    className="flex flex-col items-center gap-2 rounded-xl border bg-muted/30 p-4 text-center text-sm font-medium hover:bg-muted/60 transition-colors"
+                  >
+                    <Newspaper className="h-6 w-6 text-slate-600" />
+                    運営記事管理
+                  </Link>
+                  <Link
+                    href="/admin/ai-chat"
+                    className="flex flex-col items-center gap-2 rounded-xl border bg-muted/30 p-4 text-center text-sm font-medium hover:bg-muted/60 transition-colors"
+                  >
+                    <Bot className="h-6 w-6 text-violet-600" />
+                    AIチャット管理
+                  </Link>
+                  <Link
+                    href="/admin/knowledge"
+                    className="flex flex-col items-center gap-2 rounded-xl border bg-muted/30 p-4 text-center text-sm font-medium hover:bg-muted/60 transition-colors"
+                  >
+                    <BookOpen className="h-6 w-6 text-indigo-600" />
+                    ナレッジ管理
+                  </Link>
+                  <Link
+                    href="/admin/activity-log"
+                    className="flex flex-col items-center gap-2 rounded-xl border bg-muted/30 p-4 text-center text-sm font-medium hover:bg-muted/60 transition-colors"
+                  >
+                    <Activity className="h-6 w-6 text-orange-600" />
+                    操作ログ
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+        )}
+
 
         {/* 下書き */}
         {hasDrafts && (
