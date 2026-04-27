@@ -15,6 +15,7 @@ export type ForumPost = {
   replyCount: number;
   postedAt: string;
   isPinned?: boolean;
+  isHidden?: boolean; // 非表示（削除せず記録を残す）
   relatedArticleUrl?: string;
   aiKenteiPassed?: boolean;
   replies?: ForumReply[];

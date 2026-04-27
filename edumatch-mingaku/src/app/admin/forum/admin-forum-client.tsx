@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, BarChart3, Bot, ExternalLink, Pin, PinOff, Plus, Save, Search, Trash2, Zap, EyeOff, Loader2 } from "lucide-react";
+import { ArrowLeft, BarChart3, Bot, Eye, ExternalLink, EyeOff, Loader2, Pin, PinOff, Plus, Save, Search, Trash2, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import type { ForumPost, ForumRoom } from "@/lib/mock-forum";
 
-type PostFilter = "all" | "pinned" | "no-reply";
+type PostFilter = "all" | "pinned" | "no-reply" | "hidden";
 type NewRoomDraft = { name: string; description: string; weeklyTopic: string; aiDiscussion: boolean };
 
 // ─── 部屋作成ダイアログ ───────────────────────────────────
@@ -122,7 +122,7 @@ function CreateRoomDialog({ onCreated }: { onCreated: (room: ForumRoom) => void 
 
 export function AdminForumClient() {
   const [rooms, setRooms] = useState<ForumRoom[]>([]);
-  const [posts, setPosts] = useState<(ForumPost & { is_hidden?: boolean })[]>([]);
+  const [posts, setPosts] = useState<(ForumPost & { is_hidden?: boolean; isHidden?: boolean })[]>([]);
   const [loadingRooms, setLoadingRooms] = useState(true);
   const [loadingPosts, setLoadingPosts] = useState(true);
   const [roomKeyword, setRoomKeyword] = useState("");
@@ -167,13 +167,19 @@ export function AdminForumClient() {
       const inRoom = selectedRoom === "all" || post.roomId === selectedRoom;
       const inKeyword = !keyword || post.authorName.toLowerCase().includes(keyword) || post.body.toLowerCase().includes(keyword);
       const replies = post.replies?.length ?? post.replyCount ?? 0;
-      const inFilter = postFilter === "all" ? true : postFilter === "pinned" ? Boolean(post.isPinned) : replies === 0;
+      const isHidden = Boolean(post.isHidden || post.is_hidden);
+      const inFilter =
+        postFilter === "all" ? !isHidden
+        : postFilter === "pinned" ? Boolean(post.isPinned) && !isHidden
+        : postFilter === "hidden" ? isHidden
+        : replies === 0 && !isHidden;
       return inRoom && inKeyword && inFilter;
     });
   }, [postFilter, postKeyword, posts, selectedRoom]);
 
   const pinnedCount = posts.filter((post) => post.isPinned).length;
-  const noReplyCount = posts.filter((post) => (post.replies?.length ?? post.replyCount ?? 0) === 0).length;
+  const noReplyCount = posts.filter((post) => (post.replies?.length ?? post.replyCount ?? 0) === 0 && !post.isHidden && !post.is_hidden).length;
+  const hiddenCount = posts.filter((post) => post.isHidden || post.is_hidden).length;
   const topRooms = [...rooms].sort((a, b) => b.postCount - a.postCount).slice(0, 5);
 
   const handleCreateRoom = (room: ForumRoom) => {
@@ -208,12 +214,30 @@ export function AdminForumClient() {
         body: JSON.stringify({ isHidden: true }),
       });
       if (res.ok) {
-        setPosts((prev) => prev.filter((p) => p.id !== postId));
+        setPosts((prev) => prev.map((p) => p.id === postId ? { ...p, isHidden: true, is_hidden: true } : p));
       } else {
         alert("非表示設定に失敗しました");
       }
     } catch {
       alert("非表示設定に失敗しました");
+    }
+  }, []);
+
+  const handleUnhidePost = useCallback(async (postId: string) => {
+    try {
+      const res = await fetch(`/api/forum/posts/${postId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ isHidden: false }),
+      });
+      if (res.ok) {
+        setPosts((prev) => prev.map((p) => p.id === postId ? { ...p, isHidden: false, is_hidden: false } : p));
+      } else {
+        alert("再表示設定に失敗しました");
+      }
+    } catch {
+      alert("再表示設定に失敗しました");
     }
   }, []);
 
@@ -245,10 +269,11 @@ export function AdminForumClient() {
       <h1 className="text-2xl font-bold">井戸端会議 管理</h1>
       <p className="mt-1 text-sm text-muted-foreground">部屋・投稿の管理。非表示は削除ではなく is_hidden フラグで管理します。</p>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+      <div className="mt-4 grid gap-3 sm:grid-cols-4">
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">部屋</p><p className="text-2xl font-bold">{rooms.length}</p></CardContent></Card>
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">注目投稿</p><p className="text-2xl font-bold">{pinnedCount}</p></CardContent></Card>
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">返信待ち</p><p className="text-2xl font-bold">{noReplyCount}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">非表示</p><p className="text-2xl font-bold">{hiddenCount}</p></CardContent></Card>
       </div>
 
       {isLoading && (
@@ -305,26 +330,42 @@ export function AdminForumClient() {
             <Button size="sm" variant={selectedRoom === "all" ? "default" : "outline"} onClick={() => setSelectedRoom("all")}>全ルーム</Button>
             {rooms.map((room) => <Button key={room.id} size="sm" variant={selectedRoom === room.id ? "default" : "outline"} onClick={() => setSelectedRoom(room.id)}>{room.name}</Button>)}
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button size="sm" variant={postFilter === "all" ? "default" : "outline"} onClick={() => setPostFilter("all")}>すべて</Button>
             <Button size="sm" variant={postFilter === "pinned" ? "default" : "outline"} onClick={() => setPostFilter("pinned")}>注目</Button>
             <Button size="sm" variant={postFilter === "no-reply" ? "default" : "outline"} onClick={() => setPostFilter("no-reply")}>返信待ち</Button>
+            <Button size="sm" variant={postFilter === "hidden" ? "default" : "outline"} onClick={() => setPostFilter("hidden")}><EyeOff className="mr-1 h-3.5 w-3.5" />非表示 {hiddenCount > 0 && `(${hiddenCount})`}</Button>
           </div>
           <div className="space-y-2">
-            {filteredPosts.map((post) => (
-              <Card key={post.id}><CardContent className="p-4">
-                <div className="mb-1 flex items-center gap-2"><Badge variant="secondary">{rooms.find((r) => r.id === post.roomId)?.name ?? post.roomId}</Badge><span className="text-xs">{post.authorName}</span></div>
-                <p className="text-sm line-clamp-2 text-muted-foreground">{post.body}</p>
-                <div className="mt-2 flex items-center justify-end gap-2">
-                  <Button size="sm" variant={post.isPinned ? "secondary" : "outline"} onClick={() => handleTogglePin(post.id, !!post.isPinned)}>
-                    {post.isPinned ? <><PinOff className="mr-1 h-3.5 w-3.5" />解除</> : <><Pin className="mr-1 h-3.5 w-3.5" />注目</>}
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => handleHidePost(post.id)}>
-                    <EyeOff className="mr-1 h-3.5 w-3.5 text-destructive" />非表示
-                  </Button>
-                </div>
-              </CardContent></Card>
-            ))}
+            {filteredPosts.map((post) => {
+              const isHiddenPost = Boolean(post.isHidden || post.is_hidden);
+              return (
+                <Card key={post.id} className={isHiddenPost ? "opacity-60" : ""}><CardContent className="p-4">
+                  <div className="mb-1 flex items-center gap-2">
+                    <Badge variant="secondary">{rooms.find((r) => r.id === post.roomId)?.name ?? post.roomId}</Badge>
+                    <span className="text-xs">{post.authorName}</span>
+                    {isHiddenPost && <Badge variant="outline" className="text-[10px] text-muted-foreground border-dashed"><EyeOff className="mr-1 h-3 w-3" />非表示中</Badge>}
+                  </div>
+                  <p className="text-sm line-clamp-2 text-muted-foreground">{post.body}</p>
+                  <div className="mt-2 flex items-center justify-end gap-2">
+                    {!isHiddenPost && (
+                      <Button size="sm" variant={post.isPinned ? "secondary" : "outline"} onClick={() => handleTogglePin(post.id, !!post.isPinned)}>
+                        {post.isPinned ? <><PinOff className="mr-1 h-3.5 w-3.5" />解除</> : <><Pin className="mr-1 h-3.5 w-3.5" />注目</>}
+                      </Button>
+                    )}
+                    {isHiddenPost ? (
+                      <Button size="sm" variant="outline" onClick={() => handleUnhidePost(post.id)}>
+                        <Eye className="mr-1 h-3.5 w-3.5" />再表示
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant="outline" onClick={() => handleHidePost(post.id)}>
+                        <EyeOff className="mr-1 h-3.5 w-3.5 text-destructive" />非表示
+                      </Button>
+                    )}
+                  </div>
+                </CardContent></Card>
+              );
+            })}
           </div>
         </TabsContent>
 

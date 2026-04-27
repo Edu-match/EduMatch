@@ -9,6 +9,7 @@ import {
   ChevronUp,
   Flame,
   Heart,
+  Lightbulb,
   LinkIcon,
   Loader2,
   MessageSquare,
@@ -832,10 +833,10 @@ export function ForumRoomClient({ room }: { room: ForumRoom }) {
     return () => { cancelled = true; };
   }, [room.id]);
 
-  const pinnedPosts = useMemo(() => posts.filter((p) => p.isPinned), [posts]);
+  const pinnedPosts = useMemo(() => posts.filter((p) => p.isPinned && !p.isHidden), [posts]);
 
   const regularPosts = useMemo<ForumPost[]>(() => {
-    const unpinned = posts.filter((p) => !p.isPinned);
+    const unpinned = posts.filter((p) => !p.isPinned && !p.isHidden);
     if (sort === "popular") return [...unpinned].sort((a, b) => b.likeCount - a.likeCount);
     return [...unpinned].sort((a, b) => new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime());
   }, [posts, sort]);
@@ -1039,6 +1040,19 @@ export function ForumRoomClient({ room }: { room: ForumRoom }) {
                   ))}
                 </div>
               )}
+
+              {/* 投稿促進ナッジ */}
+              <div className="rounded-xl border border-dashed border-primary/30 bg-primary/5 px-4 py-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="flex items-start gap-2 text-sm text-foreground">
+                    <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                    <span>投稿に迷っていますか？<span className="font-medium">AIと話しながら意見を整理</span>してから投稿できます。</span>
+                  </p>
+                  <Button asChild size="sm" variant="outline" className="shrink-0 border-primary/40 text-primary hover:bg-primary/10">
+                    <Link href="/#ai-chat"><Bot className="mr-1.5 h-3.5 w-3.5" />AIで意見をまとめる</Link>
+                  </Button>
+                </div>
+              </div>
 
               {/* ソート + 投稿一覧 */}
               <div className="space-y-3">
