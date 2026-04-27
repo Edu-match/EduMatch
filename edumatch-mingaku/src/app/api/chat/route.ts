@@ -52,10 +52,22 @@ const SYSTEM_PROMPTS: Record<ChatMode, string> = {
   navigator: `あなたは教育ICT・EdTechに詳しいAIアシスタントです。このサイト（エデュマッチ）は教育サービス・教材のマッチングプラットフォームです。
 
 ## 回答の仕方
-- **ユーザーの質問に自然に答える**：まず質問の内容そのものに答える（例：「ICT教材の選び方」なら、選び方の観点やポイントを一般的に説明する）
+- **ユーザーの質問に自然に答える**：まず質問の内容そのものに答える（例：「ICT教材の選び方」なら、選び方の観点やポイントを説明する）
+- **このシステムメッセージ内に「公的文書参照（RAG）」の抜粋が含まれる場合**、教育・校務・法令・指導要領・政策・ICT教育などの話題では、**一般説明より優先して**、該当する説明の箇所で **「〈文書名〉によれば」「〈文書名〉では」** を**日本語でそのまま**文中に含める（質問の言い回しが曖昧でも、抜粋に関連すれば必須に近い）。
 - **サイト内の関連サービス・記事**は、回答に自然に織り交ぜる。参照コンテンツがある場合はそれを活かす。無い場合や一般的な質問の場合は、まず質問に答えてから、末尾で「当サイトでは〇〇のようなサービスを探せます」と軽く補足する程度でよい
 - 「参照が提供されていないため…」「エデュマッチの〜」といった言い回しで回答を始めない。あくまで質問への答えが主体
-- Markdown形式（見出し・箇条書き）で読みやすく。日本語で丁寧に。`,
+- **冗長にしない**：原則は3〜6文、長くても箇条書き3点まで。前置きは短く、実務に使える要点を優先する
+- **会話感を重視**：断定説明だけで終えず、必要なら最後に1つだけ確認質問を返す
+- **確認質問をUI向けに出力**：追加情報が必要なときのみ、回答末尾に次の形式を追加する  
+  \`[[ASK]]\`  
+  \`質問: 〇〇についてもう少し教えてください\`  
+  \`複数選択: はい/いいえ\`  
+  \`- 選択肢A\`  
+  \`- 選択肢B\`  
+  \`- その他\`  
+  \`[[/ASK]]\`
+- **ASKの選択肢ルール**：択数は内容に応じて2〜5個で可変。複数選択が妥当なときだけ \`複数選択: はい\` を使う。**「その他」は毎回必ず1つ入れる**。
+- Markdown形式で読みやすく。日本語で丁寧に。`,
 
   debate: `あなたは「エデュマッチ」のAIディベートパートナーです。
 
@@ -81,32 +93,122 @@ Markdown形式で論点を整理して返す。日本語で。`,
 Markdown形式で読みやすく整理。日本語で。`,
 };
 
-// ─── コンテキスト付きシステムプロンプト ─────────────────────────────────────
+// ─── 公的文書 RAG・引用ルール（全モードで常に付与）────────────────────────────
 
-const SYSTEM_WITH_CONTEXT = (mode: ChatMode, contextText: string): string => {
-  if (mode === "navigator") {
-    return `${SYSTEM_PROMPTS[mode]}
+const RAG_AND_PUBLIC_DOC_RULES = `## 公的文書（RAG）の示し方【必須レベル】
+- **下記「公的文書参照（RAG）」に抜粋が1件以上あるとき**、ユーザーの話題が教育・校務・ICT教育・法令・指導要領・設置基準・教育政策・特別支援・国際比較（OECD 等）のいずれかに関わる限り、**その話題に答える段落では必ず**、根拠を述べる前に **「〈文書名〉によれば」「〈文書名〉では」「〈文書名〉に定められている範囲では」「〈種別ラベル〉によれば」** のいずれか（同等の明示があれば可）を**少なくとも1回**用いる。**「によれば」「では」を文中に実際に出すこと。** 抜粋の内容だけを一般論として述べ、文書名に一度も触れないことは禁止。
+- 複数抜粋を使うときは、**使うたびに**対応する文書名（または種別）＋「によれば／では」をつなげる。
+- **例外（引用句を必須としない）**: 挨拶のみ、全く別分野の雑談、教育と無関係な依頼など、**よっぽど別件**で RAG と結びつけられないときだけ。
+- 抜粋と**矛盾する断定はしない**。参照が足りないときは「参照範囲では…／原文・最新の文科省等の公表で確認が必要」と補足する。
+- RAG に**該当抜粋がない**場合でも、上記の教育・制度の話題では**冒頭または適宜**「公的な制度・文書上は一般的に…（最新の取扱いは関係省庁・教育委員会の公表で確認）」の形で触れる。
+- サイト内の記事・サービスと併用する場合も、**制度・根拠の説明では公的文書の整理を先に**述べるとよい。
 
-## サイト内の参照候補（回答に役立つ場合は自然に織り交ぜること）
-${contextText}`;
+## 会話トーンと分量（全モード共通）
+- 回答は簡潔に。原則は3〜6文、必要時のみ短い箇条書き（最大3点）を使う。
+- 講義調になりすぎず、ユーザーと対話している自然な文体にする。
+- 追加情報がないと最適回答が難しい場合のみ、最後に1つだけ確認質問を付ける。
+- 確認質問を出すときは、回答末尾に次の形式を使う。
+  [[ASK]]
+  質問: ここを確認したいです
+  複数選択: はい/いいえ
+  - 選択肢1
+  - 選択肢2
+  - その他
+  [[/ASK]]
+- ASKの選択肢数は2〜5個で可変。必要なときだけ複数選択を許可する。
+- 「その他」はASKを出すたびに必ず含める。
+- 情報が十分なら [[ASK]] は出さない。`;
+
+function formatKnowledgeBlock(items: ChatContextItem[]): string {
+  return items
+    .map((k, i) => {
+      const citeName = k.title.trim() || `公的文書 ${i + 1}`;
+      return `【公的文書 ${i + 1}】\n（この抜粋を根拠に述べるときは、必ず **「${citeName}によれば」** または **「${citeName}では」** など、**この名称を文中に含めた引用句**から入ること）\n${k.content}`;
+    })
+    .join("\n\n");
+}
+
+function closingRagCitationReminder(items: ChatContextItem[]): string {
+  if (items.length === 0) return "";
+  const primary = (items[0]?.title ?? "〈文書名〉").trim() || "〈文書名〉";
+  const allNames = items
+    .map((k) => (k.title ?? "").trim())
+    .filter(Boolean)
+    .join("、");
+
+  return `
+
+---
+## 【出力直前・最優先】RAG 引用の出し方
+公的文書の抜粋がこのプロンプトに含まれています。ユーザーの質問が教育・校務・ICT・法令・指導要領・政策のいずれかに触れるなら、次を**必ず守る**こと。
+
+1. **「によれば」または「では」という語を、日本語で必ず1回以上**含める（例: 「${primary}によれば、」「${primary}では、」）。
+2. 該当する**最初の説明文**は、可能なら **「〈文書名〉によれば、」から始める**。
+3. 文書名は次のいずれかと一致させる: ${allNames}
+
+質問が挨拶や無関係な雑談のみのときはこのブロックは無視してよい。`;
+}
+
+function buildSystemPrompt(
+  mode: ChatMode,
+  siteContextItems: ChatContextItem[],
+  knowledgeItems: ChatContextItem[]
+): string {
+  const sections: string[] = [SYSTEM_PROMPTS[mode], RAG_AND_PUBLIC_DOC_RULES];
+
+  if (siteContextItems.length > 0) {
+    const siteText = siteContextItems
+      .map((c, i) => {
+        const label = c.type === "article" ? "記事" : "サービス";
+        return `【${label} ${i + 1}】\n${c.content}`;
+      })
+      .join("\n\n");
+    sections.push(
+      mode === "navigator"
+        ? `## サイト内の参照候補（記事・サービス）\n${siteText}`
+        : `## 参照コンテンツ（記事・サービス）\n${siteText}`
+    );
   }
-  return `${SYSTEM_PROMPTS[mode]}
 
-## 参照コンテンツ
-${contextText}`;
-};
+  if (knowledgeItems.length > 0) {
+    sections.push(
+      `## 公的文書参照（RAG・登録済み抜粋）\n以下は検索でヒットした登録文書の抜粋です。**話題が関連する限り、回答では必ず「〈文書名〉によれば／では」を文中に出してから**内容を説明すること。\n\n${formatKnowledgeBlock(knowledgeItems)}`
+    );
+  } else {
+    sections.push(
+      `## 公的文書参照（RAG）\n今回の発話に該当する**登録済み抜粋は見つかりませんでした**。それでも制度・校務・指導要領・法令・ガイドラインに関する話題では、上記ルールに従い、**「一般的には…／最新は公式資料の確認が必要」**の形で公的な位置づけを可能な範囲で述べてください。`
+    );
+  }
+
+  const closing = closingRagCitationReminder(knowledgeItems);
+  if (closing) sections.push(closing);
+  return sections.join("\n\n");
+}
 
 // ─── ユーザーメッセージ変換（変数埋め込み型プロンプト） ──────────────────────
+
+function ragCitationUserSuffix(titles: string[]): string {
+  if (titles.length === 0) return "";
+  const first = titles[0]?.trim() || "（登録文書名）";
+  const list = titles
+    .map((t) => t.trim())
+    .filter(Boolean)
+    .slice(0, 6)
+    .join("、");
+  return `\n\n【このターンの出力条件】公的文書の検索抜粋がヒットしています。教育・校務・制度に関する回答では、必ず「${first}によれば」または「${first}では」と文書名を組み合わせた形を**本文に1回以上**含めてください。ヒット文書名: ${list}。`;
+}
 
 function buildEnhancedUserMessage(
   userInput: string,
   mode: ChatMode,
-  isFirstMessage: boolean
+  isFirstMessage: boolean,
+  ragDocTitles: string[] = []
 ): string {
   const q = userInput.trim();
+  const ragSuffix = ragCitationUserSuffix(ragDocTitles);
 
   if (mode === "navigator") {
-    return q;
+    return q + ragSuffix;
   }
 
   if (mode === "debate") {
@@ -114,12 +216,12 @@ function buildEnhancedUserMessage(
       return `【ディベート開始】ユーザーの立場・主張：
 「${q}」
 
-上記の立場に対して、正反対の立場を冒頭で宣言し、論理的根拠を挙げながら反論してください。`;
+上記の立場に対して、正反対の立場を冒頭で宣言し、論理的根拠を挙げながら反論してください。${ragSuffix}`;
     }
     return `【ユーザーの返答】
 「${q}」
 
-上記に対して、引き続き反対立場を堅持しながら切り返してください。`;
+上記に対して、引き続き反対立場を堅持しながら切り返してください。${ragSuffix}`;
   }
 
   if (mode === "discussion") {
@@ -127,15 +229,15 @@ function buildEnhancedUserMessage(
       return `【ディスカッション開始】ユーザーの提起：
 「${q}」
 
-まずこの意見・テーマに共感・肯定で受け止め、その上でさらに深められる論点や問いかけを返してください。`;
+まずこの意見・テーマに共感・肯定で受け止め、その上でさらに深められる論点や問いかけを返してください。${ragSuffix}`;
     }
     return `【ユーザーの続き】
 「${q}」
 
-共感しながら受け止め、さらに思考を深める問いや視点を返してください。`;
+共感しながら受け止め、さらに思考を深める問いや視点を返してください。${ragSuffix}`;
   }
 
-  return q;
+  return q + ragSuffix;
 }
 
 export async function GET() {
@@ -224,10 +326,7 @@ export async function POST(req: NextRequest) {
     data: { chat_usage_events: updated as Prisma.InputJsonValue },
   });
 
-  // ─── システムプロンプト構築 ───────────────────────────────────────────────
-  let systemPrompt = SYSTEM_PROMPTS[mode];
-
-  // 明示的に添付されたコンテキスト（クリップ添付）
+  // ─── システムプロンプト構築（サイト検索 + 公的文書 RAG は常に付与）──────────
   const explicitContexts: ChatContextItem[] = [];
   if (contextItems && contextItems.length > 0) {
     for (const item of contextItems.slice(0, 10)) {
@@ -239,38 +338,38 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // 全モード共通：ユーザーの最後のメッセージでDBを検索し、コンテキストを注入
   const lastUserMsg = messages.filter((m) => m.role === "user").at(-1)?.content ?? "";
-  const { services: searchSvcs, articles: searchArts } = await searchRelevantContent(lastUserMsg, 5);
+  const { services: searchSvcs, articles: searchArts, knowledge: knowledgeHits } =
+    await searchRelevantContent(lastUserMsg, 5);
   const searchResults = [...searchSvcs, ...searchArts].filter(
     (r) => !explicitContexts.some((e) => e.id === r.id)
   );
-  const allContexts = [...explicitContexts, ...searchResults];
+  const siteContextItems = [...explicitContexts, ...searchResults];
 
-  if (allContexts.length > 0) {
-    const contextText = allContexts
-      .map((c, i) => `【${c.type === "article" ? "記事" : "サービス"} ${i + 1}】\n${c.content}`)
-      .join("\n\n");
-    systemPrompt = SYSTEM_WITH_CONTEXT(mode, contextText);
-  }
+  const systemPrompt = buildSystemPrompt(mode, siteContextItems, knowledgeHits);
 
   // ─── ユーザーメッセージ変換（最後のユーザー発言をモード別プロンプトに変換） ─
   const trimmedRaw = messages.slice(-20);
   const isFirstMessage = trimmedRaw.filter((m) => m.role === "user").length === 1;
   const lastUserIdx = [...trimmedRaw].map((m) => m.role).lastIndexOf("user");
 
+  const ragDocTitles = knowledgeHits
+    .map((k) => k.title.trim())
+    .filter((t) => t.length > 0);
+
   const trimmedMessages = trimmedRaw.map((m, i) => {
     if (i === lastUserIdx && m.role === "user") {
       return {
         role: "user" as const,
-        content: buildEnhancedUserMessage(m.content, mode, isFirstMessage),
+        content: buildEnhancedUserMessage(m.content, mode, isFirstMessage, ragDocTitles),
       };
     }
     return { role: m.role as "user" | "assistant", content: m.content };
   });
 
   const openai = new OpenAI({ apiKey });
-  const model = "gpt-5.4-nano";
+  const model = "gpt-5.4-mini";
+  const temperature = knowledgeHits.length > 0 ? 0.55 : 0.8;
 
   try {
     const stream = await openai.chat.completions.create({
@@ -280,7 +379,7 @@ export async function POST(req: NextRequest) {
         { role: "system", content: systemPrompt },
         ...trimmedMessages,
       ],
-      temperature: 0.8,
+      temperature,
       max_completion_tokens: 2048,
     });
 
@@ -308,6 +407,8 @@ export async function POST(req: NextRequest) {
         "Content-Type": "text/plain; charset=utf-8",
         "Cache-Control": "no-cache",
         "X-Content-Type-Options": "nosniff",
+        "X-RAG-Knowledge-Hits": String(knowledgeHits.length),
+        "X-Site-Context-Hits": String(siteContextItems.length),
       },
     });
   } catch (error) {
