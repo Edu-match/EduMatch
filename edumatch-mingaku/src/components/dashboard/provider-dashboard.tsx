@@ -20,6 +20,7 @@ import {
   Calendar,
   Newspaper,
   Settings,
+  Activity,
 } from "lucide-react";
 import {
   getProviderArticles,
@@ -303,6 +304,13 @@ export async function ProviderDashboard({
                   >
                     <Bot className="h-6 w-6 text-violet-600" />
                     AIチャット管理
+                  </Link>
+                  <Link
+                    href="/admin/activity-log"
+                    className="flex flex-col items-center gap-2 rounded-xl border bg-muted/30 p-4 text-center text-sm font-medium hover:bg-muted/60 transition-colors"
+                  >
+                    <Activity className="h-6 w-6 text-orange-600" />
+                    操作ログ
                   </Link>
                 </div>
               </CardContent>

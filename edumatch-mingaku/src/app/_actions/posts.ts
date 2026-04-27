@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { createClient } from "@/utils/supabase/server";
 import type { HomeNewsTab, Post, Profile, Role } from "@prisma/client";
 import { canManageProviderContent } from "@/lib/provider-access";
+import { logActivity } from "./activity-log";
 
 export type PostWithProvider = Post & {
   provider: Pick<Profile, "id" | "name" | "avatar_url">;
@@ -269,6 +270,16 @@ export async function createPost(input: CreatePostInput): Promise<CreatePostResu
     revalidatePath("/articles");
     revalidatePath("/provider-dashboard");
 
+    await logActivity({
+      actorId: user.id,
+      actorName: profile.name,
+      action: isDraft ? "CREATE" : "SUBMIT",
+      targetType: "POST",
+      targetId: post.id,
+      targetTitle: post.title,
+      detail: isDraft ? "下書き保存" : "承認申請",
+    });
+
     return { success: true, postId: post.id };
   } catch (error) {
     console.error("Error creating post:", error);
@@ -456,7 +467,7 @@ export async function approvePost(postId: string): Promise<SimpleResult> {
   if (!auth.success) return auth;
 
   try {
-    await prisma.post.update({
+    const post = await prisma.post.update({
       where: { id: postId },
       data: {
         status: "APPROVED",
@@ -465,6 +476,16 @@ export async function approvePost(postId: string): Promise<SimpleResult> {
         rejected_at: null,
         rejection_reason: null,
       },
+      select: { title: true },
+    });
+    const actor = await prisma.profile.findUnique({ where: { id: auth.userId }, select: { name: true } });
+    await logActivity({
+      actorId: auth.userId,
+      actorName: actor?.name ?? "管理者",
+      action: "APPROVE",
+      targetType: "POST",
+      targetId: postId,
+      targetTitle: post.title,
     });
     return { success: true };
   } catch (e) {
@@ -481,7 +502,7 @@ export async function rejectPost(postId: string, reason?: string): Promise<Simpl
   if (!auth.success) return auth;
 
   try {
-    await prisma.post.update({
+    const post = await prisma.post.update({
       where: { id: postId },
       data: {
         status: "REJECTED",
@@ -490,6 +511,17 @@ export async function rejectPost(postId: string, reason?: string): Promise<Simpl
         approved_at: null,
         rejection_reason: reason?.slice(0, 500) || null,
       },
+      select: { title: true },
+    });
+    const actor = await prisma.profile.findUnique({ where: { id: auth.userId }, select: { name: true } });
+    await logActivity({
+      actorId: auth.userId,
+      actorName: actor?.name ?? "管理者",
+      action: "REJECT",
+      targetType: "POST",
+      targetId: postId,
+      targetTitle: post.title,
+      detail: reason,
     });
     return { success: true };
   } catch (e) {
