@@ -46,6 +46,11 @@ type RequestBody = {
   mode?: ChatMode;
 };
 
+type RagDocRef = {
+  title: string;
+  url: string | null;
+};
+
 // ─── システムプロンプト ───────────────────────────────────────────────────────
 
 const SYSTEM_PROMPTS: Record<ChatMode, string> = {
@@ -240,6 +245,26 @@ function buildEnhancedUserMessage(
   return q + ragSuffix;
 }
 
+function extractFirstUrl(text: string): string | null {
+  const m = text.match(/https?:\/\/[^\s)]+/);
+  return m?.[0] ?? null;
+}
+
+function buildRagDocRefs(items: ChatContextItem[]): RagDocRef[] {
+  const seen = new Set<string>();
+  const refs: RagDocRef[] = [];
+  for (const item of items) {
+    const title = item.title.trim();
+    if (!title || seen.has(title)) continue;
+    seen.add(title);
+    refs.push({
+      title,
+      url: extractFirstUrl(item.content),
+    });
+  }
+  return refs.slice(0, 8);
+}
+
 export async function GET() {
   const user = await getCurrentUser();
   if (!user) {
@@ -356,6 +381,7 @@ export async function POST(req: NextRequest) {
   const ragDocTitles = knowledgeHits
     .map((k) => k.title.trim())
     .filter((t) => t.length > 0);
+  const ragDocRefs = buildRagDocRefs(knowledgeHits);
 
   const trimmedMessages = trimmedRaw.map((m, i) => {
     if (i === lastUserIdx && m.role === "user") {
@@ -409,6 +435,7 @@ export async function POST(req: NextRequest) {
         "X-Content-Type-Options": "nosniff",
         "X-RAG-Knowledge-Hits": String(knowledgeHits.length),
         "X-Site-Context-Hits": String(siteContextItems.length),
+        "X-RAG-Doc-Refs": encodeURIComponent(JSON.stringify(ragDocRefs)),
       },
     });
   } catch (error) {
