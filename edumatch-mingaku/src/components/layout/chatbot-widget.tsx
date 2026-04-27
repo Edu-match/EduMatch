@@ -46,6 +46,7 @@ type ChatMsg = {
   streaming?: boolean;
   ragKnowledgeHits?: number;
   siteContextHits?: number;
+  ragDocRefs?: { title: string; url: string | null }[];
   yesNo?: {
     question: string;
     articleId: string;
@@ -88,6 +89,26 @@ type AssistantPrompt = {
   choices: string[];
   allowMultiple: boolean;
 };
+
+function parseRagDocRefsHeader(raw: string | null): { title: string; url: string | null }[] {
+  if (!raw) return [];
+  try {
+    const decoded = decodeURIComponent(raw);
+    const parsed = JSON.parse(decoded) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter(
+        (x): x is { title: string; url: string | null } =>
+          x != null &&
+          typeof x === "object" &&
+          typeof (x as { title?: string }).title === "string" &&
+          ((x as { url?: unknown }).url === null || typeof (x as { url?: unknown }).url === "string")
+      )
+      .slice(0, 8);
+  } catch {
+    return [];
+  }
+}
 
 const MODE_LABELS: Record<ChatMode, string> = {
   navigator: "ナビゲーターモード",
@@ -417,6 +438,7 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
   const [chatHistoryLoading, setChatHistoryLoading] = useState(false);
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
   const [selectedAskChoices, setSelectedAskChoices] = useState<Record<string, string[]>>({});
+  const [openedRagRefsMessageId, setOpenedRagRefsMessageId] = useState<string | null>(null);
 
   const listRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -768,9 +790,10 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
 
       const ragHits = parseInt(resp.headers.get("X-RAG-Knowledge-Hits") ?? "0", 10);
       const siteHits = parseInt(resp.headers.get("X-Site-Context-Hits") ?? "0", 10);
+      const ragDocRefs = parseRagDocRefsHeader(resp.headers.get("X-RAG-Doc-Refs"));
       if (ragHits > 0) {
         setMessages((prev) =>
-          prev.map((m) => (m.id === botMsgId ? { ...m, ragKnowledgeHits: ragHits } : m))
+          prev.map((m) => (m.id === botMsgId ? { ...m, ragKnowledgeHits: ragHits, ragDocRefs } : m))
         );
       }
       if (siteHits > 0) {
@@ -1060,13 +1083,47 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
                               </div>
                             )}
                             {m.ragKnowledgeHits !== undefined && m.ragKnowledgeHits > 0 && (
-                              <div className="flex items-center gap-1 text-[11px] text-indigo-600 dark:text-indigo-400 mb-1.5 font-medium">
-                                <BookOpen className="h-3 w-3 shrink-0" />
-                                <span>
-                                  {m.streaming
-                                    ? "公的文書を閲覧しています..."
-                                    : `公的文書を参照して回答 (${m.ragKnowledgeHits}件)`}
-                                </span>
+                              <div className="mb-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setOpenedRagRefsMessageId((prev) => (prev === m.id ? null : m.id))
+                                  }
+                                  className="flex items-center gap-1 text-[11px] text-indigo-600 dark:text-indigo-400 font-medium hover:underline"
+                                >
+                                  <BookOpen className="h-3 w-3 shrink-0" />
+                                  <span>
+                                    {m.streaming
+                                      ? "公的文書を閲覧しています..."
+                                      : `公的文書を参照して回答 (${m.ragKnowledgeHits}件)`}
+                                  </span>
+                                </button>
+                                {!m.streaming && openedRagRefsMessageId === m.id && (
+                                  <div className="mt-1 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50/60 dark:bg-indigo-950/30 p-2 space-y-1">
+                                    <p className="text-[11px] font-medium text-indigo-700 dark:text-indigo-300">参照した文書</p>
+                                    {(m.ragDocRefs ?? []).length === 0 ? (
+                                      <p className="text-[11px] text-muted-foreground">文書名を取得できませんでした</p>
+                                    ) : (
+                                      (m.ragDocRefs ?? []).map((ref) => (
+                                        <div key={ref.title} className="text-[11px]">
+                                          <p className="font-medium text-foreground">{ref.title}</p>
+                                          {ref.url ? (
+                                            <Link
+                                              href={ref.url}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="text-indigo-600 dark:text-indigo-400 underline hover:no-underline break-all"
+                                            >
+                                              添付ファイル/リンクを開く
+                                            </Link>
+                                          ) : (
+                                            <p className="text-muted-foreground">リンク未登録</p>
+                                          )}
+                                        </div>
+                                      ))
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             )}
                             {m.siteContextHits !== undefined && m.siteContextHits > 0 && (

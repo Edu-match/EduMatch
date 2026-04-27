@@ -14,11 +14,42 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
   const { open, setOpen, mobileOpen, setMobileOpen } = useAiPanel();
   // サイドバーの開閉状態（デフォルト: 開）
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [panelWidth, setPanelWidth] = useState(360);
+  const [resizing, setResizing] = useState(false);
 
   // AIパネルの開閉に連動してサイドバーを開閉
   useEffect(() => {
     setSidebarOpen(!open);
   }, [open]);
+
+  useEffect(() => {
+    if (!resizing) return;
+
+    function onMouseMove(e: MouseEvent) {
+      const viewport = window.innerWidth;
+      const next = viewport - e.clientX;
+      const maxWidth = Math.min(760, Math.floor(viewport * 0.6));
+      const clamped = Math.max(320, Math.min(maxWidth, next));
+      setPanelWidth(clamped);
+    }
+
+    function onMouseUp() {
+      setResizing(false);
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
+    }
+
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "col-resize";
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
+    };
+  }, [resizing]);
 
   return (
     <div className="flex min-h-screen flex-col w-full">
@@ -75,13 +106,20 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
         {/* AI side panel – desktop (lg+) */}
         <div
           className={cn(
-            "hidden lg:flex flex-col flex-shrink-0 transition-all duration-300 ease-in-out",
-            open ? "lg:w-[360px]" : "lg:w-10"
+            "hidden lg:flex flex-col flex-shrink-0 transition-all duration-150 ease-in-out",
+            open ? "" : "lg:w-10"
           )}
+          style={open ? { width: `${panelWidth}px` } : undefined}
         >
           <div className="sticky top-16 h-[calc(100vh-4rem)] flex flex-col">
             {open ? (
-              <div className="h-full flex flex-col border-l bg-background overflow-hidden">
+              <div className="relative h-full flex flex-col border-l bg-background overflow-hidden">
+                <div
+                  className="absolute -left-1 top-0 h-full w-2 cursor-col-resize z-20"
+                  onMouseDown={() => setResizing(true)}
+                  role="separator"
+                  aria-label="AIパネル幅を変更"
+                />
                 <ChatbotWidget />
               </div>
             ) : (
