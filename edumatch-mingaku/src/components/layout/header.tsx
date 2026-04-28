@@ -4,22 +4,10 @@ import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import {
-  Menu,
-  LogOut,
-  User,
-  LayoutDashboard,
-  Settings,
-  ChevronDown,
-  UserPlus,
-  LogIn,
-  FileText,
-  Bell,
-  MessageSquare,
-  CheckCircle,
-  Calendar,
-  Newspaper,
-  BookOpen,
+import { 
+  Menu, LogOut, User, LayoutDashboard, Settings, 
+  ChevronDown, UserPlus, LogIn, FileText, Bell,
+  MessageSquare, CheckCircle, Calendar, Newspaper
 } from "lucide-react";
 import { useRequestList } from "@/components/request-list/request-list-context";
 import { Button } from "@/components/ui/button";
@@ -124,7 +112,6 @@ export function Header() {
 
   const navLinks = [
     { href: "/articles", label: "記事一覧" },
-    { href: "/forum", label: "井戸端会議" },
     { href: "/services", label: "サービス一覧" },
     { href: "/events", label: "セミナー・イベント情報" },
     { href: "/companies", label: "掲載企業" },
@@ -319,7 +306,7 @@ export function Header() {
                   マイページ
                 </DropdownMenuItem>
                 {(userRole === "PROVIDER" || userRole === "ADMIN") && (
-                  <DropdownMenuItem
+                  <DropdownMenuItem 
                     className="cursor-pointer"
                     onSelect={() => router.push("/provider-dashboard")}
                   >
@@ -361,17 +348,10 @@ export function Header() {
                       <Newspaper className="mr-2 h-4 w-4 text-slate-600" />
                       運営記事管理
                     </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="cursor-pointer"
-                      onSelect={() => router.push("/dashboard/admin/knowledge")}
-                    >
-                      <BookOpen className="mr-2 h-4 w-4 text-indigo-600" />
-                      ナレッジ文書管理
-                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
                   </>
                 )}
-                <DropdownMenuItem
+                <DropdownMenuItem 
                   className="cursor-pointer"
                   onSelect={() => router.push("/profile/register")}
                 >
@@ -504,9 +484,6 @@ export function Header() {
                             </Link>
                             <Link href="/admin/site-updates" className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground">
                               <Newspaper className="h-4 w-4 text-slate-600" />運営記事管理
-                            </Link>
-                            <Link href="/dashboard/admin/knowledge" className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground">
-                              <BookOpen className="h-4 w-4 text-indigo-600" />ナレッジ文書管理
                             </Link>
                           </div>
                         </div>

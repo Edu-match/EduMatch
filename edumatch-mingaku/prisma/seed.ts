@@ -669,67 +669,6 @@ https://www.youtube.com/watch?v=dQw4w9WgXcQ
   }
   console.log(`✅ ${posts.length}件の記事を作成しました`);
 
-  // フォーラム部屋（6部屋）の初期データ
-  const forumRooms = [
-    {
-      id: "ai-lesson",
-      name: "AI×授業設計",
-      description: "生成AI活用、個別最適化、教材づくりの変化など",
-      emoji: "🤖",
-      weekly_topic: "授業にAIを取り入れるとしたら、どこから始めますか？",
-      ai_discussion: true,
-    },
-    {
-      id: "giga-school",
-      name: "GIGAスクールのリアル",
-      description: "活用の現状・課題・地域差・保護者の反応など",
-      emoji: "💻",
-      weekly_topic: "端末が配られた。それで、現場は変わりましたか？",
-      ai_discussion: false,
-    },
-    {
-      id: "diverse-learning",
-      name: "不登校と多様な学び",
-      description: "フリースクール・オルタナティブ教育・出席認定など",
-      emoji: "🌈",
-      weekly_topic: "学校以外の学びの場は、どこまで認められるべきか？",
-      ai_discussion: false,
-    },
-    {
-      id: "teacher-work",
-      name: "教員の働き方とテクノロジー",
-      description: "業務効率化・評価・コミュニケーションの変化など",
-      emoji: "🏫",
-      weekly_topic: "AIは教員の仕事を楽にしますか？それとも増やしますか？",
-      ai_discussion: false,
-    },
-    {
-      id: "education-gap",
-      name: "教育格差とEdTech",
-      description: "地域差・家庭環境・デジタルデバイドなど",
-      emoji: "📊",
-      weekly_topic: "テクノロジーは教育格差を縮めますか？広げますか？",
-      ai_discussion: false,
-    },
-    {
-      id: "ai-literacy",
-      name: "子どもとAIリテラシー",
-      description: "情報教育・批判的思考・依存と活用の線引きなど",
-      emoji: "🧠",
-      weekly_topic: "AIと付き合う力を、学校でどう育てればいいか？",
-      ai_discussion: true,
-    },
-  ];
-
-  for (const room of forumRooms) {
-    await prisma.forumRoom.upsert({
-      where: { id: room.id },
-      update: {},
-      create: room,
-    });
-  }
-  console.log(`✅ ${forumRooms.length}件のフォーラム部屋を作成しました`);
-
   console.log("🎉 シードデータの投入が完了しました！");
 }
 

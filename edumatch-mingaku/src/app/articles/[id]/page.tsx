@@ -16,8 +16,6 @@ import { ImportedContentRenderer } from "@/components/content/imported-content-r
 import { ShareButton } from "@/components/ui/share-button";
 import { ThumbnailOrTitle } from "@/components/ui/thumbnail-or-title";
 import { ImageWithUrlError } from "@/components/ui/image-with-url-error";
-import { ArticleScrollSentinel } from "@/components/ui/article-scroll-sentinel";
-import { ArticleNavGate } from "@/components/ui/article-nav-gate";
 
 export const dynamic = "force-dynamic";
 
@@ -195,9 +193,6 @@ export default async function ArticleDetailPage({
           )}
         </div>
 
-        {/* 記事読了センチネル：最後までスクロールするとAIパネルが自動アクティブ化 */}
-        <ArticleScrollSentinel articleId={post.id} articleTitle={post.title} />
-
         {/* 提供者情報 */}
         <Card className="mb-8">
           <CardContent className="p-6">
@@ -228,50 +223,41 @@ export default async function ArticleDetailPage({
 
         {/* 関連記事 */}
         {filteredRelatedPosts.length > 0 && (
-          <ArticleNavGate
-            currentArticleTitle={post.title}
-            articles={filteredRelatedPosts.map((p) => ({
-              id: p.id,
-              title: p.title,
-              href: `/articles/${p.id}`,
-            }))}
-          >
-            <Card className="mt-12">
-              <CardContent className="p-6">
-                <h2 className="text-xl font-bold mb-4">関連記事</h2>
-                <div className="space-y-4">
-                  {filteredRelatedPosts.map((relatedPost) => (
-                    <Link
-                      key={relatedPost.id}
-                      href={`/articles/${relatedPost.id}`}
-                      className="block p-4 border rounded-lg hover:bg-muted transition-colors"
-                    >
-                      <div className="flex gap-4">
-                        <div className="relative w-24 flex-shrink-0 overflow-hidden rounded bg-muted aspect-video flex items-center justify-center">
-                          <ThumbnailOrTitle
-                            src={relatedPost.thumbnail_url ?? undefined}
-                            title={relatedPost.title}
-                            fill
-                            className="object-contain"
-                            unoptimized
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold mb-2 line-clamp-2">
-                            {relatedPost.title}
-                          </h3>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Calendar className="h-3 w-3" />
-                            {formatDate(relatedPost.created_at)}
-                          </div>
+          <Card className="mt-12">
+            <CardContent className="p-6">
+              <h2 className="text-xl font-bold mb-4">関連記事</h2>
+              <div className="space-y-4">
+                {filteredRelatedPosts.map((relatedPost) => (
+                  <Link
+                    key={relatedPost.id}
+                    href={`/articles/${relatedPost.id}`}
+                    className="block p-4 border rounded-lg hover:bg-muted transition-colors"
+                  >
+                    <div className="flex gap-4">
+                      <div className="relative w-24 flex-shrink-0 overflow-hidden rounded bg-muted aspect-video flex items-center justify-center">
+                        <ThumbnailOrTitle
+                          src={relatedPost.thumbnail_url ?? undefined}
+                          title={relatedPost.title}
+                          fill
+                          className="object-contain"
+                          unoptimized
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold mb-2 line-clamp-2">
+                          {relatedPost.title}
+                        </h3>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Calendar className="h-3 w-3" />
+                          {formatDate(relatedPost.created_at)}
                         </div>
                       </div>
-                    </Link>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </ArticleNavGate>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         )}
       </article>
     </div>

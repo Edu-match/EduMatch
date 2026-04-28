@@ -6,7 +6,6 @@ import { canManageProviderContent } from "@/lib/provider-access";
 import { revalidatePath } from "next/cache";
 import { articleSchema, type ArticleFormData } from "@/lib/validations/article";
 import { normalizeImageUrl } from "@/lib/image-url-utils";
-import { logActivity } from "./activity-log";
 
 /**
  * 記事を作成する
@@ -64,21 +63,11 @@ export async function createArticle(data: ArticleFormData) {
     revalidatePath("/articles");
     revalidatePath("/provider-dashboard");
 
-    await logActivity({
-      actorId: profile.id,
-      actorName: profile.name,
-      action: validatedData.status === "DRAFT" ? "CREATE" : "SUBMIT",
-      targetType: "POST",
-      targetId: article.id,
-      targetTitle: article.title,
-      detail: validatedData.status === "DRAFT" ? "下書き保存" : "承認申請",
-    });
-
     return {
       success: true,
       data: article,
-      message: validatedData.status === "DRAFT"
-        ? "下書きとして保存しました"
+      message: validatedData.status === "DRAFT" 
+        ? "下書きとして保存しました" 
         : "記事を投稿しました。承認をお待ちください。",
     };
   } catch (error) {
@@ -168,15 +157,6 @@ export async function updateArticle(articleId: string, data: ArticleFormData) {
     revalidatePath(`/articles/${articleId}`);
     revalidatePath("/provider-dashboard");
 
-    await logActivity({
-      actorId: profile.id,
-      actorName: profile.name,
-      action: "UPDATE",
-      targetType: "POST",
-      targetId: articleId,
-      targetTitle: article.title,
-    });
-
     return {
       success: true,
       data: article,
@@ -217,7 +197,7 @@ export async function deleteArticle(articleId: string) {
     // 既存記事の取得
     const existingArticle = await prisma.post.findUnique({
       where: { id: articleId },
-      select: { provider_id: true, title: true },
+      select: { provider_id: true },
     });
 
     if (!existingArticle) {
@@ -235,8 +215,6 @@ export async function deleteArticle(articleId: string) {
       };
     }
 
-    const deletedTitle = existingArticle.title;
-
     // 記事を削除
     await prisma.post.delete({
       where: { id: articleId },
@@ -245,15 +223,6 @@ export async function deleteArticle(articleId: string) {
     // キャッシュを更新
     revalidatePath("/articles");
     revalidatePath("/provider-dashboard");
-
-    await logActivity({
-      actorId: profile.id,
-      actorName: profile.name,
-      action: "DELETE",
-      targetType: "POST",
-      targetId: articleId,
-      targetTitle: deletedTitle,
-    });
 
     return {
       success: true,
