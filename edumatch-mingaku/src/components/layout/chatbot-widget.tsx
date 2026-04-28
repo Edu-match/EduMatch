@@ -645,74 +645,6 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
     });
   }
 
-  async function fetchChatSessions() {
-    if (!userId) return;
-    setChatHistoryLoading(true);
-    try {
-      const res = await fetch("/api/chat/sessions");
-      if (!res.ok) return;
-      const data = await res.json();
-      setChatSessions(data.sessions ?? []);
-    } catch {
-      // ignore
-    } finally {
-      setChatHistoryLoading(false);
-    }
-  }
-
-  async function openChatHistory() {
-    await fetchChatSessions();
-    setView("chat-history");
-  }
-
-  function loadChatSession(session: ChatSession) {
-    const parsed = parseSessionMessages(session.messages as unknown[]);
-    setMessages(
-      parsed.map((msg, idx) => ({
-        id: msg.id ?? `${session.id}-${idx}`,
-        role: msg.role,
-        content: msg.content,
-      }))
-    );
-    setChatMode(
-      session.mode === "navigator" || session.mode === "debate" || session.mode === "discussion"
-        ? session.mode
-        : "navigator"
-    );
-    setSessionId(session.id);
-    setView("chat");
-  }
-
-  async function deleteChatSession(id: string) {
-    if (deletingSessionId) return;
-    setDeletingSessionId(id);
-    try {
-      const res = await fetch(`/api/chat/sessions/${id}`, { method: "DELETE" });
-      if (!res.ok) return;
-      setChatSessions((prev) => prev.filter((s) => s.id !== id));
-      if (sessionId === id) {
-        setSessionId(null);
-        setMessages([]);
-      }
-    } catch {
-      // ignore
-    } finally {
-      setDeletingSessionId(null);
-    }
-  }
-
-  function answerYesNo(msgId: string, answer: "yes" | "no", _question: string) {
-    setMessages((prev) =>
-      prev.map((m) =>
-        m.id === msgId && m.yesNo
-          ? { ...m, yesNo: { ...m.yesNo, answered: answer } }
-          : m
-      )
-    );
-    const answerText = answer === "yes" ? "はい、そう思います。" : "いいえ、そうは思いません。";
-    sendMessage(answerText);
-  }
-
   async function saveSession(finalMessages: ChatMsg[]) {
     if (!userId || finalMessages.length === 0) return;
     const userMessages = finalMessages.filter((m) => m.role === "user");
@@ -743,6 +675,74 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
     } catch {
       // セッション保存エラーはサイレントに無視
     }
+  }
+
+  async function fetchChatSessions() {
+    if (!userId) return;
+    setChatHistoryLoading(true);
+    try {
+      const res = await fetch("/api/chat/sessions");
+      if (!res.ok) return;
+      const data = await res.json();
+      setChatSessions(data.sessions ?? []);
+    } catch {
+      // 履歴取得失敗は無視
+    } finally {
+      setChatHistoryLoading(false);
+    }
+  }
+
+  async function openChatHistory() {
+    await fetchChatSessions();
+    setView("chat-history");
+  }
+
+  function loadChatSession(session: ChatSession) {
+    const parsed = parseSessionMessages(session.messages as unknown[]);
+    setMessages(
+      parsed.map((m, idx) => ({
+        id: m.id ?? `${session.id}-${idx}`,
+        role: m.role,
+        content: m.content,
+      }))
+    );
+    setChatMode(
+      session.mode === "navigator" || session.mode === "debate" || session.mode === "discussion"
+        ? session.mode
+        : "navigator"
+    );
+    setSessionId(session.id);
+    setView("chat");
+  }
+
+  async function deleteChatSession(id: string) {
+    if (deletingSessionId) return;
+    setDeletingSessionId(id);
+    try {
+      const res = await fetch(`/api/chat/sessions/${id}`, { method: "DELETE" });
+      if (!res.ok) return;
+      setChatSessions((prev) => prev.filter((s) => s.id !== id));
+      if (sessionId === id) {
+        setSessionId(null);
+        setMessages([]);
+      }
+    } catch {
+      // silently ignore
+    } finally {
+      setDeletingSessionId(null);
+    }
+  }
+
+  function answerYesNo(msgId: string, answer: "yes" | "no", _question: string) {
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === msgId && m.yesNo
+          ? { ...m, yesNo: { ...m.yesNo, answered: answer } }
+          : m
+      )
+    );
+    const answerText = answer === "yes" ? "はい、そう思います。" : "いいえ、そうは思いません。";
+    sendMessage(answerText);
   }
 
   async function sendMessage(overrideText?: string, messagesToUse?: ChatMsg[]) {

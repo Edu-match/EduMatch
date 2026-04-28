@@ -157,40 +157,35 @@ export function BlocksContentPreview({ content }: { content: string }) {
             );
           case "numberedList":
             return (
-              <ol key={block.id} className="list-decimal pl-6 my-4 space-y-1">
+              <ol key={block.id} start={block.start ?? 1} className="list-decimal pl-6 my-4 space-y-1">
                 {block.items?.map((item, i) => (
                   <li key={i}>{renderInlineMarkdown(item)}</li>
                 ))}
               </ol>
             );
-          case "markdown": {
-            const text = block.content ?? "";
-            const lines = text.split(/\n/);
+          case "markdown":
             return (
-              <div key={block.id} className="prose prose-lg max-w-none my-4 space-y-0">
-                {lines.map((line, i) =>
-                  line === "" ? (
-                    <div key={i} className="min-h-[1em]" aria-hidden />
-                  ) : (
-                    <div key={i} className="py-0.5">
-                      <ReactMarkdown
-                        remarkPlugins={[remarkBreaks]}
-                        components={{
-                          a: ({ href, children, ...props }) => (
-                            <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline hover:text-blue-700" {...props}>
-                              {children}
-                            </a>
-                          ),
-                        }}
+              <div key={block.id} className="prose prose-lg max-w-none my-4">
+                <ReactMarkdown
+                  remarkPlugins={[remarkBreaks]}
+                  components={{
+                    a: ({ href, children, ...props }) => (
+                      <a
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 underline hover:text-blue-700"
+                        {...props}
                       >
-                        {line}
-                      </ReactMarkdown>
-                    </div>
-                  )
-                )}
+                        {children}
+                      </a>
+                    ),
+                  }}
+                >
+                  {block.content ?? ""}
+                </ReactMarkdown>
               </div>
             );
-          }
           default:
             return null;
         }

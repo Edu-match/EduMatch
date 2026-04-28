@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Wand2, Loader2, AlertCircle, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import type { ThumbnailTemplateKind } from "@/lib/thumbnail-template";
 
@@ -31,6 +32,7 @@ export function AiArticleGenerator({
   hasGeneratedArticle,
 }: AiArticleGeneratorProps) {
   const [url, setUrl] = useState("");
+  const [additionalPrompt, setAdditionalPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [generatedTitle, setGeneratedTitle] = useState<string | null>(null);
@@ -47,7 +49,10 @@ export function AiArticleGenerator({
       const res = await fetch("/api/ai-article-generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: trimmedUrl }),
+        body: JSON.stringify({
+          url: trimmedUrl,
+          ...(additionalPrompt.trim() ? { additionalPrompt: additionalPrompt.trim() } : {}),
+        }),
       });
 
       const data = await res.json();
@@ -78,22 +83,40 @@ export function AiArticleGenerator({
         </p>
       </CardHeader>
       <CardContent className="space-y-3">
-        <Input
-          type="url"
-          value={url}
-          onChange={(e) => {
-            setUrl(e.target.value);
-            setError(null);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !isGenerating && url.trim()) {
-              handleGenerate();
-            }
-          }}
-          placeholder="https://example.com/article"
-          disabled={isGenerating}
-          className="text-sm"
-        />
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground">参照URL</label>
+          <Input
+            type="url"
+            value={url}
+            onChange={(e) => {
+              setUrl(e.target.value);
+              setError(null);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !isGenerating && url.trim()) {
+                handleGenerate();
+              }
+            }}
+            placeholder="https://example.com/article"
+            disabled={isGenerating}
+            className="text-sm"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground">
+            追加条件・指示
+            <span className="ml-1.5 font-normal text-muted-foreground/70">（任意）</span>
+          </label>
+          <Textarea
+            value={additionalPrompt}
+            onChange={(e) => setAdditionalPrompt(e.target.value)}
+            placeholder={"例:\n・対象読者は小学校の先生\n・導入方法を重点的に書いて\n・箇条書きで要点をまとめて"}
+            disabled={isGenerating}
+            rows={3}
+            className="text-sm resize-none"
+          />
+        </div>
 
         {error && (
           <div className="flex items-start gap-2 p-3 rounded-md bg-destructive/10 text-destructive">

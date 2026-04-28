@@ -148,6 +148,7 @@ export function contentToBlocks(content: string): ContentBlock[] {
     // 番号付きリスト 1. 2. ...
     const orderedMatch = trimmed.match(/^(\d+)\.\s+(.*)$/);
     if (orderedMatch) {
+      const start = Math.max(1, Number(orderedMatch[1]));
       const items: string[] = [];
       while (i < lines.length) {
         const m = lines[i].trim().match(/^\d+\.\s+(.*)$/);
@@ -163,6 +164,7 @@ export function contentToBlocks(content: string): ContentBlock[] {
         type: "numberedList",
         content: "",
         items: items.length > 0 ? items : [""],
+        start,
       });
       continue;
     }
@@ -222,7 +224,7 @@ export function blocksToMarkdown(blocks: ContentBlock[]): string {
         block.items?.forEach((item) => parts.push(`- ${item}`));
         break;
       case "numberedList":
-        block.items?.forEach((item, i) => parts.push(`${i + 1}. ${item}`));
+        block.items?.forEach((item, i) => parts.push(`${(block.start ?? 1) + i}. ${item}`));
         break;
       case "image":
         if (block.url) parts.push(`![${block.caption || "画像"}](${block.url})`);

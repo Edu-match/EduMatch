@@ -12,6 +12,7 @@ import { Share2, Camera, Loader2, ArrowLeft, Eye, Award, Info } from 'lucide-rea
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
 import { CertificatePreview } from '@/components/ai-kentei/certificate-preview'
+import { CertificateDownloadButton } from '@/components/ai-kentei/certificate-download-button'
 import { createSupabaseBrowserClient } from '@/utils/supabase/client'
 
 interface CertificateData {
@@ -444,6 +445,11 @@ export default function CertificatePage({ params }: { params: Promise<{ sessionI
                   </Button>
                 ) : (
                   <div className="space-y-3">
+                    <CertificateDownloadButton
+                      targetId="ai-kentei-certificate-canvas"
+                      fileName={`ai-kentei-certificate-${certificateId}.png`}
+                      className="w-full"
+                    />
                     {publicSharingEnabled ? (
                       <>
                         <Button onClick={handleShare} className="w-full" size="lg">
@@ -500,14 +506,16 @@ export default function CertificatePage({ params }: { params: Promise<{ sessionI
 
             <div className="space-y-4 min-w-0 lg:sticky lg:top-24">
               <h3 className="text-lg font-semibold text-foreground">プレビュー</h3>
-              <CertificatePreview
-                name={resolvedName || 'お名前'}
-                photoUrl={effectivePhotoUrl}
-                score={certificateData.score}
-                totalQuestions={certificateData.totalQuestions}
-                date={new Date(certificateData.passedAt)}
-                certificateId={certificateId}
-              />
+              <div id="ai-kentei-certificate-canvas">
+                <CertificatePreview
+                  name={resolvedName || 'お名前'}
+                  photoUrl={effectivePhotoUrl}
+                  score={certificateData.score}
+                  totalQuestions={certificateData.totalQuestions}
+                  date={new Date(certificateData.passedAt)}
+                  certificateId={certificateId}
+                />
+              </div>
             </div>
           </div>
         </div>

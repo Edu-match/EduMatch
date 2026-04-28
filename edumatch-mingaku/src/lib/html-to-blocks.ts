@@ -72,12 +72,14 @@ export function htmlToBlocks(html: string): ContentBlock[] {
         const olItems = Array.from(el.querySelectorAll(":scope > li")).map((li) =>
           getTextContent(li)
         );
+        const startAttr = Number(el.getAttribute("start") || "1");
         return [
           {
             id: generateId(),
             type: "numberedList",
             content: "",
             items: olItems.length > 0 ? olItems : [""],
+            start: Number.isFinite(startAttr) && startAttr > 0 ? startAttr : 1,
           },
         ];
       case "blockquote":
