@@ -299,7 +299,6 @@ export async function ProviderDashboard({
                     AIチャット管理
                   </Link>
                   <Link
-<<<<<<< HEAD
                     href="/admin/knowledge"
                     className="flex flex-col items-center gap-2 rounded-xl border bg-muted/30 p-4 text-center text-sm font-medium hover:bg-muted/60 transition-colors"
                   >
@@ -307,8 +306,6 @@ export async function ProviderDashboard({
                     ナレッジ管理
                   </Link>
                   <Link
-=======
->>>>>>> 0172861 (feat(admin): AIチャット管理画面をシステムプロンプト管理＋ナレッジ文書の2セクション構成に改修)
                     href="/admin/activity-log"
                     className="flex flex-col items-center gap-2 rounded-xl border bg-muted/30 p-4 text-center text-sm font-medium hover:bg-muted/60 transition-colors"
                   >
