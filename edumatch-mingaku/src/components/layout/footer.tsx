@@ -9,6 +9,7 @@ export function Footer() {
       { href: "/articles", label: "記事一覧" },
       { href: "/services", label: "サービス一覧" },
       { href: "/events", label: "セミナー・イベント情報" },
+      { href: "/forum", label: "井戸端会議" },
     ],
     company: [
       { href: "/about", label: "運営について" },

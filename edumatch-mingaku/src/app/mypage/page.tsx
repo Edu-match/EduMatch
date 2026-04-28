@@ -11,13 +11,11 @@ import {
   ArrowRight,
   Eye,
   Heart,
-  Bot,
   User,
   ChevronRight,
   Award,
 } from "lucide-react";
 import { AiKenteiCertificatesCompact } from "@/components/ai-kentei/certificates-compact";
-import { ChatHistoryCompact } from "@/components/dashboard/chat-history-compact";
 import { requireAuth, getCurrentProfile } from "@/lib/auth";
 import { getRecentViewHistory } from "@/app/_actions";
 import { RequestListCompact } from "@/components/dashboard/request-list-compact";
@@ -239,21 +237,6 @@ export default async function MyPage() {
             </CardContent>
           </Card>
 
-          {/* AIチャット履歴 */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bot className="h-5 w-5" />
-                AIチャット履歴
-              </CardTitle>
-              <p className="text-xs text-muted-foreground">
-                過去の会話を確認・削除できます
-              </p>
-            </CardHeader>
-            <CardContent>
-              <ChatHistoryCompact />
-            </CardContent>
-          </Card>
         </div>
 
         {/* サイドバー */}

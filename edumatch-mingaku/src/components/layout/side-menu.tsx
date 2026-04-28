@@ -15,6 +15,8 @@ import {
   ShieldCheck,
   Award,
   ListChecks,
+  MessageCircle,
+  BookOpen,
 } from "lucide-react";
 
 /** 一般ユーザー向けメニュー（全員閲覧用） */
@@ -22,6 +24,7 @@ const generalItems = [
   { href: "/", label: "ホーム", icon: Home },
   { href: "/services", label: "サービス一覧", icon: Search },
   { href: "/articles", label: "記事一覧", icon: Newspaper },
+  { href: "/forum", label: "井戸端会議", icon: MessageCircle },
   { href: "/events", label: "セミナー・イベント情報", icon: Calendar },
   { href: "/companies", label: "掲載企業一覧", icon: Building2 },
   { href: "/compare", label: "サービス比較", icon: Scale },
@@ -34,10 +37,12 @@ const bottomItems = [
   { href: "/articles/create", label: "記事を投稿", icon: PenSquare, roles: ["PROVIDER", "ADMIN"] },
   { href: "/services/create", label: "サービスを投稿", icon: PenSquare, roles: ["PROVIDER", "ADMIN"] },
   { href: "/admin/approvals", label: "承認キュー", icon: FileText, roles: ["ADMIN"] },
+  { href: "/admin/forum", label: "井戸端会議を管理", icon: MessageCircle, roles: ["ADMIN"] },
   { href: "/admin/site-updates", label: "運営記事を書く", icon: PenSquare, roles: ["ADMIN"] },
   { href: "/admin/events", label: "セミナー・イベントを管理", icon: Calendar, roles: ["ADMIN"] },
   { href: "/admin/pages", label: "固定ページ・表示設定", icon: FileText, roles: ["ADMIN"] },
   { href: "/admin/ai-kentei/questions", label: "AI検定の問題を管理", icon: ListChecks, roles: ["ADMIN"] },
+  { href: "/dashboard/admin/knowledge", label: "ナレッジ文書管理", icon: BookOpen, roles: ["ADMIN"] },
 ];
 
 type MenuItem = (typeof generalItems)[number] | (typeof bottomItems)[number];

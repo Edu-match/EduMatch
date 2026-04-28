@@ -34,10 +34,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { RecentViewItem } from "@/app/_actions/view-history";
+import { useAiPanel } from "@/components/layout/ai-panel-context";
 
-const CONTEXT_MAX = 1;
-const CHAT_WIDTH = 420;
-const CHAT_HEIGHT = 700;
 const AI_NAV_DISCLAIMER_PATH = "/help/ai-navigator-disclaimer";
 const CHAT_USAGE_LIMIT_PATH = "/help/chat-usage-limit";
 
@@ -46,6 +44,14 @@ type ChatMsg = {
   role: "user" | "assistant";
   content: string;
   streaming?: boolean;
+  ragKnowledgeHits?: number;
+  siteContextHits?: number;
+  ragDocRefs?: { title: string; url: string | null }[];
+  yesNo?: {
+    question: string;
+    articleId: string;
+    answered?: "yes" | "no";
+  };
 };
 
 type ContextItem = {
@@ -59,9 +65,50 @@ type PageContext = {
   type: "article" | "service";
 } | null;
 
-type View = "chat" | "context-select" | "history-select";
+type View = "chat" | "context-select" | "history-select" | "chat-history";
 
 export type ChatMode = "navigator" | "debate" | "discussion";
+
+type ChatSessionMessage = {
+  id?: string;
+  role: "user" | "assistant";
+  content: string;
+};
+
+type ChatSession = {
+  id: string;
+  title: string;
+  mode: ChatMode;
+  messages: unknown[];
+  created_at: string;
+  updated_at: string;
+};
+
+type AssistantPrompt = {
+  prompt: string;
+  choices: string[];
+  allowMultiple: boolean;
+};
+
+function parseRagDocRefsHeader(raw: string | null): { title: string; url: string | null }[] {
+  if (!raw) return [];
+  try {
+    const decoded = decodeURIComponent(raw);
+    const parsed = JSON.parse(decoded) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter(
+        (x): x is { title: string; url: string | null } =>
+          x != null &&
+          typeof x === "object" &&
+          typeof (x as { title?: string }).title === "string" &&
+          ((x as { url?: unknown }).url === null || typeof (x as { url?: unknown }).url === "string")
+      )
+      .slice(0, 8);
+  } catch {
+    return [];
+  }
+}
 
 const MODE_LABELS: Record<ChatMode, string> = {
   navigator: "ナビゲーターモード",
@@ -99,6 +146,10 @@ const EXAMPLE_QUESTIONS: Record<ChatMode, string[]> = {
   ],
 };
 
+// -----------------------------------------------------------------------
+// Helpers
+// -----------------------------------------------------------------------
+
 function formatResetIn(resetAt: string | null): string {
   if (!resetAt) return "";
   const now = Date.now();
@@ -109,6 +160,69 @@ function formatResetIn(resetAt: string | null): string {
   if (hours > 0) return `あと${hours}時間${minutes}分で0にリセット`;
   if (minutes > 0) return `あと${minutes}分で0にリセット`;
   return "まもなく0にリセット";
+}
+
+function formatSessionDate(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function parseSessionMessages(raw: unknown[]): ChatSessionMessage[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(
+    (m): m is ChatSessionMessage =>
+      m != null &&
+      typeof m === "object" &&
+      ((m as { role?: string }).role === "user" || (m as { role?: string }).role === "assistant") &&
+      typeof (m as { content?: string }).content === "string"
+  );
+}
+
+function parseAssistantPrompt(content: string): { body: string; prompt: AssistantPrompt | null } {
+  const match = content.match(/\[\[ASK\]\]([\s\S]*?)\[\[\/ASK\]\]/);
+  if (!match) return { body: content, prompt: null };
+
+  const askBlock = match[1].trim();
+  const lines = askBlock.split("\n").map((l) => l.trim()).filter(Boolean);
+  if (lines.length === 0) return { body: content.replace(match[0], "").trim(), prompt: null };
+
+  let promptText = "";
+  const choices: string[] = [];
+  let allowMultiple = false;
+  for (const line of lines) {
+    if (line.startsWith("質問:")) {
+      promptText = line.replace(/^質問:\s*/, "").trim();
+      continue;
+    }
+    if (line.startsWith("複数選択:")) {
+      const v = line.replace(/^複数選択:\s*/, "").trim();
+      allowMultiple = ["はい", "true", "yes", "y", "可"].includes(v.toLowerCase());
+      continue;
+    }
+    if (/^[-*]\s+/.test(line)) {
+      const choice = line.replace(/^[-*]\s+/, "").trim();
+      if (choice) choices.push(choice);
+    }
+  }
+
+  const cleaned = content.replace(match[0], "").trim();
+  const fallbackPrompt = promptText || lines[0] || "";
+  if (!fallbackPrompt) return { body: cleaned, prompt: null };
+
+  return {
+    body: cleaned,
+    prompt: {
+      prompt: fallbackPrompt,
+      choices: (choices.includes("その他") ? choices : [...choices, "その他"]).slice(0, 6),
+      allowMultiple,
+    },
+  };
 }
 
 function ModeSelectScreen({ onSelect }: { onSelect: (mode: ChatMode) => void }) {
@@ -152,13 +266,11 @@ function AgreementScreen({
   const [checked, setChecked] = useState(false);
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-      {/* タイトル */}
       <div className="px-4 pt-4 pb-2 border-b shrink-0">
         <p className="text-sm font-semibold">AIナビゲーターご利用上の留意点</p>
         <p className="text-xs text-muted-foreground mt-0.5">以下をご確認のうえ、同意してからご利用ください。</p>
       </div>
 
-      {/* 留意点本文（スクロール可能） */}
       <div className="flex-1 overflow-y-auto px-4 py-3 min-h-0 text-sm text-muted-foreground space-y-3 leading-relaxed">
         <p>
           本サイトのAIナビゲーターは、エデュマッチが提供する教育サービス・ICTツール等の情報検索・相談支援の補助機能です。
@@ -187,7 +299,6 @@ function AgreementScreen({
         </div>
       </div>
 
-      {/* チェックボックス＋同意ボタン */}
       <div className="border-t px-4 py-3 shrink-0 space-y-3">
         <label className="flex items-start gap-2 cursor-pointer select-none">
           <input
@@ -299,9 +410,14 @@ function MarkdownContent({ text }: { text: string }) {
   );
 }
 
-export function ChatbotWidget() {
+// -----------------------------------------------------------------------
+// Main component
+// -----------------------------------------------------------------------
+
+export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
   const pathname = usePathname();
-  const [open, setOpen] = useState(false);
+  const { setOpen, setMobileOpen, pendingActivation, clearActivation } = useAiPanel();
+
   const [view, setView] = useState<View>("chat");
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMsg[]>([]);
@@ -318,12 +434,25 @@ export function ChatbotWidget() {
   const [hasAgreed, setHasAgreed] = useState(false);
   const [agreeLoading, setAgreeLoading] = useState(false);
   const [chatMode, setChatMode] = useState<ChatMode | null>(null);
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
+  const [chatHistoryLoading, setChatHistoryLoading] = useState(false);
+  const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
+  const [selectedAskChoices, setSelectedAskChoices] = useState<Record<string, string[]>>({});
+  const [openedRagRefsMessageId, setOpenedRagRefsMessageId] = useState<string | null>(null);
 
   const listRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const pageContext = useMemo(() => parsePageContext(pathname), [pathname]);
+
+  const handleClose = useCallback(() => {
+    if (isMobile) {
+      setMobileOpen(false);
+    } else {
+      setOpen(false);
+    }
+  }, [isMobile, setOpen, setMobileOpen]);
 
   const fetchAuth = useCallback(() => {
     fetch("/api/auth/me", { credentials: "include" })
@@ -345,25 +474,6 @@ export function ChatbotWidget() {
   }, [fetchAuth]);
 
   useEffect(() => {
-    if (open) fetchAuth();
-  }, [open, fetchAuth]);
-
-  const scrollToBottom = useCallback(() => {
-    requestAnimationFrame(() => {
-      listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
-    });
-  }, []);
-
-  useEffect(() => {
-    if (open) scrollToBottom();
-  }, [open, messages.length, scrollToBottom]);
-
-  useEffect(() => {
-    if (open && view === "chat" && textareaRef.current) textareaRef.current.focus();
-  }, [open, view]);
-
-  useEffect(() => {
-    if (!open || !userId) return;
     fetch("/api/chat")
       .then((r) => r.json())
       .then((d) => {
@@ -372,30 +482,60 @@ export function ChatbotWidget() {
         }
       })
       .catch(() => {});
-  }, [open, userId, messages.length]);
+  }, [messages.length]);
 
+  // 「AIチャットを開く」ボタンからも開けるようにする
   useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
+    const handler = () => {
+      if (isMobile) setMobileOpen(true);
+      else setOpen(true);
     };
-  }, [open]);
-
-  // 問い合わせフォーム等の「AIチャットを開く」ボタンから開けるようにする
-  useEffect(() => {
-    const handler = () => setOpen(true);
     window.addEventListener("open-ai-chat", handler);
     return () => window.removeEventListener("open-ai-chat", handler);
+  }, [isMobile, setOpen, setMobileOpen]);
+
+  // 記事読了イベントを受け取り、YES/NO問いかけを表示
+  useEffect(() => {
+    if (!pendingActivation) return;
+    if (!hasAgreed || !chatMode) return;
+
+    const yesNoMsg: ChatMsg = {
+      id: `yn-${Date.now()}`,
+      role: "assistant",
+      content: pendingActivation.question,
+      yesNo: {
+        question: pendingActivation.question,
+        articleId: pendingActivation.articleId,
+      },
+    };
+
+    setContextItems([
+      {
+        id: pendingActivation.articleId,
+        type: "article",
+        title: pendingActivation.articleTitle,
+      },
+    ]);
+    setMessages((prev) => {
+      if (prev.some((m) => m.yesNo?.articleId === pendingActivation.articleId)) return prev;
+      return [...prev, yesNoMsg];
+    });
+    clearActivation();
+  }, [pendingActivation, hasAgreed, chatMode, clearActivation]);
+
+  const scrollToBottom = useCallback(() => {
+    requestAnimationFrame(() => {
+      listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
+    });
   }, []);
 
-  const welcomeMessage =
-    chatMode === "navigator"
-      ? "今日は何を話しましょうか？教育ICTやサービスについて何でもお聞きください。"
-      : chatMode === "debate"
-        ? "賛成・反対の立場で議論しましょう。あなたの立場と理由を教えてください。"
-        : "テーマについて深く議論しましょう。議論したいテーマや論点を教えてください。";
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages.length, scrollToBottom]);
+
+  useEffect(() => {
+    if (view === "chat" && textareaRef.current) textareaRef.current.focus();
+  }, [view]);
 
   async function handleAgree() {
     setAgreeLoading(true);
@@ -495,6 +635,16 @@ export function ChatbotWidget() {
     setMessages([]);
   }
 
+  function toggleAskChoice(messageId: string, choice: string) {
+    setSelectedAskChoices((prev) => {
+      const current = prev[messageId] ?? [];
+      if (current.includes(choice)) {
+        return { ...prev, [messageId]: current.filter((c) => c !== choice) };
+      }
+      return { ...prev, [messageId]: [...current, choice] };
+    });
+  }
+
   async function saveSession(finalMessages: ChatMsg[]) {
     if (!userId || finalMessages.length === 0) return;
     const userMessages = finalMessages.filter((m) => m.role === "user");
@@ -504,11 +654,13 @@ export function ChatbotWidget() {
       id: sessionId ?? undefined,
       title,
       mode: chatMode ?? "navigator",
-      messages: finalMessages.filter((m) => !m.streaming).map((m) => ({
-        id: m.id,
-        role: m.role,
-        content: m.content,
-      })),
+      messages: finalMessages
+        .filter((m) => !m.streaming && !m.yesNo)
+        .map((m) => ({
+          id: m.id,
+          role: m.role,
+          content: m.content,
+        })),
     };
     try {
       const res = await fetch("/api/chat/sessions", {
@@ -523,6 +675,74 @@ export function ChatbotWidget() {
     } catch {
       // セッション保存エラーはサイレントに無視
     }
+  }
+
+  async function fetchChatSessions() {
+    if (!userId) return;
+    setChatHistoryLoading(true);
+    try {
+      const res = await fetch("/api/chat/sessions");
+      if (!res.ok) return;
+      const data = await res.json();
+      setChatSessions(data.sessions ?? []);
+    } catch {
+      // 履歴取得失敗は無視
+    } finally {
+      setChatHistoryLoading(false);
+    }
+  }
+
+  async function openChatHistory() {
+    await fetchChatSessions();
+    setView("chat-history");
+  }
+
+  function loadChatSession(session: ChatSession) {
+    const parsed = parseSessionMessages(session.messages as unknown[]);
+    setMessages(
+      parsed.map((m, idx) => ({
+        id: m.id ?? `${session.id}-${idx}`,
+        role: m.role,
+        content: m.content,
+      }))
+    );
+    setChatMode(
+      session.mode === "navigator" || session.mode === "debate" || session.mode === "discussion"
+        ? session.mode
+        : "navigator"
+    );
+    setSessionId(session.id);
+    setView("chat");
+  }
+
+  async function deleteChatSession(id: string) {
+    if (deletingSessionId) return;
+    setDeletingSessionId(id);
+    try {
+      const res = await fetch(`/api/chat/sessions/${id}`, { method: "DELETE" });
+      if (!res.ok) return;
+      setChatSessions((prev) => prev.filter((s) => s.id !== id));
+      if (sessionId === id) {
+        setSessionId(null);
+        setMessages([]);
+      }
+    } catch {
+      // silently ignore
+    } finally {
+      setDeletingSessionId(null);
+    }
+  }
+
+  function answerYesNo(msgId: string, answer: "yes" | "no", _question: string) {
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === msgId && m.yesNo
+          ? { ...m, yesNo: { ...m.yesNo, answered: answer } }
+          : m
+      )
+    );
+    const answerText = answer === "yes" ? "はい、そう思います。" : "いいえ、そうは思いません。";
+    sendMessage(answerText);
   }
 
   async function sendMessage(overrideText?: string, messagesToUse?: ChatMsg[]) {
@@ -540,7 +760,7 @@ export function ChatbotWidget() {
     setIsStreaming(true);
     if (textareaRef.current) textareaRef.current.style.height = "auto";
 
-    const allMessages = [...baseMessages.filter((m) => !m.streaming), userMsg].map((m) => ({ role: m.role, content: m.content }));
+    const allMessages = [...baseMessages.filter((m) => !m.streaming && !m.yesNo), userMsg].map((m) => ({ role: m.role, content: m.content }));
     const ctxPayload = contextItems.length > 0 ? contextItems.map((c) => ({ id: c.id, type: c.type })) : undefined;
     const controller = new AbortController();
     abortRef.current = controller;
@@ -566,6 +786,20 @@ export function ChatbotWidget() {
         }
         setIsStreaming(false);
         return;
+      }
+
+      const ragHits = parseInt(resp.headers.get("X-RAG-Knowledge-Hits") ?? "0", 10);
+      const siteHits = parseInt(resp.headers.get("X-Site-Context-Hits") ?? "0", 10);
+      const ragDocRefs = parseRagDocRefsHeader(resp.headers.get("X-RAG-Doc-Refs"));
+      if (ragHits > 0) {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === botMsgId ? { ...m, ragKnowledgeHits: ragHits, ragDocRefs } : m))
+        );
+      }
+      if (siteHits > 0) {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === botMsgId ? { ...m, siteContextHits: siteHits } : m))
+        );
       }
 
       const reader = resp.body?.getReader();
@@ -620,14 +854,19 @@ export function ChatbotWidget() {
     setView("chat");
     setIsStreaming(false);
     setSessionId(null);
+    setSelectedAskChoices({});
   }
 
-  const panelContent = (
-    <div
-      className="fixed bottom-4 right-4 z-50 flex flex-col overflow-hidden rounded-2xl border bg-background shadow-2xl max-h-[90dvh] max-w-[calc(100vw-2rem)]"
-      style={{ width: CHAT_WIDTH, height: CHAT_HEIGHT }}
-    >
-      {/* Header */}
+  const welcomeMessage =
+    chatMode === "navigator"
+      ? "今日は何を話しましょうか？教育ICTやサービスについて何でもお聞きください。"
+      : chatMode === "debate"
+        ? "賛成・反対の立場で議論しましょう。あなたの立場と理由を教えてください。"
+        : "テーマについて深く議論しましょう。議論したいテーマや論点を教えてください。";
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* ---- Header ---- */}
       <div className="flex items-center gap-2 border-b bg-muted/30 px-3 py-2.5 flex-shrink-0">
         {view !== "chat" && (
           <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 rounded-lg" onClick={() => setView("chat")} aria-label="戻る">
@@ -639,7 +878,13 @@ export function ChatbotWidget() {
         </div>
         <div className="min-w-0 flex-1">
           <div className="text-sm font-semibold truncate leading-tight">
-            {view === "chat" ? "AIナビゲーター" : view === "context-select" ? "コンテキスト選択" : "閲覧履歴から選択"}
+            {view === "chat"
+              ? "AIナビゲーター"
+              : view === "context-select"
+                ? "コンテキスト選択"
+                : view === "history-select"
+                  ? "閲覧履歴から選択"
+                  : "過去のチャット履歴"}
           </div>
           {view === "chat" && userId && hasAgreed && chatMode && (
             <DropdownMenu>
@@ -658,9 +903,7 @@ export function ChatbotWidget() {
                   <DropdownMenuItem
                     key={m}
                     onClick={() => {
-                      if (m !== chatMode) {
-                        resetChat();
-                      }
+                      if (m !== chatMode) resetChat();
                       setChatMode(m);
                     }}
                     className={m === chatMode ? "bg-primary/10 font-medium" : ""}
@@ -672,7 +915,20 @@ export function ChatbotWidget() {
             </DropdownMenu>
           )}
         </div>
+
         <div className="flex items-center gap-0.5 shrink-0">
+          {view === "chat" && userId && hasAgreed && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-lg"
+              onClick={openChatHistory}
+              title="過去のチャット履歴"
+              aria-label="過去のチャット履歴"
+            >
+              <History className="h-4 w-4" />
+            </Button>
+          )}
           {view === "chat" && userId && hasAgreed && chatMode && (
             <Button
               variant="ghost"
@@ -690,7 +946,7 @@ export function ChatbotWidget() {
             variant="ghost"
             size="icon"
             className="h-8 w-8 rounded-lg"
-            onClick={() => setOpen(false)}
+            onClick={handleClose}
             aria-label="閉じる"
           >
             <X className="h-4 w-4" />
@@ -698,8 +954,12 @@ export function ChatbotWidget() {
         </div>
       </div>
 
+      {/* ---- Unauthenticated ---- */}
       {view === "chat" && !userId && (
         <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 text-center min-h-0">
+          <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 mb-4">
+            <Bot className="h-6 w-6 text-primary" />
+          </div>
           <p className="text-sm text-muted-foreground mb-4">
             AIチャットは会員限定です。<br />ログインまたは会員登録するとご利用いただけます。
           </p>
@@ -709,6 +969,7 @@ export function ChatbotWidget() {
         </div>
       )}
 
+      {/* ---- Agreement ---- */}
       {view === "chat" && userId && !hasAgreed && (
         <AgreementScreen
           onAgree={() => handleAgree()}
@@ -717,10 +978,12 @@ export function ChatbotWidget() {
         />
       )}
 
+      {/* ---- Mode select ---- */}
       {view === "chat" && userId && hasAgreed && !chatMode && (
         <ModeSelectScreen onSelect={(mode) => setChatMode(mode)} />
       )}
 
+      {/* ---- Chat view ---- */}
       {view === "chat" && userId && hasAgreed && chatMode && (
         <>
           <div ref={listRef} className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 min-h-0">
@@ -749,9 +1012,36 @@ export function ChatbotWidget() {
                 </>
               )}
 
-              {messages.map((m) => (
+              {messages.map((m) => {
+                const parsed = m.role === "assistant" ? parseAssistantPrompt(m.content) : null;
+                const assistantPrompt = parsed?.prompt ?? null;
+                const assistantBody = m.role === "assistant" ? (parsed?.body ?? "") : "";
+                return (
                 <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start items-start gap-0"}`}>
-                  {m.role === "user" && editingMessageId === m.id ? (
+                  {/* YES/NO question card */}
+                  {m.yesNo && !m.yesNo.answered ? (
+                    <div className="max-w-[92%] w-full flex flex-col gap-3 rounded-2xl rounded-tl-md rounded-bl-none bg-muted/80 px-4 py-3 shadow-sm">
+                      <div className="text-sm leading-relaxed">{m.content}</div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 border-green-500/50 text-green-700 hover:bg-green-50 hover:border-green-500"
+                          onClick={() => answerYesNo(m.id, "yes", m.yesNo!.question)}
+                        >
+                          👍 はい
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 border-red-400/50 text-red-700 hover:bg-red-50 hover:border-red-400"
+                          onClick={() => answerYesNo(m.id, "no", m.yesNo!.question)}
+                        >
+                          👎 いいえ
+                        </Button>
+                      </div>
+                    </div>
+                  ) : m.role === "user" && editingMessageId === m.id ? (
                     <div className="max-w-[88%] w-full flex flex-col gap-2 rounded-2xl rounded-tr-md bg-primary/10 border border-primary/20 p-3">
                       <textarea
                         value={editDraft}
@@ -771,51 +1061,155 @@ export function ChatbotWidget() {
                     </div>
                   ) : (
                     <>
-                      {m.role === "assistant" && (
+                      {m.role === "assistant" && !m.yesNo && (
                         <div className="w-3 h-3 shrink-0 mt-5 rounded-bl-full bg-muted/80" aria-hidden />
                       )}
                       <div
                         className={`max-w-[88%] px-4 py-2.5 rounded-2xl ${
                           m.role === "user"
                             ? "bg-primary text-primary-foreground rounded-tr-md shadow-sm group relative"
-                            : "rounded-tl-md rounded-bl-none shadow-sm bg-muted/80 text-foreground"
+                            : m.yesNo?.answered
+                              ? "rounded-tl-md rounded-bl-none shadow-sm bg-muted/80 text-foreground opacity-60"
+                              : "rounded-tl-md rounded-bl-none shadow-sm bg-muted/80 text-foreground"
                         }`}
                       >
-                      {m.role === "assistant" ? (
-                        m.content ? (
-                          <MarkdownContent text={m.content} />
-                        ) : m.streaming ? (
-                          <div className="flex items-center gap-1.5 py-0.5">
-                            <span className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce [animation-delay:0ms]" />
-                            <span className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce [animation-delay:150ms]" />
-                            <span className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce [animation-delay:300ms]" />
-                          </div>
-                        ) : null
-                      ) : (
-                        <>
-                          <div className="text-sm leading-relaxed whitespace-pre-wrap pr-8">{m.content}</div>
-                          {!isStreaming && (
-                            <button
-                              type="button"
-                              onClick={() => startEditingMessage(m)}
-                              className="absolute top-2 right-2 p-1 rounded-md opacity-70 hover:opacity-100 hover:bg-primary-foreground/10"
-                              aria-label="編集"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </button>
-                          )}
-                        </>
-                      )}
+                        {m.role === "assistant" ? (
+                          <>
+                            {m.streaming && !m.content && (
+                              <div className="flex items-center gap-1.5 py-0.5">
+                                <span className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce [animation-delay:0ms]" />
+                                <span className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce [animation-delay:150ms]" />
+                                <span className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce [animation-delay:300ms]" />
+                              </div>
+                            )}
+                            {m.ragKnowledgeHits !== undefined && m.ragKnowledgeHits > 0 && (
+                              <div className="mb-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setOpenedRagRefsMessageId((prev) => (prev === m.id ? null : m.id))
+                                  }
+                                  className="flex items-center gap-1 text-[11px] text-indigo-600 dark:text-indigo-400 font-medium hover:underline"
+                                >
+                                  <BookOpen className="h-3 w-3 shrink-0" />
+                                  <span>
+                                    {m.streaming
+                                      ? "公的文書を閲覧しています..."
+                                      : `公的文書を参照して回答 (${m.ragKnowledgeHits}件)`}
+                                  </span>
+                                </button>
+                                {!m.streaming && openedRagRefsMessageId === m.id && (
+                                  <div className="mt-1 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50/60 dark:bg-indigo-950/30 p-2 space-y-1">
+                                    <p className="text-[11px] font-medium text-indigo-700 dark:text-indigo-300">参照した文書</p>
+                                    {(m.ragDocRefs ?? []).length === 0 ? (
+                                      <p className="text-[11px] text-muted-foreground">文書名を取得できませんでした</p>
+                                    ) : (
+                                      (m.ragDocRefs ?? []).map((ref) => (
+                                        <div key={ref.title} className="text-[11px]">
+                                          <p className="font-medium text-foreground">{ref.title}</p>
+                                          {ref.url ? (
+                                            <Link
+                                              href={ref.url}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="text-indigo-600 dark:text-indigo-400 underline hover:no-underline break-all"
+                                            >
+                                              添付ファイル/リンクを開く
+                                            </Link>
+                                          ) : (
+                                            <p className="text-muted-foreground">リンク未登録</p>
+                                          )}
+                                        </div>
+                                      ))
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            {m.siteContextHits !== undefined && m.siteContextHits > 0 && (
+                              <div className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 mb-1.5 font-medium">
+                                <Paperclip className="h-3 w-3 shrink-0" />
+                                <span>
+                                  {m.streaming
+                                    ? "関連する記事・サービスを閲覧しています..."
+                                    : `記事・サービスを参照して回答 (${m.siteContextHits}件)`}
+                                </span>
+                              </div>
+                            )}
+                            {assistantBody ? <MarkdownContent text={assistantBody} /> : null}
+                            {assistantPrompt && !m.streaming && (
+                              <div className="mt-2.5 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2">
+                                <p className="text-xs font-medium text-primary mb-2">
+                                  {assistantPrompt.prompt}
+                                  <span className="ml-1 text-[10px] text-muted-foreground">
+                                    {assistantPrompt.allowMultiple ? "（複数選択可）" : "（1つ選択）"}
+                                  </span>
+                                </p>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {assistantPrompt.choices.map((choice) => (
+                                    <button
+                                      key={choice}
+                                      type="button"
+                                      onClick={() => {
+                                        if (assistantPrompt.allowMultiple) {
+                                          toggleAskChoice(m.id, choice);
+                                        } else {
+                                          setInput(choice);
+                                        }
+                                      }}
+                                      className={`rounded-full border px-2.5 py-1 text-xs ${
+                                        assistantPrompt.allowMultiple && (selectedAskChoices[m.id] ?? []).includes(choice)
+                                          ? "border-primary bg-primary/15"
+                                          : "border-primary/30 bg-background hover:bg-primary/10"
+                                      }`}
+                                    >
+                                      {choice}
+                                    </button>
+                                  ))}
+                                </div>
+                                {assistantPrompt.allowMultiple && (
+                                  <div className="mt-2 flex justify-end">
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-7 text-xs"
+                                      disabled={(selectedAskChoices[m.id] ?? []).length === 0}
+                                      onClick={() => setInput((selectedAskChoices[m.id] ?? []).join("、"))}
+                                    >
+                                      選択を入力欄に反映
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <div className="text-sm leading-relaxed whitespace-pre-wrap pr-8">{m.content}</div>
+                            {!isStreaming && (
+                              <button
+                                type="button"
+                                onClick={() => startEditingMessage(m)}
+                                className="absolute top-2 right-2 p-1 rounded-md opacity-70 hover:opacity-100 hover:bg-primary-foreground/10"
+                                aria-label="編集"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </>
+                        )}
                       </div>
                     </>
                   )}
                 </div>
-              ))}
+              );
+              })}
             </div>
           </div>
 
+          {/* ---- Input area ---- */}
           <div className="border-t px-3 pt-2 pb-3 flex-shrink-0 bg-muted/20">
-            {/* 回答に含めるコンテンツ（わかりやすいUI） */}
             <div className="mb-2">
               <p className="text-[11px] text-muted-foreground mb-1.5">回答に含める記事・サービス</p>
               {contextItems.length > 0 ? (
@@ -891,7 +1285,6 @@ export function ChatbotWidget() {
               )}
             </div>
 
-            {/* 入力行：テキストエリア / 送信ボタン */}
             <div className="flex items-end gap-2">
               <textarea
                 ref={textareaRef}
@@ -915,7 +1308,6 @@ export function ChatbotWidget() {
               </Button>
             </div>
 
-            {/* フッター：使用回数 + 免責リンク */}
             <div className="flex items-center justify-between mt-2">
               <p className="text-[11px] text-muted-foreground">
                 AIは間違えることもあります。
@@ -939,6 +1331,7 @@ export function ChatbotWidget() {
         </>
       )}
 
+      {/* ---- Context-select view ---- */}
       {view === "context-select" && (
         <div className="flex-1 overflow-y-auto px-4 py-4">
           <p className="text-sm text-muted-foreground mb-4">特定のコンテンツに基づいて質問する場合は、以下から1件選択してください。</p>
@@ -993,6 +1386,7 @@ export function ChatbotWidget() {
         </div>
       )}
 
+      {/* ---- History-select view ---- */}
       {view === "history-select" && (
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="px-4 pt-3 pb-2 flex-shrink-0">
@@ -1040,36 +1434,64 @@ export function ChatbotWidget() {
         </div>
       )}
 
-    </div>
-  );
-
-  return (
-    <>
-      {open ? (
-        panelContent
-      ) : (
-        <div className="fixed bottom-5 right-5 z-50 flex flex-col items-center gap-1">
-          <Button
-            onClick={() => setOpen(true)}
-            className="h-20 w-20 rounded-full shadow-xl hover:shadow-2xl transition-all hover:scale-110 bg-orange-500 hover:bg-orange-400 border-4 border-orange-300 p-0 flex items-center justify-center overflow-visible"
-            aria-label="AIナビゲーターを開く"
-            size="icon"
-          >
-            <span className="scale-150 inline-flex">
-              <Bot className="h-16 w-16 text-white" strokeWidth={2} />
-            </span>
-          </Button>
-          <span className="text-xs font-semibold text-orange-600 hidden sm:inline bg-white/90 px-2 py-1 rounded-full shadow-sm">AIナビゲーター</span>
-          <Link
-            href={AI_NAV_DISCLAIMER_PATH}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[10px] text-muted-foreground hover:text-foreground underline hidden sm:inline"
-          >
-            利用上の注意
-          </Link>
+      {view === "chat-history" && (
+        <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+          <div className="px-4 pt-3 pb-2 flex-shrink-0">
+            <p className="text-xs text-muted-foreground">タップすると会話を再開できます</p>
+          </div>
+          <div className="flex-1 overflow-y-auto px-4 pb-3 min-h-0">
+            {chatHistoryLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : chatSessions.length === 0 ? (
+              <div className="text-sm text-muted-foreground text-center py-8">まだチャット履歴がありません</div>
+            ) : (
+              <div className="space-y-2">
+                {chatSessions.map((session) => {
+                  const count = parseSessionMessages(session.messages as unknown[]).filter((x) => x.role === "user").length;
+                  return (
+                    <div key={session.id} className="rounded-lg border bg-card">
+                      <button
+                        type="button"
+                        onClick={() => loadChatSession(session)}
+                        className="w-full text-left p-3 hover:bg-muted/30 transition-colors"
+                      >
+                        <p className="text-sm font-medium truncate">{session.title || "（タイトルなし）"}</p>
+                        <p className="text-[11px] text-muted-foreground mt-1">
+                          {count}問答 ・ {formatSessionDate(session.created_at)}
+                        </p>
+                      </button>
+                      <div className="border-t px-3 py-2 flex justify-end">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs text-muted-foreground hover:text-destructive"
+                          onClick={() => deleteChatSession(session.id)}
+                          disabled={deletingSessionId === session.id}
+                        >
+                          {deletingSessionId === session.id ? (
+                            <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3.5 w-3.5 mr-1" />
+                          )}
+                          削除
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          <div className="border-t p-3 flex-shrink-0">
+            <Button variant="outline" className="w-full text-sm" onClick={() => setView("chat")}>
+              チャットに戻る
+            </Button>
+          </div>
         </div>
       )}
-    </>
+    </div>
   );
 }

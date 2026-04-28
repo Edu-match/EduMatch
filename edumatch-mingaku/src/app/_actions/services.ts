@@ -6,6 +6,7 @@ import { normalizeImageUrl, validateImageUrl } from "@/lib/image-url-utils";
 import { createClient } from "@/utils/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import type { Service, Role } from "@prisma/client";
+import { logActivity } from "./activity-log";
 
 export type ServiceWithProvider = Service & {
   provider: {
@@ -780,7 +781,7 @@ export async function approveService(serviceId: string): Promise<SimpleResult> {
   if (!auth.success) return auth;
 
   try {
-    await prisma.service.update({
+    const service = await prisma.service.update({
       where: { id: serviceId },
       data: {
         status: "APPROVED",
@@ -789,6 +790,16 @@ export async function approveService(serviceId: string): Promise<SimpleResult> {
         rejected_at: null,
         rejection_reason: null,
       },
+      select: { title: true },
+    });
+    const actor = await prisma.profile.findUnique({ where: { id: auth.userId }, select: { name: true } });
+    await logActivity({
+      actorId: auth.userId,
+      actorName: actor?.name ?? "管理者",
+      action: "APPROVE",
+      targetType: "SERVICE",
+      targetId: serviceId,
+      targetTitle: service.title,
     });
     return { success: true };
   } catch (e) {
@@ -805,7 +816,7 @@ export async function rejectService(serviceId: string, reason?: string): Promise
   if (!auth.success) return auth;
 
   try {
-    await prisma.service.update({
+    const service = await prisma.service.update({
       where: { id: serviceId },
       data: {
         status: "REJECTED",
@@ -814,6 +825,17 @@ export async function rejectService(serviceId: string, reason?: string): Promise
         approved_at: null,
         rejection_reason: reason?.slice(0, 500) || null,
       },
+      select: { title: true },
+    });
+    const actor = await prisma.profile.findUnique({ where: { id: auth.userId }, select: { name: true } });
+    await logActivity({
+      actorId: auth.userId,
+      actorName: actor?.name ?? "管理者",
+      action: "REJECT",
+      targetType: "SERVICE",
+      targetId: serviceId,
+      targetTitle: service.title,
+      detail: reason,
     });
     return { success: true };
   } catch (e) {
