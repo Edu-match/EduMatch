@@ -117,7 +117,7 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
                   role="separator"
                   aria-label="AIパネル幅を変更"
                 />
-                <ChatbotWidget />
+                <ChatbotWidget embedded />
               </div>
             ) : (
               <button
@@ -176,7 +176,7 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center justify-center px-4 pt-2 pb-1 shrink-0">
             <div className="w-10 h-1 rounded-full bg-muted-foreground/20" />
           </div>
-          <ChatbotWidget isMobile />
+          <ChatbotWidget embedded isMobile />
         </div>
       </div>
     </div>

@@ -413,11 +413,15 @@ function MarkdownContent({ text }: { text: string }) {
 
 type ChatbotWidgetProps = {
   isMobile?: boolean;
+  embedded?: boolean;
 };
 
-export function ChatbotWidget({ isMobile: _isMobile = false }: ChatbotWidgetProps) {
+export function ChatbotWidget({
+  isMobile: _isMobile = false,
+  embedded = false,
+}: ChatbotWidgetProps) {
   const pathname = usePathname();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(embedded);
   const [view, setView] = useState<View>("chat");
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMsg[]>([]);
@@ -439,6 +443,7 @@ export function ChatbotWidget({ isMobile: _isMobile = false }: ChatbotWidgetProp
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
   const [selectedAskChoices, setSelectedAskChoices] = useState<Record<string, string[]>>({});
   const [openedRagRefsMessageId, setOpenedRagRefsMessageId] = useState<string | null>(null);
+  const isPanelActive = embedded || open;
 
   const listRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -466,8 +471,8 @@ export function ChatbotWidget({ isMobile: _isMobile = false }: ChatbotWidgetProp
   }, [fetchAuth]);
 
   useEffect(() => {
-    if (open) fetchAuth();
-  }, [open, fetchAuth]);
+    if (isPanelActive) fetchAuth();
+  }, [isPanelActive, fetchAuth]);
 
   const scrollToBottom = useCallback(() => {
     requestAnimationFrame(() => {
@@ -476,15 +481,15 @@ export function ChatbotWidget({ isMobile: _isMobile = false }: ChatbotWidgetProp
   }, []);
 
   useEffect(() => {
-    if (open) scrollToBottom();
-  }, [open, messages.length, scrollToBottom]);
+    if (isPanelActive) scrollToBottom();
+  }, [isPanelActive, messages.length, scrollToBottom]);
 
   useEffect(() => {
-    if (open && view === "chat" && textareaRef.current) textareaRef.current.focus();
-  }, [open, view]);
+    if (isPanelActive && view === "chat" && textareaRef.current) textareaRef.current.focus();
+  }, [isPanelActive, view]);
 
   useEffect(() => {
-    if (!open || !userId) return;
+    if (!isPanelActive || !userId) return;
     fetch("/api/chat")
       .then((r) => r.json())
       .then((d) => {
@@ -493,16 +498,16 @@ export function ChatbotWidget({ isMobile: _isMobile = false }: ChatbotWidgetProp
         }
       })
       .catch(() => {});
-  }, [open, userId, messages.length]);
+  }, [isPanelActive, userId, messages.length]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!isPanelActive || embedded) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = prev;
     };
-  }, [open]);
+  }, [isPanelActive, embedded]);
 
   // 問い合わせフォーム等の「AIチャットを開く」ボタンから開けるようにする
   useEffect(() => {
@@ -838,8 +843,12 @@ export function ChatbotWidget({ isMobile: _isMobile = false }: ChatbotWidgetProp
 
   const panelContent = (
     <div
-      className="fixed bottom-4 right-4 z-50 flex flex-col overflow-hidden rounded-2xl border bg-background shadow-2xl max-h-[90dvh] max-w-[calc(100vw-2rem)]"
-      style={{ width: CHAT_WIDTH, height: CHAT_HEIGHT }}
+      className={
+        embedded
+          ? "flex h-full min-h-0 w-full flex-col overflow-hidden bg-background"
+          : "fixed bottom-4 right-4 z-50 flex flex-col overflow-hidden rounded-2xl border bg-background shadow-2xl max-h-[90dvh] max-w-[calc(100vw-2rem)]"
+      }
+      style={embedded ? undefined : { width: CHAT_WIDTH, height: CHAT_HEIGHT }}
     >
       {/* Header */}
       <div className="flex items-center gap-2 border-b bg-muted/30 px-3 py-2.5 flex-shrink-0">
@@ -918,15 +927,17 @@ export function ChatbotWidget({ isMobile: _isMobile = false }: ChatbotWidgetProp
               新規
             </Button>
           )}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 rounded-lg"
-            onClick={() => setOpen(false)}
-            aria-label="閉じる"
-          >
-            <X className="h-4 w-4" />
-          </Button>
+          {!embedded && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-lg"
+              onClick={() => setOpen(false)}
+              aria-label="閉じる"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
 
@@ -1441,7 +1452,9 @@ export function ChatbotWidget({ isMobile: _isMobile = false }: ChatbotWidgetProp
 
   return (
     <>
-      {open ? (
+      {embedded ? (
+        panelContent
+      ) : open ? (
         panelContent
       ) : (
         <div className="fixed bottom-5 right-5 z-50 flex flex-col items-center gap-1">
