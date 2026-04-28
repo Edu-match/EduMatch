@@ -411,7 +411,11 @@ function MarkdownContent({ text }: { text: string }) {
   );
 }
 
-export function ChatbotWidget() {
+type ChatbotWidgetProps = {
+  isMobile?: boolean;
+};
+
+export function ChatbotWidget({ isMobile: _isMobile = false }: ChatbotWidgetProps) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<View>("chat");
