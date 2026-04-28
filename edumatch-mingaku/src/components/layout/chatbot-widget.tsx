@@ -1457,7 +1457,19 @@ export function ChatbotWidget({
       ) : open ? (
         panelContent
       ) : (
-        <div className="fixed bottom-5 right-5 z-50 flex flex-col items-center gap-1">
+        <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end gap-2">
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="group inline-flex items-center gap-1.5 rounded-full border border-orange-200 bg-white/95 px-3 py-1.5 text-[11px] font-semibold text-orange-700 shadow-sm hover:bg-orange-50 transition-colors"
+            aria-label="AIナビゲーターを開く"
+          >
+            <span className="relative inline-flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400/75" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-orange-500" />
+            </span>
+            AIチャット受付中
+          </button>
           <Button
             onClick={() => setOpen(true)}
             className="h-20 w-20 rounded-full shadow-xl hover:shadow-2xl transition-all hover:scale-110 bg-orange-500 hover:bg-orange-400 border-4 border-orange-300 p-0 flex items-center justify-center overflow-visible"
@@ -1468,12 +1480,14 @@ export function ChatbotWidget({
               <Bot className="h-16 w-16 text-white" strokeWidth={2} />
             </span>
           </Button>
-          <span className="text-xs font-semibold text-orange-600 hidden sm:inline bg-white/90 px-2 py-1 rounded-full shadow-sm">AIナビゲーター</span>
+          <span className="text-xs font-semibold text-orange-600 bg-white/90 px-2 py-1 rounded-full shadow-sm">
+            タップしてAIチャットを開く
+          </span>
           <Link
             href={AI_NAV_DISCLAIMER_PATH}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[10px] text-muted-foreground hover:text-foreground underline hidden sm:inline"
+            className="text-[10px] text-muted-foreground hover:text-foreground underline"
           >
             利用上の注意
           </Link>
