@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, BarChart3, Bot, Eye, ExternalLink, EyeOff, Loader2, Pin, PinOff, Plus, Save, Search, Trash2, Zap } from "lucide-react";
+import { ArrowLeft, BarChart3, Bot, Eye, ExternalLink, EyeOff, Loader2, Pencil, Pin, PinOff, Plus, Save, Search, Trash2, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -118,6 +118,113 @@ function CreateRoomDialog({ onCreated }: { onCreated: (room: ForumRoom) => void 
   );
 }
 
+// ─── 部屋編集ダイアログ ───────────────────────────────────
+
+type EditRoomDraft = { description: string; weeklyTopic: string; aiDiscussion: boolean };
+
+function EditRoomDialog({ room, onUpdated }: { room: ForumRoom; onUpdated: (updated: ForumRoom) => void }) {
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [draft, setDraft] = useState<EditRoomDraft>({
+    description: room.description,
+    weeklyTopic: room.weeklyTopic,
+    aiDiscussion: Boolean(room.aiDiscussion),
+  });
+
+  const handleOpen = (next: boolean) => {
+    if (next) {
+      setDraft({ description: room.description, weeklyTopic: room.weeklyTopic, aiDiscussion: Boolean(room.aiDiscussion) });
+    }
+    setOpen(next);
+  };
+
+  const handleSave = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/forum/rooms/${room.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          description: draft.description.trim(),
+          weeklyTopic: draft.weeklyTopic.trim(),
+          aiDiscussion: draft.aiDiscussion,
+        }),
+      });
+      if (res.ok) {
+        onUpdated({ ...room, description: draft.description.trim(), weeklyTopic: draft.weeklyTopic.trim(), aiDiscussion: draft.aiDiscussion });
+        setOpen(false);
+      } else {
+        alert("更新に失敗しました");
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpen}>
+      <DialogTrigger asChild>
+        <Button size="icon" variant="ghost" className="h-7 w-7" title="編集">
+          <Pencil className="h-3.5 w-3.5" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{room.name} を編集</DialogTitle>
+          <DialogDescription>説明・お題・AI設定を変更します</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label>説明文</Label>
+            <Textarea rows={2} value={draft.description} onChange={(e) => setDraft((p) => ({ ...p, description: e.target.value }))} className="resize-none" placeholder="この部屋のテーマを簡潔に" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>今週のお題</Label>
+            <Textarea rows={3} value={draft.weeklyTopic} onChange={(e) => setDraft((p) => ({ ...p, weeklyTopic: e.target.value }))} className="resize-none" placeholder="参加者への問いかけ" />
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setDraft((p) => ({ ...p, aiDiscussion: !p.aiDiscussion }))}
+            className={[
+              "w-full flex items-start gap-3 rounded-xl border p-4 text-left transition-all",
+              draft.aiDiscussion ? "border-violet-300 bg-violet-50" : "border-border bg-muted/20 hover:border-border/80",
+            ].join(" ")}
+          >
+            <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${draft.aiDiscussion ? "border-violet-500 bg-violet-500" : "border-muted-foreground/30"}`}>
+              {draft.aiDiscussion && <span className="block h-2 w-2 rounded-full bg-white" />}
+            </div>
+            <div>
+              <p className="flex items-center gap-1.5 text-sm font-semibold">
+                <Zap className={`h-4 w-4 ${draft.aiDiscussion ? "text-violet-600" : "text-muted-foreground"}`} />
+                AIディスカッション
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground leading-5">
+                投稿があるとAIファシリテーターが自動で返信し、議論を深めます。
+              </p>
+              {draft.aiDiscussion && (
+                <p className="mt-1.5 flex items-center gap-1 text-[11px] font-medium text-violet-700">
+                  <Bot className="h-3 w-3" />有効 — 投稿するとAIが返信します
+                </p>
+              )}
+            </div>
+          </button>
+
+          <div className="flex justify-end gap-2 pt-1">
+            <Button variant="outline" onClick={() => setOpen(false)}>キャンセル</Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1" />}
+              保存する
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── メインクライアントコンポーネント ─────────────────────
 
 export function AdminForumClient() {
@@ -185,6 +292,10 @@ export function AdminForumClient() {
   const handleCreateRoom = (room: ForumRoom) => {
     setRooms((prev) => [...prev, room]);
   };
+
+  const handleUpdateRoom = useCallback((updated: ForumRoom) => {
+    setRooms((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+  }, []);
 
   const handleDeleteRoom = useCallback(async (roomId: string) => {
     if (!window.confirm("部屋を削除します。関連投稿もすべて削除されます。")) return;
@@ -313,7 +424,12 @@ export function AdminForumClient() {
                   <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{room.weeklyTopic}</p>
                   <div className="mt-2 flex items-center justify-between">
                     <Link href={`/forum/${room.id}`} target="_blank" className="text-xs text-primary hover:underline"><ExternalLink className="mr-1 inline h-3 w-3" />表示</Link>
-                    <Button size="sm" variant="ghost" onClick={() => handleDeleteRoom(room.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                    <div className="flex items-center gap-1">
+                      <EditRoomDialog room={room} onUpdated={handleUpdateRoom} />
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDeleteRoom(room.id)}>
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

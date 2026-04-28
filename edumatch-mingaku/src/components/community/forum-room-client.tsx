@@ -878,9 +878,11 @@ export function ForumRoomClient({ room }: { room: ForumRoom }) {
       const aiText = await generate(newPost.id, newPost.body, room.name, room.weeklyTopic, recentContext);
 
       if (aiText) {
-        // AI返信をDBにも保存
+        // AI返信をDBに保存し、返却されたIDで状態を更新
+        let savedReplyId = `ai-r-${Date.now()}`;
+        let savedPostedAt = new Date().toISOString();
         try {
-          await fetch(`/api/forum/posts/${newPost.id}/replies`, {
+          const saveRes = await fetch(`/api/forum/posts/${newPost.id}/replies`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -889,17 +891,22 @@ export function ForumRoomClient({ room }: { room: ForumRoom }) {
               replyBody: aiText,
             }),
           });
+          if (saveRes.ok) {
+            const saveData = await saveRes.json();
+            if (saveData.reply?.id) savedReplyId = saveData.reply.id;
+            if (saveData.reply?.postedAt) savedPostedAt = saveData.reply.postedAt;
+          }
         } catch {
           // 保存失敗しても表示上は反映済み
         }
 
         const aiReply: ForumReply & { isAi: boolean } = {
-          id: `ai-r-${Date.now()}`,
+          id: savedReplyId,
           authorName: "AIファシリテーター",
           authorRole: "専門家",
           body: aiText,
           likeCount: 0,
-          postedAt: new Date().toISOString(),
+          postedAt: savedPostedAt,
           isAi: true,
         };
         setPosts((prev) =>
