@@ -17,10 +17,6 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
   const [resizing, setResizing] = useState(false);
 
   useEffect(() => {
-    setSidebarOpen(!open);
-  }, [open]);
-
-  useEffect(() => {
     if (!resizing) return;
 
     function onMouseMove(e: MouseEvent) {
@@ -60,11 +56,7 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
         <div className="hidden lg:flex flex-col flex-shrink-0 w-10 pt-3 items-center">
           <button
             type="button"
-            onClick={() => {
-              const next = !sidebarOpen;
-              setSidebarOpen(next);
-              setOpen(!next);
-            }}
+            onClick={() => setSidebarOpen((p) => !p)}
             className="h-9 w-9 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors sticky top-[4.5rem]"
             aria-label={sidebarOpen ? "サイドメニューを閉じる" : "サイドメニューを開く"}
           >
@@ -72,27 +64,13 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
           </button>
         </div>
 
-        {/* Left sidebar インライン表示（AIパネルが閉じているときのみ） */}
-        {!open && sidebarOpen && (
+        {/* Left sidebar（AIパネルの開閉と独立して動作） */}
+        {sidebarOpen && (
           <aside className="hidden lg:block lg:w-60 lg:pr-4 flex-shrink-0 pt-10">
             <div className="sticky top-24">
               <SideMenu />
             </div>
           </aside>
-        )}
-
-        {/* Left sidebar オーバーレイ表示（AIパネルが開いているとき） */}
-        {open && sidebarOpen && (
-          <>
-            <div
-              className="hidden lg:block fixed inset-0 z-30"
-              onClick={() => { setSidebarOpen(false); setOpen(true); }}
-              aria-hidden
-            />
-            <div className="hidden lg:block fixed left-10 top-16 z-40 h-[calc(100vh-4rem)] w-60 bg-background border-r shadow-xl overflow-y-auto px-4 pt-10">
-              <SideMenu />
-            </div>
-          </>
         )}
 
         {/* Main content */}

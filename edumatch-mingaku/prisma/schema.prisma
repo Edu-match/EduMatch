@@ -420,3 +420,15 @@ model KnowledgeChunk {
   @@index([document_id])
   @@map("knowledge_chunks")
 }
+
+/// AIモードごとのシステムプロンプト上書き設定（管理画面から編集可）
+model SystemPromptOverride {
+  id         String   @id @default(cuid())
+  /// "navigator" | "debate" | "discussion"
+  mode       String   @unique
+  content    String
+  updated_at DateTime @updatedAt
+  updated_by String?  @db.Uuid
+
+  @@map("system_prompt_overrides")
+}

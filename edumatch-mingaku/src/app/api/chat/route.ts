@@ -164,12 +164,23 @@ function closingRagCitationReminder(items: ChatContextItem[]): string {
 質問が挨拶や無関係な雑談のみのときはこのブロックは無視してよい。`;
 }
 
-function buildSystemPrompt(
+async function getSystemPromptForMode(mode: ChatMode): Promise<string> {
+  try {
+    const override = await prisma.systemPromptOverride.findUnique({ where: { mode } });
+    if (override?.content) return override.content;
+  } catch {
+    // DB unavailable — fall back to hardcoded
+  }
+  return SYSTEM_PROMPTS[mode];
+}
+
+async function buildSystemPrompt(
   mode: ChatMode,
   siteContextItems: ChatContextItem[],
   knowledgeItems: ChatContextItem[]
-): string {
-  const sections: string[] = [SYSTEM_PROMPTS[mode], RAG_AND_PUBLIC_DOC_RULES];
+): Promise<string> {
+  const modePrompt = await getSystemPromptForMode(mode);
+  const sections: string[] = [modePrompt, RAG_AND_PUBLIC_DOC_RULES];
 
   if (siteContextItems.length > 0) {
     const siteText = siteContextItems
@@ -381,7 +392,7 @@ export async function POST(req: NextRequest) {
   );
   const siteContextItems = [...explicitContexts, ...searchResults];
 
-  const systemPrompt = buildSystemPrompt(mode, siteContextItems, knowledgeHits);
+  const systemPrompt = await buildSystemPrompt(mode, siteContextItems, knowledgeHits);
 
   // ─── ユーザーメッセージ変換（最後のユーザー発言をモード別プロンプトに変換） ─
   const trimmedRaw = messages.slice(-20);
