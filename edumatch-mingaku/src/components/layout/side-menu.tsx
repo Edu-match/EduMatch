@@ -15,7 +15,10 @@ import {
   ShieldCheck,
   Award,
   ListChecks,
+  MessageCircle,
   BookOpen,
+  Bot,
+  Activity,
 } from "lucide-react";
 
 /** 一般ユーザー向けメニュー（全員閲覧用） */
@@ -40,6 +43,8 @@ const bottomItems = [
   { href: "/admin/pages", label: "固定ページ・表示設定", icon: FileText, roles: ["ADMIN"] },
   { href: "/admin/ai-kentei/questions", label: "AI検定の問題を管理", icon: ListChecks, roles: ["ADMIN"] },
   { href: "/dashboard/admin/knowledge", label: "ナレッジ文書管理", icon: BookOpen, roles: ["ADMIN"] },
+  { href: "/admin/ai-chat", label: "AIチャット管理", icon: Bot, roles: ["ADMIN"] },
+  { href: "/admin/activity-log", label: "操作ログ", icon: Activity, roles: ["ADMIN"] },
 ];
 
 type MenuItem = (typeof generalItems)[number] | (typeof bottomItems)[number];

@@ -20,6 +20,8 @@ import {
   Calendar,
   Newspaper,
   Activity,
+  BookOpen,
+  MessageSquare,
 } from "lucide-react";
 import {
   getProviderArticles,
@@ -268,7 +270,7 @@ export async function ProviderDashboard({
                 </CardTitle>
               </CardHeader>
               <CardContent className="pb-5">
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                   <Link
                     href="/admin/approvals"
                     className="flex flex-col items-center gap-2 rounded-xl border bg-muted/30 p-4 text-center text-sm font-medium hover:bg-muted/60 transition-colors"
@@ -296,6 +298,13 @@ export async function ProviderDashboard({
                   >
                     <Bot className="h-6 w-6 text-violet-600" />
                     AIチャット管理
+                  </Link>
+                  <Link
+                    href="/dashboard/admin/knowledge"
+                    className="flex flex-col items-center gap-2 rounded-xl border bg-muted/30 p-4 text-center text-sm font-medium hover:bg-muted/60 transition-colors"
+                  >
+                    <BookOpen className="h-6 w-6 text-indigo-600" />
+                    ナレッジ管理
                   </Link>
                   <Link
                     href="/admin/activity-log"

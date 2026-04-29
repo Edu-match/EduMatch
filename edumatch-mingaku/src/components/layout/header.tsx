@@ -7,7 +7,7 @@ import Image from "next/image";
 import { 
   Menu, LogOut, User, LayoutDashboard, Settings, 
   ChevronDown, UserPlus, LogIn, FileText, Bell,
-  MessageSquare, CheckCircle, Calendar, Newspaper, BookOpen
+  MessageSquare, CheckCircle, Calendar, Newspaper, BookOpen, Bot, Activity
 } from "lucide-react";
 import { useRequestList } from "@/components/request-list/request-list-context";
 import { Button } from "@/components/ui/button";
@@ -355,6 +355,20 @@ export function Header() {
                       <BookOpen className="mr-2 h-4 w-4 text-indigo-600" />
                       ナレッジ文書管理
                     </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onSelect={() => router.push("/admin/ai-chat")}
+                    >
+                      <Bot className="mr-2 h-4 w-4 text-violet-600" />
+                      AIチャット管理
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onSelect={() => router.push("/admin/activity-log")}
+                    >
+                      <Activity className="mr-2 h-4 w-4 text-orange-600" />
+                      操作ログ
+                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
                   </>
                 )}
@@ -494,6 +508,12 @@ export function Header() {
                             </Link>
                             <Link href="/dashboard/admin/knowledge" className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground">
                               <BookOpen className="h-4 w-4 text-indigo-600" />ナレッジ文書管理
+                            </Link>
+                            <Link href="/admin/ai-chat" className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground">
+                              <Bot className="h-4 w-4 text-violet-600" />AIチャット管理
+                            </Link>
+                            <Link href="/admin/activity-log" className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground">
+                              <Activity className="h-4 w-4 text-orange-600" />操作ログ
                             </Link>
                           </div>
                         </div>
