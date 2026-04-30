@@ -54,7 +54,7 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
 
         {/* Left sidebar（AIパネルの開閉と独立して動作） */}
         <aside className="hidden lg:block lg:w-60 lg:pr-4 flex-shrink-0 pt-1">
-          <div className="sticky top-[4.2rem]">
+          <div className="sticky top-[4.2rem] px-2">
             {sidebarOpen ? (
               <button
                 type="button"
@@ -74,9 +74,16 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
                 <Menu className="h-5 w-5" />
               </button>
             )}
-            {sidebarOpen && (
+            <div
+              className={cn(
+                "overflow-hidden origin-top transition-all duration-200 ease-out",
+                sidebarOpen
+                  ? "max-h-[80vh] opacity-100 translate-y-0"
+                  : "max-h-0 opacity-0 -translate-y-1 pointer-events-none"
+              )}
+            >
               <SideMenu />
-            )}
+            </div>
           </div>
         </aside>
 
