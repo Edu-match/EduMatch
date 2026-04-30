@@ -734,7 +734,7 @@ function NewPostComposer({
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <p className="flex items-start gap-2 text-xs text-violet-800">
             <Bot className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            <span>投稿欄から直接AIへ移動できます。論点整理・反対意見チェック・投稿文の整形をしてから戻れます。</span>
+            <span>投稿前にAIで整理できます。</span>
           </p>
           <OpenAiChatButton
             variant="outline"
