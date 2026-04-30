@@ -66,8 +66,8 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
 
         {/* Left sidebar（AIパネルの開閉と独立して動作） */}
         {sidebarOpen && (
-          <aside className="hidden lg:block lg:w-60 lg:pr-4 flex-shrink-0 pt-10">
-            <div className="sticky top-24">
+          <aside className="hidden lg:block lg:w-60 lg:pr-4 flex-shrink-0 pt-1">
+            <div className="sticky top-[4.2rem]">
               <SideMenu />
             </div>
           </aside>
