@@ -52,17 +52,14 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
       {/* Desktop + tablet content row */}
       <div className="flex-1 flex min-w-0 pt-16">
 
-        {/* ハンバーガー列：常時表示の細い列としてレイアウトに組み込む */}
-        <div className="hidden lg:flex flex-col flex-shrink-0 w-10 pt-1 items-center">
-          <button
-            type="button"
-            onClick={() => setSidebarOpen((p) => !p)}
-            className="h-9 w-9 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors sticky top-[4.2rem]"
-            aria-label={sidebarOpen ? "サイドメニューを閉じる" : "サイドメニューを開く"}
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setSidebarOpen((p) => !p)}
+          className="hidden lg:flex fixed left-2 top-[4.2rem] z-40 h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          aria-label={sidebarOpen ? "サイドメニューを閉じる" : "サイドメニューを開く"}
+        >
+          <Menu className="h-5 w-5" />
+        </button>
 
         {/* Left sidebar（AIパネルの開閉と独立して動作） */}
         {sidebarOpen && (
@@ -101,7 +98,7 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
               <button
                 type="button"
                 onClick={() => setOpen(true)}
-                className="h-full w-full flex flex-col items-center justify-center gap-4 border-l bg-orange-500 hover:bg-orange-400 text-white transition-all group"
+                className="fixed right-0 top-16 bottom-0 z-30 w-20 flex flex-col items-center justify-center gap-4 border-l bg-orange-500 hover:bg-orange-400 text-white transition-all group"
                 aria-label="AIパネルを開く"
               >
                 <Bot className="h-8 w-8 group-hover:scale-110 transition-transform" />
