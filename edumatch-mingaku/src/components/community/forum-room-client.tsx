@@ -8,6 +8,7 @@ import {
   ChevronDown,
   ChevronUp,
   Flame,
+  FileText,
   Heart,
   LogIn,
   LinkIcon,
@@ -925,7 +926,14 @@ function useAiComment() {
 
 type SortKey = "newest" | "popular";
 
-export function ForumRoomClient({ room }: { room: ForumRoom }) {
+export function ForumRoomClient({
+  room,
+  highlightFromNotify = false,
+}: {
+  room: ForumRoom;
+  /** サイト内通知から遷移したときの案内バナー */
+  highlightFromNotify?: boolean;
+}) {
   const auth = useAuthUser();
   const [sort, setSort] = useState<SortKey>("newest");
   const [posts, setPosts] = useState<ForumPost[]>([]);
@@ -1080,7 +1088,21 @@ export function ForumRoomClient({ room }: { room: ForumRoom }) {
                 </div>
               </div>
             </div>
-            <div className="shrink-0" />
+            {auth.role === "ADMIN" && (
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-[220px] sm:items-end">
+                {highlightFromNotify && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100">
+                    このルームの人間の発言がしきい値を超えました。記事化のタイミングを検討できます。
+                  </div>
+                )}
+                <Button asChild size="sm" className="gap-2 shadow-sm">
+                  <Link href={`/articles/create?forumRoom=${encodeURIComponent(room.id)}`}>
+                    <FileText className="h-4 w-4" />
+                    この話題を記事にする
+                  </Link>
+                </Button>
+              </div>
+            )}
           </div>
         </div>
         <div className="pointer-events-none absolute -top-20 -right-20 h-80 w-80 rounded-full bg-primary/5 blur-3xl" />

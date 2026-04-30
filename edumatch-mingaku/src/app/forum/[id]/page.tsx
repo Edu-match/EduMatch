@@ -62,12 +62,20 @@ export async function generateMetadata({
 
 export default async function ForumRoomPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ fromNotify?: string }>;
 }) {
   const { id } = await params;
+  const sp = await searchParams;
   const room = await getRoomFromDb(id);
   if (!room) notFound();
 
-  return <ForumRoomClientDynamic room={room} />;
+  return (
+    <ForumRoomClientDynamic
+      room={room}
+      highlightFromNotify={sp.fromNotify === "1"}
+    />
+  );
 }

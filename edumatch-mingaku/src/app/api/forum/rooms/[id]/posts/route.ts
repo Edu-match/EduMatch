@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser, getCurrentProfile } from "@/lib/auth";
 import { getAiKenteiDb } from "@/lib/ai-kentei-db";
 import { getForumAuthorRoleForUser } from "@/lib/forum-author-profile";
+import { notifyAdminsForumHumanActivityMilestones } from "@/lib/forum-article-notify";
 
 export const dynamic = "force-dynamic";
 
@@ -162,6 +163,10 @@ export async function POST(
         ai_kentei_passed: aiKenteiPassed,
       },
     });
+
+    void notifyAdminsForumHumanActivityMilestones(roomId).catch((e) =>
+      console.error("[forum posts POST] notifyAdminsForumHumanActivityMilestones", e)
+    );
 
     return NextResponse.json({
       post: {

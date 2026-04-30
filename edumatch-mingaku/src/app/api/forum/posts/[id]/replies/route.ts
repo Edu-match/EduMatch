@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser, getCurrentProfile } from "@/lib/auth";
 import { getAiKenteiDb } from "@/lib/ai-kentei-db";
 import { getForumAuthorRoleForUser } from "@/lib/forum-author-profile";
+import { notifyAdminsForumHumanActivityMilestones } from "@/lib/forum-article-notify";
 
 export const dynamic = "force-dynamic";
 
@@ -56,7 +57,7 @@ export async function POST(
 
     const post = await prisma.forumPost.findUnique({
       where: { id: postId },
-      select: { id: true },
+      select: { id: true, room_id: true },
     });
     if (!post) {
       return NextResponse.json({ error: "Post not found" }, { status: 404 });
@@ -127,6 +128,10 @@ export async function POST(
         ai_kentei_passed: aiKenteiPassed,
       },
     });
+
+    void notifyAdminsForumHumanActivityMilestones(post.room_id).catch((e) =>
+      console.error("[forum replies POST] notifyAdminsForumHumanActivityMilestones", e)
+    );
 
     return NextResponse.json({
       reply: {

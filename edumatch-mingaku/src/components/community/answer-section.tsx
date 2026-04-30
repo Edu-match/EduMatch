@@ -25,6 +25,8 @@ export function useAuthUser() {
     organizationType: string | null;
     organizationTypeOther: string | null;
     aiKenteiPassed: boolean;
+    /** /api/auth/me の uiRole（ADMIN / PROVIDER / VIEWER） */
+    role: string | null;
     isLoading: boolean;
     isLoggedIn: boolean;
   }>({
@@ -33,6 +35,7 @@ export function useAuthUser() {
     organizationType: null,
     organizationTypeOther: null,
     aiKenteiPassed: false,
+    role: null,
     isLoading: true,
     isLoggedIn: false,
   });
@@ -47,12 +50,15 @@ export function useAuthUser() {
         const organizationType = data?.profile?.organization_type ?? null;
         const organizationTypeOther = data?.profile?.organization_type_other ?? null;
         const aiKenteiPassed = data?.profile?.ai_kentei_passed ?? false;
+        const role =
+          typeof data?.profile?.role === "string" ? data.profile.role : null;
         setAuth({
           name: name ?? "",
           avatarUrl,
           organizationType,
           organizationTypeOther,
           aiKenteiPassed,
+          role,
           isLoading: false,
           isLoggedIn: !!name,
         });
@@ -64,6 +70,7 @@ export function useAuthUser() {
           organizationType: null,
           organizationTypeOther: null,
           aiKenteiPassed: false,
+          role: null,
           isLoading: false,
           isLoggedIn: false,
         })

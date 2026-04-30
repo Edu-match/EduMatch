@@ -52,9 +52,14 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
       {/* Desktop + tablet content row */}
       <div className="flex-1 flex min-w-0 pt-16">
 
-        {/* Left sidebar（AIパネルの開閉と独立して動作） */}
-        <aside className="hidden lg:block lg:w-72 lg:pr-4 flex-shrink-0 pt-1">
-          <div className="sticky top-[4.2rem] px-3">
+        {/* Left sidebar（閉じたときは幅を詰めてメイン領域を広げる） */}
+        <aside
+          className={cn(
+            "hidden lg:block flex-shrink-0 pt-1 transition-[width,padding] duration-200 ease-out",
+            sidebarOpen ? "w-72 pr-4" : "w-12 pr-0"
+          )}
+        >
+          <div className={cn("sticky top-[4.2rem]", sidebarOpen ? "px-3" : "px-1")}>
             {sidebarOpen ? (
               <button
                 type="button"

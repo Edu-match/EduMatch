@@ -6,6 +6,7 @@ import {
   getPendingServicesFromSupabase,
 } from "@/lib/supabase-pending-approvals";
 import { getInAppNotificationsForUserId } from "@/app/_actions/in-app-notifications";
+import { FORUM_ARTICLE_SUGGESTION_KIND } from "@/lib/in-app-notification-constants";
 
 export type NotificationItem = {
   id: string;
@@ -69,6 +70,20 @@ export async function getNotifications(): Promise<NotificationItem[]> {
     const titlePrefixRe = /^【運営お知らせ】/;
     for (const row of inApp) {
       const href = row.link?.trim() || "/notifications";
+      if (row.kind === FORUM_ARTICLE_SUGGESTION_KIND) {
+        if (profile.role !== "ADMIN") continue;
+        notifications.push({
+          id: `inapp-${row.id}`,
+          type: "system",
+          category: "井戸端会議",
+          title: row.title,
+          href,
+          createdAt: row.created_at.toISOString(),
+          read: row.read,
+          inAppNotificationId: row.id,
+        });
+        continue;
+      }
       const title = titlePrefixRe.test(row.title)
         ? row.title.replace(titlePrefixRe, "【運営からのお知らせ】")
         : row.title;

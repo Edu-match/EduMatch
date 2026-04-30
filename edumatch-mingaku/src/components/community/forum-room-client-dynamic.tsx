@@ -18,6 +18,12 @@ const ForumRoomClient = dynamic(
   }
 )
 
-export function ForumRoomClientDynamic({ room }: { room: ForumRoom }) {
-  return <ForumRoomClient room={room} />
+export function ForumRoomClientDynamic({
+  room,
+  highlightFromNotify = false,
+}: {
+  room: ForumRoom;
+  highlightFromNotify?: boolean;
+}) {
+  return <ForumRoomClient room={room} highlightFromNotify={highlightFromNotify} />
 }
