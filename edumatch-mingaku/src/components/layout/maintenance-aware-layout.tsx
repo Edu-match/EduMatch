@@ -82,12 +82,12 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
         <div
           className={cn(
             "hidden lg:flex flex-col flex-shrink-0 transition-all duration-150 ease-in-out",
-            open ? "" : "lg:w-10"
+            open ? "" : "lg:w-20"
           )}
           style={open ? { width: `${panelWidth}px` } : undefined}
         >
-          <div className="sticky top-16 h-[calc(100vh-4rem)] flex flex-col">
-            {open ? (
+          {open ? (
+            <div className="sticky top-16 h-[calc(100vh-4rem)] flex flex-col">
               <div className="relative h-full flex flex-col border-l bg-background overflow-hidden">
                 <div
                   className="absolute -left-1 top-0 h-full w-2 cursor-col-resize z-20"
@@ -97,23 +97,23 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
                 />
                 <ChatbotWidget embedded />
               </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setOpen(true)}
-                className="h-full w-10 flex flex-col items-center justify-center gap-2 border-l bg-muted/20 hover:bg-primary/5 hover:border-primary/30 transition-colors group"
-                aria-label="AIパネルを開く"
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setOpen(true)}
+              className="h-full w-full flex flex-col items-center justify-center gap-4 border-l bg-orange-500 hover:bg-orange-400 text-white transition-all group"
+              aria-label="AIパネルを開く"
+            >
+              <Bot className="h-8 w-8 group-hover:scale-110 transition-transform" />
+              <span
+                className="text-sm font-bold select-none tracking-widest"
+                style={{ writingMode: "vertical-rl", textOrientation: "upright" }}
               >
-                <Bot className="h-4 w-4 text-primary group-hover:scale-110 transition-transform" />
-                <span
-                  className="text-[10px] text-muted-foreground group-hover:text-primary transition-colors select-none"
-                  style={{ writingMode: "vertical-rl" }}
-                >
-                  AIナビゲーター
-                </span>
-              </button>
-            )}
-          </div>
+                AIナビゲーター
+              </span>
+            </button>
+          )}
         </div>
       </div>
 

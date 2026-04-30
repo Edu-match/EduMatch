@@ -9,6 +9,7 @@ import {
 import type { Prisma } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getAiChatPrompts } from "@/lib/ai-chat-prompts";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -164,23 +165,13 @@ function closingRagCitationReminder(items: ChatContextItem[]): string {
 質問が挨拶や無関係な雑談のみのときはこのブロックは無視してよい。`;
 }
 
-async function getSystemPromptForMode(mode: ChatMode): Promise<string> {
-  try {
-    const override = await prisma.systemPromptOverride.findUnique({ where: { mode } });
-    if (override?.content) return override.content;
-  } catch {
-    // DB unavailable — fall back to hardcoded
-  }
-  return SYSTEM_PROMPTS[mode];
-}
-
-async function buildSystemPrompt(
+function buildSystemPrompt(
   mode: ChatMode,
+  basePrompt: string,
   siteContextItems: ChatContextItem[],
   knowledgeItems: ChatContextItem[]
-): Promise<string> {
-  const modePrompt = await getSystemPromptForMode(mode);
-  const sections: string[] = [modePrompt, RAG_AND_PUBLIC_DOC_RULES];
+): string {
+  const sections: string[] = [basePrompt, RAG_AND_PUBLIC_DOC_RULES];
 
   if (siteContextItems.length > 0) {
     const siteText = siteContextItems
@@ -392,7 +383,13 @@ export async function POST(req: NextRequest) {
   );
   const siteContextItems = [...explicitContexts, ...searchResults];
 
-  const systemPrompt = await buildSystemPrompt(mode, siteContextItems, knowledgeHits);
+  const savedPrompts = await getAiChatPrompts();
+  const systemPrompt = buildSystemPrompt(
+    mode,
+    savedPrompts[mode] || SYSTEM_PROMPTS[mode],
+    siteContextItems,
+    knowledgeHits
+  );
 
   // ─── ユーザーメッセージ変換（最後のユーザー発言をモード別プロンプトに変換） ─
   const trimmedRaw = messages.slice(-20);
