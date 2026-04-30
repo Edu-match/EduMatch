@@ -8,6 +8,8 @@ type Props = {
   children?: React.ReactNode;
   initialMessage?: string;
   preferredMode?: "navigator" | "debate" | "discussion";
+  launchContext?: "default" | "forum-compose";
+  forumTopic?: string;
 };
 
 /** 押すと画面右下のAIナビゲーター（チャット）を開くボタン */
@@ -17,6 +19,8 @@ export function OpenAiChatButton({
   children,
   initialMessage,
   preferredMode,
+  launchContext = "default",
+  forumTopic,
 }: Props) {
   const openChat = () => {
     if (typeof window !== "undefined") {
@@ -25,6 +29,8 @@ export function OpenAiChatButton({
           detail: {
             initialMessage,
             preferredMode,
+            launchContext,
+            forumTopic,
           },
         })
       );

@@ -73,6 +73,8 @@ export type ChatMode = "navigator" | "debate" | "discussion";
 type OpenAiChatEventDetail = {
   initialMessage?: string;
   preferredMode?: ChatMode;
+  launchContext?: "default" | "forum-compose";
+  forumTopic?: string;
 };
 
 type ChatSessionMessage = {
@@ -450,6 +452,10 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
   const [selectedAskChoices, setSelectedAskChoices] = useState<Record<string, string[]>>({});
   const [openedRagRefsMessageId, setOpenedRagRefsMessageId] = useState<string | null>(null);
+  const [forumComposeAssist, setForumComposeAssist] = useState<{
+    active: boolean;
+    topic: string;
+  }>({ active: false, topic: "" });
 
   const listRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -512,6 +518,20 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
       }
       if (detail?.preferredMode) {
         setChatMode(detail.preferredMode);
+      }
+      if (detail?.launchContext === "forum-compose") {
+        const topic = detail.forumTopic?.trim() ?? "";
+        setForumComposeAssist({ active: true, topic });
+        if (!detail?.preferredMode) setChatMode("discussion");
+        setMessages((prev) => {
+          if (prev.length > 0) return prev;
+          const guide = topic
+            ? `投稿作成サポートを開始します。\nテーマ: 「${topic}」\n\n下のクイック操作から、論点整理・反対視点チェック・投稿文作成を選べます。`
+            : "投稿作成サポートを開始します。下のクイック操作から、論点整理・反対視点チェック・投稿文作成を選べます。";
+          return [{ id: `forum-guide-${Date.now()}`, role: "assistant", content: guide }];
+        });
+      } else {
+        setForumComposeAssist({ active: false, topic: "" });
       }
     };
     window.addEventListener("open-ai-chat", handler);
@@ -900,6 +920,7 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
     setIsStreaming(false);
     setSessionId(null);
     setSelectedAskChoices({});
+    setForumComposeAssist({ active: false, topic: "" });
   }
 
   const welcomeMessage =
@@ -1352,6 +1373,55 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
                 {isStreaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </Button>
             </div>
+            {forumComposeAssist.active && (
+              <div className="mt-2 rounded-lg border border-violet-200 bg-violet-50/80 px-3 py-2">
+                <p className="text-[11px] text-violet-800">
+                  投稿作成サポートモード
+                  {forumComposeAssist.topic ? `（${forumComposeAssist.topic}）` : ""}
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    className="rounded-full border border-violet-300 bg-background px-2.5 py-1 text-[11px] text-violet-700 hover:bg-violet-100"
+                    onClick={() =>
+                      setInput((current) =>
+                        current.trim()
+                          ? `この下書きの論点を3つに整理し、足りない視点を補ってください。\n\n${current.trim()}`
+                          : `テーマ「${forumComposeAssist.topic || "投稿テーマ"}」の論点を3つに整理してください。`
+                      )
+                    }
+                  >
+                    論点を整理
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-full border border-violet-300 bg-background px-2.5 py-1 text-[11px] text-violet-700 hover:bg-violet-100"
+                    onClick={() =>
+                      setInput((current) =>
+                        current.trim()
+                          ? `この意見に対する反対意見・懸念点・弱点を3つ挙げ、改善案も示してください。\n\n${current.trim()}`
+                          : `テーマ「${forumComposeAssist.topic || "投稿テーマ"}」で想定される反対意見を3つ挙げ、改善案を示してください。`
+                      )
+                    }
+                  >
+                    反対視点チェック
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-full border border-violet-300 bg-background px-2.5 py-1 text-[11px] text-violet-700 hover:bg-violet-100"
+                    onClick={() =>
+                      setInput((current) =>
+                        current.trim()
+                          ? `以下を井戸端会議に投稿しやすい文体に整えてください。150〜250字の投稿文と、短いタイトル案を1つください。\n\n${current.trim()}`
+                          : `テーマ「${forumComposeAssist.topic || "投稿テーマ"}」について、150〜250字の投稿文と短いタイトル案を1つ作ってください。`
+                      )
+                    }
+                  >
+                    投稿文に整える
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="flex items-center justify-between mt-2">
               <p className="text-[11px] text-muted-foreground">

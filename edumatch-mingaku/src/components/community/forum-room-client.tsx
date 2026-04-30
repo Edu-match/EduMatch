@@ -591,7 +591,6 @@ function NewPostComposer({
   avatarUrl,
   isLoggedIn,
   weeklyTopic,
-  aiEnabled,
   submitting,
   organizationType,
   organizationTypeOther,
@@ -603,7 +602,6 @@ function NewPostComposer({
   avatarUrl?: string | null;
   isLoggedIn: boolean;
   weeklyTopic: string;
-  aiEnabled: boolean;
   submitting: boolean;
   organizationType?: string | null;
   organizationTypeOther?: string | null;
@@ -695,6 +693,8 @@ function NewPostComposer({
                 className="h-7 border-violet-300 text-violet-700 hover:bg-violet-100"
                 initialMessage={`以下の投稿下書きを、もう一段深く整理したいです。\n\n${body.trim()}`}
                 preferredMode="discussion"
+                launchContext="forum-compose"
+                forumTopic={weeklyTopic}
               >
                 <Bot className="mr-1 h-3.5 w-3.5" />
                 さらにAIで深める
@@ -730,29 +730,29 @@ function NewPostComposer({
         </div>
       </div>
 
-      {aiEnabled && (
-        <div className="border-b bg-violet-50/70 px-5 py-2.5">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <p className="flex items-start gap-2 text-xs text-violet-800">
-              <Bot className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              <span>AIと議論して意見を整理してから投稿できます。考えがまとまっていなくても大丈夫です。</span>
-            </p>
-            <OpenAiChatButton
-              variant="outline"
-              className="h-7 shrink-0 border-violet-300 text-violet-700 hover:bg-violet-100"
-              initialMessage={
-                body.trim()
-                  ? `以下の下書き意見を深めたいです。反対視点や追加論点も含めて議論してください。\n\n${body.trim()}`
-                  : `今週のお題「${weeklyTopic}」について、投稿前に意見を深める議論をしたいです。`
-              }
-              preferredMode="discussion"
-            >
-              <Bot className="mr-1 h-3.5 w-3.5" />
-              AIと議論する
-            </OpenAiChatButton>
-          </div>
+      <div className="border-b bg-violet-50/70 px-5 py-2.5">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="flex items-start gap-2 text-xs text-violet-800">
+            <Bot className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>投稿欄から直接AIへ移動できます。論点整理・反対意見チェック・投稿文の整形をしてから戻れます。</span>
+          </p>
+          <OpenAiChatButton
+            variant="outline"
+            className="h-7 shrink-0 border-violet-300 text-violet-700 hover:bg-violet-100"
+            initialMessage={
+              body.trim()
+                ? `以下の投稿下書きを、井戸端会議向けに深めたいです。論点整理から手伝ってください。\n\n${body.trim()}`
+                : `今週のお題「${weeklyTopic}」について、井戸端会議への投稿文を作るために議論を始めたいです。`
+            }
+            preferredMode="discussion"
+            launchContext="forum-compose"
+            forumTopic={weeklyTopic}
+          >
+            <Bot className="mr-1 h-3.5 w-3.5" />
+            この投稿をAIで作る
+          </OpenAiChatButton>
         </div>
-      )}
+      </div>
 
       <div className="px-5 pt-4 pb-3">
         <Textarea
@@ -1126,7 +1126,6 @@ export function ForumRoomClient({ room }: { room: ForumRoom }) {
                 avatarUrl={auth.avatarUrl}
                 isLoggedIn={auth.isLoggedIn}
                 weeklyTopic={room.weeklyTopic}
-                aiEnabled={aiEnabled}
                 submitting={submitting}
                 organizationType={auth.organizationType}
                 organizationTypeOther={auth.organizationTypeOther}
