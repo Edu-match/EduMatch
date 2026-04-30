@@ -54,12 +54,12 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
 
         {/* Left sidebar（AIパネルの開閉と独立して動作） */}
         <aside className="hidden lg:block lg:w-60 lg:pr-4 flex-shrink-0 pt-1">
-          <div className="sticky top-[4.2rem] w-[215px] px-[10px]">
+          <div className="sticky top-[4.2rem]">
             {sidebarOpen ? (
               <button
                 type="button"
                 onClick={() => setSidebarOpen(false)}
-                className="mb-[2px] mt-[2px] ml-[10px] flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                className="mb-2 flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                 aria-label="サイドメニューを閉じる"
               >
                 <Menu className="h-5 w-5" />
@@ -68,7 +68,7 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
               <button
                 type="button"
                 onClick={() => setSidebarOpen(true)}
-                className="mb-[2px] mt-[2px] ml-[10px] flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                className="mb-2 flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                 aria-label="サイドメニューを開く"
               >
                 <Menu className="h-5 w-5" />
