@@ -248,7 +248,7 @@ function ServiceSelector({
               onClick={() => onToggle(s.id)}
               disabled={disabled}
               className={cn(
-                "group relative flex flex-col rounded-xl border-2 p-2.5 text-left transition-all duration-150 outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                "group relative flex flex-col rounded-xl border-2 p-2.5 text-left transition-all duration-150 outline-none focus-visible:ring-2 focus-visible:ring-primary h-36 overflow-hidden",
                 isSelected ? "shadow-md" : "border-border hover:border-primary/50 hover:shadow-sm bg-background",
                 disabled && "opacity-40 cursor-not-allowed pointer-events-none"
               )}
@@ -333,16 +333,29 @@ export default function CompareClientPage({ initialServices }: Props) {
     if (!captureRef.current) return;
     setExportingPng(true);
 
-    // テーブルのスクロールコンテナを一時的に展開して全幅をキャプチャ
+    const captureEl = captureRef.current;
     const scrollEl = tableScrollRef.current;
+    const prevCaptureWidth = captureEl.style.width;
+
+    // Step 1: テーブルのスクロールコンテナを展開
     if (scrollEl) {
       scrollEl.style.overflow = "visible";
       scrollEl.style.width = "max-content";
     }
 
+    // Step 2: レイアウト更新を待つ
+    await new Promise<void>((r) => requestAnimationFrame(() => r()));
+
+    // Step 3: captureRef 自体も全コンテンツ幅に拡張
+    const fullWidth = captureEl.scrollWidth;
+    captureEl.style.width = `${fullWidth}px`;
+
+    // Step 4: 再レイアウトを待つ
+    await new Promise<void>((r) => requestAnimationFrame(() => r()));
+
     try {
       const { toPng } = await import("html-to-image");
-      const dataUrl = await toPng(captureRef.current, {
+      const dataUrl = await toPng(captureEl, {
         backgroundColor: "#ffffff",
         pixelRatio: 2,
       });
@@ -353,6 +366,7 @@ export default function CompareClientPage({ initialServices }: Props) {
     } catch (e) {
       console.error("PNG export failed:", e);
     } finally {
+      captureEl.style.width = prevCaptureWidth;
       if (scrollEl) {
         scrollEl.style.overflow = "";
         scrollEl.style.width = "";
