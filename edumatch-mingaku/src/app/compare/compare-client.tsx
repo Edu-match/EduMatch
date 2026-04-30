@@ -4,13 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import {
   ArrowLeft,
   X,
@@ -18,9 +12,13 @@ import {
   FileSpreadsheet,
   FileText,
   Printer,
-  PlusCircle,
+  Search,
+  Check,
   Scale,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { ServiceWithProvider } from "@/app/_actions/services";
 import { ThumbnailOrTitle } from "@/components/ui/thumbnail-or-title";
 
@@ -237,22 +235,182 @@ function today() {
   return new Date().toLocaleDateString("ja-JP").replace(/\//g, "-");
 }
 
+// ─── サービス選択グリッド ────────────────────────────────────────────────────
+function ServiceSelector({
+  services,
+  selectedIds,
+  onToggle,
+}: {
+  services: ServiceWithProvider[];
+  selectedIds: string[];
+  onToggle: (id: string) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("all");
+
+  const categories = [
+    "all",
+    ...Array.from(new Set(services.map((s) => s.category).filter(Boolean))),
+  ];
+
+  const filtered = services.filter((s) => {
+    const q = search.toLowerCase();
+    const matchSearch =
+      !q ||
+      s.title.toLowerCase().includes(q) ||
+      (s.description ?? "").toLowerCase().includes(q) ||
+      (s.provider?.name ?? "").toLowerCase().includes(q);
+    const matchCat = category === "all" || s.category === category;
+    return matchSearch && matchCat;
+  });
+
+  const isFull = selectedIds.length >= 5;
+
+  return (
+    <div>
+      {/* 検索・カテゴリフィルタ */}
+      <div className="flex flex-col sm:flex-row gap-2 mb-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <Input
+            placeholder="サービス名・説明で検索..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <div className="flex gap-1.5 overflow-x-auto pb-0.5 flex-shrink-0">
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setCategory(cat)}
+              className={cn(
+                "whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors border",
+                cat === category
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
+              )}
+            >
+              {cat === "all" ? "すべて" : cat}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* カードグリッド */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 max-h-[400px] overflow-y-auto pr-1">
+        {filtered.length === 0 && (
+          <div className="col-span-full py-12 text-center text-sm text-muted-foreground">
+            該当するサービスが見つかりません
+          </div>
+        )}
+        {filtered.map((s) => {
+          const isSelected = selectedIds.includes(s.id);
+          const idx = selectedIds.indexOf(s.id);
+          const color = isSelected ? COLORS[idx] : undefined;
+          const disabled = isFull && !isSelected;
+
+          return (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => !disabled && onToggle(s.id)}
+              disabled={disabled}
+              className={cn(
+                "relative flex flex-col items-start rounded-xl border-2 p-2.5 text-left transition-all duration-150",
+                isSelected
+                  ? "shadow-md"
+                  : "border-border hover:border-primary/40 hover:shadow-sm bg-background",
+                disabled && "opacity-35 cursor-not-allowed"
+              )}
+              style={
+                isSelected
+                  ? { borderColor: color, background: `${color}0d` }
+                  : undefined
+              }
+            >
+              {/* 選択番号バッジ */}
+              <div
+                className={cn(
+                  "absolute top-2 right-2 h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all",
+                  isSelected
+                    ? "text-white text-[10px] font-bold"
+                    : "border-muted-foreground/30 bg-background"
+                )}
+                style={isSelected ? { background: color, borderColor: color } : undefined}
+              >
+                {isSelected ? (
+                  <span>{idx + 1}</span>
+                ) : (
+                  <span className="text-muted-foreground/40 text-[10px]">+</span>
+                )}
+              </div>
+
+              {/* サムネイル */}
+              <div className="relative w-full h-14 rounded-lg overflow-hidden mb-2 bg-muted/40">
+                <ThumbnailOrTitle
+                  src={s.thumbnail_url ?? undefined}
+                  title={s.title}
+                  fill
+                  className="object-contain"
+                  unoptimized
+                />
+              </div>
+
+              {/* タイトル */}
+              <p className="text-[11px] font-semibold leading-snug line-clamp-2 mb-1.5 pr-5">
+                {s.title}
+              </p>
+
+              {/* カテゴリ + 価格 */}
+              <div className="flex flex-wrap gap-1 mt-auto">
+                <Badge
+                  variant="secondary"
+                  className="text-[9px] py-0 leading-tight"
+                >
+                  {s.category}
+                </Badge>
+                {s.price_info && (
+                  <span className="text-[9px] text-muted-foreground truncate max-w-[80px]">
+                    {s.price_info}
+                  </span>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* フルメッセージ */}
+      {isFull && (
+        <p className="mt-2 text-xs text-center text-muted-foreground">
+          5つ選択済みです。変更するにはカードの番号を再クリックして解除してください。
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ─── メインコンポーネント ────────────────────────────────────────────────────
 type Props = { initialServices: ServiceWithProvider[] };
 
 export default function CompareClientPage({ initialServices }: Props) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectorOpen, setSelectorOpen] = useState(true);
 
   const selected = selectedIds
     .map((id) => initialServices.find((s) => s.id === id))
     .filter(Boolean) as ServiceWithProvider[];
 
-  const unselected = initialServices.filter((s) => !selectedIds.includes(s.id));
-
-  const add = (id: string) => {
-    if (selectedIds.length < 5) setSelectedIds((p) => [...p, id]);
+  const toggle = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id)
+        ? prev.filter((x) => x !== id)
+        : prev.length < 5
+        ? [...prev, id]
+        : prev
+    );
   };
-  const remove = (id: string) => setSelectedIds((p) => p.filter((x) => x !== id));
 
   const scores = buildScores(selected);
 
@@ -278,66 +436,53 @@ export default function CompareClientPage({ initialServices }: Props) {
       </div>
 
       <div className="container max-w-7xl py-6">
-        {/* サービス選択バー */}
-        <div className="mb-6 rounded-xl border bg-background p-4 print:hidden">
-          <div className="flex items-center gap-2 mb-3">
-            <PlusCircle className="h-4 w-4 text-muted-foreground" />
+        {/* ─── サービス選択パネル ─── */}
+        <div className="mb-6 rounded-xl border bg-background shadow-sm print:hidden">
+          {/* パネルヘッダー（折りたたみトグル） */}
+          <button
+            type="button"
+            onClick={() => setSelectorOpen((p) => !p)}
+            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors rounded-xl"
+          >
             <span className="text-sm font-semibold">比較するサービスを選択</span>
-            <span className="ml-auto text-xs text-muted-foreground font-mono">
-              {selected.length} / 5
-            </span>
-          </div>
 
-          {/* 選択済みタグ */}
-          {selected.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-3">
-              {selected.map((s, i) => (
-                <div
-                  key={s.id}
-                  className="flex items-center gap-1.5 rounded-full border-2 px-3 py-1 text-sm font-medium bg-background"
-                  style={{ borderColor: COLORS[i] }}
-                >
-                  <span
-                    className="h-2 w-2 rounded-full flex-shrink-0"
-                    style={{ background: COLORS[i] }}
-                  />
-                  <span className="max-w-[160px] truncate">{s.title}</span>
-                  <button
-                    onClick={() => remove(s.id)}
-                    className="ml-0.5 text-muted-foreground hover:text-destructive transition-colors"
-                    aria-label={`${s.title}を削除`}
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </div>
+            {/* 選択済みドット */}
+            <div className="flex items-center gap-1">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <span
+                  key={i}
+                  className="h-2.5 w-2.5 rounded-full border-2 transition-all"
+                  style={
+                    i < selected.length
+                      ? { background: COLORS[i], borderColor: COLORS[i] }
+                      : { borderColor: "#d1d5db", background: "transparent" }
+                  }
+                />
               ))}
             </div>
-          )}
 
-          {selected.length < 5 && (
-            <Select onValueChange={add} value="">
-              <SelectTrigger className="w-full sm:w-80">
-                <SelectValue placeholder="＋ サービスを追加..." />
-              </SelectTrigger>
-              <SelectContent>
-                {unselected.length === 0 ? (
-                  <div className="py-3 text-center text-sm text-muted-foreground">
-                    全サービス選択済み
-                  </div>
-                ) : (
-                  unselected.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      <span className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-[10px] py-0 leading-tight">
-                          {s.category}
-                        </Badge>
-                        <span className="truncate max-w-[220px]">{s.title}</span>
-                      </span>
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
+            <span className="text-xs text-muted-foreground font-mono ml-1">
+              {selected.length}/5
+            </span>
+
+            <span className="ml-auto text-muted-foreground">
+              {selectorOpen ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </span>
+          </button>
+
+          {/* パネルボディ */}
+          {selectorOpen && (
+            <div className="px-4 pb-4 border-t pt-4">
+              <ServiceSelector
+                services={initialServices}
+                selectedIds={selectedIds}
+                onToggle={toggle}
+              />
+            </div>
           )}
         </div>
 
@@ -349,7 +494,7 @@ export default function CompareClientPage({ initialServices }: Props) {
               比較するサービスを選択してください
             </p>
             <p className="text-sm text-muted-foreground/70">
-              上のドロップダウンから最大5つ選択できます
+              上のカードから最大5つ選択できます
             </p>
           </div>
         )}
