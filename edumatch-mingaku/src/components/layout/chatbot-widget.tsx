@@ -1381,23 +1381,23 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
               </Button>
             </div>
             {forumComposeAssist.active && (
-              <div className="mt-2 rounded-lg border border-violet-200 bg-violet-50/80 px-2.5 py-2">
+              <div className="mt-2 rounded-lg border border-violet-200 bg-violet-50/80 px-3 py-2.5">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-[10px] text-violet-800 truncate">
+                  <p className="text-[11px] font-medium text-violet-800 truncate">
                     投稿サポート{forumComposeAssist.topic ? `: ${forumComposeAssist.topic}` : ""}
                   </p>
                   <button
                     type="button"
-                    className="text-[10px] text-violet-700 hover:underline shrink-0"
+                    className="text-[11px] text-violet-700 hover:underline shrink-0"
                     onClick={() => setForumComposeAssist({ active: false, topic: "" })}
                   >
                     閉じる
                   </button>
                 </div>
-                <div className="mt-1.5 flex flex-wrap gap-1">
+                <div className="mt-2 flex flex-wrap gap-1.5">
                   <button
                     type="button"
-                    className="rounded-full border border-violet-300 bg-background px-2 py-0.5 text-[10px] text-violet-700 hover:bg-violet-100"
+                    className="rounded-full border border-violet-300 bg-background px-2.5 py-1 text-[11px] text-violet-700 hover:bg-violet-100"
                     onClick={() =>
                       setInput((current) =>
                         current.trim()
@@ -1410,7 +1410,7 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
                   </button>
                   <button
                     type="button"
-                    className="rounded-full border border-violet-300 bg-background px-2 py-0.5 text-[10px] text-violet-700 hover:bg-violet-100"
+                    className="rounded-full border border-violet-300 bg-background px-2.5 py-1 text-[11px] text-violet-700 hover:bg-violet-100"
                     onClick={() =>
                       setInput((current) =>
                         current.trim()
@@ -1423,7 +1423,7 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
                   </button>
                   <button
                     type="button"
-                    className="rounded-full border border-violet-300 bg-background px-2 py-0.5 text-[10px] text-violet-700 hover:bg-violet-100"
+                    className="rounded-full border border-violet-300 bg-background px-2.5 py-1 text-[11px] text-violet-700 hover:bg-violet-100"
                     onClick={() =>
                       setInput((current) =>
                         current.trim()
