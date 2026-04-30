@@ -52,21 +52,10 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
       {/* Desktop + tablet content row */}
       <div className="flex-1 flex min-w-0 pt-16">
 
-        {!sidebarOpen && (
-          <button
-            type="button"
-            onClick={() => setSidebarOpen(true)}
-            className="hidden lg:flex fixed left-2 top-[4.2rem] z-40 h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            aria-label="サイドメニューを開く"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-        )}
-
         {/* Left sidebar（AIパネルの開閉と独立して動作） */}
-        {sidebarOpen && (
-          <aside className="hidden lg:block lg:w-60 lg:pr-4 flex-shrink-0 pt-1">
-            <div className="sticky top-[4.2rem] w-[215px] px-[10px]">
+        <aside className="hidden lg:block lg:w-60 lg:pr-4 flex-shrink-0 pt-1">
+          <div className="sticky top-[4.2rem] w-[215px] px-[10px]">
+            {sidebarOpen ? (
               <button
                 type="button"
                 onClick={() => setSidebarOpen(false)}
@@ -75,10 +64,21 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
               >
                 <Menu className="h-5 w-5" />
               </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setSidebarOpen(true)}
+                className="mb-[2px] mt-[2px] ml-[10px] flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                aria-label="サイドメニューを開く"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+            )}
+            {sidebarOpen && (
               <SideMenu />
-            </div>
-          </aside>
-        )}
+            )}
+          </div>
+        </aside>
 
         {/* Main content */}
         <main className="flex-1 min-w-0 overflow-x-hidden">
