@@ -101,6 +101,9 @@ export async function POST(
 
     const user = await getCurrentUser();
     const profile = user ? await getCurrentProfile() : null;
+    if (!user || !profile) {
+      return NextResponse.json({ error: "投稿するにはログインが必要です" }, { status: 401 });
+    }
 
     // AI検定合格チェック
     let aiKenteiPassed = false;

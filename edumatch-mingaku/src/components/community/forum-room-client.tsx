@@ -9,7 +9,7 @@ import {
   ChevronUp,
   Flame,
   Heart,
-  Lightbulb,
+  LogIn,
   LinkIcon,
   Loader2,
   MessageSquare,
@@ -24,16 +24,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -57,6 +48,7 @@ import {
 import { RelativeTime } from "@/components/community/relative-time";
 import { ForumRoomIcon, ROOM_BG_COLORS } from "@/components/community/forum-room-icon";
 import { useAuthUser } from "@/components/community/answer-section";
+import { OpenAiChatButton } from "@/components/ui/open-ai-chat-button";
 
 // ─── セッションID（ゲストいいね用） ──────────────────────
 
@@ -559,18 +551,19 @@ function UserAvatar({
   );
 }
 
-// ─── 投稿フォームダイアログ ──────────────────────────────
+// ─── 投稿フォーム（常設 Composer） ──────────────────────────────
 
 type PostDraft = { body: string; authorRole: string; relatedArticleUrl: string; displayName: string };
 
 const MAX_BODY = 800;
 
-function NewPostDialog({
+function NewPostComposer({
   onSubmit,
   userName,
   avatarUrl,
   isLoggedIn,
   weeklyTopic,
+  aiEnabled,
   submitting,
   organizationType,
   organizationTypeOther,
@@ -581,26 +574,17 @@ function NewPostDialog({
   avatarUrl?: string | null;
   isLoggedIn: boolean;
   weeklyTopic: string;
+  aiEnabled: boolean;
   submitting: boolean;
   organizationType?: string | null;
   organizationTypeOther?: string | null;
   aiKenteiPassed?: boolean;
 }) {
   const postPreviewRole = forumRolePreviewFromProfile(organizationType, organizationTypeOther);
-  const [open, setOpen] = useState(false);
   const [body, setBody] = useState("");
   const [isAnon, setIsAnon] = useState(false);
   const [relatedArticleUrl, setRelatedArticleUrl] = useState("");
   const [showUrl, setShowUrl] = useState(false);
-
-  useEffect(() => {
-    if (open) {
-      setBody("");
-      setIsAnon(false);
-      setRelatedArticleUrl("");
-      setShowUrl(false);
-    }
-  }, [open]);
 
   const displayName = isAnon ? "匿名ユーザー" : (userName || "ゲスト");
   const remaining = MAX_BODY - body.length;
@@ -614,118 +598,139 @@ function NewPostDialog({
       relatedArticleUrl,
       displayName,
     });
-    setOpen(false);
+    setBody("");
+    setRelatedArticleUrl("");
+    setShowUrl(false);
   };
 
+  if (!isLoggedIn) {
+    return (
+      <div className="rounded-2xl border border-dashed bg-muted/20 p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold">投稿するにはログインしてください</p>
+            <p className="mt-1 text-xs text-muted-foreground">井戸端会議への投稿は会員限定です。ログイン後すぐに投稿できます。</p>
+          </div>
+          <Button asChild className="gap-1.5">
+            <Link href="/auth/login">
+              <LogIn className="h-4 w-4" />
+              ログインする
+            </Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="lg" className="gap-2 w-full sm:w-auto">
-          <PenSquare className="h-4 w-4" />投稿する
-        </Button>
-      </DialogTrigger>
+    <div className="rounded-2xl border bg-card shadow-xs overflow-hidden">
+      <div className="border-b px-5 py-3">
+        <p className="text-sm font-semibold">このテーマに投稿する</p>
+        <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">{weeklyTopic}</p>
+      </div>
 
-      <DialogContent className="gap-0 p-0 sm:max-w-xl overflow-hidden">
-        {/* ヘッダー */}
-        <div className="border-b px-6 py-4">
-          <DialogTitle className="text-base font-semibold">投稿する</DialogTitle>
-          <DialogDescription className="mt-0.5 text-xs text-muted-foreground line-clamp-1">
-            {weeklyTopic}
-          </DialogDescription>
+      <div className="flex items-center gap-2.5 border-b bg-muted/20 px-5 py-2.5">
+        <UserAvatar name={displayName} avatarUrl={isAnon ? null : avatarUrl} size={28} isAnon={isAnon} />
+        <span className="text-xs font-medium text-foreground">{displayName}</span>
+        {!isAnon && (
+          <>
+            <span className="text-muted-foreground/40">·</span>
+            <OccupationBadge storedAuthorRole={postPreviewRole} />
+            {aiKenteiPassed && <AiKenteiBadge />}
+          </>
+        )}
+        <div className="ml-auto">
+          <button
+            type="button"
+            onClick={() => setIsAnon((v) => !v)}
+            className={[
+              "rounded-full border px-2.5 py-0.5 text-[10px] font-medium transition-colors",
+              isAnon
+                ? `${ROLE_STYLES["匿名"].bg} ${ROLE_STYLES["匿名"].text} ${ROLE_STYLES["匿名"].border}`
+                : "border-transparent text-muted-foreground hover:bg-muted",
+            ].join(" ")}
+          >
+            {ROLE_STYLES["匿名"].icon} 匿名
+          </button>
         </div>
+      </div>
 
-        {/* 投稿者情報バー */}
-        <div className="flex items-center gap-2.5 border-b bg-muted/20 px-6 py-2.5">
-          <UserAvatar name={displayName} avatarUrl={isAnon ? null : avatarUrl} size={28} isAnon={isAnon} />
-          <span className="text-xs font-medium text-foreground">{displayName}</span>
-          {!isAnon && (
-            <>
-              <span className="text-muted-foreground/40">·</span>
-              <OccupationBadge storedAuthorRole={postPreviewRole} />
-              {aiKenteiPassed && <AiKenteiBadge />}
-            </>
-          )}
-          <div className="ml-auto">
-            <button
-              type="button"
-              onClick={() => setIsAnon((v) => !v)}
-              className={[
-                "rounded-full border px-2.5 py-0.5 text-[10px] font-medium transition-colors",
-                isAnon
-                  ? `${ROLE_STYLES["匿名"].bg} ${ROLE_STYLES["匿名"].text} ${ROLE_STYLES["匿名"].border}`
-                  : "border-transparent text-muted-foreground hover:bg-muted",
-              ].join(" ")}
+      {aiEnabled && (
+        <div className="border-b bg-violet-50/70 px-5 py-2.5">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="flex items-start gap-2 text-xs text-violet-800">
+              <Bot className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span>AIと議論して意見を整理してから投稿できます。考えがまとまっていなくても大丈夫です。</span>
+            </p>
+            <OpenAiChatButton
+              variant="outline"
+              className="h-7 shrink-0 border-violet-300 text-violet-700 hover:bg-violet-100"
             >
-              {ROLE_STYLES["匿名"].icon} 匿名
-            </button>
+              <Bot className="mr-1 h-3.5 w-3.5" />
+              AIと議論する
+            </OpenAiChatButton>
           </div>
         </div>
+      )}
 
-        {/* 本文エリア */}
-        <div className="px-6 pt-4 pb-3">
-          <textarea
-            id="post-body"
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            placeholder="今週のお題について、あなたの経験や意見を書いてください…"
-            rows={6}
-            maxLength={MAX_BODY + 50}
-            className="w-full resize-none bg-transparent text-sm leading-7 text-foreground placeholder:text-muted-foreground/60 outline-none"
-            autoFocus={open}
-          />
+      <div className="px-5 pt-4 pb-3">
+        <Textarea
+          id="post-body"
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          placeholder="今週のお題について、あなたの経験や意見を書いてください…"
+          rows={6}
+          maxLength={MAX_BODY + 50}
+          className="w-full resize-none border-0 bg-transparent px-0 text-sm leading-7 shadow-none focus-visible:ring-0 placeholder:text-muted-foreground/60"
+        />
 
-          {/* 関連URL（展開式） */}
-          {showUrl && (
-            <div className="mt-3">
-              <div className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
-                <LinkIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                <Input
-                  type="url"
-                  value={relatedArticleUrl}
-                  onChange={(e) => setRelatedArticleUrl(e.target.value)}
-                  placeholder="https://... （関連記事のURL）"
-                  className="h-7 border-0 bg-transparent p-0 text-xs shadow-none focus-visible:ring-0"
-                />
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* フッター */}
-        <div className="border-t bg-muted/20 px-6 py-3">
-          <div className="flex items-center justify-between gap-3">
-            {/* 左: URLボタン */}
-            <button
-              type="button"
-              title="関連記事URLを追加"
-              onClick={() => setShowUrl((v) => !v)}
-              className={[
-                "rounded-full border p-1.5 transition-colors",
-                showUrl ? "border-primary/40 bg-primary/5 text-primary" : "border-transparent text-muted-foreground hover:bg-muted",
-              ].join(" ")}
-            >
-              <LinkIcon className="h-3 w-3" />
-            </button>
-
-            {/* 右: 文字数 + 送信 */}
-            <div className="flex shrink-0 items-center gap-3">
-              <span className={`text-[11px] tabular-nums ${remaining < 0 ? "text-destructive font-semibold" : remaining < 50 ? "text-amber-500" : "text-muted-foreground/60"}`}>
-                {remaining}
-              </span>
-              <Button
-                onClick={handleSubmit}
-                disabled={!canSubmit}
-                size="sm"
-                className="gap-1.5 rounded-full px-5"
-              >
-                {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PenSquare className="h-3.5 w-3.5" />}
-                投稿
-              </Button>
+        {showUrl && (
+          <div className="mt-3">
+            <div className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
+              <LinkIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <Input
+                type="url"
+                value={relatedArticleUrl}
+                onChange={(e) => setRelatedArticleUrl(e.target.value)}
+                placeholder="https://... （関連記事のURL）"
+                className="h-7 border-0 bg-transparent p-0 text-xs shadow-none focus-visible:ring-0"
+              />
             </div>
           </div>
+        )}
+      </div>
+
+      <div className="border-t bg-muted/20 px-5 py-3">
+        <div className="flex items-center justify-between gap-3">
+          <button
+            type="button"
+            title="関連記事URLを追加"
+            onClick={() => setShowUrl((v) => !v)}
+            className={[
+              "rounded-full border p-1.5 transition-colors",
+              showUrl ? "border-primary/40 bg-primary/5 text-primary" : "border-transparent text-muted-foreground hover:bg-muted",
+            ].join(" ")}
+          >
+            <LinkIcon className="h-3 w-3" />
+          </button>
+
+          <div className="flex shrink-0 items-center gap-3">
+            <span className={`text-[11px] tabular-nums ${remaining < 0 ? "text-destructive font-semibold" : remaining < 50 ? "text-amber-500" : "text-muted-foreground/60"}`}>
+              {remaining}
+            </span>
+            <Button
+              onClick={handleSubmit}
+              disabled={!canSubmit}
+              size="sm"
+              className="gap-1.5 rounded-full px-5"
+            >
+              {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PenSquare className="h-3.5 w-3.5" />}
+              投稿する
+            </Button>
+          </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }
 
@@ -864,6 +869,10 @@ export function ForumRoomClient({ room }: { room: ForumRoom }) {
       });
 
       if (!res.ok) {
+        if (res.status === 401) {
+          alert("投稿するにはログインしてください。");
+          return;
+        }
         console.error("投稿に失敗しました", await res.text());
         return;
       }
@@ -957,19 +966,7 @@ export function ForumRoomClient({ room }: { room: ForumRoom }) {
                 </div>
               </div>
             </div>
-            <div className="shrink-0">
-              <NewPostDialog
-                onSubmit={handleNewPost}
-                userName={auth.name}
-                avatarUrl={auth.avatarUrl}
-                isLoggedIn={auth.isLoggedIn}
-                weeklyTopic={room.weeklyTopic}
-                submitting={submitting}
-                organizationType={auth.organizationType}
-                organizationTypeOther={auth.organizationTypeOther}
-                aiKenteiPassed={auth.aiKenteiPassed}
-              />
-            </div>
+            <div className="shrink-0" />
           </div>
         </div>
         <div className="pointer-events-none absolute -top-20 -right-20 h-80 w-80 rounded-full bg-primary/5 blur-3xl" />
@@ -1041,18 +1038,18 @@ export function ForumRoomClient({ room }: { room: ForumRoom }) {
                 </div>
               )}
 
-              {/* 投稿促進ナッジ */}
-              <div className="rounded-xl border border-dashed border-primary/30 bg-primary/5 px-4 py-3">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="flex items-start gap-2 text-sm text-foreground">
-                    <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                    <span>投稿に迷っていますか？<span className="font-medium">AIと話しながら意見を整理</span>してから投稿できます。</span>
-                  </p>
-                  <Button asChild size="sm" variant="outline" className="shrink-0 border-primary/40 text-primary hover:bg-primary/10">
-                    <Link href="/#ai-chat"><Bot className="mr-1.5 h-3.5 w-3.5" />AIで意見をまとめる</Link>
-                  </Button>
-                </div>
-              </div>
+              <NewPostComposer
+                onSubmit={handleNewPost}
+                userName={auth.name}
+                avatarUrl={auth.avatarUrl}
+                isLoggedIn={auth.isLoggedIn}
+                weeklyTopic={room.weeklyTopic}
+                aiEnabled={aiEnabled}
+                submitting={submitting}
+                organizationType={auth.organizationType}
+                organizationTypeOther={auth.organizationTypeOther}
+                aiKenteiPassed={auth.aiKenteiPassed}
+              />
 
               {/* ソート + 投稿一覧 */}
               <div className="space-y-3">
@@ -1075,17 +1072,6 @@ export function ForumRoomClient({ room }: { room: ForumRoom }) {
                       <p className="text-base font-medium">まだ投稿がありません</p>
                       <p className="mt-1 text-sm text-muted-foreground">最初の投稿者になりましょう</p>
                     </div>
-                    <NewPostDialog
-                      onSubmit={handleNewPost}
-                      userName={auth.name}
-                      avatarUrl={auth.avatarUrl}
-                      isLoggedIn={auth.isLoggedIn}
-                      weeklyTopic={room.weeklyTopic}
-                      submitting={submitting}
-                      organizationType={auth.organizationType}
-                      organizationTypeOther={auth.organizationTypeOther}
-                      aiKenteiPassed={auth.aiKenteiPassed}
-                    />
                   </div>
                 ) : (
                   <div className="space-y-3">
