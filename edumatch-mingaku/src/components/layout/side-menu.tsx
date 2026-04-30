@@ -86,9 +86,9 @@ export function SideMenu() {
   );
 
   return (
-    <aside className="space-y-3">
+    <aside className="w-full space-y-3">
       {/* 一般メニュー（ブロック） */}
-      <div className="border rounded-lg bg-card overflow-hidden">
+      <div className="h-[415px] w-full border rounded-lg bg-card overflow-hidden">
         <div className="p-3 border-b">
           <h2 className="text-sm font-bold">メニュー</h2>
         </div>
