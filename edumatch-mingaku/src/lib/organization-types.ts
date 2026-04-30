@@ -47,3 +47,29 @@ export function formatOrganizationTypeDisplay(
   }
   return base;
 }
+
+export type ForumOccupationVisual = "教員" | "学生" | "専門家" | "企業" | "一般" | "匿名";
+
+export function forumOccupationAvatarVisual(role: string | null | undefined): ForumOccupationVisual {
+  const value = (role ?? "").toLowerCase();
+  if (!value) return "一般";
+  if (value.includes("匿名")) return "匿名";
+  if (value.includes("student") || value.includes("学生")) return "学生";
+  if (
+    value.includes("teacher") ||
+    value.includes("faculty") ||
+    value.includes("school") ||
+    value.includes("教員")
+  ) {
+    return "教員";
+  }
+  if (value.includes("company") || value.includes("企業")) return "企業";
+  if (value.includes("expert") || value.includes("専門")) return "専門家";
+  return "一般";
+}
+
+export function forumOccupationBadgeText(role: string | null | undefined): string {
+  const trimmed = role?.trim();
+  if (!trimmed) return "一般";
+  return trimmed;
+}
