@@ -8,72 +8,42 @@ export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "ログインが必要です" }, { status: 401 });
+    }
 
     const body = await req.json();
-    const { targetId, targetType, sessionId } = body as {
+    const { targetId, targetType } = body as {
       targetId: string;
       targetType: "post" | "reply";
-      sessionId?: string;
     };
 
     if (!targetId || !targetType) {
       return NextResponse.json({ error: "targetId and targetType are required" }, { status: 400 });
     }
 
-    if (!user && !sessionId) {
-      return NextResponse.json({ error: "sessionId required for guests" }, { status: 400 });
-    }
+    const existing = await prisma.forumLike.findFirst({
+      where: { target_id: targetId, user_id: user.id },
+    });
 
-    // ログインユーザーの場合は user_id で、ゲストは session_id で判定
-    if (user) {
-      const existing = await prisma.forumLike.findFirst({
-        where: { target_id: targetId, user_id: user.id },
+    if (existing) {
+      await prisma.forumLike.delete({ where: { id: existing.id } });
+      const count = await prisma.forumLike.count({
+        where: { target_id: targetId, target_type: targetType },
       });
-
-      if (existing) {
-        await prisma.forumLike.delete({ where: { id: existing.id } });
-        const count = await prisma.forumLike.count({
-          where: { target_id: targetId, target_type: targetType },
-        });
-        return NextResponse.json({ liked: false, count });
-      } else {
-        await prisma.forumLike.create({
-          data: {
-            target_id: targetId,
-            target_type: targetType,
-            user_id: user.id,
-          },
-        });
-        const count = await prisma.forumLike.count({
-          where: { target_id: targetId, target_type: targetType },
-        });
-        return NextResponse.json({ liked: true, count });
-      }
+      return NextResponse.json({ liked: false, count });
     } else {
-      // ゲスト: session_id で管理
-      const existing = await prisma.forumLike.findFirst({
-        where: { target_id: targetId, session_id: sessionId, user_id: null },
+      await prisma.forumLike.create({
+        data: {
+          target_id: targetId,
+          target_type: targetType,
+          user_id: user.id,
+        },
       });
-
-      if (existing) {
-        await prisma.forumLike.delete({ where: { id: existing.id } });
-        const count = await prisma.forumLike.count({
-          where: { target_id: targetId, target_type: targetType },
-        });
-        return NextResponse.json({ liked: false, count });
-      } else {
-        await prisma.forumLike.create({
-          data: {
-            target_id: targetId,
-            target_type: targetType,
-            session_id: sessionId,
-          },
-        });
-        const count = await prisma.forumLike.count({
-          where: { target_id: targetId, target_type: targetType },
-        });
-        return NextResponse.json({ liked: true, count });
-      }
+      const count = await prisma.forumLike.count({
+        where: { target_id: targetId, target_type: targetType },
+      });
+      return NextResponse.json({ liked: true, count });
     }
   } catch (err) {
     console.error("[forum/likes POST]", err);

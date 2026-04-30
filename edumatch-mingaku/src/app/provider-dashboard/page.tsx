@@ -1,5 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { requireProvider } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { ProviderDashboard } from "@/components/dashboard/provider-dashboard";
 import {
   approvePost,
@@ -22,12 +23,15 @@ export default async function ProviderDashboardPage() {
 
   let pendingPosts: Awaited<ReturnType<typeof getPendingPostsFromSupabase>> = [];
   let pendingServices: Awaited<ReturnType<typeof getPendingServicesFromSupabase>> = [];
+  let viewerUserCount = 0;
   if (isAdmin) {
     try {
-      const [posts, services] = await Promise.all([
+      const [posts, services, viewers] = await Promise.all([
         getPendingPostsFromSupabase(),
         getPendingServicesFromSupabase(),
+        prisma.profile.count({ where: { role: "VIEWER" } }),
       ]);
+      viewerUserCount = viewers;
       const total = posts.length + services.length;
       if (total <= MAX_PENDING_DISPLAY) {
         pendingPosts = posts;
@@ -89,6 +93,7 @@ export default async function ProviderDashboardPage() {
     <ProviderDashboard
       displayName={displayName}
       isAdmin={isAdmin}
+      viewerUserCount={viewerUserCount}
       pendingPosts={pendingPosts}
       pendingServices={pendingServices}
       approvePostAction={approvePostAction}

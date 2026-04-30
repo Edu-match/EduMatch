@@ -7,6 +7,7 @@ import {
   FileText,
   Package,
   Eye,
+  Heart,
   Edit,
   Plus,
   TrendingUp,
@@ -57,6 +58,7 @@ function formatDate(date: Date): string {
 export async function ProviderDashboard({
   displayName,
   isAdmin = false,
+  viewerUserCount = 0,
   pendingPosts = [],
   pendingServices = [],
   approvePostAction,
@@ -66,6 +68,7 @@ export async function ProviderDashboard({
 }: {
   displayName: string;
   isAdmin?: boolean;
+  viewerUserCount?: number;
   pendingPosts?: PendingPost[];
   pendingServices?: PendingService[];
   approvePostAction?: (formData: FormData) => Promise<void>;
@@ -128,7 +131,7 @@ export async function ProviderDashboard({
 
         {/* 統計 */}
         <section className="mb-10">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
             <Card className="overflow-hidden border-0 shadow-sm">
               <CardContent className="p-5">
                 <div className="flex items-center gap-3">
@@ -171,16 +174,31 @@ export async function ProviderDashboard({
             <Card className="overflow-hidden border-0 shadow-sm">
               <CardContent className="p-5">
                 <div className="flex items-center gap-3">
-                  <div className="rounded-xl bg-emerald-500/10 p-3">
-                    <TrendingUp className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                  <div className="rounded-xl bg-pink-500/10 p-3">
+                    <Heart className="h-6 w-6 text-pink-600 dark:text-pink-400" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">アクティブ</p>
-                    <p className="text-xs text-muted-foreground">投稿可能</p>
+                    <p className="text-2xl font-bold tabular-nums">{stats.totalLikes.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">総いいね数</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
+            {isAdmin && (
+              <Card className="overflow-hidden border-0 shadow-sm">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-xl bg-emerald-500/10 p-3">
+                      <TrendingUp className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold tabular-nums">{viewerUserCount.toLocaleString()}</p>
+                      <p className="text-xs text-muted-foreground">一般ユーザー数</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </section>
 
@@ -383,6 +401,9 @@ export async function ProviderDashboard({
                             <span className="text-xs text-muted-foreground flex items-center gap-0.5">
                               <Eye className="h-3 w-3" /> {article.view_count}
                             </span>
+                            <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                              <Heart className="h-3 w-3" /> {article.favorite_count}
+                            </span>
                           </div>
                         </Link>
                         <div className="flex items-center gap-1 shrink-0">
@@ -451,6 +472,12 @@ export async function ProviderDashboard({
                           <div className="flex items-center gap-3 mt-1">
                             {getStatusBadge(service.status, service.is_published)}
                             <span className="text-xs text-muted-foreground">{service.category}</span>
+                            <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                              <Eye className="h-3 w-3" /> {service.view_count}
+                            </span>
+                            <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                              <Heart className="h-3 w-3" /> {service.favorite_count}
+                            </span>
                           </div>
                         </Link>
                         <div className="flex items-center gap-1 shrink-0">

@@ -16,6 +16,7 @@ import { ImportedContentRenderer } from "@/components/content/imported-content-r
 import { ShareButton } from "@/components/ui/share-button";
 import { ThumbnailOrTitle } from "@/components/ui/thumbnail-or-title";
 import { ImageWithUrlError } from "@/components/ui/image-with-url-error";
+import { ArticleCommentSection } from "@/components/community/article-comment-section";
 
 export const dynamic = "force-dynamic";
 
@@ -220,6 +221,10 @@ export default async function ArticleDetailPage({
             </div>
           </CardContent>
         </Card>
+
+        <section className="mb-8">
+          <ArticleCommentSection articleTitle={post.title} />
+        </section>
 
         {/* 関連記事 */}
         {filteredRelatedPosts.length > 0 && (

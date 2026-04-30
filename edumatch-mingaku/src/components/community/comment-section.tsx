@@ -201,11 +201,13 @@ export function CommentSection({
   placeholder = "コミュニティに共有したい意見や体験を書いてください",
   submitLabel = "コメントを投稿",
   emptyMessage = "まだコメントはありません。最初の投稿をしてみましょう。",
+  onCommentPosted,
 }: {
   initialComments?: CommunityComment[];
   placeholder?: string;
   submitLabel?: string;
   emptyMessage?: string;
+  onCommentPosted?: (body: string) => void;
 }) {
   const { name, isLoading, isLoggedIn } = useAuthUser();
   const [comments, setComments] = useState<CommunityComment[]>(initialComments);
@@ -242,6 +244,7 @@ export function CommentSection({
       replies: [],
     };
     setComments((prev) => [...prev, next]);
+    onCommentPosted?.(body);
   };
 
   const handleReply = (parentId: string, body: string) => {
@@ -259,6 +262,7 @@ export function CommentSection({
       }))
     );
     setReplyingTo(null);
+    onCommentPosted?.(body);
   };
 
   return (

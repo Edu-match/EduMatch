@@ -24,6 +24,14 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -49,18 +57,6 @@ import { RelativeTime } from "@/components/community/relative-time";
 import { ForumRoomIcon, ROOM_BG_COLORS } from "@/components/community/forum-room-icon";
 import { useAuthUser } from "@/components/community/answer-section";
 import { OpenAiChatButton } from "@/components/ui/open-ai-chat-button";
-
-// ─── セッションID（ゲストいいね用） ──────────────────────
-
-function getSessionId(): string {
-  if (typeof window === "undefined") return "";
-  let sid = sessionStorage.getItem("forum_session_id");
-  if (!sid) {
-    sid = `guest-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    sessionStorage.setItem("forum_session_id", sid);
-  }
-  return sid;
-}
 
 // ─── 定数 ────────────────────────────────────────────────
 
@@ -192,7 +188,15 @@ function AiStreamingReply({ streamText }: { streamText: string }) {
 
 // ─── 返信カード ───────────────────────────────────────────
 
-function ReplyCard({ reply, isAi }: { reply: ForumReply & { isAi?: boolean }; isAi?: boolean }) {
+function ReplyCard({
+  reply,
+  isAi,
+  onRequireLogin,
+}: {
+  reply: ForumReply & { isAi?: boolean };
+  isAi?: boolean;
+  onRequireLogin: () => void;
+}) {
   const isAiReply = isAi || reply.authorName === "AIファシリテーター";
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(reply.likeCount);
@@ -204,20 +208,26 @@ function ReplyCard({ reply, isAi }: { reply: ForumReply & { isAi?: boolean }; is
     setLikeCount((n) => (newLiked ? n + 1 : n - 1));
 
     try {
-      await fetch("/api/forum/likes", {
+      const res = await fetch("/api/forum/likes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
           targetId: reply.id,
           targetType: "reply",
-          sessionId: getSessionId(),
         }),
       });
+      if (res.status === 401) {
+        throw new Error("UNAUTHORIZED");
+      }
+      if (!res.ok) {
+        throw new Error("LIKE_FAILED");
+      }
     } catch {
       // ネットワークエラー時はロールバック
       setLiked(!newLiked);
       setLikeCount((n) => (newLiked ? n - 1 : n + 1));
+      onRequireLogin();
     }
   };
 
@@ -270,6 +280,7 @@ function PostCardWithStream({
   organizationType,
   organizationTypeOther,
   aiKenteiPassed,
+  onRequireLogin,
 }: {
   post: ForumPost;
   streamText: string | null;
@@ -284,6 +295,7 @@ function PostCardWithStream({
   organizationType?: string | null;
   organizationTypeOther?: string | null;
   aiKenteiPassed?: boolean;
+  onRequireLogin: () => void;
 }) {
   const replyPreviewRole = forumRolePreviewFromProfile(organizationType, organizationTypeOther);
   const [liked, setLiked] = useState(false);
@@ -305,19 +317,25 @@ function PostCardWithStream({
     setLikeCount((n) => (newLiked ? n + 1 : n - 1));
 
     try {
-      await fetch("/api/forum/likes", {
+      const res = await fetch("/api/forum/likes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
           targetId: post.id,
           targetType: "post",
-          sessionId: getSessionId(),
         }),
       });
+      if (res.status === 401) {
+        throw new Error("UNAUTHORIZED");
+      }
+      if (!res.ok) {
+        throw new Error("LIKE_FAILED");
+      }
     } catch {
       setLiked(!newLiked);
       setLikeCount((n) => (newLiked ? n - 1 : n + 1));
+      onRequireLogin();
     }
   };
 
@@ -345,6 +363,11 @@ function PostCardWithStream({
           replyBody: replyText.trim(),
         }),
       });
+
+      if (res.status === 401) {
+        onRequireLogin();
+        return;
+      }
 
       if (res.ok) {
         const data = await res.json();
@@ -474,7 +497,12 @@ function PostCardWithStream({
       {(autoOpenReplies && (hasReplies || isStreaming)) && (
         <div className="border-t bg-muted/10 px-5 py-4 space-y-4">
           {replies.map((reply) => (
-            <ReplyCard key={reply.id} reply={reply as ForumReply & { isAi?: boolean }} isAi={(reply as ForumReply & { isAi?: boolean }).isAi} />
+            <ReplyCard
+              key={reply.id}
+              reply={reply as ForumReply & { isAi?: boolean }}
+              isAi={(reply as ForumReply & { isAi?: boolean }).isAi}
+              onRequireLogin={onRequireLogin}
+            />
           ))}
           {isStreaming && streamText !== null && (
             streamText === "" ? (
@@ -903,7 +931,12 @@ export function ForumRoomClient({ room }: { room: ForumRoom }) {
   const [posts, setPosts] = useState<ForumPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [loginDialogOpen, setLoginDialogOpen] = useState(false);
   const { pending: aiPending, streamTexts, generate } = useAiComment();
+
+  const requireLogin = useCallback(() => {
+    setLoginDialogOpen(true);
+  }, []);
 
   // 投稿一覧取得
   useEffect(() => {
@@ -1114,6 +1147,7 @@ export function ForumRoomClient({ room }: { room: ForumRoom }) {
                       organizationType={auth.organizationType}
                       organizationTypeOther={auth.organizationTypeOther}
                       aiKenteiPassed={auth.aiKenteiPassed}
+                      onRequireLogin={requireLogin}
                     />
                   ))}
                 </div>
@@ -1172,6 +1206,7 @@ export function ForumRoomClient({ room }: { room: ForumRoom }) {
                         organizationType={auth.organizationType}
                         organizationTypeOther={auth.organizationTypeOther}
                         aiKenteiPassed={auth.aiKenteiPassed}
+                        onRequireLogin={requireLogin}
                       />
                     ))}
                   </div>
@@ -1201,6 +1236,25 @@ export function ForumRoomClient({ room }: { room: ForumRoom }) {
           </Card>
         </div>
       </div>
+
+      <Dialog open={loginDialogOpen} onOpenChange={setLoginDialogOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>ログインが必要です</DialogTitle>
+            <DialogDescription>
+              返信やいいねを利用するには、ログインまたは会員登録をお願いします。
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:justify-end">
+            <Button variant="outline" onClick={() => setLoginDialogOpen(false)}>
+              閉じる
+            </Button>
+            <Button asChild onClick={() => setLoginDialogOpen(false)}>
+              <Link href="/auth/login">ログイン・会員登録</Link>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

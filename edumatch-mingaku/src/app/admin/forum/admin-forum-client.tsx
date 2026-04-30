@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, BarChart3, Bot, Eye, ExternalLink, EyeOff, Loader2, Pin, PinOff, Plus, Save, Search, Trash2, Zap } from "lucide-react";
+import { ArrowLeft, BarChart3, Bot, Eye, ExternalLink, EyeOff, Heart, Loader2, MessageSquare, Pin, PinOff, Plus, Save, Search, Trash2, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -142,7 +142,6 @@ export function AdminForumClient() {
   // 全投稿取得（全部屋分）
   useEffect(() => {
     if (rooms.length === 0) return;
-    setLoadingPosts(true);
     Promise.all(
       rooms.map((room) =>
         fetch(`/api/forum/rooms/${room.id}/posts?page=1`, { credentials: "include" })
@@ -347,6 +346,10 @@ export function AdminForumClient() {
                     {isHiddenPost && <Badge variant="outline" className="text-[10px] text-muted-foreground border-dashed"><EyeOff className="mr-1 h-3 w-3" />非表示中</Badge>}
                   </div>
                   <p className="text-sm line-clamp-2 text-muted-foreground">{post.body}</p>
+                  <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
+                    <span className="inline-flex items-center gap-1"><Heart className="h-3 w-3" /> {post.likeCount ?? 0}</span>
+                    <span className="inline-flex items-center gap-1"><MessageSquare className="h-3 w-3" /> {post.replyCount ?? post.replies?.length ?? 0}</span>
+                  </div>
                   <div className="mt-2 flex items-center justify-end gap-2">
                     {!isHiddenPost && (
                       <Button size="sm" variant={post.isPinned ? "secondary" : "outline"} onClick={() => handleTogglePin(post.id, !!post.isPinned)}>
