@@ -1381,23 +1381,26 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
               </Button>
             </div>
             {forumComposeAssist.active && (
-              <div className="mt-2 rounded-lg border border-violet-200 bg-violet-50/80 px-3 py-2.5">
+              <div className="mt-2 rounded-xl border border-violet-200 bg-violet-50/90 px-3.5 py-3">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-[11px] font-medium text-violet-800 truncate">
+                  <p className="text-sm font-semibold text-violet-900 truncate">
                     投稿サポート{forumComposeAssist.topic ? `: ${forumComposeAssist.topic}` : ""}
                   </p>
                   <button
                     type="button"
-                    className="text-[11px] text-violet-700 hover:underline shrink-0"
+                    className="text-xs text-violet-700 hover:underline shrink-0"
                     onClick={() => setForumComposeAssist({ active: false, topic: "" })}
                   >
                     閉じる
                   </button>
                 </div>
-                <div className="mt-2 flex flex-wrap gap-1.5">
+                <p className="mt-1 text-xs text-violet-800/90">
+                  1タップで投稿文づくり用の指示を入力欄にセットします。
+                </p>
+                <div className="mt-2 grid grid-cols-1 gap-2">
                   <button
                     type="button"
-                    className="rounded-full border border-violet-300 bg-background px-2.5 py-1 text-[11px] text-violet-700 hover:bg-violet-100"
+                    className="w-full rounded-lg border border-violet-300 bg-background px-3 py-2 text-left text-xs font-medium text-violet-700 hover:bg-violet-100"
                     onClick={() =>
                       setInput((current) =>
                         current.trim()
@@ -1410,7 +1413,7 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
                   </button>
                   <button
                     type="button"
-                    className="rounded-full border border-violet-300 bg-background px-2.5 py-1 text-[11px] text-violet-700 hover:bg-violet-100"
+                    className="w-full rounded-lg border border-violet-300 bg-background px-3 py-2 text-left text-xs font-medium text-violet-700 hover:bg-violet-100"
                     onClick={() =>
                       setInput((current) =>
                         current.trim()
@@ -1423,7 +1426,7 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
                   </button>
                   <button
                     type="button"
-                    className="rounded-full border border-violet-300 bg-background px-2.5 py-1 text-[11px] text-violet-700 hover:bg-violet-100"
+                    className="w-full rounded-lg border border-violet-300 bg-background px-3 py-2 text-left text-xs font-medium text-violet-700 hover:bg-violet-100"
                     onClick={() =>
                       setInput((current) =>
                         current.trim()
