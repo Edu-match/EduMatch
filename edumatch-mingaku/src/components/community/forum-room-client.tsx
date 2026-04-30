@@ -556,9 +556,33 @@ function UserAvatar({
 type PostDraft = { body: string; authorRole: string; relatedArticleUrl: string; displayName: string };
 
 const MAX_BODY = 800;
+const FORUM_DRAFT_STORAGE_KEY = "edumatch-forum-post-draft";
+
+function consumeForumDraft(roomId: string): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(FORUM_DRAFT_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as {
+      roomId?: string;
+      body?: string;
+      createdAt?: number;
+    };
+    if (parsed.roomId !== roomId || typeof parsed.body !== "string") return null;
+    if (typeof parsed.createdAt === "number" && Date.now() - parsed.createdAt > 24 * 60 * 60 * 1000) {
+      localStorage.removeItem(FORUM_DRAFT_STORAGE_KEY);
+      return null;
+    }
+    localStorage.removeItem(FORUM_DRAFT_STORAGE_KEY);
+    return parsed.body.trim();
+  } catch {
+    return null;
+  }
+}
 
 function NewPostComposer({
   onSubmit,
+  roomId,
   userName,
   avatarUrl,
   isLoggedIn,
@@ -570,6 +594,7 @@ function NewPostComposer({
   aiKenteiPassed,
 }: {
   onSubmit: (draft: PostDraft) => Promise<void>;
+  roomId: string;
   userName: string;
   avatarUrl?: string | null;
   isLoggedIn: boolean;
@@ -585,10 +610,24 @@ function NewPostComposer({
   const [isAnon, setIsAnon] = useState(false);
   const [relatedArticleUrl, setRelatedArticleUrl] = useState("");
   const [showUrl, setShowUrl] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
 
   const displayName = isAnon ? "匿名ユーザー" : (userName || "ゲスト");
   const remaining = MAX_BODY - body.length;
   const canSubmit = body.trim().length > 0 && body.length <= MAX_BODY && !submitting;
+
+  useEffect(() => {
+    const fillDraftFromChat = () => {
+      const draftBody = consumeForumDraft(roomId);
+      if (!draftBody) return;
+      setBody(draftBody);
+      rootRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+
+    fillDraftFromChat();
+    window.addEventListener("edumatch:forum-draft-created", fillDraftFromChat);
+    return () => window.removeEventListener("edumatch:forum-draft-created", fillDraftFromChat);
+  }, [roomId]);
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
@@ -623,7 +662,7 @@ function NewPostComposer({
   }
 
   return (
-    <div className="rounded-2xl border bg-card shadow-xs overflow-hidden">
+    <div id="new-post" ref={rootRef} className="rounded-2xl border bg-card shadow-xs overflow-hidden">
       <div className="border-b px-5 py-3">
         <p className="text-sm font-semibold">このテーマに投稿する</p>
         <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">{weeklyTopic}</p>
@@ -665,6 +704,12 @@ function NewPostComposer({
             <OpenAiChatButton
               variant="outline"
               className="h-7 shrink-0 border-violet-300 text-violet-700 hover:bg-violet-100"
+              initialMessage={
+                body.trim()
+                  ? `以下の下書き意見を深めたいです。反対視点や追加論点も含めて議論してください。\n\n${body.trim()}`
+                  : `今週のお題「${weeklyTopic}」について、投稿前に意見を深める議論をしたいです。`
+              }
+              preferredMode="discussion"
             >
               <Bot className="mr-1 h-3.5 w-3.5" />
               AIと議論する
@@ -1040,6 +1085,7 @@ export function ForumRoomClient({ room }: { room: ForumRoom }) {
 
               <NewPostComposer
                 onSubmit={handleNewPost}
+                roomId={room.id}
                 userName={auth.name}
                 avatarUrl={auth.avatarUrl}
                 isLoggedIn={auth.isLoggedIn}

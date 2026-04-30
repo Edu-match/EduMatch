@@ -38,6 +38,7 @@ import { useAiPanel } from "@/components/layout/ai-panel-context";
 
 const AI_NAV_DISCLAIMER_PATH = "/help/ai-navigator-disclaimer";
 const CHAT_USAGE_LIMIT_PATH = "/help/chat-usage-limit";
+const FORUM_DRAFT_STORAGE_KEY = "edumatch-forum-post-draft";
 
 type ChatMsg = {
   id: string;
@@ -68,6 +69,11 @@ type PageContext = {
 type View = "chat" | "context-select" | "history-select" | "chat-history";
 
 export type ChatMode = "navigator" | "debate" | "discussion";
+
+type OpenAiChatEventDetail = {
+  initialMessage?: string;
+  preferredMode?: ChatMode;
+};
 
 type ChatSessionMessage = {
   id?: string;
@@ -252,6 +258,11 @@ function parsePageContext(pathname: string): PageContext {
   const serviceMatch = pathname.match(/^\/services\/([^/]+)$/);
   if (serviceMatch) return { id: serviceMatch[1], type: "service" };
   return null;
+}
+
+function parseForumRoomId(pathname: string): string | null {
+  const forumRoomMatch = pathname.match(/^\/forum\/([^/]+)$/);
+  return forumRoomMatch ? forumRoomMatch[1] : null;
 }
 
 function AgreementScreen({
@@ -445,6 +456,15 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
   const abortRef = useRef<AbortController | null>(null);
 
   const pageContext = useMemo(() => parsePageContext(pathname), [pathname]);
+  const forumRoomId = useMemo(() => parseForumRoomId(pathname), [pathname]);
+  const userTurnCount = useMemo(
+    () => messages.filter((m) => m.role === "user" && !m.streaming && !m.yesNo).length,
+    [messages]
+  );
+  const latestUserMessage = useMemo(
+    () => [...messages].reverse().find((m) => m.role === "user" && !m.streaming)?.content.trim() ?? "",
+    [messages]
+  );
 
   const handleClose = useCallback(() => {
     if (isMobile) {
@@ -486,13 +506,42 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
 
   // 「AIチャットを開く」ボタンからも開けるようにする
   useEffect(() => {
-    const handler = () => {
+    const handler = (event: Event) => {
+      const customEvent = event as CustomEvent<OpenAiChatEventDetail>;
       if (isMobile) setMobileOpen(true);
       else setOpen(true);
+      const detail = customEvent.detail;
+      if (detail?.initialMessage && detail.initialMessage.trim()) {
+        setInput(detail.initialMessage.trim());
+      }
+      if (detail?.preferredMode) {
+        setChatMode(detail.preferredMode);
+      }
     };
     window.addEventListener("open-ai-chat", handler);
     return () => window.removeEventListener("open-ai-chat", handler);
   }, [isMobile, setOpen, setMobileOpen]);
+
+  function moveLatestMessageToForum() {
+    if (!forumRoomId || !latestUserMessage) return;
+    try {
+      localStorage.setItem(
+        FORUM_DRAFT_STORAGE_KEY,
+        JSON.stringify({
+          roomId: forumRoomId,
+          body: latestUserMessage,
+          createdAt: Date.now(),
+          source: "ai-chat",
+        })
+      );
+      window.dispatchEvent(new CustomEvent("edumatch:forum-draft-created"));
+      window.location.href = `/forum/${forumRoomId}#new-post`;
+      handleClose();
+    } catch {
+      // localStorage が使えない環境では遷移のみ
+      window.location.href = `/forum/${forumRoomId}#new-post`;
+    }
+  }
 
   // 記事読了イベントを受け取り、YES/NO問いかけを表示
   useEffect(() => {
@@ -1327,6 +1376,24 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
                 </Link>
               )}
             </div>
+            {chatMode === "discussion" && forumRoomId && userTurnCount >= 10 && latestUserMessage && (
+              <div className="mt-2 rounded-lg border border-violet-200 bg-violet-50/70 px-3 py-2">
+                <p className="text-xs text-violet-800">
+                  議論が深まってきました。ここまでの意見を井戸端会議へ投稿しますか？
+                </p>
+                <div className="mt-2 flex justify-end">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 border-violet-300 text-violet-700 hover:bg-violet-100"
+                    onClick={moveLatestMessageToForum}
+                  >
+                    この内容を投稿欄に移す
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </>
       )}
