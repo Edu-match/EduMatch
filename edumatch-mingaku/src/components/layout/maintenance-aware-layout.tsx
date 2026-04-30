@@ -52,23 +52,40 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
       {/* Desktop + tablet content row */}
       <div className="flex-1 flex min-w-0 pt-16">
 
-        <button
-          type="button"
-          onClick={() => setSidebarOpen((p) => !p)}
-          className="hidden lg:flex fixed left-2 top-[4.2rem] z-40 h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          aria-label={sidebarOpen ? "サイドメニューを閉じる" : "サイドメニューを開く"}
-        >
-          <Menu className="h-5 w-5" />
-        </button>
-
         {/* Left sidebar（AIパネルの開閉と独立して動作） */}
-        {sidebarOpen && (
-          <aside className="hidden lg:block lg:w-60 lg:pr-4 flex-shrink-0 pt-1">
-            <div className="sticky top-[4.2rem]">
+        <aside className="hidden lg:block lg:w-60 lg:pr-4 flex-shrink-0 pt-1">
+          <div className="sticky top-[4.2rem] px-3">
+            {sidebarOpen ? (
+              <button
+                type="button"
+                onClick={() => setSidebarOpen(false)}
+                className="mb-2 flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                aria-label="サイドメニューを閉じる"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setSidebarOpen(true)}
+                className="mb-2 flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                aria-label="サイドメニューを開く"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+            )}
+            <div
+              className={cn(
+                "overflow-hidden transition-all duration-200 ease-out",
+                sidebarOpen
+                  ? "max-w-[260px] opacity-100 translate-x-0"
+                  : "max-w-0 opacity-0 -translate-x-3 pointer-events-none"
+              )}
+            >
               <SideMenu />
             </div>
-          </aside>
-        )}
+          </div>
+        </aside>
 
         {/* Main content */}
         <main className="flex-1 min-w-0 overflow-x-hidden">
@@ -92,7 +109,7 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
                   role="separator"
                   aria-label="AIパネル幅を変更"
                 />
-                <ChatbotWidget embedded />
+                <ChatbotWidget />
               </div>
             ) : (
               <button
@@ -151,7 +168,7 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center justify-center px-4 pt-2 pb-1 shrink-0">
             <div className="w-10 h-1 rounded-full bg-muted-foreground/20" />
           </div>
-          <ChatbotWidget embedded isMobile />
+          <ChatbotWidget isMobile />
         </div>
       </div>
     </div>
