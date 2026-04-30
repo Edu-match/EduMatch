@@ -457,10 +457,6 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
 
   const pageContext = useMemo(() => parsePageContext(pathname), [pathname]);
   const forumRoomId = useMemo(() => parseForumRoomId(pathname), [pathname]);
-  const userTurnCount = useMemo(
-    () => messages.filter((m) => m.role === "user" && !m.streaming && !m.yesNo).length,
-    [messages]
-  );
   const latestUserMessage = useMemo(
     () => [...messages].reverse().find((m) => m.role === "user" && !m.streaming)?.content.trim() ?? "",
     [messages]
@@ -1376,22 +1372,17 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
                 </Link>
               )}
             </div>
-            {chatMode === "discussion" && forumRoomId && userTurnCount >= 10 && latestUserMessage && (
-              <div className="mt-2 rounded-lg border border-violet-200 bg-violet-50/70 px-3 py-2">
-                <p className="text-xs text-violet-800">
-                  議論が深まってきました。ここまでの意見を井戸端会議へ投稿しますか？
-                </p>
-                <div className="mt-2 flex justify-end">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="h-7 border-violet-300 text-violet-700 hover:bg-violet-100"
-                    onClick={moveLatestMessageToForum}
-                  >
-                    この内容を投稿欄に移す
-                  </Button>
-                </div>
+            {chatMode === "discussion" && forumRoomId && latestUserMessage && (
+              <div className="mt-2 flex justify-end">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-7 border-violet-300 text-violet-700 hover:bg-violet-100"
+                  onClick={moveLatestMessageToForum}
+                >
+                  投稿欄へ下書きを移す
+                </Button>
               </div>
             )}
           </div>

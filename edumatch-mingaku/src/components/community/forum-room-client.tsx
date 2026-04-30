@@ -558,7 +558,7 @@ type PostDraft = { body: string; authorRole: string; relatedArticleUrl: string; 
 const MAX_BODY = 800;
 const FORUM_DRAFT_STORAGE_KEY = "edumatch-forum-post-draft";
 
-function consumeForumDraft(roomId: string): string | null {
+function consumeForumDraft(roomId: string): { body: string; source: "ai-chat" | "unknown" } | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem(FORUM_DRAFT_STORAGE_KEY);
@@ -567,6 +567,7 @@ function consumeForumDraft(roomId: string): string | null {
       roomId?: string;
       body?: string;
       createdAt?: number;
+      source?: string;
     };
     if (parsed.roomId !== roomId || typeof parsed.body !== "string") return null;
     if (typeof parsed.createdAt === "number" && Date.now() - parsed.createdAt > 24 * 60 * 60 * 1000) {
@@ -574,7 +575,10 @@ function consumeForumDraft(roomId: string): string | null {
       return null;
     }
     localStorage.removeItem(FORUM_DRAFT_STORAGE_KEY);
-    return parsed.body.trim();
+    return {
+      body: parsed.body.trim(),
+      source: parsed.source === "ai-chat" ? "ai-chat" : "unknown",
+    };
   } catch {
     return null;
   }
@@ -610,6 +614,7 @@ function NewPostComposer({
   const [isAnon, setIsAnon] = useState(false);
   const [relatedArticleUrl, setRelatedArticleUrl] = useState("");
   const [showUrl, setShowUrl] = useState(false);
+  const [draftFromAiLoaded, setDraftFromAiLoaded] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   const displayName = isAnon ? "匿名ユーザー" : (userName || "ゲスト");
@@ -618,9 +623,10 @@ function NewPostComposer({
 
   useEffect(() => {
     const fillDraftFromChat = () => {
-      const draftBody = consumeForumDraft(roomId);
-      if (!draftBody) return;
-      setBody(draftBody);
+      const draft = consumeForumDraft(roomId);
+      if (!draft?.body) return;
+      setBody(draft.body);
+      setDraftFromAiLoaded(draft.source === "ai-chat");
       rootRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     };
 
@@ -667,6 +673,36 @@ function NewPostComposer({
         <p className="text-sm font-semibold">このテーマに投稿する</p>
         <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">{weeklyTopic}</p>
       </div>
+
+      {draftFromAiLoaded && (
+        <div className="border-b bg-violet-50/80 px-5 py-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-violet-800">
+              AIで整理した下書きを反映しました。内容を整えてそのまま投稿できます。
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-7 text-xs text-violet-700 hover:bg-violet-100"
+                onClick={() => setDraftFromAiLoaded(false)}
+              >
+                閉じる
+              </Button>
+              <OpenAiChatButton
+                variant="outline"
+                className="h-7 border-violet-300 text-violet-700 hover:bg-violet-100"
+                initialMessage={`以下の投稿下書きを、もう一段深く整理したいです。\n\n${body.trim()}`}
+                preferredMode="discussion"
+              >
+                <Bot className="mr-1 h-3.5 w-3.5" />
+                さらにAIで深める
+              </OpenAiChatButton>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center gap-2.5 border-b bg-muted/20 px-5 py-2.5">
         <UserAvatar name={displayName} avatarUrl={isAnon ? null : avatarUrl} size={28} isAnon={isAnon} />
