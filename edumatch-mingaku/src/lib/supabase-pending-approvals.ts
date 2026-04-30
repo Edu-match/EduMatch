@@ -9,6 +9,8 @@ export type PostFromSupabase = {
   id: string;
   title: string;
   content: string;
+  view_count: number;
+  favorite_count: number;
   submitted_at: string | null;
   approved_at: string | null;
   rejected_at: string | null;
@@ -22,6 +24,8 @@ export type ServiceFromSupabase = {
   id: string;
   title: string;
   description: string;
+  view_count: number;
+  favorite_count: number;
   submitted_at: string | null;
   approved_at: string | null;
   rejected_at: string | null;
@@ -40,20 +44,20 @@ type ServiceWithProvider = Omit<ServiceFromSupabase, "provider"> & {
 
 // PENDING 用は最小限のカラム（approved_at 等がないDBにも対応）
 const postSelectPending = `
-  id, title, content, submitted_at, provider_id,
+  id, title, content, view_count, favorite_count, submitted_at, provider_id,
   Profile!provider_id ( id, name, avatar_url )
 `;
 const serviceSelectPending = `
-  id, title, description, submitted_at, provider_id,
+  id, title, description, view_count, favorite_count, submitted_at, provider_id,
   Profile!provider_id ( id, name, avatar_url )
 `;
 // APPROVED/REJECTED 用は追加カラム含む
 const postSelectFull = `
-  id, title, content, submitted_at, approved_at, rejected_at, rejection_reason, status, provider_id,
+  id, title, content, view_count, favorite_count, submitted_at, approved_at, rejected_at, rejection_reason, status, provider_id,
   Profile!provider_id ( id, name, avatar_url )
 `;
 const serviceSelectFull = `
-  id, title, description, submitted_at, approved_at, rejected_at, rejection_reason, status, provider_id,
+  id, title, description, view_count, favorite_count, submitted_at, approved_at, rejected_at, rejection_reason, status, provider_id,
   Profile!provider_id ( id, name, avatar_url )
 `;
 

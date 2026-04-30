@@ -7,7 +7,7 @@ import Image from "next/image";
 import { 
   Menu, LogOut, User, LayoutDashboard, Settings, 
   ChevronDown, UserPlus, LogIn, FileText, Bell,
-  MessageSquare, CheckCircle, Calendar, Newspaper, BookOpen, Bot, Activity
+  CheckCircle, Calendar, Newspaper, BookOpen, Bot, Activity
 } from "lucide-react";
 import { useRequestList } from "@/components/request-list/request-list-context";
 import { Button } from "@/components/ui/button";
@@ -329,13 +329,6 @@ export function Header() {
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="cursor-pointer"
-                      onSelect={() => router.push("/admin/forum")}
-                    >
-                      <MessageSquare className="mr-2 h-4 w-4 text-blue-600" />
-                      井戸端会議管理
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="cursor-pointer"
                       onSelect={() => router.push("/admin/events")}
                     >
                       <Calendar className="mr-2 h-4 w-4 text-emerald-600" />
@@ -496,9 +489,6 @@ export function Header() {
                           <div className="space-y-2">
                             <Link href="/admin/approvals" className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground">
                               <CheckCircle className="h-4 w-4 text-amber-600" />承認キュー
-                            </Link>
-                            <Link href="/admin/forum" className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground">
-                              <MessageSquare className="h-4 w-4 text-blue-600" />井戸端会議管理
                             </Link>
                             <Link href="/admin/events" className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground">
                               <Calendar className="h-4 w-4 text-emerald-600" />イベント管理

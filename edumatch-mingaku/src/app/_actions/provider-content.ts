@@ -11,6 +11,7 @@ export type ProviderArticle = {
   status: string;
   is_published: boolean;
   view_count: number;
+  favorite_count: number;
   created_at: Date;
   updated_at: Date;
 };
@@ -21,6 +22,8 @@ export type ProviderService = {
   category: string;
   status: string;
   is_published: boolean;
+  view_count: number;
+  favorite_count: number;
   created_at: Date;
   updated_at: Date;
 };
@@ -50,6 +53,7 @@ export async function getProviderArticles() {
         status: true,
         is_published: true,
         view_count: true,
+        favorite_count: true,
         created_at: true,
         updated_at: true,
       },
@@ -89,6 +93,8 @@ export async function getProviderServices() {
         category: true,
         status: true,
         is_published: true,
+        view_count: true,
+        favorite_count: true,
         created_at: true,
         updated_at: true,
       },
@@ -118,17 +124,21 @@ export async function getProviderStats() {
         totalServices: 0,
         publishedServices: 0,
         totalViews: 0,
+        totalLikes: 0,
       };
     }
 
     const isAdmin = profile.role === "ADMIN";
     const whereClause = isAdmin ? {} : { provider_id: profile.id };
-    const [articlesCount, publishedArticlesCount, servicesCount, publishedServicesCount, viewsSum] = await Promise.all([
+    const [articlesCount, publishedArticlesCount, servicesCount, publishedServicesCount, articleViewsSum, serviceViewsSum, articleLikesSum, serviceLikesSum] = await Promise.all([
       prisma.post.count({ where: whereClause }),
       prisma.post.count({ where: { ...whereClause, is_published: true } }),
       prisma.service.count({ where: whereClause }),
       prisma.service.count({ where: { ...whereClause, is_published: true } }),
       prisma.post.aggregate({ where: whereClause, _sum: { view_count: true } }),
+      prisma.service.aggregate({ where: whereClause, _sum: { view_count: true } }),
+      prisma.post.aggregate({ where: whereClause, _sum: { favorite_count: true } }),
+      prisma.service.aggregate({ where: whereClause, _sum: { favorite_count: true } }),
     ]);
 
     return {
@@ -136,7 +146,8 @@ export async function getProviderStats() {
       publishedArticles: publishedArticlesCount,
       totalServices: servicesCount,
       publishedServices: publishedServicesCount,
-      totalViews: viewsSum._sum.view_count || 0,
+      totalViews: (articleViewsSum._sum.view_count || 0) + (serviceViewsSum._sum.view_count || 0),
+      totalLikes: (articleLikesSum._sum.favorite_count || 0) + (serviceLikesSum._sum.favorite_count || 0),
     };
   } catch (error) {
     console.error("getProviderStats error:", error);
@@ -146,6 +157,7 @@ export async function getProviderStats() {
       totalServices: 0,
       publishedServices: 0,
       totalViews: 0,
+      totalLikes: 0,
     };
   }
 }

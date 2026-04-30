@@ -21,7 +21,7 @@ import {
   getRejectedPostsFromSupabase,
   getRejectedServicesFromSupabase,
 } from "@/lib/supabase-pending-approvals";
-import { CheckCircle, XCircle, Eye, Clock } from "lucide-react";
+import { CheckCircle, XCircle, Eye, Clock, Heart } from "lucide-react";
 
 async function ensureAdmin() {
   await requireAuth();
@@ -156,6 +156,14 @@ export default async function AdminApprovalsPage() {
                           <p className="text-xs text-muted-foreground">
                             申請者: {p.provider?.name || "投稿者"}
                           </p>
+                          <p className="text-xs text-muted-foreground flex items-center gap-3">
+                            <span className="inline-flex items-center gap-1">
+                              <Eye className="h-3 w-3" /> {p.view_count ?? 0}
+                            </span>
+                            <span className="inline-flex items-center gap-1">
+                              <Heart className="h-3 w-3" /> {p.favorite_count ?? 0}
+                            </span>
+                          </p>
                           <div className="flex flex-wrap gap-2">
                             <form action={approvePostAction}>
                               <input type="hidden" name="id" value={p.id} />
@@ -195,6 +203,14 @@ export default async function AdminApprovalsPage() {
                           <p className="font-medium line-clamp-2">{s.title}</p>
                           <p className="text-xs text-muted-foreground">
                             申請者: {s.provider?.name || "提供者"}
+                          </p>
+                          <p className="text-xs text-muted-foreground flex items-center gap-3">
+                            <span className="inline-flex items-center gap-1">
+                              <Eye className="h-3 w-3" /> {s.view_count ?? 0}
+                            </span>
+                            <span className="inline-flex items-center gap-1">
+                              <Heart className="h-3 w-3" /> {s.favorite_count ?? 0}
+                            </span>
                           </p>
                           <div className="flex flex-wrap gap-2">
                             <form action={approveServiceAction}>
@@ -259,6 +275,10 @@ export default async function AdminApprovalsPage() {
                           <span className="text-xs text-muted-foreground shrink-0 ml-2">
                             承認: {formatDate(p.approved_at)}
                           </span>
+                          <span className="text-xs text-muted-foreground shrink-0 ml-2 inline-flex items-center gap-2">
+                            <span className="inline-flex items-center gap-1"><Eye className="h-3 w-3" />{p.view_count ?? 0}</span>
+                            <span className="inline-flex items-center gap-1"><Heart className="h-3 w-3" />{p.favorite_count ?? 0}</span>
+                          </span>
                         </li>
                       ))}
                     </ul>
@@ -275,6 +295,10 @@ export default async function AdminApprovalsPage() {
                           </Link>
                           <span className="text-xs text-muted-foreground shrink-0 ml-2">
                             承認: {formatDate(s.approved_at)}
+                          </span>
+                          <span className="text-xs text-muted-foreground shrink-0 ml-2 inline-flex items-center gap-2">
+                            <span className="inline-flex items-center gap-1"><Eye className="h-3 w-3" />{s.view_count ?? 0}</span>
+                            <span className="inline-flex items-center gap-1"><Heart className="h-3 w-3" />{s.favorite_count ?? 0}</span>
                           </span>
                         </li>
                       ))}
@@ -318,6 +342,10 @@ export default async function AdminApprovalsPage() {
                             却下: {formatDate(p.rejected_at)}
                             {p.rejection_reason && ` — ${p.rejection_reason}`}
                           </p>
+                          <p className="text-xs text-muted-foreground inline-flex items-center gap-2">
+                            <span className="inline-flex items-center gap-1"><Eye className="h-3 w-3" />{p.view_count ?? 0}</span>
+                            <span className="inline-flex items-center gap-1"><Heart className="h-3 w-3" />{p.favorite_count ?? 0}</span>
+                          </p>
                         </li>
                       ))}
                     </ul>
@@ -335,6 +363,10 @@ export default async function AdminApprovalsPage() {
                           <p className="text-xs text-muted-foreground">
                             却下: {formatDate(s.rejected_at)}
                             {s.rejection_reason && ` — ${s.rejection_reason}`}
+                          </p>
+                          <p className="text-xs text-muted-foreground inline-flex items-center gap-2">
+                            <span className="inline-flex items-center gap-1"><Eye className="h-3 w-3" />{s.view_count ?? 0}</span>
+                            <span className="inline-flex items-center gap-1"><Heart className="h-3 w-3" />{s.favorite_count ?? 0}</span>
                           </p>
                         </li>
                       ))}
