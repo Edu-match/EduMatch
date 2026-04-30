@@ -198,34 +198,34 @@ function ServiceSelector({
 
   return (
     <div className="space-y-3">
-      {/* 検索・カテゴリフィルタ */}
-      <div className="flex flex-col sm:flex-row gap-2">
-        <div className="relative flex-1 min-w-0">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-          <Input
-            placeholder="サービス名・説明で検索..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <div className="flex gap-1.5 overflow-x-auto flex-shrink-0 pb-0.5">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              type="button"
-              onClick={() => setCategory(cat)}
-              className={cn(
-                "whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors border flex-shrink-0",
-                cat === category
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-background text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
-              )}
-            >
-              {cat === "all" ? "すべて" : cat}
-            </button>
-          ))}
-        </div>
+      {/* 検索 */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+        <Input
+          placeholder="サービス名・説明で検索..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+
+      {/* カテゴリフィルタ */}
+      <div className="flex gap-1.5 overflow-x-auto pb-1">
+        {categories.map((cat) => (
+          <button
+            key={cat}
+            type="button"
+            onClick={() => setCategory(cat)}
+            className={cn(
+              "whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors border flex-shrink-0",
+              cat === category
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
+            )}
+          >
+            {cat === "all" ? "すべて" : cat}
+          </button>
+        ))}
       </div>
 
       {/* カードグリッド */}
