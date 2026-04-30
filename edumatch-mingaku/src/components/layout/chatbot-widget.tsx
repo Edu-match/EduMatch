@@ -34,6 +34,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { RecentViewItem } from "@/app/_actions/view-history";
+import { useAiPanel } from "@/components/layout/ai-panel-context";
 
 const CONTEXT_MAX = 1;
 const CHAT_WIDTH = 420;
@@ -420,6 +421,7 @@ export function ChatbotWidget({
   isMobile: _isMobile = false,
   embedded = false,
 }: ChatbotWidgetProps) {
+  const { setOpen: setPanelOpen, setMobileOpen } = useAiPanel();
   const pathname = usePathname();
   const [open, setOpen] = useState(embedded);
   const [view, setView] = useState<View>("chat");
@@ -841,6 +843,18 @@ export function ChatbotWidget({
     setSelectedAskChoices({});
   }
 
+  const handleClose = () => {
+    if (embedded) {
+      if (_isMobile) {
+        setMobileOpen(false);
+      } else {
+        setPanelOpen(false);
+      }
+      return;
+    }
+    setOpen(false);
+  };
+
   const panelContent = (
     <div
       className={
@@ -927,17 +941,15 @@ export function ChatbotWidget({
               新規
             </Button>
           )}
-          {!embedded && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 rounded-lg"
-              onClick={() => setOpen(false)}
-              aria-label="閉じる"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 rounded-lg"
+            onClick={handleClose}
+            aria-label="閉じる"
+          >
+            <X className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 

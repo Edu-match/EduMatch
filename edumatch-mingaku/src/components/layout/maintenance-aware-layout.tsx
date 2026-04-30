@@ -53,11 +53,11 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
       <div className="flex-1 flex min-w-0 pt-16">
 
         {/* ハンバーガー列：常時表示の細い列としてレイアウトに組み込む */}
-        <div className="hidden lg:flex flex-col flex-shrink-0 w-10 pt-3 items-center">
+        <div className="hidden lg:flex flex-col flex-shrink-0 w-10 pt-1 items-center">
           <button
             type="button"
             onClick={() => setSidebarOpen((p) => !p)}
-            className="h-9 w-9 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors sticky top-[4.5rem]"
+            className="h-9 w-9 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors sticky top-[4.2rem]"
             aria-label={sidebarOpen ? "サイドメニューを閉じる" : "サイドメニューを開く"}
           >
             <Menu className="h-5 w-5" />
@@ -86,8 +86,8 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
           )}
           style={open ? { width: `${panelWidth}px` } : undefined}
         >
-          {open ? (
-            <div className="sticky top-16 h-[calc(100vh-4rem)] flex flex-col">
+          <div className="sticky top-16 h-[calc(100vh-4rem)] flex flex-col">
+            {open ? (
               <div className="relative h-full flex flex-col border-l bg-background overflow-hidden">
                 <div
                   className="absolute -left-1 top-0 h-full w-2 cursor-col-resize z-20"
@@ -97,23 +97,23 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
                 />
                 <ChatbotWidget embedded />
               </div>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setOpen(true)}
-              className="h-full w-full flex flex-col items-center justify-center gap-4 border-l bg-orange-500 hover:bg-orange-400 text-white transition-all group"
-              aria-label="AIパネルを開く"
-            >
-              <Bot className="h-8 w-8 group-hover:scale-110 transition-transform" />
-              <span
-                className="text-sm font-bold select-none tracking-widest"
-                style={{ writingMode: "vertical-rl", textOrientation: "upright" }}
+            ) : (
+              <button
+                type="button"
+                onClick={() => setOpen(true)}
+                className="h-full w-full flex flex-col items-center justify-center gap-4 border-l bg-orange-500 hover:bg-orange-400 text-white transition-all group"
+                aria-label="AIパネルを開く"
               >
-                AIナビゲーター
-              </span>
-            </button>
-          )}
+                <Bot className="h-8 w-8 group-hover:scale-110 transition-transform" />
+                <span
+                  className="text-sm font-bold select-none tracking-widest"
+                  style={{ writingMode: "vertical-rl", textOrientation: "upright" }}
+                >
+                  AIナビゲーター
+                </span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
