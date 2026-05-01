@@ -1,4 +1,4 @@
-import { getTalentMatchingCompanies } from "@/app/_actions/talent";
+import { getTalentMatchingProfiles } from "@/app/_actions/talent";
 import TalentClientPage from "./talent-client";
 
 export const dynamic = "force-dynamic";
@@ -6,10 +6,10 @@ export const dynamic = "force-dynamic";
 export const metadata = {
   title: "人材マッチング | エデュマッチ",
   description:
-    "教育業界で採用を行っている事業者と、教育分野で活躍したい方をつなぐ人材マッチングサービス。",
+    "講演・講師・仕事の依頼ができる教育分野の専門家・企業を探せる人材マッチングサービス。",
 };
 
 export default async function TalentPage() {
-  const companies = await getTalentMatchingCompanies();
-  return <TalentClientPage companies={companies} />;
+  const profiles = await getTalentMatchingProfiles();
+  return <TalentClientPage profiles={profiles} />;
 }

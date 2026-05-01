@@ -183,6 +183,10 @@ export type UpdateProfileInput = {
   interests?: string[];
   /** 関心カテゴリ「その他」の自由記述（最大100文字） */
   interest_other?: string | null;
+  /** 人材マッチングへの掲載を許可するか */
+  talent_matching_enabled?: boolean;
+  /** 人材マッチングページに表示する自己PRメッセージ（任意） */
+  talent_matching_description?: string | null;
   /** 初回プロフィール登録ウィザード完了時に true */
   completeInitialSetup?: boolean;
 };
@@ -249,6 +253,12 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
             ...(orgOther !== undefined && { organization_type_other: orgOther }),
             notification_email_2: input.notification_email_2?.trim() || null,
             notification_email_3: input.notification_email_3?.trim() || null,
+            ...(input.talent_matching_enabled !== undefined && {
+              talent_matching_enabled: input.talent_matching_enabled,
+            }),
+            ...(input.talent_matching_description !== undefined && {
+              talent_matching_description: input.talent_matching_description?.trim() || null,
+            }),
           },
           update: {
             ...(input.legal_name !== undefined && {
@@ -267,6 +277,12 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
             ...(input.notification_email_3 !== undefined && {
               notification_email_3: input.notification_email_3?.trim() || null,
             }),
+            ...(input.talent_matching_enabled !== undefined && {
+              talent_matching_enabled: input.talent_matching_enabled,
+            }),
+            ...(input.talent_matching_description !== undefined && {
+              talent_matching_description: input.talent_matching_description?.trim() || null,
+            }),
           },
         });
         await tx.generalProfile.deleteMany({ where: { id: user.id } });
@@ -280,6 +296,12 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
             organization: input.organization?.trim() || null,
             organization_type: input.organization_type?.trim() || null,
             ...(orgOther !== undefined && { organization_type_other: orgOther }),
+            ...(input.talent_matching_enabled !== undefined && {
+              talent_matching_enabled: input.talent_matching_enabled,
+            }),
+            ...(input.talent_matching_description !== undefined && {
+              talent_matching_description: input.talent_matching_description?.trim() || null,
+            }),
           },
           update: {
             ...(input.legal_name !== undefined && {
@@ -293,6 +315,12 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
               organization_type: input.organization_type?.trim() || null,
             }),
             ...(orgOther !== undefined && { organization_type_other: orgOther }),
+            ...(input.talent_matching_enabled !== undefined && {
+              talent_matching_enabled: input.talent_matching_enabled,
+            }),
+            ...(input.talent_matching_description !== undefined && {
+              talent_matching_description: input.talent_matching_description?.trim() || null,
+            }),
           },
         });
         await tx.corporateProfile.deleteMany({ where: { id: user.id } });

@@ -119,6 +119,8 @@ export function ProfileRegisterForm({
   const [website, setWebsite] = useState(initialProfile?.website ?? "");
   const [notificationEmail2, setNotificationEmail2] = useState(initialProfile?.notification_email_2 ?? "");
   const [notificationEmail3, setNotificationEmail3] = useState(initialProfile?.notification_email_3 ?? "");
+  const [talentMatchingEnabled, setTalentMatchingEnabled] = useState(false);
+  const [talentMatchingDescription, setTalentMatchingDescription] = useState("");
   const [saving, setSaving] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -418,6 +420,38 @@ export function ProfileRegisterForm({
                 onChange={(e) => setWebsite(e.target.value)}
               />
             </div>
+
+            {/* 人材マッチング オプトイン */}
+            <div className="rounded-xl border-2 border-dashed border-muted-foreground/20 p-4 space-y-3 bg-muted/20">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={talentMatchingEnabled}
+                  onChange={(e) => setTalentMatchingEnabled(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary accent-primary"
+                />
+                <div>
+                  <p className="text-sm font-medium">人材マッチングに登録する（任意）</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    講演依頼・講師依頼・仕事依頼を受け付けるプロフィールとして、人材マッチングページに掲載されます。後からマイページで変更できます。
+                  </p>
+                </div>
+              </label>
+              {talentMatchingEnabled && (
+                <div className="space-y-1.5 pl-7">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    自己PR・対応できる依頼内容（任意）
+                  </label>
+                  <Textarea
+                    placeholder="例：教育ICT分野の講演・研修を承ります。プログラミング教育の導入支援も可能です。"
+                    rows={3}
+                    value={talentMatchingDescription}
+                    onChange={(e) => setTalentMatchingDescription(e.target.value)}
+                    className="text-sm"
+                  />
+                </div>
+              )}
+            </div>
           </div>
         );
 
@@ -566,6 +600,12 @@ export function ProfileRegisterForm({
                     <a href={website} target="_blank" rel="noopener noreferrer" className="text-primary underline break-all">{website}</a>
                   </div>
                 )}
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">人材マッチング登録</span>
+                  <span className={talentMatchingEnabled ? "text-primary font-medium" : ""}>
+                    {talentMatchingEnabled ? "登録する" : "登録しない"}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -652,6 +692,10 @@ export function ProfileRegisterForm({
       interests: selectedInterests,
       interest_other: selectedInterests.includes("その他")
         ? interestOther.trim() || null
+        : null,
+      talent_matching_enabled: talentMatchingEnabled,
+      talent_matching_description: talentMatchingEnabled
+        ? talentMatchingDescription.trim() || null
         : null,
       completeInitialSetup: true,
     });

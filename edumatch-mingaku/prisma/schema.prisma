@@ -65,6 +65,10 @@ model GeneralProfile {
   organization_type  String?
   /// 所属の種類が「その他」のときの補足（任意）
   organization_type_other String?
+  /// 人材マッチングへの掲載を許可するか。デフォルト false（登録時に選択、後からDB手動切替可）
+  talent_matching_enabled     Boolean  @default(false)
+  /// 人材マッチングページに表示する自己PRメッセージ（任意）
+  talent_matching_description String?
   created_at         DateTime @default(now())
   updated_at         DateTime @updatedAt
 }
