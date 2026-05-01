@@ -121,6 +121,9 @@ export function ProfileRegisterForm({
   const [notificationEmail3, setNotificationEmail3] = useState(initialProfile?.notification_email_3 ?? "");
   const [talentMatchingEnabled, setTalentMatchingEnabled] = useState(false);
   const [talentMatchingDescription, setTalentMatchingDescription] = useState("");
+  const [talentBadges, setTalentBadges] = useState<string[]>([]);
+  const toggleTalentBadge = (badge: string) =>
+    setTalentBadges((prev) => prev.includes(badge) ? prev.filter((b) => b !== badge) : [...prev, badge]);
   const [saving, setSaving] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -438,17 +441,42 @@ export function ProfileRegisterForm({
                 </div>
               </label>
               {talentMatchingEnabled && (
-                <div className="space-y-1.5 pl-7">
-                  <label className="text-xs font-medium text-muted-foreground">
-                    自己PR・対応できる依頼内容（任意）
-                  </label>
-                  <Textarea
-                    placeholder="例：教育ICT分野の講演・研修を承ります。プログラミング教育の導入支援も可能です。"
-                    rows={3}
-                    value={talentMatchingDescription}
-                    onChange={(e) => setTalentMatchingDescription(e.target.value)}
-                    className="text-sm"
-                  />
+                <div className="space-y-3 pl-7">
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-medium text-muted-foreground">受け付ける依頼の種類（複数選択可）</p>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { value: "lecture", label: "🎤 講演依頼" },
+                        { value: "teaching", label: "🎓 講師依頼" },
+                        { value: "work", label: "💼 仕事依頼" },
+                      ].map(({ value, label }) => (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => toggleTalentBadge(value)}
+                          className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                            talentBadges.includes(value)
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border bg-background text-muted-foreground hover:border-primary/50"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">
+                      自己PR・対応できる依頼内容（任意）
+                    </label>
+                    <Textarea
+                      placeholder="例：教育ICT分野の講演・研修を承ります。プログラミング教育の導入支援も可能です。"
+                      rows={3}
+                      value={talentMatchingDescription}
+                      onChange={(e) => setTalentMatchingDescription(e.target.value)}
+                      className="text-sm"
+                    />
+                  </div>
                 </div>
               )}
             </div>
@@ -697,6 +725,7 @@ export function ProfileRegisterForm({
       talent_matching_description: talentMatchingEnabled
         ? talentMatchingDescription.trim() || null
         : null,
+      talent_badges: talentMatchingEnabled ? talentBadges : [],
       completeInitialSetup: true,
     });
     setSaving(false);

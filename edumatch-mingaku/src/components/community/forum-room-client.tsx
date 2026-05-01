@@ -941,10 +941,35 @@ export function ForumRoomClient({
   const [submitting, setSubmitting] = useState(false);
   const [loginDialogOpen, setLoginDialogOpen] = useState(false);
   const { pending: aiPending, streamTexts, generate } = useAiComment();
+  const [weeklyTopic, setWeeklyTopic] = useState(room.weeklyTopic);
+  const [editingTopic, setEditingTopic] = useState(false);
+  const [topicDraft, setTopicDraft] = useState(room.weeklyTopic);
+  const [savingTopic, setSavingTopic] = useState(false);
+  const isCreator = !!(auth.userId && room.createdBy && auth.userId === room.createdBy);
+  const canEditTopic = isCreator || auth.role === "ADMIN";
 
   const requireLogin = useCallback(() => {
     setLoginDialogOpen(true);
   }, []);
+
+  const handleSaveTopic = async () => {
+    if (savingTopic) return;
+    setSavingTopic(true);
+    try {
+      const res = await fetch(`/api/forum/rooms/${room.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ weeklyTopic: topicDraft.trim() }),
+      });
+      if (res.ok) {
+        setWeeklyTopic(topicDraft.trim());
+        setEditingTopic(false);
+      }
+    } finally {
+      setSavingTopic(false);
+    }
+  };
 
   // 投稿一覧取得
   useEffect(() => {
@@ -1006,7 +1031,7 @@ export function ForumRoomClient({
       if (!room.aiDiscussion) return;
 
       const recentContext = posts.slice(0, 5).map((p) => ({ authorName: p.authorName, body: p.body }));
-      const aiText = await generate(newPost.id, newPost.body, room.name, room.weeklyTopic, recentContext);
+      const aiText = await generate(newPost.id, newPost.body, room.name, weeklyTopic, recentContext);
 
       if (aiText) {
         // AI返信をDBにも保存
@@ -1113,12 +1138,62 @@ export function ForumRoomClient({
         <div className="container py-6">
           <div className="mx-auto max-w-3xl">
             <div className="relative rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 to-primary/5 px-6 py-5 shadow-sm">
-              <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-primary/70">
-                <Sparkles className="h-3.5 w-3.5" />
-                今週のお題
-              </p>
-              <p className="text-base font-semibold leading-7 sm:text-lg">{room.weeklyTopic}</p>
-              <p className="mt-2 text-xs text-muted-foreground">このテーマについて、あなたの経験や考えを投稿しよう</p>
+              <div className="mb-2 flex items-center justify-between">
+                <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-primary/70">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  今週のお題
+                </p>
+                {canEditTopic && !editingTopic && (
+                  <button
+                    type="button"
+                    onClick={() => { setTopicDraft(weeklyTopic); setEditingTopic(true); }}
+                    className="flex items-center gap-1 text-[11px] text-primary/60 hover:text-primary transition-colors"
+                  >
+                    <PenSquare className="h-3 w-3" />
+                    編集
+                  </button>
+                )}
+              </div>
+              {editingTopic ? (
+                <div className="space-y-2">
+                  <Textarea
+                    rows={3}
+                    value={topicDraft}
+                    onChange={(e) => setTopicDraft(e.target.value)}
+                    className="resize-none text-sm"
+                    placeholder="今週のお題を入力してください"
+                    autoFocus
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      onClick={() => setEditingTopic(false)}
+                    >
+                      キャンセル
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="h-7 text-xs"
+                      disabled={savingTopic || !topicDraft.trim()}
+                      onClick={handleSaveTopic}
+                    >
+                      {savingTopic ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : null}
+                      保存する
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <p className="text-base font-semibold leading-7 sm:text-lg">
+                    {weeklyTopic || <span className="text-muted-foreground font-normal text-sm italic">お題が設定されていません</span>}
+                  </p>
+                  <p className="mt-2 text-xs text-muted-foreground">このテーマについて、あなたの経験や考えを投稿しよう</p>
+                </>
+              )}
               {/* 吹き出しの尻尾 */}
               <span
                 aria-hidden
@@ -1160,7 +1235,7 @@ export function ForumRoomClient({
                       streamText={aiPending === post.id ? (streamTexts[post.id] ?? "") : null}
                       roomId={room.id}
                       roomName={room.name}
-                      weeklyTopic={room.weeklyTopic}
+                      weeklyTopic={weeklyTopic}
                       aiDiscussion={aiEnabled}
                       onReplyAdded={handleReplyAdded}
                       userName={auth.name}
@@ -1181,7 +1256,7 @@ export function ForumRoomClient({
                 userName={auth.name}
                 avatarUrl={auth.avatarUrl}
                 isLoggedIn={auth.isLoggedIn}
-                weeklyTopic={room.weeklyTopic}
+                weeklyTopic={weeklyTopic}
                 submitting={submitting}
                 organizationType={auth.organizationType}
                 organizationTypeOther={auth.organizationTypeOther}
@@ -1219,7 +1294,7 @@ export function ForumRoomClient({
                         streamText={aiPending === post.id ? (streamTexts[post.id] ?? "") : null}
                         roomId={room.id}
                         roomName={room.name}
-                        weeklyTopic={room.weeklyTopic}
+                        weeklyTopic={weeklyTopic}
                         aiDiscussion={aiEnabled}
                         onReplyAdded={handleReplyAdded}
                         userName={auth.name}

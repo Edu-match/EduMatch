@@ -40,6 +40,7 @@ async function getRoomFromDb(id: string): Promise<ForumRoom | null> {
       postCount,
       participantCount: distinctAuthors.length,
       lastPostedAt: latestPost?.created_at.toISOString() ?? room.created_at.toISOString(),
+      createdBy: room.created_by ?? null,
     };
   } catch {
     return null;

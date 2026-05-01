@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, BarChart3, Bot, Eye, ExternalLink, EyeOff, Heart, Loader2, MessageSquare, Pin, PinOff, Plus, Save, Search, Trash2, Zap } from "lucide-react";
+import { ArrowLeft, BarChart3, Bot, Eye, ExternalLink, EyeOff, Heart, Loader2, MessageSquare, PenSquare, Pin, PinOff, Plus, Save, Search, Trash2, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,7 +24,7 @@ function CreateRoomDialog({ onCreated }: { onCreated: (room: ForumRoom) => void 
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [draft, setDraft] = useState<NewRoomDraft>({ name: "", description: "", weeklyTopic: "", aiDiscussion: false });
-  const isValid = draft.name.trim() && draft.weeklyTopic.trim();
+  const isValid = draft.name.trim();
 
   const handleCreate = async () => {
     if (!isValid || saving) return;
@@ -129,6 +129,9 @@ export function AdminForumClient() {
   const [postKeyword, setPostKeyword] = useState("");
   const [selectedRoom, setSelectedRoom] = useState("all");
   const [postFilter, setPostFilter] = useState<PostFilter>("all");
+  const [editingTopicRoomId, setEditingTopicRoomId] = useState<string | null>(null);
+  const [topicDraft, setTopicDraft] = useState("");
+  const [savingTopic, setSavingTopic] = useState(false);
 
   // 部屋一覧取得
   useEffect(() => {
@@ -240,6 +243,27 @@ export function AdminForumClient() {
     }
   }, []);
 
+  const handleSaveTopic = useCallback(async (roomId: string) => {
+    if (savingTopic) return;
+    setSavingTopic(true);
+    try {
+      const res = await fetch(`/api/forum/rooms/${roomId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ weeklyTopic: topicDraft.trim() }),
+      });
+      if (res.ok) {
+        setRooms((prev) => prev.map((r) => r.id === roomId ? { ...r, weeklyTopic: topicDraft.trim() } : r));
+        setEditingTopicRoomId(null);
+      } else {
+        alert("お題の更新に失敗しました");
+      }
+    } finally {
+      setSavingTopic(false);
+    }
+  }, [savingTopic, topicDraft]);
+
   const handleTogglePin = useCallback(async (postId: string, currentPinned: boolean) => {
     try {
       const res = await fetch(`/api/forum/posts/${postId}`, {
@@ -309,7 +333,36 @@ export function AdminForumClient() {
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground line-clamp-2">{room.description || "説明なし"}</p>
-                  <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{room.weeklyTopic}</p>
+                  {editingTopicRoomId === room.id ? (
+                    <div className="mt-2 space-y-2">
+                      <Textarea
+                        rows={3}
+                        value={topicDraft}
+                        onChange={(e) => setTopicDraft(e.target.value)}
+                        className="resize-none text-xs"
+                        placeholder="今週のお題を入力"
+                        autoFocus
+                      />
+                      <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditingTopicRoomId(null)}>キャンセル</Button>
+                        <Button size="sm" className="h-7 text-xs" disabled={savingTopic} onClick={() => handleSaveTopic(room.id)}>
+                          {savingTopic ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : null}保存
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-1 flex items-start gap-1">
+                      <p className="text-xs text-muted-foreground line-clamp-2 flex-1">{room.weeklyTopic || "お題未設定"}</p>
+                      <button
+                        type="button"
+                        onClick={() => { setTopicDraft(room.weeklyTopic); setEditingTopicRoomId(room.id); }}
+                        className="shrink-0 p-0.5 text-muted-foreground hover:text-primary transition-colors"
+                        title="お題を編集"
+                      >
+                        <PenSquare className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )}
                   <div className="mt-2 flex items-center justify-between">
                     <Link href={`/forum/${room.id}`} target="_blank" className="text-xs text-primary hover:underline"><ExternalLink className="mr-1 inline h-3 w-3" />表示</Link>
                     <Button size="sm" variant="ghost" onClick={() => handleDeleteRoom(room.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>

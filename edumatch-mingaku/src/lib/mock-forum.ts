@@ -42,6 +42,8 @@ export type ForumRoom = {
   lastPostedAt: string;
   /** AIディスカッション機能の有効フラグ */
   aiDiscussion?: boolean;
+  /** 部屋作成者のプロフィールID */
+  createdBy?: string | null;
 };
 
 // ─── 部屋一覧（6部屋）──────────────────────────────────────

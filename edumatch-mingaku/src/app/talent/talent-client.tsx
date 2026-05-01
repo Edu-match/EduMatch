@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -35,11 +35,11 @@ const PREFECTURES = [
 ];
 
 // ─── 依頼種別バッジ ──────────────────────────────────────────────────────────
-const REQUEST_TYPES = [
-  { icon: Mic, label: "講演依頼", color: "bg-blue-50 text-blue-700 border-blue-200" },
-  { icon: GraduationCap, label: "講師依頼", color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-  { icon: Briefcase, label: "仕事依頼", color: "bg-violet-50 text-violet-700 border-violet-200" },
-];
+const REQUEST_TYPES: Record<string, { icon: React.ElementType; label: string; color: string }> = {
+  lecture:  { icon: Mic,            label: "講演依頼", color: "bg-blue-50 text-blue-700 border-blue-200" },
+  teaching: { icon: GraduationCap,  label: "講師依頼", color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  work:     { icon: Briefcase,      label: "仕事依頼", color: "bg-violet-50 text-violet-700 border-violet-200" },
+};
 
 type FilterType = "all" | "individual" | "corporate";
 
@@ -104,7 +104,7 @@ export default function TalentClientPage({ profiles }: Props) {
             教育分野の専門家・事業者と、依頼したい方をつなぐプラットフォームです。
             <br className="hidden md:block" />
             <span className="inline-flex flex-wrap gap-3 mt-2">
-              {REQUEST_TYPES.map(({ icon: Icon, label }) => (
+              {Object.values(REQUEST_TYPES).map(({ icon: Icon, label }) => (
                 <span key={label} className="inline-flex items-center gap-1.5 text-sm bg-white/15 rounded-full px-3 py-1 border border-white/20">
                   <Icon className="h-3.5 w-3.5" />
                   {label}
@@ -398,25 +398,32 @@ function TalentCard({ profile }: { profile: TalentProfile }) {
         )}
 
         {/* 依頼種別バッジ */}
-        <div className="flex flex-wrap gap-1.5 pt-1">
-          {REQUEST_TYPES.map(({ icon: Icon, label, color }) => (
-            <span
-              key={label}
-              className={cn(
-                "inline-flex items-center gap-1 text-[10px] font-medium rounded-full px-2 py-0.5 border",
-                color
-              )}
-            >
-              <Icon className="h-3 w-3" />
-              {label}
-            </span>
-          ))}
-        </div>
+        {(profile.talent_badges?.length > 0) && (
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {profile.talent_badges.map((badge) => {
+              const bt = REQUEST_TYPES[badge];
+              if (!bt) return null;
+              const Icon = bt.icon;
+              return (
+                <span
+                  key={badge}
+                  className={cn(
+                    "inline-flex items-center gap-1 text-[10px] font-medium rounded-full px-2 py-0.5 border",
+                    bt.color
+                  )}
+                >
+                  <Icon className="h-3 w-3" />
+                  {bt.label}
+                </span>
+              );
+            })}
+          </div>
+        )}
 
         {/* CTAボタン */}
         <div className="mt-auto pt-3">
           <Button asChild size="sm" className="w-full group/btn">
-            <Link href={`/profile/${profile.id}`}>
+            <Link href={`/talent/${profile.id}`}>
               プロフィールを見る・依頼する
               <ChevronRight className="h-3.5 w-3.5 ml-1 group-hover/btn:translate-x-0.5 transition-transform" />
             </Link>

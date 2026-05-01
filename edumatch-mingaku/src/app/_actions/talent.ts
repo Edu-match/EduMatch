@@ -13,6 +13,7 @@ export type TalentProfile = {
   organization: string | null;
   organization_type: string | null;
   talent_matching_description: string | null;
+  talent_badges: string[];
   type: "individual" | "corporate";
   services: { id: string; title: string; category: string }[];
 };
@@ -65,6 +66,7 @@ export async function getTalentMatchingProfiles(): Promise<TalentProfile[]> {
     organization: g.organization,
     organization_type: g.organization_type,
     talent_matching_description: g.talent_matching_description,
+    talent_badges: g.talent_badges ?? [],
     type: "individual" as const,
     services: g.profile.services,
   }));
@@ -80,6 +82,7 @@ export async function getTalentMatchingProfiles(): Promise<TalentProfile[]> {
     organization: c.organization,
     organization_type: c.organization_type,
     talent_matching_description: c.talent_matching_description,
+    talent_badges: c.talent_badges ?? [],
     type: "corporate" as const,
     services: c.profile.services,
   }));

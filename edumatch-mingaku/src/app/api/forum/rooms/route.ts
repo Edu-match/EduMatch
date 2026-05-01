@@ -81,8 +81,8 @@ export async function POST(req: NextRequest) {
       emoji?: string;
     };
 
-    if (!name?.trim() || !weeklyTopic?.trim()) {
-      return NextResponse.json({ error: "name and weeklyTopic are required" }, { status: 400 });
+    if (!name?.trim()) {
+      return NextResponse.json({ error: "name is required" }, { status: 400 });
     }
 
     const slug = name
@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
         id,
         name: name.trim(),
         description: description?.trim() ?? "",
-        weekly_topic: weeklyTopic.trim(),
+        weekly_topic: weeklyTopic?.trim() ?? "",
         ai_discussion: aiDiscussion ?? false,
         emoji: emoji ?? "",
         created_by: user.id,

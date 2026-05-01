@@ -4,15 +4,15 @@ import { getCurrentProfile } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-/** 今週のお題などの更新（管理者のみ） */
+/** 今週のお題などの更新（管理者 or 部屋作成者） */
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const profile = await getCurrentProfile();
-    if (!profile || profile.role !== "ADMIN") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (!profile) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
@@ -23,6 +23,20 @@ export async function PATCH(
       emoji?: string;
       aiDiscussion?: boolean;
     };
+
+    const isAdmin = profile.role === "ADMIN";
+
+    if (!isAdmin) {
+      // 部屋作成者かチェック
+      const existing = await prisma.forumRoom.findUnique({ where: { id }, select: { created_by: true } });
+      if (!existing || existing.created_by !== profile.id) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      // 作成者はweeklyTopicのみ変更可
+      if (description !== undefined || emoji !== undefined || aiDiscussion !== undefined) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    }
 
     const room = await prisma.forumRoom.update({
       where: { id },

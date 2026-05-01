@@ -164,7 +164,7 @@ function CreateRoomDialog({
   const [saving, setSaving] = useState(false);
   const [draft, setDraft] = useState<NewRoomDraft>({ name: "", description: "", weeklyTopic: "", aiDiscussion: false });
 
-  const isValid = draft.name.trim() && draft.weeklyTopic.trim();
+  const isValid = draft.name.trim();
 
   const handleCreate = async () => {
     if (!isValid || saving) return;
@@ -220,8 +220,8 @@ function CreateRoomDialog({
             <Textarea rows={2} value={draft.description} onChange={(e) => setDraft((p) => ({ ...p, description: e.target.value }))} className="resize-none" placeholder="この部屋のテーマを簡潔に説明してください" />
           </div>
           <div className="space-y-1.5">
-            <Label>今週のお題 <span className="text-destructive">*</span></Label>
-            <Textarea rows={3} value={draft.weeklyTopic} onChange={(e) => setDraft((p) => ({ ...p, weeklyTopic: e.target.value }))} className="resize-none" placeholder="参加者への最初の問いかけを入力してください" />
+            <Label>今週のお題 <span className="text-xs text-muted-foreground">（任意・後から設定可）</span></Label>
+            <Textarea rows={3} value={draft.weeklyTopic} onChange={(e) => setDraft((p) => ({ ...p, weeklyTopic: e.target.value }))} className="resize-none" placeholder="参加者への問いかけを入力してください（後から変更できます）" />
           </div>
 
           <button

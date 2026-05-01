@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowUpRight, MessageSquare, Users, X } from "lucide-react";
+import { ArrowUpRight, MessageSquare, Users, X, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
 import type { ForumRoom } from "@/lib/mock-forum";
 import { ForumRoomIcon } from "@/components/community/forum-room-icon";
 import {
@@ -11,7 +11,99 @@ import {
   BUBBLE_CONNECTIONS,
   getBubbleSize,
   isRoomActive,
+  type BubblePosition,
+  type BubbleConnection,
 } from "@/components/community/forum-bubble-map";
+
+// ─── 動的レイアウト計算 ──────────────────────────────────────
+
+function computePositions(rooms: ForumRoom[], isMobile: boolean): BubblePosition[] {
+  const staticMap = isMobile ? BUBBLE_POSITIONS_MOBILE : BUBBLE_POSITIONS;
+  const result: BubblePosition[] = [];
+  const usedIds = new Set<string>();
+
+  for (const room of rooms) {
+    const pos = staticMap.find((p) => p.id === room.id);
+    if (pos) {
+      result.push(pos);
+      usedIds.add(room.id);
+    }
+  }
+
+  const remaining = rooms.filter((r) => !usedIds.has(r.id));
+  if (isMobile) {
+    let cy = 90 + 14;
+    for (const room of remaining) {
+      result.push({ id: room.id, cx: 50, cy });
+      cy += 14;
+    }
+  } else {
+    const colXs = [18, 50, 82];
+    remaining.forEach((room, i) => {
+      result.push({ id: room.id, cx: colXs[i % 3], cy: 92 + Math.floor(i / 3) * 22 });
+    });
+  }
+
+  return result;
+}
+
+function computeContainerHeight(rooms: ForumRoom[], isMobile: boolean): number {
+  const staticLen = (isMobile ? BUBBLE_POSITIONS_MOBILE : BUBBLE_POSITIONS).length;
+  const extra = Math.max(0, rooms.length - staticLen);
+  const extraRows = Math.ceil(extra / (isMobile ? 1 : 3));
+  return (isMobile ? 720 : 540) + extraRows * (isMobile ? 100 : 140);
+}
+
+function extractKeywords(text: string): Set<string> {
+  const stop = new Set(["の", "を", "に", "が", "は", "と", "で", "て", "た", "も", "や", "へ", "か"]);
+  return new Set(
+    text
+      .replace(/[・、。！？（）「」]/g, " ")
+      .split(/\s+/)
+      .map((w) => w.trim())
+      .filter((w) => w.length >= 2 && !stop.has(w))
+  );
+}
+
+function computeConnections(rooms: ForumRoom[], positions: BubblePosition[]): BubbleConnection[] {
+  const posIds = new Set(positions.map((p) => p.id));
+  const result: BubbleConnection[] = BUBBLE_CONNECTIONS.filter(
+    (c) => posIds.has(c.from) && posIds.has(c.to)
+  );
+  const connected = new Set(result.flatMap((c) => [c.from, c.to]));
+  const staticIds = new Set(BUBBLE_POSITIONS.map((p) => p.id));
+  const newRooms = rooms.filter((r) => !staticIds.has(r.id));
+
+  for (const room of newRooms) {
+    const kw = extractKeywords(room.name + " " + room.description);
+    let bestId: string | null = null;
+    let bestScore = 0;
+
+    for (const other of rooms) {
+      if (other.id === room.id) continue;
+      const otherKw = extractKeywords(other.name + " " + other.description);
+      let score = 0;
+      for (const k of kw) if (otherKw.has(k)) score++;
+      if (score > bestScore) { bestScore = score; bestId = other.id; }
+    }
+
+    // Fall back to first room if no keyword match
+    if (!bestId && rooms.length > 1) {
+      bestId = rooms.find((r) => r.id !== room.id)?.id ?? null;
+    }
+
+    if (bestId) {
+      const dup = result.some(
+        (c) => (c.from === room.id && c.to === bestId) || (c.from === bestId && c.to === room.id)
+      );
+      if (!dup) result.push({ from: room.id, to: bestId });
+    }
+
+    connected.add(room.id);
+  }
+
+  return result;
+}
 
 // ─── 1枚のトピックカード ───────────────────────────────────
 
@@ -21,12 +113,14 @@ function TopicCard({
   cy,
   isMobile,
   onHover,
+  hasDragged,
 }: {
   room: ForumRoom;
   cx: number;
   cy: number;
   isMobile: boolean;
   onHover: (id: string | null) => void;
+  hasDragged: React.MutableRefObject<boolean>;
 }) {
   const router = useRouter();
   const { pc, mobile } = getBubbleSize(room.postCount);
@@ -51,7 +145,10 @@ function TopicCard({
       onMouseLeave={() => onHover(null)}
       onFocus={() => onHover(room.id)}
       onBlur={() => onHover(null)}
-      onClick={() => router.push(`/forum/${room.id}`)}
+      onClick={() => {
+        if (hasDragged.current) { hasDragged.current = false; return; }
+        router.push(`/forum/${room.id}`);
+      }}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
@@ -67,7 +164,6 @@ function TopicCard({
           "focus-within:ring-2 focus-within:ring-primary/40",
         ].join(" ")}
       >
-        {/* アクティブインジケータ（点のみ、アニメなし） */}
         {active && (
           <span
             aria-label="直近24時間以内に投稿あり"
@@ -78,7 +174,6 @@ function TopicCard({
           </span>
         )}
 
-        {/* アイコン + 部屋名 */}
         <div className="flex items-start gap-2.5">
           <div className="shrink-0 rounded-lg bg-muted/40 p-1.5">
             <ForumRoomIcon roomId={room.id} size={isMobile ? 20 : 22} />
@@ -90,12 +185,10 @@ function TopicCard({
           </div>
         </div>
 
-        {/* 説明 */}
         <p className="text-[11px] leading-5 text-muted-foreground line-clamp-2">
           {room.description}
         </p>
 
-        {/* メタ情報 */}
         <div className="mt-auto flex items-center justify-between gap-2 pt-1">
           <div className="flex items-center gap-2.5 text-[10.5px] text-muted-foreground">
             <span className="inline-flex items-center gap-1">
@@ -119,7 +212,15 @@ function TopicCard({
 
 // ─── 接続線（hairline curve） ──────────────────────────────
 
-function ConnectionLines({ hoveredId }: { hoveredId: string | null }) {
+function ConnectionLines({
+  hoveredId,
+  positions,
+  connections,
+}: {
+  hoveredId: string | null;
+  positions: BubblePosition[];
+  connections: BubbleConnection[];
+}) {
   return (
     <svg
       viewBox="0 0 100 100"
@@ -127,13 +228,12 @@ function ConnectionLines({ hoveredId }: { hoveredId: string | null }) {
       className="pointer-events-none absolute inset-0 h-full w-full"
       aria-hidden="true"
     >
-      {BUBBLE_CONNECTIONS.map(({ from, to }) => {
-        const fromPos = BUBBLE_POSITIONS.find((p) => p.id === from);
-        const toPos = BUBBLE_POSITIONS.find((p) => p.id === to);
+      {connections.map(({ from, to }) => {
+        const fromPos = positions.find((p) => p.id === from);
+        const toPos = positions.find((p) => p.id === to);
         if (!fromPos || !toPos) return null;
 
         const isHighlighted = hoveredId === from || hoveredId === to;
-        // 中点を少しずらしてゆるいベジェ
         const mx = (fromPos.cx + toPos.cx) / 2;
         const my = (fromPos.cy + toPos.cy) / 2 - 4;
         const path = `M ${fromPos.cx} ${fromPos.cy} Q ${mx} ${my} ${toPos.cx} ${toPos.cy}`;
@@ -196,12 +296,63 @@ function DotBackground() {
   );
 }
 
+// ─── ズームコントロール ────────────────────────────────────
+
+function ZoomControls({
+  scale,
+  onZoomIn,
+  onZoomOut,
+  onReset,
+}: {
+  scale: number;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onReset: () => void;
+}) {
+  return (
+    <div className="absolute bottom-4 right-4 z-30 flex flex-col gap-1">
+      <button
+        type="button"
+        aria-label="ズームイン"
+        onClick={onZoomIn}
+        disabled={scale >= 3}
+        className="flex h-7 w-7 items-center justify-center rounded-lg border bg-background/90 shadow-sm backdrop-blur-sm hover:bg-muted transition-colors disabled:opacity-40"
+      >
+        <ZoomIn className="h-3.5 w-3.5" />
+      </button>
+      <button
+        type="button"
+        aria-label="ズームアウト"
+        onClick={onZoomOut}
+        disabled={scale <= 1}
+        className="flex h-7 w-7 items-center justify-center rounded-lg border bg-background/90 shadow-sm backdrop-blur-sm hover:bg-muted transition-colors disabled:opacity-40"
+      >
+        <ZoomOut className="h-3.5 w-3.5" />
+      </button>
+      {(scale !== 1) && (
+        <button
+          type="button"
+          aria-label="リセット"
+          onClick={onReset}
+          className="flex h-7 w-7 items-center justify-center rounded-lg border bg-background/90 shadow-sm backdrop-blur-sm hover:bg-muted transition-colors"
+        >
+          <Maximize2 className="h-3.5 w-3.5" />
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ─── メインコンポーネント ─────────────────────────────────
 
 export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [showHint, setShowHint] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [scale, setScale] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const dragStart = useRef<{ x: number; y: number } | null>(null);
+  const hasDragged = useRef(false);
 
   useEffect(() => {
     const seen = localStorage.getItem("forum_bubble_hint_v1");
@@ -228,43 +379,98 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
     setShowHint(false);
   };
 
-  const positions = isMobile ? BUBBLE_POSITIONS_MOBILE : BUBBLE_POSITIONS;
-  const containerHeight = isMobile ? 720 : 540;
+  const positions = computePositions(rooms, isMobile);
+  const connections = computeConnections(rooms, positions);
+  const containerHeight = computeContainerHeight(rooms, isMobile);
+
+  const zoomIn = () => setScale((s) => Math.min(3, +(s + 0.25).toFixed(2)));
+  const zoomOut = () => setScale((s) => { const next = Math.max(1, +(s - 0.25).toFixed(2)); if (next === 1) setPan({ x: 0, y: 0 }); return next; });
+  const resetView = () => { setScale(1); setPan({ x: 0, y: 0 }); };
+
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    setScale((s) => {
+      const next = Math.min(3, Math.max(1, +(s - e.deltaY * 0.002).toFixed(2)));
+      if (next === 1) setPan({ x: 0, y: 0 });
+      return next;
+    });
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest("[role=button]")) return;
+    dragStart.current = { x: e.clientX, y: e.clientY };
+    hasDragged.current = false;
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragStart.current) return;
+    const dx = e.clientX - dragStart.current.x;
+    const dy = e.clientY - dragStart.current.y;
+    if (Math.abs(dx) + Math.abs(dy) > 4) hasDragged.current = true;
+    dragStart.current = { x: e.clientX, y: e.clientY };
+    setPan((prev) => ({ x: prev.x + dx, y: prev.y + dy }));
+  };
+
+  const handlePointerUp = () => { dragStart.current = null; };
 
   return (
     <>
-      {/* 説明文 */}
       <p className="mb-5 text-center text-xs text-muted-foreground">
         気になるトピックを選んで議論に参加しよう
       </p>
 
       <div
-        className="relative w-full overflow-hidden rounded-3xl border bg-gradient-to-b from-background to-muted/10"
-        style={{ height: containerHeight }}
+        className="relative w-full overflow-hidden rounded-3xl border bg-gradient-to-b from-background to-muted/10 select-none"
+        style={{ height: containerHeight, cursor: dragStart.current ? "grabbing" : "grab" }}
+        onWheel={handleWheel}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
       >
-        {/* 背景ドット */}
-        <DotBackground />
-
-        {/* 接続線（PCのみ） */}
-        {!isMobile && <ConnectionLines hoveredId={hoveredId} />}
-
-        {/* トピックカード */}
-        {positions.map((pos) => {
-          const room = rooms.find((r) => r.id === pos.id);
-          if (!room) return null;
-          return (
-            <TopicCard
-              key={pos.id}
-              room={room}
-              cx={pos.cx}
-              cy={pos.cy}
-              isMobile={isMobile}
-              onHover={setHoveredId}
+        {/* 変換ラッパー */}
+        <div
+          className="absolute inset-0"
+          style={{
+            transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`,
+            transformOrigin: "center center",
+            width: "100%",
+            height: "100%",
+          }}
+        >
+          <DotBackground />
+          {!isMobile && (
+            <ConnectionLines
+              hoveredId={hoveredId}
+              positions={positions}
+              connections={connections}
             />
-          );
-        })}
+          )}
+          {positions.map((pos) => {
+            const room = rooms.find((r) => r.id === pos.id);
+            if (!room) return null;
+            return (
+              <TopicCard
+                key={pos.id}
+                room={room}
+                cx={pos.cx}
+                cy={pos.cy}
+                isMobile={isMobile}
+                onHover={setHoveredId}
+                hasDragged={hasDragged}
+              />
+            );
+          })}
+        </div>
 
-        {/* 初回ヒント */}
+        <ZoomControls
+          scale={scale}
+          onZoomIn={zoomIn}
+          onZoomOut={zoomOut}
+          onReset={resetView}
+        />
+
         {showHint && <OnboardingHint onClose={dismissHint} />}
       </div>
     </>

@@ -69,6 +69,8 @@ model GeneralProfile {
   talent_matching_enabled     Boolean  @default(false)
   /// 人材マッチングページに表示する自己PRメッセージ（任意）
   talent_matching_description String?
+  /// 受け付ける依頼種別バッジ（例: ["lecture", "teaching", "work"]）
+  talent_badges               String[] @default([])
   created_at         DateTime @default(now())
   updated_at         DateTime @updatedAt
 }
@@ -92,6 +94,8 @@ model CorporateProfile {
   talent_matching_enabled     Boolean  @default(false)
   /// 人材マッチングページに表示する採用向けメッセージ（任意）
   talent_matching_description String?
+  /// 受け付ける依頼種別バッジ（例: ["lecture", "teaching", "work"]）
+  talent_badges               String[] @default([])
   created_at            DateTime @default(now())
   updated_at            DateTime @updatedAt
 }

@@ -187,6 +187,8 @@ export type UpdateProfileInput = {
   talent_matching_enabled?: boolean;
   /** 人材マッチングページに表示する自己PRメッセージ（任意） */
   talent_matching_description?: string | null;
+  /** 受け付ける依頼種別バッジ */
+  talent_badges?: string[];
   /** 初回プロフィール登録ウィザード完了時に true */
   completeInitialSetup?: boolean;
 };
@@ -259,6 +261,7 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
             ...(input.talent_matching_description !== undefined && {
               talent_matching_description: input.talent_matching_description?.trim() || null,
             }),
+            ...(input.talent_badges !== undefined && { talent_badges: input.talent_badges }),
           },
           update: {
             ...(input.legal_name !== undefined && {
@@ -283,6 +286,7 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
             ...(input.talent_matching_description !== undefined && {
               talent_matching_description: input.talent_matching_description?.trim() || null,
             }),
+            ...(input.talent_badges !== undefined && { talent_badges: input.talent_badges }),
           },
         });
         await tx.generalProfile.deleteMany({ where: { id: user.id } });
@@ -302,6 +306,7 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
             ...(input.talent_matching_description !== undefined && {
               talent_matching_description: input.talent_matching_description?.trim() || null,
             }),
+            ...(input.talent_badges !== undefined && { talent_badges: input.talent_badges }),
           },
           update: {
             ...(input.legal_name !== undefined && {
@@ -321,6 +326,7 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
             ...(input.talent_matching_description !== undefined && {
               talent_matching_description: input.talent_matching_description?.trim() || null,
             }),
+            ...(input.talent_badges !== undefined && { talent_badges: input.talent_badges }),
           },
         });
         await tx.corporateProfile.deleteMany({ where: { id: user.id } });

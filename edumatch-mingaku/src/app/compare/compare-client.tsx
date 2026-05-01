@@ -308,6 +308,7 @@ export default function CompareClientPage({ initialServices }: Props) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectorOpen, setSelectorOpen] = useState(true);
   const [exportingPng, setExportingPng] = useState(false);
+  const [tableExpanded, setTableExpanded] = useState(false);
 
   // PNG キャプチャ対象
   const captureRef = useRef<HTMLDivElement>(null);
@@ -514,6 +515,9 @@ export default function CompareClientPage({ initialServices }: Props) {
                     );
                   })}
                 </div>
+                <p className="mt-2 px-1 text-[10px] text-muted-foreground">
+                  ※スコアは閲覧数・いいね数等のデータをもとに算出されます
+                </p>
               </section>
 
               {/* 比較テーブルセクション */}
@@ -567,15 +571,11 @@ export default function CompareClientPage({ initialServices }: Props) {
                           </td>
                         ))}
                       </CompareRow>
-                      <CompareRow label="タグ">
+                      <CompareRow label="カテゴリ">
                         {selected.map((s) => (
                           <td key={s.id} className="p-4 text-center">
-                            {(s.tags ?? []).length > 0 ? (
-                              <div className="flex flex-wrap gap-1 justify-center">
-                                {(s.tags ?? []).slice(0, 5).map((t) => (
-                                  <Badge key={t} variant="outline" className="text-[10px]">{t}</Badge>
-                                ))}
-                              </div>
+                            {s.category ? (
+                              <Badge variant="secondary" className="text-xs">{s.category}</Badge>
                             ) : (
                               <span className="text-muted-foreground text-sm">—</span>
                             )}
@@ -592,28 +592,49 @@ export default function CompareClientPage({ initialServices }: Props) {
                         ))}
                       </CompareRow>
 
-                      <GroupRow label="実績・人気度" cols={selected.length} />
-                      <CountRow label="閲覧数" icon="👀" services={selected} getValue={(s) => s.view_count ?? 0} />
-                      <CountRow label="お気に入り" icon="❤️" services={selected} getValue={(s) => s.favorite_count ?? 0} />
-                      <CountRow label="資料請求" icon="📋" services={selected} getValue={(s) => s.request_count ?? 0} />
-                      <CountRow label="口コミ数" icon="💬" services={selected} getValue={(s) => s.review_count ?? 0} />
-
-                      <GroupRow label="アクション" cols={selected.length} />
+                      {/* 詳細を見るトグル */}
                       <tr className="border-t">
-                        <td className="p-4 sticky left-0 bg-background" />
-                        {selected.map((s) => (
-                          <td key={s.id} className="p-4">
-                            <div className="flex flex-col gap-2">
-                              <Button asChild size="sm" className="w-full">
-                                <Link href={`/services/${s.id}`}>詳細を見る</Link>
-                              </Button>
-                              <Button variant="outline" size="sm" className="w-full" asChild>
-                                <Link href={`/services/${s.id}#contact`}>資料請求</Link>
-                              </Button>
-                            </div>
-                          </td>
-                        ))}
+                        <td colSpan={selected.length + 1} className="px-4 py-2 sticky left-0">
+                          <button
+                            type="button"
+                            onClick={() => setTableExpanded((p) => !p)}
+                            className="flex items-center gap-1.5 text-xs text-primary hover:underline font-medium"
+                          >
+                            {tableExpanded ? (
+                              <><ChevronUp className="h-3.5 w-3.5" /> 詳細を閉じる</>
+                            ) : (
+                              <><ChevronDown className="h-3.5 w-3.5" /> 詳細を見る（実績・アクション）</>
+                            )}
+                          </button>
+                        </td>
                       </tr>
+
+                      {tableExpanded && (
+                        <>
+                          <GroupRow label="実績・人気度" cols={selected.length} />
+                          <CountRow label="閲覧数" icon="👀" services={selected} getValue={(s) => s.view_count ?? 0} />
+                          <CountRow label="お気に入り" icon="❤️" services={selected} getValue={(s) => s.favorite_count ?? 0} />
+                          <CountRow label="資料請求" icon="📋" services={selected} getValue={(s) => s.request_count ?? 0} />
+                          <CountRow label="口コミ数" icon="💬" services={selected} getValue={(s) => s.review_count ?? 0} />
+
+                          <GroupRow label="アクション" cols={selected.length} />
+                          <tr className="border-t">
+                            <td className="p-4 sticky left-0 bg-background" />
+                            {selected.map((s) => (
+                              <td key={s.id} className="p-4">
+                                <div className="flex flex-col gap-2">
+                                  <Button asChild size="sm" className="w-full">
+                                    <Link href={`/services/${s.id}`}>詳細を見る</Link>
+                                  </Button>
+                                  <Button variant="outline" size="sm" className="w-full" asChild>
+                                    <Link href={`/services/${s.id}#contact`}>資料請求</Link>
+                                  </Button>
+                                </div>
+                              </td>
+                            ))}
+                          </tr>
+                        </>
+                      )}
                     </tbody>
                   </table>
                 </div>

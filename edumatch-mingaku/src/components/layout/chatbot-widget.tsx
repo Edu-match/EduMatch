@@ -124,6 +124,12 @@ const MODE_LABELS: Record<ChatMode, string> = {
   discussion: "ディスカッションモード",
 };
 
+const MODE_COLORS: Record<ChatMode, { border: string; hover: string; bg: string }> = {
+  navigator: { border: "border-blue-300", hover: "hover:border-blue-500 hover:bg-blue-50", bg: "bg-blue-50/60" },
+  debate:    { border: "border-orange-300", hover: "hover:border-orange-500 hover:bg-orange-50", bg: "bg-orange-50/60" },
+  discussion:{ border: "border-purple-300", hover: "hover:border-purple-500 hover:bg-purple-50", bg: "bg-purple-50/60" },
+};
+
 const MODE_DESCRIPTIONS: Record<ChatMode, string> = {
   navigator: "一般的な質問・案内",
   debate: "賛成・反対の立場で議論",
@@ -238,17 +244,20 @@ function ModeSelectScreen({ onSelect }: { onSelect: (mode: ChatMode) => void }) 
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden p-4">
       <p className="text-sm text-muted-foreground mb-4">チャットのモードを選んでください</p>
       <div className="space-y-3 flex-1 overflow-y-auto">
-        {(["navigator", "debate", "discussion"] as const).map((mode) => (
-          <button
-            key={mode}
-            type="button"
-            onClick={() => onSelect(mode)}
-            className="w-full flex flex-col items-start gap-1 p-4 rounded-xl border-2 border-primary/20 hover:border-primary/50 hover:bg-primary/5 transition-colors text-left"
-          >
-            <span className="text-sm font-semibold">{MODE_LABELS[mode]}</span>
-            <span className="text-xs text-muted-foreground">{MODE_DESCRIPTIONS[mode]}</span>
-          </button>
-        ))}
+        {(["navigator", "debate", "discussion"] as const).map((mode) => {
+          const mc = MODE_COLORS[mode];
+          return (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => onSelect(mode)}
+              className={`w-full flex flex-col items-start gap-1 p-4 rounded-xl border-2 ${mc.border} ${mc.hover} transition-colors text-left`}
+            >
+              <span className="text-sm font-semibold">{MODE_LABELS[mode]}</span>
+              <span className="text-xs text-muted-foreground">{MODE_DESCRIPTIONS[mode]}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -526,8 +535,8 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
         setMessages((prev) => {
           if (prev.length > 0) return prev;
           const guide = topic
-            ? `投稿作成サポートを開始します。\nテーマ: 「${topic}」\n\n下のクイック操作から、論点整理・反対視点チェック・投稿文作成を選べます。`
-            : "投稿作成サポートを開始します。下のクイック操作から、論点整理・反対視点チェック・投稿文作成を選べます。";
+            ? `投稿作成サポートへようこそ！テーマ「${topic}」での投稿作りをお手伝いします。\n\n[[ASK]]\n質問: この話題についてすでに意見・考えをお持ちですか？\n複数選択: いいえ\n- はい、意見がある\n- まだ考えがまとまっていない\n[[/ASK]]`
+            : `投稿作成サポートへようこそ！投稿作りをお手伝いします。\n\n[[ASK]]\n質問: 話題についてすでに意見・考えをお持ちですか？\n複数選択: いいえ\n- はい、意見がある\n- まだ考えがまとまっていない\n[[/ASK]]`;
           return [{ id: `forum-guide-${Date.now()}`, role: "assistant", content: guide }];
         });
       } else {
@@ -1227,7 +1236,7 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
                                         if (assistantPrompt.allowMultiple) {
                                           toggleAskChoice(m.id, choice);
                                         } else {
-                                          setInput(choice);
+                                          sendMessage(choice);
                                         }
                                       }}
                                       className={`rounded-full border px-2.5 py-1 text-xs ${
@@ -1248,9 +1257,9 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
                                       variant="outline"
                                       className="h-7 text-xs"
                                       disabled={(selectedAskChoices[m.id] ?? []).length === 0}
-                                      onClick={() => setInput((selectedAskChoices[m.id] ?? []).join("、"))}
+                                      onClick={() => sendMessage((selectedAskChoices[m.id] ?? []).join("、"))}
                                     >
-                                      選択を入力欄に反映
+                                      選択して送信
                                     </Button>
                                   </div>
                                 )}
@@ -1395,47 +1404,50 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
                   </button>
                 </div>
                 <p className="mt-1 text-xs text-violet-800/90">
-                  1タップで投稿文づくり用の指示を入力欄にセットします。
+                  1タップで直接AIに指示を送れます。
                 </p>
                 <div className="mt-2 grid grid-cols-1 gap-2">
                   <button
                     type="button"
                     className="w-full rounded-lg border border-violet-300 bg-background px-3 py-2 text-left text-xs font-medium text-violet-700 hover:bg-violet-100"
-                    onClick={() =>
-                      setInput((current) =>
-                        current.trim()
-                          ? `この下書きの論点を3つに整理し、足りない視点を補ってください。\n\n${current.trim()}`
+                    onClick={() => {
+                      const current = input.trim();
+                      sendMessage(
+                        current
+                          ? `この下書きの論点を3つに整理し、足りない視点を補ってください。\n\n${current}`
                           : `テーマ「${forumComposeAssist.topic || "投稿テーマ"}」の論点を3つに整理してください。`
-                      )
-                    }
+                      );
+                    }}
                   >
-                    論点を整理
+                    💡 論点を整理
                   </button>
                   <button
                     type="button"
                     className="w-full rounded-lg border border-violet-300 bg-background px-3 py-2 text-left text-xs font-medium text-violet-700 hover:bg-violet-100"
-                    onClick={() =>
-                      setInput((current) =>
-                        current.trim()
-                          ? `この意見に対する反対意見・懸念点・弱点を3つ挙げ、改善案も示してください。\n\n${current.trim()}`
+                    onClick={() => {
+                      const current = input.trim();
+                      sendMessage(
+                        current
+                          ? `この意見に対する反対意見・懸念点・弱点を3つ挙げ、改善案も示してください。\n\n${current}`
                           : `テーマ「${forumComposeAssist.topic || "投稿テーマ"}」で想定される反対意見を3つ挙げ、改善案を示してください。`
-                      )
-                    }
+                      );
+                    }}
                   >
-                    反対視点チェック
+                    🔄 反対視点チェック
                   </button>
                   <button
                     type="button"
                     className="w-full rounded-lg border border-violet-300 bg-background px-3 py-2 text-left text-xs font-medium text-violet-700 hover:bg-violet-100"
-                    onClick={() =>
-                      setInput((current) =>
-                        current.trim()
-                          ? `以下を井戸端会議に投稿しやすい文体に整えてください。150〜250字の投稿文と、短いタイトル案を1つください。\n\n${current.trim()}`
+                    onClick={() => {
+                      const current = input.trim();
+                      sendMessage(
+                        current
+                          ? `以下を井戸端会議に投稿しやすい文体に整えてください。150〜250字の投稿文と、短いタイトル案を1つください。\n\n${current}`
                           : `テーマ「${forumComposeAssist.topic || "投稿テーマ"}」について、150〜250字の投稿文と短いタイトル案を1つ作ってください。`
-                      )
-                    }
+                      );
+                    }}
                   >
-                    投稿文に整える
+                    ✍️ 投稿文に整える
                   </button>
                 </div>
               </div>
