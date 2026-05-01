@@ -9,13 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Form,
   FormControl,
   FormDescription,
@@ -28,7 +21,14 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 import { createServiceManagement } from "@/app/_actions";
 import { serviceSchema, type ServiceFormData } from "@/lib/validations/service";
-import { SERVICE_CATEGORIES } from "@/lib/categories";
+import {
+  parseServiceCategorySelection,
+  serializeServiceCategorySelection,
+  SERVICE_CATEGORIES,
+  SERVICE_CATEGORY_MAX_SELECTION,
+  SERVICE_CATEGORY_OTHER_MAX_LENGTH,
+  SERVICE_CATEGORY_OTHER_VALUE,
+} from "@/lib/categories";
 import { ImageWithUrlError } from "@/components/ui/image-with-url-error";
 
 const guidelines = [
@@ -43,6 +43,7 @@ export function ServiceForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+  const [otherCategoryText, setOtherCategoryText] = useState("");
 
   const form = useForm<ServiceFormData>({
     resolver: zodResolver(serviceSchema),
@@ -93,6 +94,33 @@ export function ServiceForm() {
     } else {
       setThumbnailPreview(null);
     }
+  };
+
+  const categoryValue = form.watch("category");
+  const { selectedCategories } = parseServiceCategorySelection(categoryValue || "");
+  const canSelectMore = selectedCategories.length < SERVICE_CATEGORY_MAX_SELECTION;
+  const hasOtherCategory = selectedCategories.includes(SERVICE_CATEGORY_OTHER_VALUE);
+
+  const toggleCategory = (category: string) => {
+    const isSelected = selectedCategories.includes(category);
+    let nextCategories: string[];
+
+    if (isSelected) {
+      nextCategories = selectedCategories.filter((value) => value !== category);
+    } else {
+      if (selectedCategories.length >= SERVICE_CATEGORY_MAX_SELECTION) return;
+      nextCategories = [...selectedCategories, category];
+    }
+
+    const nextOtherText = category === SERVICE_CATEGORY_OTHER_VALUE && !nextCategories.includes(SERVICE_CATEGORY_OTHER_VALUE)
+      ? ""
+      : otherCategoryText;
+    setOtherCategoryText(nextOtherText);
+    form.setValue(
+      "category",
+      serializeServiceCategorySelection(nextCategories, nextOtherText),
+      { shouldValidate: true }
+    );
   };
 
   return (
@@ -155,23 +183,59 @@ export function ServiceForm() {
                 <FormField
                   control={form.control}
                   name="category"
-                  render={({ field }) => (
+                  render={() => (
                     <FormItem>
                       <FormLabel>カテゴリ *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="カテゴリを選択" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {SERVICE_CATEGORIES.map((cat) => (
-                            <SelectItem key={cat.value} value={cat.value}>
-                              {cat.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <div className="space-y-2">
+                          <div className="flex flex-wrap gap-2">
+                            {SERVICE_CATEGORIES.map((cat) => {
+                              const isSelected = selectedCategories.includes(cat.value);
+                              return (
+                                <Button
+                                  key={cat.value}
+                                  type="button"
+                                  size="sm"
+                                  variant={isSelected ? "default" : "outline"}
+                                  disabled={!isSelected && !canSelectMore}
+                                  onClick={() => toggleCategory(cat.value)}
+                                >
+                                  {cat.label}
+                                </Button>
+                              );
+                            })}
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={hasOtherCategory ? "default" : "outline"}
+                              disabled={!hasOtherCategory && !canSelectMore}
+                              onClick={() => toggleCategory(SERVICE_CATEGORY_OTHER_VALUE)}
+                            >
+                              {SERVICE_CATEGORY_OTHER_VALUE}
+                            </Button>
+                          </div>
+                          {hasOtherCategory && (
+                            <Input
+                              value={otherCategoryText}
+                              onChange={(e) => {
+                                const next = e.target.value.slice(0, SERVICE_CATEGORY_OTHER_MAX_LENGTH);
+                                setOtherCategoryText(next);
+                                form.setValue(
+                                  "category",
+                                  serializeServiceCategorySelection(selectedCategories, next),
+                                  { shouldValidate: true }
+                                );
+                              }}
+                              placeholder="その他カテゴリ（10文字以内）"
+                              maxLength={SERVICE_CATEGORY_OTHER_MAX_LENGTH}
+                            />
+                          )}
+                        </div>
+                      </FormControl>
+                      <FormDescription>
+                        最大{SERVICE_CATEGORY_MAX_SELECTION}つまで選択できます
+                        {hasOtherCategory && `（その他: ${otherCategoryText.length}/${SERVICE_CATEGORY_OTHER_MAX_LENGTH}文字）`}
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

@@ -22,7 +22,7 @@ export const SERVICE_CATEGORY_LIST = [
   "学習管理システム(LMS)",
   "質問対応",
   "プログラミング",
-  "探求・キャリア教育/総合型選抜対策",
+  "探究・キャリア教育/総合型選抜対策",
   "オンライン授業支援",
   "家庭学習支援",
   "知育/能力開発/幼児教育",
@@ -41,6 +41,11 @@ export const SERVICE_CATEGORIES = SERVICE_CATEGORY_LIST.map((c) => ({
   label: c,
 }));
 
+export const SERVICE_CATEGORY_MAX_SELECTION = 3;
+export const SERVICE_CATEGORY_OTHER_VALUE = "その他";
+export const SERVICE_CATEGORY_OTHER_PREFIX = "その他:";
+export const SERVICE_CATEGORY_OTHER_MAX_LENGTH = 10;
+
 /** 後方互換 */
 export const SERVICE_CATEGORIES_MAIN = SERVICE_CATEGORIES;
 export const SERVICE_CATEGORIES_OTHER: { value: string; label: string }[] = [];
@@ -51,3 +56,57 @@ export const SHARED_CATEGORIES = ARTICLE_CATEGORIES.map((c) => ({
   value: c,
   label: c,
 }));
+
+export function parseServiceCategorySelection(rawCategory: string): {
+  selectedCategories: string[];
+  otherText: string;
+} {
+  const tokens = rawCategory
+    .split(",")
+    .map((token) => token.trim())
+    .filter(Boolean);
+  const selectedSet = new Set<string>();
+  let otherText = "";
+
+  for (const token of tokens) {
+    if (token.startsWith(SERVICE_CATEGORY_OTHER_PREFIX)) {
+      selectedSet.add(SERVICE_CATEGORY_OTHER_VALUE);
+      otherText = token.slice(SERVICE_CATEGORY_OTHER_PREFIX.length).trim();
+      continue;
+    }
+
+    if (token === SERVICE_CATEGORY_OTHER_VALUE) {
+      selectedSet.add(SERVICE_CATEGORY_OTHER_VALUE);
+      continue;
+    }
+
+    if (SERVICE_CATEGORY_VALUES.includes(token as ServiceCategory)) {
+      selectedSet.add(token);
+    }
+  }
+
+  return {
+    selectedCategories: [...selectedSet].slice(0, SERVICE_CATEGORY_MAX_SELECTION),
+    otherText: otherText.slice(0, SERVICE_CATEGORY_OTHER_MAX_LENGTH),
+  };
+}
+
+export function serializeServiceCategorySelection(
+  selectedCategories: string[],
+  otherText: string
+): string {
+  const unique = [...new Set(selectedCategories)]
+    .filter((value) => value === SERVICE_CATEGORY_OTHER_VALUE || SERVICE_CATEGORY_VALUES.includes(value as ServiceCategory))
+    .slice(0, SERVICE_CATEGORY_MAX_SELECTION);
+
+  const normalizedOther = otherText.trim().slice(0, SERVICE_CATEGORY_OTHER_MAX_LENGTH);
+
+  return unique
+    .map((value) => {
+      if (value !== SERVICE_CATEGORY_OTHER_VALUE) return value;
+      return normalizedOther
+        ? `${SERVICE_CATEGORY_OTHER_PREFIX}${normalizedOther}`
+        : SERVICE_CATEGORY_OTHER_VALUE;
+    })
+    .join(",");
+}
