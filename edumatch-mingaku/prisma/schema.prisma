@@ -84,6 +84,10 @@ model CorporateProfile {
   city                  String?
   postal_code           String?
   prefecture            String?
+  /// 人材マッチングへの掲載を許可するか。デフォルト false（Supabase Table Editor で手動切替可）
+  talent_matching_enabled     Boolean  @default(false)
+  /// 人材マッチングページに表示する採用向けメッセージ（任意）
+  talent_matching_description String?
   created_at            DateTime @default(now())
   updated_at            DateTime @updatedAt
 }
