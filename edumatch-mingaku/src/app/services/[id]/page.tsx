@@ -47,9 +47,8 @@ export default async function ServiceDetailPage({
     await recordView(user.id, "SERVICE", id);
   }
   const canEdit = user && (user.id === service.provider_id || profile?.role === "ADMIN");
-  /** 無料企業（sort_order が「なし」）のサービスでは資料請求・お問い合わせブロックを非表示 */
-  const showRequestInfo = service.sort_order !== "NONE";
-  const showContactBlock = service.sort_order !== "NONE";
+  /** sort_order が「なし」のサービスでは資料請求ボタンのみ非表示（料金・お気に入り・共有などは表示） */
+  const showMaterialRequestButton = service.sort_order !== "NONE";
 
   // 口コミを取得（口コミ機能が有効な場合のみ）
   const reviews = FEATURES.REVIEWS ? await getServiceReviews(id) : [];
@@ -119,32 +118,30 @@ export default async function ServiceDetailPage({
                 {service.description}
               </p>
 
-              {/* CTAボタン（モバイル）無料ベンダーではブロックごと非表示 */}
-              {showContactBlock && (
+              {/* CTA（モバイル）：「なし」でも料金・お気に入りは表示、資料請求のみ条件付き */}
               <div className="mt-6 lg:hidden space-y-3">
-                {showRequestInfo && (
-                  <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2">
+                  {showMaterialRequestButton && (
                     <Button asChild size="lg" className="shadow-lg">
                       <Link href={`/request-info?serviceId=${service.id}`}>
                         <FileText className="h-5 w-5 mr-2" />
                         資料請求する（無料）
                       </Link>
                     </Button>
-                    <AddToRequestListServiceButton
-                      serviceId={service.id}
-                      title={service.title}
-                      thumbnailUrl={service.thumbnail_url}
-                      category={service.category}
-                    />
-                  </div>
-                )}
+                  )}
+                  <AddToRequestListServiceButton
+                    serviceId={service.id}
+                    title={service.title}
+                    thumbnailUrl={service.thumbnail_url}
+                    category={service.category}
+                  />
+                </div>
                 <div className="text-center">
                   <span className="text-2xl font-bold text-primary">
                     {service.price_info}
                   </span>
                 </div>
               </div>
-              )}
             </div>
 
             {/* サムネイル画像（デスクトップ） */}
@@ -309,8 +306,7 @@ export default async function ServiceDetailPage({
           {/* サイドバー（スティッキー） */}
           <div className="space-y-6 hidden lg:block">
             <div className="sticky top-24 space-y-6">
-              {/* CTA Card（無料ベンダーでは資料請求・お問い合わせブロックごと非表示） */}
-              {showContactBlock && (
+              {/* CTA Card：「なし」でも料金・お気に入り・共有・特典は表示、資料請求のみ条件付き */}
               <Card className="border-2 border-primary/20 shadow-2xl overflow-hidden">
                 <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-background p-6">
                   <div className="text-center mb-6">
@@ -319,26 +315,24 @@ export default async function ServiceDetailPage({
                       {service.price_info}
                     </p>
                   </div>
-                  
+
                   <div className="space-y-3">
-                    {showRequestInfo && (
-                      <>
-                        <Button asChild className="w-full shadow-lg" size="lg">
-                          <Link href={`/request-info?serviceId=${service.id}`}>
-                            <FileText className="h-5 w-5 mr-2" />
-                            資料請求する（無料）
-                          </Link>
-                        </Button>
-                        <AddToRequestListServiceButton
-                          serviceId={service.id}
-                          title={service.title}
-                          thumbnailUrl={service.thumbnail_url}
-                          category={service.category}
-                          variant="button"
-                          className="w-full"
-                        />
-                      </>
+                    {showMaterialRequestButton && (
+                      <Button asChild className="w-full shadow-lg" size="lg">
+                        <Link href={`/request-info?serviceId=${service.id}`}>
+                          <FileText className="h-5 w-5 mr-2" />
+                          資料請求する（無料）
+                        </Link>
+                      </Button>
                     )}
+                    <AddToRequestListServiceButton
+                      serviceId={service.id}
+                      title={service.title}
+                      thumbnailUrl={service.thumbnail_url}
+                      category={service.category}
+                      variant="button"
+                      className="w-full"
+                    />
                     <ShareButton
                       url={`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/services/${service.id}`}
                       title={service.title}
@@ -372,7 +366,6 @@ export default async function ServiceDetailPage({
                   </div>
                 </div>
               </Card>
-              )}
 
               {/* カテゴリカード */}
               <Card className="border-2 shadow-lg">
@@ -388,9 +381,8 @@ export default async function ServiceDetailPage({
 
             </div>
 
-            {/* モバイル用CTAセクション（無料ベンダーではブロックごと非表示） */}
+            {/* モバイル用CTA：「なし」でも料金・お気に入りは表示、資料請求のみ条件付き */}
             <div className="lg:hidden">
-              {showContactBlock && (
               <Card className="border-2 border-primary/20 shadow-2xl sticky bottom-4">
                 <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-background p-6">
                   <div className="text-center mb-4">
@@ -399,30 +391,27 @@ export default async function ServiceDetailPage({
                       {service.price_info}
                     </p>
                   </div>
-                  
+
                   <div className="space-y-3">
-                    {showRequestInfo && (
-                      <>
-                        <Button asChild className="w-full shadow-lg" size="lg">
-                          <Link href={`/request-info?serviceId=${service.id}`}>
-                            <FileText className="h-5 w-5 mr-2" />
-                            資料請求する（無料）
-                          </Link>
-                        </Button>
-                        <AddToRequestListServiceButton
-                          serviceId={service.id}
-                          title={service.title}
-                          thumbnailUrl={service.thumbnail_url}
-                          category={service.category}
-                          variant="button"
-                          className="w-full"
-                        />
-                      </>
+                    {showMaterialRequestButton && (
+                      <Button asChild className="w-full shadow-lg" size="lg">
+                        <Link href={`/request-info?serviceId=${service.id}`}>
+                          <FileText className="h-5 w-5 mr-2" />
+                          資料請求する（無料）
+                        </Link>
+                      </Button>
                     )}
+                    <AddToRequestListServiceButton
+                      serviceId={service.id}
+                      title={service.title}
+                      thumbnailUrl={service.thumbnail_url}
+                      category={service.category}
+                      variant="button"
+                      className="w-full"
+                    />
                   </div>
                 </div>
               </Card>
-              )}
             </div>
           </div>
         </div>
