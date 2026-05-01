@@ -39,16 +39,28 @@ export async function PATCH(
       }
     }
 
-    const room = await prisma.forumRoom.update({
-      where: { id },
-      data: {
-        ...(weeklyTopic !== undefined && { weekly_topic: weeklyTopic }),
-        ...(description !== undefined && { description }),
-        ...(emoji !== undefined && { emoji }),
-        ...(aiDiscussion !== undefined && { ai_discussion: aiDiscussion }),
-        ...(isHidden !== undefined && isAdmin && { is_hidden: isHidden }),
-      },
-    });
+    // is_hidden is managed via raw SQL until migration is confirmed in DB
+    if (isHidden !== undefined && isAdmin) {
+      try {
+        await prisma.$executeRaw`UPDATE forum_rooms SET is_hidden = ${isHidden} WHERE id = ${id}`;
+      } catch {
+        // Column may not exist yet
+      }
+    }
+
+    const prismaData = {
+      ...(weeklyTopic !== undefined && { weekly_topic: weeklyTopic }),
+      ...(description !== undefined && { description }),
+      ...(emoji !== undefined && { emoji }),
+      ...(aiDiscussion !== undefined && { ai_discussion: aiDiscussion }),
+    };
+
+    let room;
+    if (Object.keys(prismaData).length > 0) {
+      room = await prisma.forumRoom.update({ where: { id }, data: prismaData });
+    } else {
+      room = await prisma.forumRoom.findUnique({ where: { id } });
+    }
 
     return NextResponse.json({ room });
   } catch (err) {

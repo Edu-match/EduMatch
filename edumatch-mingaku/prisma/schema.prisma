@@ -360,7 +360,6 @@ model ForumRoom {
   emoji         String      @default("")
   weekly_topic  String      @default("")
   ai_discussion Boolean     @default(false)
-  is_hidden     Boolean     @default(false)
   created_by    String?     @db.Uuid
   created_at    DateTime    @default(now())
   updated_at    DateTime    @updatedAt

@@ -18,7 +18,13 @@ import { Badge } from "@/components/ui/badge";
 import {
   User,
   Building2,
+  Briefcase,
   GraduationCap,
+  Handshake,
+  Lightbulb,
+  Mic,
+  PenLine,
+  Users,
   ArrowLeft,
   ArrowRight,
   Check,
@@ -61,7 +67,18 @@ const steps = [
   { id: 2, title: "所属情報", icon: Building2 },
   { id: 3, title: "連絡先（資料請求の通知先）", icon: MapPin },
   { id: 4, title: "関心・スキル", icon: GraduationCap },
-  { id: 5, title: "確認", icon: Check },
+  { id: 5, title: "人材マッチング", icon: Handshake },
+  { id: 6, title: "確認", icon: Check },
+];
+
+const TALENT_BADGE_OPTIONS = [
+  { value: "lecture",    icon: Mic,           label: "講演依頼",            desc: "各種イベント・セミナーでの講演" },
+  { value: "teaching",   icon: GraduationCap, label: "講師依頼",            desc: "授業・講座での講師活動" },
+  { value: "workshop",   icon: Users,         label: "研修・ワークショップ", desc: "チーム向け研修・ハンズオン" },
+  { value: "advisor",    icon: Lightbulb,     label: "顧問・アドバイザー",  desc: "継続的なアドバイス・監修" },
+  { value: "consulting", icon: Briefcase,     label: "コンサルティング",    desc: "課題解決・導入支援" },
+  { value: "writing",    icon: PenLine,       label: "執筆・寄稿",          desc: "記事・書籍・教材の執筆" },
+  { value: "work",       icon: Briefcase,     label: "仕事依頼（その他）",  desc: "上記以外のお仕事全般" },
 ];
 
 const interests = [
@@ -424,66 +441,88 @@ export function ProfileRegisterForm({
               />
             </div>
 
-            {/* 人材マッチング オプトイン */}
-            <div className="rounded-xl border-2 border-dashed border-muted-foreground/20 p-4 space-y-3 bg-muted/20">
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={talentMatchingEnabled}
-                  onChange={(e) => setTalentMatchingEnabled(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary accent-primary"
-                />
-                <div>
-                  <p className="text-sm font-medium">人材マッチングに登録する（任意）</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    講演依頼・講師依頼・仕事依頼を受け付けるプロフィールとして、人材マッチングページに掲載されます。後からマイページで変更できます。
-                  </p>
-                </div>
-              </label>
-              {talentMatchingEnabled && (
-                <div className="space-y-3 pl-7">
-                  <div className="space-y-1.5">
-                    <p className="text-xs font-medium text-muted-foreground">受け付ける依頼の種類（複数選択可）</p>
-                    <div className="flex flex-wrap gap-2">
-                      {[
-                        { value: "lecture", label: "🎤 講演依頼" },
-                        { value: "teaching", label: "🎓 講師依頼" },
-                        { value: "work", label: "💼 仕事依頼" },
-                      ].map(({ value, label }) => (
-                        <button
-                          key={value}
-                          type="button"
-                          onClick={() => toggleTalentBadge(value)}
-                          className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                            talentBadges.includes(value)
-                              ? "border-primary bg-primary text-primary-foreground"
-                              : "border-border bg-background text-muted-foreground hover:border-primary/50"
-                          }`}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">
-                      自己PR・対応できる依頼内容（任意）
-                    </label>
-                    <Textarea
-                      placeholder="例：教育ICT分野の講演・研修を承ります。プログラミング教育の導入支援も可能です。"
-                      rows={3}
-                      value={talentMatchingDescription}
-                      onChange={(e) => setTalentMatchingDescription(e.target.value)}
-                      className="text-sm"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
         );
 
       case 5:
+        return (
+          <div className="space-y-5">
+            <div className="rounded-xl border bg-gradient-to-br from-sky-50 to-indigo-50 p-5">
+              <h3 className="font-semibold mb-1">人材マッチングとは？</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                プロフィールを公開することで、講演・研修・執筆などの依頼を受け取れます。
+                掲載は無料で、後からいつでも変更・停止できます。
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setTalentMatchingEnabled(!talentMatchingEnabled)}
+              className={[
+                "w-full flex items-start gap-4 rounded-xl border-2 p-5 text-left transition-all",
+                talentMatchingEnabled
+                  ? "border-primary bg-primary/5"
+                  : "border-dashed border-muted-foreground/30 bg-muted/20 hover:border-muted-foreground/50",
+              ].join(" ")}
+            >
+              <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${talentMatchingEnabled ? "border-primary bg-primary" : "border-muted-foreground/40"}`}>
+                {talentMatchingEnabled && <span className="block h-2 w-2 rounded-full bg-white" />}
+              </div>
+              <div>
+                <p className="font-semibold">人材マッチングに掲載する</p>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  チェックすると人材マッチングページに掲載されます（任意）
+                </p>
+              </div>
+            </button>
+
+            {talentMatchingEnabled && (
+              <div className="space-y-5 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold">受け付ける依頼の種類（複数選択可）</p>
+                  <p className="text-xs text-muted-foreground">選択した種類はプロフィールにバッジとして表示されます</p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {TALENT_BADGE_OPTIONS.map(({ value, icon: Icon, label, desc }) => {
+                      const selected = talentBadges.includes(value);
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => toggleTalentBadge(value)}
+                          className={[
+                            "flex items-start gap-3 rounded-xl border p-3 text-left transition-all",
+                            selected
+                              ? "border-primary bg-primary/5"
+                              : "border-border bg-background hover:border-primary/40",
+                          ].join(" ")}
+                        >
+                          <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${selected ? "text-primary" : "text-muted-foreground"}`} />
+                          <div>
+                            <p className={`text-sm font-medium ${selected ? "text-primary" : ""}`}>{label}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">自己PR・対応できる依頼内容（任意）</label>
+                  <Textarea
+                    placeholder="例：教育ICT分野の講演・研修を承ります。プログラミング教育の導入支援や教員向けワークショップも可能です。"
+                    rows={4}
+                    value={talentMatchingDescription}
+                    onChange={(e) => setTalentMatchingDescription(e.target.value)}
+                    className="resize-none text-sm"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        );
+
+      case 6:
         return (
           <div className="space-y-6">
             <div className="p-4 rounded-lg bg-muted/50">
@@ -814,7 +853,7 @@ export function ProfileRegisterForm({
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 戻る
               </Button>
-              {currentStep < 5 ? (
+              {currentStep < 6 ? (
                 <Button type="button" onClick={handleNext}>
                   次へ
                   <ArrowRight className="h-4 w-4 ml-2" />

@@ -9,12 +9,15 @@ import {
   ExternalLink,
   GraduationCap,
   Globe,
+  Lightbulb,
   MapPin,
   MessageCircle,
   Mic,
+  PenLine,
   Sparkles,
   Star,
   User,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,9 +25,13 @@ import { cn } from "@/lib/utils";
 import type { TalentProfile } from "@/app/_actions/talent";
 
 const REQUEST_TYPES: Record<string, { icon: React.ElementType; label: string; color: string }> = {
-  lecture:  { icon: Mic,           label: "講演依頼",  color: "bg-blue-50 text-blue-700 border-blue-200" },
-  teaching: { icon: GraduationCap, label: "講師依頼",  color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-  work:     { icon: Briefcase,     label: "仕事依頼",  color: "bg-violet-50 text-violet-700 border-violet-200" },
+  lecture:    { icon: Mic,           label: "講演依頼",            color: "bg-blue-50 text-blue-700 border-blue-200" },
+  teaching:   { icon: GraduationCap, label: "講師依頼",            color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  work:       { icon: Briefcase,     label: "仕事依頼",            color: "bg-violet-50 text-violet-700 border-violet-200" },
+  workshop:   { icon: Users,         label: "研修・ワークショップ", color: "bg-orange-50 text-orange-700 border-orange-200" },
+  advisor:    { icon: Lightbulb,     label: "顧問・アドバイザー",  color: "bg-yellow-50 text-yellow-700 border-yellow-200" },
+  consulting: { icon: Briefcase,     label: "コンサルティング",    color: "bg-indigo-50 text-indigo-700 border-indigo-200" },
+  writing:    { icon: PenLine,       label: "執筆・寄稿",          color: "bg-pink-50 text-pink-700 border-pink-200" },
 };
 
 import React from "react";
@@ -190,13 +197,13 @@ export default function TalentDetailClient({ profile }: { profile: TalentProfile
         <section className="rounded-xl border bg-background p-6 space-y-3">
           <h2 className="text-sm font-semibold">依頼・お問い合わせ</h2>
           <p className="text-xs text-muted-foreground">
-            講演・講師・仕事依頼はプロフィールページよりご連絡ください。
+            講演・講師・研修・執筆・コンサルティングなどはこちらからお申し込みください。
           </p>
           <div className="flex flex-wrap gap-3">
             <Button asChild className="gap-2">
-              <Link href={`/profile/${profile.id}`}>
+              <Link href={`/talent/${profile.id}/request`}>
                 <MessageCircle className="h-4 w-4" />
-                プロフィールを見る・依頼する
+                依頼する
               </Link>
             </Button>
             {profile.website && (

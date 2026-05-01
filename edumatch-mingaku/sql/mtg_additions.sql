@@ -43,3 +43,20 @@ CREATE INDEX IF NOT EXISTS idx_forum_room_connection_to ON "ForumRoomConnection"
 -- 6. ForumRoom: 非表示フラグ
 ALTER TABLE "forum_rooms"
   ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT FALSE;
+
+-- 7. 人材マッチング依頼テーブル
+CREATE TABLE IF NOT EXISTS talent_requests (
+  id                   TEXT PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
+  talent_id            UUID NOT NULL REFERENCES "Profile"(id) ON DELETE CASCADE,
+  requester_id         UUID REFERENCES "Profile"(id) ON DELETE SET NULL,
+  requester_name       TEXT NOT NULL,
+  requester_email      TEXT NOT NULL,
+  requester_phone      TEXT,
+  requester_org        TEXT,
+  request_type         TEXT NOT NULL,
+  message              TEXT NOT NULL,
+  status               TEXT DEFAULT 'pending',
+  created_at           TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_talent_requests_talent_id ON talent_requests(talent_id);
+CREATE INDEX IF NOT EXISTS idx_talent_requests_created_at ON talent_requests(created_at DESC);

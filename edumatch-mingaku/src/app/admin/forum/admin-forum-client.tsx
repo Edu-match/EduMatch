@@ -145,7 +145,11 @@ export function AdminForumClient() {
 
   // 全投稿取得（全部屋分・非表示含む）
   useEffect(() => {
-    if (rooms.length === 0) return;
+    if (loadingRooms) return;
+    if (rooms.length === 0) {
+      setLoadingPosts(false);
+      return;
+    }
     Promise.all(
       rooms.map((room) =>
         fetch(`/api/forum/rooms/${room.id}/posts?page=1&includeHidden=true`, { credentials: "include" })
@@ -156,7 +160,7 @@ export function AdminForumClient() {
     ).then((allPosts) => {
       setPosts(allPosts.flat());
     }).finally(() => setLoadingPosts(false));
-  }, [rooms]);
+  }, [rooms, loadingRooms]);
 
   const filteredRooms = useMemo(() => {
     const keyword = roomKeyword.trim().toLowerCase();
