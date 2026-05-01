@@ -11,7 +11,6 @@ export function effectiveIsCorporateProfile(
   manualProfileKind: string | null | undefined,
   hasCorporateProfileRow: boolean
 ): boolean {
-  if (role === "ADMIN") return false;
   if (manualProfileKind === "general") return false;
   if (manualProfileKind === "corporate") return true;
   return hasCorporateProfileRow || role === "PROVIDER";
@@ -21,13 +20,12 @@ export function effectiveIsCorporateProfile(
  * updateProfile が書き込む先（General / Corporate 拡張）。
  */
 export function resolveProfileExtensionTarget(
-  role: string,
+  _role: string,
   manualProfileKind: string | null | undefined,
   hasGeneralProfile: boolean,
   hasCorporateProfile: boolean,
   registrationKind: "general" | "service_business" | null
 ): "general" | "service_business" {
-  if (role === "ADMIN") return "general";
   if (manualProfileKind === "general") return "general";
   if (manualProfileKind === "corporate") return "service_business";
   if (hasCorporateProfile) return "service_business";
