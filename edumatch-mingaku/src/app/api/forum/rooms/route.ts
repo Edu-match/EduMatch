@@ -15,12 +15,16 @@ export async function GET(req: NextRequest) {
       isAdmin = profile?.role === "ADMIN";
     }
 
-    const rooms = await prisma.forumRoom.findMany({
-      where: includeHidden && isAdmin ? undefined : { is_hidden: false },
+    // is_hidden カラムが未追加の場合に備えてフォールバック
+    let rooms = await prisma.forumRoom.findMany({
       orderBy: { created_at: "asc" },
       include: {
         _count: { select: { posts: { where: { is_hidden: false } } } },
       },
+    }).then((all) => {
+      // is_hidden が存在する場合のみフィルタ適用
+      if (includeHidden && isAdmin) return all;
+      return all.filter((r) => !(r as any).is_hidden);
     });
 
     // 参加者数 = 各部屋の投稿でユニークな author_id の数（ゲスト除く）
@@ -59,7 +63,7 @@ export async function GET(req: NextRequest) {
       postCount: room._count.posts,
       participantCount: participantMap[room.id] ?? 0,
       lastPostedAt: lastPostedMap[room.id] ?? room.created_at.toISOString(),
-      isHidden: room.is_hidden,
+      isHidden: (room as any).is_hidden ?? false,
     }));
 
     return NextResponse.json({ rooms: result });
