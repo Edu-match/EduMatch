@@ -461,6 +461,8 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
   const [selectedAskChoices, setSelectedAskChoices] = useState<Record<string, string[]>>({});
   const [openedRagRefsMessageId, setOpenedRagRefsMessageId] = useState<string | null>(null);
+  const [askOtherActive, setAskOtherActive] = useState<Record<string, boolean>>({});
+  const [askOtherText, setAskOtherText] = useState<Record<string, string>>({});
   const [forumComposeAssist, setForumComposeAssist] = useState<{
     active: boolean;
     topic: string;
@@ -521,10 +523,8 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
       const customEvent = event as CustomEvent<OpenAiChatEventDetail>;
       if (isMobile) setMobileOpen(true);
       else setOpen(true);
+      setView("chat");
       const detail = customEvent.detail;
-      if (detail?.initialMessage && detail.initialMessage.trim()) {
-        setInput(detail.initialMessage.trim());
-      }
       if (detail?.preferredMode) {
         setChatMode(detail.preferredMode);
       }
@@ -532,15 +532,18 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
         const topic = detail.forumTopic?.trim() ?? "";
         setForumComposeAssist({ active: true, topic });
         if (!detail?.preferredMode) setChatMode("discussion");
-        setMessages((prev) => {
-          if (prev.length > 0) return prev;
+        setInput("");
+        setMessages(() => {
           const guide = topic
-            ? `投稿作成サポートへようこそ！テーマ「${topic}」での投稿作りをお手伝いします。\n\n[[ASK]]\n質問: この話題についてすでに意見・考えをお持ちですか？\n複数選択: いいえ\n- はい、意見がある\n- まだ考えがまとまっていない\n[[/ASK]]`
-            : `投稿作成サポートへようこそ！投稿作りをお手伝いします。\n\n[[ASK]]\n質問: 話題についてすでに意見・考えをお持ちですか？\n複数選択: いいえ\n- はい、意見がある\n- まだ考えがまとまっていない\n[[/ASK]]`;
+            ? `投稿作成サポートへようこそ！テーマ「${topic}」での投稿作りをお手伝いします。\n下のクイックボタンを使うか、自由に話しかけてください。`
+            : `投稿作成サポートへようこそ！投稿作りをお手伝いします。\n下のクイックボタンを使うか、自由に話しかけてください。`;
           return [{ id: `forum-guide-${Date.now()}`, role: "assistant", content: guide }];
         });
       } else {
         setForumComposeAssist({ active: false, topic: "" });
+        if (detail?.initialMessage && detail.initialMessage.trim()) {
+          setInput(detail.initialMessage.trim());
+        }
       }
     };
     window.addEventListener("open-ai-chat", handler);
@@ -1235,6 +1238,8 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
                                       onClick={() => {
                                         if (assistantPrompt.allowMultiple) {
                                           toggleAskChoice(m.id, choice);
+                                        } else if (choice === "その他") {
+                                          setAskOtherActive((prev) => ({ ...prev, [m.id]: true }));
                                         } else {
                                           sendMessage(choice);
                                         }
@@ -1249,6 +1254,40 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
                                     </button>
                                   ))}
                                 </div>
+                                {askOtherActive[m.id] && !assistantPrompt.allowMultiple && (
+                                  <div className="mt-2 flex gap-1.5">
+                                    <input
+                                      type="text"
+                                      value={askOtherText[m.id] ?? ""}
+                                      onChange={(e) => setAskOtherText((prev) => ({ ...prev, [m.id]: e.target.value }))}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                                          const t = (askOtherText[m.id] ?? "").trim();
+                                          if (!t) return;
+                                          setAskOtherActive((prev) => ({ ...prev, [m.id]: false }));
+                                          setAskOtherText((prev) => ({ ...prev, [m.id]: "" }));
+                                          sendMessage(t);
+                                        }
+                                      }}
+                                      placeholder="自由に入力…"
+                                      className="flex-1 rounded-lg border border-primary/30 bg-background px-2.5 py-1 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/50"
+                                    />
+                                    <button
+                                      type="button"
+                                      disabled={!(askOtherText[m.id] ?? "").trim()}
+                                      onClick={() => {
+                                        const t = (askOtherText[m.id] ?? "").trim();
+                                        if (!t) return;
+                                        setAskOtherActive((prev) => ({ ...prev, [m.id]: false }));
+                                        setAskOtherText((prev) => ({ ...prev, [m.id]: "" }));
+                                        sendMessage(t);
+                                      }}
+                                      className="rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/20 disabled:opacity-40"
+                                    >
+                                      送信
+                                    </button>
+                                  </div>
+                                )}
                                 {assistantPrompt.allowMultiple && (
                                   <div className="mt-2 flex justify-end">
                                     <Button
@@ -1411,10 +1450,11 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
                     type="button"
                     className="w-full rounded-lg border border-violet-300 bg-background px-3 py-2 text-left text-xs font-medium text-violet-700 hover:bg-violet-100"
                     onClick={() => {
-                      const current = input.trim();
+                      const draft = input.trim();
+                      setInput("");
                       sendMessage(
-                        current
-                          ? `この下書きの論点を3つに整理し、足りない視点を補ってください。\n\n${current}`
+                        draft
+                          ? `この下書きの論点を3つに整理し、足りない視点を補ってください。\n\n${draft}`
                           : `テーマ「${forumComposeAssist.topic || "投稿テーマ"}」の論点を3つに整理してください。`
                       );
                     }}
@@ -1425,10 +1465,11 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
                     type="button"
                     className="w-full rounded-lg border border-violet-300 bg-background px-3 py-2 text-left text-xs font-medium text-violet-700 hover:bg-violet-100"
                     onClick={() => {
-                      const current = input.trim();
+                      const draft = input.trim();
+                      setInput("");
                       sendMessage(
-                        current
-                          ? `この意見に対する反対意見・懸念点・弱点を3つ挙げ、改善案も示してください。\n\n${current}`
+                        draft
+                          ? `この意見に対する反対意見・懸念点・弱点を3つ挙げ、改善案も示してください。\n\n${draft}`
                           : `テーマ「${forumComposeAssist.topic || "投稿テーマ"}」で想定される反対意見を3つ挙げ、改善案を示してください。`
                       );
                     }}
@@ -1439,10 +1480,11 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
                     type="button"
                     className="w-full rounded-lg border border-violet-300 bg-background px-3 py-2 text-left text-xs font-medium text-violet-700 hover:bg-violet-100"
                     onClick={() => {
-                      const current = input.trim();
+                      const draft = input.trim();
+                      setInput("");
                       sendMessage(
-                        current
-                          ? `以下を井戸端会議に投稿しやすい文体に整えてください。150〜250字の投稿文と、短いタイトル案を1つください。\n\n${current}`
+                        draft
+                          ? `以下を井戸端会議に投稿しやすい文体に整えてください。150〜250字の投稿文と、短いタイトル案を1つください。\n\n${draft}`
                           : `テーマ「${forumComposeAssist.topic || "投稿テーマ"}」について、150〜250字の投稿文と短いタイトル案を1つ作ってください。`
                       );
                     }}

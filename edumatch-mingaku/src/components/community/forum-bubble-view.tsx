@@ -397,7 +397,7 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
   };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if ((e.target as HTMLElement).closest("[role=button]")) return;
+    if ((e.target as HTMLElement).closest("button, [role=button]")) return;
     dragStart.current = { x: e.clientX, y: e.clientY };
     hasDragged.current = false;
     e.currentTarget.setPointerCapture(e.pointerId);
