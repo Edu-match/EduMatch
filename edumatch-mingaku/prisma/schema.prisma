@@ -37,6 +37,8 @@ model Profile {
   manual_profile_kind              String?
   /// 初回プロフィール設定完了日時。null の間は OAuth 後も登録ウィザードへ誘導する
   onboarding_completed_at         DateTime?
+  /// AI検定合格フラグ（人材マッチングバッジ表示用）
+  ai_kentei_passed                Boolean   @default(false)
   material_requests               MaterialRequest[]
   posts                           Post[]
   reviews                         Review[]
@@ -358,6 +360,7 @@ model ForumRoom {
   emoji         String      @default("")
   weekly_topic  String      @default("")
   ai_discussion Boolean     @default(false)
+  is_hidden     Boolean     @default(false)
   created_by    String?     @db.Uuid
   created_at    DateTime    @default(now())
   updated_at    DateTime    @updatedAt

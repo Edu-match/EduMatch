@@ -5,9 +5,18 @@ import { getCurrentUser, getCurrentProfile } from "@/lib/auth";
 export const dynamic = "force-dynamic";
 
 /** 部屋一覧取得（投稿数・参加者数を集計して返す） */
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const url = new URL(req.url);
+    const includeHidden = url.searchParams.get("includeHidden") === "true";
+    let isAdmin = false;
+    if (includeHidden) {
+      const profile = await getCurrentProfile();
+      isAdmin = profile?.role === "ADMIN";
+    }
+
     const rooms = await prisma.forumRoom.findMany({
+      where: includeHidden && isAdmin ? undefined : { is_hidden: false },
       orderBy: { created_at: "asc" },
       include: {
         _count: { select: { posts: { where: { is_hidden: false } } } },
@@ -50,6 +59,7 @@ export async function GET() {
       postCount: room._count.posts,
       participantCount: participantMap[room.id] ?? 0,
       lastPostedAt: lastPostedMap[room.id] ?? room.created_at.toISOString(),
+      isHidden: room.is_hidden,
     }));
 
     return NextResponse.json({ rooms: result });

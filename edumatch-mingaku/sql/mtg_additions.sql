@@ -39,3 +39,7 @@ CREATE TABLE IF NOT EXISTS "ForumRoomConnection" (
 -- インデックス
 CREATE INDEX IF NOT EXISTS idx_forum_room_connection_from ON "ForumRoomConnection"(from_room);
 CREATE INDEX IF NOT EXISTS idx_forum_room_connection_to ON "ForumRoomConnection"(to_room);
+
+-- 6. ForumRoom: 非表示フラグ
+ALTER TABLE "forum_rooms"
+  ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT FALSE;

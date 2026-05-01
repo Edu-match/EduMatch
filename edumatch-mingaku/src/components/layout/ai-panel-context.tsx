@@ -10,6 +10,13 @@ export type AutoActivation = {
   question: string;
 };
 
+export type ChatLaunchDetail = {
+  initialMessage?: string;
+  preferredMode?: "navigator" | "debate" | "discussion";
+  launchContext?: "default" | "forum-compose";
+  forumTopic?: string;
+};
+
 type AiPanelContextValue = {
   open: boolean;
   setOpen: (open: boolean) => void;
@@ -19,6 +26,8 @@ type AiPanelContextValue = {
   pendingActivation: AutoActivation | null;
   clearActivation: () => void;
   triggerArticleComplete: (articleId: string, articleTitle: string) => void;
+  pendingChatLaunch: ChatLaunchDetail | null;
+  clearPendingChatLaunch: () => void;
 };
 
 const AiPanelContext = createContext<AiPanelContextValue>({
@@ -30,12 +39,15 @@ const AiPanelContext = createContext<AiPanelContextValue>({
   pendingActivation: null,
   clearActivation: () => {},
   triggerArticleComplete: () => {},
+  pendingChatLaunch: null,
+  clearPendingChatLaunch: () => {},
 });
 
 export function AiPanelProvider({ children }: { children: React.ReactNode }) {
   const [open, setOpenState] = useState(true);
   const [mobileOpen, setMobileOpenState] = useState(false);
   const [pendingActivation, setPendingActivation] = useState<AutoActivation | null>(null);
+  const [pendingChatLaunch, setPendingChatLaunch] = useState<ChatLaunchDetail | null>(null);
   const initialized = useRef(false);
 
   useEffect(() => {
@@ -48,6 +60,23 @@ export function AiPanelProvider({ children }: { children: React.ReactNode }) {
         // localStorage unavailable
       }
     }
+  }, []);
+
+  // open-ai-chat イベントをここで受け取り、パネルを開いてから detail を保持する
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<ChatLaunchDetail>).detail ?? {};
+      const isMobile = window.innerWidth < 1024;
+      if (isMobile) {
+        setMobileOpenState(true);
+      } else {
+        setOpenState(true);
+        try { localStorage.setItem(STORAGE_KEY, "true"); } catch { /* ignore */ }
+      }
+      setPendingChatLaunch(detail);
+    };
+    window.addEventListener("open-ai-chat", handler);
+    return () => window.removeEventListener("open-ai-chat", handler);
   }, []);
 
   const setOpen = useCallback((next: boolean) => {
@@ -71,6 +100,10 @@ export function AiPanelProvider({ children }: { children: React.ReactNode }) {
     setPendingActivation(null);
   }, []);
 
+  const clearPendingChatLaunch = useCallback(() => {
+    setPendingChatLaunch(null);
+  }, []);
+
   const triggerArticleComplete = useCallback(
     (articleId: string, articleTitle: string) => {
       const question = `「${articleTitle}」を読み終えましたね。この記事の内容についてAIと話しますか？`;
@@ -92,6 +125,8 @@ export function AiPanelProvider({ children }: { children: React.ReactNode }) {
         pendingActivation,
         clearActivation,
         triggerArticleComplete,
+        pendingChatLaunch,
+        clearPendingChatLaunch,
       }}
     >
       {children}

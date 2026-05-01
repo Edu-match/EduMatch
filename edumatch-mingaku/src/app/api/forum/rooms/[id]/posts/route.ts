@@ -19,10 +19,20 @@ export async function GET(
     const url = new URL(req.url);
     const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1", 10));
     const skip = (page - 1) * PAGE_SIZE;
+    const includeHidden = url.searchParams.get("includeHidden") === "true";
+
+    // includeHidden は管理者のみ許可
+    let isAdmin = false;
+    if (includeHidden) {
+      const { getCurrentProfile } = await import("@/lib/auth");
+      const profile = await getCurrentProfile();
+      isAdmin = profile?.role === "ADMIN";
+    }
+    const hiddenFilter = includeHidden && isAdmin ? undefined : false;
 
     const [posts, total] = await Promise.all([
       prisma.forumPost.findMany({
-        where: { room_id: roomId, is_hidden: false },
+        where: { room_id: roomId, ...(hiddenFilter !== undefined && { is_hidden: hiddenFilter }) },
         orderBy: { created_at: "desc" },
         skip,
         take: PAGE_SIZE,
@@ -37,7 +47,7 @@ export async function GET(
           },
         },
       }),
-      prisma.forumPost.count({ where: { room_id: roomId, is_hidden: false } }),
+      prisma.forumPost.count({ where: { room_id: roomId, ...(hiddenFilter !== undefined && { is_hidden: hiddenFilter }) } }),
     ]);
 
     const likesByPost = await Promise.all(
@@ -60,6 +70,7 @@ export async function GET(
       replyCount: post._count.replies,
       postedAt: post.created_at.toISOString(),
       isPinned: post.is_pinned,
+      isHidden: post.is_hidden,
       relatedArticleUrl: post.related_article_url ?? undefined,
       aiKenteiPassed: post.ai_kentei_passed,
       replies: post.replies.map((r) => ({

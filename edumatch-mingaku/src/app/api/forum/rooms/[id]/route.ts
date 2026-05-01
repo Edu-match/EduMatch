@@ -17,11 +17,12 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await req.json();
-    const { weeklyTopic, description, emoji, aiDiscussion } = body as {
+    const { weeklyTopic, description, emoji, aiDiscussion, isHidden } = body as {
       weeklyTopic?: string;
       description?: string;
       emoji?: string;
       aiDiscussion?: boolean;
+      isHidden?: boolean;
     };
 
     const isAdmin = profile.role === "ADMIN";
@@ -32,8 +33,8 @@ export async function PATCH(
       if (!existing || existing.created_by !== profile.id) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
-      // 作成者はweeklyTopicのみ変更可
-      if (description !== undefined || emoji !== undefined || aiDiscussion !== undefined) {
+      // 作成者はweeklyTopicのみ変更可（非表示・AI設定等は管理者のみ）
+      if (description !== undefined || emoji !== undefined || aiDiscussion !== undefined || isHidden !== undefined) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
     }
@@ -45,6 +46,7 @@ export async function PATCH(
         ...(description !== undefined && { description }),
         ...(emoji !== undefined && { emoji }),
         ...(aiDiscussion !== undefined && { ai_discussion: aiDiscussion }),
+        ...(isHidden !== undefined && isAdmin && { is_hidden: isHidden }),
       },
     });
 

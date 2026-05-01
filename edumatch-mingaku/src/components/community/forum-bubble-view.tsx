@@ -18,29 +18,35 @@ import {
 // ─── 動的レイアウト計算 ──────────────────────────────────────
 
 function computePositions(rooms: ForumRoom[], isMobile: boolean): BubblePosition[] {
+  const baseHeight = isMobile ? 720 : 540;
+  const containerHeight = computeContainerHeight(rooms, isMobile);
   const staticMap = isMobile ? BUBBLE_POSITIONS_MOBILE : BUBBLE_POSITIONS;
   const result: BubblePosition[] = [];
   const usedIds = new Set<string>();
 
+  // 静的ルームは絶対ピクセル位置を保持（コンテナが伸びても動かない）
   for (const room of rooms) {
     const pos = staticMap.find((p) => p.id === room.id);
     if (pos) {
-      result.push(pos);
+      const absoluteY = (pos.cy / 100) * baseHeight;
+      result.push({ id: room.id, cx: pos.cx, cy: (absoluteY / containerHeight) * 100 });
       usedIds.add(room.id);
     }
   }
 
+  // 新規ルームはベース高さの直下に配置
   const remaining = rooms.filter((r) => !usedIds.has(r.id));
   if (isMobile) {
-    let cy = 90 + 14;
-    for (const room of remaining) {
-      result.push({ id: room.id, cx: 50, cy });
-      cy += 14;
-    }
-  } else {
-    const colXs = [18, 50, 82];
     remaining.forEach((room, i) => {
-      result.push({ id: room.id, cx: colXs[i % 3], cy: 92 + Math.floor(i / 3) * 22 });
+      const absoluteY = baseHeight + 50 + i * 100;
+      result.push({ id: room.id, cx: 50, cy: (absoluteY / containerHeight) * 100 });
+    });
+  } else {
+    const colXs = [20, 50, 80];
+    remaining.forEach((room, i) => {
+      const row = Math.floor(i / 3);
+      const absoluteY = baseHeight + 70 + row * 140;
+      result.push({ id: room.id, cx: colXs[i % 3], cy: (absoluteY / containerHeight) * 100 });
     });
   }
 

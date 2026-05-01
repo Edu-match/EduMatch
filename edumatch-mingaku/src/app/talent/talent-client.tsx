@@ -19,6 +19,7 @@ import {
   SlidersHorizontal,
   Users,
   Star,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TalentProfile } from "@/app/_actions/talent";
@@ -277,9 +278,9 @@ function TalentCard({ profile }: { profile: TalentProfile }) {
           )}
         >
           {isIndividual ? (
-            <><User className="h-3 w-3" /> 専門家・講師</>
+            <><User className="h-3 w-3" /> {profile.organization_type ?? "専門家・講師"}</>
           ) : (
-            <><Building2 className="h-3 w-3" /> 企業・団体</>
+            <><Building2 className="h-3 w-3" /> {profile.organization_type ?? "企業・団体"}</>
           )}
         </span>
       </div>
@@ -317,18 +318,23 @@ function TalentCard({ profile }: { profile: TalentProfile }) {
 
           {/* 名前・所属 */}
           <div className="flex-1 min-w-0">
-            <h2 className="font-bold text-base leading-tight line-clamp-1 text-foreground">
-              {profile.name}
-            </h2>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <h2 className="font-bold text-base leading-tight line-clamp-1 text-foreground">
+                {profile.name}
+              </h2>
+              {profile.ai_kentei_passed && (
+                <span
+                  title="AI検定 合格者"
+                  className="inline-flex items-center gap-0.5 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700 flex-shrink-0"
+                >
+                  <Sparkles className="h-2.5 w-2.5" />AI検定合格
+                </span>
+              )}
+            </div>
             {profile.organization && (
               <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
                 {profile.organization}
               </p>
-            )}
-            {profile.organization_type && (
-              <Badge variant="secondary" className="mt-1.5 text-[10px] py-0 h-4">
-                {profile.organization_type}
-              </Badge>
             )}
           </div>
         </div>

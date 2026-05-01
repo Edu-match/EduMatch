@@ -438,7 +438,7 @@ function MarkdownContent({ text }: { text: string }) {
 
 export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
   const pathname = usePathname();
-  const { setOpen, setMobileOpen, pendingActivation, clearActivation } = useAiPanel();
+  const { setOpen, setMobileOpen, pendingActivation, clearActivation, pendingChatLaunch, clearPendingChatLaunch } = useAiPanel();
 
   const [view, setView] = useState<View>("chat");
   const [input, setInput] = useState("");
@@ -517,38 +517,33 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
       .catch(() => {});
   }, [messages.length]);
 
-  // 「AIチャットを開く」ボタンからも開けるようにする
+  // AiPanelContext 経由で open-ai-chat イベントの詳細を受け取る
   useEffect(() => {
-    const handler = (event: Event) => {
-      const customEvent = event as CustomEvent<OpenAiChatEventDetail>;
-      if (isMobile) setMobileOpen(true);
-      else setOpen(true);
-      setView("chat");
-      const detail = customEvent.detail;
-      if (detail?.preferredMode) {
-        setChatMode(detail.preferredMode);
+    if (!pendingChatLaunch) return;
+    const detail = pendingChatLaunch;
+    clearPendingChatLaunch();
+    setView("chat");
+    if (detail.preferredMode) {
+      setChatMode(detail.preferredMode);
+    }
+    if (detail.launchContext === "forum-compose") {
+      const topic = detail.forumTopic?.trim() ?? "";
+      setForumComposeAssist({ active: true, topic });
+      if (!detail.preferredMode) setChatMode("discussion");
+      setInput("");
+      setMessages(() => {
+        const guide = topic
+          ? `投稿作成サポートへようこそ！テーマ「${topic}」での投稿作りをお手伝いします。\n下のクイックボタンを使うか、自由に話しかけてください。`
+          : `投稿作成サポートへようこそ！投稿作りをお手伝いします。\n下のクイックボタンを使うか、自由に話しかけてください。`;
+        return [{ id: `forum-guide-${Date.now()}`, role: "assistant", content: guide }];
+      });
+    } else {
+      setForumComposeAssist({ active: false, topic: "" });
+      if (detail.initialMessage?.trim()) {
+        setInput(detail.initialMessage.trim());
       }
-      if (detail?.launchContext === "forum-compose") {
-        const topic = detail.forumTopic?.trim() ?? "";
-        setForumComposeAssist({ active: true, topic });
-        if (!detail?.preferredMode) setChatMode("discussion");
-        setInput("");
-        setMessages(() => {
-          const guide = topic
-            ? `投稿作成サポートへようこそ！テーマ「${topic}」での投稿作りをお手伝いします。\n下のクイックボタンを使うか、自由に話しかけてください。`
-            : `投稿作成サポートへようこそ！投稿作りをお手伝いします。\n下のクイックボタンを使うか、自由に話しかけてください。`;
-          return [{ id: `forum-guide-${Date.now()}`, role: "assistant", content: guide }];
-        });
-      } else {
-        setForumComposeAssist({ active: false, topic: "" });
-        if (detail?.initialMessage && detail.initialMessage.trim()) {
-          setInput(detail.initialMessage.trim());
-        }
-      }
-    };
-    window.addEventListener("open-ai-chat", handler);
-    return () => window.removeEventListener("open-ai-chat", handler);
-  }, [isMobile, setOpen, setMobileOpen]);
+    }
+  }, [pendingChatLaunch, clearPendingChatLaunch]);
 
   function moveLatestMessageToForum() {
     if (!forumRoomId || !latestUserMessage) return;

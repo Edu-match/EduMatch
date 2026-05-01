@@ -44,6 +44,8 @@ export type ForumRoom = {
   aiDiscussion?: boolean;
   /** 部屋作成者のプロフィールID */
   createdBy?: string | null;
+  /** 非表示フラグ（削除ではなく隠す） */
+  isHidden?: boolean;
 };
 
 // ─── 部屋一覧（6部屋）──────────────────────────────────────

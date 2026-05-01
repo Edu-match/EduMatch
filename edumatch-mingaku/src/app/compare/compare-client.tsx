@@ -7,13 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
   ArrowLeft,
+  ChevronDown,
+  ChevronUp,
   Download,
   FileSpreadsheet,
   ImageDown,
   Search,
   Scale,
-  ChevronUp,
-  ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ServiceWithProvider } from "@/app/_actions/services";
@@ -22,44 +22,46 @@ import { ThumbnailOrTitle } from "@/components/ui/thumbnail-or-title";
 // ─── チャートカラー ─────────────────────────────────────────────────────────
 const COLORS = ["#f97316", "#3b82f6", "#22c55e", "#a855f7", "#ef4444"] as const;
 
-// ─── レーダーチャートの評価軸（5軸） ─────────────────────────────────────────
+// ─── レーダーチャートの評価軸（6軸） ─────────────────────────────────────────
 const AXES = [
-  { key: "attention" as const, label: "注目度" },
-  { key: "popularity" as const, label: "人気度" },
-  { key: "demand" as const, label: "需要度" },
-  { key: "reputation" as const, label: "評判" },
-  { key: "content" as const, label: "情報量" },
+  { key: "attention" as const,   label: "注目度" },
+  { key: "popularity" as const,  label: "人気度" },
+  { key: "demand" as const,      label: "需要度" },
+  { key: "reputation" as const,  label: "評判" },
+  { key: "content" as const,     label: "情報量" },
+  { key: "freshness" as const,   label: "新鮮度" },
 ];
 type AxisKey = (typeof AXES)[number]["key"];
 type Scores = Record<AxisKey, number>;
 
+// ─── スコア計算（各サービス個別・絶対スコア） ────────────────────────────────
+// 各軸: 絶対値をシグモイド変換して 0-100 にマッピング（相互比較なし）
+function sigmoid100(x: number, mid: number, steepness: number = 0.1): number {
+  return Math.round(100 / (1 + Math.exp(-steepness * (x - mid))));
+}
+
 function buildScores(services: ServiceWithProvider[]): Map<string, Scores> {
-  const raw = {
-    attention: services.map((s) => s.view_count ?? 0),
-    popularity: services.map((s) => s.favorite_count ?? 0),
-    demand: services.map((s) => s.request_count ?? 0),
-    reputation: services.map((s) => s.review_count ?? 0),
-    content: services.map((s) =>
-      Math.min(((s.description?.length ?? 0) + ((s as any).content?.length ?? 0)) / 20, 100)
-    ),
-  };
-
-  const normalized: Record<AxisKey, number[]> = {} as Record<AxisKey, number[]>;
-  for (const [k, vals] of Object.entries(raw) as [AxisKey, number[]][]) {
-    const max = Math.max(...vals);
-    normalized[k] = vals.map((v) => (max === 0 ? 50 : Math.round((v / max) * 100)));
-  }
-
+  const now = Date.now();
   const map = new Map<string, Scores>();
-  services.forEach((s, i) => {
+  for (const s of services) {
+    const views    = s.view_count ?? 0;
+    const favs     = s.favorite_count ?? 0;
+    const requests = s.request_count ?? 0;
+    const reviews  = s.review_count ?? 0;
+    const descLen  = (s.description?.length ?? 0) + ((s as any).content?.length ?? 0);
+    // 更新日時から経過日数（新しいほど高い）
+    const updatedAt = (s as any).updated_at ?? (s as any).created_at;
+    const daysSince = updatedAt ? (now - new Date(updatedAt).getTime()) / 86400000 : 365;
+
     map.set(s.id, {
-      attention: normalized.attention[i],
-      popularity: normalized.popularity[i],
-      demand: normalized.demand[i],
-      reputation: normalized.reputation[i],
-      content: normalized.content[i],
+      attention:  sigmoid100(views,    200, 0.02),   // 200閲覧が中央
+      popularity: sigmoid100(favs,     20,  0.15),   // 20いいねが中央
+      demand:     sigmoid100(requests, 10,  0.3),    // 10資料請求が中央
+      reputation: sigmoid100(reviews,  5,   0.4),    // 5口コミが中央
+      content:    Math.min(Math.round(descLen / 15), 100),
+      freshness:  Math.max(0, Math.round(100 - daysSince * 0.3)), // 333日で0
     });
-  });
+  }
   return map;
 }
 
@@ -308,7 +310,6 @@ export default function CompareClientPage({ initialServices }: Props) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectorOpen, setSelectorOpen] = useState(true);
   const [exportingPng, setExportingPng] = useState(false);
-  const [tableExpanded, setTableExpanded] = useState(false);
 
   // PNG キャプチャ対象
   const captureRef = useRef<HTMLDivElement>(null);
@@ -516,7 +517,7 @@ export default function CompareClientPage({ initialServices }: Props) {
                   })}
                 </div>
                 <p className="mt-2 px-1 text-[10px] text-muted-foreground">
-                  ※スコアは閲覧数・いいね数等のデータをもとに算出されます
+                  ※スコアは閲覧数・いいね数・資料請求数・口コミ数・情報量・更新日時をもとに各サービス単独で算出されます
                 </p>
               </section>
 
@@ -592,49 +593,22 @@ export default function CompareClientPage({ initialServices }: Props) {
                         ))}
                       </CompareRow>
 
-                      {/* 詳細を見るトグル */}
+                      <GroupRow label="アクション" cols={selected.length} />
                       <tr className="border-t">
-                        <td colSpan={selected.length + 1} className="px-4 py-2 sticky left-0">
-                          <button
-                            type="button"
-                            onClick={() => setTableExpanded((p) => !p)}
-                            className="flex items-center gap-1.5 text-xs text-primary hover:underline font-medium"
-                          >
-                            {tableExpanded ? (
-                              <><ChevronUp className="h-3.5 w-3.5" /> 詳細を閉じる</>
-                            ) : (
-                              <><ChevronDown className="h-3.5 w-3.5" /> 詳細を見る（実績・アクション）</>
-                            )}
-                          </button>
-                        </td>
+                        <td className="p-4 sticky left-0 bg-background" />
+                        {selected.map((s) => (
+                          <td key={s.id} className="p-4">
+                            <div className="flex flex-col gap-2">
+                              <Button asChild size="sm" className="w-full">
+                                <Link href={`/services/${s.id}`}>詳細を見る</Link>
+                              </Button>
+                              <Button variant="outline" size="sm" className="w-full" asChild>
+                                <Link href={`/services/${s.id}#contact`}>資料請求</Link>
+                              </Button>
+                            </div>
+                          </td>
+                        ))}
                       </tr>
-
-                      {tableExpanded && (
-                        <>
-                          <GroupRow label="実績・人気度" cols={selected.length} />
-                          <CountRow label="閲覧数" icon="👀" services={selected} getValue={(s) => s.view_count ?? 0} />
-                          <CountRow label="お気に入り" icon="❤️" services={selected} getValue={(s) => s.favorite_count ?? 0} />
-                          <CountRow label="資料請求" icon="📋" services={selected} getValue={(s) => s.request_count ?? 0} />
-                          <CountRow label="口コミ数" icon="💬" services={selected} getValue={(s) => s.review_count ?? 0} />
-
-                          <GroupRow label="アクション" cols={selected.length} />
-                          <tr className="border-t">
-                            <td className="p-4 sticky left-0 bg-background" />
-                            {selected.map((s) => (
-                              <td key={s.id} className="p-4">
-                                <div className="flex flex-col gap-2">
-                                  <Button asChild size="sm" className="w-full">
-                                    <Link href={`/services/${s.id}`}>詳細を見る</Link>
-                                  </Button>
-                                  <Button variant="outline" size="sm" className="w-full" asChild>
-                                    <Link href={`/services/${s.id}#contact`}>資料請求</Link>
-                                  </Button>
-                                </div>
-                              </td>
-                            ))}
-                          </tr>
-                        </>
-                      )}
                     </tbody>
                   </table>
                 </div>

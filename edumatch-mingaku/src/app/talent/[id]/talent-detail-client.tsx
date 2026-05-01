@@ -12,6 +12,7 @@ import {
   MapPin,
   MessageCircle,
   Mic,
+  Sparkles,
   Star,
   User,
 } from "lucide-react";
@@ -76,8 +77,19 @@ export default function TalentDetailClient({ profile }: { profile: TalentProfile
                   "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold border mt-1",
                   isIndividual ? "bg-sky-50 text-sky-700 border-sky-200" : "bg-amber-50 text-amber-700 border-amber-200"
                 )}>
-                  {isIndividual ? <><User className="h-3 w-3" /> 専門家・講師</> : <><Building2 className="h-3 w-3" /> 企業・団体</>}
+                  {isIndividual
+                    ? <><User className="h-3 w-3" /> {profile.organization_type ?? "専門家・講師"}</>
+                    : <><Building2 className="h-3 w-3" /> {profile.organization_type ?? "企業・団体"}</>
+                  }
                 </span>
+                {profile.ai_kentei_passed && (
+                  <span
+                    title="AI検定 合格者"
+                    className="inline-flex items-center gap-0.5 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-[10px] font-bold text-amber-700 mt-1"
+                  >
+                    <Sparkles className="h-3 w-3" />AI検定合格
+                  </span>
+                )}
               </div>
               {profile.organization && (
                 <p className="text-sm text-muted-foreground mt-1">{profile.organization}</p>

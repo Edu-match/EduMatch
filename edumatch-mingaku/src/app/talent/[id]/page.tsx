@@ -37,6 +37,7 @@ async function getTalentProfile(id: string): Promise<TalentProfile | null> {
         organization_type: general.organization_type,
         talent_matching_description: general.talent_matching_description,
         talent_badges: general.talent_badges ?? [],
+        ai_kentei_passed: general.profile.ai_kentei_passed ?? false,
         type: "individual",
         services: general.profile.services,
       };
@@ -71,6 +72,7 @@ async function getTalentProfile(id: string): Promise<TalentProfile | null> {
         organization_type: corporate.organization_type,
         talent_matching_description: corporate.talent_matching_description,
         talent_badges: corporate.talent_badges ?? [],
+        ai_kentei_passed: corporate.profile.ai_kentei_passed ?? false,
         type: "corporate",
         services: corporate.profile.services,
       };

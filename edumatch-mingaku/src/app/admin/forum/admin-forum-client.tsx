@@ -133,21 +133,22 @@ export function AdminForumClient() {
   const [topicDraft, setTopicDraft] = useState("");
   const [savingTopic, setSavingTopic] = useState(false);
 
-  // 部屋一覧取得
+  // 部屋一覧取得（非表示含む・管理者モード）
   useEffect(() => {
-    fetch("/api/forum/rooms", { credentials: "include" })
+    fetch("/api/forum/rooms?includeHidden=true", { credentials: "include" })
       .then((r) => r.json())
       .then((data) => { if (data.rooms) setRooms(data.rooms); })
       .catch(console.error)
       .finally(() => setLoadingRooms(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 全投稿取得（全部屋分）
+  // 全投稿取得（全部屋分・非表示含む）
   useEffect(() => {
     if (rooms.length === 0) return;
     Promise.all(
       rooms.map((room) =>
-        fetch(`/api/forum/rooms/${room.id}/posts?page=1`, { credentials: "include" })
+        fetch(`/api/forum/rooms/${room.id}/posts?page=1&includeHidden=true`, { credentials: "include" })
           .then((r) => r.json())
           .then((d) => (d.posts ?? []) as ForumPost[])
           .catch(() => [] as ForumPost[])
@@ -264,6 +265,41 @@ export function AdminForumClient() {
     }
   }, [savingTopic, topicDraft]);
 
+  const handleDeletePost = useCallback(async (postId: string) => {
+    if (!window.confirm("この投稿を完全に削除しますか？元に戻せません。")) return;
+    try {
+      const res = await fetch(`/api/forum/posts/${postId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (res.ok) {
+        setPosts((prev) => prev.filter((p) => p.id !== postId));
+      } else {
+        alert("削除に失敗しました");
+      }
+    } catch {
+      alert("削除に失敗しました");
+    }
+  }, []);
+
+  const handleToggleRoomHide = useCallback(async (roomId: string, currentHidden: boolean) => {
+    try {
+      const res = await fetch(`/api/forum/rooms/${roomId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ isHidden: !currentHidden }),
+      });
+      if (res.ok) {
+        setRooms((prev) => prev.map((r) => r.id === roomId ? { ...r, isHidden: !currentHidden } : r));
+      } else {
+        alert("非表示操作に失敗しました");
+      }
+    } catch {
+      alert("非表示操作に失敗しました");
+    }
+  }, []);
+
   const handleTogglePin = useCallback(async (postId: string, currentPinned: boolean) => {
     try {
       const res = await fetch(`/api/forum/posts/${postId}`, {
@@ -365,7 +401,12 @@ export function AdminForumClient() {
                   )}
                   <div className="mt-2 flex items-center justify-between">
                     <Link href={`/forum/${room.id}`} target="_blank" className="text-xs text-primary hover:underline"><ExternalLink className="mr-1 inline h-3 w-3" />表示</Link>
-                    <Button size="sm" variant="ghost" onClick={() => handleDeleteRoom(room.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                    <div className="flex items-center gap-1">
+                      <Button size="sm" variant="ghost" title={room.isHidden ? "再表示" : "非表示"} onClick={() => handleToggleRoomHide(room.id, !!room.isHidden)}>
+                        {room.isHidden ? <Eye className="h-3.5 w-3.5 text-muted-foreground" /> : <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />}
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => handleDeleteRoom(room.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -418,6 +459,9 @@ export function AdminForumClient() {
                         <EyeOff className="mr-1 h-3.5 w-3.5 text-destructive" />非表示
                       </Button>
                     )}
+                    <Button size="sm" variant="ghost" onClick={() => handleDeletePost(post.id)} title="完全削除">
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                    </Button>
                   </div>
                 </CardContent></Card>
               );
