@@ -19,20 +19,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ContentEditorWithImport } from "@/components/content/content-editor-with-import";
 import { BlocksContentPreview } from "@/components/content/blocks-content-preview";
 import { contentToBlocks } from "@/lib/markdown-to-blocks";
 import { blocksToMarkdown } from "@/lib/markdown-to-blocks";
 import { isImportedContent } from "@/lib/imported-content";
 import { createService, uploadImage } from "@/app/_actions";
-import { SERVICE_CATEGORIES } from "@/lib/categories";
+import {
+  parseServiceCategorySelection,
+  serializeServiceCategorySelection,
+  SERVICE_CATEGORIES,
+  SERVICE_CATEGORY_MAX_SELECTION,
+  SERVICE_CATEGORY_OTHER_MAX_LENGTH,
+  SERVICE_CATEGORY_OTHER_VALUE,
+} from "@/lib/categories";
 import { ImageWithUrlError } from "@/components/ui/image-with-url-error";
 import {
   Image as ImageIcon,
@@ -81,6 +81,9 @@ export default function ServiceCreatePage() {
   const [title, setTitle] = useState(() => draft?.title || "");
   const [description, setDescription] = useState(() => draft?.description || "");
   const [category, setCategory] = useState(() => draft?.category || "");
+  const [otherCategoryText, setOtherCategoryText] = useState(
+    () => parseServiceCategorySelection(draft?.category || "").otherText
+  );
   const [priceInfo, setPriceInfo] = useState(() => draft?.priceInfo || "");
   const [youtubeUrl, setYoutubeUrl] = useState(() => draft?.youtubeUrl || "");
   const [thumbnailUrl, setThumbnailUrl] = useState(() => draft?.thumbnailUrl || "");
@@ -109,6 +112,9 @@ export default function ServiceCreatePage() {
   const descriptionLength = description.length;
   const contentLength = content.length;
   const totalWordCount = titleLength + descriptionLength + contentLength;
+  const { selectedCategories } = parseServiceCategorySelection(category);
+  const hasOtherCategory = selectedCategories.includes(SERVICE_CATEGORY_OTHER_VALUE);
+  const canSelectMoreCategories = selectedCategories.length < SERVICE_CATEGORY_MAX_SELECTION;
   
   // バリデーション
   const isTitleValid = titleLength <= TITLE_MAX_LENGTH;
@@ -145,6 +151,7 @@ export default function ServiceCreatePage() {
     setTitle("");
     setDescription("");
     setCategory("");
+    setOtherCategoryText("");
     setPriceInfo("");
     setYoutubeUrl("");
     setThumbnailUrl("");
@@ -241,13 +248,22 @@ export default function ServiceCreatePage() {
       toast.error(`本文は${CONTENT_MAX_LENGTH.toLocaleString()}文字以内で入力してください`);
       return;
     }
+    if (selectedCategories.length === 0) {
+      toast.error("カテゴリを選択してください");
+      return;
+    }
+    if (selectedCategories.length > SERVICE_CATEGORY_MAX_SELECTION) {
+      toast.error(`カテゴリは最大${SERVICE_CATEGORY_MAX_SELECTION}つまで選択できます`);
+      return;
+    }
+    const serializedCategory = serializeServiceCategorySelection(selectedCategories, otherCategoryText);
 
     setIsSubmitting(true);
     try {
       const result = await createService({
         title: title.trim(),
         description: description.trim(),
-        category,
+        category: serializedCategory,
         priceInfo: priceInfo.trim() || "お問い合わせ",
         youtubeUrl: youtubeUrl.trim() || undefined,
         thumbnailUrl,
@@ -514,18 +530,63 @@ export default function ServiceCreatePage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <label className="text-sm font-medium">カテゴリ</label>
-                <Select value={category || undefined} onValueChange={setCategory}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="カテゴリを選択" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SERVICE_CATEGORIES.map((cat) => (
-                      <SelectItem key={cat.value} value={cat.value}>
-                        {cat.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="space-y-2">
+                  <div className="flex flex-wrap gap-2">
+                    {SERVICE_CATEGORIES.map((cat) => {
+                      const isSelected = selectedCategories.includes(cat.value);
+                      return (
+                        <Button
+                          key={cat.value}
+                          type="button"
+                          size="sm"
+                          variant={isSelected ? "default" : "outline"}
+                          disabled={!isSelected && !canSelectMoreCategories}
+                          onClick={() => {
+                            const nextCategories = isSelected
+                              ? selectedCategories.filter((value) => value !== cat.value)
+                              : [...selectedCategories, cat.value];
+                            setCategory(serializeServiceCategorySelection(nextCategories, otherCategoryText));
+                          }}
+                        >
+                          {cat.label}
+                        </Button>
+                      );
+                    })}
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={hasOtherCategory ? "default" : "outline"}
+                      disabled={!hasOtherCategory && !canSelectMoreCategories}
+                      onClick={() => {
+                        const isSelected = hasOtherCategory;
+                        const nextCategories = isSelected
+                          ? selectedCategories.filter((value) => value !== SERVICE_CATEGORY_OTHER_VALUE)
+                          : [...selectedCategories, SERVICE_CATEGORY_OTHER_VALUE];
+                        const nextOther = isSelected ? "" : otherCategoryText;
+                        setOtherCategoryText(nextOther);
+                        setCategory(serializeServiceCategorySelection(nextCategories, nextOther));
+                      }}
+                    >
+                      {SERVICE_CATEGORY_OTHER_VALUE}
+                    </Button>
+                  </div>
+                  {hasOtherCategory && (
+                    <Input
+                      value={otherCategoryText}
+                      onChange={(e) => {
+                        const next = e.target.value.slice(0, SERVICE_CATEGORY_OTHER_MAX_LENGTH);
+                        setOtherCategoryText(next);
+                        setCategory(serializeServiceCategorySelection(selectedCategories, next));
+                      }}
+                      placeholder="その他カテゴリ（10文字以内）"
+                      maxLength={SERVICE_CATEGORY_OTHER_MAX_LENGTH}
+                    />
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    最大{SERVICE_CATEGORY_MAX_SELECTION}つまで選択できます
+                    {hasOtherCategory && `（その他: ${otherCategoryText.length}/${SERVICE_CATEGORY_OTHER_MAX_LENGTH}文字）`}
+                  </p>
+                </div>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">料金情報</label>
@@ -591,7 +652,17 @@ export default function ServiceCreatePage() {
                     <p className="text-lg text-muted-foreground">{description}</p>
                   )}
                   {category && (
-                    <Badge variant="outline">{SERVICE_CATEGORIES.find((c) => c.value === category)?.label ?? category}</Badge>
+                    <div className="flex flex-wrap gap-2">
+                      {category
+                        .split(",")
+                        .map((token) => token.trim())
+                        .filter(Boolean)
+                        .map((token) => (
+                          <Badge key={token} variant="outline">
+                            {token.startsWith("その他:") ? token.replace("その他:", "その他（") + "）" : token}
+                          </Badge>
+                        ))}
+                    </div>
                   )}
                   <div className="border-t pt-6">
                     <BlocksContentPreview content={content} />
