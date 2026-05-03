@@ -45,6 +45,7 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
       const response = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           email: data.email,
           password: data.password,
@@ -60,24 +61,28 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
         return;
       }
 
-      // セッションを設定してプロフィール登録ページへ
-      if (result.session) {
-        const supabase = createSupabaseBrowserClient();
-        const { error: sessionError } = await supabase.auth.setSession({
-          access_token: result.session.access_token,
-          refresh_token: result.session.refresh_token,
-        });
-        
-        if (sessionError) {
-          console.error("Session set error:", sessionError);
-          setGlobalError("ログインセッションの設定に失敗しました。もう一度ログインしてください。");
-          setIsSubmitting(false);
-          return;
-        }
-
-        // セッションが正しく設定されるまで少し待つ
-        await new Promise(resolve => setTimeout(resolve, 500));
+      if (!result.session) {
+        setGlobalError(
+          "ログインセッションを取得できませんでした。環境変数 SUPABASE_SERVICE_ROLE_KEY が設定されているか確認するか、しばらくしてから再度お試しください。"
+        );
+        setIsSubmitting(false);
+        return;
       }
+
+      const supabase = createSupabaseBrowserClient();
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: result.session.access_token,
+        refresh_token: result.session.refresh_token,
+      });
+
+      if (sessionError) {
+        console.error("Session set error:", sessionError);
+        setGlobalError("ログインセッションの設定に失敗しました。もう一度ログインしてください。");
+        setIsSubmitting(false);
+        return;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       toast.success(
         effectiveUserType === "provider"

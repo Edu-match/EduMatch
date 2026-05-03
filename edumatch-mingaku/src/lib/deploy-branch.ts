@@ -26,10 +26,20 @@ export function isServiceCompareRadarEnabled(): boolean {
   return getDeployBranch() === "forum-dev";
 }
 
-/** main 向け: 詳細比較表＋選択のみ（チャートなし） */
+/** main / 本番向け: 詳細比較表＋選択のみ（レーダー・AIスコアなし） */
 export function isServiceCompareTableOnMain(): boolean {
   if (process.env.ENABLE_SERVICE_COMPARE_TABLE_ON_MAIN === "true") return true;
-  return getDeployBranch() === "main";
+  if (process.env.ENABLE_SERVICE_COMPARE_TABLE_ON_MAIN === "false") return false;
+
+  const branch = getDeployBranch().toLowerCase();
+  if (branch === "main" || branch === "master") return true;
+
+  // Vercel Production で VERCEL_GIT_COMMIT_REF が空・または想定外でも本番サイトは表付き比較を出す
+  if (process.env.VERCEL_ENV === "production" && branch !== "forum-dev") {
+    return true;
+  }
+
+  return false;
 }
 
 /** 比較ページを表示するか（フルまたは表のみ） */

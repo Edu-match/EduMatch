@@ -79,6 +79,7 @@ export default function TalentRequestForm({
       const res = await fetch(`/api/talent/${profile.id}/request`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           requesterName: form.name.trim(),
           requesterEmail: form.email.trim(),

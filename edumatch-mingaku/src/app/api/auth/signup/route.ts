@@ -1,3 +1,4 @@
+import type { Session, User } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { createServiceRoleClient } from "@/utils/supabase/server-admin";
@@ -8,6 +9,27 @@ import { FEATURES } from "@/lib/features";
 import { syncExtensionTablesForRegistrationKind } from "@/lib/registration-profile";
 
 export const dynamic = "force-dynamic";
+
+function tryCreateServiceRoleClient() {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) return null;
+  try {
+    return createServiceRoleClient();
+  } catch {
+    return null;
+  }
+}
+
+function createUserErrorMessage(en: string): string {
+  const lower = en.toLowerCase();
+  if (
+    lower.includes("already been registered") ||
+    lower.includes("already registered") ||
+    lower.includes("duplicate")
+  ) {
+    return "このメールアドレスは既に登録されています";
+  }
+  return authErrorMessage(en);
+}
 
 function authErrorMessage(en: string): string {
   const map: Record<string, string> = {
@@ -62,6 +84,7 @@ export async function POST(request: NextRequest) {
       (localPart.length > 0 ? localPart : "ユーザー").slice(0, 100);
 
     const supabase = await createClient();
+    const admin = tryCreateServiceRoleClient();
 
     const registrationKind =
       userType === "provider" ? ("service_business" as const) : ("general" as const);
@@ -70,34 +93,64 @@ export async function POST(request: NextRequest) {
       userType === "provider" ? Role.PROVIDER : Role.VIEWER;
     const authRoleStr = role === Role.PROVIDER ? "PROVIDER" : "VIEWER";
 
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: emailStr,
-      password,
-      options: {
-        data: {
-          name: provisionalName,
-          role: authRoleStr,
-          registration_kind: registrationKind,
-        },
-      },
-    });
+    const userMetadata = {
+      name: provisionalName,
+      role: authRoleStr,
+      registration_kind: registrationKind,
+    };
 
-    if (authError) {
-      return NextResponse.json(
-        { error: authErrorMessage(authError.message) },
-        { status: 400 }
-      );
-    }
+    let authUser: User;
+    /** signUp 直後にメール確認OFFなら入る。多くの環境では null */
+    let sessionFromSignUp: Session | null = null;
 
-    if (!authData.user) {
-      return NextResponse.json(
-        { error: "ユーザー作成に失敗しました" },
-        { status: 500 }
-      );
+    if (admin) {
+      // メール確認付き signUp だと session が null のままになり、確認メールも飛ぶ。
+      // サービスロールで作成すれば即時確認かつ確認メールを送らない。
+      const { data: created, error: createErr } = await admin.auth.admin.createUser({
+        email: emailStr,
+        password,
+        email_confirm: true,
+        user_metadata: userMetadata,
+      });
+      if (createErr) {
+        return NextResponse.json(
+          { error: createUserErrorMessage(createErr.message) },
+          { status: 400 }
+        );
+      }
+      if (!created.user) {
+        return NextResponse.json(
+          { error: "ユーザー作成に失敗しました" },
+          { status: 500 }
+        );
+      }
+      authUser = created.user;
+    } else {
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: emailStr,
+        password,
+        options: { data: userMetadata },
+      });
+
+      if (authError) {
+        return NextResponse.json(
+          { error: authErrorMessage(authError.message) },
+          { status: 400 }
+        );
+      }
+
+      if (!authData.user) {
+        return NextResponse.json(
+          { error: "ユーザー作成に失敗しました" },
+          { status: 500 }
+        );
+      }
+      authUser = authData.user;
+      sessionFromSignUp = authData.session;
     }
 
     // Profile：一般は VIEWER、事業者は PROVIDER。拡張テーブルは登録種別で作成。初回オンボーディングは未完了のまま
-    const userId = authData.user.id;
+    const userId = authUser.id;
     try {
       await prisma.$transaction(async (tx) => {
         await tx.profile.upsert({
@@ -130,39 +183,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // メール確認をスキップ：サービスロールで即時確認
-    // user_metadataを明示的に渡して、roleが上書きされないようにする
-    try {
-      const admin = createServiceRoleClient();
-      const { error: confirmError } = await admin.auth.admin.updateUserById(authData.user.id, { 
-        email_confirm: true,
-        user_metadata: {
-          ...authData.user.user_metadata,
-          role: authRoleStr,
-          name: provisionalName,
-          registration_kind: registrationKind,
-        },
+    // ブラウザに載せるセッション: signUp 時に返らない場合はパスワードでサインインして取得する
+    let session: Session | null = sessionFromSignUp;
+    if (!session) {
+      const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
+        email: emailStr,
+        password,
       });
-      
-      if (confirmError) {
-        console.error("Email confirmation error:", confirmError);
-      } else {
-        console.log("Email confirmed for user:", authData.user.id);
+      if (signInErr || !signInData.session) {
+        console.error("Signup post-create signIn error:", signInErr?.message);
+        return NextResponse.json(
+          {
+            error:
+              signInErr?.message?.toLowerCase().includes("email not confirmed") ||
+              signInErr?.message?.toLowerCase().includes("not confirmed")
+                ? "メールアドレスの確認が完了していません。Supabase の「Confirm email」をオフにするか、サーバーに SUPABASE_SERVICE_ROLE_KEY を設定してください。"
+                : authErrorMessage(signInErr?.message || "ログインに失敗しました"),
+          },
+          { status: 400 }
+        );
       }
-    } catch (confirmErr) {
-      console.error("Service role client error:", confirmErr);
-      // サービスロール未設定等でも登録は完了しているので続行
+      session = signInData.session;
     }
 
     console.log("Signup successful:", {
-      userId: authData.user.id,
-      email: authData.user.email,
-      hasSession: !!authData.session,
+      userId: authUser.id,
+      email: authUser.email,
+      hasSession: !!session,
     });
 
     return NextResponse.json({
-      user: authData.user,
-      session: authData.session,
+      user: authUser,
+      session,
       message: "会員登録が完了しました。",
     });
   } catch (error) {

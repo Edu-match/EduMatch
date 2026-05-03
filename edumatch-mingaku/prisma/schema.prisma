@@ -52,9 +52,33 @@ model Profile {
   forum_posts                     ForumPost[]
   forum_replies                   ForumReply[]
   forum_likes                     ForumLike[]
+  talent_requests_received        TalentRequest[] @relation("TalentRequestTalent")
+  talent_requests_sent            TalentRequest[] @relation("TalentRequestRequester")
 
   @@index([email])
   @@index([stripe_customer_id])
+}
+
+/// 人材マッチングの依頼（テーブル名 talent_requests）
+model TalentRequest {
+  id               String   @id @default(uuid()) @db.Uuid
+  talent_id        String   @db.Uuid
+  requester_id     String?  @db.Uuid
+  requester_name   String
+  requester_email  String
+  requester_phone  String?
+  requester_org    String?
+  request_type     String
+  message          String
+  status           String   @default("pending")
+  created_at       DateTime @default(now())
+
+  talent    Profile  @relation("TalentRequestTalent", fields: [talent_id], references: [id], onDelete: Cascade)
+  requester Profile? @relation("TalentRequestRequester", fields: [requester_id], references: [id], onDelete: SetNull)
+
+  @@index([talent_id])
+  @@index([created_at])
+  @@map("talent_requests")
 }
 
 /// 一般ユーザー向け拡張（所属・年代など）。Profile と 1:1
