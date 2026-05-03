@@ -30,6 +30,12 @@ async function getRoomFromDb(id: string): Promise<ForumRoom | null> {
       select: { created_at: true },
     });
 
+    const latestTopic = await prisma.forumRoomTopic.findFirst({
+      where: { room_id: id },
+      orderBy: { period_start: "desc" },
+      select: { id: true, title: true },
+    });
+
     return {
       id: room.id,
       name: room.name,
@@ -37,6 +43,9 @@ async function getRoomFromDb(id: string): Promise<ForumRoom | null> {
       emoji: room.emoji,
       weeklyTopic: room.weekly_topic,
       aiDiscussion: room.ai_discussion,
+      aiWeeklyTopicEnabled: room.ai_weekly_topic_enabled,
+      currentTopicId: latestTopic?.id ?? null,
+      currentTopicTitle: latestTopic?.title ?? null,
       postCount,
       participantCount: distinctAuthors.length,
       lastPostedAt: latestPost?.created_at.toISOString() ?? room.created_at.toISOString(),

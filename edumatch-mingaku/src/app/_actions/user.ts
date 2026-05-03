@@ -38,6 +38,8 @@ export type CurrentUserProfile = {
   interests: string[];
   /** 関心カテゴリ「その他」の自由記述 */
   interest_other: string | null;
+  /** 人材マッチング: ギャラ・料金目安 */
+  talent_hourly_rate: string | null;
 };
 
 export async function getCurrentUserProfile(): Promise<CurrentUserProfile | null> {
@@ -100,6 +102,9 @@ export async function getCurrentUserProfile(): Promise<CurrentUserProfile | null
     registration_kind,
     interests: full.interests ?? [],
     interest_other: full.interest_other ?? null,
+    talent_hourly_rate: is_corporate_profile
+      ? (c?.talent_hourly_rate ?? null)
+      : (g?.talent_hourly_rate ?? null),
   };
 }
 
@@ -189,6 +194,8 @@ export type UpdateProfileInput = {
   talent_matching_description?: string | null;
   /** 受け付ける依頼種別バッジ */
   talent_badges?: string[];
+  /** 人材マッチング: ギャラ・料金目安（自由記述） */
+  talent_hourly_rate?: string | null;
   /** 初回プロフィール登録ウィザード完了時に true */
   completeInitialSetup?: boolean;
 };
@@ -262,6 +269,9 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
               talent_matching_description: input.talent_matching_description?.trim() || null,
             }),
             ...(input.talent_badges !== undefined && { talent_badges: input.talent_badges }),
+            ...(input.talent_hourly_rate !== undefined && {
+              talent_hourly_rate: input.talent_hourly_rate?.trim() || null,
+            }),
           },
           update: {
             ...(input.legal_name !== undefined && {
@@ -287,6 +297,9 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
               talent_matching_description: input.talent_matching_description?.trim() || null,
             }),
             ...(input.talent_badges !== undefined && { talent_badges: input.talent_badges }),
+            ...(input.talent_hourly_rate !== undefined && {
+              talent_hourly_rate: input.talent_hourly_rate?.trim() || null,
+            }),
           },
         });
         await tx.generalProfile.deleteMany({ where: { id: user.id } });
@@ -307,6 +320,9 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
               talent_matching_description: input.talent_matching_description?.trim() || null,
             }),
             ...(input.talent_badges !== undefined && { talent_badges: input.talent_badges }),
+            ...(input.talent_hourly_rate !== undefined && {
+              talent_hourly_rate: input.talent_hourly_rate?.trim() || null,
+            }),
           },
           update: {
             ...(input.legal_name !== undefined && {
@@ -327,6 +343,9 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
               talent_matching_description: input.talent_matching_description?.trim() || null,
             }),
             ...(input.talent_badges !== undefined && { talent_badges: input.talent_badges }),
+            ...(input.talent_hourly_rate !== undefined && {
+              talent_hourly_rate: input.talent_hourly_rate?.trim() || null,
+            }),
           },
         });
         await tx.corporateProfile.deleteMany({ where: { id: user.id } });

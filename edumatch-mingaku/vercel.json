@@ -2,5 +2,11 @@
   "framework": "nextjs",
   "regions": ["hnd1"],
   "buildCommand": "npm run build",
-  "outputDirectory": ".next"
+  "outputDirectory": ".next",
+  "crons": [
+    {
+      "path": "/api/cron/forum-weekly-topics",
+      "schedule": "0 15 * * 1"
+    }
+  ]
 }

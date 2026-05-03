@@ -346,6 +346,12 @@ function TalentCard({ profile }: { profile: TalentProfile }) {
             {profile.prefecture}
           </div>
         )}
+        {profile.talent_hourly_rate && (
+          <p className="mt-1.5 text-[11px] text-muted-foreground line-clamp-2">
+            <span className="font-semibold text-foreground/80">料金目安: </span>
+            {profile.talent_hourly_rate}
+          </p>
+        )}
       </div>
 
       {/* ボディ */}

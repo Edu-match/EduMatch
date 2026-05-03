@@ -60,6 +60,7 @@ export type InitialProfile = {
   registration_kind?: "general" | "service_business" | null;
   interests?: string[];
   interest_other?: string | null;
+  talent_hourly_rate?: string | null;
 };
 
 const steps = [
@@ -88,6 +89,13 @@ const interests = [
 ];
 
 const INTEREST_OTHER_MAX = 100;
+
+const AVATAR_TEMPLATES = [
+  "/avatars/templates/1.svg",
+  "/avatars/templates/2.svg",
+  "/avatars/templates/3.svg",
+  "/avatars/templates/4.svg",
+] as const;
 
 const roles = [
   { value: "teacher", label: "教員" },
@@ -138,6 +146,7 @@ export function ProfileRegisterForm({
   const [notificationEmail3, setNotificationEmail3] = useState(initialProfile?.notification_email_3 ?? "");
   const [talentMatchingEnabled, setTalentMatchingEnabled] = useState(false);
   const [talentMatchingDescription, setTalentMatchingDescription] = useState("");
+  const [talentHourlyRate, setTalentHourlyRate] = useState(initialProfile?.talent_hourly_rate ?? "");
   const [talentBadges, setTalentBadges] = useState<string[]>([]);
   const toggleTalentBadge = (badge: string) =>
     setTalentBadges((prev) => prev.includes(badge) ? prev.filter((b) => b !== badge) : [...prev, badge]);
@@ -209,13 +218,22 @@ export function ProfileRegisterForm({
                     )}
                     画像をアップロード
                   </Button>
-                  <Input
-                    type="url"
-                    placeholder="または画像のURLを入力"
-                    value={avatarUrl}
-                    onChange={(e) => setAvatarUrl(e.target.value)}
-                    className="text-sm"
-                  />
+                  <p className="text-[11px] text-muted-foreground">またはテンプレートから選ぶ</p>
+                  <div className="flex flex-wrap gap-2">
+                    {AVATAR_TEMPLATES.map((url) => (
+                      <button
+                        key={url}
+                        type="button"
+                        onClick={() => setAvatarUrl(url)}
+                        className={`h-11 w-11 rounded-full border-2 overflow-hidden shrink-0 transition-all ${
+                          avatarUrl === url ? "border-primary ring-2 ring-primary/30" : "border-muted hover:border-primary/50"
+                        }`}
+                        aria-label="テンプレート画像を選択"
+                      >
+                        <img src={url} alt="" className="h-full w-full object-cover" />
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -517,6 +535,17 @@ export function ProfileRegisterForm({
                     className="resize-none text-sm"
                   />
                 </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">ギャラ・料金目安（任意）</label>
+                  <Input
+                    placeholder="例：講演 1時間 5万円〜、応相談 など"
+                    value={talentHourlyRate}
+                    onChange={(e) => setTalentHourlyRate(e.target.value)}
+                    className="text-sm"
+                  />
+                  <p className="text-[11px] text-muted-foreground">依頼者への目安表示用です。公開範囲の細かい制限は今後追加予定です。</p>
+                </div>
               </div>
             )}
           </div>
@@ -673,6 +702,12 @@ export function ProfileRegisterForm({
                     {talentMatchingEnabled ? "登録する" : "登録しない"}
                   </span>
                 </div>
+                {talentMatchingEnabled && talentHourlyRate.trim() && (
+                  <div className="flex justify-between gap-4 text-sm">
+                    <span className="text-muted-foreground shrink-0">ギャラ・料金目安</span>
+                    <span className="text-right break-words">{talentHourlyRate.trim()}</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -692,6 +727,10 @@ export function ProfileRegisterForm({
       }
       if (!name.trim()) {
         setValidationError("表示名を入力してください。");
+        return;
+      }
+      if (isFirstTime && !avatarUrl.trim()) {
+        setValidationError("プロフィール画像をアップロードするか、テンプレートから選んでください。");
         return;
       }
     } else if (currentStep === 2) {
@@ -741,6 +780,10 @@ export function ProfileRegisterForm({
       setValidationError("職業・役職を選択してください。");
       return;
     }
+    if (isFirstTime && !avatarUrl.trim()) {
+      setValidationError("プロフィール画像をアップロードするか、テンプレートから選んでください。");
+      return;
+    }
     setSaving(true);
     const { success } = await updateProfile({
       name: name || undefined,
@@ -765,6 +808,7 @@ export function ProfileRegisterForm({
         ? talentMatchingDescription.trim() || null
         : null,
       talent_badges: talentMatchingEnabled ? talentBadges : [],
+      talent_hourly_rate: talentMatchingEnabled ? talentHourlyRate.trim() || null : null,
       completeInitialSetup: true,
     });
     setSaving(false);

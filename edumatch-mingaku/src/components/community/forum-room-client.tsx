@@ -401,6 +401,11 @@ function PostCardWithStream({
               <span className="text-sm font-semibold">{post.authorName}</span>
               <OccupationBadge storedAuthorRole={post.authorRole} />
               {post.aiKenteiPassed && <AiKenteiBadge />}
+              {post.topicTitle && (
+                <span className="inline-flex max-w-full items-center rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-800 truncate" title={post.topicTitle}>
+                  お題: {post.topicTitle}
+                </span>
+              )}
               <span className="text-xs text-muted-foreground"><RelativeTime iso={post.postedAt} /></span>
             </div>
             <p className="text-sm leading-7 whitespace-pre-wrap">{post.body}</p>
@@ -582,7 +587,13 @@ function UserAvatar({
 
 // ─── 投稿フォーム（常設 Composer） ──────────────────────────────
 
-type PostDraft = { body: string; authorRole: string; relatedArticleUrl: string; displayName: string };
+type PostDraft = {
+  body: string;
+  authorRole: string;
+  relatedArticleUrl: string;
+  displayName: string;
+  topicId?: string;
+};
 
 const MAX_BODY = 800;
 const FORUM_DRAFT_STORAGE_KEY = "edumatch-forum-post-draft";
@@ -624,6 +635,8 @@ function NewPostComposer({
   organizationType,
   organizationTypeOther,
   aiKenteiPassed,
+  topicOptions,
+  defaultTopicId,
 }: {
   onSubmit: (draft: PostDraft) => Promise<void>;
   roomId: string;
@@ -635,6 +648,8 @@ function NewPostComposer({
   organizationType?: string | null;
   organizationTypeOther?: string | null;
   aiKenteiPassed?: boolean;
+  topicOptions: { id: string; title: string }[];
+  defaultTopicId?: string | null;
 }) {
   const postPreviewRole = forumRolePreviewFromProfile(organizationType, organizationTypeOther);
   const [body, setBody] = useState("");
@@ -642,7 +657,14 @@ function NewPostComposer({
   const [relatedArticleUrl, setRelatedArticleUrl] = useState("");
   const [showUrl, setShowUrl] = useState(false);
   const [draftFromAiLoaded, setDraftFromAiLoaded] = useState(false);
+  const [postTopicId, setPostTopicId] = useState("");
   const rootRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const first = topicOptions[0]?.id ?? "";
+    const def = defaultTopicId && topicOptions.some((t) => t.id === defaultTopicId) ? defaultTopicId : first;
+    setPostTopicId(def);
+  }, [defaultTopicId, topicOptions]);
 
   const displayName = isAnon ? "匿名ユーザー" : (userName || "ゲスト");
   const remaining = MAX_BODY - body.length;
@@ -669,6 +691,7 @@ function NewPostComposer({
       authorRole: isAnon ? "匿名" : "一般",
       relatedArticleUrl,
       displayName,
+      topicId: postTopicId || undefined,
     });
     setBody("");
     setRelatedArticleUrl("");
@@ -699,6 +722,25 @@ function NewPostComposer({
       <div className="border-b px-5 py-3">
         <p className="text-sm font-semibold">このテーマに投稿する</p>
         <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">{weeklyTopic}</p>
+        {topicOptions.length > 0 && (
+          <div className="mt-3 space-y-1">
+            <label htmlFor="forum-post-topic" className="text-[11px] font-medium text-muted-foreground">
+              この投稿が紐づくお題
+            </label>
+            <select
+              id="forum-post-topic"
+              value={postTopicId}
+              onChange={(e) => setPostTopicId(e.target.value)}
+              className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs"
+            >
+              {topicOptions.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.title}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {draftFromAiLoaded && (
@@ -945,6 +987,7 @@ export function ForumRoomClient({
   const [editingTopic, setEditingTopic] = useState(false);
   const [topicDraft, setTopicDraft] = useState(room.weeklyTopic);
   const [savingTopic, setSavingTopic] = useState(false);
+  const [topicOptions, setTopicOptions] = useState<{ id: string; title: string }[]>([]);
   const isCreator = !!(auth.userId && room.createdBy && auth.userId === room.createdBy);
   const canEditTopic = isCreator || auth.role === "ADMIN";
 
@@ -985,6 +1028,19 @@ export function ForumRoomClient({
     return () => { cancelled = true; };
   }, [room.id]);
 
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/forum/rooms/${room.id}/topics`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled && Array.isArray(data.topics)) {
+          setTopicOptions(data.topics.map((t: { id: string; title: string }) => ({ id: t.id, title: t.title })));
+        }
+      })
+      .catch(console.error);
+    return () => { cancelled = true; };
+  }, [room.id]);
+
   const pinnedPosts = useMemo(() => posts.filter((p) => p.isPinned && !p.isHidden), [posts]);
 
   const regularPosts = useMemo<ForumPost[]>(() => {
@@ -993,7 +1049,7 @@ export function ForumRoomClient({
     return [...unpinned].sort((a, b) => new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime());
   }, [posts, sort]);
 
-  const handleNewPost = useCallback(async (draft: { body: string; authorRole: string; relatedArticleUrl: string; displayName: string }) => {
+  const handleNewPost = useCallback(async (draft: PostDraft) => {
     if (submitting) return;
     setSubmitting(true);
 
@@ -1012,6 +1068,7 @@ export function ForumRoomClient({
           authorRole: isAnon ? "匿名" : "一般",
           postBody: draft.body.trim(),
           relatedArticleUrl: draft.relatedArticleUrl.trim() || undefined,
+          topicId: draft.topicId || undefined,
         }),
       });
 
@@ -1099,6 +1156,11 @@ export function ForumRoomClient({
                   {aiEnabled && (
                     <span className="inline-flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-0.5 text-xs font-semibold text-violet-700">
                       <Zap className="h-3 w-3" />AIディスカッション
+                    </span>
+                  )}
+                  {room.aiWeeklyTopicEnabled && (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-0.5 text-xs font-semibold text-sky-700">
+                      <Sparkles className="h-3 w-3" />AI週次お題
                     </span>
                   )}
                 </div>
@@ -1261,6 +1323,8 @@ export function ForumRoomClient({
                 organizationType={auth.organizationType}
                 organizationTypeOther={auth.organizationTypeOther}
                 aiKenteiPassed={auth.aiKenteiPassed}
+                topicOptions={topicOptions}
+                defaultTopicId={room.currentTopicId ?? null}
               />
 
               {/* ソート + 投稿一覧 */}

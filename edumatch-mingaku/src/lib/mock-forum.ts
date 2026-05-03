@@ -8,6 +8,8 @@ export type ForumAuthorRoleStored = string;
 export type ForumPost = {
   id: string;
   roomId: string;
+  topicId?: string;
+  topicTitle?: string;
   authorName: string;
   authorRole: ForumAuthorRoleStored;
   body: string;
@@ -42,6 +44,11 @@ export type ForumRoom = {
   lastPostedAt: string;
   /** AIディスカッション機能の有効フラグ */
   aiDiscussion?: boolean;
+  /** AI が週次でお題を更新する */
+  aiWeeklyTopicEnabled?: boolean;
+  /** 直近のお題ID（投稿のデフォルト紐づけ用） */
+  currentTopicId?: string | null;
+  currentTopicTitle?: string | null;
   /** 部屋作成者のプロフィールID */
   createdBy?: string | null;
   /** 非表示フラグ（削除ではなく隠す） */

@@ -114,6 +114,13 @@ export default function TalentDetailClient({ profile }: { profile: TalentProfile
           </div>
 
           {/* 受け付けバッジ */}
+          {profile.talent_hourly_rate && (
+            <p className="mt-3 text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">料金目安: </span>
+              {profile.talent_hourly_rate}
+            </p>
+          )}
+
           {profile.talent_badges.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-2">
               {profile.talent_badges.map((badge) => {

@@ -37,6 +37,7 @@ export async function GET(
         skip,
         take: PAGE_SIZE,
         include: {
+          topic: { select: { id: true, title: true } },
           replies: {
             orderBy: { created_at: "asc" },
           },
@@ -63,6 +64,8 @@ export async function GET(
     const result = posts.map((post) => ({
       id: post.id,
       roomId: post.room_id,
+      topicId: post.topic_id ?? undefined,
+      topicTitle: post.topic?.title ?? undefined,
       authorName: post.author_name,
       authorRole: post.author_role,
       body: post.body,
@@ -135,11 +138,12 @@ export async function POST(
     }
 
     const body = await req.json();
-    const { authorName, authorRole, postBody, relatedArticleUrl } = body as {
+    const { authorName, authorRole, postBody, relatedArticleUrl, topicId } = body as {
       authorName: string;
       authorRole: string;
       postBody: string;
       relatedArticleUrl?: string;
+      topicId?: string | null;
     };
 
     if (!postBody?.trim()) {
@@ -163,9 +167,27 @@ export async function POST(
         guest && guest.length <= 120 && guest !== "匿名" ? guest : "一般";
     }
 
+    let resolvedTopicId: string | null = topicId?.trim() || null;
+    if (resolvedTopicId) {
+      const t = await prisma.forumRoomTopic.findFirst({
+        where: { id: resolvedTopicId, room_id: roomId },
+        select: { id: true },
+      });
+      if (!t) resolvedTopicId = null;
+    }
+    if (!resolvedTopicId) {
+      const latest = await prisma.forumRoomTopic.findFirst({
+        where: { room_id: roomId },
+        orderBy: { period_start: "desc" },
+        select: { id: true },
+      });
+      resolvedTopicId = latest?.id ?? null;
+    }
+
     const post = await prisma.forumPost.create({
       data: {
         room_id: roomId,
+        topic_id: resolvedTopicId,
         author_id: profile?.id ?? null,
         author_name: trimmedName,
         author_role: resolvedAuthorRole,
@@ -173,6 +195,7 @@ export async function POST(
         related_article_url: relatedArticleUrl?.trim() || null,
         ai_kentei_passed: aiKenteiPassed,
       },
+      include: { topic: { select: { id: true, title: true } } },
     });
 
     void notifyAdminsForumHumanActivityMilestones(roomId).catch((e) =>
@@ -183,6 +206,8 @@ export async function POST(
       post: {
         id: post.id,
         roomId: post.room_id,
+        topicId: post.topic_id ?? undefined,
+        topicTitle: post.topic?.title ?? undefined,
         authorName: post.author_name,
         authorRole: post.author_role,
         body: post.body,

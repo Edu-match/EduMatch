@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowUpRight, MessageSquare, Users, X, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
+import { ArrowUpRight, MessageSquare, Users, X } from "lucide-react";
 import type { ForumRoom } from "@/lib/mock-forum";
 import { ForumRoomIcon } from "@/components/community/forum-room-icon";
 import {
@@ -302,51 +302,13 @@ function DotBackground() {
   );
 }
 
-// ─── ズームコントロール ────────────────────────────────────
-
-function ZoomControls({
-  scale,
-  onZoomIn,
-  onZoomOut,
-  onReset,
-}: {
-  scale: number;
-  onZoomIn: () => void;
-  onZoomOut: () => void;
-  onReset: () => void;
-}) {
-  return (
-    <div className="absolute bottom-4 right-4 z-30 flex flex-col gap-1">
-      <button
-        type="button"
-        aria-label="ズームイン"
-        onClick={onZoomIn}
-        disabled={scale >= 3}
-        className="flex h-7 w-7 items-center justify-center rounded-lg border bg-background/90 shadow-sm backdrop-blur-sm hover:bg-muted transition-colors disabled:opacity-40"
-      >
-        <ZoomIn className="h-3.5 w-3.5" />
-      </button>
-      <button
-        type="button"
-        aria-label="ズームアウト"
-        onClick={onZoomOut}
-        disabled={scale <= 1}
-        className="flex h-7 w-7 items-center justify-center rounded-lg border bg-background/90 shadow-sm backdrop-blur-sm hover:bg-muted transition-colors disabled:opacity-40"
-      >
-        <ZoomOut className="h-3.5 w-3.5" />
-      </button>
-      {(scale !== 1) && (
-        <button
-          type="button"
-          aria-label="リセット"
-          onClick={onReset}
-          className="flex h-7 w-7 items-center justify-center rounded-lg border bg-background/90 shadow-sm backdrop-blur-sm hover:bg-muted transition-colors"
-        >
-          <Maximize2 className="h-3.5 w-3.5" />
-        </button>
-      )}
-    </div>
-  );
+function touchDistance(t: React.TouchList) {
+  if (t.length < 2) return 0;
+  const a = t[0];
+  const b = t[1];
+  const dx = a.clientX - b.clientX;
+  const dy = a.clientY - b.clientY;
+  return Math.hypot(dx, dy);
 }
 
 // ─── メインコンポーネント ─────────────────────────────────
@@ -359,6 +321,7 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const dragStart = useRef<{ x: number; y: number } | null>(null);
   const hasDragged = useRef(false);
+  const pinchRef = useRef<{ startDist: number; startScale: number } | null>(null);
 
   useEffect(() => {
     const seen = localStorage.getItem("forum_bubble_hint_v1");
@@ -389,17 +352,44 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
   const connections = computeConnections(rooms, positions);
   const containerHeight = computeContainerHeight(rooms, isMobile);
 
-  const zoomIn = () => setScale((s) => Math.min(3, +(s + 0.25).toFixed(2)));
-  const zoomOut = () => setScale((s) => { const next = Math.max(1, +(s - 0.25).toFixed(2)); if (next === 1) setPan({ x: 0, y: 0 }); return next; });
-  const resetView = () => { setScale(1); setPan({ x: 0, y: 0 }); };
-
+  /** トラックパッド: ctrl+wheel = ピンチ相当でズーム。それ以外の wheel = パン */
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
-    setScale((s) => {
-      const next = Math.min(3, Math.max(1, +(s - e.deltaY * 0.002).toFixed(2)));
+    if (e.ctrlKey || e.metaKey) {
+      setScale((s) => {
+        const next = Math.min(3, Math.max(1, +(s - e.deltaY * 0.012).toFixed(2)));
+        if (next === 1) setPan({ x: 0, y: 0 });
+        return next;
+      });
+    } else {
+      setPan((prev) => ({
+        x: prev.x - e.deltaX,
+        y: prev.y - e.deltaY,
+      }));
+    }
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const d = touchDistance(e.touches);
+      if (d > 0) pinchRef.current = { startDist: d, startScale: scale };
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 2 && pinchRef.current) {
+      e.preventDefault();
+      const d = touchDistance(e.touches);
+      if (d <= 0) return;
+      const ratio = d / pinchRef.current.startDist;
+      const next = Math.min(3, Math.max(1, +(pinchRef.current.startScale * ratio).toFixed(2)));
+      setScale(next);
       if (next === 1) setPan({ x: 0, y: 0 });
-      return next;
-    });
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (e.touches.length < 2) pinchRef.current = null;
   };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -424,12 +414,18 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
     <>
       <p className="mb-5 text-center text-xs text-muted-foreground">
         気になるトピックを選んで議論に参加しよう
+        <span className="mt-1 block text-[10px] text-muted-foreground/80">
+          マップ: ドラッグで移動。ピンチ（2本指）または Ctrl+スクロールで拡大縮小。
+        </span>
       </p>
 
       <div
-        className="relative w-full overflow-hidden rounded-3xl border bg-gradient-to-b from-background to-muted/10 select-none"
+        className="relative w-full overflow-hidden rounded-3xl border bg-gradient-to-b from-background to-muted/10 select-none touch-none"
         style={{ height: containerHeight, cursor: dragStart.current ? "grabbing" : "grab" }}
         onWheel={handleWheel}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -469,13 +465,6 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
             );
           })}
         </div>
-
-        <ZoomControls
-          scale={scale}
-          onZoomIn={zoomIn}
-          onZoomOut={zoomOut}
-          onReset={resetView}
-        />
 
         {showHint && <OnboardingHint onClose={dismissHint} />}
       </div>

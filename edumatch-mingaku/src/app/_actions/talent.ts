@@ -14,6 +14,7 @@ export type TalentProfile = {
   organization_type: string | null;
   talent_matching_description: string | null;
   talent_badges: string[];
+  talent_hourly_rate: string | null;
   ai_kentei_passed: boolean;
   type: "individual" | "corporate";
   services: { id: string; title: string; category: string }[];
@@ -68,6 +69,7 @@ export async function getTalentMatchingProfiles(): Promise<TalentProfile[]> {
     organization_type: g.organization_type,
     talent_matching_description: g.talent_matching_description,
     talent_badges: g.talent_badges ?? [],
+    talent_hourly_rate: g.talent_hourly_rate ?? null,
     ai_kentei_passed: g.profile.ai_kentei_passed ?? false,
     type: "individual" as const,
     services: g.profile.services,
@@ -85,6 +87,7 @@ export async function getTalentMatchingProfiles(): Promise<TalentProfile[]> {
     organization_type: c.organization_type,
     talent_matching_description: c.talent_matching_description,
     talent_badges: c.talent_badges ?? [],
+    talent_hourly_rate: c.talent_hourly_rate ?? null,
     ai_kentei_passed: c.profile.ai_kentei_passed ?? false,
     type: "corporate" as const,
     services: c.profile.services,

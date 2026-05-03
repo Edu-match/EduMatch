@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, getCurrentProfile } from "@/lib/auth";
+import { createAiWeeklyTopicForRoom } from "@/lib/forum-weekly-topic-ai";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +61,7 @@ export async function GET(req: NextRequest) {
       emoji: room.emoji,
       weeklyTopic: room.weekly_topic,
       aiDiscussion: room.ai_discussion,
+      aiWeeklyTopicEnabled: room.ai_weekly_topic_enabled,
       postCount: room._count.posts,
       participantCount: participantMap[room.id] ?? 0,
       lastPostedAt: lastPostedMap[room.id] ?? room.created_at.toISOString(),
@@ -87,12 +89,13 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { name, description, weeklyTopic, aiDiscussion, emoji } = body as {
+    const { name, description, weeklyTopic, aiDiscussion, emoji, aiWeeklyTopicEnabled } = body as {
       name: string;
       description?: string;
       weeklyTopic: string;
       aiDiscussion?: boolean;
       emoji?: string;
+      aiWeeklyTopicEnabled?: boolean;
     };
 
     if (!name?.trim()) {
@@ -107,17 +110,30 @@ export async function POST(req: NextRequest) {
 
     const id = `${slug}-${Date.now()}`;
 
+    const aiWeekly = !!aiWeeklyTopicEnabled;
     const room = await prisma.forumRoom.create({
       data: {
         id,
         name: name.trim(),
         description: description?.trim() ?? "",
-        weekly_topic: weeklyTopic?.trim() ?? "",
+        weekly_topic: aiWeekly ? "" : weeklyTopic?.trim() ?? "",
         ai_discussion: aiDiscussion ?? false,
+        ai_weekly_topic_enabled: aiWeekly,
         emoji: emoji ?? "",
         created_by: user.id,
       },
     });
+
+    if (aiWeekly) {
+      try {
+        await createAiWeeklyTopicForRoom(room.id);
+      } catch (e) {
+        console.error("[forum/rooms POST] createAiWeeklyTopicForRoom", e);
+      }
+    }
+
+    const refreshed = await prisma.forumRoom.findUnique({ where: { id: room.id } });
+    const weekly = refreshed?.weekly_topic ?? room.weekly_topic;
 
     return NextResponse.json({
       room: {
@@ -125,8 +141,9 @@ export async function POST(req: NextRequest) {
         name: room.name,
         description: room.description,
         emoji: room.emoji,
-        weeklyTopic: room.weekly_topic,
+        weeklyTopic: weekly,
         aiDiscussion: room.ai_discussion,
+        aiWeeklyTopicEnabled: refreshed?.ai_weekly_topic_enabled ?? aiWeekly,
         postCount: 0,
         participantCount: 0,
         lastPostedAt: room.created_at.toISOString(),

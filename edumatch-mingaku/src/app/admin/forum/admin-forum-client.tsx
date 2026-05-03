@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, BarChart3, Bot, Eye, ExternalLink, EyeOff, Heart, Loader2, MessageSquare, PenSquare, Pin, PinOff, Plus, Save, Search, Trash2, Zap } from "lucide-react";
+import { ArrowLeft, BarChart3, Bot, Eye, ExternalLink, EyeOff, Heart, Loader2, MessageSquare, PenSquare, Pin, PinOff, Plus, Save, Search, Sparkles, Trash2, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,14 +16,26 @@ import { Textarea } from "@/components/ui/textarea";
 import type { ForumPost, ForumRoom } from "@/lib/mock-forum";
 
 type PostFilter = "all" | "pinned" | "no-reply" | "hidden";
-type NewRoomDraft = { name: string; description: string; weeklyTopic: string; aiDiscussion: boolean };
+type NewRoomDraft = {
+  name: string;
+  description: string;
+  weeklyTopic: string;
+  aiDiscussion: boolean;
+  aiWeeklyTopicEnabled: boolean;
+};
 
 // ─── 部屋作成ダイアログ ───────────────────────────────────
 
 function CreateRoomDialog({ onCreated }: { onCreated: (room: ForumRoom) => void }) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [draft, setDraft] = useState<NewRoomDraft>({ name: "", description: "", weeklyTopic: "", aiDiscussion: false });
+  const [draft, setDraft] = useState<NewRoomDraft>({
+    name: "",
+    description: "",
+    weeklyTopic: "",
+    aiDiscussion: false,
+    aiWeeklyTopicEnabled: false,
+  });
   const isValid = draft.name.trim();
 
   const handleCreate = async () => {
@@ -37,14 +49,21 @@ function CreateRoomDialog({ onCreated }: { onCreated: (room: ForumRoom) => void 
         body: JSON.stringify({
           name: draft.name.trim(),
           description: draft.description.trim(),
-          weeklyTopic: draft.weeklyTopic.trim(),
+          weeklyTopic: draft.aiWeeklyTopicEnabled ? "" : draft.weeklyTopic.trim(),
           aiDiscussion: draft.aiDiscussion,
+          aiWeeklyTopicEnabled: draft.aiWeeklyTopicEnabled,
         }),
       });
       if (res.ok) {
         const data = await res.json();
         onCreated(data.room as ForumRoom);
-        setDraft({ name: "", description: "", weeklyTopic: "", aiDiscussion: false });
+        setDraft({
+          name: "",
+          description: "",
+          weeklyTopic: "",
+          aiDiscussion: false,
+          aiWeeklyTopicEnabled: false,
+        });
         setOpen(false);
       } else {
         alert("部屋の作成に失敗しました");
@@ -73,9 +92,43 @@ function CreateRoomDialog({ onCreated }: { onCreated: (room: ForumRoom) => void 
             <Label>説明文</Label>
             <Textarea rows={2} value={draft.description} onChange={(e) => setDraft((p) => ({ ...p, description: e.target.value }))} className="resize-none" placeholder="この部屋のテーマを簡潔に" />
           </div>
+          <button
+            type="button"
+            onClick={() => setDraft((p) => ({ ...p, aiWeeklyTopicEnabled: !p.aiWeeklyTopicEnabled }))}
+            className={[
+              "w-full flex items-start gap-3 rounded-xl border p-4 text-left transition-all",
+              draft.aiWeeklyTopicEnabled ? "border-sky-300 bg-sky-50" : "border-border bg-muted/20 hover:border-border/80",
+            ].join(" ")}
+          >
+            <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${draft.aiWeeklyTopicEnabled ? "border-sky-500 bg-sky-500" : "border-muted-foreground/30"}`}>
+              {draft.aiWeeklyTopicEnabled && <span className="block h-2 w-2 rounded-full bg-white" />}
+            </div>
+            <div>
+              <p className="flex items-center gap-1.5 text-sm font-semibold">
+                <Sparkles className={`h-4 w-4 ${draft.aiWeeklyTopicEnabled ? "text-sky-600" : "text-muted-foreground"}`} />
+                AI が週次で「今週のお題」を設定する
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground leading-5">
+                部屋名と説明からお題を自動生成します。毎週の更新はサーバー側のスケジュールで行われます。
+              </p>
+            </div>
+          </button>
+
           <div className="space-y-1.5">
-            <Label>今週のお題 <span className="text-destructive">*</span></Label>
-            <Textarea rows={3} value={draft.weeklyTopic} onChange={(e) => setDraft((p) => ({ ...p, weeklyTopic: e.target.value }))} className="resize-none" placeholder="参加者への最初の問いかけ" />
+            <Label>
+              今週のお題{" "}
+              <span className="text-xs text-muted-foreground">
+                {draft.aiWeeklyTopicEnabled ? "（AI週次ON時は自動生成）" : "（任意・後から設定可）"}
+              </span>
+            </Label>
+            <Textarea
+              rows={3}
+              value={draft.weeklyTopic}
+              onChange={(e) => setDraft((p) => ({ ...p, weeklyTopic: e.target.value }))}
+              className="resize-none"
+              disabled={draft.aiWeeklyTopicEnabled}
+              placeholder="参加者への問いかけを入力してください（後から変更できます）"
+            />
           </div>
 
           <button

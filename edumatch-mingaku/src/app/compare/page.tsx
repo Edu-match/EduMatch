@@ -4,12 +4,15 @@ import { getAllServices } from "@/app/_actions/services";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import CompareClientPage from "./compare-client";
-import { isServiceCompareEnabled } from "@/lib/deploy-branch";
+import {
+  isServiceComparePageEnabled,
+  isServiceCompareRadarEnabled,
+} from "@/lib/deploy-branch";
 
 export const dynamic = "force-dynamic";
 
 export default async function ComparePage() {
-  if (!isServiceCompareEnabled()) {
+  if (!isServiceComparePageEnabled()) {
     return (
       <div className="container py-8">
         <Button variant="ghost" asChild className="mb-4">
@@ -44,5 +47,6 @@ export default async function ComparePage() {
   }
 
   const services = await getAllServices();
-  return <CompareClientPage initialServices={services} />;
+  const variant = isServiceCompareRadarEnabled() ? "full" : "table-only";
+  return <CompareClientPage initialServices={services} variant={variant} />;
 }

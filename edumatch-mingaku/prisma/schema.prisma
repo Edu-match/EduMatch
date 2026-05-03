@@ -73,6 +73,8 @@ model GeneralProfile {
   talent_matching_description String?
   /// 受け付ける依頼種別バッジ（例: ["lecture", "teaching", "work"]）
   talent_badges               String[] @default([])
+  /// 人材マッチング: ギャラ・料金目安（自由記述）
+  talent_hourly_rate          String?
   created_at         DateTime @default(now())
   updated_at         DateTime @updatedAt
 }
@@ -98,6 +100,8 @@ model CorporateProfile {
   talent_matching_description String?
   /// 受け付ける依頼種別バッジ（例: ["lecture", "teaching", "work"]）
   talent_badges               String[] @default([])
+  /// 人材マッチング: ギャラ・料金目安（自由記述）
+  talent_hourly_rate          String?
   created_at            DateTime @default(now())
   updated_at            DateTime @updatedAt
 }
@@ -354,40 +358,60 @@ model SeminarEvent {
 
 /// 井戸端会議（フォーラム）の部屋
 model ForumRoom {
-  id            String      @id
-  name          String
-  description   String      @default("")
-  emoji         String      @default("")
-  weekly_topic  String      @default("")
-  ai_discussion Boolean     @default(false)
-  created_by    String?     @db.Uuid
-  created_at    DateTime    @default(now())
-  updated_at    DateTime    @updatedAt
-  creator       Profile?    @relation(fields: [created_by], references: [id], onDelete: SetNull)
-  posts         ForumPost[]
+  id                        String            @id
+  name                      String
+  description               String            @default("")
+  emoji                     String            @default("")
+  weekly_topic              String            @default("")
+  ai_discussion             Boolean           @default(false)
+  /// AI が週ごとにお題を更新する（ルーム名・説明ベース）
+  ai_weekly_topic_enabled   Boolean           @default(false)
+  created_by                String?           @db.Uuid
+  created_at                DateTime          @default(now())
+  updated_at                DateTime          @updatedAt
+  creator           Profile?          @relation(fields: [created_by], references: [id], onDelete: SetNull)
+  posts             ForumPost[]
+  roomTopics        ForumRoomTopic[]
 
   @@map("forum_rooms")
 }
 
+/// 井戸端: 週次お題の履歴（投稿はいずれかのお題に紐づく）
+model ForumRoomTopic {
+  id            String      @id @default(cuid())
+  room_id       String
+  title         String
+  period_start  DateTime    @default(now()) @db.Timestamptz(6)
+  created_at    DateTime    @default(now()) @db.Timestamptz(6)
+  room          ForumRoom   @relation(fields: [room_id], references: [id], onDelete: Cascade)
+  posts         ForumPost[]
+
+  @@index([room_id, period_start(sort: Desc)])
+  @@map("forum_room_topics")
+}
+
 /// 井戸端会議の投稿
 model ForumPost {
-  id                  String        @id @default(cuid())
+  id                  String           @id @default(cuid())
   room_id             String
-  author_id           String?       @db.Uuid
+  topic_id            String?
+  author_id           String?          @db.Uuid
   author_name         String
-  author_role         String        @default("一般")
+  author_role         String           @default("一般")
   body                String
   related_article_url String?
-  is_pinned           Boolean       @default(false)
-  is_hidden           Boolean       @default(false)
-  ai_kentei_passed    Boolean       @default(false)
-  created_at          DateTime      @default(now())
-  updated_at          DateTime      @updatedAt
-  room                ForumRoom     @relation(fields: [room_id], references: [id], onDelete: Cascade)
-  author              Profile?      @relation(fields: [author_id], references: [id], onDelete: SetNull)
+  is_pinned           Boolean          @default(false)
+  is_hidden           Boolean          @default(false)
+  ai_kentei_passed    Boolean          @default(false)
+  created_at          DateTime         @default(now())
+  updated_at          DateTime         @updatedAt
+  room                ForumRoom        @relation(fields: [room_id], references: [id], onDelete: Cascade)
+  topic               ForumRoomTopic?  @relation(fields: [topic_id], references: [id], onDelete: SetNull)
+  author              Profile?         @relation(fields: [author_id], references: [id], onDelete: SetNull)
   replies             ForumReply[]
 
   @@index([room_id, created_at(sort: Desc)])
+  @@index([topic_id])
   @@map("forum_posts")
 }
 

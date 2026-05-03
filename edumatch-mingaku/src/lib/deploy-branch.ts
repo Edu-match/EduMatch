@@ -20,8 +20,24 @@ export function getDeployBranch(): string {
   }
 }
 
-/** サービス比較 UI を出すのは forum-dev デプロイ（または ENABLE_SERVICE_COMPARE）。 */
-export function isServiceCompareEnabled(): boolean {
+/** レーダー・AIスコア・エクスポート等「フル」比較（forum-dev または ENABLE_SERVICE_COMPARE） */
+export function isServiceCompareRadarEnabled(): boolean {
   if (process.env.ENABLE_SERVICE_COMPARE === "true") return true;
   return getDeployBranch() === "forum-dev";
+}
+
+/** main 向け: 詳細比較表＋選択のみ（チャートなし） */
+export function isServiceCompareTableOnMain(): boolean {
+  if (process.env.ENABLE_SERVICE_COMPARE_TABLE_ON_MAIN === "true") return true;
+  return getDeployBranch() === "main";
+}
+
+/** 比較ページを表示するか（フルまたは表のみ） */
+export function isServiceComparePageEnabled(): boolean {
+  return isServiceCompareRadarEnabled() || isServiceCompareTableOnMain();
+}
+
+/** @deprecated {@link isServiceCompareRadarEnabled} を使用 */
+export function isServiceCompareEnabled(): boolean {
+  return isServiceCompareRadarEnabled();
 }
