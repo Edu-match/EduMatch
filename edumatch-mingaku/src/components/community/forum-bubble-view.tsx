@@ -352,16 +352,22 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
   const connections = computeConnections(rooms, positions);
   const containerHeight = computeContainerHeight(rooms, isMobile);
 
-  /** トラックパッド: ctrl+wheel = ピンチ相当でズーム。それ以外の wheel = パン */
+  /**
+   * Ctrl / Cmd + ホイール: ズーム。
+   * ズーム中（scale>1）のみ通常ホイールでパン（ページ縦スクロールと競合しないよう、拡大していないときは伝播させる）。
+   */
   const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
     if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
       setScale((s) => {
-        const next = Math.min(3, Math.max(1, +(s - e.deltaY * 0.012).toFixed(2)));
+        const next = Math.min(3, Math.max(1, +(s - e.deltaY * 0.01).toFixed(2)));
         if (next === 1) setPan({ x: 0, y: 0 });
         return next;
       });
-    } else {
+      return;
+    }
+    if (scale > 1) {
+      e.preventDefault();
       setPan((prev) => ({
         x: prev.x - e.deltaX,
         y: prev.y - e.deltaY,
@@ -401,6 +407,10 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!dragStart.current) return;
+    if (scale <= 1) {
+      dragStart.current = { x: e.clientX, y: e.clientY };
+      return;
+    }
     const dx = e.clientX - dragStart.current.x;
     const dy = e.clientY - dragStart.current.y;
     if (Math.abs(dx) + Math.abs(dy) > 4) hasDragged.current = true;
@@ -408,20 +418,25 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
     setPan((prev) => ({ x: prev.x + dx, y: prev.y + dy }));
   };
 
-  const handlePointerUp = () => { dragStart.current = null; };
+  const handlePointerUp = () => {
+    dragStart.current = null;
+  };
 
   return (
     <>
       <p className="mb-5 text-center text-xs text-muted-foreground">
         気になるトピックを選んで議論に参加しよう
         <span className="mt-1 block text-[10px] text-muted-foreground/80">
-          マップ: ドラッグで移動。ピンチ（2本指）または Ctrl+スクロールで拡大縮小。
+          カードをクリックで部屋へ。拡大後はドラッグで移動、Ctrl / Cmd + スクロールでズーム。ピンチでもズーム。ダブルクリックで表示をリセット。
         </span>
       </p>
 
       <div
-        className="relative w-full overflow-hidden rounded-3xl border bg-gradient-to-b from-background to-muted/10 select-none touch-none"
-        style={{ height: containerHeight, cursor: dragStart.current ? "grabbing" : "grab" }}
+        className={[
+          "relative w-full overflow-hidden rounded-3xl border bg-gradient-to-b from-background to-muted/10 select-none",
+          scale > 1 ? "touch-none cursor-grab active:cursor-grabbing" : "touch-pan-y pinch-zoom cursor-default",
+        ].join(" ")}
+        style={{ height: containerHeight }}
         onWheel={handleWheel}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
@@ -430,6 +445,11 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
+        onDoubleClick={(e) => {
+          if ((e.target as HTMLElement).closest("button, [role=button]")) return;
+          setScale(1);
+          setPan({ x: 0, y: 0 });
+        }}
       >
         {/* 変換ラッパー */}
         <div
