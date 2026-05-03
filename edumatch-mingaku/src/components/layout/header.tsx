@@ -51,6 +51,7 @@ export function Header() {
     }[];
     unreadCount: number;
   }>({ list: [], unreadCount: 0 });
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
@@ -402,59 +403,62 @@ export function Header() {
         </nav>
 
         {/* Mobile Navigation */}
-        <Sheet>
+        <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
           <SheetTrigger asChild className="md:hidden">
             <Button variant="ghost" size="icon">
               <Menu className="h-5 w-5" />
               <span className="sr-only">メニューを開く</span>
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-[85vw] sm:w-[350px] overflow-y-auto">
-            <SheetHeader>
+          <SheetContent side="right" className="w-[85vw] sm:w-[350px] overflow-y-auto p-0">
+            <SheetHeader className="px-4 py-4 border-b">
               <SheetTitle>メニュー</SheetTitle>
             </SheetHeader>
-            <nav className="flex flex-col mt-6 pb-6">
+            <nav className="flex flex-col px-4 pb-6">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="flex items-center py-3 text-sm font-medium text-foreground/60 transition-colors hover:text-foreground border-b last:border-b-0"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center py-3 text-sm font-medium text-foreground/60 transition-colors hover:text-foreground border-b"
                 >
                   {link.label}
                 </Link>
               ))}
-<Link
-                      href="/request-info/list"
-                      className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b"
-                    >
-                      <FileText className="h-4 w-4 flex-shrink-0" />
-                      サービスのお気に入り
-                      {requestListCount > 0 && (
-                        <span className="rounded-full bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5">
-                          {requestListCount}
-                        </span>
-                      )}
-                    </Link>
-                    <Link
-                      href="/notifications"
-                      className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b"
-                    >
-                      <Bell className="h-4 w-4 flex-shrink-0" />
-                      通知
-                      {notifications.unreadCount > 0 && (
-                        <span className="rounded-full bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5">
-                          {notifications.unreadCount}
-                        </span>
-                      )}
-                    </Link>
-              
+              <Link
+                href="/request-info/list"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b"
+              >
+                <FileText className="h-4 w-4 flex-shrink-0" />
+                サービスのお気に入り
+                {requestListCount > 0 && (
+                  <span className="rounded-full bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5">
+                    {requestListCount}
+                  </span>
+                )}
+              </Link>
+              <Link
+                href="/notifications"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b"
+              >
+                <Bell className="h-4 w-4 flex-shrink-0" />
+                通知
+                {notifications.unreadCount > 0 && (
+                  <span className="rounded-full bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5">
+                    {notifications.unreadCount}
+                  </span>
+                )}
+              </Link>
+
               <div className="border-t pt-4 mt-4">
                 {isLoading ? (
                   <div className="text-sm text-muted-foreground">読み込み中...</div>
                 ) : isAuthenticated ? (
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3 p-2 bg-muted/50 rounded-lg">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <div>
+                    <div className="flex items-center gap-3 p-2 bg-muted/50 rounded-lg mb-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                         <User className="h-5 w-5 text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
@@ -468,6 +472,7 @@ export function Header() {
                     </div>
                     <Link
                       href="/mypage"
+                      onClick={() => setMobileMenuOpen(false)}
                       className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b"
                     >
                       <User className="h-4 w-4 flex-shrink-0" />
@@ -476,41 +481,39 @@ export function Header() {
                     {(userRole === "PROVIDER" || userRole === "ADMIN") && (
                       <Link
                         href="/provider-dashboard"
+                        onClick={() => setMobileMenuOpen(false)}
                         className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b"
                       >
-                        <LayoutDashboard className="h-4 w-4" />
+                        <LayoutDashboard className="h-4 w-4 flex-shrink-0" />
                         {userRole === "ADMIN" ? "管理者ダッシュボード" : "投稿者ダッシュボード"}
                       </Link>
                     )}
                     {userRole === "ADMIN" && (
-                      <>
-                        <div className="border-t pt-2 mt-1">
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-0 pb-2">管理メニュー</p>
-                          <div className="space-y-2">
-                            <Link href="/admin/approvals" className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground">
-                              <CheckCircle className="h-4 w-4 text-amber-600" />承認キュー
-                            </Link>
-                            <Link href="/admin/events" className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground">
-                              <Calendar className="h-4 w-4 text-emerald-600" />イベント管理
-                            </Link>
-                            <Link href="/admin/site-updates" className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground">
-                              <Newspaper className="h-4 w-4 text-slate-600" />運営記事管理
-                            </Link>
-                            <Link href="/dashboard/admin/knowledge" className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground">
-                              <BookOpen className="h-4 w-4 text-indigo-600" />ナレッジ文書管理
-                            </Link>
-                            <Link href="/admin/ai-chat" className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground">
-                              <Bot className="h-4 w-4 text-violet-600" />AIチャット管理
-                            </Link>
-                            <Link href="/admin/activity-log" className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground">
-                              <Activity className="h-4 w-4 text-orange-600" />操作ログ
-                            </Link>
-                          </div>
-                        </div>
-                      </>
+                      <div className="border-t pt-3 mt-2">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground pb-1">管理メニュー</p>
+                        <Link href="/admin/approvals" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
+                          <CheckCircle className="h-4 w-4 text-amber-600 flex-shrink-0" />承認キュー
+                        </Link>
+                        <Link href="/admin/events" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
+                          <Calendar className="h-4 w-4 text-emerald-600 flex-shrink-0" />イベント管理
+                        </Link>
+                        <Link href="/admin/site-updates" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
+                          <Newspaper className="h-4 w-4 text-slate-600 flex-shrink-0" />運営記事管理
+                        </Link>
+                        <Link href="/dashboard/admin/knowledge" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
+                          <BookOpen className="h-4 w-4 text-indigo-600 flex-shrink-0" />ナレッジ文書管理
+                        </Link>
+                        <Link href="/admin/ai-chat" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
+                          <Bot className="h-4 w-4 text-violet-600 flex-shrink-0" />AIチャット管理
+                        </Link>
+                        <Link href="/admin/activity-log" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
+                          <Activity className="h-4 w-4 text-orange-600 flex-shrink-0" />操作ログ
+                        </Link>
+                      </div>
                     )}
                     <Link
                       href="/profile/register"
+                      onClick={() => setMobileMenuOpen(false)}
                       className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b"
                     >
                       <Settings className="h-4 w-4 flex-shrink-0" />
@@ -518,8 +521,8 @@ export function Header() {
                     </Link>
                     <Button
                       variant="outline"
-                      className="w-full h-11 text-red-600 border-red-200 hover:bg-red-50 mt-2"
-                      onClick={handleLogout}
+                      className="w-full h-11 text-red-600 border-red-200 hover:bg-red-50 mt-3"
+                      onClick={() => { setMobileMenuOpen(false); void handleLogout(); }}
                     >
                       <LogOut className="h-4 w-4 mr-2" />
                       ログアウト
@@ -528,13 +531,13 @@ export function Header() {
                 ) : (
                   <div className="space-y-2">
                     <Button asChild variant="outline" className="w-full">
-                      <Link href="/login">
+                      <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
                         <LogIn className="h-4 w-4 mr-2" />
                         ログイン
                       </Link>
                     </Button>
                     <Button asChild className="w-full">
-                      <Link href="/login">
+                      <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
                         <UserPlus className="h-4 w-4 mr-2" />
                         新規登録
                       </Link>
