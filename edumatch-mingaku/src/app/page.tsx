@@ -17,10 +17,10 @@ export default async function HomePage() {
 
   return (
     <div className="bg-muted/20">
-      <div className="container py-8">
+      <div className="container py-4 sm:py-6 lg:py-8">
         {/* 左：スライダー＋トピックス / 右：ランキング（ヘッダー直下から固定） */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-start lg:gap-8">
-          <main className="lg:col-span-8 order-1 space-y-8 min-w-0">
+        <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-12 lg:items-start lg:gap-8">
+          <main className="lg:col-span-8 order-1 space-y-4 sm:space-y-6 lg:space-y-8 min-w-0">
             {/* スライダー：運営お知らせ → ADMIN選択記事 */}
             <HeroSlider items={sliderItems} isAdmin={isAdmin} />
             <TopicsSection />

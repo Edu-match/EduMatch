@@ -22,14 +22,14 @@ export function Footer() {
 
   return (
     <footer className="w-full border-t bg-muted/40">
-      <div className="container py-12 md:py-16">
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
+      <div className="container py-8 md:py-12 lg:py-16">
+        <div className="grid grid-cols-2 gap-6 sm:gap-8 md:grid-cols-4">
           {/* Logo & Description */}
-          <div className="space-y-4">
+          <div className="col-span-2 md:col-span-1 space-y-3">
             <Link href="/" className="flex items-center space-x-2">
-              <span className="absolute left-[17px] text-xl font-bold text-primary">エデュマッチ</span>
+              <span className="text-xl font-bold text-primary">エデュマッチ</span>
             </Link>
-            <p className="absolute left-[17px] text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               教育の未来を見つける、つながる
             </p>
           </div>
@@ -87,8 +87,8 @@ export function Footer() {
         </div>
 
         {/* Copyright */}
-        <div className="mt-12 border-t pt-8">
-          <p className="text-center text-sm text-muted-foreground">
+        <div className="mt-8 md:mt-12 border-t pt-6 md:pt-8">
+          <p className="text-center text-xs sm:text-sm text-muted-foreground">
             © {currentYear} エデュマッチ（主催：{OPERATOR_INFO.organizer} / 運営：{OPERATOR_INFO.operator}）. All rights reserved.
           </p>
         </div>

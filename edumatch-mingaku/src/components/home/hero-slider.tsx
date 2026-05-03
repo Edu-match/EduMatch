@@ -117,7 +117,7 @@ export function HeroSlider({ items, isAdmin }: Props) {
       <button
         type="button"
         onClick={() => go(-1)}
-        className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70"
+        className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/50 text-white flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity hover:bg-black/70"
         aria-label="前へ"
       >
         <ChevronLeft className="w-5 h-5" />
@@ -125,7 +125,7 @@ export function HeroSlider({ items, isAdmin }: Props) {
       <button
         type="button"
         onClick={() => go(1)}
-        className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70"
+        className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/50 text-white flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity hover:bg-black/70"
         aria-label="次へ"
       >
         <ChevronRight className="w-5 h-5" />

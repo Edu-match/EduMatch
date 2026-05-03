@@ -229,7 +229,7 @@ function ServiceSelector({
       </div>
 
       {/* カードグリッド */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 max-h-[420px] overflow-y-auto">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 max-h-[360px] sm:max-h-[420px] overflow-y-auto">
         {filtered.length === 0 && (
           <div className="col-span-full py-10 text-center text-sm text-muted-foreground">
             該当するサービスが見つかりません
@@ -387,16 +387,16 @@ export default function CompareClientPage({ initialServices }: Props) {
             </Link>
           </Button>
           <div className="flex items-center gap-3">
-            <Scale className="h-6 w-6 text-primary" />
+            <Scale className="h-6 w-6 text-primary flex-shrink-0" />
             <div>
-              <h1 className="text-xl font-bold">サービス比較</h1>
+              <h1 className="text-lg sm:text-xl font-bold">サービス比較</h1>
               <p className="text-xs text-muted-foreground">最大5つのサービスを比較できます</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="container max-w-7xl py-6">
+      <div className="container max-w-7xl py-4 sm:py-6">
         {/* ─── サービス選択パネル ─── */}
         <div className="mb-6 rounded-xl border bg-background shadow-sm">
           {/* 折りたたみトグル */}
@@ -432,7 +432,7 @@ export default function CompareClientPage({ initialServices }: Props) {
           </button>
 
           {selectorOpen && (
-            <div className="px-4 pb-4 border-t pt-4">
+            <div className="px-3 sm:px-4 pb-3 sm:pb-4 border-t pt-3 sm:pt-4">
               <ServiceSelector
                 services={initialServices}
                 selectedIds={selectedIds}
@@ -484,8 +484,8 @@ export default function CompareClientPage({ initialServices }: Props) {
                   <span>📊</span> スコアチャート
                 </h2>
                 <div
-                  className="grid gap-4"
-                  style={{ gridTemplateColumns: `repeat(${Math.min(selected.length, 5)}, minmax(0, 1fr))` }}
+                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+                  style={selected.length <= 2 ? { gridTemplateColumns: `repeat(${selected.length}, minmax(0, 1fr))` } : undefined}
                 >
                   {selected.map((s, i) => {
                     const sc = scores.get(s.id)!;

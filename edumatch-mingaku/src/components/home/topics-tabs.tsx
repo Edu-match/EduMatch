@@ -116,12 +116,12 @@ export function TopicsTabs({ articles, services, videos }: Props) {
   const internationalArticles = articles.filter((a) => a.newsTab === "INTERNATIONAL").slice(0, 10);
 
   const triggerClass =
-    "rounded-none border-b-2 border-transparent data-[state=active]:border-[#1d4ed8] data-[state=active]:bg-transparent px-4 py-2 text-sm";
+    "rounded-none border-b-2 border-transparent data-[state=active]:border-[#1d4ed8] data-[state=active]:bg-transparent px-3 sm:px-4 py-2.5 text-sm whitespace-nowrap flex-shrink-0";
 
   return (
     <Tabs defaultValue="all" className="w-full">
-      <div className="border-b">
-        <TabsList className="w-full justify-start rounded-none h-auto bg-transparent p-0">
+      <div className="border-b overflow-x-auto">
+        <TabsList className="w-max min-w-full justify-start rounded-none h-auto bg-transparent p-0 flex">
           <TabsTrigger value="all" className={triggerClass}>すべて</TabsTrigger>
           <TabsTrigger value="domestic" className={triggerClass}>国内のニュース</TabsTrigger>
           <TabsTrigger value="international" className={triggerClass}>世界のニュース</TabsTrigger>

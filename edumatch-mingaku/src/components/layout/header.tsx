@@ -413,21 +413,21 @@ export function Header() {
             <SheetHeader>
               <SheetTitle>メニュー</SheetTitle>
             </SheetHeader>
-            <nav className="flex flex-col space-y-4 mt-6 pb-6">
+            <nav className="flex flex-col mt-6 pb-6">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="text-sm font-medium text-foreground/60 transition-colors hover:text-foreground"
+                  className="flex items-center py-3 text-sm font-medium text-foreground/60 transition-colors hover:text-foreground border-b last:border-b-0"
                 >
                   {link.label}
                 </Link>
               ))}
 <Link
                       href="/request-info/list"
-                      className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground"
+                      className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b"
                     >
-                      <FileText className="h-4 w-4" />
+                      <FileText className="h-4 w-4 flex-shrink-0" />
                       サービスのお気に入り
                       {requestListCount > 0 && (
                         <span className="rounded-full bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5">
@@ -437,9 +437,9 @@ export function Header() {
                     </Link>
                     <Link
                       href="/notifications"
-                      className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground"
+                      className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b"
                     >
-                      <Bell className="h-4 w-4" />
+                      <Bell className="h-4 w-4 flex-shrink-0" />
                       通知
                       {notifications.unreadCount > 0 && (
                         <span className="rounded-full bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5">
@@ -468,15 +468,15 @@ export function Header() {
                     </div>
                     <Link
                       href="/mypage"
-                      className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground"
+                      className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b"
                     >
-                      <User className="h-4 w-4" />
+                      <User className="h-4 w-4 flex-shrink-0" />
                       マイページ
                     </Link>
                     {(userRole === "PROVIDER" || userRole === "ADMIN") && (
                       <Link
                         href="/provider-dashboard"
-                        className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground"
+                        className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b"
                       >
                         <LayoutDashboard className="h-4 w-4" />
                         {userRole === "ADMIN" ? "管理者ダッシュボード" : "投稿者ダッシュボード"}
@@ -511,14 +511,14 @@ export function Header() {
                     )}
                     <Link
                       href="/profile/register"
-                      className="flex items-center gap-2 text-sm font-medium text-foreground/60 hover:text-foreground"
+                      className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b"
                     >
-                      <Settings className="h-4 w-4" />
+                      <Settings className="h-4 w-4 flex-shrink-0" />
                       アカウント設定
                     </Link>
-                    <Button 
-                      variant="outline" 
-                      className="w-full text-red-600 border-red-200 hover:bg-red-50" 
+                    <Button
+                      variant="outline"
+                      className="w-full h-11 text-red-600 border-red-200 hover:bg-red-50 mt-2"
                       onClick={handleLogout}
                     >
                       <LogOut className="h-4 w-4 mr-2" />

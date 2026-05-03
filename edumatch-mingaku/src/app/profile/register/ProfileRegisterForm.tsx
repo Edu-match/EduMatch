@@ -369,7 +369,7 @@ export function ProfileRegisterForm({
                     key={interest}
                     type="button"
                     onClick={() => toggleInterest(interest)}
-                    className={`px-3 py-1.5 rounded-full text-sm transition-colors ${
+                    className={`px-3 py-2 min-h-[40px] rounded-full text-sm transition-colors ${
                       selectedInterests.includes(interest)
                         ? "bg-primary text-primary-foreground"
                         : "bg-muted hover:bg-muted/80"
@@ -657,8 +657,8 @@ export function ProfileRegisterForm({
   };
 
   return (
-    <div className="container py-8">
-      <Button variant="ghost" asChild className="mb-4">
+    <div className="container py-6 sm:py-8">
+      <Button variant="ghost" asChild className="mb-4 -ml-2">
         <Link href="/mypage">
           <ArrowLeft className="h-4 w-4 mr-2" />
           マイページに戻る
@@ -668,7 +668,7 @@ export function ProfileRegisterForm({
       <div className="max-w-2xl mx-auto">
         {isFirstTime && (
           <div className="mb-6 p-4 rounded-lg bg-primary/10 border border-primary/20 text-center">
-            <p className="font-medium text-primary">
+            <p className="font-medium text-primary text-sm sm:text-base">
               {isProvider
                 ? "事業者アカウントとして登録済みです。事業者名・所属・資料請求の通知先まで入力してください。"
                 : "一般利用として登録済みです。表示名・所属・関心分野などを入力してください。"}
@@ -678,32 +678,32 @@ export function ProfileRegisterForm({
             </p>
           </div>
         )}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">アカウント設定</h1>
-          <p className="text-muted-foreground">
+        <div className="text-center mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold mb-2">アカウント設定</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
             {isProvider
               ? "掲載・投稿に使う事業者情報と、資料請求の通知先を設定します"
               : "サイト上の表示名・所属・関心分野などを設定します"}
           </p>
         </div>
 
-        <div className="flex items-center justify-center mb-8">
+        <div className="flex items-center justify-center mb-6 sm:mb-8 overflow-x-auto px-2">
           {steps.map((step, index) => {
             const Icon = step.icon;
             return (
-              <div key={step.id} className="flex items-center">
+              <div key={step.id} className="flex items-center flex-shrink-0">
                 <div
-                  className={`flex items-center justify-center w-10 h-10 rounded-full ${
+                  className={`flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full ${
                     currentStep >= step.id
                       ? "bg-primary text-primary-foreground"
                       : "bg-muted text-muted-foreground"
                   }`}
                 >
-                  <Icon className="h-5 w-5" />
+                  <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
                 </div>
                 {index < steps.length - 1 && (
                   <div
-                    className={`w-12 h-1 ${
+                    className={`w-8 sm:w-12 h-1 flex-shrink-0 ${
                       currentStep > step.id ? "bg-primary" : "bg-muted"
                     }`}
                   />

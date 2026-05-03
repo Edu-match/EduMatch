@@ -70,12 +70,12 @@ export function ServicesClient({
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
       {/* ヘッダーセクション */}
       <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-background border-b">
-        <div className="container py-12">
+        <div className="container py-6 md:py-12">
           <div className="max-w-3xl">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+            <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold mb-2 md:mb-4 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
               サービス一覧
             </h1>
-            <p className="text-lg text-muted-foreground">
+            <p className="text-base md:text-lg text-muted-foreground">
               {services.length}件のサービスから、あなたに最適なサービスを見つけましょう
             </p>
           </div>
@@ -85,7 +85,7 @@ export function ServicesClient({
       <div className="container py-8">
         {/* 検索・フィルターエリア */}
         <Card className="mb-6 shadow-lg border-2">
-          <CardContent className="p-6">
+          <CardContent className="p-4 md:p-6">
             <div className="space-y-4">
               {/* 検索バー */}
               <div className="relative">
@@ -99,15 +99,15 @@ export function ServicesClient({
               </div>
 
               {/* カテゴリフィルター */}
-              <div className="flex items-center gap-2 pb-2 overflow-x-auto flex-wrap">
-                <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">
+              <div className="flex items-center gap-2 pb-2 overflow-x-auto scrollbar-hide" style={{ WebkitOverflowScrolling: "touch" }}>
+                <span className="text-sm font-medium text-muted-foreground whitespace-nowrap flex-shrink-0">
                   カテゴリ:
                 </span>
                 <Button
                   variant={selectedCategory === "all" ? "default" : "outline"}
                   size="sm"
                   onClick={() => setSelectedCategory("all")}
-                  className="transition-all hover:scale-105"
+                  className="transition-all hover:scale-105 whitespace-nowrap flex-shrink-0"
                 >
                   すべて
                 </Button>
@@ -117,7 +117,7 @@ export function ServicesClient({
                     variant={selectedCategory === category ? "default" : "outline"}
                     size="sm"
                     onClick={() => setSelectedCategory(category)}
-                    className="transition-all hover:scale-105"
+                    className="transition-all hover:scale-105 whitespace-nowrap flex-shrink-0"
                   >
                     {category}
                   </Button>
@@ -208,9 +208,9 @@ export function ServicesClient({
                 </div>
 
                 {/* コンテンツエリア */}
-                <CardContent className="p-5">
+                <CardContent className="p-3 sm:p-5">
                   <div className="mb-3">
-                    <h3 className="text-lg font-bold line-clamp-2 mb-2 group-hover:text-primary transition-colors">
+                    <h3 className="text-base sm:text-lg font-bold line-clamp-2 mb-2 group-hover:text-primary transition-colors">
                       {service.name}
                     </h3>
                     <p className="text-sm text-muted-foreground line-clamp-3 leading-relaxed">
