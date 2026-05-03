@@ -477,6 +477,7 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
   }>({ active: false, topic: "" });
   const [forumQuickActions, setForumQuickActions] = useState<ComposeAction[] | null>(null);
   const [forumActionsLoading, setForumActionsLoading] = useState(false);
+  const [isFormattingForForum, setIsFormattingForForum] = useState(false);
 
   const listRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -577,16 +578,35 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
     return () => { cancelled = true; };
   }, [forumComposeAssist.active, forumComposeAssist.topic]);
 
-  function moveLatestMessageToForum() {
-    if (!forumRoomId) return;
-    const draftContent = latestAssistantMessage || latestUserMessage;
-    if (!draftContent) return;
+  async function moveLatestMessageToForum() {
+    if (!forumRoomId || isFormattingForForum) return;
+    const rawContent = latestAssistantMessage || latestUserMessage;
+    if (!rawContent) return;
+
+    setIsFormattingForForum(true);
+    let formatted = rawContent;
+    try {
+      const res = await fetch("/api/forum/format-post", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: rawContent, topic: forumComposeAssist.topic || undefined }),
+      });
+      if (res.ok) {
+        const data = await res.json() as { formatted?: string };
+        if (data.formatted?.trim()) formatted = data.formatted.trim();
+      }
+    } catch {
+      // fall through: use raw content as-is
+    } finally {
+      setIsFormattingForForum(false);
+    }
+
     try {
       localStorage.setItem(
         FORUM_DRAFT_STORAGE_KEY,
         JSON.stringify({
           roomId: forumRoomId,
-          body: draftContent,
+          body: formatted,
           createdAt: Date.now(),
           source: "ai-chat",
         })
@@ -1528,10 +1548,15 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="h-7 border-violet-300 text-violet-700 hover:bg-violet-100 text-xs"
+                  className="h-7 border-violet-300 text-violet-700 hover:bg-violet-100 text-xs gap-1.5"
                   onClick={moveLatestMessageToForum}
+                  disabled={isFormattingForForum || isStreaming}
                 >
-                  📝 AIの返答を投稿欄へ
+                  {isFormattingForForum ? (
+                    <><Loader2 className="h-3 w-3 animate-spin" />整えています…</>
+                  ) : (
+                    <>✨ 整えて投稿欄へ</>
+                  )}
                 </Button>
               </div>
             )}
