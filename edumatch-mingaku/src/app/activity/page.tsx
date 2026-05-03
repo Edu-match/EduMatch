@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getCurrentProfile } from "@/lib/auth";
 import { getActivityLogs, getActivityComments } from "@/app/_actions/activity-log";
@@ -8,28 +7,21 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  CheckCircle,
-  XCircle,
-  FilePlus,
-  FileEdit,
-  Trash2,
-  SendHorizonal,
-  EyeOff,
-  Eye,
-  Activity,
-  ArrowLeft,
-  User,
+  CheckCircle, XCircle, FilePlus, FileEdit, Trash2,
+  SendHorizonal, EyeOff, Eye, Activity, User,
 } from "lucide-react";
 
+export const metadata = { title: "アクティビティ | エデュマッチ" };
+
 const ACTION_LABELS: Record<ActivityAction, { label: string; icon: React.ElementType; color: string }> = {
-  CREATE:  { label: "作成",   icon: FilePlus,      color: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300" },
-  UPDATE:  { label: "更新",   icon: FileEdit,      color: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300" },
-  DELETE:  { label: "削除",   icon: Trash2,        color: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300" },
-  APPROVE: { label: "承認",   icon: CheckCircle,   color: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300" },
-  REJECT:  { label: "却下",   icon: XCircle,       color: "bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300" },
-  SUBMIT:  { label: "申請",   icon: SendHorizonal, color: "bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300" },
-  HIDE:    { label: "非表示", icon: EyeOff,        color: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" },
-  SHOW:    { label: "再表示", icon: Eye,           color: "bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300" },
+  CREATE:  { label: "作成",   icon: FilePlus,      color: "bg-blue-100 text-blue-800" },
+  UPDATE:  { label: "更新",   icon: FileEdit,      color: "bg-amber-100 text-amber-800" },
+  DELETE:  { label: "削除",   icon: Trash2,        color: "bg-red-100 text-red-800" },
+  APPROVE: { label: "承認",   icon: CheckCircle,   color: "bg-green-100 text-green-800" },
+  REJECT:  { label: "却下",   icon: XCircle,       color: "bg-rose-100 text-rose-800" },
+  SUBMIT:  { label: "申請",   icon: SendHorizonal, color: "bg-violet-100 text-violet-800" },
+  HIDE:    { label: "非表示", icon: EyeOff,        color: "bg-slate-100 text-slate-700" },
+  SHOW:    { label: "再表示", icon: Eye,           color: "bg-teal-100 text-teal-800" },
 };
 
 const TARGET_LABELS: Record<ActivityTargetType, string> = {
@@ -38,7 +30,7 @@ const TARGET_LABELS: Record<ActivityTargetType, string> = {
   SITE_PAGE:   "固定ページ",
   EVENT:       "イベント",
   SITE_UPDATE: "運営記事",
-  FORUM_POST:  "井戸端会議投稿",
+  FORUM_POST:  "井戸端会議",
 };
 
 function getTargetHref(type: ActivityTargetType, id: string): string | null {
@@ -63,30 +55,17 @@ function formatRelativeTime(date: Date): string {
   return new Date(date).toLocaleDateString("ja-JP", { year: "numeric", month: "short", day: "numeric" });
 }
 
-function formatAbsoluteTime(date: Date): string {
-  return new Date(date).toLocaleString("ja-JP", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-}
-
-export default async function ActivityLogPage({
+export default async function ActivityFeedPage({
   searchParams,
 }: {
   searchParams: Promise<{ page?: string; type?: string; action?: string }>;
 }) {
-  const profile = await getCurrentProfile();
-  if (!profile || profile.role !== "ADMIN") redirect("/dashboard");
+  const [profile, params] = await Promise.all([getCurrentProfile(), searchParams]);
 
-  const params = await searchParams;
   const page = Math.max(1, parseInt(params.page ?? "1", 10));
   const filterType = (params.type ?? "") as ActivityTargetType | "";
   const filterAction = (params.action ?? "") as ActivityAction | "";
-  const limit = 50;
+  const limit = 20;
   const offset = (page - 1) * limit;
 
   const { logs, total } = await getActivityLogs({
@@ -97,7 +76,7 @@ export default async function ActivityLogPage({
     includeCommentCount: true,
   });
 
-  // Fetch initial comments for each entry (show 0 initially, loaded on demand by client)
+  // Fetch comments for each log entry
   const commentsMap = Object.fromEntries(
     await Promise.all(
       logs.map(async (log) => [log.id, await getActivityComments(log.id)])
@@ -112,42 +91,26 @@ export default async function ActivityLogPage({
     if (filterAction) p.set("action", filterAction);
     p.set("page", String(page));
     Object.entries(overrides).forEach(([k, v]) => p.set(k, String(v)));
-    return `/admin/activity-log?${p.toString()}`;
+    return `/activity?${p.toString()}`;
   }
 
   return (
-    <div className="container py-6 max-w-5xl">
-      <div className="mb-6 flex items-center gap-3 flex-wrap justify-between">
-        <div className="flex items-center gap-2">
-          <Button asChild variant="ghost" size="sm" className="-ml-2">
-            <Link href="/provider-dashboard">
-              <ArrowLeft className="h-4 w-4 mr-1" />
-              ダッシュボード
-            </Link>
-          </Button>
-        </div>
-        <div>
-          <h1 className="text-xl font-bold flex items-center gap-2">
-            <Activity className="h-5 w-5 text-primary" />
-            アクティビティログ
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            誰が・何を・いつ操作したかを記録します
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button asChild variant="outline" size="sm">
-            <Link href="/activity">公開フィードを見る</Link>
-          </Button>
-          <Badge variant="secondary">{total.toLocaleString()} 件</Badge>
-        </div>
+    <div className="container py-6 max-w-3xl">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <Activity className="h-6 w-6 text-primary" />
+          アクティビティ
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          サイト内での最新の活動をお知らせします
+        </p>
       </div>
 
       {/* フィルター */}
-      <Card className="mb-6">
+      <Card className="mb-5">
         <CardContent className="pt-4 pb-3">
           <div className="flex flex-wrap gap-2 items-center">
-            <span className="text-xs text-muted-foreground font-medium shrink-0">対象:</span>
+            <span className="text-xs text-muted-foreground font-medium shrink-0">種別:</span>
             <Link href={buildUrl({ type: "", page: 1 })}>
               <Badge variant={!filterType ? "default" : "outline"} className="cursor-pointer">すべて</Badge>
             </Link>
@@ -171,17 +134,17 @@ export default async function ActivityLogPage({
         </CardContent>
       </Card>
 
-      {/* ログ一覧 */}
+      {/* フィード */}
       <Card>
         <CardHeader className="pb-2 pt-4">
           <CardTitle className="text-sm font-medium text-muted-foreground">
-            {offset + 1}–{Math.min(offset + limit, total)} / {total} 件
+            全 {total.toLocaleString()} 件 ({offset + 1}–{Math.min(offset + limit, total)} 件目)
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           {logs.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-12">
-              ログはまだありません
+              アクティビティはまだありません
             </p>
           ) : (
             <ol className="divide-y divide-border">
@@ -193,7 +156,7 @@ export default async function ActivityLogPage({
                 const logComments = commentsMap[log.id] ?? [];
 
                 return (
-                  <li key={log.id} className="px-4 py-3 hover:bg-muted/40 transition-colors">
+                  <li key={log.id} className="px-4 py-4 hover:bg-muted/30 transition-colors">
                     <div className="flex gap-3">
                       {/* アイコン */}
                       <div className="shrink-0 mt-0.5">
@@ -204,39 +167,33 @@ export default async function ActivityLogPage({
 
                       {/* 本文 */}
                       <div className="flex-1 min-w-0">
-                        <div className="flex flex-wrap items-baseline gap-1.5 text-sm">
-                          <span className="font-semibold flex items-center gap-1">
+                        <div className="flex flex-wrap items-center gap-1.5 text-sm">
+                          {/* アクター名 */}
+                          <span className="inline-flex items-center gap-1 font-semibold">
                             <User className="h-3.5 w-3.5 text-muted-foreground" />
                             {log.actor_name}
                           </span>
                           <span className="text-muted-foreground">が</span>
                           <Badge variant="secondary" className="text-xs px-1.5 py-0">{targetLabel}</Badge>
                           {targetHref ? (
-                            <Link href={targetHref} target="_blank" className="font-medium hover:underline truncate max-w-xs text-primary">
+                            <Link href={targetHref} className="font-medium hover:underline truncate max-w-[200px] sm:max-w-xs text-primary">
                               {log.target_title}
                             </Link>
                           ) : (
-                            <span className="font-medium truncate max-w-xs">{log.target_title}</span>
+                            <span className="font-medium truncate max-w-[200px] sm:max-w-xs">{log.target_title}</span>
                           )}
                           <span className="text-muted-foreground">を</span>
                           <span className={`font-semibold px-1.5 py-0.5 rounded text-xs ${meta?.color ?? ""}`}>
                             {meta?.label ?? log.action}
                           </span>
                         </div>
+
                         {log.detail && (
-                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
-                            {log.detail}
-                          </p>
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{log.detail}</p>
                         )}
 
-                        <div className="mt-0.5">
-                          <time
-                            dateTime={new Date(log.created_at).toISOString()}
-                            title={formatAbsoluteTime(log.created_at)}
-                            className="text-xs text-muted-foreground"
-                          >
-                            {formatRelativeTime(log.created_at)} ({formatAbsoluteTime(log.created_at).slice(0, 16)})
-                          </time>
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          {formatRelativeTime(log.created_at)}
                         </div>
 
                         {/* コメントセクション */}
@@ -244,9 +201,9 @@ export default async function ActivityLogPage({
                           logId={log.id}
                           initialComments={logComments}
                           initialCount={log.commentCount ?? logComments.length}
-                          isLoggedIn={true}
-                          currentUserId={profile.id}
-                          isAdmin={true}
+                          isLoggedIn={!!profile}
+                          currentUserId={profile?.id ?? null}
+                          isAdmin={profile?.role === "ADMIN"}
                         />
                       </div>
                     </div>

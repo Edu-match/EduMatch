@@ -47,6 +47,7 @@ model Profile {
   generalProfile                  GeneralProfile?
   corporateProfile                CorporateProfile?
   activity_logs                   ActivityLog[]
+  activity_log_comments           ActivityLogComment[]
 
   @@index([email])
   @@index([stripe_customer_id])
@@ -351,11 +352,27 @@ model ActivityLog {
   detail       String?
   created_at   DateTime @default(now()) @db.Timestamptz(6)
 
-  actor Profile? @relation(fields: [actor_id], references: [id], onDelete: SetNull)
+  actor    Profile?             @relation(fields: [actor_id], references: [id], onDelete: SetNull)
+  comments ActivityLogComment[]
 
   @@index([created_at(sort: Desc)])
   @@index([actor_id])
   @@index([target_type, target_id])
+}
+
+model ActivityLogComment {
+  id          String   @id @default(cuid())
+  log_id      String
+  author_id   String?  @db.Uuid
+  author_name String
+  body        String
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+
+  log    ActivityLog @relation(fields: [log_id], references: [id], onDelete: Cascade)
+  author Profile?    @relation(fields: [author_id], references: [id], onDelete: SetNull)
+
+  @@index([log_id])
+  @@index([created_at(sort: Desc)])
 }
 
 enum Role {

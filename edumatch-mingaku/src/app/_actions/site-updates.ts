@@ -5,8 +5,10 @@ import { redirect } from "next/navigation";
 import { isImportedContent } from "@/lib/imported-content";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserRole } from "@/app/_actions/user";
+import { getCurrentProfile } from "@/lib/auth";
 import { notifyAllUsersOfSiteUpdate } from "@/app/_actions/in-app-notifications";
 import { blocksToBody, type SiteUpdateContentBlock } from "@/lib/site-update-blocks";
+import { logActivity } from "@/app/_actions/activity-log";
 
 export type SiteUpdateItem = {
   id: string;
@@ -93,7 +95,7 @@ export type CreateSiteUpdateResult = { success: boolean; id?: string; error?: st
  * blocks を渡した場合は body に変換して保存。未渡しの場合は body をそのまま使用。
  */
 export async function createSiteUpdate(input: CreateSiteUpdateInput): Promise<CreateSiteUpdateResult> {
-  const role = await getCurrentUserRole();
+  const [role, actor] = await Promise.all([getCurrentUserRole(), getCurrentProfile()]);
   if (role !== "ADMIN") {
     return { success: false, error: "管理者権限が必要です" };
   }
@@ -128,6 +130,7 @@ export async function createSiteUpdate(input: CreateSiteUpdateInput): Promise<Cr
     } catch (e) {
       console.error("notifyAllUsersOfSiteUpdate error:", e);
     }
+    void logActivity({ actorId: actor?.id, actorName: actor?.name ?? "管理者", action: "CREATE", targetType: "SITE_UPDATE", targetId: row.id, targetTitle: input.title.trim() });
     return { success: true, id: row.id };
   } catch (error) {
     console.error("Failed to create site update:", error);
@@ -141,7 +144,7 @@ export type UpdateSiteUpdateInput = CreateSiteUpdateInput & { id: string };
  * 運営情報を更新（ADMIN のみ）
  */
 export async function updateSiteUpdate(input: UpdateSiteUpdateInput): Promise<CreateSiteUpdateResult> {
-  const role = await getCurrentUserRole();
+  const [role, actor] = await Promise.all([getCurrentUserRole(), getCurrentProfile()]);
   if (role !== "ADMIN") {
     return { success: false, error: "管理者権限が必要です" };
   }
@@ -168,6 +171,7 @@ export async function updateSiteUpdate(input: UpdateSiteUpdateInput): Promise<Cr
     revalidatePath("/admin/site-updates");
     revalidatePath("/dashboard");
     revalidatePath("/mypage");
+    void logActivity({ actorId: actor?.id, actorName: actor?.name ?? "管理者", action: "UPDATE", targetType: "SITE_UPDATE", targetId: input.id, targetTitle: input.title.trim() });
     return { success: true, id: input.id };
   } catch (error) {
     console.error("Failed to update site update:", error);
@@ -179,12 +183,14 @@ export async function updateSiteUpdate(input: UpdateSiteUpdateInput): Promise<Cr
  * 運営情報を削除（ADMIN のみ）
  */
 export async function deleteSiteUpdate(id: string): Promise<{ success: boolean; error?: string }> {
-  const role = await getCurrentUserRole();
+  const [role, actor] = await Promise.all([getCurrentUserRole(), getCurrentProfile()]);
   if (role !== "ADMIN") {
     return { success: false, error: "管理者権限が必要です" };
   }
   try {
+    const row = await prisma.siteUpdate.findUnique({ where: { id }, select: { title: true } });
     await prisma.siteUpdate.delete({ where: { id } });
+    void logActivity({ actorId: actor?.id, actorName: actor?.name ?? "管理者", action: "DELETE", targetType: "SITE_UPDATE", targetId: id, targetTitle: row?.title ?? id });
     return { success: true };
   } catch (error) {
     console.error("Failed to delete site update:", error);

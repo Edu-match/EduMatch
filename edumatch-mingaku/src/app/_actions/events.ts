@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserRole } from "@/app/_actions/user";
+import { getCurrentProfile } from "@/lib/auth";
+import { logActivity } from "@/app/_actions/activity-log";
 
 export type SeminarEventData = {
   id: string;
@@ -203,7 +205,7 @@ export type EventMutationResult = { success: boolean; id?: string; error?: strin
 
 /** イベントを新規作成（ADMIN のみ） */
 export async function createEvent(input: EventInput): Promise<EventMutationResult> {
-  const role = await getCurrentUserRole();
+  const [role, actor] = await Promise.all([getCurrentUserRole(), getCurrentProfile()]);
   if (role !== "ADMIN") return { success: false, error: "管理者権限が必要です" };
   try {
     const row = await prisma.seminarEvent.create({
@@ -218,6 +220,7 @@ export async function createEvent(input: EventInput): Promise<EventMutationResul
     });
     revalidatePath("/events");
     revalidatePath("/admin/events");
+    void logActivity({ actorId: actor?.id, actorName: actor?.name ?? "管理者", action: "CREATE", targetType: "EVENT", targetId: row.id, targetTitle: input.title.trim() });
     return { success: true, id: row.id };
   } catch (error) {
     console.error("createEvent error:", error);
@@ -227,7 +230,7 @@ export async function createEvent(input: EventInput): Promise<EventMutationResul
 
 /** イベントを更新（ADMIN のみ） */
 export async function updateEvent(id: string, input: EventInput): Promise<EventMutationResult> {
-  const role = await getCurrentUserRole();
+  const [role, actor] = await Promise.all([getCurrentUserRole(), getCurrentProfile()]);
   if (role !== "ADMIN") return { success: false, error: "管理者権限が必要です" };
   try {
     await prisma.seminarEvent.update({
@@ -244,6 +247,7 @@ export async function updateEvent(id: string, input: EventInput): Promise<EventM
     revalidatePath("/events");
     revalidatePath(`/events/${id}`);
     revalidatePath("/admin/events");
+    void logActivity({ actorId: actor?.id, actorName: actor?.name ?? "管理者", action: "UPDATE", targetType: "EVENT", targetId: id, targetTitle: input.title.trim() });
     return { success: true, id };
   } catch (error) {
     console.error("updateEvent error:", error);
@@ -253,12 +257,14 @@ export async function updateEvent(id: string, input: EventInput): Promise<EventM
 
 /** イベントを削除（ADMIN のみ） */
 export async function deleteEvent(id: string): Promise<EventMutationResult> {
-  const role = await getCurrentUserRole();
+  const [role, actor] = await Promise.all([getCurrentUserRole(), getCurrentProfile()]);
   if (role !== "ADMIN") return { success: false, error: "管理者権限が必要です" };
   try {
+    const row = await prisma.seminarEvent.findUnique({ where: { id }, select: { title: true } });
     await prisma.seminarEvent.delete({ where: { id } });
     revalidatePath("/events");
     revalidatePath("/admin/events");
+    void logActivity({ actorId: actor?.id, actorName: actor?.name ?? "管理者", action: "DELETE", targetType: "EVENT", targetId: id, targetTitle: row?.title ?? id });
     return { success: true };
   } catch (error) {
     console.error("deleteEvent error:", error);
