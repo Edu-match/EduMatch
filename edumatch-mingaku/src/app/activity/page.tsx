@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/auth";
 import { getActivityLogs, getActivityComments } from "@/app/_actions/activity-log";
 import type { ActivityAction, ActivityTargetType } from "@/app/_actions/activity-log";
@@ -61,6 +62,10 @@ export default async function ActivityFeedPage({
   searchParams: Promise<{ page?: string; type?: string; action?: string }>;
 }) {
   const [profile, params] = await Promise.all([getCurrentProfile(), searchParams]);
+
+  if (!profile || profile.role !== "ADMIN") {
+    redirect("/");
+  }
 
   const page = Math.max(1, parseInt(params.page ?? "1", 10));
   const filterType = (params.type ?? "") as ActivityTargetType | "";

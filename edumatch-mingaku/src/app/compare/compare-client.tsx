@@ -1,19 +1,19 @@
 "use client";
 
-import { useState, useRef } from "react";
+import React, { useState, useRef, useEffect, isValidElement, cloneElement } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
   ArrowLeft,
+  ChevronDown,
+  ChevronUp,
   Download,
   FileSpreadsheet,
   ImageDown,
   Search,
   Scale,
-  ChevronUp,
-  ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ServiceWithProvider } from "@/app/_actions/services";
@@ -22,45 +22,22 @@ import { ThumbnailOrTitle } from "@/components/ui/thumbnail-or-title";
 // ─── チャートカラー ─────────────────────────────────────────────────────────
 const COLORS = ["#f97316", "#3b82f6", "#22c55e", "#a855f7", "#ef4444"] as const;
 
-// ─── レーダーチャートの評価軸（5軸） ─────────────────────────────────────────
+// ─── レーダーチャートの評価軸（6軸・AIスコア） ───────────────────────────────
 const AXES = [
-  { key: "attention" as const, label: "注目度" },
-  { key: "popularity" as const, label: "人気度" },
-  { key: "demand" as const, label: "需要度" },
-  { key: "reputation" as const, label: "評判" },
-  { key: "content" as const, label: "情報量" },
+  { key: "price" as const, label: "価格/料金" },
+  { key: "functionality" as const, label: "機能/性能" },
+  { key: "reliability" as const, label: "信頼性/サポート" },
+  { key: "usability" as const, label: "使いやすさ" },
+  { key: "integration" as const, label: "連携性" },
+  { key: "customization" as const, label: "カスタマイズ性" },
 ];
 type AxisKey = (typeof AXES)[number]["key"];
 type Scores = Record<AxisKey, number>;
 
-function buildScores(services: ServiceWithProvider[]): Map<string, Scores> {
-  const raw = {
-    attention: services.map((s) => s.view_count ?? 0),
-    popularity: services.map((s) => s.favorite_count ?? 0),
-    demand: services.map((s) => s.request_count ?? 0),
-    reputation: services.map((s) => s.review_count ?? 0),
-    content: services.map((s) =>
-      Math.min(((s.description?.length ?? 0) + ((s as any).content?.length ?? 0)) / 20, 100)
-    ),
-  };
-
-  const normalized: Record<AxisKey, number[]> = {} as Record<AxisKey, number[]>;
-  for (const [k, vals] of Object.entries(raw) as [AxisKey, number[]][]) {
-    const max = Math.max(...vals);
-    normalized[k] = vals.map((v) => (max === 0 ? 50 : Math.round((v / max) * 100)));
-  }
-
-  const map = new Map<string, Scores>();
-  services.forEach((s, i) => {
-    map.set(s.id, {
-      attention: normalized.attention[i],
-      popularity: normalized.popularity[i],
-      demand: normalized.demand[i],
-      reputation: normalized.reputation[i],
-      content: normalized.content[i],
-    });
-  });
-  return map;
+function neutralScores(): Scores {
+  const o = {} as Scores;
+  for (const ax of AXES) o[ax.key] = 50;
+  return o;
 }
 
 // ─── SVGレーダーチャート ────────────────────────────────────────────────────
@@ -68,7 +45,7 @@ function RadarChart({ scores, color, size = 180 }: { scores: Scores; color: stri
   const cx = size / 2;
   const cy = size / 2;
   const r = size * 0.33;
-  const labelR = r + 24;
+  const labelR = r + 28;
   const n = AXES.length;
   const levels = 4;
 
@@ -108,7 +85,7 @@ function RadarChart({ scores, color, size = 180 }: { scores: Scores; color: stri
         const p = pt(i, labelR);
         return (
           <text key={i} x={p.x} y={p.y} textAnchor="middle" dominantBaseline="middle"
-            fontSize={10} fontWeight="600" fill="#6b7280">
+            fontSize={8} fontWeight="600" fill="#6b7280">
             {ax.label}
           </text>
         );
@@ -229,7 +206,7 @@ function ServiceSelector({
       </div>
 
       {/* カードグリッド */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 max-h-[360px] sm:max-h-[420px] overflow-y-auto">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 max-h-[420px] overflow-y-auto">
         {filtered.length === 0 && (
           <div className="col-span-full py-10 text-center text-sm text-muted-foreground">
             該当するサービスが見つかりません
@@ -302,14 +279,18 @@ function ServiceSelector({
 }
 
 // ─── メインコンポーネント ────────────────────────────────────────────────────
-type Props = { initialServices: ServiceWithProvider[] };
+export type ComparePageVariant = "full" | "table-only";
 
-export default function CompareClientPage({ initialServices }: Props) {
+type Props = { initialServices: ServiceWithProvider[]; variant?: ComparePageVariant };
+
+export default function CompareClientPage({ initialServices, variant = "full" }: Props) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectorOpen, setSelectorOpen] = useState(true);
   const [exportingPng, setExportingPng] = useState(false);
+  const [scoresMap, setScoresMap] = useState<Map<string, Scores>>(new Map());
+  const [scoresLoading, setScoresLoading] = useState(false);
 
-  // PNG キャプチャ対象
+  // PNG キャプチャ対象（フル: チャート＋表、表のみ: 表ブロックのみ）
   const captureRef = useRef<HTMLDivElement>(null);
   const tableScrollRef = useRef<HTMLDivElement>(null);
 
@@ -327,7 +308,62 @@ export default function CompareClientPage({ initialServices }: Props) {
     );
   };
 
-  const scores = buildScores(selected);
+  useEffect(() => {
+    if (variant !== "full" || selectedIds.length === 0) {
+      setScoresMap(new Map());
+      setScoresLoading(false);
+      return;
+    }
+    const ac = new AbortController();
+    const timer = window.setTimeout(async () => {
+      const svcList = selectedIds
+        .map((id) => initialServices.find((s) => s.id === id))
+        .filter(Boolean) as ServiceWithProvider[];
+      if (svcList.length === 0) return;
+
+      setScoresLoading(true);
+      try {
+        const res = await fetch("/api/compare/scores", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ serviceIds: svcList.map((s) => s.id) }),
+          signal: ac.signal,
+        });
+        if (!res.ok) throw new Error("scores failed");
+        const data = (await res.json()) as { scores?: Record<string, Scores> };
+        const next = new Map<string, Scores>();
+        for (const s of svcList) {
+          const raw = data.scores?.[s.id];
+          if (raw && typeof raw === "object") {
+            const row = { ...neutralScores() };
+            for (const ax of AXES) {
+              const v = raw[ax.key];
+              row[ax.key] =
+                typeof v === "number" && Number.isFinite(v)
+                  ? Math.max(0, Math.min(100, Math.round(v)))
+                  : 50;
+            }
+            next.set(s.id, row);
+          } else {
+            next.set(s.id, neutralScores());
+          }
+        }
+        setScoresMap(next);
+      } catch {
+        if (!ac.signal.aborted) {
+          setScoresMap(new Map(svcList.map((s) => [s.id, neutralScores()])));
+        }
+      } finally {
+        if (!ac.signal.aborted) setScoresLoading(false);
+      }
+    }, 400);
+    return () => {
+      clearTimeout(timer);
+      ac.abort();
+    };
+  }, [variant, selectedIds.join(","), initialServices]);
+
+  const scoreFor = (id: string) => scoresMap.get(id) ?? neutralScores();
 
   async function exportPNG() {
     if (!captureRef.current) return;
@@ -387,16 +423,16 @@ export default function CompareClientPage({ initialServices }: Props) {
             </Link>
           </Button>
           <div className="flex items-center gap-3">
-            <Scale className="h-6 w-6 text-primary flex-shrink-0" />
+            <Scale className="h-6 w-6 text-primary" />
             <div>
-              <h1 className="text-lg sm:text-xl font-bold">サービス比較</h1>
+              <h1 className="text-xl font-bold">サービス比較</h1>
               <p className="text-xs text-muted-foreground">最大5つのサービスを比較できます</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="container max-w-7xl py-4 sm:py-6">
+      <div className="container max-w-7xl py-6">
         {/* ─── サービス選択パネル ─── */}
         <div className="mb-6 rounded-xl border bg-background shadow-sm">
           {/* 折りたたみトグル */}
@@ -432,7 +468,7 @@ export default function CompareClientPage({ initialServices }: Props) {
           </button>
 
           {selectorOpen && (
-            <div className="px-3 sm:px-4 pb-3 sm:pb-4 border-t pt-3 sm:pt-4">
+            <div className="px-4 pb-4 border-t pt-4">
               <ServiceSelector
                 services={initialServices}
                 selectedIds={selectedIds}
@@ -477,18 +513,20 @@ export default function CompareClientPage({ initialServices }: Props) {
 
             {/* ─── キャプチャ対象ラッパー ─── */}
             <div ref={captureRef} className="space-y-6 bg-muted/20 rounded-xl p-1">
-
-              {/* レーダーチャートセクション */}
+              {variant === "full" && (
               <section>
                 <h2 className="text-base font-semibold mb-3 px-1 flex items-center gap-2">
                   <span>📊</span> スコアチャート
+                  {scoresLoading && (
+                    <span className="text-[10px] font-normal text-muted-foreground">（AI分析中…）</span>
+                  )}
                 </h2>
                 <div
-                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-                  style={selected.length <= 2 ? { gridTemplateColumns: `repeat(${selected.length}, minmax(0, 1fr))` } : undefined}
+                  className="grid gap-4"
+                  style={{ gridTemplateColumns: `repeat(${Math.min(selected.length, 5)}, minmax(0, 1fr))` }}
                 >
                   {selected.map((s, i) => {
-                    const sc = scores.get(s.id)!;
+                    const sc = scoreFor(s.id);
                     return (
                       <div key={s.id} className="flex flex-col items-center rounded-xl border bg-background p-4">
                         <div className="w-full flex items-center gap-2 mb-3">
@@ -501,7 +539,7 @@ export default function CompareClientPage({ initialServices }: Props) {
                             const val = sc[ax.key];
                             return (
                               <div key={ax.key} className="flex items-center gap-1.5 text-[10px]">
-                                <span className="text-muted-foreground w-12 flex-shrink-0">{ax.label}</span>
+                                <span className="text-muted-foreground w-[4.5rem] flex-shrink-0 leading-tight">{ax.label}</span>
                                 <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
                                   <div className="h-full rounded-full" style={{ width: `${val}%`, background: COLORS[i] }} />
                                 </div>
@@ -514,7 +552,11 @@ export default function CompareClientPage({ initialServices }: Props) {
                     );
                   })}
                 </div>
+                <p className="mt-2 px-1 text-[10px] text-muted-foreground">
+                  ※スコアは OpenAI により各サービスの掲載内容（概要・本文・価格・カテゴリ等）から項目ごとに 0〜100 で算出されます。情報が少ない場合は低めになることがあります。
+                </p>
               </section>
+              )}
 
               {/* 比較テーブルセクション */}
               <section>
@@ -567,15 +609,11 @@ export default function CompareClientPage({ initialServices }: Props) {
                           </td>
                         ))}
                       </CompareRow>
-                      <CompareRow label="タグ">
+                      <CompareRow label="カテゴリ">
                         {selected.map((s) => (
                           <td key={s.id} className="p-4 text-center">
-                            {(s.tags ?? []).length > 0 ? (
-                              <div className="flex flex-wrap gap-1 justify-center">
-                                {(s.tags ?? []).slice(0, 5).map((t) => (
-                                  <Badge key={t} variant="outline" className="text-[10px]">{t}</Badge>
-                                ))}
-                              </div>
+                            {s.category ? (
+                              <Badge variant="secondary" className="text-xs">{s.category}</Badge>
                             ) : (
                               <span className="text-muted-foreground text-sm">—</span>
                             )}
@@ -584,19 +622,15 @@ export default function CompareClientPage({ initialServices }: Props) {
                       </CompareRow>
                       <CompareRow label="概要">
                         {selected.map((s) => (
-                          <td key={s.id} className="p-4 align-top">
-                            <p className="text-xs text-muted-foreground leading-relaxed line-clamp-5">
-                              {s.description || "—"}
-                            </p>
+                          <td key={s.id} className="p-4 align-top w-[220px] max-w-[220px]">
+                            <div className="min-h-[7rem] flex flex-col justify-start">
+                              <p className="text-xs text-muted-foreground leading-relaxed text-left line-clamp-5">
+                                {s.description || "—"}
+                              </p>
+                            </div>
                           </td>
                         ))}
                       </CompareRow>
-
-                      <GroupRow label="実績・人気度" cols={selected.length} />
-                      <CountRow label="閲覧数" icon="👀" services={selected} getValue={(s) => s.view_count ?? 0} />
-                      <CountRow label="お気に入り" icon="❤️" services={selected} getValue={(s) => s.favorite_count ?? 0} />
-                      <CountRow label="資料請求" icon="📋" services={selected} getValue={(s) => s.request_count ?? 0} />
-                      <CountRow label="口コミ数" icon="💬" services={selected} getValue={(s) => s.review_count ?? 0} />
 
                       <GroupRow label="アクション" cols={selected.length} />
                       <tr className="border-t">
@@ -644,10 +678,16 @@ function GroupRow({ label, cols }: { label: string; cols: number }) {
 function CompareRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <tr className="border-t hover:bg-muted/10 transition-colors">
-      <td className="p-4 text-sm text-muted-foreground font-medium sticky left-0 bg-background whitespace-nowrap">
+      <td className="p-4 text-sm text-muted-foreground font-medium sticky left-0 bg-background whitespace-nowrap align-top">
         {label}
       </td>
-      {children}
+      {React.Children.map(children, (child) =>
+        isValidElement<{ className?: string }>(child)
+          ? cloneElement(child, {
+              className: cn("align-top", child.props.className),
+            })
+          : child
+      )}
     </tr>
   );
 }
