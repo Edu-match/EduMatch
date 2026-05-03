@@ -77,6 +77,14 @@ type OpenAiChatEventDetail = {
   forumTopic?: string;
 };
 
+type ComposeAction = { emoji: string; label: string; prompt: string };
+
+const DEFAULT_COMPOSE_ACTIONS: ComposeAction[] = [
+  { emoji: "💡", label: "論点を整理", prompt: "論点を3つに整理し、それぞれの視点から考えてください。" },
+  { emoji: "🔄", label: "反対視点チェック", prompt: "この意見への反対意見・懸念点を3つ挙げ、改善案も示してください。" },
+  { emoji: "✍️", label: "投稿文に整える", prompt: "投稿しやすい文体に整えてください。150〜250字の投稿文と短いタイトル案を1つください。" },
+];
+
 type ChatSessionMessage = {
   id?: string;
   role: "user" | "assistant";
@@ -467,6 +475,8 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
     active: boolean;
     topic: string;
   }>({ active: false, topic: "" });
+  const [forumQuickActions, setForumQuickActions] = useState<ComposeAction[] | null>(null);
+  const [forumActionsLoading, setForumActionsLoading] = useState(false);
 
   const listRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -476,6 +486,10 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
   const forumRoomId = useMemo(() => parseForumRoomId(pathname), [pathname]);
   const latestUserMessage = useMemo(
     () => [...messages].reverse().find((m) => m.role === "user" && !m.streaming)?.content.trim() ?? "",
+    [messages]
+  );
+  const latestAssistantMessage = useMemo(
+    () => [...messages].reverse().find((m) => m.role === "assistant" && !m.streaming)?.content.trim() ?? "",
     [messages]
   );
 
@@ -545,14 +559,34 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
     }
   }, [pendingChatLaunch, clearPendingChatLaunch]);
 
+  // トピックが変わったら動的クイックアクションを取得
+  useEffect(() => {
+    if (!forumComposeAssist.active) {
+      setForumQuickActions(null);
+      return;
+    }
+    const topic = forumComposeAssist.topic;
+    if (!topic) return;
+    let cancelled = false;
+    setForumActionsLoading(true);
+    fetch(`/api/forum/compose-actions?topic=${encodeURIComponent(topic)}`)
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && Array.isArray(d.actions)) setForumQuickActions(d.actions); })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setForumActionsLoading(false); });
+    return () => { cancelled = true; };
+  }, [forumComposeAssist.active, forumComposeAssist.topic]);
+
   function moveLatestMessageToForum() {
-    if (!forumRoomId || !latestUserMessage) return;
+    if (!forumRoomId) return;
+    const draftContent = latestAssistantMessage || latestUserMessage;
+    if (!draftContent) return;
     try {
       localStorage.setItem(
         FORUM_DRAFT_STORAGE_KEY,
         JSON.stringify({
           roomId: forumRoomId,
-          body: latestUserMessage,
+          body: draftContent,
           createdAt: Date.now(),
           source: "ai-chat",
         })
@@ -561,7 +595,6 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
       window.location.href = `/forum/${forumRoomId}#new-post`;
       handleClose();
     } catch {
-      // localStorage が使えない環境では遷移のみ
       window.location.href = `/forum/${forumRoomId}#new-post`;
     }
   }
@@ -824,12 +857,13 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
     sendMessage(answerText);
   }
 
-  async function sendMessage(overrideText?: string, messagesToUse?: ChatMsg[]) {
+  async function sendMessage(overrideText?: string, messagesToUse?: ChatMsg[], displayAs?: string) {
     const baseMessages = messagesToUse ?? messages;
     const trimmed = (overrideText ?? input).trim();
     if (!trimmed || isStreaming) return;
 
-    const userMsg: ChatMsg = { id: `u-${Date.now()}`, role: "user", content: trimmed };
+    const shownContent = displayAs?.trim() || trimmed;
+    const userMsg: ChatMsg = { id: `u-${Date.now()}`, role: "user", content: shownContent };
     const botMsgId = `a-${Date.now()}`;
     const botMsg: ChatMsg = { id: botMsgId, role: "assistant", content: "", streaming: true };
 
@@ -839,7 +873,8 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
     setIsStreaming(true);
     if (textareaRef.current) textareaRef.current.style.height = "auto";
 
-    const allMessages = [...baseMessages.filter((m) => !m.streaming && !m.yesNo), userMsg].map((m) => ({ role: m.role, content: m.content }));
+    // API call always uses full content (trimmed), chat shows shownContent
+    const allMessages = [...baseMessages.filter((m) => !m.streaming && !m.yesNo), { ...userMsg, content: trimmed }].map((m) => ({ role: m.role, content: m.content }));
     const ctxPayload = contextItems.length > 0 ? contextItems.map((c) => ({ id: c.id, type: c.type })) : undefined;
     const controller = new AbortController();
     abortRef.current = controller;
@@ -1440,52 +1475,30 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
                 <p className="mt-1 text-xs text-violet-800/90">
                   1タップで直接AIに指示を送れます。
                 </p>
-                <div className="mt-2 grid grid-cols-1 gap-2">
-                  <button
-                    type="button"
-                    className="w-full rounded-lg border border-violet-300 bg-background px-3 py-2 text-left text-xs font-medium text-violet-700 hover:bg-violet-100"
-                    onClick={() => {
-                      const draft = input.trim();
-                      setInput("");
-                      sendMessage(
-                        draft
-                          ? `この下書きの論点を3つに整理し、足りない視点を補ってください。\n\n${draft}`
-                          : `テーマ「${forumComposeAssist.topic || "投稿テーマ"}」の論点を3つに整理してください。`
-                      );
-                    }}
-                  >
-                    💡 論点を整理
-                  </button>
-                  <button
-                    type="button"
-                    className="w-full rounded-lg border border-violet-300 bg-background px-3 py-2 text-left text-xs font-medium text-violet-700 hover:bg-violet-100"
-                    onClick={() => {
-                      const draft = input.trim();
-                      setInput("");
-                      sendMessage(
-                        draft
-                          ? `この意見に対する反対意見・懸念点・弱点を3つ挙げ、改善案も示してください。\n\n${draft}`
-                          : `テーマ「${forumComposeAssist.topic || "投稿テーマ"}」で想定される反対意見を3つ挙げ、改善案を示してください。`
-                      );
-                    }}
-                  >
-                    🔄 反対視点チェック
-                  </button>
-                  <button
-                    type="button"
-                    className="w-full rounded-lg border border-violet-300 bg-background px-3 py-2 text-left text-xs font-medium text-violet-700 hover:bg-violet-100"
-                    onClick={() => {
-                      const draft = input.trim();
-                      setInput("");
-                      sendMessage(
-                        draft
-                          ? `以下を井戸端会議に投稿しやすい文体に整えてください。150〜250字の投稿文と、短いタイトル案を1つください。\n\n${draft}`
-                          : `テーマ「${forumComposeAssist.topic || "投稿テーマ"}」について、150〜250字の投稿文と短いタイトル案を1つ作ってください。`
-                      );
-                    }}
-                  >
-                    ✍️ 投稿文に整える
-                  </button>
+                <div className="mt-2 grid grid-cols-1 gap-1.5">
+                  {forumActionsLoading
+                    ? [1, 2, 3].map((i) => (
+                        <div key={i} className="h-9 w-full animate-pulse rounded-lg bg-violet-100" />
+                      ))
+                    : (forumQuickActions ?? DEFAULT_COMPOSE_ACTIONS).map((action) => (
+                        <button
+                          key={action.label}
+                          type="button"
+                          className="w-full rounded-lg border border-violet-300 bg-background px-3 py-2 text-left text-xs font-medium text-violet-700 hover:bg-violet-100 transition-colors"
+                          onClick={() => {
+                            const draft = input.trim();
+                            const topic = forumComposeAssist.topic;
+                            const fullPrompt = draft
+                              ? `${action.prompt}\n\n【参考の下書き】\n${draft}`
+                              : topic
+                              ? `テーマ「${topic}」について、${action.prompt}`
+                              : action.prompt;
+                            sendMessage(fullPrompt, undefined, `${action.emoji} ${action.label}`);
+                          }}
+                        >
+                          {action.emoji} {action.label}
+                        </button>
+                      ))}
                 </div>
               </div>
             )}
@@ -1509,16 +1522,16 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
                 </Link>
               )}
             </div>
-            {chatMode === "discussion" && forumRoomId && latestUserMessage && (
+            {chatMode === "discussion" && forumRoomId && latestAssistantMessage && (
               <div className="mt-2 flex justify-end">
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="h-7 border-violet-300 text-violet-700 hover:bg-violet-100"
+                  className="h-7 border-violet-300 text-violet-700 hover:bg-violet-100 text-xs"
                   onClick={moveLatestMessageToForum}
                 >
-                  投稿欄へ下書きを移す
+                  📝 AIの返答を投稿欄へ
                 </Button>
               </div>
             )}
