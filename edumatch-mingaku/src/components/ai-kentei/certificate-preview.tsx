@@ -21,7 +21,8 @@ interface CertificatePreviewProps {
 const OVERLAY = {
   /** 氏名の上あたり（同じ縦列）。right は氏名と揃える */
   photo: {
-    right: '31.5%',
+    /** 氏名列の見た目の中心に合わせる（31.5% だと円がやや左寄り） */
+    right: '30.65%',
     top: '19%',
     size: 'clamp(2.25rem, 8.5cqi, 3.5rem)',
   },
