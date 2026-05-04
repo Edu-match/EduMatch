@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { getCurrentProfile } from "@/lib/auth";
+import { logActivity } from "@/app/_actions/activity-log";
 import type { ContentBlock } from "@/components/editor/block-editor";
 import { blocksToMarkdown } from "@/lib/markdown-to-blocks";
 import { contentToBlocks } from "@/lib/markdown-to-blocks";
@@ -50,6 +51,14 @@ export async function upsertSitePage(
       where: { key },
       create: { key, title: data.title, body: data.body },
       update: { title: data.title, body: data.body },
+    });
+    void logActivity({
+      actorId: profile.id,
+      actorName: profile.name,
+      action: "UPDATE",
+      targetType: "SITE_PAGE",
+      targetId: key,
+      targetTitle: data.title || DEFAULT_TITLES[key] || key,
     });
     return { success: true as const, id: page.id };
   } catch (e) {

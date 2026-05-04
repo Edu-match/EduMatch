@@ -559,9 +559,9 @@ export async function createService(input: CreateServiceInput): Promise<CreateSe
     const { user, error } = await requireAuthedUser();
     if (!user) return { success: false, error };
 
-    let profile: { role: Role } | null = null;
+    let profile: { role: Role; name?: string } | null = null;
     try {
-      profile = await prisma.profile.findUnique({ where: { id: user.id }, select: { role: true } });
+      profile = await prisma.profile.findUnique({ where: { id: user.id }, select: { role: true, name: true } });
       if (!profile) {
         const meta = user.user_metadata || {};
         const name = meta.name || meta.full_name || user.email?.split("@")[0] || "ユーザー";
@@ -629,6 +629,14 @@ export async function createService(input: CreateServiceInput): Promise<CreateSe
       },
     });
 
+    void logActivity({
+      actorId: user.id,
+      actorName: profile?.name ?? user.email?.split("@")[0] ?? "ユーザー",
+      action: status === "PENDING" ? "SUBMIT" : "CREATE",
+      targetType: "SERVICE",
+      targetId: service.id,
+      targetTitle: input.title,
+    });
     return { success: true, serviceId: service.id };
   } catch (e) {
     console.error("Error creating service:", e);

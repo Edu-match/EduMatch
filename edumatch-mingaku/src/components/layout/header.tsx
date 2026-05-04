@@ -111,16 +111,12 @@ export function Header() {
     router.refresh();
   };
 
-  const baseNavLinks = [
+  const navLinks = [
     { href: "/articles", label: "記事一覧" },
     { href: "/services", label: "サービス一覧" },
     { href: "/events", label: "セミナー・イベント情報" },
     { href: "/companies", label: "掲載企業" },
-    { href: "/activity", label: "アクティビティ" },
   ];
-  const navLinks = baseNavLinks.filter(
-    (link) => link.href !== "/activity" || userRole === "ADMIN"
-  );
 
   const displayName = userName || (userEmail ? userEmail.split("@")[0] : "ユーザー");
 
