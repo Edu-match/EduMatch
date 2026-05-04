@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowUpRight, MessageSquare, Users, X } from "lucide-react";
+import { ArrowUpRight, MessageSquare, Minus, Plus, Users, X } from "lucide-react";
 import type { ForumRoom } from "@/lib/mock-forum";
 import { ForumRoomIcon } from "@/components/community/forum-room-icon";
 import {
@@ -302,14 +302,9 @@ function DotBackground() {
   );
 }
 
-function touchDistance(t: React.TouchList) {
-  if (t.length < 2) return 0;
-  const a = t[0];
-  const b = t[1];
-  const dx = a.clientX - b.clientX;
-  const dy = a.clientY - b.clientY;
-  return Math.hypot(dx, dy);
-}
+const MAP_ZOOM_MIN = 1;
+const MAP_ZOOM_MAX = 3;
+const MAP_ZOOM_STEP = 0.25;
 
 // ─── メインコンポーネント ─────────────────────────────────
 
@@ -321,7 +316,6 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const dragStart = useRef<{ x: number; y: number } | null>(null);
   const hasDragged = useRef(false);
-  const pinchRef = useRef<{ startDist: number; startScale: number } | null>(null);
 
   useEffect(() => {
     const seen = localStorage.getItem("forum_bubble_hint_v1");
@@ -352,50 +346,13 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
   const connections = computeConnections(rooms, positions);
   const containerHeight = computeContainerHeight(rooms, isMobile);
 
-  /**
-   * Ctrl / Cmd + ホイール: ズーム。
-   * ズーム中（scale>1）のみ通常ホイールでパン（ページ縦スクロールと競合しないよう、拡大していないときは伝播させる）。
-   */
-  const handleWheel = (e: React.WheelEvent) => {
-    if (e.ctrlKey || e.metaKey) {
-      e.preventDefault();
-      setScale((s) => {
-        const next = Math.min(3, Math.max(1, +(s - e.deltaY * 0.01).toFixed(2)));
-        if (next === 1) setPan({ x: 0, y: 0 });
-        return next;
-      });
-      return;
-    }
-    if (scale > 1) {
-      e.preventDefault();
-      setPan((prev) => ({
-        x: prev.x - e.deltaX,
-        y: prev.y - e.deltaY,
-      }));
-    }
-  };
+  const clampZoom = (s: number) =>
+    Math.min(MAP_ZOOM_MAX, Math.max(MAP_ZOOM_MIN, +s.toFixed(2)));
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length === 2) {
-      const d = touchDistance(e.touches);
-      if (d > 0) pinchRef.current = { startDist: d, startScale: scale };
-    }
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (e.touches.length === 2 && pinchRef.current) {
-      e.preventDefault();
-      const d = touchDistance(e.touches);
-      if (d <= 0) return;
-      const ratio = d / pinchRef.current.startDist;
-      const next = Math.min(3, Math.max(1, +(pinchRef.current.startScale * ratio).toFixed(2)));
-      setScale(next);
-      if (next === 1) setPan({ x: 0, y: 0 });
-    }
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (e.touches.length < 2) pinchRef.current = null;
+  const applyZoom = (next: number) => {
+    const clamped = clampZoom(next);
+    setScale(clamped);
+    if (clamped === MAP_ZOOM_MIN) setPan({ x: 0, y: 0 });
   };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -427,20 +384,19 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
       <p className="mb-5 text-center text-xs text-muted-foreground">
         気になるトピックを選んで議論に参加しよう
         <span className="mt-1 block text-[10px] text-muted-foreground/80">
-          カードをクリックで部屋へ。拡大後はドラッグで移動、Ctrl / Cmd + スクロールでズーム。ピンチでもズーム。ダブルクリックで表示をリセット。
+          カードをクリックで部屋へ。右上の＋／−で拡大縮小。拡大後はドラッグで移動。ダブルクリックで表示をリセット。
         </span>
       </p>
 
       <div
         className={[
-          "relative w-full overflow-hidden rounded-3xl border bg-gradient-to-b from-background to-muted/10 select-none",
-          scale > 1 ? "touch-none cursor-grab active:cursor-grabbing" : "touch-pan-y pinch-zoom cursor-default",
+          "relative w-full overflow-hidden rounded-3xl border bg-gradient-to-b from-background to-muted/10 select-none touch-none",
+          scale > 1 ? "cursor-grab active:cursor-grabbing" : "cursor-default",
         ].join(" ")}
         style={{ height: containerHeight }}
-        onWheel={handleWheel}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
+        onWheel={(e) => {
+          if (e.ctrlKey || e.metaKey) e.preventDefault();
+        }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -451,6 +407,29 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
           setPan({ x: 0, y: 0 });
         }}
       >
+        <div className="absolute right-3 top-3 z-30 flex flex-col gap-1 rounded-lg border bg-background/95 p-1 shadow-md backdrop-blur-sm">
+          <button
+            type="button"
+            aria-label="マップを拡大"
+            className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+            disabled={scale >= MAP_ZOOM_MAX - 1e-6}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={() => applyZoom(scale + MAP_ZOOM_STEP)}
+          >
+            <Plus className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            aria-label="マップを縮小"
+            className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+            disabled={scale <= MAP_ZOOM_MIN + 1e-6}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={() => applyZoom(scale - MAP_ZOOM_STEP)}
+          >
+            <Minus className="h-4 w-4" />
+          </button>
+        </div>
+
         {/* 変換ラッパー */}
         <div
           className="absolute inset-0"
