@@ -185,6 +185,10 @@ export function AdminForumClient() {
   const [editingTopicRoomId, setEditingTopicRoomId] = useState<string | null>(null);
   const [topicDraft, setTopicDraft] = useState("");
   const [savingTopic, setSavingTopic] = useState(false);
+  const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
+  const [roomNameDraft, setRoomNameDraft] = useState("");
+  const [roomDescDraft, setRoomDescDraft] = useState("");
+  const [savingRoom, setSavingRoom] = useState(false);
 
   // 部屋一覧取得（非表示含む・管理者モード）
   useEffect(() => {
@@ -322,6 +326,27 @@ export function AdminForumClient() {
     }
   }, [savingTopic, topicDraft]);
 
+  const handleSaveRoom = useCallback(async (roomId: string) => {
+    if (savingRoom || !roomNameDraft.trim()) return;
+    setSavingRoom(true);
+    try {
+      const res = await fetch(`/api/forum/rooms/${roomId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ name: roomNameDraft.trim(), description: roomDescDraft.trim() }),
+      });
+      if (res.ok) {
+        setRooms((prev) => prev.map((r) => r.id === roomId ? { ...r, name: roomNameDraft.trim(), description: roomDescDraft.trim() } : r));
+        setEditingRoomId(null);
+      } else {
+        alert("部屋情報の更新に失敗しました");
+      }
+    } finally {
+      setSavingRoom(false);
+    }
+  }, [savingRoom, roomNameDraft, roomDescDraft]);
+
   const handleDeletePost = useCallback(async (postId: string) => {
     if (!window.confirm("この投稿を完全に削除しますか？元に戻せません。")) return;
     try {
@@ -418,14 +443,41 @@ export function AdminForumClient() {
               <Card key={room.id}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-2 mb-1">
-                    <p className="font-semibold">{room.name}</p>
-                    {room.aiDiscussion && (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-700 shrink-0">
-                        <Zap className="h-2.5 w-2.5" />AI
-                      </span>
+                    {editingRoomId === room.id ? (
+                      <div className="flex-1 space-y-2">
+                        <Input
+                          value={roomNameDraft}
+                          onChange={(e) => setRoomNameDraft(e.target.value)}
+                          className="h-7 text-sm font-semibold"
+                          placeholder="部屋名"
+                          autoFocus
+                        />
+                        <Textarea
+                          rows={2}
+                          value={roomDescDraft}
+                          onChange={(e) => setRoomDescDraft(e.target.value)}
+                          className="resize-none text-xs"
+                          placeholder="説明文"
+                        />
+                        <div className="flex justify-end gap-2">
+                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditingRoomId(null)}>キャンセル</Button>
+                          <Button size="sm" className="h-7 text-xs" disabled={savingRoom || !roomNameDraft.trim()} onClick={() => handleSaveRoom(room.id)}>
+                            {savingRoom ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : null}保存
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="font-semibold">{room.name}</p>
+                        {room.aiDiscussion && (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-700 shrink-0">
+                            <Zap className="h-2.5 w-2.5" />AI
+                          </span>
+                        )}
+                      </>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground line-clamp-2">{room.description || "説明なし"}</p>
+                  {editingRoomId !== room.id && <p className="text-xs text-muted-foreground line-clamp-2">{room.description || "説明なし"}</p>}
                   {editingTopicRoomId === room.id ? (
                     <div className="mt-2 space-y-2">
                       <Textarea
@@ -458,12 +510,17 @@ export function AdminForumClient() {
                   )}
                   <div className="mt-2 flex items-center justify-between">
                     <Link href={`/forum/${room.id}`} target="_blank" className="text-xs text-primary hover:underline"><ExternalLink className="mr-1 inline h-3 w-3" />表示</Link>
-                    <div className="flex items-center gap-1">
-                      <Button size="sm" variant="ghost" title={room.isHidden ? "再表示" : "非表示"} onClick={() => handleToggleRoomHide(room.id, !!room.isHidden)}>
-                        {room.isHidden ? <Eye className="h-3.5 w-3.5 text-muted-foreground" /> : <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />}
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => handleDeleteRoom(room.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
-                    </div>
+                    {editingRoomId !== room.id && (
+                      <div className="flex items-center gap-1">
+                        <Button size="sm" variant="ghost" title="部屋名・説明を編集" onClick={() => { setRoomNameDraft(room.name); setRoomDescDraft(room.description ?? ""); setEditingRoomId(room.id); }}>
+                          <PenSquare className="h-3.5 w-3.5 text-muted-foreground" />
+                        </Button>
+                        <Button size="sm" variant="ghost" title={room.isHidden ? "再表示" : "非表示"} onClick={() => handleToggleRoomHide(room.id, !!room.isHidden)}>
+                          {room.isHidden ? <Eye className="h-3.5 w-3.5 text-muted-foreground" /> : <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />}
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => handleDeleteRoom(room.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>

@@ -18,7 +18,8 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await req.json();
-    const { weeklyTopic, description, emoji, aiDiscussion, isHidden, aiWeeklyTopicEnabled } = body as {
+    const { name, weeklyTopic, description, emoji, aiDiscussion, isHidden, aiWeeklyTopicEnabled } = body as {
+      name?: string;
       weeklyTopic?: string;
       description?: string;
       emoji?: string;
@@ -37,8 +38,8 @@ export async function PATCH(
       if (!existing || existing.created_by !== profile.id) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
-      // 作成者: 今週のお題・AI週次お題のみ。説明・絵文字・AIディスカッション・非表示は管理者のみ
-      if (description !== undefined || emoji !== undefined || aiDiscussion !== undefined || isHidden !== undefined) {
+      // 作成者: 今週のお題・AI週次お題のみ。名前・説明・絵文字・AIディスカッション・非表示は管理者のみ
+      if (name !== undefined || description !== undefined || emoji !== undefined || aiDiscussion !== undefined || isHidden !== undefined) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
     }
@@ -53,6 +54,7 @@ export async function PATCH(
     }
 
     const prismaData = {
+      ...(name !== undefined && name.trim() && { name: name.trim() }),
       ...(weeklyTopic !== undefined && { weekly_topic: weeklyTopic }),
       ...(description !== undefined && { description }),
       ...(emoji !== undefined && { emoji }),
