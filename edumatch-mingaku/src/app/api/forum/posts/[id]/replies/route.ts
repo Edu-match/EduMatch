@@ -34,6 +34,7 @@ export async function GET(
       replies: replies.map((r) => ({
         id: r.id,
         authorName: r.author_name,
+        authorUserId: r.author_id ?? undefined,
         authorRole: r.author_role,
         body: r.body,
         likeCount: likeMap[r.id] ?? 0,
@@ -137,6 +138,7 @@ export async function POST(
       reply: {
         id: reply.id,
         authorName: reply.author_name,
+        authorUserId: reply.author_id ?? undefined,
         authorRole: reply.author_role,
         body: reply.body,
         likeCount: 0,

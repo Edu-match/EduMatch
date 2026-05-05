@@ -11,6 +11,7 @@ export type ForumPost = {
   topicId?: string;
   topicTitle?: string;
   authorName: string;
+  authorUserId?: string;
   authorRole: ForumAuthorRoleStored;
   body: string;
   likeCount: number;
@@ -26,6 +27,7 @@ export type ForumPost = {
 export type ForumReply = {
   id: string;
   authorName: string;
+  authorUserId?: string;
   authorRole: ForumAuthorRoleStored;
   body: string;
   likeCount: number;

@@ -58,6 +58,7 @@ import { RelativeTime } from "@/components/community/relative-time";
 import { ForumRoomIcon, ROOM_BG_COLORS } from "@/components/community/forum-room-icon";
 import { useAuthUser } from "@/components/community/answer-section";
 import { OpenAiChatButton } from "@/components/ui/open-ai-chat-button";
+import { ReportForumContentButton } from "@/components/community/report-forum-content-button";
 
 // ─── 定数 ────────────────────────────────────────────────
 
@@ -276,6 +277,7 @@ function PostCardWithStream({
   aiDiscussion,
   onReplyAdded,
   userName,
+  currentUserId,
   isLoggedIn,
   avatarUrl,
   organizationType,
@@ -291,6 +293,7 @@ function PostCardWithStream({
   aiDiscussion: boolean;
   onReplyAdded: (postId: string, reply: ForumReply) => void;
   userName: string;
+  currentUserId?: string | null;
   isLoggedIn: boolean;
   avatarUrl?: string | null;
   organizationType?: string | null;
@@ -435,6 +438,9 @@ function PostCardWithStream({
               )}
               <button type="button" onClick={() => setShowReplyForm((v) => !v)}
                 className="text-xs text-primary hover:underline">返信する</button>
+              {post.authorUserId && currentUserId && post.authorUserId !== currentUserId && (
+                <ReportForumContentButton targetType="post" targetId={post.id} />
+              )}
             </div>
           </div>
         </div>
@@ -1301,6 +1307,7 @@ export function ForumRoomClient({
                       aiDiscussion={aiEnabled}
                       onReplyAdded={handleReplyAdded}
                       userName={auth.name}
+                      currentUserId={auth.userId}
                       isLoggedIn={auth.isLoggedIn}
                       avatarUrl={auth.avatarUrl}
                       organizationType={auth.organizationType}
@@ -1362,6 +1369,7 @@ export function ForumRoomClient({
                         aiDiscussion={aiEnabled}
                         onReplyAdded={handleReplyAdded}
                         userName={auth.name}
+                        currentUserId={auth.userId}
                         isLoggedIn={auth.isLoggedIn}
                         avatarUrl={auth.avatarUrl}
                         organizationType={auth.organizationType}

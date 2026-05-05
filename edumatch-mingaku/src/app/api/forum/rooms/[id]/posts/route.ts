@@ -67,6 +67,7 @@ export async function GET(
       topicId: post.topic_id ?? undefined,
       topicTitle: post.topic?.title ?? undefined,
       authorName: post.author_name,
+      authorUserId: post.author_id ?? undefined,
       authorRole: post.author_role,
       body: post.body,
       likeCount: likeMap[post.id] ?? 0,
@@ -79,6 +80,7 @@ export async function GET(
       replies: post.replies.map((r) => ({
         id: r.id,
         authorName: r.author_name,
+        authorUserId: r.author_id ?? undefined,
         authorRole: r.author_role,
         body: r.body,
         likeCount: 0,
@@ -209,6 +211,7 @@ export async function POST(
         topicId: post.topic_id ?? undefined,
         topicTitle: post.topic?.title ?? undefined,
         authorName: post.author_name,
+        authorUserId: post.author_id ?? undefined,
         authorRole: post.author_role,
         body: post.body,
         likeCount: 0,
