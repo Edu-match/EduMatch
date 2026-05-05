@@ -48,6 +48,7 @@ export type InitialProfile = {
   website?: string | null;
   notification_email_2?: string | null;
   notification_email_3?: string | null;
+  address?: string | null;
   role?: string;
   is_corporate_profile?: boolean;
   registration_kind?: "general" | "service_business" | null;
@@ -105,7 +106,7 @@ export function ProfileRegisterForm({
     initialProfile?.organization_type_other ?? ""
   );
   const [role, setRole] = useState("");
-  const [location, setLocation] = useState("");
+  const [address, setAddress] = useState(initialProfile?.address ?? "");
   const [selectedInterests, setSelectedInterests] = useState<string[]>(
     initialProfile?.interests ?? []
   );
@@ -196,7 +197,7 @@ export function ProfileRegisterForm({
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                名前 <span className="text-red-500">*</span>
+                {isProvider ? "代表者名" : "名前"} <span className="text-red-500">*</span>
               </label>
               <Input value={legalName} onChange={(e) => setLegalName(e.target.value)} />
             </div>
@@ -217,7 +218,8 @@ export function ProfileRegisterForm({
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                表示名（ニックネーム） <span className="text-red-500">*</span>
+                {isProvider ? "ご登録いただく方のお名前" : "表示名（ニックネーム）"}{" "}
+                <span className="text-red-500">*</span>
               </label>
               <Input value={name} onChange={(e) => setName(e.target.value)} />
             </div>
@@ -230,14 +232,18 @@ export function ProfileRegisterForm({
                 メールアドレスはログインに使用しているため変更できません
               </p>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">電話番号（任意）</label>
-              <Input
-                placeholder="090-1234-5678"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-              />
-            </div>
+            {isProvider && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  事業者・団体のTEL <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  placeholder="03-1234-5678"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                />
+              </div>
+            )}
           </div>
         );
 
@@ -246,7 +252,7 @@ export function ProfileRegisterForm({
           <div className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                所属 <span className="text-red-500">*</span>
+                {isProvider ? "事業者・団体名" : "所属"} <span className="text-red-500">*</span>
               </label>
               <Input
                 placeholder={isProvider ? "塾名・学校名など" : "学校名、学年、保護者など"}
@@ -301,14 +307,23 @@ export function ProfileRegisterForm({
                 </Select>
               </div>
             )}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">所在地</label>
-              <Input
-                placeholder="東京都"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-              />
-            </div>
+            {isProvider && (
+              <>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    事業者・団体の所在地 <span className="text-red-500">*</span>
+                  </label>
+                  <Input
+                    placeholder="東京都千代田区..."
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                  />
+                </div>
+                <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-xs leading-relaxed text-muted-foreground">
+                  新規開業予定の方は、現時点ではご登録いただく方の情報をご記入ください。
+                </div>
+              </>
+            )}
           </div>
         );
 
@@ -404,17 +419,19 @@ export function ProfileRegisterForm({
                 onChange={(e) => setBio(e.target.value)}
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">
-                公式サイト・SNS（任意）
-              </label>
-              <Input
-                type="url"
-                placeholder="https://example.com"
-                value={website}
-                onChange={(e) => setWebsite(e.target.value)}
-              />
-            </div>
+            {isProvider && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  URL <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  type="url"
+                  placeholder="https://example.com"
+                  value={website}
+                  onChange={(e) => setWebsite(e.target.value)}
+                />
+              </div>
+            )}
           </div>
         );
 
@@ -452,10 +469,12 @@ export function ProfileRegisterForm({
                       <span className="text-muted-foreground">メールアドレス</span>
                       <span className="break-all">{email || "未入力"}</span>
                     </div>
-                    <div className="flex justify-between gap-4">
-                      <span className="text-muted-foreground">電話番号</span>
-                      <span>{phone || "未入力"}</span>
-                    </div>
+                    {isProvider && (
+                      <div className="flex justify-between gap-4">
+                        <span className="text-muted-foreground">事業者・団体のTEL</span>
+                        <span>{phone || "未入力"}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -486,10 +505,12 @@ export function ProfileRegisterForm({
                     </span>
                   </div>
                 )}
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">所在地</span>
-                  <span>{location || "未入力"}</span>
-                </div>
+                {isProvider && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">事業者・団体の所在地</span>
+                    <span>{address || "未入力"}</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -555,12 +576,21 @@ export function ProfileRegisterForm({
                     <p className="whitespace-pre-wrap">{bio}</p>
                   </div>
                 )}
-                {website && (
+                {isProvider && (
                   <div>
-                    <span className="text-muted-foreground block mb-1">
-                      公式サイト・SNS
-                    </span>
-                    <a href={website} target="_blank" rel="noopener noreferrer" className="text-primary underline break-all">{website}</a>
+                    <span className="text-muted-foreground block mb-1">URL</span>
+                    {website ? (
+                      <a
+                        href={website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary underline break-all"
+                      >
+                        {website}
+                      </a>
+                    ) : (
+                      <span className="text-muted-foreground">未入力</span>
+                    )}
                   </div>
                 )}
               </div>
@@ -584,6 +614,14 @@ export function ProfileRegisterForm({
         setValidationError("表示名を入力してください。");
         return;
       }
+      if (isFirstTime && !avatarUrl.trim()) {
+        setValidationError("プロフィール画像をアップロードするか、テンプレートから選んでください。");
+        return;
+      }
+      if (isProvider && !phone.trim()) {
+        setValidationError("事業者・団体のTELを入力してください。");
+        return;
+      }
     } else if (currentStep === 2) {
       if (!organization.trim()) {
         setValidationError("所属を入力してください。");
@@ -593,6 +631,13 @@ export function ProfileRegisterForm({
         setValidationError("所属の種類を選択してください。");
         return;
       }
+      if (isProvider && !address.trim()) {
+        setValidationError("事業者・団体の所在地を入力してください。");
+        return;
+      }
+    } else if (currentStep === 4 && isProvider && !website.trim()) {
+      setValidationError("URLを入力してください。");
+      return;
     }
     
     // 一般ユーザーの場合、ステップ2の次はステップ4へ
@@ -628,7 +673,23 @@ export function ProfileRegisterForm({
       return;
     }
     if (!schoolType) {
-      setValidationError("所属の種類を選択してください。");
+      setValidationError("職業・役職を選択してください。");
+      return;
+    }
+    if (isProvider && !phone.trim()) {
+      setValidationError("事業者・団体のTELを入力してください。");
+      return;
+    }
+    if (isProvider && !address.trim()) {
+      setValidationError("事業者・団体の所在地を入力してください。");
+      return;
+    }
+    if (isProvider && !website.trim()) {
+      setValidationError("URLを入力してください。");
+      return;
+    }
+    if (isFirstTime && !avatarUrl.trim()) {
+      setValidationError("プロフィール画像をアップロードするか、テンプレートから選んでください。");
       return;
     }
     setSaving(true);
@@ -644,6 +705,7 @@ export function ProfileRegisterForm({
         schoolType === "other" ? organizationTypeOther.trim() || null : null,
       bio: bio || null,
       website: website || null,
+      address: isProvider ? address.trim() || null : null,
       notification_email_2: isProvider ? (notificationEmail2.trim() || null) : null,
       notification_email_3: isProvider ? (notificationEmail3.trim() || null) : null,
       interests: selectedInterests,

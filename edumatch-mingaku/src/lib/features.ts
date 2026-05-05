@@ -4,7 +4,7 @@
  */
 export const FEATURES = {
   /** 投稿者（サービス提供者）としての新規登録 */
-  PROVIDER_REGISTRATION: false,
+  PROVIDER_REGISTRATION: true,
   /** 有料プラン・プラン確認ページ */
   PAID_PLANS: false,
   /** 掲載登録ページ */

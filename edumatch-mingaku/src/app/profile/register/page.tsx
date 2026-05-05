@@ -26,6 +26,7 @@ export default async function ProfileRegisterPage({ searchParams }: Props) {
         website: profile.website ?? null,
         notification_email_2: profile.notification_email_2 ?? null,
         notification_email_3: profile.notification_email_3 ?? null,
+        address: profile.address ?? null,
         role: profile.role,
         is_corporate_profile: profile.is_corporate_profile,
         registration_kind: profile.registration_kind,

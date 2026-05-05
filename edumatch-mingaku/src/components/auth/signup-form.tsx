@@ -177,7 +177,7 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
               />
               <span className="block text-sm font-semibold text-foreground">事業者・団体</span>
               <span className="mt-1 block text-xs text-muted-foreground leading-relaxed">
-                EdTech事業者や教育関連団体。サービス掲載・投稿・問い合わせ受付に利用します。
+                EdTech事業者や教育関連団体。現在ご利用いただける機能は一般利用と同じです。
               </span>
             </button>
           ) : (

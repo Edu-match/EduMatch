@@ -27,6 +27,7 @@ export type CurrentUserProfile = {
   website: string | null;
   notification_email_2: string | null;
   notification_email_3: string | null;
+  address: string | null;
   role: string;
   /** CorporateProfile 行がある（企業ユーザー・投稿者機能） */
   is_corporate_profile: boolean;
@@ -94,6 +95,7 @@ export async function getCurrentUserProfile(): Promise<CurrentUserProfile | null
     website: full.website,
     notification_email_2: is_corporate_profile ? (c?.notification_email_2 ?? null) : null,
     notification_email_3: is_corporate_profile ? (c?.notification_email_3 ?? null) : null,
+    address: is_corporate_profile ? (c?.address ?? null) : null,
     role: full.role,
     is_corporate_profile,
     organization_type_other,
@@ -179,6 +181,7 @@ export type UpdateProfileInput = {
   website?: string | null;
   notification_email_2?: string | null;
   notification_email_3?: string | null;
+  address?: string | null;
   /** 関心のあるカテゴリ（複数選択） */
   interests?: string[];
   /** 関心カテゴリ「その他」の自由記述（最大100文字） */
@@ -249,6 +252,19 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
             ...(orgOther !== undefined && { organization_type_other: orgOther }),
             notification_email_2: input.notification_email_2?.trim() || null,
             notification_email_3: input.notification_email_3?.trim() || null,
+            ...(input.address !== undefined && {
+              address: input.address?.trim() || null,
+            }),
+            ...(input.talent_matching_enabled !== undefined && {
+              talent_matching_enabled: input.talent_matching_enabled,
+            }),
+            ...(input.talent_matching_description !== undefined && {
+              talent_matching_description: input.talent_matching_description?.trim() || null,
+            }),
+            ...(input.talent_badges !== undefined && { talent_badges: input.talent_badges }),
+            ...(input.talent_hourly_rate !== undefined && {
+              talent_hourly_rate: input.talent_hourly_rate?.trim() || null,
+            }),
           },
           update: {
             ...(input.legal_name !== undefined && {
@@ -266,6 +282,19 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
             }),
             ...(input.notification_email_3 !== undefined && {
               notification_email_3: input.notification_email_3?.trim() || null,
+            }),
+            ...(input.address !== undefined && {
+              address: input.address?.trim() || null,
+            }),
+            ...(input.talent_matching_enabled !== undefined && {
+              talent_matching_enabled: input.talent_matching_enabled,
+            }),
+            ...(input.talent_matching_description !== undefined && {
+              talent_matching_description: input.talent_matching_description?.trim() || null,
+            }),
+            ...(input.talent_badges !== undefined && { talent_badges: input.talent_badges }),
+            ...(input.talent_hourly_rate !== undefined && {
+              talent_hourly_rate: input.talent_hourly_rate?.trim() || null,
             }),
           },
         });
