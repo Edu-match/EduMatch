@@ -95,7 +95,14 @@ export async function getInAppNotificationsForUserId(
     where: { user_id: userId },
     orderBy: { created_at: "desc" },
     take: limit,
-    select: { id: true, title: true, link: true, read: true, created_at: true },
+    select: {
+      id: true,
+      kind: true,
+      title: true,
+      link: true,
+      read: true,
+      created_at: true,
+    },
   });
 }
 

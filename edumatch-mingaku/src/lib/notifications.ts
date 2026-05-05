@@ -6,10 +6,11 @@ import {
   getPendingServicesFromSupabase,
 } from "@/lib/supabase-pending-approvals";
 import { getInAppNotificationsForUserId } from "@/app/_actions/in-app-notifications";
+import { USER_REPORT_NOTIFICATION_KIND } from "@/lib/in-app-notification-constants";
 
 export type NotificationItem = {
   id: string;
-  type: "approval_request" | "system" | "material_request" | "site_update";
+  type: "approval_request" | "system" | "material_request" | "site_update" | "user_report";
   category: string; // 表示用カテゴリ（例: 記事の承認申請）
   title: string;
   body?: string;
@@ -72,6 +73,19 @@ export async function getNotifications(): Promise<NotificationItem[]> {
       const title = titlePrefixRe.test(row.title)
         ? row.title.replace(titlePrefixRe, "【運営からのお知らせ】")
         : row.title;
+      if (row.kind === USER_REPORT_NOTIFICATION_KIND) {
+        notifications.push({
+          id: `inapp-${row.id}`,
+          type: "user_report",
+          category: "ユーザー報告",
+          title,
+          href,
+          createdAt: row.created_at.toISOString(),
+          read: row.read,
+          inAppNotificationId: row.id,
+        });
+        continue;
+      }
       notifications.push({
         id: `inapp-${row.id}`,
         type: "site_update",

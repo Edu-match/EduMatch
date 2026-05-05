@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CornerDownRight, LogIn, Send, ThumbsUp } from "lucide-react";
+import { CornerDownRight, Loader2, LogIn, Send, ThumbsUp } from "lucide-react";
+import { ReportUserButton } from "@/components/community/report-user-button";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -13,21 +15,34 @@ import { cn } from "@/lib/utils";
 // ─── 認証フック ─────────────────────────────────────────────
 function useAuthUser() {
   const [authUser, setAuthUser] = useState<{
+    userId: string | null;
     name: string;
     isLoading: boolean;
     isLoggedIn: boolean;
-  }>({ name: "", isLoading: true, isLoggedIn: false });
+  }>({ userId: null, name: "", isLoading: true, isLoggedIn: false });
 
   useEffect(() => {
     fetch("/api/auth/me", { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
+        const profile = data?.profile;
         const name =
-          data?.profile?.name ?? data?.user?.email?.split("@")[0] ?? null;
-        setAuthUser({ name: name ?? "", isLoading: false, isLoggedIn: !!name });
+          profile?.name ?? data?.user?.email?.split("@")[0] ?? null;
+        const userId = typeof profile?.id === "string" ? profile.id : null;
+        setAuthUser({
+          userId,
+          name: name ?? "",
+          isLoading: false,
+          isLoggedIn: !!userId,
+        });
       })
       .catch(() =>
-        setAuthUser({ name: "", isLoading: false, isLoggedIn: false })
+        setAuthUser({
+          userId: null,
+          name: "",
+          isLoading: false,
+          isLoggedIn: false,
+        })
       );
   }, []);
 
@@ -76,6 +91,7 @@ function CommentCard({
   onLike,
   onReply,
   isReplyOpen,
+  currentUserId,
 }: {
   comment: CommunityComment;
   depth?: number;
@@ -83,6 +99,7 @@ function CommentCard({
   onLike: (id: string) => void;
   onReply: (id: string | null) => void;
   isReplyOpen?: boolean;
+  currentUserId: string | null;
 }) {
   const isLiked = likedIds.has(comment.id);
 
@@ -101,7 +118,7 @@ function CommentCard({
           {comment.body}
         </p>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1">
           <button
             type="button"
             onClick={() => onLike(comment.id)}
@@ -126,6 +143,16 @@ function CommentCard({
               返信
             </button>
           )}
+          {comment.authorUserId &&
+            currentUserId &&
+            comment.authorUserId !== currentUserId && (
+              <ReportUserButton
+                reportedUserId={comment.authorUserId}
+                reportedDisplayName={comment.authorName}
+                contextKind="comment"
+                contextExcerpt={comment.body}
+              />
+            )}
         </div>
 
         {comment.replies?.map((reply) => (
@@ -136,6 +163,7 @@ function CommentCard({
             likedIds={likedIds}
             onLike={onLike}
             onReply={onReply}
+            currentUserId={currentUserId}
           />
         ))}
       </div>
@@ -150,19 +178,26 @@ function ComposerBox({
   submitLabel,
   onSubmit,
   compact = false,
+  busy = false,
 }: {
   userName: string;
   placeholder: string;
   submitLabel: string;
-  onSubmit: (body: string) => void;
+  onSubmit: (body: string) => void | Promise<void>;
   compact?: boolean;
+  busy?: boolean;
 }) {
   const [body, setBody] = useState("");
 
-  const handleSubmit = () => {
-    if (!body.trim()) return;
-    onSubmit(body.trim());
-    setBody("");
+  const handleSubmit = async () => {
+    if (!body.trim() || busy) return;
+    const t = body.trim();
+    try {
+      await onSubmit(t);
+      setBody("");
+    } catch {
+      toast.error("投稿に失敗しました。もう一度お試しください。");
+    }
   };
 
   return (
@@ -184,11 +219,15 @@ function ComposerBox({
         <Button
           type="button"
           size="sm"
-          onClick={handleSubmit}
-          disabled={!body.trim()}
+          onClick={() => void handleSubmit()}
+          disabled={!body.trim() || busy}
         >
-          <Send className="h-3.5 w-3.5" />
-          {submitLabel}
+          {busy ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Send className="h-3.5 w-3.5" />
+          )}
+          {busy ? "確認中…" : submitLabel}
         </Button>
       </div>
     </div>
@@ -201,16 +240,20 @@ export function CommentSection({
   placeholder = "コミュニティに共有したい意見や体験を書いてください",
   submitLabel = "コメントを投稿",
   emptyMessage = "まだコメントはありません。最初の投稿をしてみましょう。",
+  moderationKind = "comment",
 }: {
   initialComments?: CommunityComment[];
   placeholder?: string;
   submitLabel?: string;
   emptyMessage?: string;
+  /** サーバー側モデレーションの種別（将来のルーム・話題設定と共通 API を利用） */
+  moderationKind?: "comment" | "room" | "topic";
 }) {
-  const { name, isLoading, isLoggedIn } = useAuthUser();
+  const { userId: currentUserId, name, isLoading, isLoggedIn } = useAuthUser();
   const [comments, setComments] = useState<CommunityComment[]>(initialComments);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [moderating, setModerating] = useState(false);
 
   const total = useMemo(
     () => comments.reduce((n, c) => n + 1 + (c.replies?.length ?? 0), 0),
@@ -232,10 +275,36 @@ export function CommentSection({
     );
   };
 
-  const handleComment = (body: string) => {
+  const requestModeration = async (text: string): Promise<boolean> => {
+    setModerating(true);
+    try {
+      const res = await fetch("/api/community/moderate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ text, kind: moderationKind }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        allowed?: boolean;
+        error?: string;
+      };
+      if (res.ok && data.allowed) return true;
+      toast.error(data.error ?? "投稿できませんでした。");
+      return false;
+    } catch {
+      toast.error("通信に失敗しました。もう一度お試しください。");
+      return false;
+    } finally {
+      setModerating(false);
+    }
+  };
+
+  const handleComment = async (body: string) => {
+    if (!(await requestModeration(body))) return;
     const next: CommunityComment = {
       id: `c-${Date.now()}`,
       authorName: name,
+      ...(currentUserId ? { authorUserId: currentUserId } : {}),
       postedAt: new Date().toISOString(),
       body,
       helpfulCount: 0,
@@ -244,10 +313,12 @@ export function CommentSection({
     setComments((prev) => [...prev, next]);
   };
 
-  const handleReply = (parentId: string, body: string) => {
+  const handleReply = async (parentId: string, body: string) => {
+    if (!(await requestModeration(body))) return;
     const reply: CommunityComment = {
       id: `r-${Date.now()}`,
       authorName: name,
+      ...(currentUserId ? { authorUserId: currentUserId } : {}),
       postedAt: new Date().toISOString(),
       body,
       helpfulCount: 0,
@@ -274,6 +345,7 @@ export function CommentSection({
               placeholder={placeholder}
               submitLabel={submitLabel}
               onSubmit={handleComment}
+              busy={moderating}
             />
           </CardContent>
         </Card>
@@ -317,6 +389,7 @@ export function CommentSection({
                   setReplyingTo(id);
                 }}
                 isReplyOpen={replyingTo === comment.id}
+                currentUserId={currentUserId}
               />
               {replyingTo === comment.id && isLoggedIn && (
                 <>
@@ -327,6 +400,7 @@ export function CommentSection({
                     submitLabel="返信を投稿"
                     onSubmit={(body) => handleReply(comment.id, body)}
                     compact
+                    busy={moderating}
                   />
                 </>
               )}

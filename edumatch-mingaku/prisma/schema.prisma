@@ -44,6 +44,8 @@ model Profile {
   view_histories                  ViewHistory[]
   chat_sessions                   ChatSession[]
   in_app_notifications           InAppNotification[]
+  reports_made                    UserReport[] @relation("UserReportReporter")
+  reports_received                UserReport[] @relation("UserReportSubject")
   generalProfile                  GeneralProfile?
   corporateProfile                CorporateProfile?
   activity_logs                   ActivityLog[]
@@ -103,6 +105,27 @@ model InAppNotification {
 
   @@unique([user_id, kind, source_id])
   @@index([user_id, created_at(sort: Desc)])
+}
+
+/// ユーザーによるユーザー報告（モデレーション・調査用）
+model UserReport {
+  id               String   @id @default(cuid())
+  reporter_id      String   @db.Uuid
+  reported_user_id String   @db.Uuid
+  /// HARASSMENT | SPAM | INAPPROPRIATE | PRIVACY | OTHER
+  reason_code      String
+  detail           String?
+  /// comment | profile | article | other
+  context_kind     String
+  context_excerpt  String?
+  created_at       DateTime @default(now())
+
+  reporter Profile @relation("UserReportReporter", fields: [reporter_id], references: [id], onDelete: Cascade)
+  subject  Profile @relation("UserReportSubject", fields: [reported_user_id], references: [id], onDelete: Cascade)
+
+  @@index([reported_user_id, created_at(sort: Desc)])
+  @@index([reporter_id])
+  @@index([created_at(sort: Desc)])
 }
 
 model MaterialRequest {

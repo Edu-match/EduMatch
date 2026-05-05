@@ -24,6 +24,8 @@ export type ForumThread = {
 export type CommunityComment = {
   id: string;
   authorName: string;
+  /** 報告機能用（ログイン済みユーザーの投稿のみ） */
+  authorUserId?: string;
   postedAt: string;
   body: string;
   helpfulCount: number;

@@ -7,7 +7,7 @@ import Image from "next/image";
 import { 
   Menu, LogOut, User, LayoutDashboard, Settings, 
   ChevronDown, UserPlus, LogIn, FileText, Bell,
-  CheckCircle, Calendar, Newspaper, BookOpen, Bot, Activity
+  CheckCircle, Calendar, Newspaper, BookOpen, Bot, Activity, Flag
 } from "lucide-react";
 import { useRequestList } from "@/components/request-list/request-list-context";
 import { Button } from "@/components/ui/button";
@@ -363,6 +363,13 @@ export function Header() {
                       <Activity className="mr-2 h-4 w-4 text-orange-600" />
                       操作ログ
                     </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onSelect={() => router.push("/admin/user-reports")}
+                    >
+                      <Flag className="mr-2 h-4 w-4 text-rose-600" />
+                      ユーザー報告
+                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
                   </>
                 )}
@@ -508,6 +515,9 @@ export function Header() {
                         </Link>
                         <Link href="/admin/activity-log" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
                           <Activity className="h-4 w-4 text-orange-600 flex-shrink-0" />操作ログ
+                        </Link>
+                        <Link href="/admin/user-reports" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
+                          <Flag className="h-4 w-4 text-rose-600 flex-shrink-0" />ユーザー報告
                         </Link>
                       </div>
                     )}
