@@ -255,16 +255,6 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
             ...(input.address !== undefined && {
               address: input.address?.trim() || null,
             }),
-            ...(input.talent_matching_enabled !== undefined && {
-              talent_matching_enabled: input.talent_matching_enabled,
-            }),
-            ...(input.talent_matching_description !== undefined && {
-              talent_matching_description: input.talent_matching_description?.trim() || null,
-            }),
-            ...(input.talent_badges !== undefined && { talent_badges: input.talent_badges }),
-            ...(input.talent_hourly_rate !== undefined && {
-              talent_hourly_rate: input.talent_hourly_rate?.trim() || null,
-            }),
           },
           update: {
             ...(input.legal_name !== undefined && {
@@ -285,16 +275,6 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
             }),
             ...(input.address !== undefined && {
               address: input.address?.trim() || null,
-            }),
-            ...(input.talent_matching_enabled !== undefined && {
-              talent_matching_enabled: input.talent_matching_enabled,
-            }),
-            ...(input.talent_matching_description !== undefined && {
-              talent_matching_description: input.talent_matching_description?.trim() || null,
-            }),
-            ...(input.talent_badges !== undefined && { talent_badges: input.talent_badges }),
-            ...(input.talent_hourly_rate !== undefined && {
-              talent_hourly_rate: input.talent_hourly_rate?.trim() || null,
             }),
           },
         });
