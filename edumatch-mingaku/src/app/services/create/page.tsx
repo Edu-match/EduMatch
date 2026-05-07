@@ -50,6 +50,12 @@ import {
 } from "lucide-react";
 
 const STORAGE_KEY = "edumatch-service-draft";
+const AVATAR_TEMPLATES = [
+  "/avatars/templates/1.svg",
+  "/avatars/templates/2.svg",
+  "/avatars/templates/3.svg",
+  "/avatars/templates/4.svg",
+] as const;
 
 interface ServiceDraft {
   requestNotificationEmails: string;
@@ -843,6 +849,30 @@ export default function ServiceCreatePage() {
                 >
                   アイコン画像をアップロード
                 </Button>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">またはテンプレートから選択</p>
+                <div className="flex flex-wrap gap-2">
+                  {AVATAR_TEMPLATES.map((url) => (
+                    <button
+                      key={url}
+                      type="button"
+                      onClick={() =>
+                        setUserProfile((prev) =>
+                          prev ? { ...prev, avatar_url: url } : prev
+                        )
+                      }
+                      className={`h-10 w-10 rounded-full border-2 overflow-hidden transition-all ${
+                        userProfile?.avatar_url === url
+                          ? "border-primary ring-2 ring-primary/30"
+                          : "border-muted hover:border-primary/50"
+                      }`}
+                      aria-label="テンプレート画像を選択"
+                    >
+                      <img src={url} alt="" className="h-full w-full object-cover" />
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </CardContent>
