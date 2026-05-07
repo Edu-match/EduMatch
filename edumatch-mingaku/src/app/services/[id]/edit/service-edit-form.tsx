@@ -617,23 +617,6 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
                   <CardContent className="py-12">
                     <div className="max-w-3xl mx-auto space-y-6">
                       <h1 className="text-3xl font-bold">{form.watch("title") || "タイトル未設定"}</h1>
-                      <div className="rounded-lg border p-3 flex items-center gap-3">
-                        {userProfile?.avatar_url ? (
-                          <img
-                            src={userProfile.avatar_url}
-                            alt={userProfile.name}
-                            className="w-10 h-10 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                            <School className="h-5 w-5 text-muted-foreground" />
-                          </div>
-                        )}
-                        <div className="text-sm">
-                          <p className="font-medium">{userProfile?.name || "未設定"}</p>
-                          <p className="text-muted-foreground">投稿者情報プレビュー</p>
-                        </div>
-                      </div>
                       {form.watch("description") && (
                         <p className="text-lg text-muted-foreground">{form.watch("description")}</p>
                       )}
