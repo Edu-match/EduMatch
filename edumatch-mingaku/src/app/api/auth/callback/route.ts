@@ -151,6 +151,12 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    if (!profileRow) {
+      return redirectWithSession(
+        new URL("/auth/login?error=profile_creation_failed", origin)
+      );
+    }
+
     // 既存 Profile で拡張行が両方無い場合は補修してから進める
     if (!profileRow.generalProfile && !profileRow.corporateProfile) {
       const inferredKind =
@@ -170,12 +176,6 @@ export async function GET(request: NextRequest) {
       } catch (repairErr) {
         console.error("Profile extension repair error:", repairErr);
       }
-    }
-
-    if (!profileRow) {
-      return redirectWithSession(
-        new URL("/auth/login?error=profile_creation_failed", origin)
-      );
     }
 
     if (!profileRow.onboarding_completed_at) {
