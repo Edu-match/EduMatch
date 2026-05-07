@@ -24,7 +24,7 @@ import { BlocksContentPreview } from "@/components/content/blocks-content-previe
 import { contentToBlocks } from "@/lib/markdown-to-blocks";
 import { blocksToMarkdown } from "@/lib/markdown-to-blocks";
 import { isImportedContent } from "@/lib/imported-content";
-import { createService, uploadImage } from "@/app/_actions";
+import { createService, updateProfile, uploadImage } from "@/app/_actions";
 import {
   parseServiceCategorySelection,
   serializeServiceCategorySelection,
@@ -117,7 +117,9 @@ export default function ServiceCreatePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
   const thumbnailFileInputRef = useRef<HTMLInputElement | null>(null);
+  const posterAvatarFileInputRef = useRef<HTMLInputElement | null>(null);
   const [userProfile, setUserProfile] = useState<{ name: string; avatar_url: string | null; email: string } | null>(null);
+  const initialUserProfileRef = useRef<{ name: string; avatar_url: string | null } | null>(null);
 
   // 文字数制限
   const TITLE_MAX_LENGTH = 80;
@@ -197,11 +199,16 @@ export default function ServiceCreatePage() {
         const data = await res.json();
         if (data?.profile) {
           const profileName = data.profile.name ?? "ユーザー";
+          const profileAvatar = data.profile.avatar_url ?? null;
           setUserProfile({
             name: profileName,
-            avatar_url: data.profile.avatar_url ?? null,
+            avatar_url: profileAvatar,
             email: data.profile.email ?? "",
           });
+          initialUserProfileRef.current = {
+            name: profileName,
+            avatar_url: profileAvatar,
+          };
           setProviderDisplayName((prev) => prev.trim() || profileName);
         }
       } catch (error) {
@@ -298,6 +305,29 @@ export default function ServiceCreatePage() {
       .filter(Boolean);
     setIsSubmitting(true);
     try {
+      if (userProfile) {
+        const initialProfile = initialUserProfileRef.current;
+        const changedName =
+          (initialProfile?.name ?? "").trim() !== userProfile.name.trim();
+        const changedAvatar =
+          (initialProfile?.avatar_url ?? "") !== (userProfile.avatar_url ?? "");
+        if (changedName || changedAvatar) {
+          const profileResult = await updateProfile({
+            name: userProfile.name.trim() || undefined,
+            avatar_url: userProfile.avatar_url?.trim() || null,
+          });
+          if (!profileResult.success) {
+            toast.error(profileResult.error || "投稿者情報の保存に失敗しました");
+            setIsSubmitting(false);
+            return;
+          }
+          initialUserProfileRef.current = {
+            name: userProfile.name.trim(),
+            avatar_url: userProfile.avatar_url ?? null,
+          };
+        }
+      }
+
       const result = await createService({
         title: title.trim(),
         providerDisplayName: providerDisplayName.trim() || undefined,
@@ -737,8 +767,22 @@ export default function ServiceCreatePage() {
                     </div>
                   )}
                   <h1 className="text-3xl font-bold">{title || "タイトル未設定"}</h1>
-                  <div className="text-sm text-muted-foreground">
-                    提供企業: {providerDisplayName || userProfile?.name || "未設定"}
+                  <div className="rounded-lg border p-3 flex items-center gap-3">
+                    {userProfile?.avatar_url ? (
+                      <img
+                        src={userProfile.avatar_url}
+                        alt={userProfile.name}
+                        className="w-10 h-10 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                        <School className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div className="text-sm">
+                      <p className="font-medium">{providerDisplayName || userProfile?.name || "未設定"}</p>
+                      <p className="text-muted-foreground">投稿者情報プレビュー</p>
+                    </div>
                   </div>
                   {description && (
                     <p className="text-lg text-muted-foreground">{description}</p>
@@ -774,21 +818,73 @@ export default function ServiceCreatePage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-3">
-              {userProfile?.avatar_url ? (
-                <img
-                  src={userProfile.avatar_url}
-                  alt={userProfile.name}
-                  className="w-12 h-12 rounded-full object-cover"
-                />
-              ) : (
-                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                  <School className="h-6 w-6 text-primary" />
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                {userProfile?.avatar_url ? (
+                  <img
+                    src={userProfile.avatar_url}
+                    alt={userProfile.name}
+                    className="w-12 h-12 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                    <School className="h-6 w-6 text-primary" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <Input
+                    value={userProfile?.name ?? ""}
+                    onChange={(e) =>
+                      setUserProfile((prev) =>
+                        prev ? { ...prev, name: e.target.value } : prev
+                      )
+                    }
+                    placeholder="投稿者名"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {userProfile?.email || ""}
+                  </p>
                 </div>
-              )}
-              <div>
-                <p className="font-medium">{userProfile?.name || "ユーザー"}</p>
-                <p className="text-sm text-muted-foreground">{userProfile?.email || ""}</p>
+              </div>
+              <input
+                ref={posterAvatarFileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const formData = new FormData();
+                  formData.append("file", file);
+                  const result = await uploadImage(formData);
+                  if (result.success && result.url) {
+                    setUserProfile((prev) =>
+                      prev ? { ...prev, avatar_url: result.url } : prev
+                    );
+                  } else {
+                    toast.error(result.error || "画像アップロードに失敗しました");
+                  }
+                  e.target.value = "";
+                }}
+              />
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => posterAvatarFileInputRef.current?.click()}
+                >
+                  アイコン画像をアップロード
+                </Button>
+                <Input
+                  value={userProfile?.avatar_url ?? ""}
+                  onChange={(e) =>
+                    setUserProfile((prev) =>
+                      prev ? { ...prev, avatar_url: e.target.value || null } : prev
+                    )
+                  }
+                  placeholder="またはアイコン画像URL"
+                />
               </div>
             </div>
           </CardContent>
