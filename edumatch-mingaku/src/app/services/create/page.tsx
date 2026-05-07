@@ -52,7 +52,6 @@ import {
 const STORAGE_KEY = "edumatch-service-draft";
 
 interface ServiceDraft {
-  providerDisplayName: string;
   requestNotificationEmails: string;
   showMaterialRequestButton: boolean;
   title: string;
@@ -82,9 +81,6 @@ export default function ServiceCreatePage() {
   const [activeTab, setActiveTab] = useState("edit");
 
   const [title, setTitle] = useState(() => draft?.title || "");
-  const [providerDisplayName, setProviderDisplayName] = useState(
-    () => draft?.providerDisplayName || ""
-  );
   const [requestNotificationEmailList, setRequestNotificationEmailList] = useState<string[]>(() => {
     const parsed = (draft?.requestNotificationEmails || "")
       .split(/[\n,]/)
@@ -145,7 +141,6 @@ export default function ServiceCreatePage() {
     setIsSaving(true);
     try {
       const nextDraft: ServiceDraft = {
-        providerDisplayName,
         requestNotificationEmails: requestNotificationEmailList
           .map((email) => email.trim())
           .filter(Boolean)
@@ -174,7 +169,6 @@ export default function ServiceCreatePage() {
   const clearDraft = () => {
     localStorage.removeItem(STORAGE_KEY);
     setTitle("");
-    setProviderDisplayName("");
     setRequestNotificationEmailList(["", "", ""]);
     setShowMaterialRequestButton(true);
     setDescription("");
@@ -209,7 +203,6 @@ export default function ServiceCreatePage() {
             name: profileName,
             avatar_url: profileAvatar,
           };
-          setProviderDisplayName((prev) => prev.trim() || profileName);
         }
       } catch (error) {
         console.error("Failed to fetch profile:", error);
@@ -223,7 +216,6 @@ export default function ServiceCreatePage() {
       if (!title && !description && !content) return;
       try {
         const nextDraft: ServiceDraft = {
-          providerDisplayName,
           requestNotificationEmails: requestNotificationEmailList
             .map((email) => email.trim())
             .filter(Boolean)
@@ -244,7 +236,7 @@ export default function ServiceCreatePage() {
       }
     }, 30000);
     return () => clearInterval(interval);
-  }, [providerDisplayName, requestNotificationEmailList, showMaterialRequestButton, title, description, category, priceInfo, youtubeUrl, thumbnailUrl, content]);
+  }, [requestNotificationEmailList, showMaterialRequestButton, title, description, category, priceInfo, youtubeUrl, thumbnailUrl, content]);
 
   useEffect(() => {
     const updateLastSavedText = () => {
@@ -330,7 +322,7 @@ export default function ServiceCreatePage() {
 
       const result = await createService({
         title: title.trim(),
-        providerDisplayName: providerDisplayName.trim() || undefined,
+        providerDisplayName: userProfile?.name?.trim() || undefined,
         requestNotificationEmails: parsedNotificationEmails,
         showMaterialRequestButton,
         description: description.trim(),
@@ -574,18 +566,6 @@ export default function ServiceCreatePage() {
               )}
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">表示企業名</label>
-              <Input
-                value={providerDisplayName}
-                onChange={(e) => setProviderDisplayName(e.target.value)}
-                maxLength={120}
-                placeholder="例: 株式会社○○（初期値は投稿者情報）"
-              />
-              <p className="text-xs text-muted-foreground">
-                初期値は投稿者情報です。必要に応じてサービスごとの表示名に変更できます。
-              </p>
-            </div>
-            <div className="space-y-2">
               <label className="text-sm font-medium">資料請求の通知先メール（任意）</label>
               <div className="space-y-2">
                 {requestNotificationEmailList.map((email, idx) => (
@@ -780,7 +760,7 @@ export default function ServiceCreatePage() {
                       </div>
                     )}
                     <div className="text-sm">
-                      <p className="font-medium">{providerDisplayName || userProfile?.name || "未設定"}</p>
+                      <p className="font-medium">{userProfile?.name || "未設定"}</p>
                       <p className="text-muted-foreground">投稿者情報プレビュー</p>
                     </div>
                   </div>
@@ -880,15 +860,6 @@ export default function ServiceCreatePage() {
                 >
                   アイコン画像をアップロード
                 </Button>
-                <Input
-                  value={userProfile?.avatar_url ?? ""}
-                  onChange={(e) =>
-                    setUserProfile((prev) =>
-                      prev ? { ...prev, avatar_url: e.target.value || null } : prev
-                    )
-                  }
-                  placeholder="またはアイコン画像URL"
-                />
               </div>
             </div>
           </CardContent>

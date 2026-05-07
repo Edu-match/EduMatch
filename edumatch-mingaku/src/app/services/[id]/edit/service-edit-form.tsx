@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
@@ -23,8 +23,8 @@ import { ContentEditorWithImport } from "@/components/content/content-editor-wit
 import { BlocksContentPreview } from "@/components/content/blocks-content-preview";
 import { contentToBlocks, blocksToMarkdown } from "@/lib/markdown-to-blocks";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Eye, FileText, Image as ImageIcon } from "lucide-react";
-import { updateServiceManagement, deleteServiceManagement, uploadImage } from "@/app/_actions";
+import { Loader2, Eye, FileText, Image as ImageIcon, School } from "lucide-react";
+import { updateServiceManagement, deleteServiceManagement, updateProfile, uploadImage } from "@/app/_actions";
 import { serviceSchema, type ServiceFormData } from "@/lib/validations/service";
 import {
   parseServiceCategorySelection,
@@ -87,6 +87,9 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
   const [error, setError] = useState<string | null>(null);
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
   const thumbnailFileInputRef = useRef<HTMLInputElement | null>(null);
+  const posterAvatarFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [userProfile, setUserProfile] = useState<{ name: string; avatar_url: string | null; email: string } | null>(null);
+  const initialUserProfileRef = useRef<{ name: string; avatar_url: string | null } | null>(null);
   const [otherCategoryText, setOtherCategoryText] = useState(
     parseServiceCategorySelection(initialData.category).otherText
   );
@@ -111,12 +114,65 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
     },
   });
 
+  useEffect(() => {
+    async function fetchProfile() {
+      try {
+        const res = await fetch("/api/auth/me", { credentials: "include" });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data?.profile) {
+          const profileName = data.profile.name ?? "ユーザー";
+          const profileAvatar = data.profile.avatar_url ?? null;
+          setUserProfile({
+            name: profileName,
+            avatar_url: profileAvatar,
+            email: data.profile.email ?? "",
+          });
+          initialUserProfileRef.current = {
+            name: profileName,
+            avatar_url: profileAvatar,
+          };
+        }
+      } catch (fetchErr) {
+        console.error("Failed to fetch profile:", fetchErr);
+      }
+    }
+    fetchProfile();
+  }, []);
+
   const onSubmit = async (data: ServiceFormData) => {
     setIsSubmitting(true);
     setError(null);
 
     try {
-      const result = await updateServiceManagement(serviceId, data);
+      if (userProfile) {
+        const initialProfile = initialUserProfileRef.current;
+        const changedName =
+          (initialProfile?.name ?? "").trim() !== userProfile.name.trim();
+        const changedAvatar =
+          (initialProfile?.avatar_url ?? "") !== (userProfile.avatar_url ?? "");
+        if (changedName || changedAvatar) {
+          const profileResult = await updateProfile({
+            name: userProfile.name.trim() || undefined,
+            avatar_url: userProfile.avatar_url?.trim() || null,
+          });
+          if (!profileResult.success) {
+            setError(profileResult.error || "投稿者情報の更新に失敗しました");
+            setIsSubmitting(false);
+            return;
+          }
+          initialUserProfileRef.current = {
+            name: userProfile.name.trim(),
+            avatar_url: userProfile.avatar_url ?? null,
+          };
+        }
+      }
+
+      const submitData: ServiceFormData = {
+        ...data,
+        provider_display_name: userProfile?.name?.trim() || data.provider_display_name,
+      };
+      const result = await updateServiceManagement(serviceId, submitData);
 
       if (result.success) {
         router.push("/provider-dashboard?message=" + encodeURIComponent(result.message || "サービスを更新しました"));
@@ -283,27 +339,6 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
                     </FormControl>
                     <FormDescription>
                       カンマまたは改行で複数指定できます。1件以上設定すると、資料請求通知はこの宛先のみに送信され、作成者メールには送信されません。
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="provider_display_name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>表示企業名（任意）</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="例: 株式会社○○（未入力時は投稿者名を表示）"
-                        maxLength={120}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      サービス詳細の「提供企業」に表示する名称です。
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -582,6 +617,23 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
                   <CardContent className="py-12">
                     <div className="max-w-3xl mx-auto space-y-6">
                       <h1 className="text-3xl font-bold">{form.watch("title") || "タイトル未設定"}</h1>
+                      <div className="rounded-lg border p-3 flex items-center gap-3">
+                        {userProfile?.avatar_url ? (
+                          <img
+                            src={userProfile.avatar_url}
+                            alt={userProfile.name}
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                            <School className="h-5 w-5 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="text-sm">
+                          <p className="font-medium">{userProfile?.name || "未設定"}</p>
+                          <p className="text-muted-foreground">投稿者情報プレビュー</p>
+                        </div>
+                      </div>
                       {form.watch("description") && (
                         <p className="text-lg text-muted-foreground">{form.watch("description")}</p>
                       )}
@@ -621,6 +673,73 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
           </div>
 
           <div className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>投稿者情報</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center gap-3">
+                  {userProfile?.avatar_url ? (
+                    <img
+                      src={userProfile.avatar_url}
+                      alt={userProfile.name}
+                      className="w-12 h-12 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                      <School className="h-6 w-6 text-primary" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <Input
+                      value={userProfile?.name ?? ""}
+                      onChange={(e) =>
+                        setUserProfile((prev) =>
+                          prev ? { ...prev, name: e.target.value } : prev
+                        )
+                      }
+                      placeholder="投稿者名"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {userProfile?.email || ""}
+                    </p>
+                  </div>
+                </div>
+                <input
+                  ref={posterAvatarFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const formData = new FormData();
+                    formData.append("file", file);
+                    const result = await uploadImage(formData);
+                    const uploadedUrl =
+                      result.success && typeof result.url === "string"
+                        ? result.url
+                        : null;
+                    if (uploadedUrl) {
+                      setUserProfile((prev) =>
+                        prev ? { ...prev, avatar_url: uploadedUrl } : prev
+                      );
+                    } else {
+                      toast.error(result.error || "画像アップロードに失敗しました");
+                    }
+                    e.target.value = "";
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => posterAvatarFileInputRef.current?.click()}
+                >
+                  アイコン画像をアップロード
+                </Button>
+              </CardContent>
+            </Card>
             <Card>
               <CardHeader>
                 <CardTitle>投稿ガイドライン</CardTitle>
