@@ -178,7 +178,14 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    if (!profileRow.onboarding_completed_at) {
+    const ensuredProfileRow = profileRow;
+    if (!ensuredProfileRow) {
+      return redirectWithSession(
+        new URL("/auth/login?error=profile_creation_failed", origin)
+      );
+    }
+
+    if (!ensuredProfileRow.onboarding_completed_at) {
       const registerUrl = new URL("/profile/register", origin);
       registerUrl.searchParams.set("first", "1");
       if (redirectTo && redirectTo !== "/") {
