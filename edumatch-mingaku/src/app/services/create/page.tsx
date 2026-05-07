@@ -857,9 +857,13 @@ export default function ServiceCreatePage() {
                   const formData = new FormData();
                   formData.append("file", file);
                   const result = await uploadImage(formData);
-                  if (result.success && typeof result.url === "string") {
+                  const uploadedUrl =
+                    result.success && typeof result.url === "string"
+                      ? result.url
+                      : null;
+                  if (uploadedUrl) {
                     setUserProfile((prev) =>
-                      prev ? { ...prev, avatar_url: result.url } : prev
+                      prev ? { ...prev, avatar_url: uploadedUrl } : prev
                     );
                   } else {
                     toast.error(result.error || "画像アップロードに失敗しました");
