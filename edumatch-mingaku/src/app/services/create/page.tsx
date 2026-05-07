@@ -85,9 +85,14 @@ export default function ServiceCreatePage() {
   const [providerDisplayName, setProviderDisplayName] = useState(
     () => draft?.providerDisplayName || ""
   );
-  const [requestNotificationEmails, setRequestNotificationEmails] = useState(
-    () => draft?.requestNotificationEmails || ""
-  );
+  const [requestNotificationEmailList, setRequestNotificationEmailList] = useState<string[]>(() => {
+    const parsed = (draft?.requestNotificationEmails || "")
+      .split(/[\n,]/)
+      .map((token) => token.trim())
+      .filter(Boolean)
+      .slice(0, 3);
+    return [parsed[0] ?? "", parsed[1] ?? "", parsed[2] ?? ""];
+  });
   const [showMaterialRequestButton, setShowMaterialRequestButton] = useState(
     () => draft?.showMaterialRequestButton ?? true
   );
@@ -139,7 +144,10 @@ export default function ServiceCreatePage() {
     try {
       const nextDraft: ServiceDraft = {
         providerDisplayName,
-        requestNotificationEmails,
+        requestNotificationEmails: requestNotificationEmailList
+          .map((email) => email.trim())
+          .filter(Boolean)
+          .join("\n"),
         showMaterialRequestButton,
         title,
         description,
@@ -165,7 +173,7 @@ export default function ServiceCreatePage() {
     localStorage.removeItem(STORAGE_KEY);
     setTitle("");
     setProviderDisplayName("");
-    setRequestNotificationEmails("");
+    setRequestNotificationEmailList(["", "", ""]);
     setShowMaterialRequestButton(true);
     setDescription("");
     setCategory("");
@@ -188,11 +196,13 @@ export default function ServiceCreatePage() {
         if (!res.ok) return;
         const data = await res.json();
         if (data?.profile) {
+          const profileName = data.profile.name ?? "ユーザー";
           setUserProfile({
-            name: data.profile.name ?? "ユーザー",
+            name: profileName,
             avatar_url: data.profile.avatar_url ?? null,
             email: data.profile.email ?? "",
           });
+          setProviderDisplayName((prev) => prev.trim() || profileName);
         }
       } catch (error) {
         console.error("Failed to fetch profile:", error);
@@ -207,7 +217,10 @@ export default function ServiceCreatePage() {
       try {
         const nextDraft: ServiceDraft = {
           providerDisplayName,
-          requestNotificationEmails,
+          requestNotificationEmails: requestNotificationEmailList
+            .map((email) => email.trim())
+            .filter(Boolean)
+            .join("\n"),
           showMaterialRequestButton,
           title,
           description,
@@ -224,7 +237,7 @@ export default function ServiceCreatePage() {
       }
     }, 30000);
     return () => clearInterval(interval);
-  }, [providerDisplayName, requestNotificationEmails, showMaterialRequestButton, title, description, category, priceInfo, youtubeUrl, thumbnailUrl, content]);
+  }, [providerDisplayName, requestNotificationEmailList, showMaterialRequestButton, title, description, category, priceInfo, youtubeUrl, thumbnailUrl, content]);
 
   useEffect(() => {
     const updateLastSavedText = () => {
@@ -280,16 +293,13 @@ export default function ServiceCreatePage() {
       }
     }
     const serializedCategory = serializeServiceCategorySelection(selectedCategories, otherCategoryText);
-    const parsedNotificationEmails = requestNotificationEmails
-      .split(/[\n,]/)
+    const parsedNotificationEmails = requestNotificationEmailList
       .map((token) => token.trim())
       .filter(Boolean);
-
     setIsSubmitting(true);
     try {
       const result = await createService({
         title: title.trim(),
-        providerDisplayName: providerDisplayName.trim() || undefined,
         requestNotificationEmails: parsedNotificationEmails,
         showMaterialRequestButton,
         description: description.trim(),
@@ -533,27 +543,35 @@ export default function ServiceCreatePage() {
               )}
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">表示企業名（任意）</label>
-              <Input
-                value={providerDisplayName}
-                onChange={(e) => setProviderDisplayName(e.target.value)}
-                maxLength={120}
-                placeholder="例: 株式会社○○（未入力時は投稿者名を表示）"
-              />
+              <label className="text-sm font-medium">表示企業名</label>
+              <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
+                {userProfile?.name || providerDisplayName || "プロフィール情報の読み込み中..."}
+              </div>
               <p className="text-xs text-muted-foreground">
-                サービス詳細の「提供企業」に表示する名称です。
+                投稿者情報の表示名をそのまま使用します。変更する場合はプロフィール設定で編集してください。
               </p>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">資料請求の通知先メール（任意）</label>
-              <Textarea
-                value={requestNotificationEmails}
-                onChange={(e) => setRequestNotificationEmails(e.target.value)}
-                rows={3}
-                placeholder={"例:\nsales@example.com\ninfo@example.com"}
-              />
+              <div className="space-y-2">
+                {requestNotificationEmailList.map((email, idx) => (
+                  <Input
+                    key={idx}
+                    type="email"
+                    value={email}
+                    placeholder={`通知先メール${idx + 1}${idx === 0 ? "（例: sales@example.com）" : "（任意）"}`}
+                    onChange={(e) =>
+                      setRequestNotificationEmailList((prev) => {
+                        const next = [...prev];
+                        next[idx] = e.target.value;
+                        return next;
+                      })
+                    }
+                  />
+                ))}
+              </div>
               <p className="text-xs text-muted-foreground">
-                改行またはカンマ区切りで複数指定できます。1件以上設定すると、資料請求通知はこの宛先のみに送信され、作成者メールには送信されません。
+                最大3件まで設定できます。1件以上設定すると、資料請求通知はこの宛先のみに送信され、作成者メールには送信されません。
               </p>
             </div>
             <div className="space-y-2 rounded-md border p-3">

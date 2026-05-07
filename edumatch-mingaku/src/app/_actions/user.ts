@@ -23,6 +23,7 @@ export type CurrentUserProfile = {
   phone: string | null;
   organization: string | null;
   organization_type: string | null;
+  job_title: string | null;
   bio: string | null;
   website: string | null;
   notification_email_2: string | null;
@@ -91,6 +92,7 @@ export async function getCurrentUserProfile(): Promise<CurrentUserProfile | null
     phone: full.phone,
     organization,
     organization_type,
+    job_title: is_corporate_profile ? (c?.job_title ?? null) : null,
     bio: full.bio,
     website: full.website,
     notification_email_2: is_corporate_profile ? (c?.notification_email_2 ?? null) : null,
@@ -177,6 +179,8 @@ export type UpdateProfileInput = {
   organization_type?: string | null;
   /** 所属の種類が「その他」のときの補足（任意） */
   organization_type_other?: string | null;
+  /** 企業登録時の役職・職種（その他自由記述を含む） */
+  job_title?: string | null;
   bio?: string | null;
   website?: string | null;
   notification_email_2?: string | null;
@@ -249,6 +253,9 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
             legal_name: input.legal_name?.trim() || null,
             organization: input.organization?.trim() || null,
             organization_type: input.organization_type?.trim() || null,
+            ...(input.job_title !== undefined && {
+              job_title: input.job_title?.trim() || null,
+            }),
             ...(orgOther !== undefined && { organization_type_other: orgOther }),
             notification_email_2: input.notification_email_2?.trim() || null,
             notification_email_3: input.notification_email_3?.trim() || null,
@@ -265,6 +272,9 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
             }),
             ...(input.organization_type !== undefined && {
               organization_type: input.organization_type?.trim() || null,
+            }),
+            ...(input.job_title !== undefined && {
+              job_title: input.job_title?.trim() || null,
             }),
             ...(orgOther !== undefined && { organization_type_other: orgOther }),
             ...(input.notification_email_2 !== undefined && {

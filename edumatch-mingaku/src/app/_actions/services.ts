@@ -68,7 +68,6 @@ export type ContentBlock = {
 };
 
 export type CreateServiceInput = {
-  providerDisplayName?: string;
   requestNotificationEmails?: string[];
   showMaterialRequestButton?: boolean;
   title: string;
@@ -626,7 +625,7 @@ export async function createService(input: CreateServiceInput): Promise<CreateSe
     const service = await prisma.service.create({
       data: {
         provider_id: user.id,
-        provider_display_name: input.providerDisplayName?.trim() || null,
+        provider_display_name: profile?.name?.trim() || null,
         request_notification_emails: (input.requestNotificationEmails ?? [])
           .map((e) => e.trim())
           .filter((e) => e.length > 0),
@@ -679,7 +678,10 @@ export async function updateService(
 
     const existingService = await prisma.service.findUnique({
       where: { id },
-      select: { provider_id: true },
+      select: {
+        provider_id: true,
+        provider: { select: { name: true } },
+      },
     });
     if (!existingService) {
       return { success: false, error: "サービスが見つかりません" };
@@ -704,7 +706,7 @@ export async function updateService(
     await prisma.service.update({
       where: { id },
       data: {
-        provider_display_name: input.providerDisplayName?.trim() || null,
+        provider_display_name: existingService.provider?.name?.trim() || null,
         request_notification_emails: (input.requestNotificationEmails ?? [])
           .map((e) => e.trim())
           .filter((e) => e.length > 0),
@@ -745,7 +747,6 @@ export async function saveServiceDraft(
   if (input.serviceId) {
     return updateService(input.serviceId, {
       title: input.title,
-      providerDisplayName: input.providerDisplayName,
       requestNotificationEmails: input.requestNotificationEmails,
       showMaterialRequestButton: input.showMaterialRequestButton,
       description: input.description,
@@ -760,7 +761,6 @@ export async function saveServiceDraft(
   }
   return createService({
     title: input.title,
-    providerDisplayName: input.providerDisplayName,
     requestNotificationEmails: input.requestNotificationEmails,
     showMaterialRequestButton: input.showMaterialRequestButton,
     description: input.description,

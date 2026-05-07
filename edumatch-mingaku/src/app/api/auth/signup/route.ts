@@ -66,9 +66,9 @@ export async function POST(request: NextRequest) {
     const registrationKind =
       userType === "provider" ? ("service_business" as const) : ("general" as const);
     const manualKind = registrationKind === "service_business" ? "corporate" : "general";
-    const role: Role =
-      userType === "provider" ? Role.PROVIDER : Role.VIEWER;
-    const authRoleStr = role === Role.PROVIDER ? "PROVIDER" : "VIEWER";
+    // 企業登録でもロールは VIEWER 固定。企業判定は registration_kind / manual_profile_kind / corporateProfile で行う。
+    const role: Role = Role.VIEWER;
+    const authRoleStr = "VIEWER";
 
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: emailStr,
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Profile：一般は VIEWER、事業者は PROVIDER。拡張テーブルは登録種別で作成。初回オンボーディングは未完了のまま
+    // Profile：ロールは VIEWER 固定。拡張テーブルは登録種別で作成。初回オンボーディングは未完了のまま
     const userId = authData.user.id;
     try {
       await prisma.$transaction(async (tx) => {

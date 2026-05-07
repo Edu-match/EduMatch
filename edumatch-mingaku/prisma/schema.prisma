@@ -74,6 +74,8 @@ model CorporateProfile {
   id                    String   @id @db.Uuid
   profile               Profile  @relation(fields: [id], references: [id], onDelete: Cascade)
   legal_name            String?
+  /// 役職・職種（「その他」の自由記述を含む）
+  job_title             String?
   organization          String?
   organization_type     String?
   /// 所属の種類が「その他」のときの補足（任意）

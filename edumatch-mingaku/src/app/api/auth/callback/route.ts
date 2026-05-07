@@ -43,8 +43,9 @@ export async function GET(request: NextRequest) {
       ? ("service_business" as const)
       : ("general" as const);
     const manualKind = registrationKind === "service_business" ? "corporate" : "general";
-    const role: Role = providerSignupAllowed ? Role.PROVIDER : Role.VIEWER;
-    const authRoleStr = role === Role.PROVIDER ? "PROVIDER" : "VIEWER";
+    // OAuth登録時もロールは VIEWER 固定。企業判定は registration_kind / manual_profile_kind / corporateProfile で行う。
+    const role: Role = Role.VIEWER;
+    const authRoleStr = "VIEWER";
 
     const userMetadata = data.user.user_metadata || {};
     const name =
@@ -108,10 +109,10 @@ export async function GET(request: NextRequest) {
       return redirectWithSession(registerUrl);
     }
 
-    // 既存 Profile がある場合でも、Google登録時に provider を選んでいれば種別を反映する
+    // 既存 Profile がある場合でも、Google登録時に provider を選んでいれば
+    // 企業種別（manual_profile_kind / 拡張テーブル / metadata）を反映する
     if (
       providerSignupAllowed &&
-      profileRow.role !== Role.PROVIDER &&
       profileRow.role !== Role.ADMIN
     ) {
       try {
@@ -119,7 +120,6 @@ export async function GET(request: NextRequest) {
           await tx.profile.update({
             where: { id: userId },
             data: {
-              role: Role.PROVIDER,
               manual_profile_kind: "corporate",
             },
           });
@@ -142,7 +142,7 @@ export async function GET(request: NextRequest) {
         await admin.auth.admin.updateUserById(userId, {
           user_metadata: {
             ...userMetadata,
-            role: "PROVIDER",
+            role: "VIEWER",
             registration_kind: "service_business",
           },
         });

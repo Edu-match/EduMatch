@@ -44,6 +44,7 @@ export type InitialProfile = {
   organization?: string | null;
   organization_type?: string | null;
   organization_type_other?: string | null;
+  job_title?: string | null;
   bio?: string | null;
   website?: string | null;
   notification_email_2?: string | null;
@@ -85,6 +86,7 @@ const roles = [
   { value: "curriculum", label: "カリキュラム担当" },
   { value: "other", label: "その他" },
 ];
+const ROLE_VALUES = new Set(roles.map((r) => r.value));
 
 type Props = {
   initialProfile: InitialProfile | null;
@@ -111,7 +113,13 @@ export function ProfileRegisterForm({
   const [organizationTypeOther, setOrganizationTypeOther] = useState(
     initialProfile?.organization_type_other ?? ""
   );
-  const [role, setRole] = useState("");
+  const initialJobTitle = initialProfile?.job_title ?? "";
+  const [role, setRole] = useState(
+    initialJobTitle && ROLE_VALUES.has(initialJobTitle) ? initialJobTitle : initialJobTitle ? "other" : ""
+  );
+  const [roleOther, setRoleOther] = useState(
+    initialJobTitle && !ROLE_VALUES.has(initialJobTitle) ? initialJobTitle : ""
+  );
   const [address, setAddress] = useState(initialProfile?.address ?? "");
   const [selectedInterests, setSelectedInterests] = useState<string[]>(
     initialProfile?.interests ?? []
@@ -314,7 +322,13 @@ export function ProfileRegisterForm({
             {isProvider && (
               <div className="space-y-2">
                 <label className="text-sm font-medium">役職・職種</label>
-                <Select value={role} onValueChange={setRole}>
+                <Select
+                  value={role}
+                  onValueChange={(value) => {
+                    setRole(value);
+                    if (value !== "other") setRoleOther("");
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="選択してください" />
                   </SelectTrigger>
@@ -326,6 +340,13 @@ export function ProfileRegisterForm({
                     ))}
                   </SelectContent>
                 </Select>
+                {role === "other" && (
+                  <Input
+                    placeholder="役職・職種を入力してください"
+                    value={roleOther}
+                    onChange={(e) => setRoleOther(e.target.value)}
+                  />
+                )}
               </div>
             )}
             {isProvider && (
@@ -524,7 +545,9 @@ export function ProfileRegisterForm({
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">役職・職種</span>
                     <span>
-                      {roles.find((r) => r.value === role)?.label || "未入力"}
+                      {role === "other"
+                        ? roleOther || "未入力"
+                        : roles.find((r) => r.value === role)?.label || "未入力"}
                     </span>
                   </div>
                 )}
@@ -726,6 +749,11 @@ export function ProfileRegisterForm({
       organization_type: schoolType || null,
       organization_type_other:
         schoolType === "other" ? organizationTypeOther.trim() || null : null,
+      job_title: isProvider
+        ? role === "other"
+          ? roleOther.trim() || null
+          : role || null
+        : null,
       bio: bio || null,
       website: website || null,
       address: isProvider ? address.trim() || null : null,
