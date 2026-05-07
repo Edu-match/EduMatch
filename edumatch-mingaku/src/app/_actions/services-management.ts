@@ -44,7 +44,8 @@ export async function createServiceManagement(data: ServiceFormData) {
     const service = await prisma.service.create({
       data: {
         provider_id: profile.id,
-        provider_display_name: profile.name?.trim() || null,
+        provider_display_name:
+          validatedData.provider_display_name?.trim() || profile.name?.trim() || null,
         request_notification_emails: parseNotificationEmails(
           validatedData.request_notification_emails
         ),
@@ -139,7 +140,10 @@ export async function updateServiceManagement(serviceId: string, data: ServiceFo
     const service = await prisma.service.update({
       where: { id: serviceId },
       data: {
-        provider_display_name: existingService.provider?.name?.trim() || null,
+        provider_display_name:
+          validatedData.provider_display_name?.trim() ||
+          existingService.provider?.name?.trim() ||
+          null,
         request_notification_emails: parseNotificationEmails(
           validatedData.request_notification_emails
         ),

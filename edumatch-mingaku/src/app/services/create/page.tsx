@@ -300,6 +300,7 @@ export default function ServiceCreatePage() {
     try {
       const result = await createService({
         title: title.trim(),
+        providerDisplayName: providerDisplayName.trim() || undefined,
         requestNotificationEmails: parsedNotificationEmails,
         showMaterialRequestButton,
         description: description.trim(),
@@ -544,11 +545,14 @@ export default function ServiceCreatePage() {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">表示企業名</label>
-              <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
-                {userProfile?.name || providerDisplayName || "プロフィール情報の読み込み中..."}
-              </div>
+              <Input
+                value={providerDisplayName}
+                onChange={(e) => setProviderDisplayName(e.target.value)}
+                maxLength={120}
+                placeholder="例: 株式会社○○（初期値は投稿者情報）"
+              />
               <p className="text-xs text-muted-foreground">
-                投稿者情報の表示名をそのまま使用します。変更する場合はプロフィール設定で編集してください。
+                初期値は投稿者情報です。必要に応じてサービスごとの表示名に変更できます。
               </p>
             </div>
             <div className="space-y-2">
@@ -733,6 +737,9 @@ export default function ServiceCreatePage() {
                     </div>
                   )}
                   <h1 className="text-3xl font-bold">{title || "タイトル未設定"}</h1>
+                  <div className="text-sm text-muted-foreground">
+                    提供企業: {providerDisplayName || userProfile?.name || "未設定"}
+                  </div>
                   {description && (
                     <p className="text-lg text-muted-foreground">{description}</p>
                   )}
