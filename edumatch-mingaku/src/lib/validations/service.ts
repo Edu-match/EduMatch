@@ -9,6 +9,26 @@ import {
 } from "@/lib/categories";
 
 export const serviceSchema = z.object({
+  show_material_request_button: z.boolean().optional(),
+
+  request_notification_emails: z
+    .string()
+    .optional()
+    .refine((v) => {
+      if (!v || v.trim() === "") return true;
+      const tokens = v
+        .split(/[\n,]/)
+        .map((token) => token.trim())
+        .filter(Boolean);
+      if (tokens.length > 10) return false;
+      return tokens.every((email) => z.string().email().safeParse(email).success);
+    }, "通知先メールは有効なメールアドレスを改行またはカンマ区切りで入力してください（最大10件）"),
+
+  provider_display_name: z
+    .string()
+    .max(120, "表示企業名は120文字以内で入力してください")
+    .optional(),
+
   title: z
     .string()
     .min(1, "タイトルを入力してください")

@@ -108,6 +108,49 @@ export async function GET(request: NextRequest) {
       return redirectWithSession(registerUrl);
     }
 
+    // 既存 Profile がある場合でも、Google登録時に provider を選んでいれば種別を反映する
+    if (
+      providerSignupAllowed &&
+      profileRow.role !== Role.PROVIDER &&
+      profileRow.role !== Role.ADMIN
+    ) {
+      try {
+        await prisma.$transaction(async (tx) => {
+          await tx.profile.update({
+            where: { id: userId },
+            data: {
+              role: Role.PROVIDER,
+              manual_profile_kind: "corporate",
+            },
+          });
+          await syncExtensionTablesForRegistrationKind(
+            tx,
+            userId,
+            "service_business"
+          );
+        });
+        profileRow = await prisma.profile.findUnique({
+          where: { id: userId },
+          include: { generalProfile: true, corporateProfile: true },
+        });
+      } catch (upgradeErr) {
+        console.error("Provider profile upgrade error:", upgradeErr);
+      }
+
+      try {
+        const admin = createServiceRoleClient();
+        await admin.auth.admin.updateUserById(userId, {
+          user_metadata: {
+            ...userMetadata,
+            role: "PROVIDER",
+            registration_kind: "service_business",
+          },
+        });
+      } catch (metaErr) {
+        console.error("OAuth provider metadata update:", metaErr);
+      }
+    }
+
     // 既存 Profile で拡張行が両方無い場合は補修してから進める
     if (!profileRow.generalProfile && !profileRow.corporateProfile) {
       const inferredKind =

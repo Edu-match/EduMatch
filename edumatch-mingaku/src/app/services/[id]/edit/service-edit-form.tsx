@@ -8,6 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Form,
@@ -66,6 +67,9 @@ type ServiceEditFormProps = {
   serviceId: string;
   initialData: {
     title: string;
+    provider_display_name: string;
+    request_notification_emails: string;
+    show_material_request_button: boolean;
     description: string;
     category: string;
     content: string;
@@ -94,6 +98,9 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
     resolver: zodResolver(serviceSchema),
     defaultValues: {
       title: initialData.title,
+      provider_display_name: initialData.provider_display_name || "",
+      request_notification_emails: initialData.request_notification_emails || "",
+      show_material_request_button: initialData.show_material_request_button ?? true,
       description: initialData.description,
       category: initialData.category,
       content: initialData.content,
@@ -232,6 +239,72 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
                     <FormControl>
                       <Input placeholder="例: ClassTech Pro" {...field} />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="show_material_request_button"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>資料請求ボタン表示</FormLabel>
+                    <FormControl>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={!!field.value}
+                          onChange={(e) => field.onChange(e.target.checked)}
+                        />
+                        サービス詳細に「資料請求する（無料）」ボタンを表示する
+                      </label>
+                    </FormControl>
+                    <FormDescription>
+                      有料プラン設定に関係なく、このスイッチで表示/非表示を切り替えます。
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="request_notification_emails"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>資料請求の通知先メール（任意）</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder={"例:\nsales@example.com\ninfo@example.com"}
+                        rows={3}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      カンマまたは改行で複数指定できます。1件以上設定すると、資料請求通知はこの宛先のみに送信され、作成者メールには送信されません。
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="provider_display_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>表示企業名（任意）</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="例: 株式会社○○（未入力時は投稿者名を表示）"
+                        maxLength={120}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      サービス詳細の「提供企業」に表示する名称です。
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

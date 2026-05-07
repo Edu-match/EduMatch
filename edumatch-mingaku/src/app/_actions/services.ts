@@ -9,6 +9,7 @@ import type { Service, Role } from "@prisma/client";
 import { logActivity } from "./activity-log";
 
 export type ServiceWithProvider = Service & {
+  request_notification_emails?: string[];
   provider: {
     id: string;
     name: string;
@@ -67,6 +68,9 @@ export type ContentBlock = {
 };
 
 export type CreateServiceInput = {
+  providerDisplayName?: string;
+  requestNotificationEmails?: string[];
+  showMaterialRequestButton?: boolean;
   title: string;
   description: string;
   category: string;
@@ -186,6 +190,8 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     wp_product_id: null,
     provider_display_name: null,
     review_count: 0,
+    show_material_request_button: true,
+    request_notification_emails: [],
     is_published: true,
     is_member_only: false,
     status: "APPROVED",
@@ -216,6 +222,8 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     wp_product_id: null,
     provider_display_name: null,
     review_count: 0,
+    show_material_request_button: true,
+    request_notification_emails: [],
     is_published: true,
     is_member_only: false,
     status: "APPROVED",
@@ -246,6 +254,8 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     wp_product_id: null,
     provider_display_name: null,
     review_count: 0,
+    show_material_request_button: true,
+    request_notification_emails: [],
     is_published: true,
     is_member_only: false,
     status: "APPROVED",
@@ -276,6 +286,8 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     wp_product_id: null,
     provider_display_name: null,
     review_count: 0,
+    show_material_request_button: true,
+    request_notification_emails: [],
     is_published: true,
     is_member_only: false,
     status: "APPROVED",
@@ -306,6 +318,8 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     wp_product_id: null,
     provider_display_name: null,
     review_count: 0,
+    show_material_request_button: true,
+    request_notification_emails: [],
     is_published: true,
     is_member_only: false,
     status: "APPROVED",
@@ -612,6 +626,11 @@ export async function createService(input: CreateServiceInput): Promise<CreateSe
     const service = await prisma.service.create({
       data: {
         provider_id: user.id,
+        provider_display_name: input.providerDisplayName?.trim() || null,
+        request_notification_emails: (input.requestNotificationEmails ?? [])
+          .map((e) => e.trim())
+          .filter((e) => e.length > 0),
+        show_material_request_button: input.showMaterialRequestButton ?? true,
         title: input.title,
         description: input.description,
         content,
@@ -685,6 +704,11 @@ export async function updateService(
     await prisma.service.update({
       where: { id },
       data: {
+        provider_display_name: input.providerDisplayName?.trim() || null,
+        request_notification_emails: (input.requestNotificationEmails ?? [])
+          .map((e) => e.trim())
+          .filter((e) => e.length > 0),
+        show_material_request_button: input.showMaterialRequestButton ?? true,
         title: input.title,
         description: input.description,
         category: input.category,
@@ -721,6 +745,9 @@ export async function saveServiceDraft(
   if (input.serviceId) {
     return updateService(input.serviceId, {
       title: input.title,
+      providerDisplayName: input.providerDisplayName,
+      requestNotificationEmails: input.requestNotificationEmails,
+      showMaterialRequestButton: input.showMaterialRequestButton,
       description: input.description,
       category: input.category,
       priceInfo: input.priceInfo,
@@ -733,6 +760,9 @@ export async function saveServiceDraft(
   }
   return createService({
     title: input.title,
+    providerDisplayName: input.providerDisplayName,
+    requestNotificationEmails: input.requestNotificationEmails,
+    showMaterialRequestButton: input.showMaterialRequestButton,
     description: input.description,
     category: input.category,
     priceInfo: input.priceInfo,

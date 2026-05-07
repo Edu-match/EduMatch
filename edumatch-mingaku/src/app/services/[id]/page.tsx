@@ -47,8 +47,8 @@ export default async function ServiceDetailPage({
     await recordView(user.id, "SERVICE", id);
   }
   const canEdit = user && (user.id === service.provider_id || profile?.role === "ADMIN");
-  /** sort_order が「なし」のサービスでは資料請求ボタンのみ非表示（料金・お気に入り・共有などは表示） */
-  const showMaterialRequestButton = service.sort_order !== "NONE";
+  /** サービス設定で資料請求ボタン表示を切り替え */
+  const showMaterialRequestButton = service.show_material_request_button !== false;
 
   // 口コミを取得（口コミ機能が有効な場合のみ）
   const reviews = FEATURES.REVIEWS ? await getServiceReviews(id) : [];

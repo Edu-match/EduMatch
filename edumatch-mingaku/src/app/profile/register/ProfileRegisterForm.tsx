@@ -71,6 +71,12 @@ const interests = [
 ];
 
 const INTEREST_OTHER_MAX = 100;
+const AVATAR_TEMPLATES = [
+  "/avatars/templates/1.svg",
+  "/avatars/templates/2.svg",
+  "/avatars/templates/3.svg",
+  "/avatars/templates/4.svg",
+] as const;
 
 const roles = [
   { value: "teacher", label: "教員" },
@@ -185,13 +191,26 @@ export function ProfileRegisterForm({
                     )}
                     画像をアップロード
                   </Button>
-                  <Input
-                    type="url"
-                    placeholder="または画像のURLを入力"
-                    value={avatarUrl}
-                    onChange={(e) => setAvatarUrl(e.target.value)}
-                    className="text-sm"
-                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    またはテンプレートから選ぶ
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {AVATAR_TEMPLATES.map((url) => (
+                      <button
+                        key={url}
+                        type="button"
+                        onClick={() => setAvatarUrl(url)}
+                        className={`h-11 w-11 rounded-full border-2 overflow-hidden shrink-0 transition-all ${
+                          avatarUrl === url
+                            ? "border-primary ring-2 ring-primary/30"
+                            : "border-muted hover:border-primary/50"
+                        }`}
+                        aria-label="テンプレート画像を選択"
+                      >
+                        <img src={url} alt="" className="h-full w-full object-cover" />
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -201,21 +220,23 @@ export function ProfileRegisterForm({
               </label>
               <Input value={legalName} onChange={(e) => setLegalName(e.target.value)} />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">年齢（年代）</label>
-              <Select value={age} onValueChange={setAge}>
-                <SelectTrigger>
-                  <SelectValue placeholder="選択してください" />
-                </SelectTrigger>
-                <SelectContent>
-                  {AGE_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {!isProvider && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">年齢（年代）</label>
+                <Select value={age} onValueChange={setAge}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="選択してください" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {AGE_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="space-y-2">
               <label className="text-sm font-medium">
                 {isProvider ? "ご登録いただく方のお名前" : "表示名（ニックネーム）"}{" "}
@@ -422,7 +443,7 @@ export function ProfileRegisterForm({
             {isProvider && (
               <div className="space-y-2">
                 <label className="text-sm font-medium">
-                  URL <span className="text-red-500">*</span>
+                  公式サイトURL <span className="text-red-500">*</span>
                 </label>
                 <Input
                   type="url"
@@ -456,10 +477,12 @@ export function ProfileRegisterForm({
                     <span className="text-muted-foreground shrink-0">名前</span>
                     <span className="text-right break-all">{legalName || "未入力"}</span>
                   </div>
-                  <div className="flex justify-between gap-4">
-                    <span className="text-muted-foreground shrink-0">年齢</span>
-                    <span>{AGE_OPTIONS.find(o => o.value === age)?.label || "未入力"}</span>
-                  </div>
+                  {!isProvider && (
+                    <div className="flex justify-between gap-4">
+                      <span className="text-muted-foreground shrink-0">年齢</span>
+                      <span>{AGE_OPTIONS.find(o => o.value === age)?.label || "未入力"}</span>
+                    </div>
+                  )}
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between gap-4">
                       <span className="text-muted-foreground">表示名（ニックネーム）</span>
@@ -578,7 +601,7 @@ export function ProfileRegisterForm({
                 )}
                 {isProvider && (
                   <div>
-                    <span className="text-muted-foreground block mb-1">URL</span>
+                    <span className="text-muted-foreground block mb-1">公式サイトURL</span>
                     {website ? (
                       <a
                         href={website}
@@ -636,7 +659,7 @@ export function ProfileRegisterForm({
         return;
       }
     } else if (currentStep === 4 && isProvider && !website.trim()) {
-      setValidationError("URLを入力してください。");
+      setValidationError("公式サイトURLを入力してください。");
       return;
     }
     
@@ -685,7 +708,7 @@ export function ProfileRegisterForm({
       return;
     }
     if (isProvider && !website.trim()) {
-      setValidationError("URLを入力してください。");
+      setValidationError("公式サイトURLを入力してください。");
       return;
     }
     if (isFirstTime && !avatarUrl.trim()) {
@@ -696,7 +719,7 @@ export function ProfileRegisterForm({
     const { success } = await updateProfile({
       name: name || undefined,
       legal_name: legalName.trim(),
-      age: age || null,
+      age: isProvider ? null : age || null,
       avatar_url: avatarUrl.trim() || null,
       phone: phone || null,
       organization: organization?.trim() || null,

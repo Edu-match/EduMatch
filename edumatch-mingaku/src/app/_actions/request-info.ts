@@ -106,12 +106,16 @@ export async function submitMaterialRequest(
     });
 
     const provider = service.provider;
-    const providerEmails: string[] = [
-      provider?.email,
-      provider?.notification_email_2,
-      provider?.notification_email_3,
-    ]
+    const serviceNotificationEmails: string[] = (service.request_notification_emails ?? [])
       .filter((e): e is string => typeof e === "string" && e.trim().length > 0);
+    const providerEmails: string[] =
+      serviceNotificationEmails.length > 0
+        ? serviceNotificationEmails
+        : [
+            provider?.email,
+            provider?.notification_email_2,
+            provider?.notification_email_3,
+          ].filter((e): e is string => typeof e === "string" && e.trim().length > 0);
     const providerEmailsUnique = [...new Set(providerEmails)];
 
     const apiKey = process.env.RESEND_API_KEY;

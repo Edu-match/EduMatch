@@ -7,6 +7,14 @@ import { revalidatePath } from "next/cache";
 import { serviceSchema, type ServiceFormData } from "@/lib/validations/service";
 import { normalizeImageUrl } from "@/lib/image-url-utils";
 
+function parseNotificationEmails(input?: string): string[] {
+  if (!input) return [];
+  return input
+    .split(/[\n,]/)
+    .map((token) => token.trim())
+    .filter((token) => token.length > 0);
+}
+
 /**
  * サービスを作成する
  */
@@ -36,6 +44,12 @@ export async function createServiceManagement(data: ServiceFormData) {
     const service = await prisma.service.create({
       data: {
         provider_id: profile.id,
+        provider_display_name: validatedData.provider_display_name?.trim() || null,
+        request_notification_emails: parseNotificationEmails(
+          validatedData.request_notification_emails
+        ),
+        show_material_request_button:
+          validatedData.show_material_request_button ?? true,
         title: validatedData.title,
         description: validatedData.description,
         category: validatedData.category,
@@ -122,6 +136,12 @@ export async function updateServiceManagement(serviceId: string, data: ServiceFo
     const service = await prisma.service.update({
       where: { id: serviceId },
       data: {
+        provider_display_name: validatedData.provider_display_name?.trim() || null,
+        request_notification_emails: parseNotificationEmails(
+          validatedData.request_notification_emails
+        ),
+        show_material_request_button:
+          validatedData.show_material_request_button ?? true,
         title: validatedData.title,
         description: validatedData.description,
         category: validatedData.category,

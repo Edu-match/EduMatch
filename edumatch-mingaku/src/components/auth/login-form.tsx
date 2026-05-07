@@ -7,12 +7,11 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Mail, Lock, Loader2, Chrome, AlertCircle } from "lucide-react";
+import { Mail, Lock, Loader2, Chrome, AlertCircle, Building2, UserCircle2, Check } from "lucide-react";
 import { loginSchema, type LoginInput } from "@/lib/validations/auth";
 import { createSupabaseBrowserClient } from "@/utils/supabase/client";
-
-/** ログインは閲覧者のみ。投稿者選択はオフのため常に viewer で送信 */
-const LOGIN_USER_TYPE = "viewer" as const;
+import { FEATURES } from "@/lib/features";
+import { cn } from "@/lib/utils";
 
 type Props = {
   onSuccess?: () => void;
@@ -23,6 +22,9 @@ export function LoginForm({ onSuccess, redirectTo = "/" }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [globalHint, setGlobalHint] = useState<string | null>(null);
+  const [userType, setUserType] = useState<"viewer" | "provider">("viewer");
+  const allowProvider = FEATURES.PROVIDER_REGISTRATION;
+  const effectiveUserType: "viewer" | "provider" = allowProvider ? userType : "viewer";
 
   const {
     register,
@@ -45,7 +47,7 @@ export function LoginForm({ onSuccess, redirectTo = "/" }: Props) {
         body: JSON.stringify({
           email: data.email,
           password: data.password,
-          userType: LOGIN_USER_TYPE,
+          userType: effectiveUserType,
         }),
       });
 
@@ -77,11 +79,104 @@ export function LoginForm({ onSuccess, redirectTo = "/" }: Props) {
   const handleGoogleLogin = () => {
     window.location.href = `/api/auth/google?redirect_to=${encodeURIComponent(
       redirectTo
-    )}&userType=${LOGIN_USER_TYPE}`;
+    )}&userType=${effectiveUserType}`;
   };
 
   return (
     <div className="space-y-6">
+      <div className="space-y-3">
+        <p className="text-sm font-semibold text-foreground">ログインするアカウント種別を選んでください</p>
+        <div
+          className="grid gap-3 sm:grid-cols-2"
+          role="radiogroup"
+          aria-label="ログインアカウント種別"
+        >
+          <button
+            type="button"
+            role="radio"
+            aria-checked={effectiveUserType === "viewer"}
+            onClick={() => setUserType("viewer")}
+            className={cn(
+              "relative text-left rounded-xl border p-4 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+              effectiveUserType === "viewer"
+                ? "border-primary bg-primary/5 shadow-sm"
+                : "border-border bg-card hover:bg-muted/40"
+            )}
+          >
+            <span
+              className={cn(
+                "absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full border text-xs",
+                effectiveUserType === "viewer"
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-muted-foreground/30 text-transparent"
+              )}
+              aria-hidden
+            >
+              <Check className="h-3.5 w-3.5" />
+            </span>
+            <UserCircle2
+              className={cn(
+                "h-8 w-8 mb-2",
+                effectiveUserType === "viewer" ? "text-primary" : "text-muted-foreground"
+              )}
+            />
+            <span className="block text-sm font-semibold text-foreground">一般利用</span>
+            <span className="mt-1 block text-xs text-muted-foreground leading-relaxed">
+              個人・保護者・学生など。サービスの検索・比較・資料請求に利用します。
+            </span>
+          </button>
+
+          {allowProvider ? (
+            <button
+              type="button"
+              role="radio"
+              aria-checked={userType === "provider"}
+              onClick={() => setUserType("provider")}
+              className={cn(
+                "relative text-left rounded-xl border p-4 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                userType === "provider"
+                  ? "border-primary bg-primary/5 shadow-sm"
+                  : "border-border bg-card hover:bg-muted/40"
+              )}
+            >
+              <span
+                className={cn(
+                  "absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full border text-xs",
+                  userType === "provider"
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-muted-foreground/30 text-transparent"
+                )}
+                aria-hidden
+              >
+                <Check className="h-3.5 w-3.5" />
+              </span>
+              <Building2
+                className={cn(
+                  "h-8 w-8 mb-2",
+                  userType === "provider" ? "text-primary" : "text-muted-foreground"
+                )}
+              />
+              <span className="block text-sm font-semibold text-foreground">事業者・団体</span>
+              <span className="mt-1 block text-xs text-muted-foreground leading-relaxed">
+                EdTech事業者や教育関連団体としてのアカウントでログインします。
+              </span>
+            </button>
+          ) : (
+            <div
+              className="relative text-left rounded-xl border border-dashed border-muted-foreground/30 bg-muted/20 p-4 opacity-80"
+              aria-disabled
+              title="現在、事業者向けのログイン選択は停止しています"
+            >
+              <Building2 className="h-8 w-8 mb-2 text-muted-foreground" />
+              <span className="block text-sm font-semibold text-muted-foreground">事業者・団体</span>
+              <span className="mt-1 block text-xs text-muted-foreground leading-relaxed">
+                現在は一般利用アカウントでログインしてください。
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Googleログイン */}
           <div className="space-y-5">
             <Button
@@ -185,6 +280,11 @@ export function LoginForm({ onSuccess, redirectTo = "/" }: Props) {
                       パスワードをお忘れですか？
                     </Link>
                     でパスワードを設定してからメールでログインできます。
+                  </p>
+                )}
+                {globalError.includes("サービス事業者として登録されています") && (
+                  <p className="text-sm text-muted-foreground pl-6">
+                    事業者アカウントの方は、上部の「事業者・団体」を選択して再度ログインしてください。
                   </p>
                 )}
               </div>

@@ -19,6 +19,9 @@ export default async function ServiceEditPage({ params }: PageProps) {
       id: true,
       provider_id: true,
       title: true,
+      provider_display_name: true,
+      request_notification_emails: true,
+      show_material_request_button: true,
       description: true,
       category: true,
       content: true,
@@ -41,6 +44,9 @@ export default async function ServiceEditPage({ params }: PageProps) {
 
   const initialData = {
     title: service.title,
+    provider_display_name: service.provider_display_name ?? "",
+    request_notification_emails: (service.request_notification_emails ?? []).join("\n"),
+    show_material_request_button: service.show_material_request_button ?? true,
     description: service.description,
     category: service.category,
     content: service.content,

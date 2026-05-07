@@ -212,6 +212,10 @@ model Service {
   wp_product_id         Int?
   /// 口コミ数（非正規化キャッシュ）
   review_count          Int               @default(0)
+  /// サービス詳細で資料請求ボタンを表示するか
+  show_material_request_button Boolean    @default(true)
+  /// 資料請求通知先メール（サービス単位・任意）。1件以上設定時は provider.email には送らない
+  request_notification_emails String[]    @default([])
   material_requests     MaterialRequest[]
   reviews               Review[]
   provider              Profile           @relation(fields: [provider_id], references: [id], onDelete: Cascade)

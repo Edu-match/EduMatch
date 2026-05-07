@@ -52,6 +52,9 @@ import {
 const STORAGE_KEY = "edumatch-service-draft";
 
 interface ServiceDraft {
+  providerDisplayName: string;
+  requestNotificationEmails: string;
+  showMaterialRequestButton: boolean;
   title: string;
   description: string;
   category: string;
@@ -79,6 +82,15 @@ export default function ServiceCreatePage() {
   const [activeTab, setActiveTab] = useState("edit");
 
   const [title, setTitle] = useState(() => draft?.title || "");
+  const [providerDisplayName, setProviderDisplayName] = useState(
+    () => draft?.providerDisplayName || ""
+  );
+  const [requestNotificationEmails, setRequestNotificationEmails] = useState(
+    () => draft?.requestNotificationEmails || ""
+  );
+  const [showMaterialRequestButton, setShowMaterialRequestButton] = useState(
+    () => draft?.showMaterialRequestButton ?? true
+  );
   const [description, setDescription] = useState(() => draft?.description || "");
   const [category, setCategory] = useState(() => draft?.category || "");
   const [otherCategoryText, setOtherCategoryText] = useState(
@@ -126,6 +138,9 @@ export default function ServiceCreatePage() {
     setIsSaving(true);
     try {
       const nextDraft: ServiceDraft = {
+        providerDisplayName,
+        requestNotificationEmails,
+        showMaterialRequestButton,
         title,
         description,
         category,
@@ -149,6 +164,9 @@ export default function ServiceCreatePage() {
   const clearDraft = () => {
     localStorage.removeItem(STORAGE_KEY);
     setTitle("");
+    setProviderDisplayName("");
+    setRequestNotificationEmails("");
+    setShowMaterialRequestButton(true);
     setDescription("");
     setCategory("");
     setOtherCategoryText("");
@@ -188,6 +206,9 @@ export default function ServiceCreatePage() {
       if (!title && !description && !content) return;
       try {
         const nextDraft: ServiceDraft = {
+          providerDisplayName,
+          requestNotificationEmails,
+          showMaterialRequestButton,
           title,
           description,
           category,
@@ -203,7 +224,7 @@ export default function ServiceCreatePage() {
       }
     }, 30000);
     return () => clearInterval(interval);
-  }, [title, description, category, priceInfo, youtubeUrl, thumbnailUrl, content]);
+  }, [providerDisplayName, requestNotificationEmails, showMaterialRequestButton, title, description, category, priceInfo, youtubeUrl, thumbnailUrl, content]);
 
   useEffect(() => {
     const updateLastSavedText = () => {
@@ -228,16 +249,8 @@ export default function ServiceCreatePage() {
   }, [lastSaved]);
 
   async function submit(publishType: "draft" | "submit") {
-    if (!title.trim()) {
-      toast.error("サービス名を入力してください");
-      return;
-    }
     if (titleLength > TITLE_MAX_LENGTH) {
       toast.error(`サービス名は${TITLE_MAX_LENGTH}文字以内で入力してください`);
-      return;
-    }
-    if (!description.trim()) {
-      toast.error("概要を入力してください");
       return;
     }
     if (descriptionLength > DESCRIPTION_MAX_LENGTH) {
@@ -248,20 +261,37 @@ export default function ServiceCreatePage() {
       toast.error(`本文は${CONTENT_MAX_LENGTH.toLocaleString()}文字以内で入力してください`);
       return;
     }
-    if (selectedCategories.length === 0) {
-      toast.error("カテゴリを選択してください");
-      return;
-    }
-    if (selectedCategories.length > SERVICE_CATEGORY_MAX_SELECTION) {
-      toast.error(`カテゴリは最大${SERVICE_CATEGORY_MAX_SELECTION}つまで選択できます`);
-      return;
+    if (publishType === "submit") {
+      if (!title.trim()) {
+        toast.error("サービス名を入力してください");
+        return;
+      }
+      if (!description.trim()) {
+        toast.error("概要を入力してください");
+        return;
+      }
+      if (selectedCategories.length === 0) {
+        toast.error("カテゴリを選択してください");
+        return;
+      }
+      if (selectedCategories.length > SERVICE_CATEGORY_MAX_SELECTION) {
+        toast.error(`カテゴリは最大${SERVICE_CATEGORY_MAX_SELECTION}つまで選択できます`);
+        return;
+      }
     }
     const serializedCategory = serializeServiceCategorySelection(selectedCategories, otherCategoryText);
+    const parsedNotificationEmails = requestNotificationEmails
+      .split(/[\n,]/)
+      .map((token) => token.trim())
+      .filter(Boolean);
 
     setIsSubmitting(true);
     try {
       const result = await createService({
         title: title.trim(),
+        providerDisplayName: providerDisplayName.trim() || undefined,
+        requestNotificationEmails: parsedNotificationEmails,
+        showMaterialRequestButton,
         description: description.trim(),
         category: serializedCategory,
         priceInfo: priceInfo.trim() || "お問い合わせ",
@@ -501,6 +531,43 @@ export default function ServiceCreatePage() {
                   タイトルは{TITLE_MAX_LENGTH}文字以内で入力してください
                 </p>
               )}
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">表示企業名（任意）</label>
+              <Input
+                value={providerDisplayName}
+                onChange={(e) => setProviderDisplayName(e.target.value)}
+                maxLength={120}
+                placeholder="例: 株式会社○○（未入力時は投稿者名を表示）"
+              />
+              <p className="text-xs text-muted-foreground">
+                サービス詳細の「提供企業」に表示する名称です。
+              </p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">資料請求の通知先メール（任意）</label>
+              <Textarea
+                value={requestNotificationEmails}
+                onChange={(e) => setRequestNotificationEmails(e.target.value)}
+                rows={3}
+                placeholder={"例:\nsales@example.com\ninfo@example.com"}
+              />
+              <p className="text-xs text-muted-foreground">
+                改行またはカンマ区切りで複数指定できます。1件以上設定すると、資料請求通知はこの宛先のみに送信され、作成者メールには送信されません。
+              </p>
+            </div>
+            <div className="space-y-2 rounded-md border p-3">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input
+                  type="checkbox"
+                  checked={showMaterialRequestButton}
+                  onChange={(e) => setShowMaterialRequestButton(e.target.checked)}
+                />
+                サービス詳細に「資料請求する（無料）」ボタンを表示する
+              </label>
+              <p className="text-xs text-muted-foreground">
+                有料プラン設定に関わらず、このスイッチで表示/非表示を直接切り替えます。
+              </p>
             </div>
             <div className="space-y-2">
               <div className="relative">

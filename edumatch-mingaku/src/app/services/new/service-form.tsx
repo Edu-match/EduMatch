@@ -48,6 +48,9 @@ export function ServiceForm() {
   const form = useForm<ServiceFormData>({
     resolver: zodResolver(serviceSchema),
     defaultValues: {
+      show_material_request_button: true,
+      request_notification_emails: "",
+      provider_display_name: "",
       title: "",
       description: "",
       category: "",
@@ -154,6 +157,68 @@ export function ServiceForm() {
                     <FormControl>
                       <Input placeholder="例: ClassTech Pro" {...field} />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="show_material_request_button"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>資料請求ボタン表示</FormLabel>
+                    <FormControl>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={!!field.value}
+                          onChange={(e) => field.onChange(e.target.checked)}
+                        />
+                        サービス詳細に「資料請求する（無料）」ボタンを表示する
+                      </label>
+                    </FormControl>
+                    <FormDescription>
+                      有料プラン設定に関係なく、このスイッチで表示/非表示を切り替えます。
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="request_notification_emails"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>資料請求の通知先メール（任意）</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder={"例:\nsales@example.com\ninfo@example.com"}
+                        rows={3}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      改行またはカンマ区切りで複数指定できます。1件以上設定すると、資料請求通知はこの宛先のみに送信され、作成者メールには送信されません。
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="provider_display_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>表示企業名（任意）</FormLabel>
+                    <FormControl>
+                      <Input placeholder="例: 株式会社○○（未入力時は投稿者名を表示）" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      サービス詳細の「提供企業」に表示する名称です。
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
