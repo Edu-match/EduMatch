@@ -857,7 +857,7 @@ export default function ServiceCreatePage() {
                   const formData = new FormData();
                   formData.append("file", file);
                   const result = await uploadImage(formData);
-                  if (result.success && result.url) {
+                  if (result.success && typeof result.url === "string") {
                     setUserProfile((prev) =>
                       prev ? { ...prev, avatar_url: result.url } : prev
                     );
