@@ -170,6 +170,24 @@ function isDbUnavailable(error: unknown): boolean {
   return false;
 }
 
+/** DBに接続できないとき以外の取得失敗（未適用マイグレーションなど）をログに残す */
+function logServiceFetchError(context: string, error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  const code =
+    typeof error === "object" && error !== null && "code" in error
+      ? String((error as { code: unknown }).code)
+      : "";
+  console.error(`[services] ${context}:`, error);
+  if (
+    code === "P2022" ||
+    /column .+ does not exist|display_order|Unknown column/i.test(message)
+  ) {
+    console.error(
+      "[services] PrismaスキーマとDBが一致していない可能性があります。未適用のマイグレーション（例: Service.display_order）をデータベースに適用してください。"
+    );
+  }
+}
+
 // デモデータ（DB接続不可時に表示）
 const DEMO_SERVICES: ServiceWithProvider[] = [
   {
@@ -388,8 +406,8 @@ export async function getAllServices(): Promise<ServiceWithProvider[]> {
       }
       return DEMO_SERVICES;
     }
-    console.error("Error fetching services:", error);
-    return DEMO_SERVICES;
+    logServiceFetchError("getAllServices", error);
+    return [];
   }
 }
 
@@ -444,8 +462,8 @@ export async function getPopularServices(limit: number = 5): Promise<ServiceWith
       }
       return DEMO_SERVICES.slice(0, limit);
     }
-    console.error("Error fetching popular services:", error);
-    return DEMO_SERVICES.slice(0, limit);
+    logServiceFetchError("getPopularServices", error);
+    return [];
   }
 }
 
@@ -511,8 +529,8 @@ export async function getServiceById(id: string): Promise<ServiceWithProvider | 
       }
       return DEMO_SERVICES.find((s) => s.id === id) || null;
     }
-    console.error("Error fetching service:", error);
-    return DEMO_SERVICES.find((s) => s.id === id) || null;
+    logServiceFetchError("getServiceById", error);
+    return null;
   }
 }
 
@@ -566,8 +584,8 @@ export async function getServicesByCategory(category: string): Promise<ServiceWi
       }
       return DEMO_SERVICES.filter((s) => s.category === category);
     }
-    console.error("Error fetching services by category:", error);
-    return DEMO_SERVICES.filter((s) => s.category === category);
+    logServiceFetchError("getServicesByCategory", error);
+    return [];
   }
 }
 
