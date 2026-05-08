@@ -1,51 +1,37 @@
 import Link from "next/link";
-import { Crown, Calendar, ChevronRight } from "lucide-react";
+import { Megaphone, Calendar, ChevronRight } from "lucide-react";
 import { getPopularServicesByEngagement } from "@/app/_actions/popularity";
 import { getUpcomingEvents } from "@/app/_actions/events";
 import { RankingServiceImage } from "./ranking-service-image";
 
-const rankColors = [
-  "bg-[#ef4444] text-white",
-  "bg-[#f97316] text-white",
-  "bg-[#f59e0b] text-white",
-  "bg-muted text-foreground",
-  "bg-muted text-foreground",
-];
-
 /** トップページ右サイドバー：ランキング（上位5社）＋セミナー・イベント情報 */
 export async function RightRankingSidebar() {
   const [services, events] = await Promise.all([
-    getPopularServicesByEngagement(5),
+    getPopularServicesByEngagement(8),
     getUpcomingEvents(5),
   ]);
 
   return (
     <aside className="lg:sticky lg:top-20 flex flex-col gap-6 min-w-0 w-full">
-      {/* 人気サービスランキング */}
+      {/* [PR]注目のサービス */}
       <div className="border rounded-xl bg-card shadow-sm overflow-hidden flex flex-col">
         <div className="p-4 border-b flex items-center gap-3 shrink-0">
-          <Crown className="h-6 w-6 text-[#f59e0b] shrink-0" />
-          <h3 className="text-lg font-bold truncate">人気サービスランキング</h3>
+          <Megaphone className="h-6 w-6 text-primary shrink-0" />
+          <h3 className="text-lg font-bold truncate">[PR]注目のサービス</h3>
         </div>
         <div className="p-4">
           {services.length > 0 ? (
-            <ul className="space-y-4">
-              {services.map((service, index) => (
-                <li key={service.id} className="flex items-center gap-3 text-base">
-                  <span
-                    className={`flex-shrink-0 h-8 w-8 flex items-center justify-center rounded-md text-sm font-bold ${rankColors[index] ?? rankColors[4]}`}
-                  >
-                    {index + 1}
-                  </span>
+            <ul className="grid grid-cols-2 gap-3">
+              {services.map((service) => (
+                <li key={service.id} className="min-w-0">
+                  <Link href={`/services/${service.id}`} className="block group">
                   <RankingServiceImage
                     src={service.thumbnail_url}
                     alt={service.title}
                   />
-                  <Link
-                    href={`/services/${service.id}`}
-                    className="flex-1 hover:text-[#1d4ed8] transition-colors line-clamp-2 min-w-0 text-sm font-medium"
-                  >
+                  <p className="mt-1 text-xs font-medium line-clamp-2 group-hover:text-[#1d4ed8] transition-colors">
                     {service.title}
+                  </p>
                   </Link>
                 </li>
               ))}

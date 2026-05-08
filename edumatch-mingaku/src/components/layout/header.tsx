@@ -7,7 +7,7 @@ import Image from "next/image";
 import { 
   Menu, LogOut, User, LayoutDashboard, Settings, 
   ChevronDown, UserPlus, LogIn, FileText, Bell,
-  CheckCircle, Calendar, Newspaper, BookOpen, Bot, Activity, Flag
+  CheckCircle, Calendar, Newspaper, BookOpen, Bot, Activity, Flag, ArrowUpDown
 } from "lucide-react";
 import { useRequestList } from "@/components/request-list/request-list-context";
 import { Button } from "@/components/ui/button";
@@ -358,6 +358,13 @@ export function Header() {
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="cursor-pointer"
+                      onSelect={() => router.push("/admin/services/display-order")}
+                    >
+                      <ArrowUpDown className="mr-2 h-4 w-4 text-cyan-600" />
+                      サービス表示順管理
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="cursor-pointer"
                       onSelect={() => router.push("/admin/activity-log")}
                     >
                       <Activity className="mr-2 h-4 w-4 text-orange-600" />
@@ -512,6 +519,9 @@ export function Header() {
                         </Link>
                         <Link href="/admin/ai-chat" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
                           <Bot className="h-4 w-4 text-violet-600 flex-shrink-0" />AIチャット管理
+                        </Link>
+                        <Link href="/admin/services/display-order" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
+                          <ArrowUpDown className="h-4 w-4 text-cyan-600 flex-shrink-0" />サービス表示順管理
                         </Link>
                         <Link href="/admin/activity-log" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
                           <Activity className="h-4 w-4 text-orange-600 flex-shrink-0" />操作ログ

@@ -205,6 +205,8 @@ model Service {
   view_count            Int               @default(0)
   favorite_count        Int               @default(0)
   request_count         Int               @default(0)
+  /// サービス個別の表示順（小さいほど先に表示）
+  display_order         Int               @default(999)
   tags                  String[]          @default([])
   /// 表示順（Supabase でプルダウン: プレミアム/スタンダード/ベーシック/その他/なし）
   sort_order            ServiceSortOrderTier @default(NONE)
@@ -228,6 +230,7 @@ model Service {
   @@index([favorite_count])
   @@index([request_count])
   @@index([review_count])
+  @@index([display_order, created_at(sort: Desc)], map: "service_display_order_idx")
   @@index([sort_order, created_at(sort: Desc)], map: "service_sort_order_idx")
 }
 

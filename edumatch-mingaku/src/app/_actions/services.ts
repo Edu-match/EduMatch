@@ -7,6 +7,7 @@ import { createClient } from "@/utils/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import type { Service, Role } from "@prisma/client";
 import { logActivity } from "./activity-log";
+import { revalidatePath } from "next/cache";
 
 export type ServiceWithProvider = Service & {
   request_notification_emails?: string[];
@@ -186,6 +187,7 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     view_count: 850,
     favorite_count: 38,
     request_count: 52,
+    display_order: 1,
     sort_order: "NONE",
     wp_product_id: null,
     provider_display_name: null,
@@ -218,6 +220,7 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     view_count: 720,
     favorite_count: 29,
     request_count: 44,
+    display_order: 2,
     sort_order: "NONE",
     wp_product_id: null,
     provider_display_name: null,
@@ -250,6 +253,7 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     view_count: 650,
     favorite_count: 35,
     request_count: 38,
+    display_order: 3,
     sort_order: "NONE",
     wp_product_id: null,
     provider_display_name: null,
@@ -282,6 +286,7 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     view_count: 980,
     favorite_count: 42,
     request_count: 61,
+    display_order: 4,
     sort_order: "NONE",
     wp_product_id: null,
     provider_display_name: null,
@@ -314,6 +319,7 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     view_count: 790,
     favorite_count: 33,
     request_count: 47,
+    display_order: 5,
     sort_order: "NONE",
     wp_product_id: null,
     provider_display_name: null,
@@ -365,6 +371,7 @@ export async function getAllServices(): Promise<ServiceWithProvider[]> {
         },
       },
       orderBy: [
+        { display_order: "asc" },
         { sort_order: "asc" },
         { created_at: "desc" },
       ],
@@ -419,6 +426,7 @@ export async function getPopularServices(limit: number = 5): Promise<ServiceWith
         },
       },
       orderBy: [
+        { display_order: "asc" },
         { sort_order: "asc" },
         { created_at: "desc" },
       ],
@@ -544,9 +552,7 @@ export async function getServicesByCategory(category: string): Promise<ServiceWi
           },
         },
       },
-      orderBy: {
-        created_at: "desc",
-      },
+      orderBy: [{ display_order: "asc" }, { created_at: "desc" }],
     });
 
     return services.map((s) => ({
@@ -886,5 +892,67 @@ export async function rejectService(serviceId: string, reason?: string): Promise
   } catch (e) {
     console.error("Error rejecting service:", e);
     return { success: false, error: "却下に失敗しました" };
+  }
+}
+
+export type ServiceDisplayOrderAdminItem = {
+  id: string;
+  title: string;
+  provider_display_name: string | null;
+  display_order: number;
+  status: Service["status"];
+  updated_at: Date;
+};
+
+/**
+ * 管理者: 表示順編集用のサービス一覧
+ */
+export async function getServicesForAdminDisplayOrder(): Promise<ServiceDisplayOrderAdminItem[]> {
+  const auth = await requireAdmin();
+  if (!auth.success) return [];
+
+  const services = await prisma.service.findMany({
+    select: {
+      id: true,
+      title: true,
+      provider_display_name: true,
+      display_order: true,
+      status: true,
+      updated_at: true,
+    },
+    orderBy: [{ display_order: "asc" }, { updated_at: "desc" }],
+    take: 300,
+  });
+
+  return services;
+}
+
+/**
+ * 管理者: サービス個別の表示順を更新
+ */
+export async function updateServiceDisplayOrder(
+  serviceId: string,
+  displayOrder: number
+): Promise<SimpleResult> {
+  const auth = await requireAdmin();
+  if (!auth.success) return auth;
+
+  if (!Number.isFinite(displayOrder) || displayOrder < 0 || displayOrder > 9999) {
+    return { success: false, error: "表示順は 0〜9999 の数値で指定してください" };
+  }
+
+  try {
+    await prisma.service.update({
+      where: { id: serviceId },
+      data: { display_order: Math.floor(displayOrder) },
+    });
+    revalidatePath("/");
+    revalidatePath("/services");
+    revalidatePath(`/services/${serviceId}`);
+    revalidatePath("/admin/services/display-order");
+    return { success: true };
+  } catch (e) {
+    console.error("Error updating service display_order:", e);
+    return { success: false, error: "表示順の更新に失敗しました" };
   }
 }

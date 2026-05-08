@@ -118,6 +118,7 @@ export async function getPopularServicesByEngagement(limit: number = 10) {
         },
       },
       orderBy: [
+        { display_order: "asc" },
         { sort_order: "asc" },
         { created_at: "desc" },
       ],

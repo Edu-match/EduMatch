@@ -49,6 +49,10 @@ export default async function ServiceDetailPage({
   const canEdit = user && (user.id === service.provider_id || profile?.role === "ADMIN");
   /** サービス設定で資料請求ボタン表示を切り替え */
   const showMaterialRequestButton = service.show_material_request_button !== false;
+  const hasCustomProviderDisplayName =
+    !!service.provider_display_name &&
+    service.provider_display_name.trim() !== "" &&
+    service.provider_display_name.trim() !== service.provider.name.trim();
 
   // 口コミを取得（口コミ機能が有効な場合のみ）
   const reviews = FEATURES.REVIEWS ? await getServiceReviews(id) : [];
@@ -247,36 +251,63 @@ export default async function ServiceDetailPage({
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
-                <Link
-                  href={`/profile/${service.provider.id}`}
-                  className="flex items-center gap-6 group"
-                >
-                  {service.provider.avatar_url ? (
-                    <Image
-                      src={service.provider.avatar_url}
-                      alt={service.provider_display_name ?? service.provider.name}
-                      width={80}
-                      height={80}
-                      className="rounded-xl border-2 shadow-md group-hover:opacity-90 transition-opacity"
-                      unoptimized
-                    />
-                  ) : (
-                    <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border-2 shadow-md">
-                      <Building2 className="h-10 w-10 text-primary" />
+                {hasCustomProviderDisplayName ? (
+                  <div className="flex items-center gap-6">
+                    {service.provider.avatar_url ? (
+                      <Image
+                        src={service.provider.avatar_url}
+                        alt={service.provider_display_name ?? service.provider.name}
+                        width={80}
+                        height={80}
+                        className="rounded-xl border-2 shadow-md"
+                        unoptimized
+                      />
+                    ) : (
+                      <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border-2 shadow-md">
+                        <Building2 className="h-10 w-10 text-primary" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-xl mb-1">
+                        {service.provider_display_name ?? service.provider.name}
+                      </p>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        教育サービス提供企業
+                      </p>
                     </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-xl mb-1 group-hover:text-primary transition-colors">
-                      {service.provider_display_name ?? service.provider.name}
-                    </p>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      教育サービス提供企業
-                    </p>
-                    <span className="text-sm text-primary font-medium">
-                      投稿者プロフィールを見る →
-                    </span>
                   </div>
-                </Link>
+                ) : (
+                  <Link
+                    href={`/profile/${service.provider.id}`}
+                    className="flex items-center gap-6 group"
+                  >
+                    {service.provider.avatar_url ? (
+                      <Image
+                        src={service.provider.avatar_url}
+                        alt={service.provider_display_name ?? service.provider.name}
+                        width={80}
+                        height={80}
+                        className="rounded-xl border-2 shadow-md group-hover:opacity-90 transition-opacity"
+                        unoptimized
+                      />
+                    ) : (
+                      <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border-2 shadow-md">
+                        <Building2 className="h-10 w-10 text-primary" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-xl mb-1 group-hover:text-primary transition-colors">
+                        {service.provider_display_name ?? service.provider.name}
+                      </p>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        教育サービス提供企業
+                      </p>
+                      <span className="text-sm text-primary font-medium">
+                        投稿者プロフィールを見る →
+                      </span>
+                    </div>
+                  </Link>
+                )}
               </CardContent>
             </Card>
 
