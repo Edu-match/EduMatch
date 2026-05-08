@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import {
   deleteServiceManagement,
+  updateProfile,
   updateService,
   uploadImage,
 } from "@/app/_actions";
@@ -40,6 +41,13 @@ import {
 } from "@/lib/categories";
 import { ImageWithUrlError } from "@/components/ui/image-with-url-error";
 import { isImportedContent } from "@/lib/imported-content";
+
+const AVATAR_TEMPLATES = [
+  "/avatars/templates/1.svg",
+  "/avatars/templates/2.svg",
+  "/avatars/templates/3.svg",
+  "/avatars/templates/4.svg",
+] as const;
 
 type ServiceEditFormProps = {
   serviceId: string;
@@ -89,16 +97,19 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
+  const [posterAvatarUploading, setPosterAvatarUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [lastSavedText, setLastSavedText] = useState("未保存");
 
   const thumbnailFileInputRef = useRef<HTMLInputElement | null>(null);
+  const posterAvatarFileInputRef = useRef<HTMLInputElement | null>(null);
   const [userProfile, setUserProfile] = useState<{
     name: string;
     avatar_url: string | null;
     email: string;
   } | null>(null);
+  const initialAvatarUrlRef = useRef<string>("");
 
   const TITLE_MAX_LENGTH = 80;
   const DESCRIPTION_MAX_LENGTH = 300;
@@ -136,6 +147,7 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
             avatar_url: profileAvatar,
             email: data.profile.email ?? "",
           });
+          initialAvatarUrlRef.current = profileAvatar ?? "";
         }
       } catch (fetchErr) {
         console.error("Failed to fetch profile:", fetchErr);
@@ -190,6 +202,20 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
 
     setIsSubmitting(true);
     try {
+      const currentAvatarUrl = userProfile?.avatar_url?.trim() ?? "";
+      const hasAvatarChanged = currentAvatarUrl !== initialAvatarUrlRef.current;
+      if (hasAvatarChanged) {
+        const profileResult = await updateProfile({
+          avatar_url: currentAvatarUrl || null,
+        });
+        if (!profileResult.success) {
+          setError(profileResult.error || "プロフィール画像の更新に失敗しました");
+          setIsSubmitting(false);
+          return;
+        }
+        initialAvatarUrlRef.current = currentAvatarUrl;
+      }
+
       const result = await updateService(serviceId, {
         title: title.trim(),
         providerDisplayName: providerDisplayName.trim() || undefined,
@@ -523,9 +549,64 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
                 <p className="text-xs text-muted-foreground">{userProfile?.email || ""}</p>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              画像はプロフィール設定で変更してください（この画面では変更できません）。
-            </p>
+            <input
+              ref={posterAvatarFileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                setPosterAvatarUploading(true);
+                const formData = new FormData();
+                formData.append("file", file);
+                const result = await uploadImage(formData);
+                setPosterAvatarUploading(false);
+                const uploadedUrl = result.success && typeof result.url === "string" ? result.url : null;
+                if (uploadedUrl) {
+                  setUserProfile((prev) => (prev ? { ...prev, avatar_url: uploadedUrl } : prev));
+                } else {
+                  toast.error(result.error || "画像アップロードに失敗しました");
+                }
+                e.target.value = "";
+              }}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => posterAvatarFileInputRef.current?.click()}
+              disabled={posterAvatarUploading || isSubmitting}
+            >
+              {posterAvatarUploading ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <ImageIcon className="h-4 w-4 mr-2" />
+              )}
+              アイコン画像をアップロード
+            </Button>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">またはテンプレートから選択</p>
+              <div className="flex flex-wrap gap-2">
+                {AVATAR_TEMPLATES.map((url) => (
+                  <button
+                    key={url}
+                    type="button"
+                    onClick={() =>
+                      setUserProfile((prev) => (prev ? { ...prev, avatar_url: url } : prev))
+                    }
+                    className={`h-10 w-10 rounded-full border-2 overflow-hidden transition-all ${
+                      userProfile?.avatar_url === url
+                        ? "border-primary ring-2 ring-primary/30"
+                        : "border-muted hover:border-primary/50"
+                    }`}
+                    aria-label="テンプレート画像を選択"
+                  >
+                    <img src={url} alt="" className="h-full w-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            </div>
           </CardContent>
         </Card>
 
