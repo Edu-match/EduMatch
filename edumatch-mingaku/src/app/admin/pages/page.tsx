@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentUserRole } from "@/app/_actions/user";
-import { FileText, Shield, Newspaper, SlidersHorizontal, HelpCircle, Building2, Info, Megaphone } from "lucide-react";
+import { FileText, Shield, Newspaper, SlidersHorizontal, HelpCircle, Building2, Info, Megaphone, ArrowUpDown } from "lucide-react";
 
 const PAGES = [
   { key: "terms", label: "利用規約", href: "/admin/pages/terms/edit", icon: FileText },
@@ -14,6 +14,7 @@ const PAGES = [
   { key: "home-topics", label: "トップニュースを編集", href: "/admin/home-topics", icon: Newspaper },
   { key: "home-slider", label: "スライダー記事を選択（ユーザー記事）", href: "/admin/home-slider", icon: SlidersHorizontal },
   { key: "site-updates", label: "運営記事・スライダー管理", href: "/admin/site-updates", icon: Megaphone },
+  { key: "service-display-order", label: "サービス表示順を管理", href: "/admin/services/display-order", icon: ArrowUpDown },
 ] as const;
 
 export default async function AdminPagesPage() {

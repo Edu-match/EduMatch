@@ -29,9 +29,9 @@ export default async function AdminServiceDisplayOrderPage() {
     <div className="container py-6 space-y-6">
       <div className="flex items-center gap-3">
         <Button asChild variant="ghost" size="sm">
-          <Link href="/admin/approvals">
+          <Link href="/admin/pages">
             <ArrowLeft className="h-4 w-4 mr-1" />
-            管理メニューへ
+            固定ページ・表示設定へ
           </Link>
         </Button>
         <h1 className="text-xl font-bold">サービス表示順の管理</h1>
