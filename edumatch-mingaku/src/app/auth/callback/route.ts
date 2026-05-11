@@ -4,6 +4,7 @@ import { createServiceRoleClient } from "@/utils/supabase/server-admin";
 import { prisma } from "@/lib/prisma";
 import { Role } from "@prisma/client";
 import { syncExtensionTablesForRegistrationKind } from "@/lib/registration-profile";
+import { safeRedirect } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,7 @@ export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const { searchParams } = requestUrl;
   const code = searchParams.get("code");
-  const redirectTo = searchParams.get("redirect_to") || "/";
+  const redirectTo = safeRedirect(searchParams.get("redirect_to"), "/");
   const origin = requestUrl.origin;
 
   if (!code) {

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { submitUserReport } from "@/lib/user-report-service";
+import { rateLimitResponse } from "@/lib/security";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,11 +21,16 @@ const bodySchema = z.object({
   contextExcerpt: z.string().max(8000).optional().nullable(),
 });
 
+const REPORT_RATE_LIMIT = { windowMs: 60 * 60 * 1000, max: 10 };
+
 export async function POST(req: Request) {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: "ログインが必要です。" }, { status: 401 });
   }
+
+  const rl = rateLimitResponse(`report:${user.id}`, REPORT_RATE_LIMIT);
+  if (rl.limited) return rl.response;
 
   let json: unknown;
   try {

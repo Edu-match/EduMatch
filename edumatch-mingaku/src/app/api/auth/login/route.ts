@@ -3,6 +3,7 @@ import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { effectiveIsCorporateProfile } from "@/lib/manual-profile-kind";
 import { syncExtensionTablesForRegistrationKind } from "@/lib/registration-profile";
+import { rateLimitResponse } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +33,13 @@ function authErrorMessage(en: string): string {
 export const LOGIN_CREDENTIALS_HINT =
   "Googleで登録した方は「Googleでログイン」を、パスワードをまだ設定していない方は「パスワードをお忘れですか？」でパスワードを設定してからメールでログインできます。";
 
+const LOGIN_RATE_LIMIT = { windowMs: 15 * 60 * 1000, max: 5 };
+
 export async function POST(request: NextRequest) {
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
+  const rl = rateLimitResponse(`login:${ip}`, LOGIN_RATE_LIMIT);
+  if (rl.limited) return rl.response;
+
   try {
     const { email, password, userType } = await request.json();
 

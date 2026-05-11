@@ -9,6 +9,8 @@ export type ChatContextItem = {
   type: "article" | "service" | "knowledge";
   title: string;
   content: string;
+  /** RAG ドキュメントの参照 URL（knowledge タイプのみ） */
+  sourceUrl?: string | null;
 };
 
 export type KnowledgeChunkResult = {
@@ -19,6 +21,7 @@ export type KnowledgeChunkResult = {
   similarity: number;
   doc_title: string;
   doc_source_type: string;
+  doc_source_url?: string | null;
 };
 
 const SOURCE_TYPE_LABEL: Record<string, string> = {
@@ -201,10 +204,24 @@ export async function searchKnowledgeChunks(
       return [];
     }
 
+    // ドキュメントの source_url を取得（RPC が返さない場合は Prisma で補完）
+    const docIds = [...new Set(rows.map((r) => r.document_id))];
+    let sourceUrlMap: Record<string, string | null> = {};
+    try {
+      const docs = await prisma.knowledgeDocument.findMany({
+        where: { id: { in: docIds } },
+        select: { id: true, source_url: true },
+      });
+      for (const d of docs) sourceUrlMap[d.id] = d.source_url ?? null;
+    } catch {
+      // source_url 取得に失敗しても検索結果は返す
+    }
+
     return rows.map((row) => ({
       id: row.id,
       type: "knowledge" as const,
       title: row.doc_title,
+      sourceUrl: row.doc_source_url ?? sourceUrlMap[row.document_id] ?? null,
       content: truncate(
         [
           `文書: ${row.doc_title}`,
