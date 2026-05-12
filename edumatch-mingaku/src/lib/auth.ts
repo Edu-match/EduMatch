@@ -42,6 +42,31 @@ export const getCurrentProfile = cache(async () => {
   try {
     const profile = await prisma.profile.findUnique({
       where: { id: user.id },
+      // マイグレーション適用前のDBでも認証・管理者メニューが壊れないよう、
+      // 新規追加カラムを暗黙SELECTしない。
+      select: {
+        id: true,
+        role: true,
+        name: true,
+        email: true,
+        avatar_url: true,
+        subscription_status: true,
+        created_at: true,
+        updated_at: true,
+        phone: true,
+        bio: true,
+        website: true,
+        subscription_plan: true,
+        stripe_customer_id: true,
+        stripe_subscription_id: true,
+        subscription_current_period_end: true,
+        chat_usage_events: true,
+        ai_navigator_agreed_at: true,
+        interests: true,
+        interest_other: true,
+        manual_profile_kind: true,
+        onboarding_completed_at: true,
+      },
     });
     return profile;
   } catch (error) {
