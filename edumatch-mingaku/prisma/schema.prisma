@@ -37,6 +37,8 @@ model Profile {
   manual_profile_kind              String?
   /// 初回プロフィール設定完了日時。null の間は OAuth 後も登録ウィザードへ誘導する
   onboarding_completed_at         DateTime?
+  /// AI検定合格フラグ（井戸端会議・人材マッチングのバッジ表示用）
+  ai_kentei_passed                Boolean           @default(false)
   material_requests               MaterialRequest[]
   posts                           Post[]
   reviews                         Review[]
@@ -50,6 +52,10 @@ model Profile {
   corporateProfile                CorporateProfile?
   activity_logs                   ActivityLog[]
   activity_log_comments           ActivityLogComment[]
+  forum_rooms                     ForumRoom[]
+  forum_posts                     ForumPost[]
+  forum_replies                   ForumReply[]
+  forum_likes                     ForumLike[]
 
   @@index([email])
   @@index([stripe_customer_id])
@@ -65,6 +71,11 @@ model GeneralProfile {
   organization_type  String?
   /// 所属の種類が「その他」のときの補足（任意）
   organization_type_other String?
+  /// 人材マッチングへの登録可否。公開ページは main では提供しない
+  talent_matching_enabled     Boolean  @default(false)
+  talent_matching_description String?
+  talent_badges               String[] @default([])
+  talent_hourly_rate          String?
   created_at         DateTime @default(now())
   updated_at         DateTime @updatedAt
 }
@@ -86,6 +97,11 @@ model CorporateProfile {
   city                  String?
   postal_code           String?
   prefecture            String?
+  /// 人材マッチングへの登録可否。公開ページは main では提供しない
+  talent_matching_enabled     Boolean  @default(false)
+  talent_matching_description String?
+  talent_badges               String[] @default([])
+  talent_hourly_rate          String?
   created_at            DateTime @default(now())
   updated_at            DateTime @updatedAt
 }
@@ -405,6 +421,92 @@ model ActivityLogComment {
 
   @@index([log_id])
   @@index([created_at(sort: Desc)])
+}
+
+model ForumRoom {
+  id                      String           @id
+  name                    String
+  description             String           @default("")
+  emoji                   String           @default("")
+  weekly_topic            String           @default("")
+  ai_discussion           Boolean          @default(false)
+  ai_weekly_topic_enabled Boolean          @default(false)
+  is_hidden               Boolean          @default(false)
+  created_by              String?          @db.Uuid
+  created_at              DateTime         @default(now())
+  updated_at              DateTime         @updatedAt
+  creator                 Profile?         @relation(fields: [created_by], references: [id], onDelete: SetNull)
+  posts                   ForumPost[]
+  roomTopics              ForumRoomTopic[]
+
+  @@map("forum_rooms")
+}
+
+model ForumRoomTopic {
+  id           String      @id @default(cuid())
+  room_id      String
+  title        String
+  period_start DateTime    @default(now()) @db.Timestamptz(6)
+  created_at   DateTime    @default(now()) @db.Timestamptz(6)
+  room         ForumRoom   @relation(fields: [room_id], references: [id], onDelete: Cascade)
+  posts        ForumPost[]
+
+  @@index([room_id, period_start(sort: Desc)])
+  @@map("forum_room_topics")
+}
+
+model ForumPost {
+  id                  String          @id @default(cuid())
+  room_id             String
+  topic_id            String?
+  author_id           String?         @db.Uuid
+  author_name         String
+  author_role         String          @default("一般")
+  body                String
+  related_article_url String?
+  is_pinned           Boolean         @default(false)
+  is_hidden           Boolean         @default(false)
+  ai_kentei_passed    Boolean         @default(false)
+  created_at          DateTime        @default(now())
+  updated_at          DateTime        @updatedAt
+  room                ForumRoom       @relation(fields: [room_id], references: [id], onDelete: Cascade)
+  topic               ForumRoomTopic? @relation(fields: [topic_id], references: [id], onDelete: SetNull)
+  author              Profile?        @relation(fields: [author_id], references: [id], onDelete: SetNull)
+  replies             ForumReply[]
+
+  @@index([room_id, created_at(sort: Desc)])
+  @@index([topic_id])
+  @@map("forum_posts")
+}
+
+model ForumReply {
+  id               String    @id @default(cuid())
+  post_id          String
+  author_id        String?   @db.Uuid
+  author_name      String
+  author_role      String    @default("一般")
+  body             String
+  ai_kentei_passed Boolean   @default(false)
+  created_at       DateTime  @default(now())
+  post             ForumPost @relation(fields: [post_id], references: [id], onDelete: Cascade)
+  author           Profile?  @relation(fields: [author_id], references: [id], onDelete: SetNull)
+
+  @@index([post_id, created_at(sort: Asc)])
+  @@map("forum_replies")
+}
+
+model ForumLike {
+  id          String   @id @default(cuid())
+  target_id   String
+  target_type String
+  user_id     String?  @db.Uuid
+  session_id  String?
+  created_at  DateTime @default(now())
+  user        Profile? @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([target_id, user_id])
+  @@index([target_id, target_type])
+  @@map("forum_likes")
 }
 
 enum Role {

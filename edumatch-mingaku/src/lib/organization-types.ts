@@ -22,6 +22,8 @@ export const ORGANIZATION_TYPE_OPTIONS: { value: OrganizationTypeValue; label: s
   { value: "other", label: "その他" },
 ];
 
+const ORGANIZATION_TYPE_VALUE_SET = new Set<string>(ORGANIZATION_TYPE_VALUES);
+
 export const AGE_OPTIONS = [
   { value: "10s", label: "10代" },
   { value: "20s", label: "20代" },
@@ -48,6 +50,25 @@ export function formatOrganizationTypeDisplay(
   return base;
 }
 
+const MAX_FORUM_AUTHOR_ROLE_LEN = 120;
+
+/** 井戸端会議の author_role 列に保存する文字列 */
+export function computeForumAuthorRoleStorage(
+  orgType: string | null | undefined,
+  orgOther: string | null | undefined
+): string {
+  const value = orgType?.trim();
+  if (!value) return "一般";
+  if (value === "other" && orgOther?.trim()) {
+    const formatted = formatOrganizationTypeDisplay("other", orgOther);
+    return formatted.length > MAX_FORUM_AUTHOR_ROLE_LEN
+      ? formatted.slice(0, MAX_FORUM_AUTHOR_ROLE_LEN)
+      : formatted;
+  }
+  if (ORGANIZATION_TYPE_VALUE_SET.has(value)) return value;
+  return "一般";
+}
+
 export type ForumOccupationVisual = "教員" | "学生" | "専門家" | "企業" | "一般" | "匿名";
 
 export function forumOccupationAvatarVisual(role: string | null | undefined): ForumOccupationVisual {
@@ -71,5 +92,6 @@ export function forumOccupationAvatarVisual(role: string | null | undefined): Fo
 export function forumOccupationBadgeText(role: string | null | undefined): string {
   const trimmed = role?.trim();
   if (!trimmed) return "一般";
+  if (ORGANIZATION_TYPE_VALUE_SET.has(trimmed)) return organizationTypeLabel(trimmed);
   return trimmed;
 }

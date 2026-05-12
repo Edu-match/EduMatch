@@ -7,7 +7,8 @@ import Image from "next/image";
 import { 
   Menu, LogOut, User, LayoutDashboard, Settings, 
   ChevronDown, UserPlus, LogIn, FileText, Bell,
-  CheckCircle, Calendar, Newspaper, BookOpen, Bot, Activity, Flag, ArrowUpDown
+  CheckCircle, Calendar, Newspaper, BookOpen, Bot, Activity, Flag, ArrowUpDown,
+  MessageSquare
 } from "lucide-react";
 import { useRequestList } from "@/components/request-list/request-list-context";
 import { Button } from "@/components/ui/button";
@@ -115,6 +116,7 @@ export function Header() {
     { href: "/articles", label: "記事一覧" },
     { href: "/services", label: "サービス一覧" },
     { href: "/events", label: "セミナー・イベント情報" },
+    { href: "/forum", label: "井戸端会議" },
     { href: "/companies", label: "掲載企業" },
   ];
 
@@ -337,6 +339,13 @@ export function Header() {
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="cursor-pointer"
+                      onSelect={() => router.push("/admin/forum")}
+                    >
+                      <MessageSquare className="mr-2 h-4 w-4 text-blue-600" />
+                      井戸端会議管理
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="cursor-pointer"
                       onSelect={() => router.push("/admin/site-updates")}
                     >
                       <Newspaper className="mr-2 h-4 w-4 text-slate-600" />
@@ -510,6 +519,9 @@ export function Header() {
                         </Link>
                         <Link href="/admin/events" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
                           <Calendar className="h-4 w-4 text-emerald-600 flex-shrink-0" />イベント管理
+                        </Link>
+                        <Link href="/admin/forum" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
+                          <MessageSquare className="h-4 w-4 text-blue-600 flex-shrink-0" />井戸端会議管理
                         </Link>
                         <Link href="/admin/site-updates" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
                           <Newspaper className="h-4 w-4 text-slate-600 flex-shrink-0" />運営記事管理

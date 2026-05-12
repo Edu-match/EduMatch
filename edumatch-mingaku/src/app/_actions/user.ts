@@ -40,6 +40,11 @@ export type CurrentUserProfile = {
   interests: string[];
   /** 関心カテゴリ「その他」の自由記述 */
   interest_other: string | null;
+  /** 人材マッチング登録情報（mainでは公開ページなし） */
+  talent_matching_enabled: boolean;
+  talent_matching_description: string | null;
+  talent_badges: string[];
+  talent_hourly_rate: string | null;
 };
 
 export async function getCurrentUserProfile(): Promise<CurrentUserProfile | null> {
@@ -82,6 +87,7 @@ export async function getCurrentUserProfile(): Promise<CurrentUserProfile | null
   const organization_type_other = is_corporate_profile
     ? (c?.organization_type_other ?? g?.organization_type_other ?? null)
     : (g?.organization_type_other ?? c?.organization_type_other ?? null);
+  const talentSource = is_corporate_profile ? c ?? g : g ?? c;
 
   return {
     name: full.name,
@@ -104,6 +110,10 @@ export async function getCurrentUserProfile(): Promise<CurrentUserProfile | null
     registration_kind,
     interests: full.interests ?? [],
     interest_other: full.interest_other ?? null,
+    talent_matching_enabled: talentSource?.talent_matching_enabled ?? false,
+    talent_matching_description: talentSource?.talent_matching_description ?? null,
+    talent_badges: talentSource?.talent_badges ?? [],
+    talent_hourly_rate: talentSource?.talent_hourly_rate ?? null,
   };
 }
 
@@ -190,6 +200,11 @@ export type UpdateProfileInput = {
   interests?: string[];
   /** 関心カテゴリ「その他」の自由記述（最大100文字） */
   interest_other?: string | null;
+  /** 人材マッチング登録情報（mainでは公開ページなし） */
+  talent_matching_enabled?: boolean;
+  talent_matching_description?: string | null;
+  talent_badges?: string[];
+  talent_hourly_rate?: string | null;
   /** 初回プロフィール登録ウィザード完了時に true */
   completeInitialSetup?: boolean;
 };
@@ -244,6 +259,27 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
         input.organization_type_other !== undefined
           ? input.organization_type_other?.trim() || null
           : undefined;
+      const talentData =
+        input.talent_matching_enabled !== undefined ||
+        input.talent_matching_description !== undefined ||
+        input.talent_badges !== undefined ||
+        input.talent_hourly_rate !== undefined
+          ? {
+              ...(input.talent_matching_enabled !== undefined && {
+                talent_matching_enabled: input.talent_matching_enabled,
+              }),
+              ...(input.talent_matching_description !== undefined && {
+                talent_matching_description:
+                  input.talent_matching_description?.trim() || null,
+              }),
+              ...(input.talent_badges !== undefined && {
+                talent_badges: input.talent_badges,
+              }),
+              ...(input.talent_hourly_rate !== undefined && {
+                talent_hourly_rate: input.talent_hourly_rate?.trim() || null,
+              }),
+            }
+          : undefined;
 
       if (target === "service_business") {
         await tx.corporateProfile.upsert({
@@ -262,6 +298,7 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
             ...(input.address !== undefined && {
               address: input.address?.trim() || null,
             }),
+            ...(talentData ?? {}),
           },
           update: {
             ...(input.legal_name !== undefined && {
@@ -286,6 +323,7 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
             ...(input.address !== undefined && {
               address: input.address?.trim() || null,
             }),
+            ...(talentData ?? {}),
           },
         });
         await tx.generalProfile.deleteMany({ where: { id: user.id } });
@@ -299,6 +337,7 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
             organization: input.organization?.trim() || null,
             organization_type: input.organization_type?.trim() || null,
             ...(orgOther !== undefined && { organization_type_other: orgOther }),
+            ...(talentData ?? {}),
           },
           update: {
             ...(input.legal_name !== undefined && {
@@ -312,6 +351,7 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
               organization_type: input.organization_type?.trim() || null,
             }),
             ...(orgOther !== undefined && { organization_type_other: orgOther }),
+            ...(talentData ?? {}),
           },
         });
         await tx.corporateProfile.deleteMany({ where: { id: user.id } });

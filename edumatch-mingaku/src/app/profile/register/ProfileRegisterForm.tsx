@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   User,
   Building2,
+  Handshake,
   GraduationCap,
   ArrowLeft,
   ArrowRight,
@@ -55,6 +56,10 @@ export type InitialProfile = {
   registration_kind?: "general" | "service_business" | null;
   interests?: string[];
   interest_other?: string | null;
+  talent_matching_enabled?: boolean;
+  talent_matching_description?: string | null;
+  talent_badges?: string[];
+  talent_hourly_rate?: string | null;
 };
 
 const steps = [
@@ -62,8 +67,19 @@ const steps = [
   { id: 2, title: "所属情報", icon: Building2 },
   { id: 3, title: "連絡先（資料請求の通知先）", icon: MapPin },
   { id: 4, title: "関心・スキル", icon: GraduationCap },
-  { id: 5, title: "確認", icon: Check },
+  { id: 5, title: "人材マッチング", icon: Handshake },
+  { id: 6, title: "確認", icon: Check },
 ];
+
+const TALENT_BADGE_OPTIONS = [
+  { value: "lecture", label: "講演依頼", desc: "イベント・セミナーでの講演" },
+  { value: "teaching", label: "講師依頼", desc: "授業・講座での講師活動" },
+  { value: "workshop", label: "研修・ワークショップ", desc: "チーム向け研修・ハンズオン" },
+  { value: "advisor", label: "顧問・アドバイザー", desc: "継続的なアドバイス・監修" },
+  { value: "consulting", label: "コンサルティング", desc: "課題解決・導入支援" },
+  { value: "writing", label: "執筆・寄稿", desc: "記事・書籍・教材の執筆" },
+  { value: "work", label: "仕事依頼（その他）", desc: "上記以外のお仕事全般" },
+] as const;
 
 const interests = [
   "学習管理", "コミュニケーション", "評価・分析", "協働学習",
@@ -131,6 +147,18 @@ export function ProfileRegisterForm({
   const [website, setWebsite] = useState(initialProfile?.website ?? "");
   const [notificationEmail2, setNotificationEmail2] = useState(initialProfile?.notification_email_2 ?? "");
   const [notificationEmail3, setNotificationEmail3] = useState(initialProfile?.notification_email_3 ?? "");
+  const [talentMatchingEnabled, setTalentMatchingEnabled] = useState(
+    initialProfile?.talent_matching_enabled ?? false
+  );
+  const [talentMatchingDescription, setTalentMatchingDescription] = useState(
+    initialProfile?.talent_matching_description ?? ""
+  );
+  const [talentBadges, setTalentBadges] = useState<string[]>(
+    initialProfile?.talent_badges ?? []
+  );
+  const [talentHourlyRate, setTalentHourlyRate] = useState(
+    initialProfile?.talent_hourly_rate ?? ""
+  );
   const [saving, setSaving] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -146,6 +174,12 @@ export function ProfileRegisterForm({
     } else {
       setSelectedInterests([...selectedInterests, interest]);
     }
+  };
+
+  const toggleTalentBadge = (badge: string) => {
+    setTalentBadges((prev) =>
+      prev.includes(badge) ? prev.filter((item) => item !== badge) : [...prev, badge]
+    );
   };
 
   const renderStep = () => {
@@ -479,6 +513,76 @@ export function ProfileRegisterForm({
 
       case 5:
         return (
+          <div className="space-y-5">
+            <div className="rounded-lg border bg-muted/30 p-4">
+              <div className="flex items-start gap-3">
+                <input
+                  id="talent-matching-enabled"
+                  type="checkbox"
+                  checked={talentMatchingEnabled}
+                  onChange={(e) => setTalentMatchingEnabled(e.target.checked)}
+                  className="mt-1 h-4 w-4"
+                />
+                <div className="space-y-1">
+                  <label htmlFor="talent-matching-enabled" className="font-medium">
+                    人材マッチングに登録する
+                  </label>
+                  <p className="text-sm text-muted-foreground">
+                    mainでは登録情報のみ保存します。人材マッチングの一覧・詳細ページは公開しません。
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {talentMatchingEnabled && (
+              <div className="space-y-5">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">受け付ける依頼種別（複数選択可）</label>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {TALENT_BADGE_OPTIONS.map((option) => {
+                      const selected = talentBadges.includes(option.value);
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => toggleTalentBadge(option.value)}
+                          className={`rounded-lg border p-3 text-left transition-colors ${
+                            selected ? "border-primary bg-primary/10" : "hover:bg-muted"
+                          }`}
+                        >
+                          <span className="block text-sm font-medium">{option.label}</span>
+                          <span className="block text-xs text-muted-foreground">{option.desc}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">自己PR・対応できる依頼内容（任意）</label>
+                  <Textarea
+                    placeholder="例：教育ICT分野の講演・研修を承ります。プログラミング教育の導入支援や教員向けワークショップも可能です。"
+                    rows={4}
+                    value={talentMatchingDescription}
+                    onChange={(e) => setTalentMatchingDescription(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">ギャラ・料金目安（任意）</label>
+                  <Input
+                    placeholder="例：講演 1時間 5万円〜、応相談 など"
+                    value={talentHourlyRate}
+                    onChange={(e) => setTalentHourlyRate(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        );
+
+      case 6:
+        return (
           <div className="space-y-6">
             <div className="p-4 rounded-lg bg-muted/50">
               <h3 className="font-medium mb-3 flex items-center gap-2">
@@ -641,6 +745,51 @@ export function ProfileRegisterForm({
                 )}
               </div>
             </div>
+
+            <div className="p-4 rounded-lg bg-muted/50">
+              <h3 className="font-medium mb-3 flex items-center gap-2">
+                <Handshake className="h-4 w-4" />
+                人材マッチング
+              </h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">登録</span>
+                  <span className={talentMatchingEnabled ? "text-primary font-medium" : ""}>
+                    {talentMatchingEnabled ? "登録する" : "登録しない"}
+                  </span>
+                </div>
+                {talentMatchingEnabled && (
+                  <>
+                    <div>
+                      <span className="text-muted-foreground block mb-2">依頼種別</span>
+                      <div className="flex flex-wrap gap-1">
+                        {talentBadges.length > 0 ? (
+                          talentBadges.map((badge) => (
+                            <Badge key={badge} variant="secondary">
+                              {TALENT_BADGE_OPTIONS.find((option) => option.value === badge)?.label ?? badge}
+                            </Badge>
+                          ))
+                        ) : (
+                          <span className="text-muted-foreground">未選択</span>
+                        )}
+                      </div>
+                    </div>
+                    {talentMatchingDescription.trim() && (
+                      <div>
+                        <span className="text-muted-foreground block mb-1">自己PR</span>
+                        <p className="whitespace-pre-wrap">{talentMatchingDescription.trim()}</p>
+                      </div>
+                    )}
+                    {talentHourlyRate.trim() && (
+                      <div className="flex justify-between gap-4">
+                        <span className="text-muted-foreground shrink-0">ギャラ・料金目安</span>
+                        <span className="text-right break-words">{talentHourlyRate.trim()}</span>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
           </div>
         );
 
@@ -763,6 +912,12 @@ export function ProfileRegisterForm({
       interest_other: selectedInterests.includes("その他")
         ? interestOther.trim() || null
         : null,
+      talent_matching_enabled: talentMatchingEnabled,
+      talent_matching_description: talentMatchingEnabled
+        ? talentMatchingDescription.trim() || null
+        : null,
+      talent_badges: talentMatchingEnabled ? talentBadges : [],
+      talent_hourly_rate: talentMatchingEnabled ? talentHourlyRate.trim() || null : null,
       completeInitialSetup: true,
     });
     setSaving(false);
@@ -851,7 +1006,7 @@ export function ProfileRegisterForm({
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 戻る
               </Button>
-              {currentStep < 5 ? (
+              {currentStep < 6 ? (
                 <Button type="button" onClick={handleNext}>
                   次へ
                   <ArrowRight className="h-4 w-4 ml-2" />

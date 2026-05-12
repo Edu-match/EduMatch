@@ -16,5 +16,12 @@ export const USER_REPORT_REASON_LABELS: Record<UserReportReasonCode, string> = {
   OTHER: "その他",
 };
 
-export const USER_REPORT_CONTEXT_KINDS = ["comment", "profile", "article", "other"] as const;
+export const USER_REPORT_CONTEXT_KINDS = [
+  "comment",
+  "profile",
+  "article",
+  "forum_post",
+  "forum_reply",
+  "other",
+] as const;
 export type UserReportContextKind = (typeof USER_REPORT_CONTEXT_KINDS)[number];

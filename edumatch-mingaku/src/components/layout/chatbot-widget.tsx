@@ -69,6 +69,13 @@ type View = "chat" | "context-select" | "history-select" | "chat-history";
 
 export type ChatMode = "navigator" | "debate" | "discussion";
 
+type OpenAiChatEventDetail = {
+  initialMessage?: string;
+  preferredMode?: ChatMode;
+  launchContext?: "default" | "forum-compose";
+  forumTopic?: string;
+};
+
 type ChatSessionMessage = {
   id?: string;
   role: "user" | "assistant";
@@ -486,7 +493,10 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
 
   // 「AIチャットを開く」ボタンからも開けるようにする
   useEffect(() => {
-    const handler = () => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<OpenAiChatEventDetail>).detail;
+      if (detail?.preferredMode) setChatMode(detail.preferredMode);
+      if (detail?.initialMessage) setInput(detail.initialMessage);
       if (isMobile) setMobileOpen(true);
       else setOpen(true);
     };

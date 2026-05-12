@@ -33,6 +33,10 @@ export default async function ProfileRegisterPage({ searchParams }: Props) {
         registration_kind: profile.registration_kind,
         interests: profile.interests ?? [],
         interest_other: profile.interest_other ?? null,
+        talent_matching_enabled: profile.talent_matching_enabled,
+        talent_matching_description: profile.talent_matching_description ?? null,
+        talent_badges: profile.talent_badges ?? [],
+        talent_hourly_rate: profile.talent_hourly_rate ?? null,
       }
     : null;
 

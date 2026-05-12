@@ -6,13 +6,29 @@ type Props = {
   className?: string;
   variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
   children?: React.ReactNode;
+  initialMessage?: string;
+  preferredMode?: "navigator" | "debate" | "discussion";
+  launchContext?: "default" | "forum-compose";
+  forumTopic?: string;
 };
 
 /** 押すと画面右下のAIナビゲーター（チャット）を開くボタン */
-export function OpenAiChatButton({ className, variant = "outline", children }: Props) {
+export function OpenAiChatButton({
+  className,
+  variant = "outline",
+  children,
+  initialMessage,
+  preferredMode,
+  launchContext = "default",
+  forumTopic,
+}: Props) {
   const openChat = () => {
     if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("open-ai-chat"));
+      window.dispatchEvent(
+        new CustomEvent("open-ai-chat", {
+          detail: { initialMessage, preferredMode, launchContext, forumTopic },
+        })
+      );
     }
   };
   return (
