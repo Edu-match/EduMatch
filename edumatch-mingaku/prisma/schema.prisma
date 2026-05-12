@@ -504,7 +504,7 @@ model ForumLike {
   created_at  DateTime @default(now())
   user        Profile? @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
-  @@unique([target_id, user_id])
+  @@unique([target_id, target_type, user_id], map: "forum_likes_user_unique_idx")
   @@index([target_id, target_type])
   @@map("forum_likes")
 }

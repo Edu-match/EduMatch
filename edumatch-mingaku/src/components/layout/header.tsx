@@ -72,6 +72,11 @@ export function Header() {
           const data = await res.json();
           setUserRole(data?.profile?.role || null);
           if (data?.profile?.name) setUserName(data.profile.name);
+        } catch {
+          setUserRole(null);
+        }
+
+        try {
           // 汎用通知を取得（承認申請だけでなく様々な種類に対応）
           const notifRes = await fetch("/api/notifications", { credentials: "include" });
           const notif = await notifRes.json().catch(() => ({ notifications: [], unreadCount: 0 }));
@@ -80,7 +85,6 @@ export function Header() {
             unreadCount: notif.unreadCount ?? 0,
           });
         } catch {
-          setUserRole(null);
           setNotifications({ list: [], unreadCount: 0 });
         }
       } else {
