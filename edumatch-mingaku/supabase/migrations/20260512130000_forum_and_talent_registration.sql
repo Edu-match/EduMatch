@@ -1,5 +1,8 @@
--- 井戸端会議の本番移行 + 人材マッチング登録項目（公開ページなし）
+-- 井戸端会議 + 人材マッチング登録項目（公開ページなし）
 -- 実行場所: Supabase SQL Editor / supabase db push
+--
+-- スキーマの正: EduMatchPJ-Prod2（rlgaflpkkonsamsmxprt）。開発で実データが乗っている前提。
+-- 他 Supabase プロジェクトはこのファイルで Prod2 相当の DDL / RLS / トリガーに冪等で揃える。
 --
 -- セキュリティ方針:
 -- - 投稿・返信・部屋作成はログインユーザー本人に紐づける
@@ -47,6 +50,11 @@ CREATE TABLE IF NOT EXISTS public.forum_rooms (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- 既存の forum_rooms があると CREATE がスキップされ is_hidden 等が欠ける
+ALTER TABLE public.forum_rooms
+  ADD COLUMN IF NOT EXISTS ai_weekly_topic_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN NOT NULL DEFAULT FALSE;
+
 CREATE TABLE IF NOT EXISTS public.forum_room_topics (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
   room_id TEXT NOT NULL REFERENCES public.forum_rooms(id) ON DELETE CASCADE,
@@ -71,9 +79,14 @@ CREATE TABLE IF NOT EXISTS public.forum_posts (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 既存の forum_posts があると CREATE TABLE IF NOT EXISTS がスキップされ topic_id が欠ける
+-- 既存の forum_posts があると CREATE がスキップされ topic_id / is_hidden 等が欠ける
 ALTER TABLE public.forum_posts
-  ADD COLUMN IF NOT EXISTS topic_id TEXT REFERENCES public.forum_room_topics(id) ON DELETE SET NULL;
+  ADD COLUMN IF NOT EXISTS topic_id TEXT REFERENCES public.forum_room_topics(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS related_article_url TEXT,
+  ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS ai_kentei_passed BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 
 CREATE TABLE IF NOT EXISTS public.forum_replies (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
