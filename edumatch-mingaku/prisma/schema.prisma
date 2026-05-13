@@ -228,6 +228,8 @@ model Service {
   sort_order            ServiceSortOrderTier @default(NONE)
   /// 表示用提供者名。未設定時は provider.name
   provider_display_name String?
+  /// 表示用提供者アイコン。未設定時は provider.avatar_url
+  provider_display_avatar_url String?
   /// WooCommerce product (post) ID。XML とのマッチ・再インポート用
   wp_product_id         Int?
   /// 口コミ数（非正規化キャッシュ）

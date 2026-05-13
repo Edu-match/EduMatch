@@ -30,6 +30,9 @@ ALTER TABLE public."CorporateProfile"
   ADD COLUMN IF NOT EXISTS talent_badges TEXT[] NOT NULL DEFAULT '{}',
   ADD COLUMN IF NOT EXISTS talent_hourly_rate TEXT;
 
+ALTER TABLE public."Service"
+  ADD COLUMN IF NOT EXISTS provider_display_avatar_url TEXT;
+
 CREATE TABLE IF NOT EXISTS public.forum_rooms (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,

@@ -3,7 +3,7 @@ import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, ExternalLink, Building2, Calendar, Play, FileText, Check, Star, Pencil } from "lucide-react";
+import { ArrowLeft, Building2, Calendar, Play, FileText, Check, Star, Pencil } from "lucide-react";
 import { unstable_noStore } from "next/cache";
 import { getServiceById, getPopularServices, recordView } from "@/app/_actions";
 import { getCurrentUser, getCurrentProfile } from "@/lib/auth";
@@ -53,6 +53,10 @@ export default async function ServiceDetailPage({
     !!service.provider_display_name &&
     service.provider_display_name.trim() !== "" &&
     service.provider_display_name.trim() !== service.provider.name.trim();
+  const providerDisplayAvatarUrl =
+    service.provider_display_avatar_url?.trim() || service.provider.avatar_url;
+  const hasCustomProviderDisplay =
+    hasCustomProviderDisplayName || !!service.provider_display_avatar_url?.trim();
 
   // 口コミを取得（口コミ機能が有効な場合のみ）
   const reviews = FEATURES.REVIEWS ? await getServiceReviews(id) : [];
@@ -251,11 +255,11 @@ export default async function ServiceDetailPage({
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
-                {hasCustomProviderDisplayName ? (
+                {hasCustomProviderDisplay ? (
                   <div className="flex items-center gap-6">
-                    {service.provider.avatar_url ? (
+                    {providerDisplayAvatarUrl ? (
                       <Image
-                        src={service.provider.avatar_url}
+                        src={providerDisplayAvatarUrl}
                         alt={service.provider_display_name ?? service.provider.name}
                         width={80}
                         height={80}
@@ -281,9 +285,9 @@ export default async function ServiceDetailPage({
                     href={`/profile/${service.provider.id}`}
                     className="flex items-center gap-6 group"
                   >
-                    {service.provider.avatar_url ? (
+                    {providerDisplayAvatarUrl ? (
                       <Image
-                        src={service.provider.avatar_url}
+                        src={providerDisplayAvatarUrl}
                         alt={service.provider_display_name ?? service.provider.name}
                         width={80}
                         height={80}

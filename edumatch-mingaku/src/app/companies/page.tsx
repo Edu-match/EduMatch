@@ -19,7 +19,7 @@ function getProvidersInDisplayOrder(
     if (!pid || seen.has(pid)) continue;
     seen.add(pid);
     const name = s.provider_display_name ?? s.provider?.name ?? "提供者";
-    const avatarUrl = s.provider?.avatar_url ?? null;
+    const avatarUrl = s.provider_display_avatar_url ?? s.provider?.avatar_url ?? null;
     const providerServices = services
       .filter((x) => (x.provider?.id ?? x.provider_id) === pid)
       .map((x) => ({ id: x.id, title: x.title }));

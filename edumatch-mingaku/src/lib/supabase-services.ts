@@ -22,6 +22,7 @@ export type ServiceWithProviderFromSupabase = {
   display_order: number;
   sort_order: string;
   provider_display_name: string | null;
+  provider_display_avatar_url: string | null;
   provider: {
     id: string;
     name: string;
@@ -55,6 +56,7 @@ async function fetchPublicServicesUncached(
       display_order,
       sort_order,
       provider_display_name,
+      provider_display_avatar_url,
       Profile!provider_id ( id, name, email, avatar_url )
     `
     )
@@ -77,8 +79,8 @@ async function fetchPublicServicesUncached(
   if (!data || !Array.isArray(data)) return [];
 
   return data.map((row: Record<string, unknown>) => {
-    const profile = row.Profile as Record<string, unknown> | null;
-    const { Profile: _, ...rest } = row;
+    const { Profile, ...rest } = row;
+    const profile = Profile as Record<string, unknown> | null;
     return {
       ...rest,
       provider: profile

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,7 +25,7 @@ import { BlocksContentPreview } from "@/components/content/blocks-content-previe
 import { contentToBlocks } from "@/lib/markdown-to-blocks";
 import { blocksToMarkdown } from "@/lib/markdown-to-blocks";
 import { isImportedContent } from "@/lib/imported-content";
-import { createService, updateProfile, uploadImage } from "@/app/_actions";
+import { createService, uploadImage } from "@/app/_actions";
 import {
   parseServiceCategorySelection,
   serializeServiceCategorySelection,
@@ -303,32 +304,21 @@ export default function ServiceCreatePage() {
       .filter(Boolean);
     setIsSubmitting(true);
     try {
-      if (userProfile) {
-        const initialProfile = initialUserProfileRef.current;
-        const changedName =
-          (initialProfile?.name ?? "").trim() !== userProfile.name.trim();
-        const changedAvatar =
-          (initialProfile?.avatar_url ?? "") !== (userProfile.avatar_url ?? "");
-        if (changedName || changedAvatar) {
-          const profileResult = await updateProfile({
-            name: userProfile.name.trim() || undefined,
-            avatar_url: userProfile.avatar_url?.trim() || null,
-          });
-          if (!profileResult.success) {
-            toast.error(profileResult.error || "投稿者情報の保存に失敗しました");
-            setIsSubmitting(false);
-            return;
-          }
-          initialUserProfileRef.current = {
-            name: userProfile.name.trim(),
-            avatar_url: userProfile.avatar_url ?? null,
-          };
-        }
-      }
+      const initialProfile = initialUserProfileRef.current;
+      const displayName = userProfile?.name?.trim() || "";
+      const displayAvatarUrl = userProfile?.avatar_url?.trim() || "";
+      const providerDisplayAvatarUrl =
+        displayAvatarUrl && displayAvatarUrl !== (initialProfile?.avatar_url ?? "")
+          ? displayAvatarUrl
+          : null;
 
       const result = await createService({
         title: title.trim(),
-        providerDisplayName: userProfile?.name?.trim() || undefined,
+        providerDisplayName:
+          displayName && displayName !== (initialProfile?.name ?? "").trim()
+            ? displayName
+            : undefined,
+        providerDisplayAvatarUrl,
         requestNotificationEmails: parsedNotificationEmails,
         showMaterialRequestButton,
         description: description.trim(),
@@ -790,10 +780,13 @@ export default function ServiceCreatePage() {
             <div className="space-y-3">
               <div className="flex items-center gap-3">
                 {userProfile?.avatar_url ? (
-                  <img
+                  <Image
                     src={userProfile.avatar_url}
                     alt={userProfile.name}
+                    width={48}
+                    height={48}
                     className="w-12 h-12 rounded-full object-cover"
+                    unoptimized
                   />
                 ) : (
                   <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
@@ -808,11 +801,15 @@ export default function ServiceCreatePage() {
                         prev ? { ...prev, name: e.target.value } : prev
                       )
                     }
-                    placeholder="投稿者名"
+                    placeholder="このサービスページに表示する投稿者名"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    {userProfile?.email || ""}
+                    アカウント名は変更されず、このサービスページに表示する名称のみ保存されます。
                   </p>
+                  <p className="text-xs text-muted-foreground">
+                    アイコンもこのサービスページ専用です。アカウントのアイコンは変更されません。
+                  </p>
+                  <p className="text-xs text-muted-foreground">{userProfile?.email || ""}</p>
                 </div>
               </div>
               <input
@@ -869,7 +866,14 @@ export default function ServiceCreatePage() {
                       }`}
                       aria-label="テンプレート画像を選択"
                     >
-                      <img src={url} alt="" className="h-full w-full object-cover" />
+                      <Image
+                        src={url}
+                        alt=""
+                        width={40}
+                        height={40}
+                        className="h-full w-full object-cover"
+                        unoptimized
+                      />
                     </button>
                   ))}
                 </div>

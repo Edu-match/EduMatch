@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,7 +19,6 @@ import {
   Save,
   Eye,
   FileText,
-  Check,
   Clock,
   AlertCircle,
   CheckCircle2,
@@ -27,7 +27,6 @@ import {
 } from "lucide-react";
 import {
   deleteServiceManagement,
-  updateProfile,
   updateService,
   uploadImage,
 } from "@/app/_actions";
@@ -54,6 +53,7 @@ type ServiceEditFormProps = {
   initialData: {
     title: string;
     provider_display_name: string;
+    provider_display_avatar_url: string;
     request_notification_emails: string;
     show_material_request_button: boolean;
     description: string;
@@ -94,6 +94,9 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
   const [providerDisplayName, setProviderDisplayName] = useState(
     initialData.provider_display_name ?? ""
   );
+  const [providerDisplayAvatarUrl, setProviderDisplayAvatarUrl] = useState(
+    initialData.provider_display_avatar_url ?? ""
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
@@ -109,7 +112,6 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
     avatar_url: string | null;
     email: string;
   } | null>(null);
-  const initialAvatarUrlRef = useRef<string>("");
 
   const TITLE_MAX_LENGTH = 80;
   const DESCRIPTION_MAX_LENGTH = 300;
@@ -147,7 +149,6 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
             avatar_url: profileAvatar,
             email: data.profile.email ?? "",
           });
-          initialAvatarUrlRef.current = profileAvatar ?? "";
         }
       } catch (fetchErr) {
         console.error("Failed to fetch profile:", fetchErr);
@@ -202,23 +203,10 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
 
     setIsSubmitting(true);
     try {
-      const currentAvatarUrl = userProfile?.avatar_url?.trim() ?? "";
-      const hasAvatarChanged = currentAvatarUrl !== initialAvatarUrlRef.current;
-      if (hasAvatarChanged) {
-        const profileResult = await updateProfile({
-          avatar_url: currentAvatarUrl || null,
-        });
-        if (!profileResult.success) {
-          setError(profileResult.error || "プロフィール画像の更新に失敗しました");
-          setIsSubmitting(false);
-          return;
-        }
-        initialAvatarUrlRef.current = currentAvatarUrl;
-      }
-
       const result = await updateService(serviceId, {
         title: title.trim(),
         providerDisplayName: providerDisplayName.trim() || undefined,
+        providerDisplayAvatarUrl: providerDisplayAvatarUrl.trim() || null,
         requestNotificationEmails: requestNotificationEmailList
           .map((token) => token.trim())
           .filter(Boolean),
@@ -530,8 +518,15 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center gap-3">
-              {userProfile?.avatar_url ? (
-                <img src={userProfile.avatar_url} alt={userProfile.name} className="w-12 h-12 rounded-full object-cover" />
+              {(providerDisplayAvatarUrl || userProfile?.avatar_url) ? (
+                <Image
+                  src={providerDisplayAvatarUrl || userProfile?.avatar_url || ""}
+                  alt={providerDisplayName || userProfile?.name || "投稿者"}
+                  width={48}
+                  height={48}
+                  className="w-12 h-12 rounded-full object-cover"
+                  unoptimized
+                />
               ) : (
                 <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
                   <School className="h-6 w-6 text-primary" />
@@ -545,6 +540,9 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   アカウント名は変更されず、このサービスページに表示する名称のみ更新されます。
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  アイコンもこのサービスページ専用です。アカウントのアイコンは変更されません。
                 </p>
                 <p className="text-xs text-muted-foreground">{userProfile?.email || ""}</p>
               </div>
@@ -564,7 +562,7 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
                 setPosterAvatarUploading(false);
                 const uploadedUrl = result.success && typeof result.url === "string" ? result.url : null;
                 if (uploadedUrl) {
-                  setUserProfile((prev) => (prev ? { ...prev, avatar_url: uploadedUrl } : prev));
+                  setProviderDisplayAvatarUrl(uploadedUrl);
                 } else {
                   toast.error(result.error || "画像アップロードに失敗しました");
                 }
@@ -592,17 +590,22 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
                   <button
                     key={url}
                     type="button"
-                    onClick={() =>
-                      setUserProfile((prev) => (prev ? { ...prev, avatar_url: url } : prev))
-                    }
+                    onClick={() => setProviderDisplayAvatarUrl(url)}
                     className={`h-10 w-10 rounded-full border-2 overflow-hidden transition-all ${
-                      userProfile?.avatar_url === url
+                      providerDisplayAvatarUrl === url
                         ? "border-primary ring-2 ring-primary/30"
                         : "border-muted hover:border-primary/50"
                     }`}
                     aria-label="テンプレート画像を選択"
                   >
-                    <img src={url} alt="" className="h-full w-full object-cover" />
+                    <Image
+                      src={url}
+                      alt=""
+                      width={40}
+                      height={40}
+                      className="h-full w-full object-cover"
+                      unoptimized
+                    />
                   </button>
                 ))}
               </div>

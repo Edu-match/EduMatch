@@ -70,6 +70,7 @@ export type ContentBlock = {
 
 export type CreateServiceInput = {
   providerDisplayName?: string;
+  providerDisplayAvatarUrl?: string | null;
   requestNotificationEmails?: string[];
   showMaterialRequestButton?: boolean;
   title: string;
@@ -209,6 +210,7 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     sort_order: "NONE",
     wp_product_id: null,
     provider_display_name: null,
+    provider_display_avatar_url: null,
     review_count: 0,
     show_material_request_button: true,
     request_notification_emails: [],
@@ -242,6 +244,7 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     sort_order: "NONE",
     wp_product_id: null,
     provider_display_name: null,
+    provider_display_avatar_url: null,
     review_count: 0,
     show_material_request_button: true,
     request_notification_emails: [],
@@ -275,6 +278,7 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     sort_order: "NONE",
     wp_product_id: null,
     provider_display_name: null,
+    provider_display_avatar_url: null,
     review_count: 0,
     show_material_request_button: true,
     request_notification_emails: [],
@@ -308,6 +312,7 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     sort_order: "NONE",
     wp_product_id: null,
     provider_display_name: null,
+    provider_display_avatar_url: null,
     review_count: 0,
     show_material_request_button: true,
     request_notification_emails: [],
@@ -341,6 +346,7 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     sort_order: "NONE",
     wp_product_id: null,
     provider_display_name: null,
+    provider_display_avatar_url: null,
     review_count: 0,
     show_material_request_button: true,
     request_notification_emails: [],
@@ -652,6 +658,7 @@ export async function createService(input: CreateServiceInput): Promise<CreateSe
         provider_id: user.id,
         provider_display_name:
           input.providerDisplayName?.trim() || profile?.name?.trim() || null,
+        provider_display_avatar_url: input.providerDisplayAvatarUrl?.trim() || null,
         request_notification_emails: (input.requestNotificationEmails ?? [])
           .map((e) => e.trim())
           .filter((e) => e.length > 0),
@@ -736,6 +743,7 @@ export async function updateService(
           input.providerDisplayName?.trim() ||
           existingService.provider?.name?.trim() ||
           null,
+        provider_display_avatar_url: input.providerDisplayAvatarUrl?.trim() || null,
         request_notification_emails: (input.requestNotificationEmails ?? [])
           .map((e) => e.trim())
           .filter((e) => e.length > 0),
@@ -777,6 +785,7 @@ export async function saveServiceDraft(
     return updateService(input.serviceId, {
       title: input.title,
       providerDisplayName: input.providerDisplayName,
+      providerDisplayAvatarUrl: input.providerDisplayAvatarUrl,
       requestNotificationEmails: input.requestNotificationEmails,
       showMaterialRequestButton: input.showMaterialRequestButton,
       description: input.description,
@@ -792,6 +801,7 @@ export async function saveServiceDraft(
   return createService({
     title: input.title,
     providerDisplayName: input.providerDisplayName,
+    providerDisplayAvatarUrl: input.providerDisplayAvatarUrl,
     requestNotificationEmails: input.requestNotificationEmails,
     showMaterialRequestButton: input.showMaterialRequestButton,
     description: input.description,
