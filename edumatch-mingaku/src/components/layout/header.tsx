@@ -8,7 +8,7 @@ import {
   Menu, LogOut, User, LayoutDashboard, Settings, 
   ChevronDown, UserPlus, LogIn, FileText, Bell,
   CheckCircle, Calendar, Newspaper, BookOpen, Bot, Activity, Flag, ArrowUpDown,
-  MessageSquare
+  MessageSquare, CircleHelp
 } from "lucide-react";
 import { useRequestList } from "@/components/request-list/request-list-context";
 import { Button } from "@/components/ui/button";
@@ -29,11 +29,17 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { createSupabaseBrowserClient } from "@/utils/supabase/client";
 import { markInAppNotificationRead } from "@/app/_actions/in-app-notifications";
+import {
+  getTutorialPage,
+  getTutorialPageIdFromPathname,
+} from "@/components/tutorial/tutorial-steps";
+import { useTutorial } from "@/components/tutorial/use-tutorial";
 
 export function Header() {
   const router = useRouter();
   const pathname = usePathname();
   const { count: requestListCount } = useRequestList();
+  const { startTutorial } = useTutorial();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
@@ -125,6 +131,18 @@ export function Header() {
   ];
 
   const displayName = userName || (userEmail ? userEmail.split("@")[0] : "ユーザー");
+
+  const handleStartTutorial = () => {
+    const pageId = getTutorialPageIdFromPathname(pathname) ?? "home";
+    const targetPage = getTutorialPage(pageId);
+
+    setMobileMenuOpen(false);
+    startTutorial(pageId, { force: true });
+
+    if (pathname !== targetPage.pathname) {
+      router.push(targetPage.pathname);
+    }
+  };
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -408,6 +426,13 @@ export function Header() {
                   <Settings className="mr-2 h-4 w-4" />
                   アカウント設定
                 </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  onSelect={handleStartTutorial}
+                >
+                  <CircleHelp className="mr-2 h-4 w-4" />
+                  チュートリアルを見る
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
                   onClick={handleLogout}
@@ -567,6 +592,14 @@ export function Header() {
                       <Settings className="h-4 w-4 flex-shrink-0" />
                       アカウント設定
                     </Link>
+                    <button
+                      type="button"
+                      onClick={handleStartTutorial}
+                      className="flex w-full items-center gap-2 py-3 text-left text-sm font-medium text-foreground/60 hover:text-foreground border-b"
+                    >
+                      <CircleHelp className="h-4 w-4 flex-shrink-0" />
+                      チュートリアルを見る
+                    </button>
                     <Button
                       variant="outline"
                       className="w-full h-11 text-red-600 border-red-200 hover:bg-red-50 mt-3"

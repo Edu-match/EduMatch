@@ -13,6 +13,7 @@ import {
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { TutorialOverlay } from "@/components/tutorial/tutorial-overlay";
 import { TutorialTooltip } from "@/components/tutorial/tutorial-tooltip";
+import { createSupabaseBrowserClient } from "@/utils/supabase/client";
 import {
   TUTORIAL_DONE_STORAGE_KEY,
   TUTORIAL_PROGRESS_STORAGE_KEY,
@@ -35,7 +36,10 @@ export type TutorialContextValue = {
   isActive: boolean;
   currentPageId: TutorialPageId | null;
   currentStepIndex: number;
-  startTutorial: (pageId?: TutorialPageId) => void;
+  startTutorial: (
+    pageId?: TutorialPageId,
+    options?: { force?: boolean }
+  ) => void;
   nextStep: () => void;
   prevStep: () => void;
   skipTutorial: () => void;
@@ -76,6 +80,7 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [isHydrated, setIsHydrated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [tutorialState, setTutorialState] = useState<TutorialProgressState>(
     INITIAL_STATE
   );
@@ -112,6 +117,12 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const clearTutorialStorage = useCallback(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.removeItem(TUTORIAL_DONE_STORAGE_KEY);
+    window.localStorage.removeItem(TUTORIAL_PROGRESS_STORAGE_KEY);
+  }, []);
+
   const markTutorialDone = useCallback(
     (status: "completed" | "skipped") => {
       if (typeof window === "undefined") return;
@@ -122,16 +133,23 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
   );
 
   const startTutorial = useCallback(
-    (pageId: TutorialPageId = "home") => {
-      if (typeof window === "undefined" || readDoneFlag()) return;
+    (pageId: TutorialPageId = "home", options?: { force?: boolean }) => {
+      if (typeof window === "undefined") return;
+      if (!options?.force && readDoneFlag()) return;
+      if (options?.force) {
+        clearTutorialStorage();
+        clearCompletionTimer();
+        setShowCompletionMessage(false);
+      }
 
+      setTargetRect(null);
       updateTutorialState({
         active: true,
         pageId,
         stepIndex: 0,
       });
     },
-    [updateTutorialState]
+    [clearCompletionTimer, clearTutorialStorage, updateTutorialState]
   );
 
   const completeTutorial = useCallback(() => {
@@ -247,11 +265,55 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     };
   }, [clearCompletionTimer]);
 
+  useEffect(() => {
+    const supabase = createSupabaseBrowserClient();
+    let mounted = true;
+
+    const syncAuthState = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (mounted) {
+        setIsAuthenticated(!!user);
+      }
+    };
+
+    void syncAuthState();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(!!session?.user);
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
   const currentPageId = getTutorialPageIdFromPathname(pathname);
   const currentStep =
     tutorialState.active && currentPageId === tutorialState.pageId
       ? getTutorialStep(tutorialState.pageId, tutorialState.stepIndex)
       : null;
+
+  useEffect(() => {
+    if (!isHydrated || isAuthenticated !== true) return;
+    if (tutorialState.active) return;
+    if (typeof window === "undefined" || readDoneFlag()) return;
+    if (!currentPageId) return;
+    if (window.localStorage.getItem(TUTORIAL_PROGRESS_STORAGE_KEY)) return;
+
+    startTutorial(currentPageId);
+  }, [
+    currentPageId,
+    isAuthenticated,
+    isHydrated,
+    startTutorial,
+    tutorialState.active,
+  ]);
 
   useEffect(() => {
     if (!isHydrated || !tutorialState.active || !currentStep) {
@@ -401,7 +463,10 @@ function TutorialQueryStarter({
   onStartTutorial,
 }: {
   isHydrated: boolean;
-  onStartTutorial: (pageId?: TutorialPageId) => void;
+  onStartTutorial: (
+    pageId?: TutorialPageId,
+    options?: { force?: boolean }
+  ) => void;
 }) {
   const pathname = usePathname();
   const router = useRouter();
