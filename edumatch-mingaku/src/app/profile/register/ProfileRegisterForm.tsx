@@ -921,7 +921,14 @@ export function ProfileRegisterForm({
       completeInitialSetup: true,
     });
     setSaving(false);
-    if (success) router.push(nextUrl ?? "/dashboard");
+    if (success) {
+      if (isFirstTime) {
+        router.push("/?tutorial=start");
+        return;
+      }
+
+      router.push(nextUrl ?? "/dashboard");
+    }
   };
 
   return (

@@ -143,7 +143,10 @@ export function Header() {
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-3 lg:gap-5 flex-wrap min-w-0">
+        <nav
+          className="hidden md:flex items-center gap-3 lg:gap-5 flex-wrap min-w-0"
+          data-tutorial="header-nav"
+        >
           {navLinks.map((link) => (
             <Link
               key={link.href}
@@ -285,7 +288,12 @@ export function Header() {
             /* ログイン時: ユーザーメニュー */
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  data-tutorial="header-user-menu-trigger"
+                >
                   <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
                     <User className="h-3.5 w-3.5 text-primary" />
                   </div>
@@ -432,7 +440,11 @@ export function Header() {
         {/* Mobile Navigation */}
         <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
           <SheetTrigger asChild className="md:hidden">
-            <Button variant="ghost" size="icon">
+            <Button
+              variant="ghost"
+              size="icon"
+              data-tutorial="header-mobile-menu-trigger"
+            >
               <Menu className="h-5 w-5" />
               <span className="sr-only">メニューを開く</span>
             </Button>
