@@ -88,6 +88,11 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
   const [showCompletionMessage, setShowCompletionMessage] = useState(false);
   const completionTimerRef = useRef<number | null>(null);
 
+  // Keep a stable ref to nextStep so the element-resolution effect can call
+  // the latest version without adding nextStep to its dependency array
+  // (which would cause unnecessary reruns on every tutorialState change).
+  const nextStepRef = useRef<() => void>(() => {});
+
   const persistProgress = useCallback((nextState: TutorialProgressState) => {
     if (typeof window === "undefined") return;
 
@@ -167,7 +172,7 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     completionTimerRef.current = window.setTimeout(() => {
       setShowCompletionMessage(false);
       completionTimerRef.current = null;
-    }, 1000);
+    }, 3000);
   }, [
     clearCompletionTimer,
     markTutorialDone,
@@ -235,6 +240,29 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
       router.push(previousPage.pathname);
     }
   }, [router, tutorialState, updateTutorialState]);
+
+  // Keep the ref in sync with the latest nextStep
+  useEffect(() => {
+    nextStepRef.current = nextStep;
+  });
+
+  // Keyboard navigation: ← → for prev/next, Esc to skip
+  useEffect(() => {
+    if (!tutorialState.active) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't steal keys from inputs / textareas
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
+      if (e.key === "Escape") skipTutorial();
+      if (e.key === "ArrowRight" || e.key === "Enter") nextStep();
+      if (e.key === "ArrowLeft") prevStep();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [tutorialState.active, skipTutorial, nextStep, prevStep]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -317,11 +345,13 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isHydrated || !tutorialState.active || !currentStep) {
+      // Clear highlight when there is no active step (e.g. during page transitions)
       setTargetRect(null);
       return;
     }
 
-    setTargetRect(null);
+    // Do NOT null targetRect here — keeping the old rect during element search
+    // gives a smooth highlight transition instead of a visible flash.
 
     let cancelled = false;
     let retries = 0;
@@ -353,7 +383,7 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    const cleanupTarget = () => {
+    const cleanupListeners = () => {
       if (retryTimer !== null) {
         window.clearTimeout(retryTimer);
       }
@@ -374,10 +404,12 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
 
       retries += 1;
       if (retries >= 8) {
+        // Element not found — show tooltip without overlay highlight,
+        // then auto-advance after a brief pause so the user isn't stuck.
         setTargetRect(null);
         window.setTimeout(() => {
-          if (!cancelled) nextStep();
-        }, 0);
+          if (!cancelled) nextStepRef.current();
+        }, 800);
         return;
       }
 
@@ -388,9 +420,9 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
 
     return () => {
       cancelled = true;
-      cleanupTarget();
+      cleanupListeners();
     };
-  }, [currentStep, isHydrated, nextStep, tutorialState.active]);
+  }, [currentStep, isHydrated, tutorialState.active]);
 
   const totalSteps = useMemo(() => getTutorialTotalSteps(), []);
   const currentStepNumber = currentStep
@@ -430,15 +462,16 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
         />
       </Suspense>
 
-      {currentStep && targetRect && (
+      {currentStep && (
         <>
-          <TutorialOverlay targetRect={targetRect} />
+          {targetRect && <TutorialOverlay targetRect={targetRect} />}
           <TutorialTooltip
             currentStepNumber={currentStepNumber}
             totalSteps={totalSteps}
             canGoBack={currentStepNumber > 1}
             isLastStep={currentStepNumber === totalSteps}
             step={currentStep}
+            pageId={tutorialState.pageId}
             targetRect={targetRect}
             onSkip={skipTutorial}
             onPrev={prevStep}
@@ -448,9 +481,11 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
       )}
 
       {showCompletionMessage && (
-        <div className="pointer-events-none fixed inset-0 z-[95] flex items-center justify-center px-4">
-          <div className="rounded-full bg-slate-900 px-6 py-3 text-sm font-semibold text-white shadow-2xl motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95 motion-safe:duration-200 motion-reduce:animate-none">
-            準備完了です！🎉 EduMatchをお楽しみください
+        <div className="pointer-events-none fixed inset-0 z-[95] flex items-end justify-center pb-16 px-4 sm:items-center sm:pb-0">
+          <div className="rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 px-8 py-6 text-center shadow-2xl motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95 motion-safe:duration-300 motion-reduce:animate-none">
+            <p className="text-3xl mb-2">🎉</p>
+            <p className="text-lg font-bold text-white">チュートリアル完了！</p>
+            <p className="text-sm text-orange-100 mt-1">EduMatchをお楽しみください</p>
           </div>
         </div>
       )}

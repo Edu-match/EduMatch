@@ -3,6 +3,12 @@ export const TUTORIAL_PROGRESS_STORAGE_KEY = "edu_match_tutorial_progress";
 
 export type TutorialPageId = "home" | "articles" | "dashboard";
 
+export const TUTORIAL_PAGE_LABELS: Record<TutorialPageId, string> = {
+  home: "ホーム",
+  articles: "記事一覧",
+  dashboard: "マイページ",
+};
+
 export type TutorialStepDefinition = {
   selector: string;
   title: string;

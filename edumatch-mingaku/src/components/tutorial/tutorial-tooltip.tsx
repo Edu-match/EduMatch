@@ -4,6 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { TutorialStepDefinition } from "@/components/tutorial/tutorial-steps";
+import {
+  TUTORIAL_PAGE_LABELS,
+  type TutorialPageId,
+} from "@/components/tutorial/tutorial-steps";
 
 type Placement = "top" | "bottom" | "left" | "right";
 
@@ -20,6 +24,7 @@ type TutorialTooltipProps = {
   canGoBack: boolean;
   isLastStep: boolean;
   step: TutorialStepDefinition;
+  pageId: TutorialPageId;
   targetRect: DOMRect | null;
   onSkip: () => void;
   onPrev: () => void;
@@ -29,13 +34,7 @@ type TutorialTooltipProps = {
 const VIEWPORT_PADDING = 12;
 const TOOLTIP_GAP = 18;
 const DEFAULT_TOOLTIP_WIDTH = 320;
-const DEFAULT_TOOLTIP_HEIGHT = 220;
-const DEFAULT_LAYOUT: TooltipLayout = {
-  top: VIEWPORT_PADDING,
-  left: VIEWPORT_PADDING,
-  placement: "bottom",
-  arrowOffset: 48,
-};
+const DEFAULT_TOOLTIP_HEIGHT = 260;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -47,6 +46,7 @@ export function TutorialTooltip({
   canGoBack,
   isLastStep,
   step,
+  pageId,
   targetRect,
   onSkip,
   onPrev,
@@ -72,7 +72,27 @@ export function TutorialTooltip({
   }, []);
 
   const layout = useMemo<TooltipLayout>(() => {
-    if (!targetRect) return DEFAULT_LAYOUT;
+    if (!targetRect) {
+      // Fallback: center-bottom of viewport
+      const tooltipWidth = Math.min(
+        Math.max(viewport.width - VIEWPORT_PADDING * 2, 240),
+        DEFAULT_TOOLTIP_WIDTH
+      );
+      return {
+        top: clamp(
+          viewport.height - DEFAULT_TOOLTIP_HEIGHT - 80,
+          VIEWPORT_PADDING,
+          viewport.height - DEFAULT_TOOLTIP_HEIGHT - VIEWPORT_PADDING
+        ),
+        left: clamp(
+          viewport.width / 2 - tooltipWidth / 2,
+          VIEWPORT_PADDING,
+          viewport.width - tooltipWidth - VIEWPORT_PADDING
+        ),
+        placement: "bottom",
+        arrowOffset: -1, // sentinel: no arrow
+      };
+    }
 
     const tooltipWidth = Math.min(
       Math.max(viewport.width - VIEWPORT_PADDING * 2, 240),
@@ -183,6 +203,8 @@ export function TutorialTooltip({
   const nextLabel =
     step.nextLabel ?? (isLastStep ? "チュートリアルを完了する 🎉" : "次へ →");
 
+  const hasArrow = layout.arrowOffset >= 0;
+
   return (
     <div
       role="dialog"
@@ -198,29 +220,57 @@ export function TutorialTooltip({
         left: layout.left,
       }}
     >
+      {/* Sticky note tape decoration */}
       <div className="absolute left-6 top-[-8px] h-4 w-16 -rotate-6 rounded-sm bg-yellow-200/80 shadow-sm" />
 
-      <TooltipArrow placement={layout.placement} offset={layout.arrowOffset} />
+      {hasArrow && (
+        <TooltipArrow placement={layout.placement} offset={layout.arrowOffset} />
+      )}
 
-      <div className="relative space-y-4">
-        <div className="space-y-2">
-          <p className="text-xs font-semibold tracking-wide text-yellow-700">
-            📌 ステップ {currentStepNumber} / {totalSteps}
-          </p>
-          <div className="space-y-1">
-            <h2 className="text-base font-bold leading-snug sm:text-lg">
-              {step.title}
-            </h2>
-            <p className="text-sm leading-6 text-slate-700">{step.description}</p>
-          </div>
+      <div className="relative space-y-3">
+        {/* Page badge + step counter */}
+        <div className="flex items-center justify-between">
+          <span className="inline-flex items-center rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-semibold text-orange-700">
+            {TUTORIAL_PAGE_LABELS[pageId]}
+          </span>
+          <span className="text-xs text-slate-400 tabular-nums">
+            {currentStepNumber} / {totalSteps}
+          </span>
         </div>
 
+        {/* Progress dots */}
+        <div className="flex items-center gap-0.5">
+          {Array.from({ length: totalSteps }, (_, i) => {
+            const n = i + 1;
+            return (
+              <div
+                key={i}
+                className={cn(
+                  "h-1.5 rounded-full transition-all duration-300",
+                  n < currentStepNumber && "w-2 bg-orange-300",
+                  n === currentStepNumber && "w-5 bg-orange-500",
+                  n > currentStepNumber && "w-1.5 bg-yellow-200"
+                )}
+              />
+            );
+          })}
+        </div>
+
+        {/* Step content */}
+        <div className="space-y-1">
+          <h2 className="text-base font-bold leading-snug sm:text-lg">
+            {step.title}
+          </h2>
+          <p className="text-sm leading-6 text-slate-700">{step.description}</p>
+        </div>
+
+        {/* Actions */}
         <div className="flex flex-wrap items-center justify-end gap-2">
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            className="text-slate-600 hover:bg-yellow-100 hover:text-slate-900"
+            className="text-slate-500 hover:bg-yellow-100 hover:text-slate-900"
             onClick={onSkip}
           >
             スキップ
@@ -230,7 +280,7 @@ export function TutorialTooltip({
             variant="outline"
             size="sm"
             disabled={!canGoBack}
-            className="border-yellow-300 bg-white/80 hover:bg-white"
+            className="border-yellow-300 bg-white/80 hover:bg-white disabled:opacity-30"
             onClick={onPrev}
           >
             ← 戻る
@@ -244,6 +294,11 @@ export function TutorialTooltip({
             {nextLabel}
           </Button>
         </div>
+
+        {/* Keyboard hint */}
+        <p className="text-center text-[10px] text-slate-400">
+          ← → で移動 · Esc でスキップ
+        </p>
       </div>
     </div>
   );
