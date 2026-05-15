@@ -39,7 +39,9 @@ CREATE INDEX IF NOT EXISTS app_content_chunks_author_idx
 ALTER TABLE public.app_content_chunks ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policy 1: Authenticated users can read published content
-CREATE POLICY IF NOT EXISTS authenticated_read_app_content_chunks
+-- (DROP + CREATE: PG14 など CREATE POLICY IF NOT EXISTS 非対応のため)
+DROP POLICY IF EXISTS authenticated_read_app_content_chunks ON public.app_content_chunks;
+CREATE POLICY authenticated_read_app_content_chunks
   ON public.app_content_chunks
   FOR SELECT
   USING (
@@ -48,7 +50,8 @@ CREATE POLICY IF NOT EXISTS authenticated_read_app_content_chunks
   );
 
 -- RLS Policy 2: Admins can perform all operations
-CREATE POLICY IF NOT EXISTS admin_all_app_content_chunks
+DROP POLICY IF EXISTS admin_all_app_content_chunks ON public.app_content_chunks;
+CREATE POLICY admin_all_app_content_chunks
   ON public.app_content_chunks
   FOR ALL
   USING (
@@ -65,7 +68,8 @@ CREATE POLICY IF NOT EXISTS admin_all_app_content_chunks
   );
 
 -- RLS Policy 3: Hide chunks from deleted authors
-CREATE POLICY IF NOT EXISTS hide_deleted_authors_app_content
+DROP POLICY IF EXISTS hide_deleted_authors_app_content ON public.app_content_chunks;
+CREATE POLICY hide_deleted_authors_app_content
   ON public.app_content_chunks
   FOR SELECT
   USING (

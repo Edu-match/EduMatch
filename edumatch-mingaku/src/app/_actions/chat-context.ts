@@ -238,6 +238,92 @@ export async function searchKnowledgeChunks(
 }
 
 /**
+ * アプリコンテンツチャンクをセマンティック検索（ベクトル検索）
+ */
+export async function searchAppContent(
+  query: string,
+  matchCount = 8
+): Promise<ChatContextItem[]> {
+  const q = query.trim();
+  if (q.length < 2) return [];
+
+  try {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      console.warn("searchAppContent: OPENAI_API_KEY missing");
+      return [];
+    }
+
+    const openai = new OpenAI({ apiKey });
+
+    // クエリをベクトル化
+    const embeddingResponse = await openai.embeddings.create({
+      model: "text-embedding-3-small",
+      input: q.slice(0, 8000),
+      dimensions: 1536,
+    });
+    const queryEmbedding = embeddingResponse.data[0]?.embedding;
+    if (!queryEmbedding) return [];
+
+    // Supabase RPC でセマンティック検索
+    const supabase = await supabaseForKnowledgeSearchAsync();
+    const { data: chunks, error } = await supabase.rpc(
+      "search_app_content_chunks",
+      {
+        query_embedding: `[${queryEmbedding.join(",")}]`,
+        match_count: matchCount,
+        match_threshold: 0.3, // アプリコンテンツは閾値を低めに
+      }
+    );
+
+    if (error) {
+      console.error("searchAppContent rpc error:", error);
+      return [];
+    }
+
+    if (!chunks || chunks.length === 0) return [];
+
+    // グループ化：ソースごとに最初のチャンクのみ取得（重複排除）
+    const grouped = new Map<string, any>();
+    for (const chunk of chunks) {
+      const key = `${chunk.source_table}:${chunk.source_id}`;
+      if (!grouped.has(key)) {
+        grouped.set(key, chunk);
+      }
+    }
+
+    // ChatContextItem に変換
+    return Array.from(grouped.values()).map((chunk: any) => {
+      const typeLabel: Record<string, "article" | "service"> = {
+        post: "article",
+        service: "service",
+        review: "service",
+        forum_post: "article",
+        seminar_event: "service",
+        site_update: "article",
+      };
+
+      return {
+        id: chunk.source_id,
+        type: (typeLabel[chunk.source_table] || "article") as "article" | "service",
+        title: chunk.source_title,
+        content: [
+          `タイプ: ${chunk.source_type_label || chunk.source_table}`,
+          `タイトル: ${chunk.source_title}`,
+          ...(chunk.source_category ? [`カテゴリ: ${chunk.source_category}`] : []),
+          `\n${truncate(chunk.content, 1200)}`,
+        ]
+          .filter(Boolean)
+          .join("\n"),
+      };
+    });
+  } catch (error) {
+    console.error("searchAppContent error:", error);
+    return [];
+  }
+}
+
+/**
  * ユーザーの発話でサービス・記事を検索し、あわせて公的文書（RAG）を常に取得する
  */
 export async function searchRelevantContent(
@@ -249,114 +335,117 @@ export async function searchRelevantContent(
   knowledge: ChatContextItem[];
 }> {
   try {
-    const keywords = query
-      .replace(/[。、！？「」【】\s]+/g, " ")
-      .trim()
-      .split(" ")
-      .filter((w) => w.length >= 2)
-      .slice(0, 6);
-
-    if (keywords.length === 0) {
-      const [services, knowledge] = await Promise.all([
-        prisma.service.findMany({
-          where: { OR: [{ status: "APPROVED" }, { is_published: true }] },
-          select: {
-            id: true, title: true, description: true,
-            category: true, tags: true, price_info: true,
-            provider: { select: { name: true } },
-          },
-          orderBy: { created_at: "desc" },
-          take: limit,
-        }),
-        searchKnowledgeChunks(query),
-      ]);
-      return {
-        services: services.map((s) => ({
-          id: s.id,
-          type: "service" as const,
-          title: s.title,
-          content: truncate(
-            [
-              `サービス名: ${s.title}`,
-              s.provider?.name ? `提供者: ${s.provider.name}` : "",
-              s.category ? `カテゴリ: ${s.category}` : "",
-              s.description ? `概要: ${s.description}` : "",
-            ].filter(Boolean).join("\n"),
-            MAX_SEARCH_CONTEXT_CHARS
-          ),
-        })),
-        articles: [],
-        knowledge,
-      };
-    }
-
-    const orClauses = keywords.map((kw) => ({
-      OR: [
-        { title: { contains: kw, mode: "insensitive" as const } },
-        { description: { contains: kw, mode: "insensitive" as const } },
-        { category: { contains: kw, mode: "insensitive" as const } },
-      ],
-    }));
-
-    const [services, articles, knowledge] = await Promise.all([
-      prisma.service.findMany({
-        where: {
-          OR: [{ status: "APPROVED" }, { is_published: true }],
-          AND: [{ OR: orClauses.flatMap((o) => o.OR) }],
-        },
-        select: {
-          id: true, title: true, description: true,
-          category: true, tags: true, price_info: true,
-          provider: { select: { name: true } },
-        },
-        take: limit,
-      }),
-      prisma.post.findMany({
-        where: {
-          OR: [{ status: "APPROVED" }, { is_published: true }],
-          AND: [{ OR: [
-            ...keywords.map((kw) => ({ title: { contains: kw, mode: "insensitive" as const } })),
-            ...keywords.map((kw) => ({ summary: { contains: kw, mode: "insensitive" as const } })),
-            ...keywords.map((kw) => ({ category: { contains: kw, mode: "insensitive" as const } })),
-          ]}],
-        },
-        select: { id: true, title: true, summary: true, category: true, tags: true },
-        take: limit,
-      }),
+    // セマンティック検索（app_content_chunks）と公的文書RAGを並列実行
+    const [appContent, knowledge] = await Promise.all([
+      searchAppContent(query, limit * 2),
       searchKnowledgeChunks(query),
     ]);
 
+    // appContent を services / articles に分離
+    const appServices = appContent.filter((c) => c.type === "service");
+    const appArticles = appContent.filter((c) => c.type === "article");
+
+    // セマンティック検索で十分な結果がある場合はそれを使用、
+    // ない場合はキーワード検索でフォールバック
+    let services = appServices.slice(0, limit);
+    let articles = appArticles.slice(0, limit);
+
+    // フォールバック：セマンティック検索結果が少ない場合、キーワード検索を追加
+    if (services.length < limit || articles.length < limit) {
+      const keywords = query
+        .replace(/[。、！？「」【】\s]+/g, " ")
+        .trim()
+        .split(" ")
+        .filter((w) => w.length >= 2)
+        .slice(0, 6);
+
+      if (keywords.length > 0) {
+        const orClauses = keywords.map((kw) => ({
+          OR: [
+            { title: { contains: kw, mode: "insensitive" as const } },
+            { description: { contains: kw, mode: "insensitive" as const } },
+            { category: { contains: kw, mode: "insensitive" as const } },
+          ],
+        }));
+
+        const [keywordServices, keywordArticles] = await Promise.all([
+          services.length < limit
+            ? prisma.service.findMany({
+                where: {
+                  OR: [{ status: "APPROVED" }, { is_published: true }],
+                  AND: [{ OR: orClauses.flatMap((o) => o.OR) }],
+                },
+                select: {
+                  id: true, title: true, description: true,
+                  category: true, tags: true, price_info: true,
+                  provider: { select: { name: true } },
+                },
+                take: limit - services.length,
+              })
+            : Promise.resolve([]),
+          articles.length < limit
+            ? prisma.post.findMany({
+                where: {
+                  OR: [{ status: "APPROVED" }, { is_published: true }],
+                  AND: [{ OR: [
+                    ...keywords.map((kw) => ({ title: { contains: kw, mode: "insensitive" as const } })),
+                    ...keywords.map((kw) => ({ summary: { contains: kw, mode: "insensitive" as const } })),
+                    ...keywords.map((kw) => ({ category: { contains: kw, mode: "insensitive" as const } })),
+                  ]}],
+                },
+                select: { id: true, title: true, summary: true, category: true, tags: true },
+                take: limit - articles.length,
+              })
+            : Promise.resolve([]),
+        ]);
+
+        // 重複排除してマージ
+        const serviceIds = new Set(services.map((s) => s.id));
+        const additionalServices = keywordServices
+          .filter((s) => !serviceIds.has(s.id))
+          .map((s) => ({
+            id: s.id,
+            type: "service" as const,
+            title: s.title,
+            content: truncate(
+              [
+                `サービス名: ${s.title}`,
+                s.provider?.name ? `提供者: ${s.provider.name}` : "",
+                s.category ? `カテゴリ: ${s.category}` : "",
+                s.tags?.length ? `タグ: ${s.tags.join(", ")}` : "",
+                s.description ? `概要: ${s.description}` : "",
+                s.price_info ? `料金: ${s.price_info}` : "",
+              ].filter(Boolean).join("\n"),
+              MAX_SEARCH_CONTEXT_CHARS
+            ),
+          }));
+
+        const articleIds = new Set(articles.map((a) => a.id));
+        const additionalArticles = keywordArticles
+          .filter((a) => !articleIds.has(a.id))
+          .map((a) => ({
+            id: a.id,
+            type: "article" as const,
+            title: a.title,
+            content: truncate(
+              [
+                `タイトル: ${a.title}`,
+                a.category ? `カテゴリ: ${a.category}` : "",
+                a.tags?.length ? `タグ: ${a.tags.join(", ")}` : "",
+                a.summary ? `要約: ${a.summary}` : "",
+              ].filter(Boolean).join("\n"),
+              MAX_SEARCH_CONTEXT_CHARS
+            ),
+          }));
+
+        services = [...services, ...additionalServices];
+        articles = [...articles, ...additionalArticles];
+      }
+    }
+
     return {
-      services: services.map((s) => ({
-        id: s.id,
-        type: "service" as const,
-        title: s.title,
-        content: truncate(
-          [
-            `サービス名: ${s.title}`,
-            s.provider?.name ? `提供者: ${s.provider.name}` : "",
-            s.category ? `カテゴリ: ${s.category}` : "",
-            s.tags?.length ? `タグ: ${s.tags.join(", ")}` : "",
-            s.description ? `概要: ${s.description}` : "",
-            s.price_info ? `料金: ${s.price_info}` : "",
-          ].filter(Boolean).join("\n"),
-          MAX_SEARCH_CONTEXT_CHARS
-        ),
-      })),
-      articles: articles.map((a) => ({
-        id: a.id,
-        type: "article" as const,
-        title: a.title,
-        content: truncate(
-          [
-            `タイトル: ${a.title}`,
-            a.category ? `カテゴリ: ${a.category}` : "",
-            a.tags?.length ? `タグ: ${a.tags.join(", ")}` : "",
-            a.summary ? `要約: ${a.summary}` : "",
-          ].filter(Boolean).join("\n"),
-          MAX_SEARCH_CONTEXT_CHARS
-        ),
-      })),
+      services: services.slice(0, limit),
+      articles: articles.slice(0, limit),
       knowledge,
     };
   } catch (error) {

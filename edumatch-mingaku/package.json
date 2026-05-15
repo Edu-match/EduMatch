@@ -9,6 +9,7 @@
     "lint": "eslint",
     "postinstall": "prisma generate",
     "db:seed": "npx prisma db seed",
+    "index:app-content": "npx tsx scripts/batch-index-app-content.ts",
     "fix:profiles": "npx tsx scripts/fix-missing-profiles.ts",
     "setup:revalidate": "npx tsx scripts/setup-revalidate-webhook.ts"
   },
