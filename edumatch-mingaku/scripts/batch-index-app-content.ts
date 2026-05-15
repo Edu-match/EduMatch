@@ -10,8 +10,11 @@
 import dotenv from "dotenv";
 import path from "path";
 
-// .env.local を明示的に読み込み
-dotenv.config({ path: path.resolve(__dirname, "../.env.local") });
+// 環境変数ファイルを指定可能に（デフォルト: .env.local）
+const envFile = process.argv[2] || ".env.local";
+const envPath = path.resolve(__dirname, `../${envFile}`);
+console.log(`Loading environment from: ${envPath}`);
+dotenv.config({ path: envPath });
 
 import { prisma } from "@/lib/prisma";
 import { cleanAndChunk, chunksFromMultipleFields, truncate } from "@/lib/chunking-utils";
