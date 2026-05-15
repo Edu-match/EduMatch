@@ -56,7 +56,13 @@ export default function AiKenteiPage() {
             <div className="flex flex-col items-center gap-4">
               {!loading ? (
                 <div className="flex flex-col items-center gap-2">
-                  <Button type="button" size="lg" className="text-base px-8" onClick={goToExamStart}>
+                  <Button
+                    type="button"
+                    size="lg"
+                    className="text-base px-8"
+                    onClick={goToExamStart}
+                    data-tutorial="ai-kentei-quiz-start"
+                  >
                     <BookOpen className="mr-2 h-5 w-5" />
                     検定を受ける
                   </Button>

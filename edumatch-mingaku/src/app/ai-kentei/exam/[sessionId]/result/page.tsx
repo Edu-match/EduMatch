@@ -96,7 +96,10 @@ export default function ResultPage({ params }: { params: Promise<{ sessionId: st
       <main className="container mx-auto px-4 py-8 md:py-12">
         <div className="max-w-3xl mx-auto">
           {/* Result Card */}
-          <Card className={`border-2 mb-8 ${session.passed ? 'border-green-500/50 bg-green-50/50 dark:bg-green-950/20' : 'border-red-500/50 bg-red-50/50 dark:bg-red-950/20'}`}>
+          <Card
+            className={`border-2 mb-8 ${session.passed ? 'border-green-500/50 bg-green-50/50 dark:bg-green-950/20' : 'border-red-500/50 bg-red-50/50 dark:bg-red-950/20'}`}
+            data-tutorial="ai-kentei-result"
+          >
             <CardHeader className="text-center pb-4">
               <div className="mx-auto mb-4">
                 {session.passed ? (

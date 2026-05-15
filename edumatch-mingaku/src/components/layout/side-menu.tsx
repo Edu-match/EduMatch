@@ -61,10 +61,16 @@ function MenuItemLink({
   hasBorder: boolean;
 }) {
   const Icon = item.icon;
+
+  let tutorialAttr: string | undefined;
+  if (item.href === "/forum") tutorialAttr = "side-menu-forum";
+  else if (item.href === "/ai-kentei") tutorialAttr = "side-menu-ai-kentei";
+
   return (
     <Link
       href={item.href}
       prefetch={false}
+      data-tutorial={tutorialAttr}
       className={`flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-muted transition-colors ${
         hasBorder ? "border-b" : ""
       }`}
@@ -92,7 +98,7 @@ export function SideMenu() {
   );
 
   return (
-    <aside className="space-y-3">
+    <aside className="space-y-3" data-tutorial="side-menu">
       {/* 一般メニュー（ブロック） */}
       <div className="border rounded-lg bg-card overflow-hidden">
         <div className="p-3 border-b">

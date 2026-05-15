@@ -224,6 +224,7 @@ function CreateRoomDialog({
           size={hero ? "lg" : "sm"}
           variant={hero ? "default" : "outline"}
           className={cn(hero ? "min-h-11 gap-2 px-6 text-base font-semibold shadow-sm" : "gap-1.5")}
+          data-tutorial="forum-thread-create"
         >
           <Plus className={hero ? "h-5 w-5" : "h-4 w-4"} />
           {hero ? "新しい部屋を作成" : "部屋を作成"}
