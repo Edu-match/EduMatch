@@ -96,22 +96,40 @@ export const TUTORIAL_PAGES: Record<TutorialPageId, TutorialPageDefinition> = {
     nextPageId: "ai-kentei",
     steps: [
       {
-        selector: '[data-tutorial="side-menu-forum"]',
+        selector: '[data-tutorial="forum-hero-section"]',
         title: "💬 井戸端会議へようこそ",
         description:
-          "ここは教育に関する話題を自由に語り合える場所です。質問や意見交換ができます。",
+          "ここは教育に関する話題を自由に語り合えるコミュニティです。教員・専門家・保護者・企業など、立場を超えて繋がることができます。",
+      },
+      {
+        selector: '[data-tutorial="forum-category-filter"]',
+        title: "🏷️ カテゴリで絞り込む",
+        description:
+          "AI・テクノロジー、現場実践、制度・運営など、テーマ別に部屋をフィルターできます。興味のある分野から探しましょう。",
+      },
+      {
+        selector: '[data-tutorial="forum-search"]',
+        title: "🔍 キーワードで検索",
+        description:
+          "部屋名や説明から キーワードで検索できます。探している話題を素早く見つけられます。",
+      },
+      {
+        selector: '[data-tutorial="forum-view-mode"]',
+        title: "🗺️ 表示モードを切り替える",
+        description:
+          "マップ表示（視覚的）とリスト表示（詳細）を切り替えられます。好みの見方で部屋を探せます。",
       },
       {
         selector: '[data-tutorial="forum-thread-create"]',
-        title: "📝 新しい話題を作ろう",
+        title: "📝 新しい部屋を作成",
         description:
-          "自分の質問やアイデアをスレッドとして投稿できます。コミュニティと一緒に学びましょう。",
+          "新しいテーマの部屋を作成できます。AIディスカッション機能をONにすると、AIがファシリテーターとして議論をサポートします。",
       },
       {
-        selector: '[data-tutorial="ai-navigator-open"]',
-        title: "🤖 AIに質問してみよう",
+        selector: '[data-tutorial="forum-ai-help"]',
+        title: "🤖 AIに聞いてみよう",
         description:
-          "わからないことがあったら、AIナビゲーターに質問してみます。AIが教育に関するアドバイスをしてくれます。",
+          "わからないことがあったら、AIナビゲーターに質問しましょう。教育に関する相談や調べごとをAIがサポートします。",
         nextLabel: "AI検定に挑戦しよう",
       },
     ],

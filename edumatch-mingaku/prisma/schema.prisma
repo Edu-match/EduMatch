@@ -574,6 +574,33 @@ model KnowledgeChunk {
   @@map("knowledge_chunks")
 }
 
+/// アプリ内コンテンツのチャンク（RAG検索用）
+model AppContentChunk {
+  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// "service" | "post" | "review" | "forum_post" | "seminar_event" | "site_update"
+  source_table      String
+  source_id         String
+  source_title      String
+  source_category   String?
+  /// "サービス" | "記事" | "レビュー" | "フォーラム投稿" | "セミナー・イベント" | "更新情報"
+  source_type_label String?
+  /// 投稿者 ID（ユーザーコンテンツの場合）
+  author_id         String?           @db.Uuid
+  chunk_index       Int
+  content           String
+  /// pgvector vector(1536)
+  embedding         Unsupported("vector(1536)")?
+  is_published      Boolean           @default(true)
+  created_at        DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime          @updatedAt @db.Timestamptz(6)
+
+  @@unique([source_table, source_id, chunk_index])
+  @@index([source_table, source_id])
+  @@index([is_published, created_at(sort: Desc)])
+  @@check("source_table IN ('service', 'post', 'review', 'forum_post', 'seminar_event', 'site_update')")
+  @@map("app_content_chunks")
+}
+
 /// AIモードごとのシステムプロンプト上書き設定（管理画面から編集可）
 model SystemPromptOverride {
   id         String   @id @default(cuid())
