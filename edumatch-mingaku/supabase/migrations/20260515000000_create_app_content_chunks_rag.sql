@@ -1,3 +1,6 @@
+-- Enable pgvector extension
+CREATE EXTENSION IF NOT EXISTS vector;
+
 -- Create app_content_chunks table for full-text RAG indexing
 CREATE TABLE IF NOT EXISTS public.app_content_chunks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
