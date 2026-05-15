@@ -597,7 +597,6 @@ model AppContentChunk {
   @@unique([source_table, source_id, chunk_index])
   @@index([source_table, source_id])
   @@index([is_published, created_at(sort: Desc)])
-  @@check("source_table IN ('service', 'post', 'review', 'forum_post', 'seminar_event', 'site_update')")
   @@map("app_content_chunks")
 }
 
