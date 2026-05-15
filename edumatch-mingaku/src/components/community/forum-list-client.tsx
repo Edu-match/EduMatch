@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { OpenAiChatButton } from "@/components/ui/open-ai-chat-button";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -224,6 +225,7 @@ function CreateRoomDialog({
           size={hero ? "lg" : "sm"}
           variant={hero ? "default" : "outline"}
           className={cn(hero ? "min-h-11 gap-2 px-6 text-base font-semibold shadow-sm" : "gap-1.5")}
+          data-tutorial="forum-thread-create"
         >
           <Plus className={hero ? "h-5 w-5" : "h-4 w-4"} />
           {hero ? "新しい部屋を作成" : "部屋を作成"}
@@ -378,7 +380,10 @@ export function ForumListClient() {
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
 
       {/* ─── ヒーローセクション ─── */}
-      <section className="relative overflow-hidden border-b bg-gradient-to-br from-primary/8 via-primary/4 to-background">
+      <section
+        className="relative overflow-hidden border-b bg-gradient-to-br from-primary/8 via-primary/4 to-background"
+        data-tutorial="forum-hero-section"
+      >
         <div className="container py-10 md:py-14">
           <div className="mx-auto max-w-3xl text-center">
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border bg-background/80 px-4 py-1.5 text-xs text-muted-foreground backdrop-blur-sm">
@@ -429,7 +434,7 @@ export function ForumListClient() {
 
         {/* ビュー切り替え（共通） */}
         <div className="flex items-center justify-end">
-          <div className="flex items-center gap-1 rounded-lg border bg-background p-1 shadow-xs">
+          <div className="flex items-center gap-1 rounded-lg border bg-background p-1 shadow-xs" data-tutorial="forum-view-mode">
             <button
               type="button"
               title="トピックマップ"
@@ -471,7 +476,7 @@ export function ForumListClient() {
             <CardContent className="p-4 sm:p-5">
               <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
                 <div className="space-y-3">
-                  <div className="relative">
+                  <div className="relative" data-tutorial="forum-search">
                     <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
                       value={query}
@@ -480,7 +485,7 @@ export function ForumListClient() {
                       placeholder="部屋名・説明・今週のお題で検索"
                     />
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2" data-tutorial="forum-category-filter">
                     {(Object.entries(CATEGORY_LABELS) as [CategoryKey, string][]).map(([key, label]) => (
                       <button
                         key={key}
@@ -599,6 +604,31 @@ export function ForumListClient() {
                 <ArrowUpRight className="ml-1 h-4 w-4" />
               </Link>
             </Button>
+          </div>
+        </div>
+
+        {/* ─── AIに相談する ─── */}
+        <div
+          className="rounded-xl border border-dashed bg-muted/20 px-6 py-8"
+          data-tutorial="forum-ai-help"
+        >
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-medium flex items-center gap-2">
+                <Bot className="h-4 w-4" />
+                AIに相談してみよう
+              </p>
+              <p className="mt-1 text-xs leading-6 text-muted-foreground">
+                教育に関する疑問や相談があれば、AIナビゲーターに質問できます。わからないことはAIにサポートしてもらいましょう。
+              </p>
+            </div>
+            <OpenAiChatButton
+              className="h-9 px-3 text-xs"
+              preferredMode="navigator"
+              launchContext="forum-compose"
+            >
+              AIに聞いてみる
+            </OpenAiChatButton>
           </div>
         </div>
       </div>

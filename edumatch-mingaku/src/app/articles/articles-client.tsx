@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
@@ -41,15 +41,20 @@ export function ArticlesClient({
     currentPage * PAGE_SIZE
   );
 
-  // 検索・カテゴリ変更時に1ページ目に戻る
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, selectedCategory]);
-
   // ページ変更時にページトップへスクロール
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    setCurrentPage(1);
+  };
+
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategory(category);
+    setCurrentPage(1);
   };
 
   return (
@@ -79,20 +84,25 @@ export function ArticlesClient({
                 <Input
                   placeholder="記事タイトル、キーワードで検索..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  data-tutorial="articles-search"
                   className="pl-12 h-12 text-base border-2 focus:border-primary transition-all"
                 />
               </div>
 
               {/* カテゴリフィルター */}
-              <div className="flex items-center gap-2 pb-2 overflow-x-auto" style={{ WebkitOverflowScrolling: "touch" }}>
+              <div
+                className="flex items-center gap-2 pb-2 overflow-x-auto"
+                style={{ WebkitOverflowScrolling: "touch" }}
+                data-tutorial="articles-category-filter"
+              >
                 <span className="text-sm font-medium text-muted-foreground whitespace-nowrap flex-shrink-0">
                   カテゴリ:
                 </span>
                 <Button
                   variant={selectedCategory === "all" ? "default" : "outline"}
                   size="sm"
-                  onClick={() => setSelectedCategory("all")}
+                  onClick={() => handleCategoryChange("all")}
                   className="transition-all hover:scale-105 whitespace-nowrap flex-shrink-0"
                 >
                   すべて
@@ -102,7 +112,7 @@ export function ArticlesClient({
                     key={category}
                     variant={selectedCategory === category ? "default" : "outline"}
                     size="sm"
-                    onClick={() => setSelectedCategory(category)}
+                    onClick={() => handleCategoryChange(category)}
                     className="transition-all hover:scale-105 whitespace-nowrap flex-shrink-0"
                   >
                     {category}
@@ -120,7 +130,7 @@ export function ArticlesClient({
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setSearchQuery("")}
+                    onClick={() => handleSearchChange("")}
                     className="text-xs"
                   >
                     検索をクリア
@@ -172,6 +182,7 @@ export function ArticlesClient({
                         type: "article",
                       }}
                       variant="icon"
+                      tutorialId="article-card-favorite"
                       className="bg-white/95 hover:bg-white shadow-lg border-0"
                     />
                   </div>
@@ -246,8 +257,8 @@ export function ArticlesClient({
                 検索条件を変更するか、別のキーワードでお試しください
               </p>
               <Button onClick={() => {
-                setSearchQuery("");
-                setSelectedCategory("all");
+                handleSearchChange("");
+                handleCategoryChange("all");
               }}>
                 検索をリセット
               </Button>

@@ -122,6 +122,7 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
                 onClick={() => setOpen(true)}
                 className="fixed right-0 top-16 bottom-0 z-30 w-20 flex flex-col items-center justify-center gap-4 border-l bg-orange-500 hover:bg-orange-400 text-white transition-all group"
                 aria-label="AIパネルを開く"
+                data-tutorial="ai-navigator-open"
               >
                 <Bot className="h-8 w-8 group-hover:scale-110 transition-transform" />
                 <span
@@ -147,6 +148,7 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
           mobileOpen && "hidden"
         )}
         aria-label="AIナビゲーターを開く"
+        data-tutorial="ai-navigator-open"
       >
         <Bot className="h-6 w-6 text-white" strokeWidth={2} />
       </button>

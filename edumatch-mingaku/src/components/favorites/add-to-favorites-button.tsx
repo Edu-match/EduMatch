@@ -26,6 +26,7 @@ type Props = {
   variant?: "icon" | "button";
   size?: "sm" | "lg";
   className?: string;
+  tutorialId?: string;
 };
 
 export function AddToFavoritesButton({
@@ -33,6 +34,7 @@ export function AddToFavoritesButton({
   variant = "button",
   size,
   className,
+  tutorialId,
 }: Props) {
   const { hasFavorite, toggleFavorite } = useFavorites();
   const isFavorite = hasFavorite(item.id, item.type);
@@ -112,6 +114,9 @@ export function AddToFavoritesButton({
         variant="ghost"
         size="icon"
         onClick={handleClick}
+        aria-label={isFavorite ? "お気に入りから外す" : "お気に入りに追加"}
+        title={isFavorite ? "お気に入りから外す" : "お気に入りに追加"}
+        data-tutorial={tutorialId}
         className={cn(
           "rounded-full bg-white/95 hover:bg-white shadow-lg border-0",
           isFavorite && "bg-red-50 hover:bg-red-100",
@@ -134,6 +139,7 @@ export function AddToFavoritesButton({
       variant={isFavorite ? "default" : "outline"}
       size={size}
       onClick={handleClick}
+      data-tutorial={tutorialId}
       className={cn(className)}
     >
       <Heart

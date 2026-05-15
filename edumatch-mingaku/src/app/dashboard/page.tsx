@@ -15,16 +15,14 @@ import {
   CreditCard,
   User,
   ChevronRight,
+  MessageSquare,
 } from "lucide-react";
 import { requireAuth, getCurrentProfile } from "@/lib/auth";
 import { getRecentViewHistory } from "@/app/_actions";
 import { RequestListCompact } from "@/components/dashboard/request-list-compact";
 import { FavoritesCompact } from "@/components/dashboard/favorites-compact";
 import { MyReviewsCompact } from "@/components/dashboard/my-reviews-compact";
-import {
-  getPopularServicesByEngagement,
-  getPopularArticlesByEngagement,
-} from "@/app/_actions/popularity";
+import { ChatHistoryCompact } from "@/components/dashboard/chat-history-compact";
 import { getCurrentSubscription } from "@/app/_actions/subscription";
 import { getMyReviews } from "@/app/_actions/reviews";
 import { InAppNotificationsCard } from "@/components/dashboard/in-app-notifications-card";
@@ -112,7 +110,7 @@ export default async function DashboardPage() {
         <div className={FEATURES.PAID_PLANS ? "lg:col-span-2 space-y-6" : "space-y-6"}>
           <InAppNotificationsCard />
           {/* 閲覧履歴 */}
-          <Card>
+          <Card data-tutorial="dashboard-recent-history">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <Clock className="h-5 w-5" />
@@ -171,7 +169,7 @@ export default async function DashboardPage() {
           </Card>
 
           {/* サービスのお気に入り（最大5件まで一斉に資料請求可能） */}
-          <Card>
+          <Card data-tutorial="dashboard-service-favorites">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <FileBadge2 className="h-5 w-5" />
@@ -186,6 +184,21 @@ export default async function DashboardPage() {
             </CardHeader>
             <CardContent>
               <RequestListCompact maxBatchRequest={5} />
+            </CardContent>
+          </Card>
+
+          <Card data-tutorial="dashboard-ai-chat-history">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5 text-primary" />
+                AIチャット履歴
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">
+                AIナビゲーターとの最近の会話をここから振り返れます
+              </p>
+            </CardHeader>
+            <CardContent>
+              <ChatHistoryCompact />
             </CardContent>
           </Card>
 
