@@ -1,6 +1,5 @@
 'use client'
 
-import type { CSSProperties } from 'react'
 import { certificateMincho } from '@/lib/fonts/certificate-mincho'
 
 interface CertificatePreviewProps {
@@ -12,43 +11,9 @@ interface CertificatePreviewProps {
   certificateId?: string | null
 }
 
-/** テンプレート原寸 1024×723px */
-const TEMPLATE = { w: 1024, h: 723 } as const
-
-const pct = (x: number, axis: 'w' | 'h') =>
-  `${(x / TEMPLATE[axis]) * 100}%`
-
-/**
- * 背景 `certificate-template.jpg` 上の可変テキスト位置。
- * ラベル（認定日・認定番号）と「様」は背景画像に含まれる。
- */
-const OVERLAY = {
-  /** 金線（y≈348）の上・「様」（x≈620）の左 */
-  name: {
-    left: pct(390, 'w'),
-    right: pct(1024 - 618, 'w'),
-    top: pct(334, 'h'),
-    fontSize: 'clamp(0.9rem, 3.2cqi, 1.55rem)',
-  },
-  /** 「認定日：」コロン直後（y≈410） */
-  date: {
-    left: pct(512, 'w'),
-    top: pct(410, 'h'),
-    fontSize: 'clamp(0.6rem, 1.7cqi, 0.9rem)',
-  },
-  /** 「認定番号：」コロン直後（y≈466、装飾金線 y≈452 の下） */
-  certificateId: {
-    left: pct(512, 'w'),
-    top: pct(466, 'h'),
-    fontSize: 'clamp(0.55rem, 1.55cqi, 0.85rem)',
-  },
-} as const
-
-const overlayText: CSSProperties = {
-  color: '#1a1a1a',
-  letterSpacing: '0.03em',
-  lineHeight: 1.2,
-}
+/** テンプレート原寸（certificate-template.jpg） */
+const W = 1024
+const H = 723
 
 export function CertificatePreview({
   name,
@@ -71,55 +36,51 @@ export function CertificatePreview({
 
   return (
     <div
-      className={`relative w-full aspect-[1024/723] overflow-hidden rounded-lg shadow-2xl [container-type:inline-size] ${certificateMincho.className}`}
+      className={`relative w-full aspect-[1024/723] overflow-hidden rounded-lg shadow-2xl ${certificateMincho.className}`}
       lang="ja"
     >
       <img
         src="/ai-kentei/certificate-template.jpg"
         alt=""
-        className="absolute inset-0 h-full w-full object-fill"
-        width={TEMPLATE.w}
-        height={TEMPLATE.h}
+        className="absolute inset-0 h-full w-full"
+        width={W}
+        height={H}
+        draggable={false}
       />
 
-      <div
-        className="absolute overflow-hidden whitespace-nowrap text-right font-semibold"
-        style={{
-          ...overlayText,
-          left: OVERLAY.name.left,
-          right: OVERLAY.name.right,
-          top: OVERLAY.name.top,
-          fontSize: OVERLAY.name.fontSize,
-        }}
+      {/*
+        viewBox でテンプレートと同一座標系（% 指定よりズレにくい）
+        座標は certificate-template.jpg 上で合成テスト済み
+      */}
+      <svg
+        className="absolute inset-0 h-full w-full"
+        viewBox={`0 0 ${W} ${H}`}
+        preserveAspectRatio="none"
+        aria-hidden
+        style={{ fontFamily: certificateMincho.style.fontFamily }}
       >
-        {name || '受験者名'}
-      </div>
-
-      <div
-        className="absolute whitespace-nowrap"
-        style={{
-          ...overlayText,
-          left: OVERLAY.date.left,
-          top: OVERLAY.date.top,
-          fontSize: OVERLAY.date.fontSize,
-        }}
-      >
-        {formatDate(date)}
-      </div>
-
-      {certificateId ? (
-        <div
-          className="absolute max-w-[32%] whitespace-nowrap"
-          style={{
-            ...overlayText,
-            left: OVERLAY.certificateId.left,
-            top: OVERLAY.certificateId.top,
-            fontSize: OVERLAY.certificateId.fontSize,
-          }}
+        <text
+          x={595}
+          y={335}
+          textAnchor="end"
+          fill="#1a1a1a"
+          fontSize={24}
+          fontWeight={600}
+          letterSpacing="0.04em"
         >
-          {certificateId}
-        </div>
-      ) : null}
+          {name || '受験者名'}
+        </text>
+
+        <text x={505} y={494} textAnchor="start" fill="#1a1a1a" fontSize={15} letterSpacing="0.03em">
+          {formatDate(date)}
+        </text>
+
+        {certificateId ? (
+          <text x={505} y={512} textAnchor="start" fill="#1a1a1a" fontSize={14} letterSpacing="0.02em">
+            {certificateId}
+          </text>
+        ) : null}
+      </svg>
     </div>
   )
 }
