@@ -12,32 +12,42 @@ interface CertificatePreviewProps {
   certificateId?: string | null
 }
 
+/** テンプレート原寸 1024×723px */
+const TEMPLATE = { w: 1024, h: 723 } as const
+
+const pct = (x: number, axis: 'w' | 'h') =>
+  `${(x / TEMPLATE[axis]) * 100}%`
+
 /**
- * 背景画像 `public/ai-kentei/certificate-template.png` 上の可変テキスト位置。
- * 氏名・認定日・認定番号のみオーバーレイ（ラベルと「様」は背景）。
+ * 背景 `certificate-template.jpg` 上の可変テキスト位置。
+ * ラベル（認定日・認定番号）と「様」は背景画像に含まれる。
  */
 const OVERLAY = {
+  /** 金線（y≈348）の上・「様」（x≈620）の左 */
   name: {
-    left: '36%',
-    right: '11%',
-    top: '43.2%',
-    fontSize: 'clamp(0.95rem, 3.4cqi, 1.65rem)',
+    left: pct(390, 'w'),
+    right: pct(1024 - 618, 'w'),
+    top: pct(334, 'h'),
+    fontSize: 'clamp(0.9rem, 3.2cqi, 1.55rem)',
   },
+  /** 「認定日：」コロン直後（y≈410） */
   date: {
-    left: '49.5%',
-    top: '54.6%',
-    fontSize: 'clamp(0.62rem, 1.75cqi, 0.92rem)',
+    left: pct(512, 'w'),
+    top: pct(410, 'h'),
+    fontSize: 'clamp(0.6rem, 1.7cqi, 0.9rem)',
   },
+  /** 「認定番号：」コロン直後（y≈466、装飾金線 y≈452 の下） */
   certificateId: {
-    left: '49.5%',
-    top: '60.5%',
-    fontSize: 'clamp(0.62rem, 1.75cqi, 0.92rem)',
+    left: pct(512, 'w'),
+    top: pct(466, 'h'),
+    fontSize: 'clamp(0.55rem, 1.55cqi, 0.85rem)',
   },
 } as const
 
 const overlayText: CSSProperties = {
   color: '#1a1a1a',
-  letterSpacing: '0.04em',
+  letterSpacing: '0.03em',
+  lineHeight: 1.2,
 }
 
 export function CertificatePreview({
@@ -64,7 +74,13 @@ export function CertificatePreview({
       className={`relative w-full aspect-[1024/723] overflow-hidden rounded-lg shadow-2xl [container-type:inline-size] ${certificateMincho.className}`}
       lang="ja"
     >
-      <img src="/ai-kentei/certificate-template.png" alt="" className="absolute inset-0 h-full w-full object-cover" />
+      <img
+        src="/ai-kentei/certificate-template.jpg"
+        alt=""
+        className="absolute inset-0 h-full w-full object-fill"
+        width={TEMPLATE.w}
+        height={TEMPLATE.h}
+      />
 
       <div
         className="absolute overflow-hidden whitespace-nowrap text-right font-semibold"
@@ -93,7 +109,7 @@ export function CertificatePreview({
 
       {certificateId ? (
         <div
-          className="absolute whitespace-nowrap"
+          className="absolute max-w-[32%] whitespace-nowrap"
           style={{
             ...overlayText,
             left: OVERLAY.certificateId.left,
