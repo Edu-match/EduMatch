@@ -17,9 +17,9 @@ const H = 723
 
 /** viewBox 座標（テンプレート上で合成確認済み） */
 const POS = {
-  name: { x: 660, y: 550, fontSize: 32 },
-  date: { x: 450, y: 480, fontSize: 24 },
-  certificateId: { x: 450, y: 500, fontSize: 24 },
+  name: { x: 660, y: 400, fontSize: 32 },
+  date: { x: 450, y: 520, fontSize: 24 },
+  certificateId: { x: 450, y: 540, fontSize: 24 },
 } as const
 
 export function CertificatePreview({
