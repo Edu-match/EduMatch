@@ -19,7 +19,7 @@ const H = 723
 const POS = {
   name: { x: 660, y: 430, fontSize: 32 },
   date: { x: 450, y: 510, fontSize: 24 },
-  certificateId: { x: 450, y: 5３0, fontSize: 24 },
+  certificateId: { x: 450, y: 530, fontSize: 24 },
 } as const
 
 export function CertificatePreview({
