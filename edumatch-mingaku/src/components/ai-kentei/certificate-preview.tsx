@@ -15,6 +15,13 @@ interface CertificatePreviewProps {
 const W = 1024
 const H = 723
 
+/** viewBox 座標（テンプレート上で合成確認済み） */
+const POS = {
+  name: { x: 598, y: 347, fontSize: 24 },
+  date: { x: 508, y: 506, fontSize: 15 },
+  certificateId: { x: 508, y: 524, fontSize: 14 },
+} as const
+
 export function CertificatePreview({
   name,
   photoUrl,
@@ -48,35 +55,48 @@ export function CertificatePreview({
         draggable={false}
       />
 
-      {/*
-        viewBox でテンプレートと同一座標系（% 指定よりズレにくい）
-        座標は certificate-template.jpg 上で合成テスト済み
-      */}
       <svg
         className="absolute inset-0 h-full w-full"
         viewBox={`0 0 ${W} ${H}`}
-        preserveAspectRatio="none"
+        preserveAspectRatio="xMidYMid meet"
         aria-hidden
         style={{ fontFamily: certificateMincho.style.fontFamily }}
       >
         <text
-          x={595}
-          y={335}
+          x={POS.name.x}
+          y={POS.name.y}
           textAnchor="end"
+          dominantBaseline="alphabetic"
           fill="#1a1a1a"
-          fontSize={24}
+          fontSize={POS.name.fontSize}
           fontWeight={600}
           letterSpacing="0.04em"
         >
           {name || '受験者名'}
         </text>
 
-        <text x={505} y={494} textAnchor="start" fill="#1a1a1a" fontSize={15} letterSpacing="0.03em">
+        <text
+          x={POS.date.x}
+          y={POS.date.y}
+          textAnchor="start"
+          dominantBaseline="alphabetic"
+          fill="#1a1a1a"
+          fontSize={POS.date.fontSize}
+          letterSpacing="0.03em"
+        >
           {formatDate(date)}
         </text>
 
         {certificateId ? (
-          <text x={505} y={512} textAnchor="start" fill="#1a1a1a" fontSize={14} letterSpacing="0.02em">
+          <text
+            x={POS.certificateId.x}
+            y={POS.certificateId.y}
+            textAnchor="start"
+            dominantBaseline="alphabetic"
+            fill="#1a1a1a"
+            fontSize={POS.certificateId.fontSize}
+            letterSpacing="0.02em"
+          >
             {certificateId}
           </text>
         ) : null}
