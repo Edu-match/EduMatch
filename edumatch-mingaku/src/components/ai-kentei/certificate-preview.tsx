@@ -5,48 +5,39 @@ import { certificateMincho } from '@/lib/fonts/certificate-mincho'
 
 interface CertificatePreviewProps {
   name: string
-  photoUrl: string | null
-  score: number
-  totalQuestions: number
+  photoUrl?: string | null
+  score?: number
+  totalQuestions?: number
   date: Date
   certificateId?: string | null
 }
 
 /**
  * 背景画像 `public/ai-kentei/certificate-template.png` 上の可変テキスト位置。
- * 氏名・スコア・認定日は互いに無関係。ここだけを画像に合わせて調整する。
- *
- * `right` はコンテナ右端からの距離。値を大きくするとブロック全体が左へ寄る。
+ * 氏名・認定日・認定番号のみオーバーレイ（ラベルと「様」は背景）。
  */
 const OVERLAY = {
-  /** 氏名の上あたり（同じ縦列）。right は氏名と揃える */
-  photo: {
-    /** 氏名列の見た目の中心に合わせる（31.5% だと円がやや左寄り） */
-    right: '30.65%',
-    top: '19%',
-    size: 'clamp(2.25rem, 8.5cqi, 3.5rem)',
-  },
   name: {
-    right: '32.3%',
-    top: '38%',
-    maxHeight: '38%',
-    fontSize: 'clamp(0.78rem, 2.15cqi, 1.28rem)',
-  },
-  score: {
-    right: '68%',
-    top: '36%',
-    fontSize: 'clamp(0.72rem, 1.85cqi, 1.15rem)',
+    left: '36%',
+    right: '11%',
+    top: '43.2%',
+    fontSize: 'clamp(0.95rem, 3.4cqi, 1.65rem)',
   },
   date: {
-    right: '85.5%',
-    top: '26%',
-    fontSize: 'clamp(0.68rem, 1.65cqi, 1.05rem)',
+    left: '49.5%',
+    top: '54.6%',
+    fontSize: 'clamp(0.62rem, 1.75cqi, 0.92rem)',
+  },
+  certificateId: {
+    left: '49.5%',
+    top: '60.5%',
+    fontSize: 'clamp(0.62rem, 1.75cqi, 0.92rem)',
   },
 } as const
 
-const verticalTategaki: CSSProperties = {
-  writingMode: 'vertical-rl',
-  textOrientation: 'upright',
+const overlayText: CSSProperties = {
+  color: '#1a1a1a',
+  letterSpacing: '0.04em',
 }
 
 export function CertificatePreview({
@@ -57,6 +48,10 @@ export function CertificatePreview({
   date,
   certificateId,
 }: CertificatePreviewProps) {
+  void photoUrl
+  void score
+  void totalQuestions
+
   const formatDate = (d: Date) =>
     new Intl.DateTimeFormat('ja-JP', {
       year: 'numeric',
@@ -64,75 +59,51 @@ export function CertificatePreview({
       day: 'numeric',
     }).format(d)
 
-  const toFullWidthDigits = (value: string) =>
-    value.replace(/\d/g, (digit) => String.fromCharCode(digit.charCodeAt(0) + 0xfee0))
-
-  void certificateId
-
   return (
     <div
-      className={`relative w-full aspect-video overflow-hidden rounded-lg shadow-2xl [container-type:inline-size] ${certificateMincho.className}`}
+      className={`relative w-full aspect-[1024/723] overflow-hidden rounded-lg shadow-2xl [container-type:inline-size] ${certificateMincho.className}`}
       lang="ja"
     >
       <img src="/ai-kentei/certificate-template.png" alt="" className="absolute inset-0 h-full w-full object-cover" />
 
-      {photoUrl ? (
-        <div
-          className="absolute z-10 overflow-hidden rounded-full border-2 border-[#b08d57]/60 bg-white/90 shadow-sm"
-          style={{
-            right: OVERLAY.photo.right,
-            top: OVERLAY.photo.top,
-            width: OVERLAY.photo.size,
-            height: OVERLAY.photo.size,
-          }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={photoUrl} alt="" className="h-full w-full object-cover" />
-        </div>
-      ) : null}
-
-      {/* ① 氏名（写真の下〜「殿」列。テンプレの「殿」との位置は画像側が正） */}
       <div
-        className="absolute overflow-hidden text-[#4a2d12]"
+        className="absolute overflow-hidden whitespace-nowrap text-right font-semibold"
         style={{
-          ...verticalTategaki,
+          ...overlayText,
+          left: OVERLAY.name.left,
           right: OVERLAY.name.right,
           top: OVERLAY.name.top,
-          maxHeight: OVERLAY.name.maxHeight,
+          fontSize: OVERLAY.name.fontSize,
         }}
       >
-        <span className="font-semibold tracking-[0.03em]" style={{ fontSize: OVERLAY.name.fontSize, lineHeight: 1.06 }}>
-          {name || '受験者名'}
-        </span>
+        {name || '受験者名'}
       </div>
 
-      {/* ② スコア数値（例: ２０／２５。ラベル「スコア」は背景） */}
       <div
-        className="absolute text-[#4a2d12]"
+        className="absolute whitespace-nowrap"
         style={{
-          ...verticalTategaki,
-          right: OVERLAY.score.right,
-          top: OVERLAY.score.top,
-        }}
-      >
-        <span className="font-semibold" style={{ fontSize: OVERLAY.score.fontSize, lineHeight: 1.15 }}>
-          {toFullWidthDigits(String(score))}／{toFullWidthDigits(String(totalQuestions))}
-        </span>
-      </div>
-
-      {/* ③ 認定日の値のみ（ラベル「認定日」は背景） */}
-      <div
-        className="absolute text-[#4a2d12]"
-        style={{
-          ...verticalTategaki,
-          right: OVERLAY.date.right,
+          ...overlayText,
+          left: OVERLAY.date.left,
           top: OVERLAY.date.top,
+          fontSize: OVERLAY.date.fontSize,
         }}
       >
-        <span style={{ fontSize: OVERLAY.date.fontSize, lineHeight: 1.38 }}>
-          {toFullWidthDigits(formatDate(date))}
-        </span>
+        {formatDate(date)}
       </div>
+
+      {certificateId ? (
+        <div
+          className="absolute whitespace-nowrap"
+          style={{
+            ...overlayText,
+            left: OVERLAY.certificateId.left,
+            top: OVERLAY.certificateId.top,
+            fontSize: OVERLAY.certificateId.fontSize,
+          }}
+        >
+          {certificateId}
+        </div>
+      ) : null}
     </div>
   )
 }
