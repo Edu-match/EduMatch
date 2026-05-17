@@ -123,6 +123,12 @@ const MODE_LABELS: Record<ChatMode, string> = {
   discussion: "ディスカッションモード",
 };
 
+const MODE_COLORS: Record<ChatMode, { border: string; hover: string; bg: string }> = {
+  navigator: { border: "border-blue-300", hover: "hover:border-blue-500 hover:bg-blue-50", bg: "bg-blue-50/60" },
+  debate: { border: "border-orange-300", hover: "hover:border-orange-500 hover:bg-orange-50", bg: "bg-orange-50/60" },
+  discussion: { border: "border-purple-300", hover: "hover:border-purple-500 hover:bg-purple-50", bg: "bg-purple-50/60" },
+};
+
 const MODE_DESCRIPTIONS: Record<ChatMode, string> = {
   navigator: "一般的な質問・案内",
   debate: "賛成・反対の立場で議論",
@@ -237,17 +243,20 @@ function ModeSelectScreen({ onSelect }: { onSelect: (mode: ChatMode) => void }) 
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden p-4">
       <p className="text-sm text-muted-foreground mb-4">チャットのモードを選んでください</p>
       <div className="space-y-3 flex-1 overflow-y-auto">
-        {(["navigator", "debate", "discussion"] as const).map((mode) => (
-          <button
-            key={mode}
-            type="button"
-            onClick={() => onSelect(mode)}
-            className="w-full flex flex-col items-start gap-1 p-4 rounded-xl border-2 border-primary/20 hover:border-primary/50 hover:bg-primary/5 transition-colors text-left"
-          >
-            <span className="text-sm font-semibold">{MODE_LABELS[mode]}</span>
-            <span className="text-xs text-muted-foreground">{MODE_DESCRIPTIONS[mode]}</span>
-          </button>
-        ))}
+        {(["navigator", "debate", "discussion"] as const).map((mode) => {
+          const mc = MODE_COLORS[mode];
+          return (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => onSelect(mode)}
+              className={`w-full flex flex-col items-start gap-1 p-4 rounded-xl border-2 ${mc.border} ${mc.hover} transition-colors text-left`}
+            >
+              <span className="text-sm font-semibold">{MODE_LABELS[mode]}</span>
+              <span className="text-xs text-muted-foreground">{MODE_DESCRIPTIONS[mode]}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -445,6 +454,8 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
   const [chatHistoryLoading, setChatHistoryLoading] = useState(false);
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
   const [selectedAskChoices, setSelectedAskChoices] = useState<Record<string, string[]>>({});
+  const [askOtherActive, setAskOtherActive] = useState<Record<string, boolean>>({});
+  const [askOtherText, setAskOtherText] = useState<Record<string, string>>({});
   const [openedRagRefsMessageId, setOpenedRagRefsMessageId] = useState<string | null>(null);
 
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -546,6 +557,13 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
   useEffect(() => {
     if (view === "chat" && textareaRef.current) textareaRef.current.focus();
   }, [view]);
+
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 220) + "px";
+  }, [input]);
 
   async function handleAgree() {
     setAgreeLoading(true);
@@ -770,7 +788,10 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
     setIsStreaming(true);
     if (textareaRef.current) textareaRef.current.style.height = "auto";
 
-    const allMessages = [...baseMessages.filter((m) => !m.streaming && !m.yesNo), userMsg].map((m) => ({ role: m.role, content: m.content }));
+    const allMessages = [...baseMessages.filter((m) => !m.streaming && !m.yesNo), userMsg].map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
     const ctxPayload = contextItems.length > 0 ? contextItems.map((c) => ({ id: c.id, type: c.type })) : undefined;
     const controller = new AbortController();
     abortRef.current = controller;
@@ -854,7 +875,7 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
     setInput(e.target.value);
     const el = e.target;
     el.style.height = "auto";
-    el.style.height = Math.min(el.scrollHeight, 140) + "px";
+    el.style.height = Math.min(el.scrollHeight, 220) + "px";
   }
 
   function resetChat() {
@@ -865,6 +886,8 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
     setIsStreaming(false);
     setSessionId(null);
     setSelectedAskChoices({});
+    setAskOtherActive({});
+    setAskOtherText({});
   }
 
   const welcomeMessage =
@@ -1163,8 +1186,10 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
                                       onClick={() => {
                                         if (assistantPrompt.allowMultiple) {
                                           toggleAskChoice(m.id, choice);
+                                        } else if (choice === "その他") {
+                                          setAskOtherActive((prev) => ({ ...prev, [m.id]: true }));
                                         } else {
-                                          setInput(choice);
+                                          sendMessage(choice);
                                         }
                                       }}
                                       className={`rounded-full border px-2.5 py-1 text-xs ${
@@ -1177,6 +1202,40 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
                                     </button>
                                   ))}
                                 </div>
+                                {askOtherActive[m.id] && !assistantPrompt.allowMultiple && (
+                                  <div className="mt-2 flex gap-1.5">
+                                    <input
+                                      type="text"
+                                      value={askOtherText[m.id] ?? ""}
+                                      onChange={(e) => setAskOtherText((prev) => ({ ...prev, [m.id]: e.target.value }))}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                                          const t = (askOtherText[m.id] ?? "").trim();
+                                          if (!t) return;
+                                          setAskOtherActive((prev) => ({ ...prev, [m.id]: false }));
+                                          setAskOtherText((prev) => ({ ...prev, [m.id]: "" }));
+                                          sendMessage(t);
+                                        }
+                                      }}
+                                      placeholder="自由に入力…"
+                                      className="flex-1 rounded-lg border border-primary/30 bg-background px-2.5 py-1 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/50"
+                                    />
+                                    <button
+                                      type="button"
+                                      disabled={!(askOtherText[m.id] ?? "").trim()}
+                                      onClick={() => {
+                                        const t = (askOtherText[m.id] ?? "").trim();
+                                        if (!t) return;
+                                        setAskOtherActive((prev) => ({ ...prev, [m.id]: false }));
+                                        setAskOtherText((prev) => ({ ...prev, [m.id]: "" }));
+                                        sendMessage(t);
+                                      }}
+                                      className="rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/20 disabled:opacity-40"
+                                    >
+                                      送信
+                                    </button>
+                                  </div>
+                                )}
                                 {assistantPrompt.allowMultiple && (
                                   <div className="mt-2 flex justify-end">
                                     <Button
@@ -1185,9 +1244,9 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
                                       variant="outline"
                                       className="h-7 text-xs"
                                       disabled={(selectedAskChoices[m.id] ?? []).length === 0}
-                                      onClick={() => setInput((selectedAskChoices[m.id] ?? []).join("、"))}
+                                      onClick={() => sendMessage((selectedAskChoices[m.id] ?? []).join("、"))}
                                     >
-                                      選択を入力欄に反映
+                                      選択して送信
                                     </Button>
                                   </div>
                                 )}
@@ -1219,7 +1278,7 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
           </div>
 
           {/* ---- Input area ---- */}
-          <div className="border-t px-3 pt-2 pb-3 flex-shrink-0 bg-muted/20">
+          <div className="border-t px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] flex-shrink-0 bg-muted/20">
             <div className="mb-2">
               <p className="text-[11px] text-muted-foreground mb-1.5">回答に含める記事・サービス</p>
               {contextItems.length > 0 ? (
@@ -1304,7 +1363,7 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
                 placeholder={PLACEHOLDERS[chatMode]}
                 rows={1}
                 disabled={isStreaming}
-                className="flex-1 resize-none rounded-xl border border-input bg-background px-3 py-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-50 max-h-[140px] min-h-[52px] leading-[1.5]"
+                className="flex-1 resize-none rounded-xl border border-input bg-background px-3 py-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-50 max-h-[220px] min-h-[52px] leading-[1.5]"
               />
               <Button
                 type="button"
