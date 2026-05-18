@@ -237,7 +237,7 @@ function NewQuestionDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
+      <DialogTrigger data-tutorial="forum-thread-create" asChild>
         <Button size="lg" className="w-full gap-2">
           <PenSquare className="h-4 w-4" />
           質問する
@@ -347,6 +347,7 @@ export function ForumClient() {
   const [selectedTag, setSelectedTag] = useState<string>("すべて");
   const [sortBy, setSortBy] =
     useState<(typeof FORUM_SORT_OPTIONS)[number]["value"]>("newest");
+  const [searchQuery, setSearchQuery] = useState<string>("");
   const [openThread, setOpenThread] = useState<ForumThread | null>(null);
 
   const allTags = useMemo(() => {
@@ -359,14 +360,18 @@ export function ForumClient() {
       const matchCat = selectedCategory === "すべて" || t.category === selectedCategory;
       const matchTag = selectedTag === "すべて" || t.tags.includes(selectedTag);
       const matchUnsolved = sortBy !== "unsolved" || !t.bestAnswerId;
-      return matchCat && matchTag && matchUnsolved;
+      const matchSearch =
+        searchQuery === "" ||
+        t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        t.body.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchCat && matchTag && matchUnsolved && matchSearch;
     });
 
     return [...base].sort((a, b) => {
       if (sortBy === "popular") return b.answerCount - a.answerCount;
       return new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime();
     });
-  }, [threads, selectedCategory, selectedTag, sortBy]);
+  }, [threads, selectedCategory, selectedTag, sortBy, searchQuery]);
 
   const categoryCounts = useMemo(() => {
     const m: Record<string, number> = {};
@@ -395,7 +400,10 @@ export function ForumClient() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
       {/* ─── ヘッダー ─── */}
-      <section className="relative overflow-hidden border-b bg-gradient-to-br from-primary/8 via-primary/4 to-background">
+      <section
+        data-tutorial="forum-hero-section"
+        className="relative overflow-hidden border-b bg-gradient-to-br from-primary/8 via-primary/4 to-background"
+      >
         <div className="container py-12 md:py-16">
           <div className="mx-auto max-w-2xl text-center">
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border bg-background/80 px-4 py-1.5 text-xs text-muted-foreground backdrop-blur-sm">
@@ -437,8 +445,26 @@ export function ForumClient() {
             {/* フィルタ */}
             <Card className="border shadow-sm">
               <CardContent className="space-y-4 p-4">
+                {/* 検索 */}
+                <div data-tutorial="forum-search" className="space-y-1">
+                  <Label htmlFor="forum-search" className="text-xs">
+                    キーワード検索
+                  </Label>
+                  <Input
+                    id="forum-search"
+                    type="search"
+                    placeholder="質問を検索..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="h-8 text-xs"
+                  />
+                </div>
+
                 {/* カテゴリ */}
-                <div className="flex flex-wrap items-center gap-2">
+                <div
+                  data-tutorial="forum-category-filter"
+                  className="flex flex-wrap items-center gap-2"
+                >
                   {FORUM_CATEGORIES.map((cat) => (
                     <button
                       key={cat}
@@ -487,6 +513,7 @@ export function ForumClient() {
                     {filteredThreads.length} 件の質問
                   </p>
                   <Tabs
+                    data-tutorial="forum-view-mode"
                     value={sortBy}
                     onValueChange={(v) =>
                       setSortBy(v as (typeof FORUM_SORT_OPTIONS)[number]["value"])
@@ -586,6 +613,26 @@ export function ForumClient() {
                 </CardContent>
               </Card>
             )}
+
+            {/* AIヘルプ */}
+            <Card
+              data-tutorial="forum-ai-help"
+              className="border-orange-200 bg-orange-50/50"
+            >
+              <CardHeader className="pb-2 pt-4">
+                <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                  <span>🤖</span>
+                  AIナビゲーターを活用
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pb-4">
+                <CardDescription className="space-y-2 text-xs leading-6 text-orange-950/70">
+                  <p>
+                    わからないことはAIに聞くこともできます。右側のボタンからAIナビゲーターに相談してみてください。
+                  </p>
+                </CardDescription>
+              </CardContent>
+            </Card>
 
             {/* このページについて */}
             <Card>
