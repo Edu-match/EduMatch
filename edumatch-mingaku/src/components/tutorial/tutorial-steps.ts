@@ -1,5 +1,6 @@
-export const TUTORIAL_DONE_STORAGE_KEY = "edu_match_tutorial_done";
+export const TUTORIAL_DONE_STORAGE_KEY = "edu_match_tutorial_done"; // "completed" or "skipped"
 export const TUTORIAL_PROGRESS_STORAGE_KEY = "edu_match_tutorial_progress";
+export const TUTORIAL_SKIPPED_STORAGE_KEY = "edu_match_tutorial_skipped"; // flag for skipped state
 
 export type TutorialPageId = "home" | "articles" | "forum" | "ai-kentei" | "dashboard";
 

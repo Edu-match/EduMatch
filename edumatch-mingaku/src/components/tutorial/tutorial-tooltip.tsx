@@ -110,16 +110,30 @@ export function TutorialTooltip({
 
     let placement: Placement = "bottom";
 
-    if (spaces.bottom >= tooltipHeight + TOOLTIP_GAP) {
-      placement = "bottom";
-    } else if (spaces.top >= tooltipHeight + TOOLTIP_GAP) {
-      placement = "top";
-    } else if (spaces.right >= tooltipWidth + TOOLTIP_GAP) {
-      placement = "right";
-    } else if (spaces.left >= tooltipWidth + TOOLTIP_GAP) {
-      placement = "left";
+    // モバイル（幅<640px）では左右配置を避ける
+    const isMobile = viewportWidth < 640;
+
+    if (!isMobile) {
+      if (spaces.bottom >= tooltipHeight + TOOLTIP_GAP) {
+        placement = "bottom";
+      } else if (spaces.top >= tooltipHeight + TOOLTIP_GAP) {
+        placement = "top";
+      } else if (spaces.right >= tooltipWidth + TOOLTIP_GAP) {
+        placement = "right";
+      } else if (spaces.left >= tooltipWidth + TOOLTIP_GAP) {
+        placement = "left";
+      } else {
+        placement = spaces.bottom >= spaces.top ? "bottom" : "top";
+      }
     } else {
-      placement = spaces.bottom >= spaces.top ? "bottom" : "top";
+      // モバイル：上下優先
+      if (spaces.bottom >= tooltipHeight + TOOLTIP_GAP) {
+        placement = "bottom";
+      } else if (spaces.top >= tooltipHeight + TOOLTIP_GAP) {
+        placement = "top";
+      } else {
+        placement = spaces.bottom >= spaces.top ? "bottom" : "top";
+      }
     }
 
     let top = VIEWPORT_PADDING;
@@ -278,7 +292,7 @@ export function TutorialTooltip({
             type="button"
             variant="ghost"
             size="sm"
-            className="text-slate-500 hover:bg-yellow-100 hover:text-slate-900"
+            className="text-slate-500 hover:bg-yellow-100 hover:text-slate-900 sm:text-xs"
             onClick={onSkip}
           >
             スキップ
@@ -288,7 +302,7 @@ export function TutorialTooltip({
             variant="outline"
             size="sm"
             disabled={!canGoBack}
-            className="border-yellow-300 bg-white/80 hover:bg-white disabled:opacity-30"
+            className="border-yellow-300 bg-white/80 hover:bg-white disabled:opacity-30 sm:text-xs"
             onClick={onPrev}
           >
             ← 戻る
@@ -296,7 +310,7 @@ export function TutorialTooltip({
           <Button
             type="button"
             size="sm"
-            className="bg-orange-500 text-white hover:bg-orange-400"
+            className="bg-orange-500 text-white hover:bg-orange-400 sm:text-xs"
             onClick={onNext}
           >
             {nextLabel}

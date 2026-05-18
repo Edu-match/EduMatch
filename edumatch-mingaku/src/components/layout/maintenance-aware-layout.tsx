@@ -80,6 +80,7 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
               </button>
             )}
             <div
+              data-tutorial="side-menu"
               className={cn(
                 "overflow-hidden transition-all duration-200 ease-out",
                 sidebarOpen

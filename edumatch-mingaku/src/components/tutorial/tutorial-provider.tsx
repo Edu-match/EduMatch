@@ -13,11 +13,13 @@ import {
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { TutorialOverlay } from "@/components/tutorial/tutorial-overlay";
 import { TutorialTooltip } from "@/components/tutorial/tutorial-tooltip";
+import { TutorialToast } from "@/components/tutorial/tutorial-toast";
 import { createSupabaseBrowserClient } from "@/utils/supabase/client";
 import { useAiPanel } from "@/components/layout/ai-panel-context";
 import {
   TUTORIAL_DONE_STORAGE_KEY,
   TUTORIAL_PROGRESS_STORAGE_KEY,
+  TUTORIAL_SKIPPED_STORAGE_KEY,
   TUTORIAL_PAGES,
   getTutorialGlobalStepNumber,
   getTutorialPage,
@@ -88,6 +90,7 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
   );
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [showCompletionMessage, setShowCompletionMessage] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const completionTimerRef = useRef<number | null>(null);
   const aiPanelOpenedRef = useRef(false);
 
@@ -185,6 +188,9 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
 
   const skipTutorial = useCallback(() => {
     markTutorialDone("skipped");
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(TUTORIAL_SKIPPED_STORAGE_KEY, "true");
+    }
     updateTutorialState({
       active: false,
       pageId: tutorialState.pageId,
@@ -449,6 +455,7 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
           );
         }
         setTargetRect(null);
+        setToastMessage("このステップの要素が見つかりません。次へ進みます...");
         window.setTimeout(() => {
           if (!cancelled) nextStepRef.current();
         }, 800);
@@ -531,6 +538,8 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
           </div>
         </div>
       )}
+
+      {toastMessage && <TutorialToast message={toastMessage} />}
     </TutorialContext.Provider>
   );
 }
