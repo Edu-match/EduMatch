@@ -50,7 +50,7 @@ export const TUTORIAL_PAGES: Record<TutorialPageId, TutorialPageDefinition> = {
         selector: '[data-tutorial="ai-navigator-open"]',
         title: "🤖 AIナビゲーターを使おう",
         description:
-          "わからないことはAIに聞けます。ボタンを押すと対話が始まります。",
+          "AIナビゲーターが右側に開きました。教育に関する質問や相談があれば、AIに聞いてみましょう。例えば「GIGAスクールについて教えてください」などと入力して、対話を始めてみてください。",
       },
       {
         selector:

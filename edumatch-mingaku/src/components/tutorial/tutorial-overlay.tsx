@@ -18,12 +18,12 @@ export function TutorialOverlay({ targetRect }: TutorialOverlayProps) {
     <div className="pointer-events-none fixed inset-0 z-[70]">
       {/* Dark backdrop with cutout */}
       <div
-        className="absolute rounded-[24px] bg-transparent shadow-[0_0_0_9999px_rgba(15,23,42,0.52)] transition-[top,left,width,height] duration-200 motion-reduce:transition-none"
+        className="absolute rounded-[24px] bg-transparent shadow-[0_0_0_9999px_rgba(15,23,42,0.52)] transition-[top,left,width,height] duration-150 motion-reduce:transition-none"
         style={{ top, left, width, height }}
       />
       {/* Highlight ring */}
       <div
-        className="absolute rounded-[24px] ring-4 ring-orange-400 ring-offset-2 ring-offset-transparent shadow-[0_0_40px_rgba(251,146,60,0.4)] transition-[top,left,width,height] duration-200 motion-reduce:transition-none motion-safe:animate-pulse"
+        className="absolute rounded-[24px] ring-4 ring-orange-400 ring-offset-2 ring-offset-transparent shadow-[0_0_40px_rgba(251,146,60,0.4)] transition-[top,left,width,height] duration-150 motion-reduce:transition-none motion-safe:animate-pulse"
         style={{ top, left, width, height }}
       />
     </div>

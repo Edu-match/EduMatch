@@ -14,6 +14,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { TutorialOverlay } from "@/components/tutorial/tutorial-overlay";
 import { TutorialTooltip } from "@/components/tutorial/tutorial-tooltip";
 import { createSupabaseBrowserClient } from "@/utils/supabase/client";
+import { useAiPanel } from "@/components/layout/ai-panel-context";
 import {
   TUTORIAL_DONE_STORAGE_KEY,
   TUTORIAL_PROGRESS_STORAGE_KEY,
@@ -79,6 +80,7 @@ function prefersReducedMotion() {
 export function TutorialProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const { setOpen, setMobileOpen } = useAiPanel();
   const [isHydrated, setIsHydrated] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [tutorialState, setTutorialState] = useState<TutorialProgressState>(
@@ -87,6 +89,7 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [showCompletionMessage, setShowCompletionMessage] = useState(false);
   const completionTimerRef = useRef<number | null>(null);
+  const aiPanelOpenedRef = useRef(false);
 
   // Keep a stable ref to nextStep so the element-resolution effect can call
   // the latest version without adding nextStep to its dependency array
@@ -264,6 +267,26 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [tutorialState.active, skipTutorial, nextStep, prevStep]);
 
+  // Auto-open AI panel on AI navigator step
+  useEffect(() => {
+    if (!tutorialState.active) {
+      aiPanelOpenedRef.current = false;
+      return;
+    }
+
+    const currentPage = getTutorialPage(tutorialState.pageId);
+    const isAiNavigatorStep =
+      tutorialState.pageId === "home" && tutorialState.stepIndex === 1;
+
+    if (isAiNavigatorStep && !aiPanelOpenedRef.current) {
+      aiPanelOpenedRef.current = true;
+      setOpen(true);
+      setMobileOpen(true);
+    } else if (!isAiNavigatorStep) {
+      aiPanelOpenedRef.current = false;
+    }
+  }, [tutorialState.active, tutorialState.pageId, tutorialState.stepIndex, setOpen, setMobileOpen]);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -359,9 +382,19 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     let resizeObserver: ResizeObserver | null = null;
     let trackedElement: HTMLElement | null = null;
 
+    let rafId: number | null = null;
+
     const updateRect = () => {
       if (!trackedElement || cancelled) return;
       setTargetRect(trackedElement.getBoundingClientRect());
+    };
+
+    const scheduleRectUpdate = () => {
+      if (rafId !== null) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        updateRect();
+      });
     };
 
     const observeTarget = () => {
@@ -374,8 +407,8 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
       });
 
       updateRect();
-      window.addEventListener("resize", updateRect);
-      window.addEventListener("scroll", updateRect, true);
+      window.addEventListener("resize", scheduleRectUpdate);
+      window.addEventListener("scroll", scheduleRectUpdate, true);
 
       if (typeof ResizeObserver !== "undefined") {
         resizeObserver = new ResizeObserver(updateRect);
@@ -387,8 +420,11 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
       if (retryTimer !== null) {
         window.clearTimeout(retryTimer);
       }
-      window.removeEventListener("resize", updateRect);
-      window.removeEventListener("scroll", updateRect, true);
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
+      window.removeEventListener("resize", scheduleRectUpdate);
+      window.removeEventListener("scroll", scheduleRectUpdate, true);
       resizeObserver?.disconnect();
     };
 
