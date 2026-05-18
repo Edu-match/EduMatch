@@ -208,7 +208,10 @@ export function TutorialTooltip({
   return (
     <div
       role="dialog"
+      aria-label={`チュートリアル: ${step.title}`}
+      aria-describedby="tutorial-description"
       aria-live="polite"
+      aria-atomic="false"
       className={cn(
         "fixed z-[90] w-[min(calc(100vw-1.5rem),20rem)] max-w-sm rounded-2xl border border-yellow-200 bg-yellow-50 p-4 text-slate-900 shadow-[0_18px_45px_rgba(15,23,42,0.22)]",
         "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-200",
@@ -261,7 +264,12 @@ export function TutorialTooltip({
           <h2 className="text-base font-bold leading-snug sm:text-lg">
             {step.title}
           </h2>
-          <p className="text-sm leading-6 text-slate-700">{step.description}</p>
+          <p
+            id="tutorial-description"
+            className="text-sm leading-6 text-slate-700"
+          >
+            {step.description}
+          </p>
         </div>
 
         {/* Actions */}

@@ -411,7 +411,7 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
       window.addEventListener("scroll", scheduleRectUpdate, true);
 
       if (typeof ResizeObserver !== "undefined") {
-        resizeObserver = new ResizeObserver(updateRect);
+        resizeObserver = new ResizeObserver(scheduleRectUpdate);
         resizeObserver.observe(trackedElement);
       }
     };
@@ -442,6 +442,12 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
       if (retries >= 8) {
         // Element not found — show tooltip without overlay highlight,
         // then auto-advance after a brief pause so the user isn't stuck.
+        if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
+          console.warn(
+            `[Tutorial] Element not found after 8 retries: ${currentStep.selector}`,
+            { pageId: tutorialState.pageId, stepIndex: tutorialState.stepIndex }
+          );
+        }
         setTargetRect(null);
         window.setTimeout(() => {
           if (!cancelled) nextStepRef.current();
