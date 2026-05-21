@@ -36,8 +36,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { RecentViewItem } from "@/app/_actions/view-history";
 import { useAiPanel } from "@/components/layout/ai-panel-context";
-import { AI_KENTEI_CHAT_BLOCKED_MESSAGE } from "@/lib/ai-kentei-exam-guard";
+import { AI_KENTEI_CHAT_BLOCKED_MESSAGE } from "@/lib/ai-kentei-exam-guard-shared";
 import { useAiKenteiExamBlocksChat } from "@/hooks/use-ai-kentei-exam-blocks-chat";
+import { TUTORIAL_EVENT_NAME } from "@/components/tutorial/tutorial-steps";
 
 const AI_NAV_DISCLAIMER_PATH = "/help/ai-navigator-disclaimer";
 const CHAT_USAGE_LIMIT_PATH = "/help/chat-usage-limit";
@@ -902,6 +903,16 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
     setEditingMessageId(null);
     setIsStreaming(true);
     if (textareaRef.current) textareaRef.current.style.height = "auto";
+
+    // Notify the tutorial system that the user has sent a chat message.
+    // The provider only reacts when the current step is waiting on this event.
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent(TUTORIAL_EVENT_NAME, {
+          detail: { name: "ai-chat-sent" },
+        })
+      );
+    }
 
     const allMessages = [...baseMessages.filter((m) => !m.streaming && !m.yesNo), { ...userMsg, content: trimmed }].map(
       (m) => ({

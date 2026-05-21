@@ -111,7 +111,10 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
           >
             <div className="sticky top-16 h-[calc(100vh-4rem)] flex flex-col">
               {open ? (
-                <div className="relative h-full flex flex-col border-l bg-background overflow-hidden">
+                <div
+                  className="relative h-full flex flex-col border-l bg-background overflow-hidden"
+                  data-tutorial="ai-navigator-panel"
+                >
                   <div
                     className="absolute -left-1 top-0 h-full w-2 cursor-col-resize z-20"
                     onMouseDown={() => setResizing(true)}
@@ -178,6 +181,7 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
           )}
           style={{ height: "85dvh" }}
           aria-hidden={!mobileOpen}
+          data-tutorial={mobileOpen ? "ai-navigator-panel" : undefined}
         >
           <div className="bg-background rounded-t-2xl shadow-2xl border-t flex flex-col h-full overflow-hidden">
             <div className="flex items-center justify-center px-4 pt-2 pb-1 shrink-0">

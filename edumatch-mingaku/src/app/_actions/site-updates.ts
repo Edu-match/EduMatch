@@ -18,10 +18,10 @@ export type SiteUpdateItem = {
   wp_post_id: number | null;
 };
 
-/** トップ「すべて」タブでの固定表示期間（公開日から） */
-export const SITE_UPDATE_TOPICS_PIN_MS = 14 * 24 * 60 * 60 * 1000;
+/** トップ「すべて」タブでの固定表示期間（公開日から・2週間） */
+const SITE_UPDATE_TOPICS_PIN_MS = 14 * 24 * 60 * 60 * 1000;
 
-export type PinnedSiteUpdateForTopics = {
+type PinnedSiteUpdateForTopics = {
   id: string;
   title: string;
   thumbnail_url: string | null;

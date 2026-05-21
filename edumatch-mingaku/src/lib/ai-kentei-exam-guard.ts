@@ -1,14 +1,11 @@
 import { getAiKenteiDb } from '@/lib/ai-kentei-db'
+import { AI_KENTEI_CHAT_BLOCKED_MESSAGE } from '@/lib/ai-kentei-exam-guard-shared'
 
-/** 受験画面（問題解答中）のみ。start / result / certificate は除外 */
-export const AI_KENTEI_EXAM_IN_PROGRESS_PATH = /^\/ai-kentei\/exam\/[^/]+$/
-
-export function isAiKenteiExamInProgressPath(pathname: string): boolean {
-  return AI_KENTEI_EXAM_IN_PROGRESS_PATH.test(pathname)
-}
-
-export const AI_KENTEI_CHAT_BLOCKED_MESSAGE =
-  'AI検定の受験中はAIチャットをご利用いただけません。検定終了後に再度お試しください。'
+export {
+  AI_KENTEI_CHAT_BLOCKED_MESSAGE,
+  AI_KENTEI_EXAM_IN_PROGRESS_PATH,
+  isAiKenteiExamInProgressPath,
+} from '@/lib/ai-kentei-exam-guard-shared'
 
 /** 未提出（score が null）の検定セッションがあれば session_id を返す */
 export async function getIncompleteAiKenteiExamSessionId(

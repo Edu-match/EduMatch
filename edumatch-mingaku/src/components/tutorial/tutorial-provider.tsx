@@ -11,13 +11,11 @@ import {
   type ReactNode,
 } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { TutorialOverlay } from "@/components/tutorial/tutorial-overlay";
-import { TutorialTooltip } from "@/components/tutorial/tutorial-tooltip";
-import { TutorialToast } from "@/components/tutorial/tutorial-toast";
+import { TutorialSpotlight } from "@/components/tutorial/tutorial-spotlight";
 import { createSupabaseBrowserClient } from "@/utils/supabase/client";
-import { useAiPanel } from "@/components/layout/ai-panel-context";
 import {
   TUTORIAL_DONE_STORAGE_KEY,
+  TUTORIAL_EVENT_NAME,
   TUTORIAL_PROGRESS_STORAGE_KEY,
   TUTORIAL_SKIPPED_STORAGE_KEY,
   TUTORIAL_PAGES,
@@ -57,51 +55,24 @@ const INITIAL_STATE: TutorialProgressState = {
 
 export const TutorialContext = createContext<TutorialContextValue | null>(null);
 
-function findVisibleElement(selector: string): HTMLElement | null {
-  const candidates = Array.from(document.querySelectorAll<HTMLElement>(selector));
-  return (
-    candidates.find((candidate) => {
-      const styles = window.getComputedStyle(candidate);
-      return (
-        candidate.getClientRects().length > 0 &&
-        styles.display !== "none" &&
-        styles.visibility !== "hidden"
-      );
-    }) ?? null
-  );
-}
-
 function readDoneFlag() {
   return window.localStorage.getItem(TUTORIAL_DONE_STORAGE_KEY);
-}
-
-function prefersReducedMotion() {
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
 export function TutorialProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { setOpen, setMobileOpen } = useAiPanel();
   const [isHydrated, setIsHydrated] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [tutorialState, setTutorialState] = useState<TutorialProgressState>(
     INITIAL_STATE
   );
-  const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [showCompletionMessage, setShowCompletionMessage] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const completionTimerRef = useRef<number | null>(null);
-  const aiPanelOpenedRef = useRef(false);
-
-  // Keep a stable ref to nextStep so the element-resolution effect can call
-  // the latest version without adding nextStep to its dependency array
-  // (which would cause unnecessary reruns on every tutorialState change).
-  const nextStepRef = useRef<() => void>(() => {});
+  const lastOnEnterRef = useRef<string | null>(null);
 
   const persistProgress = useCallback((nextState: TutorialProgressState) => {
     if (typeof window === "undefined") return;
-
     if (nextState.active) {
       window.localStorage.setItem(
         TUTORIAL_PROGRESS_STORAGE_KEY,
@@ -109,7 +80,6 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
       );
       return;
     }
-
     window.localStorage.removeItem(TUTORIAL_PROGRESS_STORAGE_KEY);
   }, []);
 
@@ -152,27 +122,20 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
         clearCompletionTimer();
         setShowCompletionMessage(false);
       }
-
-      setTargetRect(null);
-      updateTutorialState({
-        active: true,
-        pageId,
-        stepIndex: 0,
-      });
+      lastOnEnterRef.current = null;
+      updateTutorialState({ active: true, pageId, stepIndex: 0 });
     },
     [clearCompletionTimer, clearTutorialStorage, updateTutorialState]
   );
 
   const completeTutorial = useCallback(() => {
     if (typeof window === "undefined") return;
-
     markTutorialDone("completed");
     updateTutorialState({
       active: false,
       pageId: tutorialState.pageId,
       stepIndex: 0,
     });
-    setTargetRect(null);
     setShowCompletionMessage(true);
     clearCompletionTimer();
     completionTimerRef.current = window.setTimeout(() => {
@@ -196,12 +159,10 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
       pageId: tutorialState.pageId,
       stepIndex: 0,
     });
-    setTargetRect(null);
   }, [markTutorialDone, tutorialState.pageId, updateTutorialState]);
 
   const nextStep = useCallback(() => {
     const currentPage = getTutorialPage(tutorialState.pageId);
-
     if (!currentPage) return;
 
     if (tutorialState.stepIndex < currentPage.steps.length - 1) {
@@ -228,7 +189,6 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
 
   const prevStep = useCallback(() => {
     const currentPage = getTutorialPage(tutorialState.pageId);
-
     if (!currentPage) return;
 
     if (tutorialState.stepIndex > 0) {
@@ -250,59 +210,13 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     }
   }, [router, tutorialState, updateTutorialState]);
 
-  // Keep the ref in sync with the latest nextStep
-  useEffect(() => {
-    nextStepRef.current = nextStep;
-  });
-
-  // Keyboard navigation: ← → for prev/next, Esc to skip
-  useEffect(() => {
-    if (!tutorialState.active) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't steal keys from inputs / textareas
-      const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
-
-      if (e.key === "Escape") skipTutorial();
-      if (e.key === "ArrowRight" || e.key === "Enter") nextStep();
-      if (e.key === "ArrowLeft") prevStep();
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [tutorialState.active, skipTutorial, nextStep, prevStep]);
-
-  // Auto-open AI panel on AI navigator step
-  useEffect(() => {
-    if (!tutorialState.active) {
-      aiPanelOpenedRef.current = false;
-      return;
-    }
-
-    const currentPage = getTutorialPage(tutorialState.pageId);
-    const isAiNavigatorStep =
-      tutorialState.pageId === "home" && tutorialState.stepIndex === 1;
-
-    if (isAiNavigatorStep && !aiPanelOpenedRef.current) {
-      aiPanelOpenedRef.current = true;
-      setOpen(true);
-      setMobileOpen(true);
-    } else if (!isAiNavigatorStep) {
-      aiPanelOpenedRef.current = false;
-    }
-  }, [tutorialState.active, tutorialState.pageId, tutorialState.stepIndex, setOpen, setMobileOpen]);
-
+  // ── Restore saved progress on first hydration ──────────────
   useEffect(() => {
     if (typeof window === "undefined") return;
-
     try {
-      const savedProgress = window.localStorage.getItem(
-        TUTORIAL_PROGRESS_STORAGE_KEY
-      );
-
-      if (savedProgress && !readDoneFlag()) {
-        const parsed = JSON.parse(savedProgress) as TutorialProgressState;
+      const saved = window.localStorage.getItem(TUTORIAL_PROGRESS_STORAGE_KEY);
+      if (saved && !readDoneFlag()) {
+        const parsed = JSON.parse(saved) as TutorialProgressState;
         if (
           parsed?.active === true &&
           parsed.pageId in TUTORIAL_PAGES &&
@@ -316,12 +230,10 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsHydrated(true);
     }
-
-    return () => {
-      clearCompletionTimer();
-    };
+    return () => clearCompletionTimer();
   }, [clearCompletionTimer]);
 
+  // ── Track auth state ────────────────────────────────────────
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
     let mounted = true;
@@ -330,10 +242,7 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-
-      if (mounted) {
-        setIsAuthenticated(!!user);
-      }
+      if (mounted) setIsAuthenticated(!!user);
     };
 
     void syncAuthState();
@@ -356,6 +265,7 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
       ? getTutorialStep(tutorialState.pageId, tutorialState.stepIndex)
       : null;
 
+  // ── Auto-start when an authenticated user lands on a known page ──
   useEffect(() => {
     if (!isHydrated || isAuthenticated !== true) return;
     if (tutorialState.active) return;
@@ -372,106 +282,64 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     tutorialState.active,
   ]);
 
+  // ── Fire one-shot side effects when a step becomes active ──
   useEffect(() => {
-    if (!isHydrated || !tutorialState.active || !currentStep) {
-      // Clear highlight when there is no active step (e.g. during page transitions)
-      setTargetRect(null);
+    if (!currentStep) {
+      lastOnEnterRef.current = null;
       return;
     }
+    const stepKey = `${tutorialState.pageId}:${tutorialState.stepIndex}`;
+    if (lastOnEnterRef.current === stepKey) return;
+    lastOnEnterRef.current = stepKey;
 
-    // Do NOT null targetRect here — keeping the old rect during element search
-    // gives a smooth highlight transition instead of a visible flash.
+    if (currentStep.onEnter === "open-ai-chat") {
+      // Dispatch the same event used by the rest of the app to open
+      // the AI panel — keeps the tutorial decoupled from AiPanelContext.
+      window.dispatchEvent(new CustomEvent("open-ai-chat", { detail: {} }));
+    }
+  }, [currentStep, tutorialState.pageId, tutorialState.stepIndex]);
 
-    let cancelled = false;
-    let retries = 0;
-    let retryTimer: number | null = null;
-    let resizeObserver: ResizeObserver | null = null;
-    let trackedElement: HTMLElement | null = null;
+  // ── Listen for interaction events ──────────────────────────
+  useEffect(() => {
+    if (!tutorialState.active || !currentStep) return;
+    if (currentStep.kind !== "interaction" || !currentStep.interactionEvent) return;
 
-    let rafId: number | null = null;
-
-    const updateRect = () => {
-      if (!trackedElement || cancelled) return;
-      setTargetRect(trackedElement.getBoundingClientRect());
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ name?: string }>).detail;
+      if (!detail || detail.name !== currentStep.interactionEvent) return;
+      nextStep();
     };
 
-    const scheduleRectUpdate = () => {
-      if (rafId !== null) return;
-      rafId = requestAnimationFrame(() => {
-        rafId = null;
-        updateRect();
-      });
-    };
+    window.addEventListener(TUTORIAL_EVENT_NAME, handler);
+    return () => window.removeEventListener(TUTORIAL_EVENT_NAME, handler);
+  }, [currentStep, nextStep, tutorialState.active]);
 
-    const observeTarget = () => {
-      if (!trackedElement) return;
+  // ── Keyboard navigation ────────────────────────────────────
+  useEffect(() => {
+    if (!tutorialState.active || !currentStep) return;
 
-      trackedElement.scrollIntoView({
-        block: "center",
-        inline: "nearest",
-        behavior: prefersReducedMotion() ? "auto" : "smooth",
-      });
+    const isInteractionWaiting = currentStep.kind === "interaction";
 
-      updateRect();
-      window.addEventListener("resize", scheduleRectUpdate);
-      window.addEventListener("scroll", scheduleRectUpdate, true);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
 
-      if (typeof ResizeObserver !== "undefined") {
-        resizeObserver = new ResizeObserver(scheduleRectUpdate);
-        resizeObserver.observe(trackedElement);
-      }
-    };
-
-    const cleanupListeners = () => {
-      if (retryTimer !== null) {
-        window.clearTimeout(retryTimer);
-      }
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId);
-      }
-      window.removeEventListener("resize", scheduleRectUpdate);
-      window.removeEventListener("scroll", scheduleRectUpdate, true);
-      resizeObserver?.disconnect();
-    };
-
-    const resolveTarget = () => {
-      if (cancelled) return;
-
-      trackedElement = findVisibleElement(currentStep.selector);
-
-      if (trackedElement) {
-        observeTarget();
+      if (e.key === "Escape") {
+        skipTutorial();
         return;
       }
-
-      retries += 1;
-      if (retries >= 8) {
-        // Element not found — show tooltip without overlay highlight,
-        // then auto-advance after a brief pause so the user isn't stuck.
-        if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
-          console.warn(
-            `[Tutorial] Element not found after 8 retries: ${currentStep.selector}`,
-            { pageId: tutorialState.pageId, stepIndex: tutorialState.stepIndex }
-          );
-        }
-        setTargetRect(null);
-        setToastMessage("このステップの要素が見つかりません。次へ進みます...");
-        window.setTimeout(() => {
-          if (!cancelled) nextStepRef.current();
-        }, 800);
+      if (e.key === "ArrowLeft") {
+        prevStep();
         return;
       }
-
-      retryTimer = window.setTimeout(resolveTarget, 250);
+      if (e.key === "ArrowRight" || e.key === "Enter") {
+        if (!isInteractionWaiting) nextStep();
+      }
     };
 
-    resolveTarget();
-
-    return () => {
-      cancelled = true;
-      cleanupListeners();
-    };
-  }, [currentStep, isHydrated, tutorialState.active]);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [currentStep, nextStep, prevStep, skipTutorial, tutorialState.active]);
 
   const totalSteps = useMemo(() => getTutorialTotalSteps(), []);
   const currentStepNumber = currentStep
@@ -512,21 +380,19 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
       </Suspense>
 
       {currentStep && (
-        <>
-          {targetRect && <TutorialOverlay targetRect={targetRect} />}
-          <TutorialTooltip
-            currentStepNumber={currentStepNumber}
-            totalSteps={totalSteps}
-            canGoBack={currentStepNumber > 1}
-            isLastStep={currentStepNumber === totalSteps}
-            step={currentStep}
-            pageId={tutorialState.pageId}
-            targetRect={targetRect}
-            onSkip={skipTutorial}
-            onPrev={prevStep}
-            onNext={nextStep}
-          />
-        </>
+        <TutorialSpotlight
+          key={`${tutorialState.pageId}:${tutorialState.stepIndex}`}
+          step={currentStep}
+          pageId={tutorialState.pageId}
+          currentStepNumber={currentStepNumber}
+          totalSteps={totalSteps}
+          canGoBack={currentStepNumber > 1}
+          isLastStep={currentStepNumber === totalSteps}
+          isWaitingInteraction={currentStep.kind === "interaction"}
+          onSkip={skipTutorial}
+          onPrev={prevStep}
+          onNext={nextStep}
+        />
       )}
 
       {showCompletionMessage && (
@@ -534,12 +400,13 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
           <div className="rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 px-8 py-6 text-center shadow-2xl motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95 motion-safe:duration-300 motion-reduce:animate-none">
             <p className="text-3xl mb-2">🎉</p>
             <p className="text-lg font-bold text-white">チュートリアル完了！</p>
-            <p className="text-sm text-orange-100 mt-1">EduMatchをお楽しみください</p>
+            <p className="text-sm text-orange-100 mt-1">
+              EduMatchをお楽しみください
+            </p>
           </div>
         </div>
       )}
 
-      {toastMessage && <TutorialToast message={toastMessage} />}
     </TutorialContext.Provider>
   );
 }

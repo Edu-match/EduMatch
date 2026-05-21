@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
-import { isAiKenteiExamInProgressPath } from '@/lib/ai-kentei-exam-guard'
+import { isAiKenteiExamInProgressPath } from '@/lib/ai-kentei-exam-guard-shared'
 
 /**
  * AI検定の受験中は true。

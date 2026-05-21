@@ -27,7 +27,12 @@ function buildCsp(): string {
 
   const directives: Record<string, string> = {
     "default-src": "'self'",
-    "script-src": "'self' 'unsafe-inline' 'unsafe-eval'",
+    "script-src": [
+      "'self'",
+      "'unsafe-inline'",
+      "'unsafe-eval'",
+      "https://www.googletagmanager.com",
+    ].join(" "),
     "style-src": "'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src": "'self' https://fonts.gstatic.com",
     "img-src": [
@@ -40,6 +45,8 @@ function buildCsp(): string {
       "https://lh3.googleusercontent.com",
       "https://raw.githubusercontent.com",
       "https://edu-match.com",
+      "https://www.google-analytics.com",
+      "https://www.googletagmanager.com",
     ].join(" "),
     "connect-src": [
       "'self'",
@@ -48,6 +55,9 @@ function buildCsp(): string {
       supabaseWs,
       "https://api.openai.com",
       "https://accounts.google.com",
+      "https://www.google-analytics.com",
+      "https://*.google-analytics.com",
+      "https://www.googletagmanager.com",
     ].join(" "),
     "frame-src": "'self' https://drive.google.com https://www.youtube.com",
     "frame-ancestors": "'none'",

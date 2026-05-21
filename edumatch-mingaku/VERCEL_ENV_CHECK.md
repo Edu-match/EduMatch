@@ -24,6 +24,14 @@
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | □ | Production, Preview, Development |
 | `SUPABASE_SERVICE_ROLE_KEY` | □ | Production, Preview, Development |
 
+任意（アクセス解析）:
+
+| 変数名 | 設定されているか？ | Environment |
+|--------|-------------------|-------------|
+| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | □ | Production（必要なら Preview） |
+
+詳細: `docs/GOOGLE_ANALYTICS.md`
+
 ### 3. 環境変数の値を確認
 
 各変数に以下の値が設定されているか確認：

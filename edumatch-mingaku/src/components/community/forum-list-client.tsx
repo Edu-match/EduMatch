@@ -534,7 +534,7 @@ export function ForumListClient() {
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <>
+          <div data-tutorial="forum-room-list">
             {/* ─── バブルビュー ─── */}
             {viewMode === "bubble" && (
               <section aria-label="バブルビュー">
@@ -585,7 +585,7 @@ export function ForumListClient() {
                 </section>
               </>
             )}
-          </>
+          </div>
         )}
 
         {/* ─── はじめての方へ ─── */}

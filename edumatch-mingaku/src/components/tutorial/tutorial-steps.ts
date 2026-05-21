@@ -1,8 +1,14 @@
 export const TUTORIAL_DONE_STORAGE_KEY = "edu_match_tutorial_done"; // "completed" or "skipped"
 export const TUTORIAL_PROGRESS_STORAGE_KEY = "edu_match_tutorial_progress";
-export const TUTORIAL_SKIPPED_STORAGE_KEY = "edu_match_tutorial_skipped"; // flag for skipped state
+export const TUTORIAL_SKIPPED_STORAGE_KEY = "edu_match_tutorial_skipped";
+export const TUTORIAL_EVENT_NAME = "edumatch:tutorial:event";
 
-export type TutorialPageId = "home" | "articles" | "forum" | "ai-kentei" | "dashboard";
+export type TutorialPageId =
+  | "home"
+  | "articles"
+  | "forum"
+  | "ai-kentei"
+  | "dashboard";
 
 export const TUTORIAL_PAGE_LABELS: Record<TutorialPageId, string> = {
   home: "ホーム",
@@ -12,11 +18,22 @@ export const TUTORIAL_PAGE_LABELS: Record<TutorialPageId, string> = {
   dashboard: "マイページ",
 };
 
+export type TutorialStepKind = "info" | "interaction";
+
 export type TutorialStepDefinition = {
-  selector: string;
+  /** CSS selector for the highlight target. null = centered with no spotlight. */
+  selector: string | null;
   title: string;
   description: string;
   nextLabel?: string;
+  /** info (default) shows a Next button; interaction waits for `interactionEvent`. */
+  kind?: TutorialStepKind;
+  /** When kind === "interaction", the tutorial only advances when this event fires. */
+  interactionEvent?: string;
+  /** Optional helper text shown while waiting for the interaction. */
+  interactionHint?: string;
+  /** Optional side-effect to fire when the step becomes active (one-shot). */
+  onEnter?: "open-ai-chat";
 };
 
 export type TutorialPageDefinition = {
@@ -48,10 +65,15 @@ export const TUTORIAL_PAGES: Record<TutorialPageId, TutorialPageDefinition> = {
           "記事・サービス・イベント・井戸端会議・AI検定など、教育に関するコンテンツがここから見つかります。",
       },
       {
-        selector: '[data-tutorial="ai-navigator-open"]',
-        title: "🤖 AIナビゲーターを使おう",
+        selector:
+          '[data-tutorial="ai-navigator-panel"], [data-tutorial="ai-navigator-open"]',
+        title: "🤖 AIナビゲーターに1つ質問してみよう",
         description:
-          "AIナビゲーターが右側に開きました。教育に関する質問や相談があれば、AIに聞いてみましょう。例えば「GIGAスクールについて教えてください」などと入力して、対話を始めてみてください。",
+          "右側にAIナビゲーターが開きました。教育に関する質問を1つ入力して送信してみてください。例：「GIGAスクールについて教えてください」",
+        kind: "interaction",
+        interactionEvent: "ai-chat-sent",
+        interactionHint: "メッセージを1回送信すると次へ進めます",
+        onEnter: "open-ai-chat",
       },
       {
         selector:
@@ -72,8 +94,7 @@ export const TUTORIAL_PAGES: Record<TutorialPageId, TutorialPageDefinition> = {
       {
         selector: '[data-tutorial="articles-search"]',
         title: "🔍 キーワードで検索",
-        description:
-          "気になるテーマやキーワードで記事を絞り込めます。",
+        description: "気になるテーマやキーワードで記事を絞り込めます。",
       },
       {
         selector: '[data-tutorial="articles-category-filter"]',
@@ -84,8 +105,7 @@ export const TUTORIAL_PAGES: Record<TutorialPageId, TutorialPageDefinition> = {
       {
         selector: '[data-tutorial="article-card-favorite"]',
         title: "❤️ お気に入りに保存",
-        description:
-          "ハートボタンで気になった記事をブックマークできます。",
+        description: "ハートボタンで気になった記事をブックマークできます。",
         nextLabel: "井戸端会議を見てみよう",
       },
     ],
@@ -100,37 +120,37 @@ export const TUTORIAL_PAGES: Record<TutorialPageId, TutorialPageDefinition> = {
         selector: '[data-tutorial="forum-hero-section"]',
         title: "💬 井戸端会議へようこそ",
         description:
-          "ここは教育に関する話題を自由に語り合えるコミュニティです。教員・専門家・保護者・企業など、立場を超えて繋がることができます。",
-      },
-      {
-        selector: '[data-tutorial="forum-category-filter"]',
-        title: "🏷️ カテゴリで絞り込む",
-        description:
-          "AI・テクノロジー、現場実践、制度・運営など、テーマ別に部屋をフィルターできます。興味のある分野から探しましょう。",
-      },
-      {
-        selector: '[data-tutorial="forum-search"]',
-        title: "🔍 キーワードで検索",
-        description:
-          "部屋名や説明から キーワードで検索できます。探している話題を素早く見つけられます。",
+          "ここは教育に関する話題を、テーマ別の「部屋」で語り合うコミュニティです。教員・専門家・保護者・企業など、立場を超えてつながれます。",
       },
       {
         selector: '[data-tutorial="forum-view-mode"]',
         title: "🗺️ 表示モードを切り替える",
         description:
-          "マップ表示（視覚的）とリスト表示（詳細）を切り替えられます。好みの見方で部屋を探せます。",
+          "マップ表示（直感的に部屋を眺める）とリスト表示（検索・カテゴリで絞り込める）を切り替えられます。",
+      },
+      {
+        selector: '[data-tutorial="forum-room-list"]',
+        title: "🚪 ここから部屋を選択",
+        description:
+          "気になる部屋をクリックして入室しましょう。各部屋にはテーマと「今週のお題」があり、立場を超えてざっくばらんに語り合えます。",
       },
       {
         selector: '[data-tutorial="forum-thread-create"]',
-        title: "📝 新しい部屋を作成",
+        title: "🏗️ 新しい部屋を作成",
         description:
-          "新しいテーマの部屋を作成できます。AIディスカッション機能をONにすると、AIがファシリテーターとして議論をサポートします。",
+          "話したいテーマの部屋がなければ自分で作れます。AIファシリテーター機能をONにすると、AIが議論をサポートしてくれます。",
+      },
+      {
+        selector: null,
+        title: "✏️ 投稿はここから",
+        description:
+          "部屋に入ると下部に投稿フォームが表示されます。本文を書いて「投稿する」ボタンで書き込めます。AIと壁打ちしてから投稿することもできます。",
       },
       {
         selector: '[data-tutorial="forum-ai-help"]',
         title: "🤖 AIに聞いてみよう",
         description:
-          "わからないことがあったら、AIナビゲーターに質問しましょう。教育に関する相談や調べごとをAIがサポートします。",
+          "わからないことがあれば、AIナビゲーターに質問しましょう。教育に関する相談や調べごとをAIがサポートします。",
         nextLabel: "AI検定に挑戦しよう",
       },
     ],
@@ -225,6 +245,7 @@ export function getTutorialPageIdFromPathname(
 ): TutorialPageId | null {
   if (pathname === "/") return "home";
   if (pathname === "/articles") return "articles";
+  if (pathname === "/forum") return "forum";
   if (pathname === "/dashboard") return "dashboard";
   return null;
 }
