@@ -66,9 +66,10 @@ export async function POST(request: NextRequest) {
     const registrationKind =
       userType === "provider" ? ("service_business" as const) : ("general" as const);
     const manualKind = registrationKind === "service_business" ? "corporate" : "general";
-    // 企業登録でもロールは VIEWER 固定。企業判定は registration_kind / manual_profile_kind / corporateProfile で行う。
-    const role: Role = Role.VIEWER;
-    const authRoleStr = "VIEWER";
+    // 事業者登録は DB ロール PROVIDER。投稿機能は ADMIN のみ（uiRole は VIEWER 相当）。
+    const role: Role =
+      registrationKind === "service_business" ? Role.PROVIDER : Role.VIEWER;
+    const authRoleStr = role;
 
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: emailStr,

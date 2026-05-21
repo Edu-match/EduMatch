@@ -1,8 +1,7 @@
 import { cache } from "react";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { effectiveIsCorporateProfile } from "@/lib/manual-profile-kind";
+import { canAccessPosterFeatures } from "@/lib/manual-profile-kind";
 
 /**
  * 現在のユーザーを取得します（同一リクエスト内で1回だけ実行）
@@ -88,7 +87,7 @@ export async function requireAdmin() {
 }
 
 /**
- * 投稿者向け（manual_profile_kind / Corporate 行 / PROVIDER を総合判定）、または ADMIN。
+ * 記事・サービス投稿および投稿者ダッシュボード（運営 ADMIN のみ）。
  */
 export async function requireProvider() {
   const user = await requireAuth();
@@ -96,21 +95,10 @@ export async function requireProvider() {
   if (!profile) {
     redirect("/auth/login");
   }
-  if (profile.role === "ADMIN") {
-    return { user, profile };
-  }
-  const hasCorp = !!(await prisma.corporateProfile.findUnique({
-    where: { id: user.id },
-    select: { id: true },
-  }));
-  if (
-    !effectiveIsCorporateProfile(profile.role, profile.manual_profile_kind, hasCorp)
-  ) {
+  if (!canAccessPosterFeatures(profile.role)) {
     redirect(
-      "/dashboard?message=" +
-        encodeURIComponent(
-          "投稿者として利用するには、事業者として登録し、プロフィールを完了してください。"
-        )
+      "/mypage?message=" +
+        encodeURIComponent("この機能は運営アカウントのみ利用できます。")
     );
   }
   return { user, profile };

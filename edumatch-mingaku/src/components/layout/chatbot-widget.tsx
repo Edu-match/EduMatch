@@ -38,6 +38,7 @@ import { useAiPanel } from "@/components/layout/ai-panel-context";
 
 const AI_NAV_DISCLAIMER_PATH = "/help/ai-navigator-disclaimer";
 const CHAT_USAGE_LIMIT_PATH = "/help/chat-usage-limit";
+const FORUM_DRAFT_STORAGE_KEY = "edumatch-forum-post-draft";
 
 type ChatMsg = {
   id: string;
@@ -69,12 +70,13 @@ type View = "chat" | "context-select" | "history-select" | "chat-history";
 
 export type ChatMode = "navigator" | "debate" | "discussion";
 
-type OpenAiChatEventDetail = {
-  initialMessage?: string;
-  preferredMode?: ChatMode;
-  launchContext?: "default" | "forum-compose";
-  forumTopic?: string;
-};
+type ComposeAction = { emoji: string; label: string; prompt: string };
+
+const DEFAULT_COMPOSE_ACTIONS: ComposeAction[] = [
+  { emoji: "💡", label: "論点を整理", prompt: "論点を3つに整理し、それぞれの視点から考えてください。" },
+  { emoji: "🔄", label: "反対視点チェック", prompt: "この意見への反対意見・懸念点を3つ挙げ、改善案も示してください。" },
+  { emoji: "✍️", label: "投稿文に整える", prompt: "投稿しやすい文体に整えてください。150〜250字の投稿文と短いタイトル案を1つください。" },
+];
 
 type ChatSessionMessage = {
   id?: string;
@@ -270,6 +272,11 @@ function parsePageContext(pathname: string): PageContext {
   return null;
 }
 
+function parseForumRoomId(pathname: string): string | null {
+  const forumRoomMatch = pathname.match(/^\/forum\/([^/]+)$/);
+  return forumRoomMatch ? forumRoomMatch[1] : null;
+}
+
 function AgreementScreen({
   onAgree,
   agreeLoading,
@@ -432,7 +439,14 @@ function MarkdownContent({ text }: { text: string }) {
 
 export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
   const pathname = usePathname();
-  const { setOpen, setMobileOpen, pendingActivation, clearActivation } = useAiPanel();
+  const {
+    setOpen,
+    setMobileOpen,
+    pendingActivation,
+    clearActivation,
+    pendingChatLaunch,
+    clearPendingChatLaunch,
+  } = useAiPanel();
 
   const [view, setView] = useState<View>("chat");
   const [input, setInput] = useState("");
@@ -457,12 +471,28 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
   const [askOtherActive, setAskOtherActive] = useState<Record<string, boolean>>({});
   const [askOtherText, setAskOtherText] = useState<Record<string, string>>({});
   const [openedRagRefsMessageId, setOpenedRagRefsMessageId] = useState<string | null>(null);
+  const [forumComposeAssist, setForumComposeAssist] = useState<{
+    active: boolean;
+    topic: string;
+  }>({ active: false, topic: "" });
+  const [forumQuickActions, setForumQuickActions] = useState<ComposeAction[] | null>(null);
+  const [forumActionsLoading, setForumActionsLoading] = useState(false);
+  const [isFormattingForForum, setIsFormattingForForum] = useState(false);
 
   const listRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const pageContext = useMemo(() => parsePageContext(pathname), [pathname]);
+  const forumRoomId = useMemo(() => parseForumRoomId(pathname), [pathname]);
+  const latestUserMessage = useMemo(
+    () => [...messages].reverse().find((m) => m.role === "user" && !m.streaming)?.content.trim() ?? "",
+    [messages]
+  );
+  const latestAssistantMessage = useMemo(
+    () => [...messages].reverse().find((m) => m.role === "assistant" && !m.streaming)?.content.trim() ?? "",
+    [messages]
+  );
 
   const handleClose = useCallback(() => {
     if (isMobile) {
@@ -502,18 +532,97 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
       .catch(() => {});
   }, [messages.length]);
 
-  // 「AIチャットを開く」ボタンからも開けるようにする
+  // AiPanelContext 経由で open-ai-chat イベントの詳細を受け取る
   useEffect(() => {
-    const handler = (event: Event) => {
-      const detail = (event as CustomEvent<OpenAiChatEventDetail>).detail;
-      if (detail?.preferredMode) setChatMode(detail.preferredMode);
-      if (detail?.initialMessage) setInput(detail.initialMessage);
-      if (isMobile) setMobileOpen(true);
-      else setOpen(true);
+    if (!pendingChatLaunch) return;
+    const detail = pendingChatLaunch;
+    clearPendingChatLaunch();
+    setView("chat");
+    if (detail.preferredMode) {
+      setChatMode(detail.preferredMode);
+    }
+    if (detail.launchContext === "forum-compose") {
+      const topic = detail.forumTopic?.trim() ?? "";
+      setForumComposeAssist({ active: true, topic });
+      if (!detail.preferredMode) setChatMode("discussion");
+      setInput("");
+      setMessages(() => {
+        const guide = topic
+          ? `投稿作成サポートへようこそ！テーマ「${topic}」での投稿作りをお手伝いします。\n下のクイックボタンを使うか、自由に話しかけてください。`
+          : `投稿作成サポートへようこそ！投稿作りをお手伝いします。\n下のクイックボタンを使うか、自由に話しかけてください。`;
+        return [{ id: `forum-guide-${Date.now()}`, role: "assistant", content: guide }];
+      });
+    } else {
+      setForumComposeAssist({ active: false, topic: "" });
+      if (detail.initialMessage?.trim()) {
+        setInput(detail.initialMessage.trim());
+      }
+    }
+  }, [pendingChatLaunch, clearPendingChatLaunch]);
+
+  useEffect(() => {
+    if (!forumComposeAssist.active) {
+      setForumQuickActions(null);
+      return;
+    }
+    const topic = forumComposeAssist.topic;
+    if (!topic) return;
+    let cancelled = false;
+    setForumActionsLoading(true);
+    fetch(`/api/forum/compose-actions?topic=${encodeURIComponent(topic)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled && Array.isArray(d.actions)) setForumQuickActions(d.actions);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setForumActionsLoading(false);
+      });
+    return () => {
+      cancelled = true;
     };
-    window.addEventListener("open-ai-chat", handler);
-    return () => window.removeEventListener("open-ai-chat", handler);
-  }, [isMobile, setOpen, setMobileOpen]);
+  }, [forumComposeAssist.active, forumComposeAssist.topic]);
+
+  async function moveLatestMessageToForum() {
+    if (!forumRoomId || isFormattingForForum) return;
+    const rawContent = latestAssistantMessage || latestUserMessage;
+    if (!rawContent) return;
+
+    setIsFormattingForForum(true);
+    let formatted = rawContent;
+    try {
+      const res = await fetch("/api/forum/format-post", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: rawContent, topic: forumComposeAssist.topic || undefined }),
+      });
+      if (res.ok) {
+        const data = (await res.json()) as { formatted?: string };
+        if (data.formatted?.trim()) formatted = data.formatted.trim();
+      }
+    } catch {
+      // fall through: use raw content as-is
+    } finally {
+      setIsFormattingForForum(false);
+    }
+
+    try {
+      localStorage.setItem(
+        FORUM_DRAFT_STORAGE_KEY,
+        JSON.stringify({
+          roomId: forumRoomId,
+          body: formatted,
+          createdAt: Date.now(),
+          source: "ai-chat",
+        })
+      );
+      window.dispatchEvent(new CustomEvent("edumatch:forum-draft-created"));
+      window.location.href = `/forum/${forumRoomId}#new-post`;
+      handleClose();
+    } catch {
+      window.location.href = `/forum/${forumRoomId}#new-post`;
+    }
+  }
 
   // 記事読了イベントを受け取り、YES/NO問いかけを表示
   useEffect(() => {
@@ -773,12 +882,13 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
     sendMessage(answerText);
   }
 
-  async function sendMessage(overrideText?: string, messagesToUse?: ChatMsg[]) {
+  async function sendMessage(overrideText?: string, messagesToUse?: ChatMsg[], displayAs?: string) {
     const baseMessages = messagesToUse ?? messages;
     const trimmed = (overrideText ?? input).trim();
     if (!trimmed || isStreaming) return;
 
-    const userMsg: ChatMsg = { id: `u-${Date.now()}`, role: "user", content: trimmed };
+    const shownContent = displayAs?.trim() || trimmed;
+    const userMsg: ChatMsg = { id: `u-${Date.now()}`, role: "user", content: shownContent };
     const botMsgId = `a-${Date.now()}`;
     const botMsg: ChatMsg = { id: botMsgId, role: "assistant", content: "", streaming: true };
 
@@ -788,10 +898,12 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
     setIsStreaming(true);
     if (textareaRef.current) textareaRef.current.style.height = "auto";
 
-    const allMessages = [...baseMessages.filter((m) => !m.streaming && !m.yesNo), userMsg].map((m) => ({
-      role: m.role,
-      content: m.content,
-    }));
+    const allMessages = [...baseMessages.filter((m) => !m.streaming && !m.yesNo), { ...userMsg, content: trimmed }].map(
+      (m) => ({
+        role: m.role,
+        content: m.content,
+      })
+    );
     const ctxPayload = contextItems.length > 0 ? contextItems.map((c) => ({ id: c.id, type: c.type })) : undefined;
     const controller = new AbortController();
     abortRef.current = controller;
@@ -875,7 +987,7 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
     setInput(e.target.value);
     const el = e.target;
     el.style.height = "auto";
-    el.style.height = Math.min(el.scrollHeight, 220) + "px";
+    el.style.height = Math.min(el.scrollHeight, 200) + "px";
   }
 
   function resetChat() {
@@ -888,6 +1000,7 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
     setSelectedAskChoices({});
     setAskOtherActive({});
     setAskOtherText({});
+    setForumComposeAssist({ active: false, topic: "" });
   }
 
   const welcomeMessage =
@@ -1376,6 +1489,48 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
                 {isStreaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </Button>
             </div>
+            {forumComposeAssist.active && (
+              <div className="mt-2 rounded-xl border border-violet-200 bg-violet-50/90 px-3.5 py-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-violet-900 truncate">
+                    投稿サポート{forumComposeAssist.topic ? `: ${forumComposeAssist.topic}` : ""}
+                  </p>
+                  <button
+                    type="button"
+                    className="text-xs text-violet-700 hover:underline shrink-0"
+                    onClick={() => setForumComposeAssist({ active: false, topic: "" })}
+                  >
+                    閉じる
+                  </button>
+                </div>
+                <p className="mt-1 text-xs text-violet-800/90">1タップで直接AIに指示を送れます。</p>
+                <div className="mt-2 grid grid-cols-1 gap-1.5">
+                  {forumActionsLoading
+                    ? [1, 2, 3].map((i) => (
+                        <div key={i} className="h-9 w-full animate-pulse rounded-lg bg-violet-100" />
+                      ))
+                    : (forumQuickActions ?? DEFAULT_COMPOSE_ACTIONS).map((action) => (
+                        <button
+                          key={action.label}
+                          type="button"
+                          className="w-full rounded-lg border border-violet-300 bg-background px-3 py-2 text-left text-xs font-medium text-violet-700 hover:bg-violet-100 transition-colors"
+                          onClick={() => {
+                            const draft = input.trim();
+                            const topic = forumComposeAssist.topic;
+                            const fullPrompt = draft
+                              ? `${action.prompt}\n\n【参考の下書き】\n${draft}`
+                              : topic
+                                ? `テーマ「${topic}」について、${action.prompt}`
+                                : action.prompt;
+                            sendMessage(fullPrompt, undefined, `${action.emoji} ${action.label}`);
+                          }}
+                        >
+                          {action.emoji} {action.label}
+                        </button>
+                      ))}
+                </div>
+              </div>
+            )}
 
             <div className="flex items-center justify-between mt-2">
               <p className="text-[11px] text-muted-foreground">
@@ -1396,6 +1551,27 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
                 </Link>
               )}
             </div>
+            {chatMode === "discussion" && forumRoomId && latestAssistantMessage && (
+              <div className="mt-2 flex justify-end">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-7 border-violet-300 text-violet-700 hover:bg-violet-100 text-xs gap-1.5"
+                  onClick={moveLatestMessageToForum}
+                  disabled={isFormattingForForum || isStreaming}
+                >
+                  {isFormattingForForum ? (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      整えています…
+                    </>
+                  ) : (
+                    <>✨ 整えて投稿欄へ</>
+                  )}
+                </Button>
+              </div>
+            )}
           </div>
         </>
       )}

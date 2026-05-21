@@ -338,13 +338,13 @@ export function Header() {
                   <User className="mr-2 h-4 w-4" />
                   マイページ
                 </DropdownMenuItem>
-                {(userRole === "PROVIDER" || userRole === "ADMIN") && (
+                {userRole === "ADMIN" && (
                   <DropdownMenuItem 
                     className="cursor-pointer"
                     onSelect={() => router.push("/provider-dashboard")}
                   >
                     <LayoutDashboard className="mr-2 h-4 w-4" />
-                    {userRole === "ADMIN" ? "管理者ダッシュボード" : "投稿者ダッシュボード"}
+                    管理者ダッシュボード
                   </DropdownMenuItem>
                 )}
                 {userRole === "ADMIN" && (
@@ -542,14 +542,14 @@ export function Header() {
                       <User className="h-4 w-4 flex-shrink-0" />
                       マイページ
                     </Link>
-                    {(userRole === "PROVIDER" || userRole === "ADMIN") && (
+                    {userRole === "ADMIN" && (
                       <Link
                         href="/provider-dashboard"
                         onClick={() => setMobileMenuOpen(false)}
                         className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b"
                       >
                         <LayoutDashboard className="h-4 w-4 flex-shrink-0" />
-                        {userRole === "ADMIN" ? "管理者ダッシュボード" : "投稿者ダッシュボード"}
+                        管理者ダッシュボード
                       </Link>
                     )}
                     {userRole === "ADMIN" && (

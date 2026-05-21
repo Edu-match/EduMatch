@@ -43,9 +43,10 @@ export async function GET(request: NextRequest) {
       ? ("service_business" as const)
       : ("general" as const);
     const manualKind = registrationKind === "service_business" ? "corporate" : "general";
-    // OAuth登録時もロールは VIEWER 固定。企業判定は registration_kind / manual_profile_kind / corporateProfile で行う。
-    const role: Role = Role.VIEWER;
-    const authRoleStr = "VIEWER";
+    // 事業者 OAuth 登録は DB ロール PROVIDER。投稿機能は ADMIN のみ。
+    const role: Role =
+      registrationKind === "service_business" ? Role.PROVIDER : Role.VIEWER;
+    const authRoleStr = role;
 
     const userMetadata = data.user.user_metadata || {};
     const name =
@@ -120,6 +121,7 @@ export async function GET(request: NextRequest) {
           await tx.profile.update({
             where: { id: userId },
             data: {
+              role: Role.PROVIDER,
               manual_profile_kind: "corporate",
             },
           });
@@ -142,7 +144,7 @@ export async function GET(request: NextRequest) {
         await admin.auth.admin.updateUserById(userId, {
           user_metadata: {
             ...userMetadata,
-            role: "VIEWER",
+            role: "PROVIDER",
             registration_kind: "service_business",
           },
         });

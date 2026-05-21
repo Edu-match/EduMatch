@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server";
 import { getCurrentProfile } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { effectiveIsCorporateProfile } from "@/lib/manual-profile-kind";
+import {
+  canAccessPosterFeatures,
+  effectiveIsCorporateProfile,
+} from "@/lib/manual-profile-kind";
 
 export const dynamic = "force-dynamic";
 
 /**
  * 認証済みユーザーのプロフィール（role等）とAIナビゲーター同意状態を返す。
  * 同意状態は Profile テーブルの ai_navigator_agreed_at から取得。
- * メニュー用: manual_profile_kind を最優先し、次に Corporate 行・PROVIDER ロール。
+ * メニュー用 uiRole: ADMIN のみ投稿者メニュー、それ以外は VIEWER（事業者 PROVIDER も同様）。
  */
 export async function GET() {
   const profile = await getCurrentProfile();
@@ -27,12 +30,7 @@ export async function GET() {
     profile.manual_profile_kind,
     hasCorpRow
   );
-  const uiRole =
-    profile.role === "ADMIN"
-      ? "ADMIN"
-      : treatAsCorporate
-        ? "PROVIDER"
-        : "VIEWER";
+  const uiRole = canAccessPosterFeatures(profile.role) ? "ADMIN" : "VIEWER";
 
   return NextResponse.json({
     profile: {

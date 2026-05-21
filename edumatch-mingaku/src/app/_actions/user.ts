@@ -240,6 +240,8 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
       await tx.profile.update({
         where: { id: user.id },
         data: {
+          ...(target === "service_business" &&
+            full.role !== "ADMIN" && { role: "PROVIDER" }),
           ...(input.name != null && { name: input.name }),
           ...(input.avatar_url !== undefined && { avatar_url: input.avatar_url || null }),
           ...(input.phone !== undefined && { phone: input.phone || null }),

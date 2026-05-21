@@ -18,6 +18,14 @@ export function effectiveIsCorporateProfile(
 }
 
 /**
+ * 記事・サービス投稿および投稿者ダッシュボードへのアクセス可否。
+ * 事業者（PROVIDER ロール）は対象外。運営（ADMIN）のみ。
+ */
+export function canAccessPosterFeatures(role: string): boolean {
+  return role === "ADMIN";
+}
+
+/**
  * updateProfile が書き込む先（General / Corporate 拡張）。
  */
 export function resolveProfileExtensionTarget(

@@ -35,10 +35,10 @@ const generalItems = [
   { href: "/help", label: "ヘルプ", icon: HelpCircle },
 ];
 
-/** 投稿・管理者向けメニュー（下段: PROVIDER/ADMIN 向け投稿 + ADMIN 専用） */
+/** 投稿・管理者向けメニュー（下段: ADMIN のみ） */
 const bottomItems = [
-  { href: "/articles/create", label: "記事を投稿", icon: PenSquare, roles: ["PROVIDER", "ADMIN"] },
-  { href: "/services/create", label: "サービスを投稿", icon: PenSquare, roles: ["PROVIDER", "ADMIN"] },
+  { href: "/articles/create", label: "記事を投稿", icon: PenSquare, roles: ["ADMIN"] },
+  { href: "/services/create", label: "サービスを投稿", icon: PenSquare, roles: ["ADMIN"] },
   { href: "/admin/approvals", label: "承認キュー", icon: FileText, roles: ["ADMIN"] },
   { href: "/admin/site-updates", label: "運営記事を書く", icon: PenSquare, roles: ["ADMIN"] },
   { href: "/admin/events", label: "セミナー・イベントを管理", icon: Calendar, roles: ["ADMIN"] },
@@ -115,7 +115,7 @@ export function SideMenu() {
         </nav>
       </div>
 
-      {/* 投稿・管理者メニュー（ブロック）※PROVIDER/ADMIN 向け */}
+      {/* 投稿・管理者メニュー（ブロック）※ADMIN 向け */}
       {visibleBottomItems.length > 0 && (
         <div className="border-2 border-amber-400 rounded-lg bg-amber-50 overflow-hidden">
           <div className="px-3 py-2.5 bg-amber-400 flex items-center gap-2">
