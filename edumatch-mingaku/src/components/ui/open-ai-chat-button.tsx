@@ -1,6 +1,9 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { AI_KENTEI_CHAT_BLOCKED_MESSAGE } from "@/lib/ai-kentei-exam-guard";
+import { useAiKenteiExamBlocksChat } from "@/hooks/use-ai-kentei-exam-blocks-chat";
 
 type Props = {
   className?: string;
@@ -22,7 +25,13 @@ export function OpenAiChatButton({
   launchContext = "default",
   forumTopic,
 }: Props) {
+  const examBlocksChat = useAiKenteiExamBlocksChat();
+
   const openChat = () => {
+    if (examBlocksChat) {
+      toast.error(AI_KENTEI_CHAT_BLOCKED_MESSAGE);
+      return;
+    }
     if (typeof window !== "undefined") {
       window.dispatchEvent(
         new CustomEvent("open-ai-chat", {
@@ -32,7 +41,13 @@ export function OpenAiChatButton({
     }
   };
   return (
-    <Button variant={variant} className={className} onClick={openChat}>
+    <Button
+      variant={variant}
+      className={className}
+      onClick={openChat}
+      disabled={examBlocksChat}
+      title={examBlocksChat ? AI_KENTEI_CHAT_BLOCKED_MESSAGE : undefined}
+    >
       {children ?? "AIチャットを開く"}
     </Button>
   );

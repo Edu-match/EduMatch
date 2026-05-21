@@ -1,6 +1,9 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import { AI_KENTEI_CHAT_BLOCKED_MESSAGE } from "@/lib/ai-kentei-exam-guard";
+import { useAiKenteiExamBlocksChat } from "@/hooks/use-ai-kentei-exam-blocks-chat";
 
 const STORAGE_KEY = "edumatch-ai-panel-open";
 
@@ -44,6 +47,7 @@ const AiPanelContext = createContext<AiPanelContextValue>({
 });
 
 export function AiPanelProvider({ children }: { children: React.ReactNode }) {
+  const examBlocksChat = useAiKenteiExamBlocksChat();
   const [open, setOpenState] = useState(true);
   const [mobileOpen, setMobileOpenState] = useState(false);
   const [pendingActivation, setPendingActivation] = useState<AutoActivation | null>(null);
@@ -64,6 +68,10 @@ export function AiPanelProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const handler = (event: Event) => {
+      if (examBlocksChat) {
+        toast.error(AI_KENTEI_CHAT_BLOCKED_MESSAGE);
+        return;
+      }
       const detail = (event as CustomEvent<ChatLaunchDetail>).detail ?? {};
       const isMobile = window.innerWidth < 1024;
       if (isMobile) {
@@ -80,7 +88,15 @@ export function AiPanelProvider({ children }: { children: React.ReactNode }) {
     };
     window.addEventListener("open-ai-chat", handler);
     return () => window.removeEventListener("open-ai-chat", handler);
-  }, []);
+  }, [examBlocksChat]);
+
+  useEffect(() => {
+    if (!examBlocksChat) return;
+    setOpenState(false);
+    setMobileOpenState(false);
+    setPendingChatLaunch(null);
+    setPendingActivation(null);
+  }, [examBlocksChat]);
 
   const setOpen = useCallback((next: boolean) => {
     setOpenState(next);
@@ -109,12 +125,13 @@ export function AiPanelProvider({ children }: { children: React.ReactNode }) {
 
   const triggerArticleComplete = useCallback(
     (articleId: string, articleTitle: string) => {
+      if (examBlocksChat) return;
       const question = `「${articleTitle}」を読み終えましたね。この記事の内容についてAIと話しますか？`;
       setPendingActivation({ articleId, articleTitle, question });
       setOpen(true);
       setMobileOpenState(true);
     },
-    [setOpen]
+    [setOpen, examBlocksChat]
   );
 
   return (

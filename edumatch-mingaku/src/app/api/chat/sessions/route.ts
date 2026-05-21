@@ -1,6 +1,10 @@
 import { NextRequest } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import {
+  aiKenteiExamChatBlockedResponse,
+  userHasIncompleteAiKenteiExam,
+} from "@/lib/ai-kentei-exam-guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,6 +14,9 @@ export async function GET() {
   const user = await getCurrentUser();
   if (!user) {
     return Response.json({ error: "ログインが必要です" }, { status: 401 });
+  }
+  if (await userHasIncompleteAiKenteiExam(user.id)) {
+    return aiKenteiExamChatBlockedResponse();
   }
 
   const sessions = await prisma.chatSession.findMany({
@@ -41,6 +48,9 @@ export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) {
     return Response.json({ error: "ログインが必要です" }, { status: 401 });
+  }
+  if (await userHasIncompleteAiKenteiExam(user.id)) {
+    return aiKenteiExamChatBlockedResponse();
   }
 
   let body: SessionBody;

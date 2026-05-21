@@ -7,11 +7,13 @@ import { Footer } from "@/components/layout/footer";
 import { SideMenu } from "@/components/layout/side-menu";
 import { ChatbotWidget } from "@/components/layout/chatbot-widget";
 import { AiPanelProvider, useAiPanel } from "@/components/layout/ai-panel-context";
+import { useAiKenteiExamBlocksChat } from "@/hooks/use-ai-kentei-exam-blocks-chat";
 import { Bot, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function AiPanelLayout({ children }: { children: React.ReactNode }) {
   const { open, setOpen, mobileOpen, setMobileOpen } = useAiPanel();
+  const examBlocksChat = useAiKenteiExamBlocksChat();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [panelWidth, setPanelWidth] = useState(360);
   const [resizing, setResizing] = useState(false);
@@ -98,64 +100,68 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
           <div className="w-full">{children}</div>
         </main>
 
-        {/* AI side panel – desktop (lg+) */}
-        <div
-          className={cn(
-            "hidden lg:flex flex-col flex-shrink-0 transition-all duration-150 ease-in-out",
-            open ? "" : "lg:w-20"
-          )}
-          style={open ? { width: `${panelWidth}px` } : undefined}
-        >
-          <div className="sticky top-16 h-[calc(100vh-4rem)] flex flex-col">
-            {open ? (
-              <div className="relative h-full flex flex-col border-l bg-background overflow-hidden">
-                <div
-                  className="absolute -left-1 top-0 h-full w-2 cursor-col-resize z-20"
-                  onMouseDown={() => setResizing(true)}
-                  role="separator"
-                  aria-label="AIパネル幅を変更"
-                />
-                <ChatbotWidget />
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setOpen(true)}
-                className="fixed right-0 top-16 bottom-0 z-30 w-20 flex flex-col items-center justify-center gap-4 border-l bg-orange-500 hover:bg-orange-400 text-white transition-all group"
-                aria-label="AIパネルを開く"
-                data-tutorial="ai-navigator-open"
-              >
-                <Bot className="h-8 w-8 group-hover:scale-110 transition-transform" />
-                <span
-                  className="text-sm font-bold select-none tracking-widest"
-                  style={{ writingMode: "vertical-rl", textOrientation: "upright" }}
-                >
-                  AIナビゲーター
-                </span>
-              </button>
+        {/* AI side panel – desktop (lg+) — AI検定受験中は非表示 */}
+        {!examBlocksChat && (
+          <div
+            className={cn(
+              "hidden lg:flex flex-col flex-shrink-0 transition-all duration-150 ease-in-out",
+              open ? "" : "lg:w-20"
             )}
+            style={open ? { width: `${panelWidth}px` } : undefined}
+          >
+            <div className="sticky top-16 h-[calc(100vh-4rem)] flex flex-col">
+              {open ? (
+                <div className="relative h-full flex flex-col border-l bg-background overflow-hidden">
+                  <div
+                    className="absolute -left-1 top-0 h-full w-2 cursor-col-resize z-20"
+                    onMouseDown={() => setResizing(true)}
+                    role="separator"
+                    aria-label="AIパネル幅を変更"
+                  />
+                  <ChatbotWidget />
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setOpen(true)}
+                  className="fixed right-0 top-16 bottom-0 z-30 w-20 flex flex-col items-center justify-center gap-4 border-l bg-orange-500 hover:bg-orange-400 text-white transition-all group"
+                  aria-label="AIパネルを開く"
+                  data-tutorial="ai-navigator-open"
+                >
+                  <Bot className="h-8 w-8 group-hover:scale-110 transition-transform" />
+                  <span
+                    className="text-sm font-bold select-none tracking-widest"
+                    style={{ writingMode: "vertical-rl", textOrientation: "upright" }}
+                  >
+                    AIナビゲーター
+                  </span>
+                </button>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <Footer />
 
-      {/* Mobile FAB – show when panel is closed */}
-      <button
-        type="button"
-        onClick={() => setMobileOpen(true)}
-        className={cn(
-          "lg:hidden fixed bottom-5 right-5 z-40 h-14 w-14 rounded-full bg-orange-500 hover:bg-orange-400 shadow-xl hover:shadow-2xl transition-all flex items-center justify-center",
-          mobileOpen && "hidden"
-        )}
-        aria-label="AIナビゲーターを開く"
-        data-tutorial="ai-navigator-open"
-      >
-        <Bot className="h-6 w-6 text-white" strokeWidth={2} />
-      </button>
+      {/* Mobile FAB – AI検定受験中は非表示 */}
+      {!examBlocksChat && (
+        <button
+          type="button"
+          onClick={() => setMobileOpen(true)}
+          className={cn(
+            "lg:hidden fixed bottom-5 right-5 z-40 h-14 w-14 rounded-full bg-orange-500 hover:bg-orange-400 shadow-xl hover:shadow-2xl transition-all flex items-center justify-center",
+            mobileOpen && "hidden"
+          )}
+          aria-label="AIナビゲーターを開く"
+          data-tutorial="ai-navigator-open"
+        >
+          <Bot className="h-6 w-6 text-white" strokeWidth={2} />
+        </button>
+      )}
 
       {/* Mobile backdrop */}
-      {mobileOpen && (
+      {!examBlocksChat && mobileOpen && (
         <div
           className="lg:hidden fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
           onClick={() => setMobileOpen(false)}
@@ -164,21 +170,23 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
       )}
 
       {/* Mobile bottom drawer */}
-      <div
-        className={cn(
-          "lg:hidden fixed inset-x-0 bottom-0 z-50 flex flex-col transition-transform duration-300 ease-in-out",
-          mobileOpen ? "translate-y-0" : "translate-y-full"
-        )}
-        style={{ height: "85dvh" }}
-        aria-hidden={!mobileOpen}
-      >
-        <div className="bg-background rounded-t-2xl shadow-2xl border-t flex flex-col h-full overflow-hidden">
-          <div className="flex items-center justify-center px-4 pt-2 pb-1 shrink-0">
-            <div className="w-10 h-1 rounded-full bg-muted-foreground/20" />
+      {!examBlocksChat && (
+        <div
+          className={cn(
+            "lg:hidden fixed inset-x-0 bottom-0 z-50 flex flex-col transition-transform duration-300 ease-in-out",
+            mobileOpen ? "translate-y-0" : "translate-y-full"
+          )}
+          style={{ height: "85dvh" }}
+          aria-hidden={!mobileOpen}
+        >
+          <div className="bg-background rounded-t-2xl shadow-2xl border-t flex flex-col h-full overflow-hidden">
+            <div className="flex items-center justify-center px-4 pt-2 pb-1 shrink-0">
+              <div className="w-10 h-1 rounded-full bg-muted-foreground/20" />
+            </div>
+            <ChatbotWidget isMobile />
           </div>
-          <ChatbotWidget isMobile />
         </div>
-      </div>
+      )}
     </div>
   );
 }

@@ -10,6 +10,7 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  AlertTriangle,
   Bot,
   Send,
   X,
@@ -35,6 +36,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { RecentViewItem } from "@/app/_actions/view-history";
 import { useAiPanel } from "@/components/layout/ai-panel-context";
+import { AI_KENTEI_CHAT_BLOCKED_MESSAGE } from "@/lib/ai-kentei-exam-guard";
+import { useAiKenteiExamBlocksChat } from "@/hooks/use-ai-kentei-exam-blocks-chat";
 
 const AI_NAV_DISCLAIMER_PATH = "/help/ai-navigator-disclaimer";
 const CHAT_USAGE_LIMIT_PATH = "/help/chat-usage-limit";
@@ -439,6 +442,7 @@ function MarkdownContent({ text }: { text: string }) {
 
 export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
   const pathname = usePathname();
+  const examBlocksChat = useAiKenteiExamBlocksChat();
   const {
     setOpen,
     setMobileOpen,
@@ -883,6 +887,7 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
   }
 
   async function sendMessage(overrideText?: string, messagesToUse?: ChatMsg[], displayAs?: string) {
+    if (examBlocksChat) return;
     const baseMessages = messagesToUse ?? messages;
     const trimmed = (overrideText ?? input).trim();
     if (!trimmed || isStreaming) return;
@@ -1009,6 +1014,36 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
       : chatMode === "debate"
         ? "賛成・反対の立場で議論しましょう。あなたの立場と理由を教えてください。"
         : "テーマについて深く議論しましょう。議論したいテーマや論点を教えてください。";
+
+  if (examBlocksChat) {
+    return (
+      <div className="flex flex-col h-full overflow-hidden">
+        <div className="flex items-center gap-2 border-b bg-muted/30 px-3 py-2.5 flex-shrink-0">
+          <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 shrink-0">
+            <Bot className="h-4 w-4 text-primary" />
+          </div>
+          <div className="min-w-0 flex-1 text-sm font-semibold truncate">AIナビゲーター</div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 rounded-lg"
+            onClick={handleClose}
+            aria-label="閉じる"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 text-center min-h-0">
+          <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/10 mb-4">
+            <AlertTriangle className="h-6 w-6 text-amber-600" />
+          </div>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            {AI_KENTEI_CHAT_BLOCKED_MESSAGE}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
