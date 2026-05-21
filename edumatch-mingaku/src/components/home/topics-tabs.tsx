@@ -2,10 +2,53 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { Pin } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { ThumbnailOrTitle } from "@/components/ui/thumbnail-or-title";
-import type { ArticleItem, ServiceItem, VideoItem } from "./topics-section";
+import type { ArticleItem, PinnedSiteUpdateItem, ServiceItem, VideoItem } from "./topics-section";
+
+function PinnedSiteUpdateListItem({ item }: { item: PinnedSiteUpdateItem }) {
+  return (
+    <Link
+      href={item.href}
+      target={item.external ? "_blank" : undefined}
+      rel={item.external ? "noopener noreferrer" : undefined}
+      className="flex gap-3 py-2.5 px-2 -mx-2 border-b last:border-b-0 bg-amber-50/80 hover:bg-amber-100/70 transition-colors rounded-sm"
+    >
+      <div className="relative w-16 flex-shrink-0 overflow-hidden rounded border border-amber-200/80 bg-muted aspect-video">
+        <ThumbnailOrTitle
+          src={item.image ?? undefined}
+          title={item.title}
+          fill
+          className="object-contain"
+          sizes="64px"
+          unoptimized
+        />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5 mb-1">
+          <Pin className="h-3.5 w-3.5 shrink-0 fill-amber-500 text-amber-600" aria-hidden />
+          <span className="text-[10px] font-semibold text-amber-800 uppercase tracking-wide">
+            固定
+          </span>
+          {item.isNew && (
+            <Badge className="bg-[#ef4444] hover:bg-[#dc2626] text-white text-xs px-1.5 py-0 shrink-0">
+              NEW
+            </Badge>
+          )}
+        </div>
+        <h3 className="font-medium text-sm hover:text-[#1d4ed8] transition-colors line-clamp-2">
+          {item.title}
+        </h3>
+        <div className="flex items-center gap-2 text-xs text-amber-900/70 mt-0.5">
+          <span>{item.date}</span>
+          <span>運営記事</span>
+        </div>
+      </div>
+    </Link>
+  );
+}
 
 function ArticleListItem({ article }: { article: ArticleItem }) {
   return (
@@ -106,12 +149,17 @@ function VideoListItem({ video }: { video: VideoItem }) {
 
 type Props = {
   articles: ArticleItem[];
+  pinnedSiteUpdates: PinnedSiteUpdateItem[];
   services: ServiceItem[];
   videos: VideoItem[];
 };
 
-export function TopicsTabs({ articles, services, videos }: Props) {
-  const allArticles = articles.slice(0, 10);
+const ALL_TAB_MAX = 10;
+
+export function TopicsTabs({ articles, pinnedSiteUpdates, services, videos }: Props) {
+  const pinnedCount = pinnedSiteUpdates.length;
+  const regularAllCount = Math.max(0, ALL_TAB_MAX - pinnedCount);
+  const allArticles = articles.slice(0, regularAllCount);
   const domesticArticles = articles.filter((a) => a.newsTab === "DOMESTIC").slice(0, 10);
   const internationalArticles = articles.filter((a) => a.newsTab === "INTERNATIONAL").slice(0, 10);
 
@@ -129,8 +177,15 @@ export function TopicsTabs({ articles, services, videos }: Props) {
       </div>
       <div className="p-3">
         <TabsContent value="all" className="mt-0 space-y-0">
-          {allArticles.length > 0 ? (
-            allArticles.map((a) => <ArticleListItem key={a.id} article={a} />)
+          {pinnedSiteUpdates.length > 0 || allArticles.length > 0 ? (
+            <>
+              {pinnedSiteUpdates.map((item) => (
+                <PinnedSiteUpdateListItem key={`site-update-${item.id}`} item={item} />
+              ))}
+              {allArticles.map((a) => (
+                <ArticleListItem key={a.id} article={a} />
+              ))}
+            </>
           ) : (
             <p className="text-center text-muted-foreground py-4">記事がありません</p>
           )}

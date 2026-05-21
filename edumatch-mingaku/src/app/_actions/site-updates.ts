@@ -18,6 +18,46 @@ export type SiteUpdateItem = {
   wp_post_id: number | null;
 };
 
+/** トップ「すべて」タブでの固定表示期間（公開日から） */
+export const SITE_UPDATE_TOPICS_PIN_MS = 14 * 24 * 60 * 60 * 1000;
+
+export type PinnedSiteUpdateForTopics = {
+  id: string;
+  title: string;
+  thumbnail_url: string | null;
+  published_at: Date;
+  link: string | null;
+};
+
+/**
+ * トップ「すべて」タブ用：公開から2週間以内の運営記事（固定表示）
+ */
+export async function getPinnedSiteUpdatesForTopics(): Promise<PinnedSiteUpdateForTopics[]> {
+  const now = new Date();
+  const pinnedSince = new Date(now.getTime() - SITE_UPDATE_TOPICS_PIN_MS);
+  try {
+    return await prisma.siteUpdate.findMany({
+      where: {
+        published_at: { gte: pinnedSince, lte: now },
+      },
+      orderBy: { published_at: "desc" },
+      select: {
+        id: true,
+        title: true,
+        thumbnail_url: true,
+        published_at: true,
+        link: true,
+      },
+    });
+  } catch (error) {
+    if (isDbUnavailable(error)) {
+      return [];
+    }
+    console.error("Failed to get pinned site updates for topics:", error);
+    return [];
+  }
+}
+
 /**
  * 運営情報（サイト更新情報）を公開日時の新しい順で取得
  */
@@ -123,6 +163,7 @@ export async function createSiteUpdate(input: CreateSiteUpdateInput): Promise<Cr
         title: row.title,
         link: row.link,
       });
+      revalidatePath("/");
       revalidatePath("/admin/site-updates");
       revalidatePath("/dashboard");
       revalidatePath("/mypage");
@@ -168,6 +209,7 @@ export async function updateSiteUpdate(input: UpdateSiteUpdateInput): Promise<Cr
         updated_at: new Date(),
       },
     });
+    revalidatePath("/");
     revalidatePath("/admin/site-updates");
     revalidatePath("/dashboard");
     revalidatePath("/mypage");

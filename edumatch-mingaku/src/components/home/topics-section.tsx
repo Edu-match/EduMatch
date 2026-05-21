@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getLatestArticlesForTopics } from "@/app/_actions/popularity";
 import { getAllServices } from "@/app/_actions/services";
+import { getPinnedSiteUpdatesForTopics } from "@/app/_actions/site-updates";
 import { TopicsTabs } from "./topics-tabs";
 
 function formatShortDate(date: Date): string {
@@ -45,6 +46,16 @@ export type VideoItem = {
   published: string;
 };
 
+export type PinnedSiteUpdateItem = {
+  id: string;
+  title: string;
+  image?: string | null;
+  date: string;
+  href: string;
+  external: boolean;
+  isNew: boolean;
+};
+
 async function fetchYouTubeVideos(): Promise<VideoItem[]> {
   const CHANNEL_ID = "UCgfqF4UhO4fa1EBAs6dxHdw";
   try {
@@ -81,12 +92,18 @@ async function fetchYouTubeVideos(): Promise<VideoItem[]> {
   }
 }
 
+function siteUpdateHref(id: string, link: string | null): string {
+  const trimmed = link?.trim();
+  return trimmed || `/site-updates/${id}`;
+}
+
 export async function TopicsSection() {
-  const [posts, services, videos] = await Promise.all([
+  const [posts, services, videos, pinnedSiteUpdates] = await Promise.all([
     // タブ振り分け用に少し多めに取得してから、表示側で各タブ件数を制御する
     getLatestArticlesForTopics(80),
     getAllServices(),
     fetchYouTubeVideos(),
+    getPinnedSiteUpdatesForTopics(),
   ]);
 
   const articles: ArticleItem[] = posts.map((post) => ({
@@ -107,12 +124,30 @@ export async function TopicsSection() {
     category: s.category ?? "",
   }));
 
+  const pinnedItems: PinnedSiteUpdateItem[] = pinnedSiteUpdates.map((item) => {
+    const href = siteUpdateHref(item.id, item.link);
+    return {
+      id: item.id,
+      title: item.title,
+      image: item.thumbnail_url ?? undefined,
+      date: formatShortDate(item.published_at),
+      href,
+      external: Boolean(item.link?.trim()),
+      isNew: isNew(item.published_at),
+    };
+  });
+
   return (
     <div className="border rounded-lg bg-card">
       <div className="p-4 border-b">
         <h2 className="text-xl font-bold">トピックス</h2>
       </div>
-      <TopicsTabs articles={articles} services={serviceItems} videos={videos} />
+      <TopicsTabs
+        articles={articles}
+        pinnedSiteUpdates={pinnedItems}
+        services={serviceItems}
+        videos={videos}
+      />
       <div className="border-t p-3 text-center">
         <Link href="/articles" className="text-sm text-[#1d4ed8] hover:underline font-medium">
           記事一覧を見る
