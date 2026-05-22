@@ -69,7 +69,7 @@ export function installPrismaSyncMiddleware(prisma: PrismaClient): void {
   prisma.$use(async (params, next) => {
     let forumReplyPostIdForDelete: string | null = null;
     if (
-      params.model === "forumReply" &&
+      params.model === "ForumReply" &&
       params.action === "delete" &&
       params.args?.where?.id
     ) {
@@ -87,7 +87,7 @@ export function installPrismaSyncMiddleware(prisma: PrismaClient): void {
     const result = await next(params);
 
     // 監視対象のテーブルと操作
-    const watchedTables = ["service", "post", "review", "forumPost", "forumReply", "seminarEvent", "siteUpdate", "sitePage"];
+    const watchedTables = ["Service", "Post", "Review", "ForumPost", "ForumReply", "SeminarEvent", "SiteUpdate", "SitePage"];
     const watchedActions = ["create", "update", "delete", "deleteMany", "updateMany"];
 
     if (
@@ -97,7 +97,7 @@ export function installPrismaSyncMiddleware(prisma: PrismaClient): void {
       // リインデックスジョブをキューに追加
       const sourceTable = mapPrismaTableToSourceTable(params.model || "");
 
-      if (params.model === "forumReply") {
+      if (params.model === "ForumReply") {
         if (params.action === "create" || params.action === "update") {
           if (result?.post_id) {
             reindexQueue.push({
@@ -157,13 +157,13 @@ export function installPrismaSyncMiddleware(prisma: PrismaClient): void {
  */
 function mapPrismaTableToSourceTable(prismaTable: string): string {
   const mapping: Record<string, string> = {
-    service: "service",
-    post: "post",
-    review: "review",
-    forumPost: "forum_post",
-    seminarEvent: "seminar_event",
-    siteUpdate: "site_update",
-    sitePage: "sitePage",
+    Service: "service",
+    Post: "post",
+    Review: "review",
+    ForumPost: "forum_post",
+    SeminarEvent: "seminar_event",
+    SiteUpdate: "site_update",
+    SitePage: "sitePage",
   };
   return mapping[prismaTable] || prismaTable;
 }
