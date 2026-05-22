@@ -3,6 +3,7 @@
 import { ImageProps } from "next/image";
 import { ImageWithUrlError } from "@/components/ui/image-with-url-error";
 import { getImageUrlValidationMessage } from "@/lib/image-url-utils";
+import { cn } from "@/lib/utils";
 
 type ThumbnailOrTitleProps = Omit<ImageProps, "src" | "alt"> & {
   /** 画像URL。未設定の場合は title をテキストで表示 */
@@ -76,7 +77,7 @@ export function ThumbnailOrTitle({
       sizes={sizes}
       priority={priority}
       unoptimized={unoptimized}
-      className={className}
+      className={cn("object-contain", className)}
       errorFallback={titleFallback}
       {...rest}
     />
