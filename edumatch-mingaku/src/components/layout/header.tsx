@@ -144,11 +144,27 @@ export function Header() {
     }
   };
 
+  const tutorialButton = (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className="shrink-0 gap-1.5 px-2 text-foreground/70 hover:text-foreground"
+      onClick={handleStartTutorial}
+      title="チュートリアルを見る"
+      aria-label="チュートリアルを見る"
+      data-tutorial="header-tutorial"
+    >
+      <CircleHelp className="h-4 w-4 shrink-0" />
+      <span className="hidden xl:inline text-sm font-medium">チュートリアル</span>
+    </Button>
+  );
+
   return (
     <header className="fixed top-0 left-0 right-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center justify-between gap-2 overflow-hidden">
+      <div className="container flex h-16 items-center gap-2 md:gap-3">
         {/* Logo */}
-        <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
+        <Link href="/" className="flex shrink-0 items-center hover:opacity-80 transition-opacity">
           <Image
             src="/logo.png"
             alt="エデュマッチ"
@@ -162,30 +178,35 @@ export function Header() {
 
         {/* Desktop Navigation */}
         <nav
-          className="hidden md:flex items-center gap-3 lg:gap-5 flex-wrap min-w-0"
+          className="hidden md:flex min-w-0 flex-1 items-center justify-end gap-1.5 lg:gap-2.5"
           data-tutorial="header-nav"
         >
+          <div className="flex min-w-0 items-center gap-1.5 overflow-hidden lg:gap-2.5">
           {navLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="text-sm font-medium text-foreground/60 transition-colors hover:text-foreground"
+              className="shrink-0 whitespace-nowrap text-sm font-medium text-foreground/60 transition-colors hover:text-foreground"
             >
               {link.label}
             </Link>
           ))}
           <Link
             href="/request-info/list"
-            className="relative flex items-center gap-1.5 text-sm font-medium text-foreground/60 transition-colors hover:text-foreground"
+            className="relative flex shrink-0 items-center gap-1 whitespace-nowrap text-sm font-medium text-foreground/60 transition-colors hover:text-foreground"
           >
-            <FileText className="h-4 w-4" />
-            サービスのお気に入り
+            <FileText className="h-4 w-4 shrink-0" />
+            <span className="hidden lg:inline">サービスのお気に入り</span>
+            <span className="lg:hidden">お気に入り</span>
             {requestListCount > 0 && (
               <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold px-1">
                 {requestListCount > 99 ? "99+" : requestListCount}
               </span>
             )}
           </Link>
+          </div>
+
+          {tutorialButton}
 
           {/* 通知ベル（全ログインユーザー・汎用） */}
           {isAuthenticated && (
@@ -204,7 +225,7 @@ export function Header() {
               }}
             >
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative" aria-label="通知">
+                <Button variant="ghost" size="icon" className="relative shrink-0" aria-label="通知">
                   <Bell className="h-5 w-5 text-foreground/70" />
                   {notifications.unreadCount > 0 && (
                     <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
@@ -300,8 +321,9 @@ export function Header() {
             </DropdownMenu>
           )}
           
+          <div className="flex shrink-0 items-center gap-1">
           {isLoading ? (
-            <div className="w-24 h-9 bg-muted animate-pulse rounded-md" />
+            <div className="h-9 w-20 animate-pulse rounded-md bg-muted" />
           ) : isAuthenticated ? (
             /* ログイン時: ユーザーメニュー */
             <DropdownMenu>
@@ -309,14 +331,14 @@ export function Header() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="gap-2"
+                  className="max-w-[140px] gap-1.5 px-2"
                   data-tutorial="header-user-menu-trigger"
                 >
-                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10">
                     <User className="h-3.5 w-3.5 text-primary" />
                   </div>
-                  <span className="max-w-[100px] truncate">{displayName}</span>
-                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  <span className="hidden min-w-0 truncate sm:inline">{displayName}</span>
+                  <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
@@ -426,14 +448,6 @@ export function Header() {
                   <Settings className="mr-2 h-4 w-4" />
                   アカウント設定
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="cursor-pointer"
-                  onSelect={handleStartTutorial}
-                >
-                  <CircleHelp className="mr-2 h-4 w-4" />
-                  チュートリアルを見る
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
                 <DropdownMenuItem 
                   onClick={handleLogout}
                   className="cursor-pointer text-red-600 focus:text-red-600"
@@ -460,9 +474,12 @@ export function Header() {
               </Button>
             </div>
           )}
+          </div>
         </nav>
 
         {/* Mobile Navigation */}
+        <div className="flex shrink-0 items-center gap-1 md:hidden">
+          {tutorialButton}
         <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
           <SheetTrigger asChild className="md:hidden">
             <Button
@@ -592,14 +609,6 @@ export function Header() {
                       <Settings className="h-4 w-4 flex-shrink-0" />
                       アカウント設定
                     </Link>
-                    <button
-                      type="button"
-                      onClick={handleStartTutorial}
-                      className="flex w-full items-center gap-2 py-3 text-left text-sm font-medium text-foreground/60 hover:text-foreground border-b"
-                    >
-                      <CircleHelp className="h-4 w-4 flex-shrink-0" />
-                      チュートリアルを見る
-                    </button>
                     <Button
                       variant="outline"
                       className="w-full h-11 text-red-600 border-red-200 hover:bg-red-50 mt-3"
@@ -629,6 +638,7 @@ export function Header() {
             </nav>
           </SheetContent>
         </Sheet>
+        </div>
       </div>
     </header>
   );

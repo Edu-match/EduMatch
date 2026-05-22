@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
 import {
   Home,
   Search,
@@ -21,13 +20,7 @@ import {
   Activity,
   ArrowUpDown,
   MessageSquare,
-  CircleHelp,
 } from "lucide-react";
-import {
-  getTutorialPage,
-  getTutorialPageIdFromPathname,
-} from "@/components/tutorial/tutorial-steps";
-import { useTutorial } from "@/components/tutorial/use-tutorial";
 
 /** 一般ユーザー向けメニュー（全員閲覧用） */
 const generalItems = [
@@ -89,9 +82,6 @@ function MenuItemLink({
 }
 
 export function SideMenu() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const { startTutorial } = useTutorial();
   const [role, setRole] = useState<string | null>(null);
 
   useEffect(() => {
@@ -107,31 +97,12 @@ export function SideMenu() {
     (item) => role && item.roles.includes(role)
   );
 
-  const handleStartTutorial = () => {
-    const pageId = getTutorialPageIdFromPathname(pathname) ?? "home";
-    const targetPage = getTutorialPage(pageId);
-    startTutorial(pageId, { force: true });
-    if (pathname !== targetPage.pathname) {
-      router.push(targetPage.pathname);
-    }
-  };
-
   return (
     <aside className="space-y-3" data-tutorial="side-menu">
       {/* 一般メニュー（ブロック） */}
       <div className="border rounded-lg bg-card overflow-hidden">
         <div className="p-3 border-b">
           <h2 className="text-sm font-bold">メニュー</h2>
-        </div>
-        <div className="border-b p-2">
-          <button
-            type="button"
-            onClick={handleStartTutorial}
-            className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm font-medium text-foreground/80 transition-colors hover:bg-muted"
-          >
-            <CircleHelp className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-            チュートリアルを見る
-          </button>
         </div>
         <nav>
           {generalItems.map((item, index) => (

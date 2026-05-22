@@ -1,33 +1,41 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
 import { isAiKenteiExamInProgressPath } from '@/lib/ai-kentei-exam-guard-shared'
 
+const EXAM_SESSION_PATH = /^\/ai-kentei\/exam\/([^/]+)$/
+
+function abandonExamSession(sessionId: string): void {
+  fetch(`/api/ai-kentei/exam/${sessionId}/abandon`, {
+    method: 'POST',
+    credentials: 'include',
+    keepalive: true,
+  }).catch(() => undefined)
+}
+
 /**
- * AI検定の受験中は true。
- * - 受験画面のパス
- * - サーバー上の未完了セッション（別タブ・他ページからのチャット防止）
+ * AI検定の受験画面にいる間だけ true（チャット不可）。
+ * 受験画面を離れたら abandon して未完了セッションを破棄する。
  */
 export function useAiKenteiExamBlocksChat(): boolean {
   const pathname = usePathname()
   const onExamPage = isAiKenteiExamInProgressPath(pathname)
-  const [hasIncompleteSession, setHasIncompleteSession] = useState(false)
+  const prevPathRef = useRef(pathname)
 
   useEffect(() => {
-    let cancelled = false
-    fetch('/api/ai-kentei/exam/active', { credentials: 'include' })
-      .then((r) => r.json())
-      .then((d: { active?: boolean }) => {
-        if (!cancelled) setHasIncompleteSession(!!d.active)
-      })
-      .catch(() => {
-        if (!cancelled) setHasIncompleteSession(false)
-      })
-    return () => {
-      cancelled = true
+    const prev = prevPathRef.current
+    prevPathRef.current = pathname
+
+    if (!isAiKenteiExamInProgressPath(prev) || isAiKenteiExamInProgressPath(pathname)) {
+      return
+    }
+
+    const match = prev.match(EXAM_SESSION_PATH)
+    if (match?.[1]) {
+      abandonExamSession(match[1])
     }
   }, [pathname])
 
-  return onExamPage || hasIncompleteSession
+  return onExamPage
 }

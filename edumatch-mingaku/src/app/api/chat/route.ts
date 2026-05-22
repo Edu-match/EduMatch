@@ -11,11 +11,6 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAiChatPrompts } from "@/lib/ai-chat-prompts";
 import { checkPromptInjection, checkLlmOutput } from "@/lib/security";
-import {
-  aiKenteiExamChatBlockedResponse,
-  userHasIncompleteAiKenteiExam,
-} from "@/lib/ai-kentei-exam-guard";
-
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -291,9 +286,6 @@ export async function GET() {
       { status: 401, headers: { "Content-Type": "application/json" } }
     );
   }
-  if (await userHasIncompleteAiKenteiExam(user.id)) {
-    return aiKenteiExamChatBlockedResponse();
-  }
   const profile = await prisma.profile.findUnique({
     where: { id: user.id },
     select: { chat_usage_events: true },
@@ -318,10 +310,6 @@ export async function POST(req: NextRequest) {
       { status: 401, headers: { "Content-Type": "application/json" } }
     );
   }
-  if (await userHasIncompleteAiKenteiExam(user.id)) {
-    return aiKenteiExamChatBlockedResponse();
-  }
-
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     return new Response(
