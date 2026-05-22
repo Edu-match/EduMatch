@@ -55,6 +55,7 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
   const [questionTimeRemaining, setQuestionTimeRemaining] = useState(AI_KENTEI_QUESTION_TIME_SECONDS)
   const [timerStarted, setTimerStarted] = useState(false)
   const [autoSubmitTriggered, setAutoSubmitTriggered] = useState(false)
+  const submittedRef = useRef(false)
   const answersRef = useRef(answers)
   answersRef.current = answers
   const currentIndexRef = useRef(currentIndex)
@@ -86,6 +87,27 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
 
     fetchExamData()
   }, [resolvedParams.sessionId, router])
+
+  // ページ離脱（in-appナビゲーション・タブ閉じ）でセッションを破棄する
+  useEffect(() => {
+    const sessionId = resolvedParams.sessionId
+    const abandonUrl = `/api/ai-kentei/exam/${sessionId}/abandon`
+
+    const handleBeforeUnload = () => {
+      if (!submittedRef.current) {
+        navigator.sendBeacon(abandonUrl)
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      // in-appナビゲーション（Reactコンポーネントのアンマウント）
+      if (!submittedRef.current) {
+        fetch(abandonUrl, { method: 'POST' }).catch(() => undefined)
+      }
+    }
+  }, [resolvedParams.sessionId])
 
   // Timer effect — per-question limit (see AI_KENTEI_QUESTION_TIME_SECONDS)
   useEffect(() => {
@@ -143,6 +165,7 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
   useEffect(() => {
     if (autoSubmitTriggered && !submitting) {
       const submitExam = async () => {
+        submittedRef.current = true
         setSubmitting(true)
         try {
           const response = await fetch(`/api/ai-kentei/exam/${resolvedParams.sessionId}/submit`, {
@@ -157,6 +180,7 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
 
           router.push(`/ai-kentei/exam/${resolvedParams.sessionId}/result`)
         } catch {
+          submittedRef.current = false
           toast.error('提出に失敗しました。もう一度お試しください。')
           setSubmitting(false)
         }
@@ -166,6 +190,7 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
   }, [autoSubmitTriggered, submitting, resolvedParams.sessionId, router])
 
   const handleSubmit = async () => {
+    submittedRef.current = true
     setSubmitting(true)
     try {
       const response = await fetch(`/api/ai-kentei/exam/${resolvedParams.sessionId}/submit`, {
@@ -180,6 +205,7 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
 
       router.push(`/ai-kentei/exam/${resolvedParams.sessionId}/result`)
     } catch {
+      submittedRef.current = false
       toast.error('提出に失敗しました。もう一度お試しください。')
       setSubmitting(false)
     }
