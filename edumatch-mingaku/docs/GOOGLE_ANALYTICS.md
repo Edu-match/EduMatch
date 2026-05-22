@@ -2,9 +2,12 @@
 
 ## コード側（済）
 
-- `@next/third-parties` の `GoogleAnalytics` を `src/app/layout.tsx` に追加
+- `src/components/analytics/google-analytics.tsx` … `beforeInteractive` で gtag を **初期 HTML** に出力
+- `src/components/analytics/google-analytics-page-view.tsx` … App Router の画面遷移時に `page_view` を送信
 - 環境変数 `NEXT_PUBLIC_GA_MEASUREMENT_ID` が設定されているときのみタグを読み込む
 - CSP（report-only）に Google Analytics / Tag Manager 用ドメインを追加（`next.config.ts`）
+
+> **注意**: 管理画面の測定 ID と Vercel の `NEXT_PUBLIC_GA_MEASUREMENT_ID` は **同じ `G-...` である必要**があります。本番 HTML に別 ID が出ていないか、デプロイ後にページソースで `gtag('config'` を確認してください。
 
 ## あなたが行う作業
 
@@ -43,7 +46,6 @@
 重要な操作を計測する場合はクライアントコンポーネントから:
 
 ```tsx
-import { sendGAEvent } from "@next/third-parties/google";
-
-sendGAEvent("event", "event_name", { key: "value" });
+// window.gtag が読み込まれた後
+window.gtag?.("event", "event_name", { key: "value" });
 ```

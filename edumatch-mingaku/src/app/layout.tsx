@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
-import { GoogleAnalytics } from "@next/third-parties/google";
 import { Geist_Mono, Noto_Sans_JP } from "next/font/google";
+import { Suspense } from "react";
+import { GoogleAnalytics } from "@/components/analytics/google-analytics";
+import { GoogleAnalyticsPageView } from "@/components/analytics/google-analytics-page-view";
 import "./globals.css";
 import { Toaster } from "sonner";
 import { RequestListProvider } from "@/components/request-list/request-list-context";
@@ -62,6 +64,11 @@ export default function RootLayout({
 
   return (
     <html lang="ja">
+      <head>
+        {GA_MEASUREMENT_ID ? (
+          <GoogleAnalytics measurementId={GA_MEASUREMENT_ID} />
+        ) : null}
+      </head>
       <body
         className={`${notoSansJP.variable} ${geistMono.variable} antialiased font-sans`}
       >
@@ -76,7 +83,11 @@ export default function RootLayout({
             </TutorialProvider>
           </FavoritesProvider>
         </RequestListProvider>
-        {GA_MEASUREMENT_ID ? <GoogleAnalytics gaId={GA_MEASUREMENT_ID} /> : null}
+        {GA_MEASUREMENT_ID ? (
+          <Suspense fallback={null}>
+            <GoogleAnalyticsPageView measurementId={GA_MEASUREMENT_ID} />
+          </Suspense>
+        ) : null}
       </body>
     </html>
   );
