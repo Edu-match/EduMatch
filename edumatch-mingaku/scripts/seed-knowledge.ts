@@ -36,7 +36,7 @@ async function embedTexts(texts: string[]): Promise<number[][]> {
   const all: number[][] = [];
   for (let i = 0; i < texts.length; i += BATCH) {
     const res = await openai.embeddings.create({
-      model: "text-embedding-3-small",
+      model: "text-embedding-3-large",
       input: texts.slice(i, i + BATCH),
       dimensions: 1536,
     });

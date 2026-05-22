@@ -29,7 +29,7 @@ function topScoringCategory(scores: object | undefined): string {
   return max > 0 ? `${name} ${max.toFixed(3)}` : "—";
 }
 
-const GPT_MODEL = "gpt-4o-mini";
+const GPT_MODEL = "gpt-4o";
 
 const GPT_SYSTEM = `あなたは日本の教育関係者向けコミュニティ（学習塾・学校・ICT等）の投稿審査アシスタントです。
 ユーザーから JSON だけを返してください。キーは次の3つ固定です:

@@ -64,7 +64,7 @@ export async function POST() {
     let embeddings: number[][];
     try {
       const embRes = await openai.embeddings.create({
-        model: "text-embedding-3-small",
+        model: "text-embedding-3-large",
         input: texts,
         dimensions: 1536,
       });

@@ -86,7 +86,7 @@ async function generateEmbeddings(
   texts: string[]
 ): Promise<number[][]> {
   const response = await openai.embeddings.create({
-    model: "text-embedding-3-small",
+    model: "text-embedding-3-large",
     input: texts,
     dimensions: 1536,
   });

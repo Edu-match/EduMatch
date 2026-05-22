@@ -449,7 +449,7 @@ export async function POST(req: NextRequest) {
   });
 
   const openai = new OpenAI({ apiKey });
-  const model = "gpt-5.4-mini";
+  const model = "gpt-5.4";
   const temperature = knowledgeHits.length > 0 ? 0.55 : 0.8;
 
   try {

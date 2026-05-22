@@ -20,7 +20,7 @@ export async function generateForumWeeklyTopicTitle(params: {
       : "過去のお題はまだありません。";
 
   const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: "gpt-4o",
     temperature: 0.7,
     response_format: { type: "json_object" },
     messages: [

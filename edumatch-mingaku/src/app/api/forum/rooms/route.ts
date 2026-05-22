@@ -110,15 +110,15 @@ export async function POST(req: NextRequest) {
 
     const id = `${slug}-${Date.now()}`;
 
-    const aiWeekly = !!aiWeeklyTopicEnabled;
+    const aiWeekly = aiWeeklyTopicEnabled ?? true;
     const room = await prisma.forumRoom.create({
       data: {
         id,
         name: name.trim(),
         description: description?.trim() ?? "",
         weekly_topic: aiWeekly ? "" : weeklyTopic?.trim() ?? "",
-        ai_discussion: aiDiscussion ?? false,
-        ai_weekly_topic_enabled: aiWeekly,
+        ai_discussion: aiDiscussion ?? true,
+        ai_weekly_topic_enabled: aiWeeklyTopicEnabled ?? true,
         emoji: emoji ?? "",
         created_by: user.id,
       },
@@ -143,7 +143,7 @@ export async function POST(req: NextRequest) {
         emoji: room.emoji,
         weeklyTopic: weekly,
         aiDiscussion: room.ai_discussion,
-        aiWeeklyTopicEnabled: refreshed?.ai_weekly_topic_enabled ?? aiWeekly,
+        aiWeeklyTopicEnabled: refreshed?.ai_weekly_topic_enabled ?? (aiWeeklyTopicEnabled ?? true),
         postCount: 0,
         participantCount: 0,
         lastPostedAt: room.created_at.toISOString(),

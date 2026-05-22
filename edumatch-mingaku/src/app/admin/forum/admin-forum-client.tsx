@@ -33,8 +33,8 @@ function CreateRoomDialog({ onCreated }: { onCreated: (room: ForumRoom) => void 
     name: "",
     description: "",
     weeklyTopic: "",
-    aiDiscussion: false,
-    aiWeeklyTopicEnabled: false,
+    aiDiscussion: true,
+    aiWeeklyTopicEnabled: true,
   });
   const isValid = draft.name.trim();
 
@@ -61,8 +61,8 @@ function CreateRoomDialog({ onCreated }: { onCreated: (room: ForumRoom) => void 
           name: "",
           description: "",
           weeklyTopic: "",
-          aiDiscussion: false,
-          aiWeeklyTopicEnabled: false,
+          aiDiscussion: true,
+          aiWeeklyTopicEnabled: true,
         });
         setOpen(false);
       } else {
@@ -109,27 +109,26 @@ function CreateRoomDialog({ onCreated }: { onCreated: (room: ForumRoom) => void 
                 AI が週次で「今週のお題」を設定する
               </p>
               <p className="mt-0.5 text-xs text-muted-foreground leading-5">
-                部屋名と説明からお題を自動生成します。毎週の更新はサーバー側のスケジュールで行われます。
+                部屋名と説明をもとに、お題を自動で作成します。
               </p>
             </div>
           </button>
 
-          <div className="space-y-1.5">
-            <Label>
-              今週のお題{" "}
-              <span className="text-xs text-muted-foreground">
-                {draft.aiWeeklyTopicEnabled ? "（AI週次ON時は自動生成）" : "（任意・後から設定可）"}
-              </span>
-            </Label>
-            <Textarea
-              rows={3}
-              value={draft.weeklyTopic}
-              onChange={(e) => setDraft((p) => ({ ...p, weeklyTopic: e.target.value }))}
-              className="resize-none"
-              disabled={draft.aiWeeklyTopicEnabled}
-              placeholder="参加者への問いかけを入力してください（後から変更できます）"
-            />
-          </div>
+          {!draft.aiWeeklyTopicEnabled && (
+            <div className="space-y-1.5">
+              <Label>
+                今週のお題{" "}
+                <span className="text-xs text-muted-foreground">（任意・後から設定可）</span>
+              </Label>
+              <Textarea
+                rows={3}
+                value={draft.weeklyTopic}
+                onChange={(e) => setDraft((p) => ({ ...p, weeklyTopic: e.target.value }))}
+                className="resize-none"
+                placeholder="参加者への問いかけを入力してください"
+              />
+            </div>
+          )}
 
           <button
             type="button"
@@ -148,7 +147,7 @@ function CreateRoomDialog({ onCreated }: { onCreated: (room: ForumRoom) => void 
                 AIディスカッションを有効にする
               </p>
               <p className="mt-0.5 text-xs text-muted-foreground leading-5">
-                投稿があるとAIファシリテーターが自動で返信し、議論を深めます。
+                投稿にAIファシリテーターが返信します。
               </p>
               {draft.aiDiscussion && (
                 <p className="mt-1.5 flex items-center gap-1 text-[11px] font-medium text-violet-700">

@@ -10,6 +10,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { TutorialSpotlight } from "@/components/tutorial/tutorial-spotlight";
 import { createSupabaseBrowserClient } from "@/utils/supabase/client";
@@ -68,6 +69,7 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     INITIAL_STATE
   );
   const [showCompletionMessage, setShowCompletionMessage] = useState(false);
+  const [completionGuideHref, setCompletionGuideHref] = useState("/help");
   const completionTimerRef = useRef<number | null>(null);
   const lastOnEnterRef = useRef<string | null>(null);
 
@@ -148,6 +150,27 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     tutorialState.pageId,
     updateTutorialState,
   ]);
+
+  useEffect(() => {
+    if (!showCompletionMessage) return;
+    let cancelled = false;
+    fetch("/api/help/guide-link", { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { href?: string } | null) => {
+        if (cancelled) return;
+        if (data?.href && typeof data.href === "string") {
+          setCompletionGuideHref(data.href);
+        } else {
+          setCompletionGuideHref("/help");
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setCompletionGuideHref("/help");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [showCompletionMessage]);
 
   const skipTutorial = useCallback(() => {
     markTutorialDone("skipped");
@@ -396,13 +419,21 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
       )}
 
       {showCompletionMessage && (
-        <div className="pointer-events-none fixed inset-0 z-[95] flex items-end justify-center pb-16 px-4 sm:items-center sm:pb-0">
+        <div className="fixed inset-0 z-[95] flex items-end justify-center pb-16 px-4 sm:items-center sm:pb-0">
           <div className="rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 px-8 py-6 text-center shadow-2xl motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95 motion-safe:duration-300 motion-reduce:animate-none">
             <p className="text-3xl mb-2">🎉</p>
             <p className="text-lg font-bold text-white">チュートリアル完了！</p>
             <p className="text-sm text-orange-100 mt-1">
               EduMatchをお楽しみください
             </p>
+            <div className="mt-3">
+              <Link
+                href={completionGuideHref}
+                className="inline-flex rounded-md bg-white px-3 py-1.5 text-xs font-semibold text-orange-600 hover:bg-orange-50"
+              >
+                詳細はこちら
+              </Link>
+            </div>
           </div>
         </div>
       )}

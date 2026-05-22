@@ -62,6 +62,30 @@ function truncate(text: string, maxChars: number): string {
 
 const MAX_CONTEXT_CHARS = 6000;
 const MAX_SEARCH_CONTEXT_CHARS = 800;
+const SERVICE_NAME_ALIAS_GROUPS: string[][] = [
+  ["one lead", "onelead", "ワンリード", "わんりーど"],
+];
+
+function expandSearchKeywordsWithAliases(query: string, baseKeywords: string[]): string[] {
+  const normalizedQuery = query.toLowerCase().normalize("NFKC");
+  const compactQuery = normalizedQuery.replace(/\s+/g, "");
+  const result = new Set(baseKeywords);
+
+  for (const group of SERVICE_NAME_ALIAS_GROUPS) {
+    const normalizedGroup = group.map((name) => name.toLowerCase().normalize("NFKC"));
+    const matched = normalizedGroup.some((name) => {
+      const compactName = name.replace(/\s+/g, "");
+      return normalizedQuery.includes(name) || compactQuery.includes(compactName);
+    });
+    if (!matched) continue;
+    for (const name of normalizedGroup) {
+      result.add(name);
+      result.add(name.replace(/\s+/g, ""));
+    }
+  }
+
+  return Array.from(result).filter((w) => w.length >= 2).slice(0, 12);
+}
 
 export async function getArticleContextForChat(
   id: string
@@ -162,7 +186,7 @@ export async function searchKnowledgeChunks(
 
     const openai = new OpenAI({ apiKey });
     const embeddingResponse = await openai.embeddings.create({
-      model: "text-embedding-3-small",
+      model: "text-embedding-3-large",
       input: q.slice(0, 8000),
       dimensions: 1536,
     });
@@ -258,7 +282,7 @@ export async function searchAppContent(
 
     // クエリをベクトル化
     const embeddingResponse = await openai.embeddings.create({
-      model: "text-embedding-3-small",
+      model: "text-embedding-3-large",
       input: q.slice(0, 8000),
       dimensions: 1536,
     });
@@ -352,12 +376,13 @@ export async function searchRelevantContent(
 
     // フォールバック：セマンティック検索結果が少ない場合、キーワード検索を追加
     if (services.length < limit || articles.length < limit) {
-      const keywords = query
+      const baseKeywords = query
         .replace(/[。、！？「」【】\s]+/g, " ")
         .trim()
         .split(" ")
         .filter((w) => w.length >= 2)
         .slice(0, 6);
+      const keywords = expandSearchKeywordsWithAliases(query, baseKeywords);
 
       if (keywords.length > 0) {
         const orClauses = keywords.map((kw) => ({

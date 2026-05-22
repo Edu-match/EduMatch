@@ -23,7 +23,7 @@ import { createServiceRoleClient } from "@/utils/supabase/server-admin";
 import type { Database } from "@/lib/database.types";
 
 const BATCH_SIZE = 50; // OpenAI API バッチサイズ
-const EMBEDDING_MODEL = "text-embedding-3-small";
+const EMBEDDING_MODEL = "text-embedding-3-large";
 const EMBEDDING_DIMS = 1536;
 const RATE_LIMIT_DELAY = 500; // ms
 
@@ -208,6 +208,13 @@ async function indexForumPosts(): Promise<IndexChunk[]> {
       body: true,
       topic_id: true,
       author_id: true,
+      replies: {
+        select: {
+          author_name: true,
+          body: true,
+        },
+        orderBy: { created_at: "asc" },
+      },
     },
   });
 
@@ -216,7 +223,17 @@ async function indexForumPosts(): Promise<IndexChunk[]> {
   const chunks: IndexChunk[] = [];
 
   for (const post of forumPosts) {
-    const combined = chunksFromMultipleFields([post.body]);
+    const replyContext =
+      post.replies.length > 0
+        ? post.replies
+            .slice(0, 20)
+            .map((r) => `返信（${r.author_name}）: ${r.body}`)
+            .join("\n")
+        : "";
+    const combined = chunksFromMultipleFields([
+      post.body,
+      replyContext ? `この投稿への返信文脈:\n${replyContext}` : "",
+    ]);
     // タイトルは最初の100文字から生成
     const postTitle = post.body.slice(0, 100).replace(/\n+/g, " ") + (post.body.length > 100 ? "..." : "");
 
@@ -228,6 +245,47 @@ async function indexForumPosts(): Promise<IndexChunk[]> {
         source_category: post.topic_id,
         source_type_label: "フォーラム投稿",
         author_id: post.author_id,
+        chunk_index: i,
+        content: truncate(combined[i], 2500),
+      });
+    }
+  }
+
+  console.log(`  Created ${chunks.length} chunks`);
+  return chunks;
+}
+
+/**
+ * Site Pages（固定ページ）をチャンク化
+ * DB制約に合わせ source_table は site_update を流用する
+ */
+async function indexSitePages(): Promise<IndexChunk[]> {
+  console.log("Indexing Site Pages...");
+
+  const pages = await prisma.sitePage.findMany({
+    select: {
+      id: true,
+      key: true,
+      title: true,
+      body: true,
+    },
+  });
+
+  console.log(`  Found ${pages.length} site pages`);
+
+  const chunks: IndexChunk[] = [];
+
+  for (const page of pages) {
+    const combined = chunksFromMultipleFields([page.title, page.body]);
+    const sourceId = `site-page:${page.id}`;
+    const sourceTitle = page.title?.trim() || `固定ページ (${page.key})`;
+    for (let i = 0; i < combined.length; i++) {
+      chunks.push({
+        source_table: "site_update",
+        source_id: sourceId,
+        source_title: sourceTitle,
+        source_category: page.key,
+        source_type_label: "固定ページ",
         chunk_index: i,
         content: truncate(combined[i], 2500),
       });
@@ -433,6 +491,7 @@ async function main(): Promise<void> {
 
     // 優先度3：低
     allChunks.push(...(await indexSiteUpdates()));
+    allChunks.push(...(await indexSitePages()));
 
     console.log(`\nTotal chunks created: ${allChunks.length}\n`);
 

@@ -65,7 +65,7 @@ export async function GET() {
       try {
         const openai = new OpenAI({ apiKey });
         const embRes = await openai.embeddings.create({
-          model: "text-embedding-3-small",
+          model: "text-embedding-3-large",
           input: "IT教育 制度 導入障壁",
           dimensions: 1536,
         });

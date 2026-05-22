@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 // ─── 文書種別 ────────────────────────────────────────────────────────────────
 
@@ -78,6 +78,7 @@ type KnowledgeDoc = {
 };
 
 const MAX_FILES = 10;
+const OTHER_SOURCE_TYPE_PREFIX = "other_saved::";
 
 type SourceEntry = {
   id: string;
@@ -89,6 +90,23 @@ type SourceEntry = {
 
 function makeEntry(seq: number): SourceEntry {
   return { id: String(seq), file: null, label: "", sourceUrl: "", inputKey: Date.now() + seq };
+}
+
+function toOtherSourceTypeOptionValue(label: string): string {
+  return `${OTHER_SOURCE_TYPE_PREFIX}${label}`;
+}
+
+function parseSourceTypeSelection(value: string): { sourceType: SourceType; sourceTypeOther: string } {
+  if (value.startsWith(OTHER_SOURCE_TYPE_PREFIX)) {
+    return {
+      sourceType: "other",
+      sourceTypeOther: value.slice(OTHER_SOURCE_TYPE_PREFIX.length),
+    };
+  }
+  if (value === "other") {
+    return { sourceType: "other", sourceTypeOther: "" };
+  }
+  return { sourceType: value as SourceType, sourceTypeOther: "" };
 }
 
 // ─── ページ ──────────────────────────────────────────────────────────────────
@@ -260,6 +278,28 @@ export default function AdminKnowledgePage() {
     return SOURCE_TYPE_LABEL[doc.source_type] ?? doc.source_type;
   };
 
+  const savedOtherSourceTypes = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          documents
+            .filter((d) => d.source_type === "other")
+            .map((d) => d.source_type_other?.trim() ?? "")
+            .filter((v) => v.length > 0)
+        )
+      ).sort((a, b) => a.localeCompare(b, "ja")),
+    [documents]
+  );
+
+  const selectedSourceTypeValue = useMemo(() => {
+    if (form.source_type !== "other") return form.source_type;
+    const current = form.source_type_other.trim();
+    if (current && savedOtherSourceTypes.includes(current)) {
+      return toOtherSourceTypeOptionValue(current);
+    }
+    return "other";
+  }, [form.source_type, form.source_type_other, savedOtherSourceTypes]);
+
   const groupCounts = SOURCE_TYPE_GROUPS.map((g) => ({
     label: g.label,
     count: documents.filter((d) => g.options.some((o) => o.value === d.source_type)).length,
@@ -346,10 +386,15 @@ export default function AdminKnowledgePage() {
                 文書種別 <span className="text-red-500">*</span>
               </label>
               <select
-                value={form.source_type}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, source_type: e.target.value as SourceType, source_type_other: "" }))
-                }
+                value={selectedSourceTypeValue}
+                onChange={(e) => {
+                  const selected = parseSourceTypeSelection(e.target.value);
+                  setForm((f) => ({
+                    ...f,
+                    source_type: selected.sourceType,
+                    source_type_other: selected.sourceTypeOther,
+                  }));
+                }}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 {SOURCE_TYPE_GROUPS.map((g) => (
@@ -359,6 +404,15 @@ export default function AdminKnowledgePage() {
                     ))}
                   </optgroup>
                 ))}
+                {savedOtherSourceTypes.length > 0 && (
+                  <optgroup label="その他（登録済みカテゴリ）">
+                    {savedOtherSourceTypes.map((label) => (
+                      <option key={label} value={toOtherSourceTypeOptionValue(label)}>
+                        {label}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
             </div>
 
@@ -367,6 +421,7 @@ export default function AdminKnowledgePage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   種別名 <span className="text-red-500">*</span>
+                  <span className="ml-2 text-xs text-gray-400 font-normal">（既存カテゴリ選択時は編集可）</span>
                 </label>
                 <input
                   type="text"

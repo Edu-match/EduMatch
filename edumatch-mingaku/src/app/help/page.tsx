@@ -9,6 +9,9 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { MessageCircle, Mail, BookOpen, HelpCircle } from "lucide-react";
 import { OpenAiChatButton } from "@/components/ui/open-ai-chat-button";
+import { prisma } from "@/lib/prisma";
+
+const HELP_GUIDE_TITLE = "エデュマッチ 利用ガイド";
 
 const faqCategories = [
   {
@@ -93,7 +96,14 @@ const faqCategories = [
   },
 ];
 
-export default function HelpPage() {
+export default async function HelpPage() {
+  const guideArticle = await prisma.siteUpdate.findFirst({
+    where: { title: HELP_GUIDE_TITLE },
+    orderBy: { published_at: "desc" },
+    select: { id: true, link: true, title: true },
+  });
+  const guideHref = guideArticle?.link || (guideArticle ? `/site-updates/${guideArticle.id}` : null);
+
   return (
     <div className="container py-8">
       <div className="mb-8">
@@ -137,6 +147,28 @@ export default function HelpPage() {
 
         {/* サイドバー */}
         <div className="space-y-6">
+          <Card className="border-primary/20 bg-primary/5">
+            <CardHeader>
+              <CardTitle className="text-lg">まずはこちら</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {guideHref ? (
+                <Link
+                  href={guideHref}
+                  className="flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+                  {...(guideArticle?.link ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                >
+                  <BookOpen className="h-4 w-4" />
+                  {HELP_GUIDE_TITLE}
+                </Link>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  {HELP_GUIDE_TITLE} は現在準備中です。
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">お問い合わせ</CardTitle>

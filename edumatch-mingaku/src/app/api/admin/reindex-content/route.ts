@@ -19,6 +19,13 @@ interface ReindexRequest {
   timestamp: string;
 }
 
+function toStorageTarget(table: string, id: string): { sourceTable: string; sourceId: string } {
+  if (table === "sitePage") {
+    return { sourceTable: "site_update", sourceId: `site-page:${id}` };
+  }
+  return { sourceTable: table, sourceId: id };
+}
+
 async function getOpenAIClient(): Promise<OpenAI> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
@@ -44,6 +51,7 @@ export async function POST(req: NextRequest) {
 
     const body: ReindexRequest = await req.json();
     const { table, id, action } = body;
+    const storageTarget = toStorageTarget(table, id);
 
     if (!table || !id || !action) {
       return new Response(
@@ -58,8 +66,8 @@ export async function POST(req: NextRequest) {
     const { error: deleteError } = await supabase
       .from("app_content_chunks")
       .delete()
-      .eq("source_table", table)
-      .eq("source_id", id);
+      .eq("source_table", storageTarget.sourceTable)
+      .eq("source_id", storageTarget.sourceId);
 
     if (deleteError) {
       console.error(`Failed to delete chunks for ${table}:${id}:`, deleteError);
@@ -279,12 +287,29 @@ async function generateChunksForContent(
           body: true,
           topic_id: true,
           author_id: true,
+          replies: {
+            select: {
+              author_name: true,
+              body: true,
+            },
+            orderBy: { created_at: "asc" },
+          },
         },
       });
 
       if (!forumPost) return [];
 
-      const combined = chunksFromMultipleFields([forumPost.body]);
+      const replyContext =
+        forumPost.replies.length > 0
+          ? forumPost.replies
+              .slice(0, 20)
+              .map((r) => `返信（${r.author_name}）: ${r.body}`)
+              .join("\n")
+          : "";
+      const combined = chunksFromMultipleFields([
+        forumPost.body,
+        replyContext ? `この投稿への返信文脈:\n${replyContext}` : "",
+      ]);
       // タイトルは最初の100文字から生成
       const postTitle = forumPost.body.slice(0, 100).replace(/\n+/g, " ") + (forumPost.body.length > 100 ? "..." : "");
 
@@ -361,6 +386,36 @@ async function generateChunksForContent(
           content: truncate(combined[i], 2500),
         });
       }
+    } else if (table === "sitePage") {
+      const page = await prisma.sitePage.findFirst({
+        where: { id },
+        select: {
+          id: true,
+          key: true,
+          title: true,
+          body: true,
+        },
+      });
+
+      if (!page) return [];
+
+      const combined = chunksFromMultipleFields([
+        page.title,
+        page.body,
+      ]);
+      const sourceId = `site-page:${page.id}`;
+      const sourceTitle = page.title?.trim() || `固定ページ (${page.key})`;
+      for (let i = 0; i < combined.length; i++) {
+        chunks.push({
+          source_table: "site_update",
+          source_id: sourceId,
+          source_title: sourceTitle,
+          source_category: page.key,
+          source_type_label: "固定ページ",
+          chunk_index: i,
+          content: truncate(combined[i], 2500),
+        });
+      }
     }
   } catch (error) {
     console.error(`Error generating chunks for ${table}:${id}:`, error);
@@ -378,7 +433,7 @@ async function batchEmbedTexts(texts: string[], openai: OpenAI): Promise<number[
 
     try {
       const response = await openai.embeddings.create({
-        model: "text-embedding-3-small",
+        model: "text-embedding-3-large",
         input: batch,
         dimensions: 1536,
       });

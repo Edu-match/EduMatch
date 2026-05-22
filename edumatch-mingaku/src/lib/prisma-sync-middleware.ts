@@ -67,10 +67,27 @@ async function triggerReindexViaApi(job: ReindexJob): Promise<void> {
  */
 export function installPrismaSyncMiddleware(prisma: PrismaClient): void {
   prisma.$use(async (params, next) => {
+    let forumReplyPostIdForDelete: string | null = null;
+    if (
+      params.model === "forumReply" &&
+      params.action === "delete" &&
+      params.args?.where?.id
+    ) {
+      try {
+        const beforeDelete = await prisma.forumReply.findUnique({
+          where: { id: params.args.where.id },
+          select: { post_id: true },
+        });
+        forumReplyPostIdForDelete = beforeDelete?.post_id ?? null;
+      } catch {
+        forumReplyPostIdForDelete = null;
+      }
+    }
+
     const result = await next(params);
 
     // 監視対象のテーブルと操作
-    const watchedTables = ["service", "post", "review", "forumPost", "seminarEvent", "siteUpdate"];
+    const watchedTables = ["service", "post", "review", "forumPost", "forumReply", "seminarEvent", "siteUpdate", "sitePage"];
     const watchedActions = ["create", "update", "delete", "deleteMany", "updateMany"];
 
     if (
@@ -79,6 +96,28 @@ export function installPrismaSyncMiddleware(prisma: PrismaClient): void {
     ) {
       // リインデックスジョブをキューに追加
       const sourceTable = mapPrismaTableToSourceTable(params.model || "");
+
+      if (params.model === "forumReply") {
+        if (params.action === "create" || params.action === "update") {
+          if (result?.post_id) {
+            reindexQueue.push({
+              table: "forum_post",
+              id: result.post_id,
+              action: "upsert",
+              timestamp: new Date().toISOString(),
+            });
+          }
+        } else if (params.action === "delete" && forumReplyPostIdForDelete) {
+          reindexQueue.push({
+            table: "forum_post",
+            id: forumReplyPostIdForDelete,
+            action: "upsert",
+            timestamp: new Date().toISOString(),
+          });
+        }
+        setImmediate(() => processReindexQueue());
+        return result;
+      }
 
       if (params.action === "delete" && params.args?.where?.id) {
         reindexQueue.push({
@@ -124,6 +163,7 @@ function mapPrismaTableToSourceTable(prismaTable: string): string {
     forumPost: "forum_post",
     seminarEvent: "seminar_event",
     siteUpdate: "site_update",
+    sitePage: "sitePage",
   };
   return mapping[prismaTable] || prismaTable;
 }
