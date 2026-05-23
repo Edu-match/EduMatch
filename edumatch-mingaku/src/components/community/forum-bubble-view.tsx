@@ -659,7 +659,7 @@ function GraphNode({
       )}
 
       {isOverview && (
-        <span className="pointer-events-none absolute left-1/2 top-[calc(100%+6px)] max-w-[140px] -translate-x-1/2 truncate text-[10px] font-medium text-slate-500 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+        <span className="pointer-events-none absolute left-1/2 top-[calc(100%+6px)] max-w-[150px] -translate-x-1/2 truncate rounded-full border border-white/70 bg-white/80 px-2 py-0.5 text-[10px] font-medium text-slate-600 shadow-sm backdrop-blur">
           {room.name}
         </span>
       )}
