@@ -17,12 +17,31 @@ import {
 
 // ─── 動的レイアウト計算 ──────────────────────────────────────
 
+const ROOM_TEXT_STOP_WORDS = new Set([
+  "の", "を", "に", "が", "は", "と", "で", "て", "た", "も", "や", "へ", "か",
+  "です", "ます", "する", "いる", "ある", "こと", "これ", "それ", "ため",
+  "について", "から", "まで", "より", "よう", "また", "など",
+]);
+
+function normalizeRoomText(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[・、。！？（）「」『』【】［］()]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
 function computePositions(rooms: ForumRoom[], isMobile: boolean): BubblePosition[] {
   const baseHeight = isMobile ? 720 : 540;
   const containerHeight = computeContainerHeight(rooms, isMobile);
   const staticMap = isMobile ? BUBBLE_POSITIONS_MOBILE : BUBBLE_POSITIONS;
   const result: BubblePosition[] = [];
   const usedIds = new Set<string>();
+  const absoluteById = new Map<string, { x: number; y: number }>();
 
   // 静的ルームは絶対ピクセル位置を保持（コンテナが伸びても動かない）
   for (const room of rooms) {
@@ -31,24 +50,58 @@ function computePositions(rooms: ForumRoom[], isMobile: boolean): BubblePosition
       const absoluteY = (pos.cy / 100) * baseHeight;
       result.push({ id: room.id, cx: pos.cx, cy: (absoluteY / containerHeight) * 100 });
       usedIds.add(room.id);
+      absoluteById.set(room.id, { x: pos.cx, y: absoluteY });
     }
   }
 
-  // 新規ルームはベース高さの直下に配置
+  // 新規ルームは関連が強い既存ルームの周辺に配置
   const remaining = rooms.filter((r) => !usedIds.has(r.id));
-  if (isMobile) {
-    remaining.forEach((room, i) => {
-      const absoluteY = baseHeight + 50 + i * 100;
-      result.push({ id: room.id, cx: 50, cy: (absoluteY / containerHeight) * 100 });
-    });
-  } else {
-    const colXs = [20, 50, 80];
-    remaining.forEach((room, i) => {
-      const row = Math.floor(i / 3);
-      const absoluteY = baseHeight + 70 + row * 140;
-      result.push({ id: room.id, cx: colXs[i % 3], cy: (absoluteY / containerHeight) * 100 });
-    });
-  }
+  const branchCountByAnchor = new Map<string, number>();
+  const seeded = staticMap.filter((p) => absoluteById.has(p.id)).map((p) => p.id);
+
+  remaining.forEach((room, i) => {
+    const placedCandidates = rooms.filter(
+      (candidate) => candidate.id !== room.id && absoluteById.has(candidate.id)
+    );
+    const fallbackCandidates =
+      placedCandidates.length > 0
+        ? placedCandidates
+        : rooms.filter((candidate) => candidate.id !== room.id && seeded.includes(candidate.id));
+    const anchor = pickBestRelatedRoom(room, fallbackCandidates);
+    const anchorPos = anchor ? absoluteById.get(anchor.id) : null;
+
+    let absoluteX = isMobile ? 50 : [20, 50, 80][i % 3];
+    let absoluteY = isMobile ? baseHeight + 50 + i * 100 : baseHeight + 70 + Math.floor(i / 3) * 140;
+
+    if (anchorPos && anchor) {
+      const branchIndex = branchCountByAnchor.get(anchor.id) ?? 0;
+      branchCountByAnchor.set(anchor.id, branchIndex + 1);
+
+      if (isMobile) {
+        const lateral = branchIndex % 2 === 0 ? -12 : 12;
+        const depth = 72 + Math.floor(branchIndex / 2) * 56;
+        absoluteX = clampNumber(anchorPos.x + lateral, 20, 80);
+        absoluteY = anchorPos.y + depth;
+      } else {
+        const radialPattern = [
+          { x: -16, y: 58 },
+          { x: 16, y: 58 },
+          { x: -24, y: 110 },
+          { x: 24, y: 110 },
+          { x: 0, y: 150 },
+        ];
+        const slot = radialPattern[branchIndex % radialPattern.length];
+        const extraDepth = Math.floor(branchIndex / radialPattern.length) * 68;
+        absoluteX = clampNumber(anchorPos.x + slot.x, 12, 88);
+        absoluteY = anchorPos.y + slot.y + extraDepth;
+      }
+    }
+
+    // 下限余白を確保して、カードがコンテナ外にはみ出さないようにする
+    const cappedY = Math.min(absoluteY, containerHeight - (isMobile ? 60 : 72));
+    result.push({ id: room.id, cx: absoluteX, cy: (cappedY / containerHeight) * 100 });
+    absoluteById.set(room.id, { x: absoluteX, y: cappedY });
+  });
 
   return result;
 }
@@ -61,14 +114,53 @@ function computeContainerHeight(rooms: ForumRoom[], isMobile: boolean): number {
 }
 
 function extractKeywords(text: string): Set<string> {
-  const stop = new Set(["の", "を", "に", "が", "は", "と", "で", "て", "た", "も", "や", "へ", "か"]);
-  return new Set(
-    text
-      .replace(/[・、。！？（）「」]/g, " ")
+  const normalized = normalizeRoomText(text);
+  const keywords = new Set(
+    normalized
       .split(/\s+/)
       .map((w) => w.trim())
-      .filter((w) => w.length >= 2 && !stop.has(w))
+      .filter((w) => w.length >= 2 && !ROOM_TEXT_STOP_WORDS.has(w))
   );
+
+  const continuousWords = normalized.match(/[一-龠々ぁ-んァ-ヴーa-z0-9]{2,}/g) ?? [];
+  for (const word of continuousWords) {
+    if (!ROOM_TEXT_STOP_WORDS.has(word)) keywords.add(word);
+    if (word.length >= 4) {
+      for (let i = 0; i < word.length - 1; i += 1) {
+        const bigram = word.slice(i, i + 2);
+        if (!ROOM_TEXT_STOP_WORDS.has(bigram)) keywords.add(bigram);
+      }
+    }
+  }
+
+  return keywords;
+}
+
+function similarityScore(a: ForumRoom, b: ForumRoom): number {
+  const aKw = extractKeywords(`${a.name} ${a.description} ${a.weeklyTopic}`);
+  const bKw = extractKeywords(`${b.name} ${b.description} ${b.weeklyTopic}`);
+
+  let overlap = 0;
+  for (const token of aKw) {
+    if (bKw.has(token)) overlap += token.length >= 3 ? 3 : 1;
+  }
+  return overlap;
+}
+
+function pickBestRelatedRoom(room: ForumRoom, candidates: ForumRoom[]): ForumRoom | null {
+  let best: ForumRoom | null = null;
+  let bestScore = -1;
+
+  for (const candidate of candidates) {
+    const score = similarityScore(room, candidate);
+    if (score > bestScore) {
+      bestScore = score;
+      best = candidate;
+    }
+  }
+
+  if (best && bestScore > 0) return best;
+  return candidates[0] ?? null;
 }
 
 function computeConnections(rooms: ForumRoom[], positions: BubblePosition[]): BubbleConnection[] {
@@ -81,21 +173,24 @@ function computeConnections(rooms: ForumRoom[], positions: BubblePosition[]): Bu
   const newRooms = rooms.filter((r) => !staticIds.has(r.id));
 
   for (const room of newRooms) {
-    const kw = extractKeywords(room.name + " " + room.description);
-    let bestId: string | null = null;
-    let bestScore = 0;
+    const candidates = rooms.filter((other) => other.id !== room.id);
+    const bestRoom = pickBestRelatedRoom(room, candidates);
+    let bestId = bestRoom?.id ?? null;
 
-    for (const other of rooms) {
-      if (other.id === room.id) continue;
-      const otherKw = extractKeywords(other.name + " " + other.description);
-      let score = 0;
-      for (const k of kw) if (otherKw.has(k)) score++;
-      if (score > bestScore) { bestScore = score; bestId = other.id; }
-    }
-
-    // Fall back to first room if no keyword match
-    if (!bestId && rooms.length > 1) {
-      bestId = rooms.find((r) => r.id !== room.id)?.id ?? null;
+    // 意味的に同点/弱一致しかない場合は距離の近い部屋へ繋ぐ
+    if (!bestId) {
+      const source = positions.find((p) => p.id === room.id);
+      if (source) {
+        let nearest: { id: string; dist: number } | null = null;
+        for (const target of positions) {
+          if (target.id === room.id) continue;
+          const dx = source.cx - target.cx;
+          const dy = source.cy - target.cy;
+          const dist = dx * dx + dy * dy;
+          if (!nearest || dist < nearest.dist) nearest = { id: target.id, dist };
+        }
+        bestId = nearest?.id ?? null;
+      }
     }
 
     if (bestId) {
