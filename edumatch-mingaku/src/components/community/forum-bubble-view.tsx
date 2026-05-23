@@ -100,10 +100,10 @@ function getZoomDetailLevel(scale: number): ZoomDetailLevel {
 
 function getGraphDimensions(detailLevel: ZoomDetailLevel, roomCount: number) {
   const levelScale =
-    detailLevel === "detail" ? 2 :
-    detailLevel === "standard" ? 1.35 :
-    detailLevel === "compact" ? 1.1 : 1;
-  const countScale = 1 + Math.max(0, roomCount - 6) * 0.05;
+    detailLevel === "detail" ? 1.1 :
+    detailLevel === "standard" ? 1.04 :
+    detailLevel === "compact" ? 1.02 : 1;
+  const countScale = 1 + Math.min(0.16, Math.max(0, roomCount - 10) * 0.02);
   return {
     width: Math.round(BASE_GRAPH_WIDTH * levelScale * countScale),
     height: Math.round(BASE_GRAPH_HEIGHT * levelScale * countScale),
@@ -111,9 +111,9 @@ function getGraphDimensions(detailLevel: ZoomDetailLevel, roomCount: number) {
 }
 
 function getLayoutSpread(detailLevel: ZoomDetailLevel): number {
-  if (detailLevel === "detail") return 1.85;
-  if (detailLevel === "standard") return 1.28;
-  if (detailLevel === "compact") return 1.08;
+  if (detailLevel === "detail") return 1.2;
+  if (detailLevel === "standard") return 1.1;
+  if (detailLevel === "compact") return 1.04;
   return 1;
 }
 
@@ -337,8 +337,8 @@ function estimateNodeSize(room: ForumRoom, detailLevel: ZoomDetailLevel): { widt
       return { width: clampNumber(88 + visibleNameLength * 7, 108, 168), height: 34 };
     case "detail":
       return {
-        width: clampNumber(200 + visibleNameLength * 6, 248, 288),
-        height: topicLength > 36 ? 112 : 96,
+        width: clampNumber(118 + visibleNameLength * 10, 170, 250),
+        height: topicLength > 36 ? 62 : 56,
       };
     default:
       return { width: clampNumber(96 + visibleNameLength * 9, 132, 240), height: 50 };
@@ -349,7 +349,7 @@ function collisionPaddingForLevel(detailLevel: ZoomDetailLevel): number {
   if (detailLevel === "overview") return 18;
   if (detailLevel === "compact") return 28;
   if (detailLevel === "standard") return 38;
-  return 64;
+  return 48;
 }
 
 function resolveGraphCollisions(
@@ -365,7 +365,7 @@ function resolveGraphCollisions(
   const roomById = new Map(rooms.map((room) => [room.id, room]));
   const ids = Object.keys(points);
   const padding = collisionPaddingForLevel(detailLevel);
-  const iterations = detailLevel === "detail" ? 200 : detailLevel === "standard" ? 120 : 90;
+  const iterations = detailLevel === "detail" ? 150 : detailLevel === "standard" ? 120 : 90;
 
   spreadPointsFromCenter(points, getLayoutSpread(detailLevel), graphWidth / 2, graphHeight / 2);
 
@@ -535,7 +535,6 @@ function GraphNode({
   const active = isRoomActive(room.lastPostedAt);
   const isOverview = detailLevel === "overview";
   const isCompact = detailLevel === "compact";
-  const isDetail = detailLevel === "detail";
   const iconSize = isOverview ? 13 : isCompact ? 14 : 15;
 
   return (
@@ -559,7 +558,7 @@ function GraphNode({
         isOverview
           ? "inline-flex items-center justify-center"
           : "inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-white/82 text-left shadow-[0_10px_28px_rgba(15,23,42,0.08)] backdrop-blur-xl hover:border-white hover:bg-white hover:shadow-[0_18px_44px_rgba(15,23,42,0.14)]",
-        !isOverview && (isCompact ? "px-2 py-1" : isDetail ? "w-[248px] max-w-[248px] px-3 py-2" : "px-2.5 py-1.5"),
+        !isOverview && (isCompact ? "px-2 py-1" : "px-2.5 py-1.5"),
         isDimmed ? "opacity-35 blur-[0.2px]" : "opacity-100",
         !isOverview && (isLinked || isDragging) ? "border-white bg-white shadow-[0_20px_52px_rgba(15,23,42,0.16)]" : "",
       ].join(" ")}
@@ -602,10 +601,10 @@ function GraphNode({
       </span>
 
       {!isOverview && (
-        <span className={isDetail ? "flex min-w-0 flex-1 flex-col gap-1" : "flex max-w-[172px] flex-col gap-0.5"}>
+        <span className="flex max-w-[172px] flex-col gap-0.5">
           <span className={[
             "truncate font-semibold leading-tight tracking-[-0.015em] text-slate-800 group-hover:text-slate-950",
-            isCompact ? "text-[11px]" : isDetail ? "text-sm" : "text-xs",
+            isCompact ? "text-[11px]" : "text-xs",
           ].join(" ")}>
             {room.name}
           </span>
@@ -620,24 +619,18 @@ function GraphNode({
                 <Users className="h-2.5 w-2.5" />
                 {room.participantCount}
               </span>
-              {isDetail && room.aiDiscussion && (
+              {room.aiDiscussion && (
                 <span className="inline-flex items-center gap-0.5 text-violet-600">
                   <Zap className="h-2.5 w-2.5" />
                   AI
                 </span>
               )}
-              {isDetail && room.aiWeeklyTopicEnabled && (
+              {room.aiWeeklyTopicEnabled && (
                 <span className="inline-flex items-center gap-0.5 text-sky-600">
                   <Sparkles className="h-2.5 w-2.5" />
                   週次お題
                 </span>
               )}
-            </span>
-          )}
-
-          {isDetail && (
-            <span className="text-[11px] leading-5 text-slate-500 line-clamp-2">
-              {room.weeklyTopic || room.description}
             </span>
           )}
         </span>
@@ -649,7 +642,7 @@ function GraphNode({
         </span>
       )}
 
-      {!isDetail && !isOverview && (
+      {!isOverview && (
         <span className="absolute left-1/2 top-[calc(100%+8px)] hidden min-w-max -translate-x-1/2 rounded-xl border border-white/80 bg-white/95 px-3 py-2 text-[11px] text-slate-500 shadow-[0_20px_50px_rgba(15,23,42,0.15)] backdrop-blur-xl group-hover:block">
           <span className="mb-1 block max-w-[220px] text-xs font-semibold text-slate-950 line-clamp-1">
             {room.weeklyTopic || room.description}
@@ -729,6 +722,10 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
         .flatMap((connection) => [connection.from, connection.to])
     );
   }, [connections, hoveredId]);
+  const focusedRoom = useMemo(
+    () => (hoveredId ? displayRooms.find((room) => room.id === hoveredId) ?? null : null),
+    [displayRooms, hoveredId]
+  );
 
   useEffect(() => {
     const seen = localStorage.getItem("forum_bubble_hint_v1");
@@ -973,6 +970,35 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
           <Move className="h-3.5 w-3.5" />
           スクロールで拡大すると詳細が増えます / ノードをドラッグ / 背景をドラッグ
         </div>
+
+        {detailLevel === "detail" && focusedRoom && (
+          <div className="absolute bottom-4 right-4 z-30 w-[320px] rounded-2xl border border-slate-200/80 bg-white/92 p-4 text-xs text-slate-600 shadow-[0_20px_48px_rgba(15,23,42,0.12)] backdrop-blur-xl">
+            <p className="text-sm font-semibold text-slate-900">{focusedRoom.name}</p>
+            <p className="mt-1 line-clamp-2">{focusedRoom.weeklyTopic || focusedRoom.description}</p>
+            <div className="mt-2 flex items-center gap-3 text-[11px] text-slate-500">
+              <span className="inline-flex items-center gap-1">
+                <MessageSquare className="h-3 w-3" />
+                {focusedRoom.postCount}
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <Users className="h-3 w-3" />
+                {focusedRoom.participantCount}
+              </span>
+              {focusedRoom.aiDiscussion && (
+                <span className="inline-flex items-center gap-1 text-violet-600">
+                  <Zap className="h-3 w-3" />
+                  AI
+                </span>
+              )}
+              {focusedRoom.aiWeeklyTopicEnabled && (
+                <span className="inline-flex items-center gap-1 text-sky-600">
+                  <Sparkles className="h-3 w-3" />
+                  週次お題
+                </span>
+              )}
+            </div>
+          </div>
+        )}
 
         {showHint && <OnboardingHint onClose={dismissHint} />}
       </div>
