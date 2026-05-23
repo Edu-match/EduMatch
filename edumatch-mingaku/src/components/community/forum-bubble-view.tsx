@@ -77,7 +77,20 @@ const GRAPH_HEIGHT = 720;
 const MAP_ZOOM_MIN = 0.72;
 const MAP_ZOOM_MAX = 1.8;
 const MAP_ZOOM_STEP = 0.12;
-const FORUM_MAP_LAYOUT_STORAGE_KEY = "edumatch-forum-graph-layout-v2";
+const FORUM_MAP_LAYOUT_STORAGE_KEY = "edumatch-forum-graph-layout-v3";
+
+const SEMANTIC_KEYWORD_GROUPS = [
+  ["ai", "ＡＩ", "生成ai", "人工知能", "aiツール", "aiリテラシー", "機械学習"],
+  ["giga", "端末", "ict", "デジタル", "教科書", "オンライン", "遠隔", "テクノロジー"],
+  ["教員", "先生", "教師", "働き方", "長時間", "業務", "効率化", "校務"],
+  ["不登校", "多様", "支援", "特別支援", "発達", "学び", "居場所"],
+  ["格差", "edtech", "教育格差", "貧困", "地域", "アクセス"],
+  ["海外", "日本", "グローバル", "国際", "英語", "留学"],
+  ["保護者", "家庭", "子ども", "こども", "小学生", "中学生", "高校生"],
+  ["探究", "steam", "stem", "プロジェクト", "ワークショップ", "創造"],
+  ["金融", "お金", "キャリア", "起業", "社会"],
+  ["エンターテインメント", "ゲーム", "sns", "メディア", "動画"],
+];
 
 function clampNumber(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -115,13 +128,24 @@ function extractKeywords(text: string): Set<string> {
 }
 
 function similarityScore(a: ForumRoom, b: ForumRoom): number {
-  const aKw = extractKeywords(`${a.name} ${a.description} ${a.weeklyTopic}`);
-  const bKw = extractKeywords(`${b.name} ${b.description} ${b.weeklyTopic}`);
+  const aText = `${a.name} ${a.description} ${a.weeklyTopic}`;
+  const bText = `${b.name} ${b.description} ${b.weeklyTopic}`;
+  const aNormalized = normalizeRoomText(aText);
+  const bNormalized = normalizeRoomText(bText);
+  const aKw = extractKeywords(aText);
+  const bKw = extractKeywords(bText);
 
   let overlap = 0;
   for (const token of aKw) {
     if (bKw.has(token)) overlap += token.length >= 3 ? 3 : 1;
   }
+
+  for (const group of SEMANTIC_KEYWORD_GROUPS) {
+    const aHit = group.some((keyword) => aNormalized.includes(keyword.toLowerCase()));
+    const bHit = group.some((keyword) => bNormalized.includes(keyword.toLowerCase()));
+    if (aHit && bHit) overlap += 7;
+  }
+
   return overlap;
 }
 
@@ -142,25 +166,43 @@ function pickBestRelatedRoom(room: ForumRoom, candidates: ForumRoom[]): ForumRoo
 
 function computeRoomConnections(rooms: ForumRoom[]): BubbleConnection[] {
   const roomIds = new Set(rooms.map((room) => room.id));
-  const result = BUBBLE_CONNECTIONS.filter(
-    (connection) => roomIds.has(connection.from) && roomIds.has(connection.to)
-  );
-  const staticRooms = rooms.filter((room) => STATIC_ROOM_IDS.includes(room.id));
-  const newRooms = rooms.filter((room) => !STATIC_ROOM_IDS.includes(room.id));
+  const result: BubbleConnection[] = [];
+  const degree = new Map<string, number>();
 
-  for (const room of newRooms) {
-    const anchor = pickBestRelatedRoom(
-      room,
-      staticRooms.length > 0 ? staticRooms : rooms.filter((other) => other.id !== room.id)
-    );
-    if (!anchor) continue;
-
+  const addConnection = (from: string, to: string) => {
+    if (from === to || !roomIds.has(from) || !roomIds.has(to)) return;
     const duplicate = result.some(
       (connection) =>
-        (connection.from === room.id && connection.to === anchor.id) ||
-        (connection.from === anchor.id && connection.to === room.id)
+        (connection.from === from && connection.to === to) ||
+        (connection.from === to && connection.to === from)
     );
-    if (!duplicate) result.push({ from: anchor.id, to: room.id });
+    if (duplicate) return;
+    result.push({ from, to });
+    degree.set(from, (degree.get(from) ?? 0) + 1);
+    degree.set(to, (degree.get(to) ?? 0) + 1);
+  };
+
+  for (const connection of BUBBLE_CONNECTIONS) {
+    addConnection(connection.from, connection.to);
+  }
+
+  for (const room of rooms) {
+    const candidates = rooms
+      .filter((other) => other.id !== room.id)
+      .map((other) => ({ room: other, score: similarityScore(room, other) }))
+      .sort((a, b) => b.score - a.score);
+
+    let addedForRoom = 0;
+    for (const candidate of candidates) {
+      const currentDegree = degree.get(room.id) ?? 0;
+      const targetDegree = degree.get(candidate.room.id) ?? 0;
+      const strongEnough = candidate.score >= 7 || (addedForRoom === 0 && candidate.score > 0);
+      if (!strongEnough || currentDegree >= 3 || targetDegree >= 4) continue;
+
+      addConnection(room.id, candidate.room.id);
+      addedForRoom += 1;
+      if (addedForRoom >= 2) break;
+    }
   }
 
   return result;
@@ -223,6 +265,71 @@ function computeGraphPoints(rooms: ForumRoom[]): Record<string, GraphPoint> {
       z: ((index % 7) - 3) * 14,
     };
   });
+
+  return resolveGraphCollisions(points, rooms);
+}
+
+function estimateNodeSize(room: ForumRoom): { width: number; height: number } {
+  const visibleNameLength = Math.min(room.name.length, 18);
+  return {
+    width: clampNumber(92 + visibleNameLength * 9, 128, 236),
+    height: 48,
+  };
+}
+
+function resolveGraphCollisions(
+  initialPoints: Record<string, GraphPoint>,
+  rooms: ForumRoom[]
+): Record<string, GraphPoint> {
+  const points = Object.fromEntries(
+    Object.entries(initialPoints).map(([id, point]) => [id, { ...point }])
+  ) as Record<string, GraphPoint>;
+  const roomById = new Map(rooms.map((room) => [room.id, room]));
+  const ids = Object.keys(points);
+  const padding = 16;
+
+  for (let iteration = 0; iteration < 90; iteration += 1) {
+    for (let i = 0; i < ids.length; i += 1) {
+      for (let j = i + 1; j < ids.length; j += 1) {
+        const a = points[ids[i]];
+        const b = points[ids[j]];
+        const aRoom = roomById.get(a.id);
+        const bRoom = roomById.get(b.id);
+        if (!aRoom || !bRoom) continue;
+
+        const aSize = estimateNodeSize(aRoom);
+        const bSize = estimateNodeSize(bRoom);
+        const minX = (aSize.width + bSize.width) / 2 + padding;
+        const minY = (aSize.height + bSize.height) / 2 + padding;
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const overlapX = minX - Math.abs(dx);
+        const overlapY = minY - Math.abs(dy);
+
+        if (overlapX <= 0 || overlapY <= 0) continue;
+
+        if (overlapX < overlapY) {
+          const push = overlapX / 2 + 0.5;
+          const direction = dx >= 0 ? 1 : -1;
+          a.x -= push * direction;
+          b.x += push * direction;
+        } else {
+          const push = overlapY / 2 + 0.5;
+          const direction = dy >= 0 ? 1 : -1;
+          a.y -= push * direction;
+          b.y += push * direction;
+        }
+      }
+    }
+
+    for (const id of ids) {
+      const room = roomById.get(id);
+      if (!room) continue;
+      const size = estimateNodeSize(room);
+      points[id].x = clampNumber(points[id].x, size.width / 2 + 24, GRAPH_WIDTH - size.width / 2 - 24);
+      points[id].y = clampNumber(points[id].y, size.height / 2 + 24, GRAPH_HEIGHT - size.height / 2 - 24);
+    }
+  }
 
   return points;
 }
