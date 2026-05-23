@@ -8,6 +8,7 @@ import {
   useState,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
+  type WheelEvent as ReactWheelEvent,
 } from "react";
 import Link from "next/link";
 import {
@@ -16,8 +17,10 @@ import {
   Move,
   Plus,
   RotateCcw,
+  Sparkles,
   Users,
   X,
+  Zap,
 } from "lucide-react";
 import type { ForumRoom } from "@/lib/mock-forum";
 import { ForumRoomIcon } from "@/components/community/forum-room-icon";
@@ -78,6 +81,22 @@ const MAP_ZOOM_MIN = 0.72;
 const MAP_ZOOM_MAX = 1.8;
 const MAP_ZOOM_STEP = 0.12;
 const FORUM_MAP_LAYOUT_STORAGE_KEY = "edumatch-forum-graph-layout-v3";
+
+type ZoomDetailLevel = "overview" | "compact" | "standard" | "detail";
+
+const ZOOM_LEVEL_LABELS: Record<ZoomDetailLevel, string> = {
+  overview: "全体",
+  compact: "概要",
+  standard: "標準",
+  detail: "詳細",
+};
+
+function getZoomDetailLevel(scale: number): ZoomDetailLevel {
+  if (scale < 0.88) return "overview";
+  if (scale < 1.08) return "compact";
+  if (scale < 1.42) return "standard";
+  return "detail";
+}
 
 const SEMANTIC_KEYWORD_GROUPS = [
   ["ai", "ＡＩ", "生成ai", "人工知能", "aiツール", "aiリテラシー", "機械学習"],
@@ -356,12 +375,16 @@ function GraphEdges({
   offsets,
   connections,
   hoveredId,
+  detailLevel,
 }: {
   points: Record<string, GraphPoint>;
   offsets: Record<string, DragOffset>;
   connections: BubbleConnection[];
   hoveredId: string | null;
+  detailLevel: ZoomDetailLevel;
 }) {
+  const baseOpacity = detailLevel === "overview" ? 0.08 : detailLevel === "compact" ? 0.12 : detailLevel === "standard" ? 0.16 : 0.22;
+  const baseWidth = detailLevel === "overview" ? 0.55 : detailLevel === "compact" ? 0.7 : detailLevel === "standard" ? 0.85 : 1;
   return (
     <svg
       className="pointer-events-none absolute inset-0 h-full w-full"
@@ -397,8 +420,8 @@ function GraphEdges({
             x2={x2}
             y2={y2}
             stroke={highlighted ? "rgb(15 23 42)" : "rgb(100 116 139)"}
-            strokeOpacity={highlighted ? 0.34 : 0.16}
-            strokeWidth={highlighted ? 1.4 : 0.8}
+            strokeOpacity={highlighted ? Math.min(baseOpacity + 0.22, 0.5) : baseOpacity}
+            strokeWidth={highlighted ? 1.4 * baseWidth : 0.8 * baseWidth}
             vectorEffect="non-scaling-stroke"
             className="transition-all duration-300"
           />
@@ -415,6 +438,7 @@ function GraphNode({
   isLinked,
   isDimmed,
   isDragging,
+  detailLevel,
   onHover,
   onDragStart,
   onDragMove,
@@ -427,6 +451,7 @@ function GraphNode({
   isLinked: boolean;
   isDimmed: boolean;
   isDragging: boolean;
+  detailLevel: ZoomDetailLevel;
   onHover: (id: string | null) => void;
   onDragStart: (id: string, event: ReactPointerEvent<HTMLAnchorElement>) => void;
   onDragMove: (event: ReactPointerEvent<HTMLAnchorElement>) => void;
@@ -434,6 +459,10 @@ function GraphNode({
   onOpenAttempt: (event: ReactMouseEvent<HTMLAnchorElement>) => void;
 }) {
   const active = isRoomActive(room.lastPostedAt);
+  const isOverview = detailLevel === "overview";
+  const isCompact = detailLevel === "compact";
+  const isDetail = detailLevel === "detail";
+  const iconSize = isOverview ? 13 : isCompact ? 14 : 15;
 
   return (
     <Link
@@ -450,13 +479,15 @@ function GraphNode({
       onBlur={() => onHover(null)}
       onClick={onOpenAttempt}
       className={[
-        "group absolute inline-flex cursor-grab touch-none select-none items-center gap-2 rounded-full outline-none active:cursor-grabbing",
-        "border border-slate-200/80 bg-white/82 px-2.5 py-1.5 text-left shadow-[0_10px_28px_rgba(15,23,42,0.08)] backdrop-blur-xl",
-        "transition-[opacity,filter,box-shadow,border-color,background-color] duration-300",
-        "hover:border-white hover:bg-white hover:shadow-[0_18px_44px_rgba(15,23,42,0.14)]",
+        "group absolute cursor-grab touch-none select-none outline-none active:cursor-grabbing",
+        "transition-[opacity,filter,box-shadow,border-color,background-color,padding] duration-300",
         "focus-visible:ring-2 focus-visible:ring-slate-900/20",
+        isOverview
+          ? "inline-flex items-center justify-center"
+          : "inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-white/82 text-left shadow-[0_10px_28px_rgba(15,23,42,0.08)] backdrop-blur-xl hover:border-white hover:bg-white hover:shadow-[0_18px_44px_rgba(15,23,42,0.14)]",
+        !isOverview && (isCompact ? "px-2 py-1" : isDetail ? "max-w-[280px] px-3 py-2.5" : "px-2.5 py-1.5"),
         isDimmed ? "opacity-35 blur-[0.2px]" : "opacity-100",
-        isLinked || isDragging ? "border-white bg-white shadow-[0_20px_52px_rgba(15,23,42,0.16)]" : "",
+        !isOverview && (isLinked || isDragging) ? "border-white bg-white shadow-[0_20px_52px_rgba(15,23,42,0.16)]" : "",
       ].join(" ")}
       style={{
         left: point.x,
@@ -465,62 +496,100 @@ function GraphNode({
         zIndex: isDragging ? 50 : isLinked ? 30 : 20,
       }}
     >
+      {!isOverview && (
+        <span
+          className={[
+            "absolute left-0 top-0 rounded-full transition-all duration-300",
+            isLinked || isDragging ? "opacity-100" : "opacity-0",
+          ].join(" ")}
+          style={{
+            width: 64,
+            height: 64,
+            transform: "translate(-50%, -50%)",
+            background: "radial-gradient(circle, rgba(15,23,42,0.16), transparent 62%)",
+          }}
+          aria-hidden
+        />
+      )}
       <span
         className={[
-          "absolute left-0 top-0 rounded-full bg-[url(#forum-node-glow)]",
-          "transition-all duration-300",
-          isLinked || isDragging ? "opacity-100" : "opacity-0",
-        ].join(" ")}
-        style={{
-          width: 64,
-          height: 64,
-          transform: "translate(-50%, -50%)",
-          background: "radial-gradient(circle, rgba(15,23,42,0.16), transparent 62%)",
-        }}
-        aria-hidden
-      />
-      <span
-        className={[
-          "relative grid h-7 w-7 shrink-0 place-items-center rounded-full border shadow-sm transition-all duration-300",
+          "relative grid shrink-0 place-items-center rounded-full border shadow-sm transition-all duration-300",
+          isOverview ? "h-8 w-8" : isCompact ? "h-6 w-6" : "h-7 w-7",
           active ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-slate-50 text-slate-700",
-          isLinked || isDragging
+          isLinked || isDragging || isOverview
             ? "shadow-[0_0_0_5px_rgba(15,23,42,0.06)]"
             : "group-hover:shadow-[0_0_0_5px_rgba(15,23,42,0.05)]",
         ].join(" ")}
       >
-        <ForumRoomIcon roomId={room.id} size={15} />
+        <ForumRoomIcon roomId={room.id} size={iconSize} />
         {active && (
           <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border border-white bg-emerald-500" />
         )}
       </span>
-      <span className="flex max-w-[172px] flex-col gap-0.5">
-        <span className="truncate text-xs font-semibold leading-tight tracking-[-0.015em] text-slate-800 group-hover:text-slate-950">
+
+      {!isOverview && (
+        <span className={isDetail ? "flex min-w-0 max-w-[220px] flex-col gap-1.5" : "flex max-w-[172px] flex-col gap-0.5"}>
+          <span className={[
+            "truncate font-semibold leading-tight tracking-[-0.015em] text-slate-800 group-hover:text-slate-950",
+            isCompact ? "text-[11px]" : isDetail ? "text-sm" : "text-xs",
+          ].join(" ")}>
+            {room.name}
+          </span>
+
+          {!isCompact && (
+            <span className="flex flex-wrap items-center gap-2 text-[10px] leading-none text-slate-400">
+              <span className="inline-flex items-center gap-0.5">
+                <MessageSquare className="h-2.5 w-2.5" />
+                {room.postCount}
+              </span>
+              <span className="inline-flex items-center gap-0.5">
+                <Users className="h-2.5 w-2.5" />
+                {room.participantCount}
+              </span>
+              {isDetail && room.aiDiscussion && (
+                <span className="inline-flex items-center gap-0.5 text-violet-600">
+                  <Zap className="h-2.5 w-2.5" />
+                  AI
+                </span>
+              )}
+              {isDetail && room.aiWeeklyTopicEnabled && (
+                <span className="inline-flex items-center gap-0.5 text-sky-600">
+                  <Sparkles className="h-2.5 w-2.5" />
+                  週次お題
+                </span>
+              )}
+            </span>
+          )}
+
+          {isDetail && (
+            <span className="text-[11px] leading-5 text-slate-500 line-clamp-2">
+              {room.weeklyTopic || room.description}
+            </span>
+          )}
+        </span>
+      )}
+
+      {isOverview && (
+        <span className="pointer-events-none absolute left-1/2 top-[calc(100%+6px)] max-w-[140px] -translate-x-1/2 truncate text-[10px] font-medium text-slate-500 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
           {room.name}
         </span>
-        <span className="flex items-center gap-2 text-[10px] leading-none text-slate-400">
-          <span className="inline-flex items-center gap-0.5">
-            <MessageSquare className="h-2.5 w-2.5" />
+      )}
+
+      {!isDetail && !isOverview && (
+        <span className="absolute left-1/2 top-[calc(100%+8px)] hidden min-w-max -translate-x-1/2 rounded-xl border border-white/80 bg-white/95 px-3 py-2 text-[11px] text-slate-500 shadow-[0_20px_50px_rgba(15,23,42,0.15)] backdrop-blur-xl group-hover:block">
+          <span className="mb-1 block max-w-[220px] text-xs font-semibold text-slate-950 line-clamp-1">
+            {room.weeklyTopic || room.description}
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <MessageSquare className="h-3 w-3" />
             {room.postCount}
           </span>
-          <span className="inline-flex items-center gap-0.5">
-            <Users className="h-2.5 w-2.5" />
+          <span className="ml-3 inline-flex items-center gap-1">
+            <Users className="h-3 w-3" />
             {room.participantCount}
           </span>
         </span>
-      </span>
-      <span className="absolute left-1/2 top-[calc(100%+8px)] hidden min-w-max -translate-x-1/2 rounded-xl border border-white/80 bg-white/95 px-3 py-2 text-[11px] text-slate-500 shadow-[0_20px_50px_rgba(15,23,42,0.15)] backdrop-blur-xl group-hover:block">
-        <span className="mb-1 block max-w-[220px] text-xs font-semibold text-slate-950 line-clamp-1">
-          {room.weeklyTopic || room.description}
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <MessageSquare className="h-3 w-3" />
-          {room.postCount}
-        </span>
-        <span className="ml-3 inline-flex items-center gap-1">
-          <Users className="h-3 w-3" />
-          {room.participantCount}
-        </span>
-      </span>
+      )}
     </Link>
   );
 }
@@ -532,7 +601,7 @@ function OnboardingHint({ onClose }: { onClose: () => void }) {
       aria-live="polite"
       className="absolute bottom-5 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-full border border-white/70 bg-white/85 px-5 py-2 text-xs text-slate-600 shadow-[0_18px_40px_rgba(15,23,42,0.12)] backdrop-blur-xl"
     >
-      <span>ノードをドラッグで移動、背景ドラッグでパン、クリックで部屋へ移動</span>
+      <span>スクロールで拡大すると詳細が増えます。ノードをドラッグで移動、背景ドラッグでパン</span>
       <button
         type="button"
         aria-label="ヒントを閉じる"
@@ -560,6 +629,7 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
   const displayRooms = useMemo(() => sortRoomsForGraph(rooms), [rooms]);
   const points = useMemo(() => computeGraphPoints(displayRooms), [displayRooms]);
   const connections = useMemo(() => computeRoomConnections(displayRooms), [displayRooms]);
+  const detailLevel = useMemo(() => getZoomDetailLevel(scale), [scale]);
   const connectedIds = useMemo(() => {
     if (!hoveredId) return new Set<string>();
     return new Set(
@@ -588,9 +658,18 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
     localStorage.setItem(FORUM_MAP_LAYOUT_STORAGE_KEY, JSON.stringify(dragOffsets));
   }, [dragOffsets]);
 
-  const applyZoom = (next: number) => {
+  const applyZoom = useCallback((next: number) => {
     setScale(Math.min(MAP_ZOOM_MAX, Math.max(MAP_ZOOM_MIN, +next.toFixed(2))));
-  };
+  }, []);
+
+  const handleWheelZoom = useCallback((event: ReactWheelEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const delta = event.deltaY > 0 ? -MAP_ZOOM_STEP : MAP_ZOOM_STEP;
+    setScale((prev) => {
+      const next = Math.min(MAP_ZOOM_MAX, Math.max(MAP_ZOOM_MIN, +(prev + delta).toFixed(2)));
+      return next;
+    });
+  }, []);
 
   const handleNodeDragStart = useCallback((
     id: string,
@@ -713,11 +792,16 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
 
       <div
         className="relative h-[620px] overflow-hidden rounded-[34px] border border-slate-200/70 bg-[#fbfbfa] shadow-[0_28px_80px_rgba(15,23,42,0.08)]"
+        onWheel={handleWheelZoom}
       >
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(15,23,42,0.05),transparent_58%)]" />
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(15,23,42,0.06)_1px,transparent_0)] [background-size:26px_26px] opacity-30" />
 
-        <div className="absolute right-4 top-4 z-40 flex items-center gap-1 rounded-full border border-slate-200/80 bg-white/85 p-1 shadow-[0_12px_34px_rgba(15,23,42,0.10)] backdrop-blur-xl">
+        <div className="absolute right-4 top-4 z-40 flex items-center gap-2 rounded-full border border-slate-200/80 bg-white/85 p-1 pl-3 shadow-[0_12px_34px_rgba(15,23,42,0.10)] backdrop-blur-xl">
+          <span className="text-[10px] font-medium tabular-nums text-slate-400">
+            {ZOOM_LEVEL_LABELS[detailLevel]}
+          </span>
+          <div className="flex items-center gap-1">
           <button
             type="button"
             aria-label="配置をリセット"
@@ -744,6 +828,7 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
           >
             <Plus className="h-4 w-4" />
           </button>
+          </div>
         </div>
 
         <div
@@ -765,6 +850,7 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
             offsets={dragOffsets}
             connections={connections}
             hoveredId={hoveredId}
+            detailLevel={detailLevel}
           />
           {displayRooms.map((room) => {
             const point = points[room.id];
@@ -779,6 +865,7 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
                 isLinked={isConnectedToHover || hoveredId === room.id}
                 isDimmed={!!hoveredId && !isConnectedToHover && hoveredId !== room.id}
                 isDragging={draggingId === room.id}
+                detailLevel={detailLevel}
                 onHover={setHoveredId}
                 onDragStart={handleNodeDragStart}
                 onDragMove={handleNodeDragMove}
@@ -791,7 +878,7 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
 
         <div className="absolute bottom-4 left-4 z-30 flex items-center gap-2 rounded-full border border-slate-200/80 bg-white/85 px-3 py-2 text-[11px] text-slate-500 shadow-sm backdrop-blur-xl">
           <Move className="h-3.5 w-3.5" />
-          ノードをドラッグ / 背景をドラッグ / ホバーで関連を強調
+          スクロールで拡大すると詳細が増えます / ノードをドラッグ / 背景をドラッグ
         </div>
 
         {showHint && <OnboardingHint onClose={dismissHint} />}
