@@ -54,54 +54,40 @@ function computePositions(rooms: ForumRoom[], isMobile: boolean): BubblePosition
     }
   }
 
-  // 新規ルームは関連が強い既存ルームの周辺に配置
+  // 新規ルームは関連が強い静的ルームのレーンへ割り当てて縦積み配置（重なり防止）
   const remaining = rooms.filter((r) => !usedIds.has(r.id));
-  const branchCountByAnchor = new Map<string, number>();
-  const seeded = staticMap.filter((p) => absoluteById.has(p.id)).map((p) => p.id);
+  const seededIds = staticMap.map((p) => p.id);
+  const seededRooms = seededIds
+    .map((id) => rooms.find((r) => r.id === id))
+    .filter((room): room is ForumRoom => !!room);
+  const laneIndexBySeedId = new Map(seededIds.map((id, i) => [id, i]));
+  const groups = new Map<string, ForumRoom[]>();
 
-  remaining.forEach((room, i) => {
-    const placedCandidates = rooms.filter(
-      (candidate) => candidate.id !== room.id && absoluteById.has(candidate.id)
-    );
-    const fallbackCandidates =
-      placedCandidates.length > 0
-        ? placedCandidates
-        : rooms.filter((candidate) => candidate.id !== room.id && seeded.includes(candidate.id));
-    const anchor = pickBestRelatedRoom(room, fallbackCandidates);
-    const anchorPos = anchor ? absoluteById.get(anchor.id) : null;
+  for (const room of remaining) {
+    const anchor = pickBestRelatedRoom(room, seededRooms) ?? seededRooms[0] ?? null;
+    const anchorId = anchor?.id ?? seededIds[0] ?? room.id;
+    if (!groups.has(anchorId)) groups.set(anchorId, []);
+    groups.get(anchorId)!.push(room);
+  }
 
-    let absoluteX = isMobile ? 50 : [20, 50, 80][i % 3];
-    let absoluteY = isMobile ? baseHeight + 50 + i * 100 : baseHeight + 70 + Math.floor(i / 3) * 140;
+  for (const [anchorId, groupRooms] of groups) {
+    const lane = laneIndexBySeedId.get(anchorId) ?? 0;
+    const anchorPos = absoluteById.get(anchorId);
+    const laneX = anchorPos?.x ?? (isMobile ? 50 : [18, 50, 82][lane % 3]);
+    const laneOffsetY = isMobile ? lane * 8 : lane * 24;
+    const startY = Math.max(baseHeight + (isMobile ? 48 : 96), (anchorPos?.y ?? baseHeight) + (isMobile ? 72 : 92));
+    const gapY = isMobile ? 114 : 150;
 
-    if (anchorPos && anchor) {
-      const branchIndex = branchCountByAnchor.get(anchor.id) ?? 0;
-      branchCountByAnchor.set(anchor.id, branchIndex + 1);
-
-      if (isMobile) {
-        const lateral = branchIndex % 2 === 0 ? -12 : 12;
-        const depth = 72 + Math.floor(branchIndex / 2) * 56;
-        absoluteX = clampNumber(anchorPos.x + lateral, 20, 80);
-        absoluteY = anchorPos.y + depth;
-      } else {
-        const radialPattern = [
-          { x: -16, y: 58 },
-          { x: 16, y: 58 },
-          { x: -24, y: 110 },
-          { x: 24, y: 110 },
-          { x: 0, y: 150 },
-        ];
-        const slot = radialPattern[branchIndex % radialPattern.length];
-        const extraDepth = Math.floor(branchIndex / radialPattern.length) * 68;
-        absoluteX = clampNumber(anchorPos.x + slot.x, 12, 88);
-        absoluteY = anchorPos.y + slot.y + extraDepth;
-      }
-    }
-
-    // 下限余白を確保して、カードがコンテナ外にはみ出さないようにする
-    const cappedY = Math.min(absoluteY, containerHeight - (isMobile ? 60 : 72));
-    result.push({ id: room.id, cx: absoluteX, cy: (cappedY / containerHeight) * 100 });
-    absoluteById.set(room.id, { x: absoluteX, y: cappedY });
-  });
+    groupRooms.forEach((room, index) => {
+      const absoluteX = isMobile
+        ? clampNumber(50 + (index % 2 === 0 ? -10 : 10), 24, 76)
+        : clampNumber(laneX, 14, 86);
+      const absoluteY = startY + laneOffsetY + index * gapY;
+      const cappedY = Math.min(absoluteY, containerHeight - (isMobile ? 64 : 78));
+      result.push({ id: room.id, cx: absoluteX, cy: (cappedY / containerHeight) * 100 });
+      absoluteById.set(room.id, { x: absoluteX, y: cappedY });
+    });
+  }
 
   return result;
 }
@@ -109,8 +95,15 @@ function computePositions(rooms: ForumRoom[], isMobile: boolean): BubblePosition
 function computeContainerHeight(rooms: ForumRoom[], isMobile: boolean): number {
   const staticLen = (isMobile ? BUBBLE_POSITIONS_MOBILE : BUBBLE_POSITIONS).length;
   const extra = Math.max(0, rooms.length - staticLen);
-  const extraRows = Math.ceil(extra / (isMobile ? 1 : 3));
-  return (isMobile ? 720 : 540) + extraRows * (isMobile ? 100 : 140);
+  if (extra === 0) return isMobile ? 720 : 540;
+
+  if (isMobile) {
+    return 720 + extra * 118 + 80;
+  }
+
+  const laneCount = 3;
+  const maxLaneDepth = Math.ceil(extra / laneCount);
+  return 540 + maxLaneDepth * 156 + 120;
 }
 
 function extractKeywords(text: string): Set<string> {
@@ -170,14 +163,17 @@ function computeConnections(rooms: ForumRoom[], positions: BubblePosition[]): Bu
   );
   const connected = new Set(result.flatMap((c) => [c.from, c.to]));
   const staticIds = new Set(BUBBLE_POSITIONS.map((p) => p.id));
+  const staticRooms = rooms.filter((r) => staticIds.has(r.id));
   const newRooms = rooms.filter((r) => !staticIds.has(r.id));
 
   for (const room of newRooms) {
-    const candidates = rooms.filter((other) => other.id !== room.id);
+    const candidates = staticRooms.length > 0
+      ? staticRooms
+      : rooms.filter((other) => other.id !== room.id);
     const bestRoom = pickBestRelatedRoom(room, candidates);
     let bestId = bestRoom?.id ?? null;
 
-    // 意味的に同点/弱一致しかない場合は距離の近い部屋へ繋ぐ
+    // 弱一致の場合は位置的に最も近い部屋へフォールバック
     if (!bestId) {
       const source = positions.find((p) => p.id === room.id);
       if (source) {
