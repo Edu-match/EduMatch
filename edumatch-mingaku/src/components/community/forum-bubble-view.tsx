@@ -75,8 +75,8 @@ const ROOM_TEXT_STOP_WORDS = new Set([
   "について", "から", "まで", "より", "よう", "また", "など",
 ]);
 
-const GRAPH_WIDTH = 1120;
-const GRAPH_HEIGHT = 720;
+const BASE_GRAPH_WIDTH = 1120;
+const BASE_GRAPH_HEIGHT = 720;
 const MAP_ZOOM_MIN = 0.72;
 const MAP_ZOOM_MAX = 1.8;
 const MAP_ZOOM_STEP = 0.12;
@@ -96,6 +96,38 @@ function getZoomDetailLevel(scale: number): ZoomDetailLevel {
   if (scale < 1.08) return "compact";
   if (scale < 1.42) return "standard";
   return "detail";
+}
+
+function getGraphDimensions(detailLevel: ZoomDetailLevel, roomCount: number) {
+  const levelScale =
+    detailLevel === "detail" ? 2 :
+    detailLevel === "standard" ? 1.35 :
+    detailLevel === "compact" ? 1.1 : 1;
+  const countScale = 1 + Math.max(0, roomCount - 6) * 0.05;
+  return {
+    width: Math.round(BASE_GRAPH_WIDTH * levelScale * countScale),
+    height: Math.round(BASE_GRAPH_HEIGHT * levelScale * countScale),
+  };
+}
+
+function getLayoutSpread(detailLevel: ZoomDetailLevel): number {
+  if (detailLevel === "detail") return 1.85;
+  if (detailLevel === "standard") return 1.28;
+  if (detailLevel === "compact") return 1.08;
+  return 1;
+}
+
+function spreadPointsFromCenter(
+  points: Record<string, GraphPoint>,
+  factor: number,
+  centerX: number,
+  centerY: number
+) {
+  if (factor <= 1) return;
+  for (const id of Object.keys(points)) {
+    points[id].x = centerX + (points[id].x - centerX) * factor;
+    points[id].y = centerY + (points[id].y - centerY) * factor;
+  }
 }
 
 const SEMANTIC_KEYWORD_GROUPS = [
@@ -239,10 +271,14 @@ function sortRoomsForGraph(rooms: ForumRoom[]): ForumRoom[] {
   });
 }
 
-function computeGraphPoints(rooms: ForumRoom[]): Record<string, GraphPoint> {
+function computeGraphPoints(
+  rooms: ForumRoom[],
+  graphWidth: number,
+  graphHeight: number
+): Record<string, GraphPoint> {
   const points: Record<string, GraphPoint> = {};
-  const centerX = GRAPH_WIDTH / 2;
-  const centerY = GRAPH_HEIGHT / 2;
+  const centerX = graphWidth / 2;
+  const centerY = graphHeight / 2;
   const staticRooms = rooms.filter((room) => STATIC_ROOM_IDS.includes(room.id));
   const dynamicRooms = rooms.filter((room) => !STATIC_ROOM_IDS.includes(room.id));
   const staticAngles = [-105, -38, 33, 154, 90, -168];
@@ -250,8 +286,8 @@ function computeGraphPoints(rooms: ForumRoom[]): Record<string, GraphPoint> {
   staticRooms.forEach((room, index) => {
     const order = Math.max(0, STATIC_ROOM_IDS.indexOf(room.id));
     const angle = (staticAngles[order] ?? (index / Math.max(1, staticRooms.length)) * 360) * (Math.PI / 180);
-    const radiusX = 300 + (index % 2) * 34;
-    const radiusY = 208 + (index % 3) * 22;
+    const radiusX = (graphWidth * 0.27) + (index % 2) * 34;
+    const radiusY = (graphHeight * 0.29) + (index % 3) * 22;
     points[room.id] = {
       id: room.id,
       x: centerX + Math.cos(angle) * radiusX,
@@ -273,14 +309,16 @@ function computeGraphPoints(rooms: ForumRoom[]): Record<string, GraphPoint> {
 
     const ring = Math.floor(branchIndex / 5);
     const angle = ((branchIndex % 5) / 5) * Math.PI * 2 + index * 0.37;
-    const distance = 118 + ring * 88;
+    const distance = 128 + ring * 96;
     const baseX = anchorPoint?.x ?? centerX;
     const baseY = anchorPoint?.y ?? centerY;
+    const marginX = Math.max(96, graphWidth * 0.08);
+    const marginY = Math.max(80, graphHeight * 0.08);
 
     points[room.id] = {
       id: room.id,
-      x: clampNumber(baseX + Math.cos(angle) * distance, 86, GRAPH_WIDTH - 86),
-      y: clampNumber(baseY + Math.sin(angle) * distance, 74, GRAPH_HEIGHT - 74),
+      x: clampNumber(baseX + Math.cos(angle) * distance, marginX, graphWidth - marginX),
+      y: clampNumber(baseY + Math.sin(angle) * distance, marginY, graphHeight - marginY),
       z: ((index % 7) - 3) * 14,
     };
   });
@@ -290,6 +328,7 @@ function computeGraphPoints(rooms: ForumRoom[]): Record<string, GraphPoint> {
 
 function estimateNodeSize(room: ForumRoom, detailLevel: ZoomDetailLevel): { width: number; height: number } {
   const visibleNameLength = Math.min(room.name.length, 18);
+  const topicLength = (room.weeklyTopic || room.description).length;
 
   switch (detailLevel) {
     case "overview":
@@ -297,7 +336,10 @@ function estimateNodeSize(room: ForumRoom, detailLevel: ZoomDetailLevel): { widt
     case "compact":
       return { width: clampNumber(88 + visibleNameLength * 7, 108, 168), height: 34 };
     case "detail":
-      return { width: clampNumber(150 + visibleNameLength * 8, 210, 310), height: 92 };
+      return {
+        width: clampNumber(200 + visibleNameLength * 6, 248, 288),
+        height: topicLength > 36 ? 112 : 96,
+      };
     default:
       return { width: clampNumber(96 + visibleNameLength * 9, 132, 240), height: 50 };
   }
@@ -305,15 +347,17 @@ function estimateNodeSize(room: ForumRoom, detailLevel: ZoomDetailLevel): { widt
 
 function collisionPaddingForLevel(detailLevel: ZoomDetailLevel): number {
   if (detailLevel === "overview") return 18;
-  if (detailLevel === "compact") return 26;
-  if (detailLevel === "standard") return 34;
-  return 48;
+  if (detailLevel === "compact") return 28;
+  if (detailLevel === "standard") return 38;
+  return 64;
 }
 
 function resolveGraphCollisions(
   initialPoints: Record<string, GraphPoint>,
   rooms: ForumRoom[],
-  detailLevel: ZoomDetailLevel
+  detailLevel: ZoomDetailLevel,
+  graphWidth: number,
+  graphHeight: number
 ): Record<string, GraphPoint> {
   const points = Object.fromEntries(
     Object.entries(initialPoints).map(([id, point]) => [id, { ...point }])
@@ -321,7 +365,9 @@ function resolveGraphCollisions(
   const roomById = new Map(rooms.map((room) => [room.id, room]));
   const ids = Object.keys(points);
   const padding = collisionPaddingForLevel(detailLevel);
-  const iterations = detailLevel === "detail" ? 120 : 90;
+  const iterations = detailLevel === "detail" ? 200 : detailLevel === "standard" ? 120 : 90;
+
+  spreadPointsFromCenter(points, getLayoutSpread(detailLevel), graphWidth / 2, graphHeight / 2);
 
   for (let iteration = 0; iteration < iterations; iteration += 1) {
     for (let i = 0; i < ids.length; i += 1) {
@@ -343,17 +389,16 @@ function resolveGraphCollisions(
 
         if (overlapX <= 0 || overlapY <= 0) continue;
 
-        if (overlapX < overlapY) {
-          const push = overlapX / 2 + 1;
-          const direction = dx >= 0 ? 1 : -1;
-          a.x -= push * direction;
-          b.x += push * direction;
-        } else {
-          const push = overlapY / 2 + 1;
-          const direction = dy >= 0 ? 1 : -1;
-          a.y -= push * direction;
-          b.y += push * direction;
-        }
+        const dist = Math.hypot(dx, dy) || 1;
+        const nx = dx / dist;
+        const ny = dy / dist;
+        const overlap = Math.max(overlapX, overlapY);
+        const push = overlap / 2 + (detailLevel === "detail" ? 2 : 1);
+
+        a.x -= nx * push;
+        a.y -= ny * push;
+        b.x += nx * push;
+        b.y += ny * push;
       }
     }
 
@@ -361,8 +406,9 @@ function resolveGraphCollisions(
       const room = roomById.get(id);
       if (!room) continue;
       const size = estimateNodeSize(room, detailLevel);
-      points[id].x = clampNumber(points[id].x, size.width / 2 + 28, GRAPH_WIDTH - size.width / 2 - 28);
-      points[id].y = clampNumber(points[id].y, size.height / 2 + 28, GRAPH_HEIGHT - size.height / 2 - 28);
+      const margin = Math.max(32, padding * 0.5);
+      points[id].x = clampNumber(points[id].x, size.width / 2 + margin, graphWidth - size.width / 2 - margin);
+      points[id].y = clampNumber(points[id].y, size.height / 2 + margin, graphHeight - size.height / 2 - margin);
     }
   }
 
@@ -392,12 +438,16 @@ function GraphEdges({
   connections,
   hoveredId,
   detailLevel,
+  graphWidth,
+  graphHeight,
 }: {
   points: Record<string, GraphPoint>;
   offsets: Record<string, DragOffset>;
   connections: BubbleConnection[];
   hoveredId: string | null;
   detailLevel: ZoomDetailLevel;
+  graphWidth: number;
+  graphHeight: number;
 }) {
   const baseOpacity =
     detailLevel === "overview" ? 0.34 :
@@ -412,9 +462,9 @@ function GraphEdges({
   return (
     <svg
       className="pointer-events-none absolute inset-0 h-full w-full"
-      width={GRAPH_WIDTH}
-      height={GRAPH_HEIGHT}
-      viewBox={`0 0 ${GRAPH_WIDTH} ${GRAPH_HEIGHT}`}
+      width={graphWidth}
+      height={graphHeight}
+      viewBox={`0 0 ${graphWidth} ${graphHeight}`}
       aria-hidden="true"
     >
       <defs>
@@ -509,7 +559,7 @@ function GraphNode({
         isOverview
           ? "inline-flex items-center justify-center"
           : "inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-white/82 text-left shadow-[0_10px_28px_rgba(15,23,42,0.08)] backdrop-blur-xl hover:border-white hover:bg-white hover:shadow-[0_18px_44px_rgba(15,23,42,0.14)]",
-        !isOverview && (isCompact ? "px-2 py-1" : isDetail ? "max-w-[280px] px-3 py-2.5" : "px-2.5 py-1.5"),
+        !isOverview && (isCompact ? "px-2 py-1" : isDetail ? "w-[248px] max-w-[248px] px-3 py-2" : "px-2.5 py-1.5"),
         isDimmed ? "opacity-35 blur-[0.2px]" : "opacity-100",
         !isOverview && (isLinked || isDragging) ? "border-white bg-white shadow-[0_20px_52px_rgba(15,23,42,0.16)]" : "",
       ].join(" ")}
@@ -552,7 +602,7 @@ function GraphNode({
       </span>
 
       {!isOverview && (
-        <span className={isDetail ? "flex min-w-0 max-w-[220px] flex-col gap-1.5" : "flex max-w-[172px] flex-col gap-0.5"}>
+        <span className={isDetail ? "flex min-w-0 flex-1 flex-col gap-1" : "flex max-w-[172px] flex-col gap-0.5"}>
           <span className={[
             "truncate font-semibold leading-tight tracking-[-0.015em] text-slate-800 group-hover:text-slate-950",
             isCompact ? "text-[11px]" : isDetail ? "text-sm" : "text-xs",
@@ -651,11 +701,24 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
   const skipNextClickRef = useRef(false);
 
   const displayRooms = useMemo(() => sortRoomsForGraph(rooms), [rooms]);
-  const rawPoints = useMemo(() => computeGraphPoints(displayRooms), [displayRooms]);
   const detailLevel = useMemo(() => getZoomDetailLevel(scale), [scale]);
+  const graphDimensions = useMemo(
+    () => getGraphDimensions(detailLevel, displayRooms.length),
+    [detailLevel, displayRooms.length]
+  );
+  const rawPoints = useMemo(
+    () => computeGraphPoints(displayRooms, graphDimensions.width, graphDimensions.height),
+    [displayRooms, graphDimensions.height, graphDimensions.width]
+  );
   const points = useMemo(
-    () => resolveGraphCollisions(rawPoints, displayRooms, detailLevel),
-    [rawPoints, displayRooms, detailLevel]
+    () => resolveGraphCollisions(
+      rawPoints,
+      displayRooms,
+      detailLevel,
+      graphDimensions.width,
+      graphDimensions.height
+    ),
+    [rawPoints, displayRooms, detailLevel, graphDimensions.height, graphDimensions.width]
   );
   const connections = useMemo(() => computeRoomConnections(displayRooms), [displayRooms]);
   const connectedIds = useMemo(() => {
@@ -866,11 +929,11 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
           onPointerUp={handleGraphPanEnd}
           onPointerCancel={handleGraphPanEnd}
           style={{
-            width: GRAPH_WIDTH,
-            height: GRAPH_HEIGHT,
+            width: graphDimensions.width,
+            height: graphDimensions.height,
             transform: `translate(calc(-50% + ${pan.x}px), calc(-50% + ${pan.y}px)) scale(${scale})`,
             transformOrigin: "center center",
-            transition: isPanning || draggingId ? "none" : "transform 360ms cubic-bezier(.2,.8,.2,1)",
+            transition: isPanning || draggingId ? "none" : "transform 420ms cubic-bezier(.2,.8,.2,1)",
           }}
         >
           <GraphEdges
@@ -879,6 +942,8 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
             connections={connections}
             hoveredId={hoveredId}
             detailLevel={detailLevel}
+            graphWidth={graphDimensions.width}
+            graphHeight={graphDimensions.height}
           />
           {displayRooms.map((room) => {
             const point = points[room.id];
