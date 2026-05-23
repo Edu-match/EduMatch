@@ -11,7 +11,6 @@ import {
 } from "react";
 import Link from "next/link";
 import {
-  Box,
   MessageSquare,
   Minus,
   Move,
@@ -56,11 +55,6 @@ type PanSession = {
   originX: number;
   originY: number;
   pointerId: number;
-};
-
-type ViewTilt = {
-  rotateX: number;
-  rotateY: number;
 };
 
 const STATIC_ROOM_IDS = [
@@ -333,7 +327,7 @@ function GraphNode({
   onOpenAttempt: (event: ReactMouseEvent<HTMLAnchorElement>) => void;
 }) {
   const active = isRoomActive(room.lastPostedAt);
-  const nodeSize = active || room.postCount > 0 ? 13 : 10;
+  const nodeSize = active || room.postCount > 0 ? 24 : 20;
 
   return (
     <Link
@@ -357,7 +351,7 @@ function GraphNode({
       style={{
         left: point.x,
         top: point.y,
-        transform: `translate3d(${offset.x}px, ${offset.y}px, ${isDragging ? 90 : point.z}px)`,
+        transform: `translate(${offset.x}px, ${offset.y}px)`,
         zIndex: isDragging ? 50 : isLinked ? 30 : 20,
       }}
     >
@@ -389,19 +383,16 @@ function GraphNode({
           transform: "translate(-50%, -50%)",
         }}
       >
-        {active && <span className="h-1.5 w-1.5 rounded-full bg-white/95" />}
+        <ForumRoomIcon roomId={room.id} size={active || room.postCount > 0 ? 13 : 11} />
       </span>
       <span
         className={[
-          "absolute left-3 top-1/2 flex min-w-max -translate-y-1/2 items-center gap-1.5 rounded-full px-2 py-1",
-          "text-[11px] font-medium leading-none tracking-[-0.01em] text-slate-700 transition-all duration-300",
+          "absolute left-5 top-1/2 flex min-w-max -translate-y-1/2 items-center gap-1.5 rounded-full px-2.5 py-1.5",
+          "border border-transparent text-xs font-medium leading-none tracking-[-0.01em] text-slate-700 transition-all duration-300",
           "group-hover:bg-white/90 group-hover:text-slate-950 group-hover:shadow-[0_12px_30px_rgba(15,23,42,0.10)]",
-          isLinked || isDragging ? "bg-white/95 text-slate-950 shadow-[0_12px_30px_rgba(15,23,42,0.12)]" : "",
+          isLinked || isDragging ? "border-white/80 bg-white/95 text-slate-950 shadow-[0_12px_30px_rgba(15,23,42,0.12)]" : "",
         ].join(" ")}
       >
-        <span className="hidden rounded-full bg-slate-100 p-0.5 group-hover:inline-flex">
-          <ForumRoomIcon roomId={room.id} size={12} />
-        </span>
         <span>{room.name}</span>
       </span>
       <span className="absolute left-3 top-[calc(50%+16px)] hidden min-w-max rounded-xl border border-white/80 bg-white/95 px-3 py-2 text-[11px] text-slate-500 shadow-[0_20px_50px_rgba(15,23,42,0.15)] backdrop-blur-xl group-hover:block">
@@ -449,8 +440,6 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
   const [dragOffsets, setDragOffsets] = useState<Record<string, DragOffset>>(() => readSavedLayout());
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [isPanning, setIsPanning] = useState(false);
-  const [viewTilt, setViewTilt] = useState<ViewTilt>({ rotateX: 0, rotateY: 0 });
-  const [perspectiveEnabled, setPerspectiveEnabled] = useState(true);
   const dragSessionRef = useRef<DragSession | null>(null);
   const panSessionRef = useRef<PanSession | null>(null);
   const skipNextClickRef = useRef(false);
@@ -590,24 +579,8 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
   const handleResetLayout = useCallback(() => {
     setDragOffsets({});
     setPan({ x: 0, y: 0 });
-    setViewTilt({ rotateX: 0, rotateY: 0 });
     setScale(0.92);
   }, []);
-
-  const handlePerspectiveMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!perspectiveEnabled || draggingId || panSessionRef.current) return;
-    const rect = event.currentTarget.getBoundingClientRect();
-    const px = (event.clientX - rect.left) / rect.width - 0.5;
-    const py = (event.clientY - rect.top) / rect.height - 0.5;
-    setViewTilt({
-      rotateX: Number((-py * 14).toFixed(2)),
-      rotateY: Number((px * 18).toFixed(2)),
-    });
-  }, [draggingId, perspectiveEnabled]);
-
-  const handlePerspectiveLeave = useCallback(() => {
-    if (!draggingId) setViewTilt({ rotateX: 0, rotateY: 0 });
-  }, [draggingId]);
 
   const dismissHint = () => {
     localStorage.setItem("forum_bubble_hint_v1", "1");
@@ -618,41 +591,20 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
     <section className="space-y-5">
       <div className="mx-auto max-w-2xl text-center">
         <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
-          Graph View
+          Room Graph
         </p>
         <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-3xl">
           話題のつながりを、グラフで探索する
         </h2>
-        <p className="mt-3 text-sm leading-7 text-slate-500">
-          Obsidianのグラフビューのように、部屋を小さなノードとして表示します。点はドラッグでき、背景ドラッグで視点を移動できます。
-        </p>
       </div>
 
       <div
         className="relative h-[620px] overflow-hidden rounded-[34px] border border-slate-200/70 bg-[#fbfbfa] shadow-[0_28px_80px_rgba(15,23,42,0.08)]"
-        onPointerMove={handlePerspectiveMove}
-        onPointerLeave={handlePerspectiveLeave}
-        style={{ perspective: 950 }}
       >
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(15,23,42,0.05),transparent_58%)]" />
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(15,23,42,0.06)_1px,transparent_0)] [background-size:26px_26px] opacity-30" />
 
         <div className="absolute right-4 top-4 z-40 flex items-center gap-1 rounded-full border border-slate-200/80 bg-white/85 p-1 shadow-[0_12px_34px_rgba(15,23,42,0.10)] backdrop-blur-xl">
-          <button
-            type="button"
-            aria-label="3D視点を切り替え"
-            aria-pressed={perspectiveEnabled}
-            className={[
-              "grid h-8 w-8 place-items-center rounded-full transition-colors",
-              perspectiveEnabled ? "bg-slate-900 text-white" : "text-slate-500 hover:bg-slate-100",
-            ].join(" ")}
-            onClick={() => {
-              setPerspectiveEnabled((value) => !value);
-              setViewTilt({ rotateX: 0, rotateY: 0 });
-            }}
-          >
-            <Box className="h-4 w-4" />
-          </button>
           <button
             type="button"
             aria-label="配置をリセット"
@@ -690,9 +642,8 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
           style={{
             width: GRAPH_WIDTH,
             height: GRAPH_HEIGHT,
-            transform: `translate(calc(-50% + ${pan.x}px), calc(-50% + ${pan.y}px)) rotateX(${perspectiveEnabled ? viewTilt.rotateX : 0}deg) rotateY(${perspectiveEnabled ? viewTilt.rotateY : 0}deg) scale(${scale})`,
+            transform: `translate(calc(-50% + ${pan.x}px), calc(-50% + ${pan.y}px)) scale(${scale})`,
             transformOrigin: "center center",
-            transformStyle: "preserve-3d",
             transition: isPanning || draggingId ? "none" : "transform 360ms cubic-bezier(.2,.8,.2,1)",
           }}
         >
