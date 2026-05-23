@@ -3,7 +3,6 @@
 import {
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -11,7 +10,16 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import Link from "next/link";
-import { ArrowUpRight, Box, MessageSquare, Minus, Move, Plus, RotateCcw, Sparkles, Users, X } from "lucide-react";
+import {
+  Box,
+  MessageSquare,
+  Minus,
+  Move,
+  Plus,
+  RotateCcw,
+  Users,
+  X,
+} from "lucide-react";
 import type { ForumRoom } from "@/lib/mock-forum";
 import { ForumRoomIcon } from "@/components/community/forum-room-icon";
 import {
@@ -20,11 +28,11 @@ import {
   type BubbleConnection,
 } from "@/components/community/forum-bubble-map";
 
-type NodeRect = {
+type GraphPoint = {
+  id: string;
   x: number;
   y: number;
-  width: number;
-  height: number;
+  z: number;
 };
 
 type DragOffset = {
@@ -39,6 +47,14 @@ type DragSession = {
   originX: number;
   originY: number;
   moved: boolean;
+  pointerId: number;
+};
+
+type PanSession = {
+  startX: number;
+  startY: number;
+  originX: number;
+  originY: number;
   pointerId: number;
 };
 
@@ -62,26 +78,15 @@ const ROOM_TEXT_STOP_WORDS = new Set([
   "について", "から", "まで", "より", "よう", "また", "など",
 ]);
 
-const MAP_ZOOM_MIN = 1;
-const MAP_ZOOM_MAX = 1.35;
+const GRAPH_WIDTH = 1120;
+const GRAPH_HEIGHT = 720;
+const MAP_ZOOM_MIN = 0.72;
+const MAP_ZOOM_MAX = 1.8;
 const MAP_ZOOM_STEP = 0.12;
-const FORUM_MAP_LAYOUT_STORAGE_KEY = "edumatch-forum-map-layout-v1";
+const FORUM_MAP_LAYOUT_STORAGE_KEY = "edumatch-forum-graph-layout-v2";
 
-function readSavedLayout(): Record<string, DragOffset> {
-  if (typeof window === "undefined") return {};
-  try {
-    const raw = localStorage.getItem(FORUM_MAP_LAYOUT_STORAGE_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw) as Record<string, DragOffset>;
-    if (!parsed || typeof parsed !== "object") return {};
-    return Object.fromEntries(
-      Object.entries(parsed).filter(([, value]) =>
-        typeof value?.x === "number" && typeof value?.y === "number"
-      )
-    );
-  } catch {
-    return {};
-  }
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
 }
 
 function normalizeRoomText(text: string): string {
@@ -167,7 +172,7 @@ function computeRoomConnections(rooms: ForumRoom[]): BubbleConnection[] {
   return result;
 }
 
-function sortRoomsForConstellation(rooms: ForumRoom[]): ForumRoom[] {
+function sortRoomsForGraph(rooms: ForumRoom[]): ForumRoom[] {
   const staticOrder = new Map(STATIC_ROOM_IDS.map((id, index) => [id, index]));
   return [...rooms].sort((a, b) => {
     const aStatic = staticOrder.get(a.id);
@@ -179,14 +184,136 @@ function sortRoomsForConstellation(rooms: ForumRoom[]): ForumRoom[] {
   });
 }
 
-function TopicCard({
+function computeGraphPoints(rooms: ForumRoom[]): Record<string, GraphPoint> {
+  const points: Record<string, GraphPoint> = {};
+  const centerX = GRAPH_WIDTH / 2;
+  const centerY = GRAPH_HEIGHT / 2;
+  const staticRooms = rooms.filter((room) => STATIC_ROOM_IDS.includes(room.id));
+  const dynamicRooms = rooms.filter((room) => !STATIC_ROOM_IDS.includes(room.id));
+  const staticAngles = [-105, -38, 33, 154, 90, -168];
+
+  staticRooms.forEach((room, index) => {
+    const order = Math.max(0, STATIC_ROOM_IDS.indexOf(room.id));
+    const angle = (staticAngles[order] ?? (index / Math.max(1, staticRooms.length)) * 360) * (Math.PI / 180);
+    const radiusX = 300 + (index % 2) * 34;
+    const radiusY = 208 + (index % 3) * 22;
+    points[room.id] = {
+      id: room.id,
+      x: centerX + Math.cos(angle) * radiusX,
+      y: centerY + Math.sin(angle) * radiusY,
+      z: (index % 5 - 2) * 18,
+    };
+  });
+
+  if (staticRooms.length === 0 && rooms[0]) {
+    points[rooms[0].id] = { id: rooms[0].id, x: centerX, y: centerY, z: 20 };
+  }
+
+  const branchCountByAnchor = new Map<string, number>();
+  dynamicRooms.forEach((room, index) => {
+    const anchor = pickBestRelatedRoom(room, staticRooms.length > 0 ? staticRooms : rooms.filter((other) => other.id !== room.id));
+    const anchorPoint = anchor ? points[anchor.id] : null;
+    const branchIndex = anchor ? branchCountByAnchor.get(anchor.id) ?? 0 : index;
+    if (anchor) branchCountByAnchor.set(anchor.id, branchIndex + 1);
+
+    const ring = Math.floor(branchIndex / 5);
+    const angle = ((branchIndex % 5) / 5) * Math.PI * 2 + index * 0.37;
+    const distance = 96 + ring * 74;
+    const baseX = anchorPoint?.x ?? centerX;
+    const baseY = anchorPoint?.y ?? centerY;
+
+    points[room.id] = {
+      id: room.id,
+      x: clampNumber(baseX + Math.cos(angle) * distance, 86, GRAPH_WIDTH - 86),
+      y: clampNumber(baseY + Math.sin(angle) * distance, 74, GRAPH_HEIGHT - 74),
+      z: ((index % 7) - 3) * 14,
+    };
+  });
+
+  return points;
+}
+
+function readSavedLayout(): Record<string, DragOffset> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(FORUM_MAP_LAYOUT_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, DragOffset>;
+    if (!parsed || typeof parsed !== "object") return {};
+    return Object.fromEntries(
+      Object.entries(parsed).filter(([, value]) =>
+        typeof value?.x === "number" && typeof value?.y === "number"
+      )
+    );
+  } catch {
+    return {};
+  }
+}
+
+function GraphEdges({
+  points,
+  offsets,
+  connections,
+  hoveredId,
+}: {
+  points: Record<string, GraphPoint>;
+  offsets: Record<string, DragOffset>;
+  connections: BubbleConnection[];
+  hoveredId: string | null;
+}) {
+  return (
+    <svg
+      className="pointer-events-none absolute inset-0 h-full w-full"
+      width={GRAPH_WIDTH}
+      height={GRAPH_HEIGHT}
+      viewBox={`0 0 ${GRAPH_WIDTH} ${GRAPH_HEIGHT}`}
+      aria-hidden="true"
+    >
+      <defs>
+        <radialGradient id="forum-node-glow">
+          <stop offset="0%" stopColor="rgb(15 23 42)" stopOpacity="0.18" />
+          <stop offset="100%" stopColor="rgb(15 23 42)" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      {connections.map(({ from, to }) => {
+        const fromPoint = points[from];
+        const toPoint = points[to];
+        if (!fromPoint || !toPoint) return null;
+
+        const fromOffset = offsets[from] ?? { x: 0, y: 0 };
+        const toOffset = offsets[to] ?? { x: 0, y: 0 };
+        const x1 = fromPoint.x + fromOffset.x;
+        const y1 = fromPoint.y + fromOffset.y;
+        const x2 = toPoint.x + toOffset.x;
+        const y2 = toPoint.y + toOffset.y;
+        const highlighted = hoveredId === from || hoveredId === to;
+
+        return (
+          <line
+            key={`${from}-${to}`}
+            x1={x1}
+            y1={y1}
+            x2={x2}
+            y2={y2}
+            stroke={highlighted ? "rgb(15 23 42)" : "rgb(100 116 139)"}
+            strokeOpacity={highlighted ? 0.34 : 0.16}
+            strokeWidth={highlighted ? 1.4 : 0.8}
+            vectorEffect="non-scaling-stroke"
+            className="transition-all duration-300"
+          />
+        );
+      })}
+    </svg>
+  );
+}
+
+function GraphNode({
   room,
-  isFeatured,
-  isDimmed,
+  point,
+  offset,
   isLinked,
-  dragOffset,
+  isDimmed,
   isDragging,
-  setNodeRef,
   onHover,
   onDragStart,
   onDragMove,
@@ -194,12 +321,11 @@ function TopicCard({
   onOpenAttempt,
 }: {
   room: ForumRoom;
-  isFeatured: boolean;
-  isDimmed: boolean;
+  point: GraphPoint;
+  offset: DragOffset;
   isLinked: boolean;
-  dragOffset: DragOffset;
+  isDimmed: boolean;
   isDragging: boolean;
-  setNodeRef: (id: string, node: HTMLAnchorElement | null) => void;
   onHover: (id: string | null) => void;
   onDragStart: (id: string, event: ReactPointerEvent<HTMLAnchorElement>) => void;
   onDragMove: (event: ReactPointerEvent<HTMLAnchorElement>) => void;
@@ -207,157 +333,91 @@ function TopicCard({
   onOpenAttempt: (event: ReactMouseEvent<HTMLAnchorElement>) => void;
 }) {
   const active = isRoomActive(room.lastPostedAt);
-  const depth = isDragging ? 44 : isLinked ? 16 : 0;
+  const nodeSize = active || room.postCount > 0 ? 13 : 10;
 
   return (
     <Link
-      ref={(node) => setNodeRef(room.id, node)}
       href={`/forum/${room.id}`}
       draggable={false}
       aria-label={`${room.name}の部屋へ移動`}
-      title="ドラッグで配置を調整、クリックで部屋へ移動"
-      onMouseEnter={() => onHover(room.id)}
-      onMouseLeave={() => onHover(null)}
-      onFocus={() => onHover(room.id)}
-      onBlur={() => onHover(null)}
       onPointerDown={(event) => onDragStart(room.id, event)}
       onPointerMove={onDragMove}
       onPointerUp={onDragEnd}
       onPointerCancel={onDragEnd}
+      onMouseEnter={() => onHover(room.id)}
+      onMouseLeave={() => onHover(null)}
+      onFocus={() => onHover(room.id)}
+      onBlur={() => onHover(null)}
       onClick={onOpenAttempt}
       className={[
-        "group relative block min-h-[150px] rounded-[28px] border border-white/70 bg-white/80 p-4.5 text-left",
-        "shadow-[0_18px_48px_rgba(15,23,42,0.08),0_1px_0_rgba(255,255,255,0.9)_inset]",
-        "cursor-grab touch-none backdrop-blur-xl transition-[opacity,filter,box-shadow,border-color,background-color] duration-500 ease-out will-change-transform active:cursor-grabbing",
-        "hover:-translate-y-1 hover:border-white hover:bg-white hover:shadow-[0_28px_70px_rgba(15,23,42,0.14),0_1px_0_rgba(255,255,255,0.95)_inset]",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/20",
-        isFeatured ? "sm:col-span-2 lg:col-span-1 min-h-[176px] bg-white/90" : "",
-        isDimmed ? "opacity-45 blur-[0.2px]" : "opacity-100",
-        isLinked ? "ring-1 ring-slate-900/10" : "",
-        isDragging ? "border-white bg-white shadow-[0_36px_90px_rgba(15,23,42,0.22),0_1px_0_rgba(255,255,255,0.95)_inset]" : "",
+        "group absolute block cursor-grab touch-none select-none outline-none active:cursor-grabbing",
+        "transition-[opacity,filter] duration-300",
+        isDimmed ? "opacity-35 blur-[0.2px]" : "opacity-100",
       ].join(" ")}
       style={{
-        transform: `translate3d(${dragOffset.x}px, ${dragOffset.y}px, ${depth}px) rotateX(${isDragging ? "-2.5deg" : "0deg"}) rotateY(${isDragging ? "3deg" : "0deg"})`,
-        zIndex: isDragging ? 40 : isLinked ? 20 : 10,
+        left: point.x,
+        top: point.y,
+        transform: `translate3d(${offset.x}px, ${offset.y}px, ${isDragging ? 90 : point.z}px)`,
+        zIndex: isDragging ? 50 : isLinked ? 30 : 20,
       }}
     >
-      <div className="absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent" />
-      <div className="absolute right-4 top-4 rounded-full border border-slate-200/70 bg-white/70 p-1.5 text-slate-300 opacity-0 shadow-sm backdrop-blur transition-opacity duration-300 group-hover:opacity-100">
-        <Move className="h-3.5 w-3.5" aria-hidden />
-      </div>
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-3">
-          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-slate-200/70 bg-gradient-to-br from-white to-slate-50 shadow-sm">
-            <ForumRoomIcon roomId={room.id} size={22} />
-          </div>
-          <div className="min-w-0">
-            <h3 className="text-[15px] font-semibold leading-snug tracking-[-0.015em] text-slate-950 line-clamp-2">
-              {room.name}
-            </h3>
-            <p className="mt-1 text-[11px] leading-5 text-slate-500 line-clamp-2">
-              {room.description || room.weeklyTopic}
-            </p>
-          </div>
-        </div>
-        <ArrowUpRight
-          className="mt-1 h-4 w-4 shrink-0 text-slate-300 transition-all duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-slate-700"
-          aria-hidden
-        />
-      </div>
-
-      <div className="mt-5 rounded-2xl border border-slate-200/70 bg-slate-50/70 px-3 py-2.5">
-        <p className="flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.16em] text-slate-400">
-          <Sparkles className="h-3 w-3" aria-hidden />
-          TOPIC
-        </p>
-        <p className="mt-1.5 text-xs font-medium leading-5 text-slate-700 line-clamp-2">
-          {room.weeklyTopic || "このテーマで自由に語り合いましょう。"}
-        </p>
-      </div>
-
-      <div className="mt-4 flex items-center justify-between gap-3 text-[11px] text-slate-500">
-        <div className="flex items-center gap-3">
-          <span className="inline-flex items-center gap-1">
-            <MessageSquare className="h-3.5 w-3.5" aria-hidden />
-            {room.postCount}
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <Users className="h-3.5 w-3.5" aria-hidden />
-            {room.participantCount}
-          </span>
-        </div>
-        {active && (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-1 font-medium text-emerald-700">
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-70 motion-safe:animate-ping" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            </span>
-            Active
-          </span>
-        )}
-      </div>
+      <span
+        className={[
+          "absolute left-0 top-0 rounded-full bg-[url(#forum-node-glow)]",
+          "transition-all duration-300",
+          isLinked || isDragging ? "opacity-100" : "opacity-0",
+        ].join(" ")}
+        style={{
+          width: 64,
+          height: 64,
+          transform: "translate(-50%, -50%)",
+          background: "radial-gradient(circle, rgba(15,23,42,0.16), transparent 62%)",
+        }}
+        aria-hidden
+      />
+      <span
+        className={[
+          "absolute left-0 top-0 grid place-items-center rounded-full border shadow-sm transition-all duration-300",
+          active ? "border-emerald-300 bg-emerald-500" : "border-slate-300 bg-slate-700",
+          isLinked || isDragging
+            ? "scale-125 shadow-[0_0_0_7px_rgba(15,23,42,0.08),0_16px_34px_rgba(15,23,42,0.22)]"
+            : "group-hover:scale-125 group-hover:shadow-[0_0_0_6px_rgba(15,23,42,0.08)]",
+        ].join(" ")}
+        style={{
+          width: nodeSize,
+          height: nodeSize,
+          transform: "translate(-50%, -50%)",
+        }}
+      >
+        {active && <span className="h-1.5 w-1.5 rounded-full bg-white/95" />}
+      </span>
+      <span
+        className={[
+          "absolute left-3 top-1/2 flex min-w-max -translate-y-1/2 items-center gap-1.5 rounded-full px-2 py-1",
+          "text-[11px] font-medium leading-none tracking-[-0.01em] text-slate-700 transition-all duration-300",
+          "group-hover:bg-white/90 group-hover:text-slate-950 group-hover:shadow-[0_12px_30px_rgba(15,23,42,0.10)]",
+          isLinked || isDragging ? "bg-white/95 text-slate-950 shadow-[0_12px_30px_rgba(15,23,42,0.12)]" : "",
+        ].join(" ")}
+      >
+        <span className="hidden rounded-full bg-slate-100 p-0.5 group-hover:inline-flex">
+          <ForumRoomIcon roomId={room.id} size={12} />
+        </span>
+        <span>{room.name}</span>
+      </span>
+      <span className="absolute left-3 top-[calc(50%+16px)] hidden min-w-max rounded-xl border border-white/80 bg-white/95 px-3 py-2 text-[11px] text-slate-500 shadow-[0_20px_50px_rgba(15,23,42,0.15)] backdrop-blur-xl group-hover:block">
+        <span className="mb-1 block max-w-[220px] text-xs font-semibold text-slate-950 line-clamp-1">
+          {room.weeklyTopic || room.description}
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <MessageSquare className="h-3 w-3" />
+          {room.postCount}
+        </span>
+        <span className="ml-3 inline-flex items-center gap-1">
+          <Users className="h-3 w-3" />
+          {room.participantCount}
+        </span>
+      </span>
     </Link>
-  );
-}
-
-function ConnectionLines({
-  hoveredId,
-  connections,
-  nodeRects,
-  surfaceRect,
-}: {
-  hoveredId: string | null;
-  connections: BubbleConnection[];
-  nodeRects: Record<string, NodeRect>;
-  surfaceRect: NodeRect | null;
-}) {
-  if (!surfaceRect) return null;
-
-  return (
-    <svg
-      className="pointer-events-none absolute inset-0 z-0 h-full w-full"
-      width={surfaceRect.width}
-      height={surfaceRect.height}
-      viewBox={`0 0 ${surfaceRect.width} ${surfaceRect.height}`}
-      aria-hidden="true"
-    >
-      <defs>
-        <linearGradient id="forum-connection-gradient" x1="0" x2="1" y1="0" y2="1">
-          <stop offset="0%" stopColor="rgb(148 163 184)" stopOpacity="0.12" />
-          <stop offset="50%" stopColor="rgb(15 23 42)" stopOpacity="0.18" />
-          <stop offset="100%" stopColor="rgb(148 163 184)" stopOpacity="0.12" />
-        </linearGradient>
-      </defs>
-      {connections.map(({ from, to }) => {
-        const fromRect = nodeRects[from];
-        const toRect = nodeRects[to];
-        if (!fromRect || !toRect) return null;
-
-        const x1 = fromRect.x + fromRect.width / 2;
-        const y1 = fromRect.y + fromRect.height / 2;
-        const x2 = toRect.x + toRect.width / 2;
-        const y2 = toRect.y + toRect.height / 2;
-        const controlLift = Math.min(110, Math.max(42, Math.abs(x2 - x1) * 0.18));
-        const c1x = x1;
-        const c1y = y1 + (y2 > y1 ? controlLift : -controlLift);
-        const c2x = x2;
-        const c2y = y2 + (y2 > y1 ? -controlLift : controlLift);
-        const highlighted = hoveredId === from || hoveredId === to;
-
-        return (
-          <path
-            key={`${from}-${to}`}
-            d={`M ${x1} ${y1} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${x2} ${y2}`}
-            fill="none"
-            stroke={highlighted ? "rgb(15 23 42)" : "url(#forum-connection-gradient)"}
-            strokeOpacity={highlighted ? 0.2 : 1}
-            strokeWidth={highlighted ? 1.5 : 1}
-            strokeLinecap="round"
-            className="transition-all duration-300"
-          />
-        );
-      })}
-    </svg>
   );
 }
 
@@ -368,7 +428,7 @@ function OnboardingHint({ onClose }: { onClose: () => void }) {
       aria-live="polite"
       className="absolute bottom-5 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-full border border-white/70 bg-white/85 px-5 py-2 text-xs text-slate-600 shadow-[0_18px_40px_rgba(15,23,42,0.12)] backdrop-blur-xl"
     >
-      <span>カードを選んで議論に参加できます</span>
+      <span>点をドラッグで移動、背景ドラッグでパン、クリックで部屋へ移動</span>
       <button
         type="button"
         aria-label="ヒントを閉じる"
@@ -384,19 +444,19 @@ function OnboardingHint({ onClose }: { onClose: () => void }) {
 export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [showHint, setShowHint] = useState(false);
-  const [scale, setScale] = useState(1);
-  const [nodeRects, setNodeRects] = useState<Record<string, NodeRect>>({});
-  const [surfaceRect, setSurfaceRect] = useState<NodeRect | null>(null);
+  const [scale, setScale] = useState(0.92);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
   const [dragOffsets, setDragOffsets] = useState<Record<string, DragOffset>>(() => readSavedLayout());
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [isPanning, setIsPanning] = useState(false);
   const [viewTilt, setViewTilt] = useState<ViewTilt>({ rotateX: 0, rotateY: 0 });
   const [perspectiveEnabled, setPerspectiveEnabled] = useState(true);
-  const surfaceRef = useRef<HTMLDivElement | null>(null);
-  const nodeRefs = useRef(new Map<string, HTMLAnchorElement>());
   const dragSessionRef = useRef<DragSession | null>(null);
+  const panSessionRef = useRef<PanSession | null>(null);
   const skipNextClickRef = useRef(false);
 
-  const displayRooms = useMemo(() => sortRoomsForConstellation(rooms), [rooms]);
+  const displayRooms = useMemo(() => sortRoomsForGraph(rooms), [rooms]);
+  const points = useMemo(() => computeGraphPoints(displayRooms), [displayRooms]);
   const connections = useMemo(() => computeRoomConnections(displayRooms), [displayRooms]);
   const connectedIds = useMemo(() => {
     if (!hoveredId) return new Set<string>();
@@ -406,55 +466,6 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
         .flatMap((connection) => [connection.from, connection.to])
     );
   }, [connections, hoveredId]);
-
-  const setNodeRef = useCallback((id: string, node: HTMLAnchorElement | null) => {
-    if (node) nodeRefs.current.set(id, node);
-    else nodeRefs.current.delete(id);
-  }, []);
-
-  const measureNodes = useCallback(() => {
-    const surface = surfaceRef.current;
-    if (!surface) return;
-
-    const surfaceBox = surface.getBoundingClientRect();
-    const nextRects: Record<string, NodeRect> = {};
-    for (const [id, node] of nodeRefs.current) {
-      const box = node.getBoundingClientRect();
-      nextRects[id] = {
-        x: box.left - surfaceBox.left,
-        y: box.top - surfaceBox.top,
-        width: box.width,
-        height: box.height,
-      };
-    }
-
-    setSurfaceRect({
-      x: 0,
-      y: 0,
-      width: surfaceBox.width,
-      height: surfaceBox.height,
-    });
-    setNodeRects(nextRects);
-  }, []);
-
-  useLayoutEffect(() => {
-    measureNodes();
-  }, [displayRooms, dragOffsets, measureNodes, scale]);
-
-  useEffect(() => {
-    const surface = surfaceRef.current;
-    if (!surface) return;
-
-    const observer = new ResizeObserver(() => measureNodes());
-    observer.observe(surface);
-    for (const node of nodeRefs.current.values()) observer.observe(node);
-    window.addEventListener("resize", measureNodes);
-
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", measureNodes);
-    };
-  }, [displayRooms, measureNodes]);
 
   useEffect(() => {
     const seen = localStorage.getItem("forum_bubble_hint_v1");
@@ -479,11 +490,12 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
     setScale(Math.min(MAP_ZOOM_MAX, Math.max(MAP_ZOOM_MIN, +next.toFixed(2))));
   };
 
-  const handleCardDragStart = useCallback((
+  const handleNodeDragStart = useCallback((
     id: string,
     event: ReactPointerEvent<HTMLAnchorElement>
   ) => {
     if (event.button !== 0) return;
+    event.stopPropagation();
     const origin = dragOffsets[id] ?? { x: 0, y: 0 };
     dragSessionRef.current = {
       id,
@@ -498,9 +510,10 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
     event.currentTarget.setPointerCapture(event.pointerId);
   }, [dragOffsets]);
 
-  const handleCardDragMove = useCallback((event: ReactPointerEvent<HTMLAnchorElement>) => {
+  const handleNodeDragMove = useCallback((event: ReactPointerEvent<HTMLAnchorElement>) => {
     const session = dragSessionRef.current;
     if (!session) return;
+    event.stopPropagation();
 
     const dx = (event.clientX - session.startX) / scale;
     const dy = (event.clientY - session.startY) / scale;
@@ -518,9 +531,10 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
     }));
   }, [scale]);
 
-  const handleCardDragEnd = useCallback((event: ReactPointerEvent<HTMLAnchorElement>) => {
+  const handleNodeDragEnd = useCallback((event: ReactPointerEvent<HTMLAnchorElement>) => {
     const session = dragSessionRef.current;
     if (!session) return;
+    event.stopPropagation();
 
     if (event.currentTarget.hasPointerCapture(session.pointerId)) {
       event.currentTarget.releasePointerCapture(session.pointerId);
@@ -535,32 +549,65 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
     setDraggingId(null);
   }, []);
 
-  const handleCardOpenAttempt = useCallback((event: ReactMouseEvent<HTMLAnchorElement>) => {
+  const handleNodeOpenAttempt = useCallback((event: ReactMouseEvent<HTMLAnchorElement>) => {
     if (!skipNextClickRef.current) return;
     event.preventDefault();
     event.stopPropagation();
   }, []);
 
+  const handleGraphPanStart = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || draggingId) return;
+    panSessionRef.current = {
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: pan.x,
+      originY: pan.y,
+      pointerId: event.pointerId,
+    };
+    setIsPanning(true);
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }, [draggingId, pan]);
+
+  const handleGraphPanMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const session = panSessionRef.current;
+    if (!session) return;
+    setPan({
+      x: session.originX + event.clientX - session.startX,
+      y: session.originY + event.clientY - session.startY,
+    });
+  }, []);
+
+  const handleGraphPanEnd = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const session = panSessionRef.current;
+    if (!session) return;
+    if (event.currentTarget.hasPointerCapture(session.pointerId)) {
+      event.currentTarget.releasePointerCapture(session.pointerId);
+    }
+    panSessionRef.current = null;
+    setIsPanning(false);
+  }, []);
+
   const handleResetLayout = useCallback(() => {
     setDragOffsets({});
+    setPan({ x: 0, y: 0 });
     setViewTilt({ rotateX: 0, rotateY: 0 });
-    setScale(1);
+    setScale(0.92);
   }, []);
 
   const handlePerspectiveMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!perspectiveEnabled || draggingId) return;
+    if (!perspectiveEnabled || draggingId || panSessionRef.current) return;
     const rect = event.currentTarget.getBoundingClientRect();
     const px = (event.clientX - rect.left) / rect.width - 0.5;
     const py = (event.clientY - rect.top) / rect.height - 0.5;
     setViewTilt({
-      rotateX: Number((-py * 7).toFixed(2)),
-      rotateY: Number((px * 9).toFixed(2)),
+      rotateX: Number((-py * 14).toFixed(2)),
+      rotateY: Number((px * 18).toFixed(2)),
     });
   }, [draggingId, perspectiveEnabled]);
 
   const handlePerspectiveLeave = useCallback(() => {
-    setViewTilt({ rotateX: 0, rotateY: 0 });
-  }, []);
+    if (!draggingId) setViewTilt({ rotateX: 0, rotateY: 0 });
+  }, [draggingId]);
 
   const dismissHint = () => {
     localStorage.setItem("forum_bubble_hint_v1", "1");
@@ -571,28 +618,26 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
     <section className="space-y-5">
       <div className="mx-auto max-w-2xl text-center">
         <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
-          Topic Constellation
+          Graph View
         </p>
         <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-3xl">
-          話題の星座から、参加する部屋を選ぶ
+          話題のつながりを、グラフで探索する
         </h2>
         <p className="mt-3 text-sm leading-7 text-slate-500">
-          カードはドラッグで配置調整できます。マップ面はポインタに合わせて、少しだけ立体的に傾きます。
+          Obsidianのグラフビューのように、部屋を小さなノードとして表示します。点はドラッグでき、背景ドラッグで視点を移動できます。
         </p>
       </div>
 
       <div
-        className="relative overflow-hidden rounded-[36px] border border-white/70 bg-[linear-gradient(180deg,#fbfbfd_0%,#f5f7fb_48%,#eef2f7_100%)] shadow-[0_32px_90px_rgba(15,23,42,0.10)]"
+        className="relative h-[620px] overflow-hidden rounded-[34px] border border-slate-200/70 bg-[#fbfbfa] shadow-[0_28px_80px_rgba(15,23,42,0.08)]"
         onPointerMove={handlePerspectiveMove}
         onPointerLeave={handlePerspectiveLeave}
-        style={{ perspective: 1200 }}
+        style={{ perspective: 950 }}
       >
-        <div className="pointer-events-none absolute -left-24 top-10 h-72 w-72 rounded-full bg-sky-200/35 blur-3xl" />
-        <div className="pointer-events-none absolute -right-20 top-20 h-80 w-80 rounded-full bg-orange-100/70 blur-3xl" />
-        <div className="pointer-events-none absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-emerald-100/50 blur-3xl" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(15,23,42,0.08)_1px,transparent_0)] [background-size:28px_28px] opacity-40" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(15,23,42,0.05),transparent_58%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(15,23,42,0.06)_1px,transparent_0)] [background-size:26px_26px] opacity-30" />
 
-        <div className="absolute right-4 top-4 z-30 flex items-center gap-1 rounded-full border border-white/70 bg-white/80 p-1 shadow-[0_12px_34px_rgba(15,23,42,0.12)] backdrop-blur-xl">
+        <div className="absolute right-4 top-4 z-40 flex items-center gap-1 rounded-full border border-slate-200/80 bg-white/85 p-1 shadow-[0_12px_34px_rgba(15,23,42,0.10)] backdrop-blur-xl">
           <button
             type="button"
             aria-label="3D視点を切り替え"
@@ -636,54 +681,53 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
           </button>
         </div>
 
-        <div className="overflow-auto">
-          <div
-            ref={surfaceRef}
-            className="relative min-w-0 p-5 sm:p-7 lg:p-9"
-            style={{
-              transform: `rotateX(${perspectiveEnabled ? viewTilt.rotateX : 0}deg) rotateY(${perspectiveEnabled ? viewTilt.rotateY : 0}deg) scale(${scale})`,
-              transformOrigin: "top center",
-              transition: "transform 420ms cubic-bezier(.2,.8,.2,1)",
-              transformStyle: "preserve-3d",
-            }}
-          >
-            <ConnectionLines
-              hoveredId={hoveredId}
-              connections={connections}
-              nodeRects={nodeRects}
-              surfaceRect={surfaceRect}
-            />
-            <div className="relative z-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
-              {displayRooms.map((room, index) => {
-                const isFeatured = index < 3 && (room.postCount > 0 || STATIC_ROOM_IDS.includes(room.id));
-                const isConnectedToHover = connectedIds.has(room.id);
-                return (
-                  <TopicCard
-                    key={room.id}
-                    room={room}
-                    isFeatured={isFeatured}
-                    isDimmed={!!hoveredId && !isConnectedToHover && hoveredId !== room.id}
-                    isLinked={isConnectedToHover || hoveredId === room.id}
-                    dragOffset={dragOffsets[room.id] ?? { x: 0, y: 0 }}
-                    isDragging={draggingId === room.id}
-                    setNodeRef={setNodeRef}
-                    onHover={setHoveredId}
-                    onDragStart={handleCardDragStart}
-                    onDragMove={handleCardDragMove}
-                    onDragEnd={handleCardDragEnd}
-                    onOpenAttempt={handleCardOpenAttempt}
-                  />
-                );
-              })}
-            </div>
-          </div>
+        <div
+          className="absolute left-1/2 top-1/2 cursor-grab touch-none active:cursor-grabbing"
+          onPointerDown={handleGraphPanStart}
+          onPointerMove={handleGraphPanMove}
+          onPointerUp={handleGraphPanEnd}
+          onPointerCancel={handleGraphPanEnd}
+          style={{
+            width: GRAPH_WIDTH,
+            height: GRAPH_HEIGHT,
+            transform: `translate(calc(-50% + ${pan.x}px), calc(-50% + ${pan.y}px)) rotateX(${perspectiveEnabled ? viewTilt.rotateX : 0}deg) rotateY(${perspectiveEnabled ? viewTilt.rotateY : 0}deg) scale(${scale})`,
+            transformOrigin: "center center",
+            transformStyle: "preserve-3d",
+            transition: isPanning || draggingId ? "none" : "transform 360ms cubic-bezier(.2,.8,.2,1)",
+          }}
+        >
+          <GraphEdges
+            points={points}
+            offsets={dragOffsets}
+            connections={connections}
+            hoveredId={hoveredId}
+          />
+          {displayRooms.map((room) => {
+            const point = points[room.id];
+            if (!point) return null;
+            const isConnectedToHover = connectedIds.has(room.id);
+            return (
+              <GraphNode
+                key={room.id}
+                room={room}
+                point={point}
+                offset={dragOffsets[room.id] ?? { x: 0, y: 0 }}
+                isLinked={isConnectedToHover || hoveredId === room.id}
+                isDimmed={!!hoveredId && !isConnectedToHover && hoveredId !== room.id}
+                isDragging={draggingId === room.id}
+                onHover={setHoveredId}
+                onDragStart={handleNodeDragStart}
+                onDragMove={handleNodeDragMove}
+                onDragEnd={handleNodeDragEnd}
+                onOpenAttempt={handleNodeOpenAttempt}
+              />
+            );
+          })}
         </div>
 
-        <div className="relative z-10 border-t border-white/60 bg-white/45 px-5 py-4 backdrop-blur-xl sm:px-7">
-          <div className="flex flex-col gap-2 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-            <span>{displayRooms.length} rooms connected by theme</span>
-            <span>ドラッグで移動 / 3Dボタンで視点切替 / リセットで初期配置へ</span>
-          </div>
+        <div className="absolute bottom-4 left-4 z-30 flex items-center gap-2 rounded-full border border-slate-200/80 bg-white/85 px-3 py-2 text-[11px] text-slate-500 shadow-sm backdrop-blur-xl">
+          <Move className="h-3.5 w-3.5" />
+          点をドラッグ / 背景をドラッグ / ホバーで関連を強調
         </div>
 
         {showHint && <OnboardingHint onClose={dismissHint} />}
