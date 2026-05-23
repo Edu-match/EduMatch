@@ -273,7 +273,7 @@ function computeGraphPoints(rooms: ForumRoom[]): Record<string, GraphPoint> {
 
     const ring = Math.floor(branchIndex / 5);
     const angle = ((branchIndex % 5) / 5) * Math.PI * 2 + index * 0.37;
-    const distance = 96 + ring * 74;
+    const distance = 118 + ring * 88;
     const baseX = anchorPoint?.x ?? centerX;
     const baseY = anchorPoint?.y ?? centerY;
 
@@ -285,29 +285,45 @@ function computeGraphPoints(rooms: ForumRoom[]): Record<string, GraphPoint> {
     };
   });
 
-  return resolveGraphCollisions(points, rooms);
+  return points;
 }
 
-function estimateNodeSize(room: ForumRoom): { width: number; height: number } {
+function estimateNodeSize(room: ForumRoom, detailLevel: ZoomDetailLevel): { width: number; height: number } {
   const visibleNameLength = Math.min(room.name.length, 18);
-  return {
-    width: clampNumber(92 + visibleNameLength * 9, 128, 236),
-    height: 48,
-  };
+
+  switch (detailLevel) {
+    case "overview":
+      return { width: 40, height: 40 };
+    case "compact":
+      return { width: clampNumber(88 + visibleNameLength * 7, 108, 168), height: 34 };
+    case "detail":
+      return { width: clampNumber(150 + visibleNameLength * 8, 210, 310), height: 92 };
+    default:
+      return { width: clampNumber(96 + visibleNameLength * 9, 132, 240), height: 50 };
+  }
+}
+
+function collisionPaddingForLevel(detailLevel: ZoomDetailLevel): number {
+  if (detailLevel === "overview") return 18;
+  if (detailLevel === "compact") return 26;
+  if (detailLevel === "standard") return 34;
+  return 48;
 }
 
 function resolveGraphCollisions(
   initialPoints: Record<string, GraphPoint>,
-  rooms: ForumRoom[]
+  rooms: ForumRoom[],
+  detailLevel: ZoomDetailLevel
 ): Record<string, GraphPoint> {
   const points = Object.fromEntries(
     Object.entries(initialPoints).map(([id, point]) => [id, { ...point }])
   ) as Record<string, GraphPoint>;
   const roomById = new Map(rooms.map((room) => [room.id, room]));
   const ids = Object.keys(points);
-  const padding = 16;
+  const padding = collisionPaddingForLevel(detailLevel);
+  const iterations = detailLevel === "detail" ? 120 : 90;
 
-  for (let iteration = 0; iteration < 90; iteration += 1) {
+  for (let iteration = 0; iteration < iterations; iteration += 1) {
     for (let i = 0; i < ids.length; i += 1) {
       for (let j = i + 1; j < ids.length; j += 1) {
         const a = points[ids[i]];
@@ -316,8 +332,8 @@ function resolveGraphCollisions(
         const bRoom = roomById.get(b.id);
         if (!aRoom || !bRoom) continue;
 
-        const aSize = estimateNodeSize(aRoom);
-        const bSize = estimateNodeSize(bRoom);
+        const aSize = estimateNodeSize(aRoom, detailLevel);
+        const bSize = estimateNodeSize(bRoom, detailLevel);
         const minX = (aSize.width + bSize.width) / 2 + padding;
         const minY = (aSize.height + bSize.height) / 2 + padding;
         const dx = b.x - a.x;
@@ -328,12 +344,12 @@ function resolveGraphCollisions(
         if (overlapX <= 0 || overlapY <= 0) continue;
 
         if (overlapX < overlapY) {
-          const push = overlapX / 2 + 0.5;
+          const push = overlapX / 2 + 1;
           const direction = dx >= 0 ? 1 : -1;
           a.x -= push * direction;
           b.x += push * direction;
         } else {
-          const push = overlapY / 2 + 0.5;
+          const push = overlapY / 2 + 1;
           const direction = dy >= 0 ? 1 : -1;
           a.y -= push * direction;
           b.y += push * direction;
@@ -344,9 +360,9 @@ function resolveGraphCollisions(
     for (const id of ids) {
       const room = roomById.get(id);
       if (!room) continue;
-      const size = estimateNodeSize(room);
-      points[id].x = clampNumber(points[id].x, size.width / 2 + 24, GRAPH_WIDTH - size.width / 2 - 24);
-      points[id].y = clampNumber(points[id].y, size.height / 2 + 24, GRAPH_HEIGHT - size.height / 2 - 24);
+      const size = estimateNodeSize(room, detailLevel);
+      points[id].x = clampNumber(points[id].x, size.width / 2 + 28, GRAPH_WIDTH - size.width / 2 - 28);
+      points[id].y = clampNumber(points[id].y, size.height / 2 + 28, GRAPH_HEIGHT - size.height / 2 - 28);
     }
   }
 
@@ -383,8 +399,16 @@ function GraphEdges({
   hoveredId: string | null;
   detailLevel: ZoomDetailLevel;
 }) {
-  const baseOpacity = detailLevel === "overview" ? 0.08 : detailLevel === "compact" ? 0.12 : detailLevel === "standard" ? 0.16 : 0.22;
-  const baseWidth = detailLevel === "overview" ? 0.55 : detailLevel === "compact" ? 0.7 : detailLevel === "standard" ? 0.85 : 1;
+  const baseOpacity =
+    detailLevel === "overview" ? 0.34 :
+    detailLevel === "compact" ? 0.28 :
+    detailLevel === "standard" ? 0.22 :
+    0.18;
+  const baseWidth =
+    detailLevel === "overview" ? 1.25 :
+    detailLevel === "compact" ? 1.1 :
+    detailLevel === "standard" ? 1 :
+    0.95;
   return (
     <svg
       className="pointer-events-none absolute inset-0 h-full w-full"
@@ -419,9 +443,9 @@ function GraphEdges({
             y1={y1}
             x2={x2}
             y2={y2}
-            stroke={highlighted ? "rgb(15 23 42)" : "rgb(100 116 139)"}
-            strokeOpacity={highlighted ? Math.min(baseOpacity + 0.22, 0.5) : baseOpacity}
-            strokeWidth={highlighted ? 1.4 * baseWidth : 0.8 * baseWidth}
+            stroke={highlighted ? "rgb(15 23 42)" : "rgb(71 85 105)"}
+            strokeOpacity={highlighted ? Math.min(baseOpacity + 0.28, 0.62) : baseOpacity}
+            strokeWidth={highlighted ? 1.6 * baseWidth : 1.05 * baseWidth}
             vectorEffect="non-scaling-stroke"
             className="transition-all duration-300"
           />
@@ -627,9 +651,13 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
   const skipNextClickRef = useRef(false);
 
   const displayRooms = useMemo(() => sortRoomsForGraph(rooms), [rooms]);
-  const points = useMemo(() => computeGraphPoints(displayRooms), [displayRooms]);
-  const connections = useMemo(() => computeRoomConnections(displayRooms), [displayRooms]);
+  const rawPoints = useMemo(() => computeGraphPoints(displayRooms), [displayRooms]);
   const detailLevel = useMemo(() => getZoomDetailLevel(scale), [scale]);
+  const points = useMemo(
+    () => resolveGraphCollisions(rawPoints, displayRooms, detailLevel),
+    [rawPoints, displayRooms, detailLevel]
+  );
+  const connections = useMemo(() => computeRoomConnections(displayRooms), [displayRooms]);
   const connectedIds = useMemo(() => {
     if (!hoveredId) return new Set<string>();
     return new Set(
