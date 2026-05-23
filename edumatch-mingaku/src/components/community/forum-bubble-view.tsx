@@ -98,6 +98,11 @@ function getZoomDetailLevel(scale: number): ZoomDetailLevel {
   return "detail";
 }
 
+function getDefaultScale(roomCount: number): number {
+  if (roomCount >= 20) return 0.82;
+  return 0.86;
+}
+
 function getGraphDimensions(detailLevel: ZoomDetailLevel, roomCount: number) {
   const levelScale =
     detailLevel === "detail" ? 1.1 :
@@ -200,21 +205,6 @@ function similarityScore(a: ForumRoom, b: ForumRoom): number {
   return overlap;
 }
 
-function pickBestRelatedRoom(room: ForumRoom, candidates: ForumRoom[]): ForumRoom | null {
-  let best: ForumRoom | null = null;
-  let bestScore = -1;
-
-  for (const candidate of candidates) {
-    const score = similarityScore(room, candidate);
-    if (score > bestScore) {
-      bestScore = score;
-      best = candidate;
-    }
-  }
-
-  return best ?? candidates[0] ?? null;
-}
-
 function computeRoomConnections(rooms: ForumRoom[]): BubbleConnection[] {
   const roomIds = new Set(rooms.map((room) => room.id));
   const result: BubbleConnection[] = [];
@@ -271,55 +261,85 @@ function sortRoomsForGraph(rooms: ForumRoom[]): ForumRoom[] {
   });
 }
 
+function computeCircularRoomOrder(
+  rooms: ForumRoom[],
+  connections: BubbleConnection[]
+): string[] {
+  const adjacency = new Map<string, Set<string>>();
+  const roomIds = rooms.map((room) => room.id);
+  for (const id of roomIds) adjacency.set(id, new Set());
+  for (const connection of connections) {
+    adjacency.get(connection.from)?.add(connection.to);
+    adjacency.get(connection.to)?.add(connection.from);
+  }
+
+  const degree = new Map<string, number>(
+    roomIds.map((id) => [id, adjacency.get(id)?.size ?? 0])
+  );
+  const roomById = new Map(rooms.map((room) => [room.id, room]));
+  const unvisited = new Set(roomIds);
+  const order: string[] = [];
+
+  while (unvisited.size > 0) {
+    const seed = [...unvisited].sort((a, b) => {
+      const degDiff = (degree.get(b) ?? 0) - (degree.get(a) ?? 0);
+      if (degDiff !== 0) return degDiff;
+      return (roomById.get(b)?.postCount ?? 0) - (roomById.get(a)?.postCount ?? 0);
+    })[0];
+
+    const queue = [seed];
+    unvisited.delete(seed);
+    while (queue.length > 0) {
+      const current = queue.shift();
+      if (!current) continue;
+      order.push(current);
+
+      const neighbors = [...(adjacency.get(current) ?? [])]
+        .filter((id) => unvisited.has(id))
+        .sort((a, b) => {
+          const scoreA = similarityScore(roomById.get(current)!, roomById.get(a)!);
+          const scoreB = similarityScore(roomById.get(current)!, roomById.get(b)!);
+          return scoreB - scoreA;
+        });
+
+      for (const next of neighbors) {
+        unvisited.delete(next);
+        queue.push(next);
+      }
+    }
+  }
+
+  return order;
+}
+
 function computeGraphPoints(
   rooms: ForumRoom[],
+  connections: BubbleConnection[],
   graphWidth: number,
   graphHeight: number
 ): Record<string, GraphPoint> {
   const points: Record<string, GraphPoint> = {};
   const centerX = graphWidth / 2;
   const centerY = graphHeight / 2;
-  const staticRooms = rooms.filter((room) => STATIC_ROOM_IDS.includes(room.id));
-  const dynamicRooms = rooms.filter((room) => !STATIC_ROOM_IDS.includes(room.id));
-  const staticAngles = [-105, -38, 33, 154, 90, -168];
-
-  staticRooms.forEach((room, index) => {
-    const order = Math.max(0, STATIC_ROOM_IDS.indexOf(room.id));
-    const angle = (staticAngles[order] ?? (index / Math.max(1, staticRooms.length)) * 360) * (Math.PI / 180);
-    const radiusX = (graphWidth * 0.27) + (index % 2) * 34;
-    const radiusY = (graphHeight * 0.29) + (index % 3) * 22;
-    points[room.id] = {
-      id: room.id,
-      x: centerX + Math.cos(angle) * radiusX,
-      y: centerY + Math.sin(angle) * radiusY,
-      z: (index % 5 - 2) * 18,
-    };
-  });
-
-  if (staticRooms.length === 0 && rooms[0]) {
-    points[rooms[0].id] = { id: rooms[0].id, x: centerX, y: centerY, z: 20 };
+  const radius = Math.min(graphWidth, graphHeight) * 0.36;
+  const innerOffset = Math.min(graphWidth, graphHeight) * 0.07;
+  const orderedIds = computeCircularRoomOrder(rooms, connections);
+  const degree = new Map<string, number>();
+  for (const id of orderedIds) degree.set(id, 0);
+  for (const edge of connections) {
+    degree.set(edge.from, (degree.get(edge.from) ?? 0) + 1);
+    degree.set(edge.to, (degree.get(edge.to) ?? 0) + 1);
   }
 
-  const branchCountByAnchor = new Map<string, number>();
-  dynamicRooms.forEach((room, index) => {
-    const anchor = pickBestRelatedRoom(room, staticRooms.length > 0 ? staticRooms : rooms.filter((other) => other.id !== room.id));
-    const anchorPoint = anchor ? points[anchor.id] : null;
-    const branchIndex = anchor ? branchCountByAnchor.get(anchor.id) ?? 0 : index;
-    if (anchor) branchCountByAnchor.set(anchor.id, branchIndex + 1);
-
-    const ring = Math.floor(branchIndex / 5);
-    const angle = ((branchIndex % 5) / 5) * Math.PI * 2 + index * 0.37;
-    const distance = 128 + ring * 96;
-    const baseX = anchorPoint?.x ?? centerX;
-    const baseY = anchorPoint?.y ?? centerY;
-    const marginX = Math.max(96, graphWidth * 0.08);
-    const marginY = Math.max(80, graphHeight * 0.08);
-
-    points[room.id] = {
-      id: room.id,
-      x: clampNumber(baseX + Math.cos(angle) * distance, marginX, graphWidth - marginX),
-      y: clampNumber(baseY + Math.sin(angle) * distance, marginY, graphHeight - marginY),
-      z: ((index % 7) - 3) * 14,
+  orderedIds.forEach((id, index) => {
+    const angle = -Math.PI / 2 + (Math.PI * 2 * index) / Math.max(1, orderedIds.length);
+    const layerJitter = orderedIds.length >= 18 ? (index % 2 === 0 ? innerOffset : -innerOffset) : 0;
+    const nodeRadius = radius + layerJitter;
+    points[id] = {
+      id,
+      x: centerX + Math.cos(angle) * nodeRadius,
+      y: centerY + Math.sin(angle) * nodeRadius,
+      z: clampNumber((degree.get(id) ?? 0) * 4 - 8, -10, 16),
     };
   });
 
@@ -513,6 +533,7 @@ function GraphNode({
   isDimmed,
   isDragging,
   detailLevel,
+  allowOverview,
   onHover,
   onDragStart,
   onDragMove,
@@ -526,6 +547,7 @@ function GraphNode({
   isDimmed: boolean;
   isDragging: boolean;
   detailLevel: ZoomDetailLevel;
+  allowOverview: boolean;
   onHover: (id: string | null) => void;
   onDragStart: (id: string, event: ReactPointerEvent<HTMLAnchorElement>) => void;
   onDragMove: (event: ReactPointerEvent<HTMLAnchorElement>) => void;
@@ -533,7 +555,7 @@ function GraphNode({
   onOpenAttempt: (event: ReactMouseEvent<HTMLAnchorElement>) => void;
 }) {
   const active = isRoomActive(room.lastPostedAt);
-  const isOverview = detailLevel === "overview";
+  const isOverview = allowOverview && detailLevel === "overview";
   const isCompact = detailLevel === "compact";
   const iconSize = isOverview ? 13 : isCompact ? 14 : 15;
 
@@ -684,7 +706,7 @@ function OnboardingHint({ onClose }: { onClose: () => void }) {
 export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [showHint, setShowHint] = useState(false);
-  const [scale, setScale] = useState(0.92);
+  const [scale, setScale] = useState(() => getDefaultScale(rooms.length));
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [dragOffsets, setDragOffsets] = useState<Record<string, DragOffset>>(() => readSavedLayout());
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -694,14 +716,20 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
   const skipNextClickRef = useRef(false);
 
   const displayRooms = useMemo(() => sortRoomsForGraph(rooms), [rooms]);
-  const detailLevel = useMemo(() => getZoomDetailLevel(scale), [scale]);
+  const useOverviewMode = displayRooms.length >= 20;
+  const rawDetailLevel = useMemo(() => getZoomDetailLevel(scale), [scale]);
+  const detailLevel = useMemo<ZoomDetailLevel>(() => {
+    if (!useOverviewMode && rawDetailLevel === "overview") return "compact";
+    return rawDetailLevel;
+  }, [rawDetailLevel, useOverviewMode]);
   const graphDimensions = useMemo(
     () => getGraphDimensions(detailLevel, displayRooms.length),
     [detailLevel, displayRooms.length]
   );
+  const connections = useMemo(() => computeRoomConnections(displayRooms), [displayRooms]);
   const rawPoints = useMemo(
-    () => computeGraphPoints(displayRooms, graphDimensions.width, graphDimensions.height),
-    [displayRooms, graphDimensions.height, graphDimensions.width]
+    () => computeGraphPoints(displayRooms, connections, graphDimensions.width, graphDimensions.height),
+    [connections, displayRooms, graphDimensions.height, graphDimensions.width]
   );
   const points = useMemo(
     () => resolveGraphCollisions(
@@ -713,7 +741,6 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
     ),
     [rawPoints, displayRooms, detailLevel, graphDimensions.height, graphDimensions.width]
   );
-  const connections = useMemo(() => computeRoomConnections(displayRooms), [displayRooms]);
   const connectedIds = useMemo(() => {
     if (!hoveredId) return new Set<string>();
     return new Set(
@@ -859,8 +886,8 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
   const handleResetLayout = useCallback(() => {
     setDragOffsets({});
     setPan({ x: 0, y: 0 });
-    setScale(0.92);
-  }, []);
+    setScale(getDefaultScale(displayRooms.length));
+  }, [displayRooms.length]);
 
   const dismissHint = () => {
     localStorage.setItem("forum_bubble_hint_v1", "1");
@@ -956,6 +983,7 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
                 isDimmed={!!hoveredId && !isConnectedToHover && hoveredId !== room.id}
                 isDragging={draggingId === room.id}
                 detailLevel={detailLevel}
+                allowOverview={useOverviewMode}
                 onHover={setHoveredId}
                 onDragStart={handleNodeDragStart}
                 onDragMove={handleNodeDragMove}
