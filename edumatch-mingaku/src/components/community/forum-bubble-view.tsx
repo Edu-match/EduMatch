@@ -327,7 +327,6 @@ function GraphNode({
   onOpenAttempt: (event: ReactMouseEvent<HTMLAnchorElement>) => void;
 }) {
   const active = isRoomActive(room.lastPostedAt);
-  const nodeSize = active || room.postCount > 0 ? 24 : 20;
 
   return (
     <Link
@@ -344,14 +343,18 @@ function GraphNode({
       onBlur={() => onHover(null)}
       onClick={onOpenAttempt}
       className={[
-        "group absolute block cursor-grab touch-none select-none outline-none active:cursor-grabbing",
-        "transition-[opacity,filter] duration-300",
+        "group absolute inline-flex cursor-grab touch-none select-none items-center gap-2 rounded-full outline-none active:cursor-grabbing",
+        "border border-slate-200/80 bg-white/82 px-2.5 py-1.5 text-left shadow-[0_10px_28px_rgba(15,23,42,0.08)] backdrop-blur-xl",
+        "transition-[opacity,filter,box-shadow,border-color,background-color] duration-300",
+        "hover:border-white hover:bg-white hover:shadow-[0_18px_44px_rgba(15,23,42,0.14)]",
+        "focus-visible:ring-2 focus-visible:ring-slate-900/20",
         isDimmed ? "opacity-35 blur-[0.2px]" : "opacity-100",
+        isLinked || isDragging ? "border-white bg-white shadow-[0_20px_52px_rgba(15,23,42,0.16)]" : "",
       ].join(" ")}
       style={{
         left: point.x,
         top: point.y,
-        transform: `translate(${offset.x}px, ${offset.y}px)`,
+        transform: `translate(${offset.x}px, ${offset.y}px) translate(-50%, -50%)`,
         zIndex: isDragging ? 50 : isLinked ? 30 : 20,
       }}
     >
@@ -371,31 +374,34 @@ function GraphNode({
       />
       <span
         className={[
-          "absolute left-0 top-0 grid place-items-center rounded-full border shadow-sm transition-all duration-300",
-          active ? "border-emerald-300 bg-emerald-500" : "border-slate-300 bg-slate-700",
+          "relative grid h-7 w-7 shrink-0 place-items-center rounded-full border shadow-sm transition-all duration-300",
+          active ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-slate-50 text-slate-700",
           isLinked || isDragging
-            ? "scale-125 shadow-[0_0_0_7px_rgba(15,23,42,0.08),0_16px_34px_rgba(15,23,42,0.22)]"
-            : "group-hover:scale-125 group-hover:shadow-[0_0_0_6px_rgba(15,23,42,0.08)]",
-        ].join(" ")}
-        style={{
-          width: nodeSize,
-          height: nodeSize,
-          transform: "translate(-50%, -50%)",
-        }}
-      >
-        <ForumRoomIcon roomId={room.id} size={active || room.postCount > 0 ? 13 : 11} />
-      </span>
-      <span
-        className={[
-          "absolute left-5 top-1/2 flex min-w-max -translate-y-1/2 items-center gap-1.5 rounded-full px-2.5 py-1.5",
-          "border border-transparent text-xs font-medium leading-none tracking-[-0.01em] text-slate-700 transition-all duration-300",
-          "group-hover:bg-white/90 group-hover:text-slate-950 group-hover:shadow-[0_12px_30px_rgba(15,23,42,0.10)]",
-          isLinked || isDragging ? "border-white/80 bg-white/95 text-slate-950 shadow-[0_12px_30px_rgba(15,23,42,0.12)]" : "",
+            ? "shadow-[0_0_0_5px_rgba(15,23,42,0.06)]"
+            : "group-hover:shadow-[0_0_0_5px_rgba(15,23,42,0.05)]",
         ].join(" ")}
       >
-        <span>{room.name}</span>
+        <ForumRoomIcon roomId={room.id} size={15} />
+        {active && (
+          <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border border-white bg-emerald-500" />
+        )}
       </span>
-      <span className="absolute left-3 top-[calc(50%+16px)] hidden min-w-max rounded-xl border border-white/80 bg-white/95 px-3 py-2 text-[11px] text-slate-500 shadow-[0_20px_50px_rgba(15,23,42,0.15)] backdrop-blur-xl group-hover:block">
+      <span className="flex max-w-[172px] flex-col gap-0.5">
+        <span className="truncate text-xs font-semibold leading-tight tracking-[-0.015em] text-slate-800 group-hover:text-slate-950">
+          {room.name}
+        </span>
+        <span className="flex items-center gap-2 text-[10px] leading-none text-slate-400">
+          <span className="inline-flex items-center gap-0.5">
+            <MessageSquare className="h-2.5 w-2.5" />
+            {room.postCount}
+          </span>
+          <span className="inline-flex items-center gap-0.5">
+            <Users className="h-2.5 w-2.5" />
+            {room.participantCount}
+          </span>
+        </span>
+      </span>
+      <span className="absolute left-1/2 top-[calc(100%+8px)] hidden min-w-max -translate-x-1/2 rounded-xl border border-white/80 bg-white/95 px-3 py-2 text-[11px] text-slate-500 shadow-[0_20px_50px_rgba(15,23,42,0.15)] backdrop-blur-xl group-hover:block">
         <span className="mb-1 block max-w-[220px] text-xs font-semibold text-slate-950 line-clamp-1">
           {room.weeklyTopic || room.description}
         </span>
@@ -419,7 +425,7 @@ function OnboardingHint({ onClose }: { onClose: () => void }) {
       aria-live="polite"
       className="absolute bottom-5 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-full border border-white/70 bg-white/85 px-5 py-2 text-xs text-slate-600 shadow-[0_18px_40px_rgba(15,23,42,0.12)] backdrop-blur-xl"
     >
-      <span>点をドラッグで移動、背景ドラッグでパン、クリックで部屋へ移動</span>
+      <span>ノードをドラッグで移動、背景ドラッグでパン、クリックで部屋へ移動</span>
       <button
         type="button"
         aria-label="ヒントを閉じる"
@@ -678,7 +684,7 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
 
         <div className="absolute bottom-4 left-4 z-30 flex items-center gap-2 rounded-full border border-slate-200/80 bg-white/85 px-3 py-2 text-[11px] text-slate-500 shadow-sm backdrop-blur-xl">
           <Move className="h-3.5 w-3.5" />
-          点をドラッグ / 背景をドラッグ / ホバーで関連を強調
+          ノードをドラッグ / 背景をドラッグ / ホバーで関連を強調
         </div>
 
         {showHint && <OnboardingHint onClose={dismissHint} />}
