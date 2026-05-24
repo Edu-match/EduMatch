@@ -59,6 +59,7 @@ import { ForumRoomIcon, ROOM_BG_COLORS } from "@/components/community/forum-room
 import { useAuthUser } from "@/components/community/answer-section";
 import { OpenAiChatButton } from "@/components/ui/open-ai-chat-button";
 import { ReportForumContentButton } from "@/components/community/report-forum-content-button";
+import { FORUM_AI_FACILITATOR_NAME } from "@/lib/forum-article-notify";
 
 // ─── 定数 ────────────────────────────────────────────────
 
@@ -106,7 +107,7 @@ function AiBadge() {
   return (
     <span className="inline-flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-0.5 text-xs font-semibold text-violet-700">
       <Bot className="h-3 w-3" />
-      AIファシリテーター
+      AI
     </span>
   );
 }
@@ -199,7 +200,8 @@ function ReplyCard({
   isAi?: boolean;
   onRequireLogin: () => void;
 }) {
-  const isAiReply = isAi || reply.authorName === "AIファシリテーター";
+  const isAiReply = isAi || reply.isAi || reply.authorName === FORUM_AI_FACILITATOR_NAME;
+  const displayAuthorName = isAiReply ? FORUM_AI_FACILITATOR_NAME : reply.authorName;
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(reply.likeCount);
 
@@ -241,10 +243,10 @@ function ReplyCard({
       <span aria-hidden className={`absolute left-2.5 top-5 h-1.5 w-1.5 rounded-full ${isAiReply ? "bg-violet-400" : "bg-muted-foreground/40"}`} />
 
       <div className="flex gap-3">
-        <Avatar name={reply.authorName} storedAuthorRole={reply.authorRole} isAi={isAiReply} size="sm" />
+        <Avatar name={displayAuthorName} storedAuthorRole={reply.authorRole} isAi={isAiReply} size="sm" />
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2 mb-1">
-            <span className={`text-sm font-semibold ${isAiReply ? "text-violet-800" : ""}`}>{reply.authorName}</span>
+            <span className={`text-sm font-semibold ${isAiReply ? "text-violet-800" : ""}`}>{displayAuthorName}</span>
             {isAiReply ? <AiBadge /> : <OccupationBadge storedAuthorRole={reply.authorRole} />}
             {!isAiReply && reply.aiKenteiPassed && <AiKenteiBadge />}
             <span className="text-xs text-muted-foreground">
@@ -312,6 +314,20 @@ function PostCardWithStream({
 
   const replies = post.replies ?? [];
   const isStreaming = streamText !== null;
+
+  useEffect(() => {
+    if (isStreaming) {
+      setRepliesOpen(true);
+    }
+  }, [isStreaming]);
+
+  useEffect(() => {
+    if (replies.some((r) => r.isAi || r.authorName === FORUM_AI_FACILITATOR_NAME)) {
+      setRepliesOpen(true);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- AI返信追加時のみ展開
+  }, [replies.length]);
+
   const autoOpenReplies = repliesOpen || isStreaming;
   const hasReplies = replies.length > 0;
 
@@ -511,8 +527,8 @@ function PostCardWithStream({
           {replies.map((reply) => (
             <ReplyCard
               key={reply.id}
-              reply={reply as ForumReply & { isAi?: boolean }}
-              isAi={(reply as ForumReply & { isAi?: boolean }).isAi}
+              reply={reply}
+              isAi={reply.isAi}
               onRequireLogin={onRequireLogin}
             />
           ))}
@@ -832,7 +848,7 @@ function NewPostComposer({
             forumTopic={weeklyTopic}
           >
             <Bot className="mr-1 h-3.5 w-3.5" />
-            この投稿をAIで作る
+            投稿をAIと壁打ちする
           </OpenAiChatButton>
         </div>
       </div>
@@ -1103,24 +1119,29 @@ export function ForumRoomClient({
       const aiText = await generate(newPost.id, newPost.body, room.name, weeklyTopic, recentContext);
 
       if (aiText) {
-        // AI返信をDBにも保存
+        let savedReply: ForumReply | null = null;
         try {
-          await fetch(`/api/forum/posts/${newPost.id}/replies`, {
+          const saveRes = await fetch(`/api/forum/posts/${newPost.id}/replies`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            credentials: "include",
             body: JSON.stringify({
-              authorName: "AIファシリテーター",
+              authorName: FORUM_AI_FACILITATOR_NAME,
               authorRole: "専門家",
               replyBody: aiText,
             }),
           });
+          if (saveRes.ok) {
+            const saveData = await saveRes.json();
+            savedReply = saveData.reply as ForumReply;
+          }
         } catch {
           // 保存失敗しても表示上は反映済み
         }
 
-        const aiReply: ForumReply & { isAi: boolean } = {
+        const aiReply: ForumReply = savedReply ?? {
           id: `ai-r-${Date.now()}`,
-          authorName: "AIファシリテーター",
+          authorName: FORUM_AI_FACILITATOR_NAME,
           authorRole: "専門家",
           body: aiText,
           likeCount: 0,

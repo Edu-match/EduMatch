@@ -113,6 +113,38 @@ export default async function HelpPage() {
         </p>
       </div>
 
+      {guideHref && (
+        <div className="mb-8 overflow-hidden rounded-2xl border border-orange-200 bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100/80 shadow-sm">
+          <div className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-orange-500 text-white shadow-md">
+                <BookOpen className="h-6 w-6" />
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-orange-600">まずはこちら</p>
+                <h2 className="mt-1 text-xl font-bold text-orange-950">{HELP_GUIDE_TITLE}</h2>
+                <p className="mt-1 text-sm text-orange-900/80">
+                  エデュマッチの基本操作や便利な使い方を、ステップごとにわかりやすく解説しています。
+                </p>
+              </div>
+            </div>
+            <Button
+              asChild
+              size="lg"
+              className="shrink-0 bg-orange-500 text-white hover:bg-orange-600 shadow-md"
+            >
+              <Link
+                href={guideHref}
+                {...(guideArticle?.link ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+              >
+                <BookOpen className="h-4 w-4 mr-2" />
+                利用ガイドを見る
+              </Link>
+            </Button>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* メインコンテンツ */}
         <div className="lg:col-span-2 space-y-6">
@@ -147,19 +179,21 @@ export default async function HelpPage() {
 
         {/* サイドバー */}
         <div className="space-y-6">
-          <Card className="border-primary/20 bg-primary/5">
+          <Card className="border-orange-200 bg-orange-50/50">
             <CardHeader>
-              <CardTitle className="text-lg">まずはこちら</CardTitle>
+              <CardTitle className="text-lg text-orange-950">利用ガイド</CardTitle>
             </CardHeader>
             <CardContent>
               {guideHref ? (
                 <Link
                   href={guideHref}
-                  className="flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+                  className="flex items-center gap-3 rounded-xl border border-orange-200 bg-white p-3 text-sm font-medium text-orange-900 shadow-xs transition-colors hover:bg-orange-50"
                   {...(guideArticle?.link ? { target: "_blank", rel: "noopener noreferrer" } : {})}
                 >
-                  <BookOpen className="h-4 w-4" />
-                  {HELP_GUIDE_TITLE}
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-500 text-white">
+                    <BookOpen className="h-4 w-4" />
+                  </span>
+                  <span className="flex-1">{HELP_GUIDE_TITLE}</span>
                 </Link>
               ) : (
                 <p className="text-sm text-muted-foreground">

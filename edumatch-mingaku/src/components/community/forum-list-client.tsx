@@ -25,6 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { OpenAiChatButton } from "@/components/ui/open-ai-chat-button";
 import { cn } from "@/lib/utils";
+import { SettingToggleRow } from "@/components/ui/toggle-switch";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
@@ -245,27 +246,15 @@ function CreateRoomDialog({
             <Label>説明文</Label>
             <Textarea rows={2} value={draft.description} onChange={(e) => setDraft((p) => ({ ...p, description: e.target.value }))} className="resize-none" placeholder="この部屋のテーマを簡潔に説明してください" />
           </div>
-          <button
-            type="button"
-            onClick={() => setDraft((p) => ({ ...p, aiWeeklyTopicEnabled: !p.aiWeeklyTopicEnabled }))}
-            className={[
-              "w-full flex items-start gap-3 rounded-xl border p-4 text-left transition-all",
-              draft.aiWeeklyTopicEnabled ? "border-sky-300 bg-sky-50" : "border-border bg-muted/20 hover:border-border/80",
-            ].join(" ")}
-          >
-            <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${draft.aiWeeklyTopicEnabled ? "border-sky-500 bg-sky-500" : "border-muted-foreground/30"}`}>
-              {draft.aiWeeklyTopicEnabled && <span className="block h-2 w-2 rounded-full bg-white" />}
-            </div>
-            <div>
-              <p className="flex items-center gap-1.5 text-sm font-semibold">
-                <Sparkles className={`h-4 w-4 ${draft.aiWeeklyTopicEnabled ? "text-sky-600" : "text-muted-foreground"}`} />
-                AI が週次で「今週のお題」を設定する
-              </p>
-              <p className="mt-0.5 text-xs text-muted-foreground leading-5">
-                部屋名と説明をもとに、お題を自動で作成します。
-              </p>
-            </div>
-          </button>
+          <SettingToggleRow
+            checked={draft.aiWeeklyTopicEnabled}
+            onCheckedChange={(aiWeeklyTopicEnabled) => setDraft((p) => ({ ...p, aiWeeklyTopicEnabled }))}
+            icon={Sparkles}
+            title="AI が週次で「今週のお題」を設定する"
+            description="部屋名と説明をもとに、お題を自動で作成します。"
+            activeClassName="border-sky-300 bg-sky-50"
+            iconClassName={draft.aiWeeklyTopicEnabled ? "text-sky-600" : undefined}
+          />
 
           {!draft.aiWeeklyTopicEnabled && (
             <div className="space-y-1.5">
@@ -283,32 +272,15 @@ function CreateRoomDialog({
             </div>
           )}
 
-          <button
-            type="button"
-            onClick={() => setDraft((p) => ({ ...p, aiDiscussion: !p.aiDiscussion }))}
-            className={[
-              "w-full flex items-start gap-3 rounded-xl border p-4 text-left transition-all",
-              draft.aiDiscussion ? "border-violet-300 bg-violet-50" : "border-border bg-muted/20 hover:border-border/80",
-            ].join(" ")}
-          >
-            <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${draft.aiDiscussion ? "border-violet-500 bg-violet-500" : "border-muted-foreground/30"}`}>
-              {draft.aiDiscussion && <span className="block h-2 w-2 rounded-full bg-white" />}
-            </div>
-            <div>
-              <p className="flex items-center gap-1.5 text-sm font-semibold">
-                <Zap className={`h-4 w-4 ${draft.aiDiscussion ? "text-violet-600" : "text-muted-foreground"}`} />
-                AIディスカッションを有効にする
-              </p>
-              <p className="mt-0.5 text-xs text-muted-foreground leading-5">
-                投稿にAIファシリテーターが返信します。
-              </p>
-              {draft.aiDiscussion && (
-                <p className="mt-1.5 flex items-center gap-1 text-[11px] font-medium text-violet-700">
-                  <Bot className="h-3 w-3" />有効 — 投稿するとAIが返信します
-                </p>
-              )}
-            </div>
-          </button>
+          <SettingToggleRow
+            checked={draft.aiDiscussion}
+            onCheckedChange={(aiDiscussion) => setDraft((p) => ({ ...p, aiDiscussion }))}
+            icon={Zap}
+            title="AIディスカッション"
+            description="投稿にAIファシリテーターが返信し、議論をサポートします。"
+            activeClassName="border-violet-300 bg-violet-50"
+            iconClassName={draft.aiDiscussion ? "text-violet-600" : undefined}
+          />
 
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="outline" onClick={() => setOpen(false)}>キャンセル</Button>

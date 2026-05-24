@@ -3,7 +3,30 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser, getCurrentProfile } from "@/lib/auth";
 import { getAiKenteiDb } from "@/lib/ai-kentei-db";
 import { getForumAuthorRoleForUser } from "@/lib/forum-author-profile";
-import { notifyAdminsForumHumanActivityMilestones } from "@/lib/forum-article-notify";
+import { FORUM_AI_FACILITATOR_NAME, notifyAdminsForumHumanActivityMilestones } from "@/lib/forum-article-notify";
+
+function mapForumReply(r: {
+  id: string;
+  author_id: string | null;
+  author_name: string;
+  author_role: string;
+  body: string;
+  ai_kentei_passed: boolean;
+  created_at: Date;
+}) {
+  const isAi = r.author_name === FORUM_AI_FACILITATOR_NAME || r.author_id === null;
+  return {
+    id: r.id,
+    authorName: isAi ? FORUM_AI_FACILITATOR_NAME : r.author_name,
+    authorUserId: r.author_id ?? undefined,
+    authorRole: r.author_role,
+    body: r.body,
+    likeCount: 0,
+    postedAt: r.created_at.toISOString(),
+    aiKenteiPassed: r.ai_kentei_passed,
+    isAi,
+  };
+}
 
 export const dynamic = "force-dynamic";
 
@@ -32,14 +55,8 @@ export async function GET(
 
     return NextResponse.json({
       replies: replies.map((r) => ({
-        id: r.id,
-        authorName: r.author_name,
-        authorUserId: r.author_id ?? undefined,
-        authorRole: r.author_role,
-        body: r.body,
+        ...mapForumReply(r),
         likeCount: likeMap[r.id] ?? 0,
-        postedAt: r.created_at.toISOString(),
-        aiKenteiPassed: r.ai_kentei_passed,
       })),
     });
   } catch (err) {
@@ -104,7 +121,7 @@ export async function POST(
 
     const trimmedName = authorName.trim();
     const isAnon = trimmedName === "匿名ユーザー" || authorRole === "匿名";
-    const isAiFacilitator = trimmedName === "AIファシリテーター";
+    const isAiFacilitator = trimmedName === FORUM_AI_FACILITATOR_NAME;
 
     let resolvedAuthorRole = "一般";
     if (isAiFacilitator) {
@@ -122,11 +139,11 @@ export async function POST(
     const reply = await prisma.forumReply.create({
       data: {
         post_id: postId,
-        author_id: profile?.id ?? null,
-        author_name: trimmedName,
+        author_id: isAiFacilitator ? null : profile?.id ?? null,
+        author_name: isAiFacilitator ? FORUM_AI_FACILITATOR_NAME : trimmedName,
         author_role: resolvedAuthorRole,
         body: replyBody.trim(),
-        ai_kentei_passed: aiKenteiPassed,
+        ai_kentei_passed: isAiFacilitator ? false : aiKenteiPassed,
       },
     });
 
@@ -135,16 +152,7 @@ export async function POST(
     );
 
     return NextResponse.json({
-      reply: {
-        id: reply.id,
-        authorName: reply.author_name,
-        authorUserId: reply.author_id ?? undefined,
-        authorRole: reply.author_role,
-        body: reply.body,
-        likeCount: 0,
-        postedAt: reply.created_at.toISOString(),
-        aiKenteiPassed: reply.ai_kentei_passed,
-      },
+      reply: { ...mapForumReply(reply), likeCount: 0 },
     }, { status: 201 });
   } catch (err) {
     console.error("[forum/posts/:id/replies POST]", err);

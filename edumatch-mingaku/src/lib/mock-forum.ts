@@ -33,6 +33,7 @@ export type ForumReply = {
   likeCount: number;
   postedAt: string;
   aiKenteiPassed?: boolean;
+  isAi?: boolean;
 };
 
 export type ForumRoom = {

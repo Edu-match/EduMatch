@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     const openai = new OpenAI({ apiKey });
     const topicLine = topic ? `テーマ: ${topic}\n\n` : "";
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5.4",
       max_completion_tokens: 400,
       messages: [
         {

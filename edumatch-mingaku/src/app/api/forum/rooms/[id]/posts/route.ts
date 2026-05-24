@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser, getCurrentProfile } from "@/lib/auth";
 import { getAiKenteiDb } from "@/lib/ai-kentei-db";
 import { getForumAuthorRoleForUser } from "@/lib/forum-author-profile";
-import { notifyAdminsForumHumanActivityMilestones } from "@/lib/forum-article-notify";
+import { FORUM_AI_FACILITATOR_NAME, notifyAdminsForumHumanActivityMilestones } from "@/lib/forum-article-notify";
 
 export const dynamic = "force-dynamic";
 
@@ -77,16 +77,20 @@ export async function GET(
       isHidden: post.is_hidden,
       relatedArticleUrl: post.related_article_url ?? undefined,
       aiKenteiPassed: post.ai_kentei_passed,
-      replies: post.replies.map((r) => ({
-        id: r.id,
-        authorName: r.author_name,
-        authorUserId: r.author_id ?? undefined,
-        authorRole: r.author_role,
-        body: r.body,
-        likeCount: 0,
-        postedAt: r.created_at.toISOString(),
-        aiKenteiPassed: r.ai_kentei_passed,
-      })),
+      replies: post.replies.map((r) => {
+        const isAi = r.author_name === FORUM_AI_FACILITATOR_NAME || r.author_id === null;
+        return {
+          id: r.id,
+          authorName: isAi ? FORUM_AI_FACILITATOR_NAME : r.author_name,
+          authorUserId: r.author_id ?? undefined,
+          authorRole: r.author_role,
+          body: r.body,
+          likeCount: 0,
+          postedAt: r.created_at.toISOString(),
+          aiKenteiPassed: r.ai_kentei_passed,
+          isAi,
+        };
+      }),
     }));
 
     return NextResponse.json({
