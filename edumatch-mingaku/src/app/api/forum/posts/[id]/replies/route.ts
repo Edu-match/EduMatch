@@ -4,30 +4,8 @@ import { getCurrentUser, getCurrentProfile } from "@/lib/auth";
 import { getAiKenteiDb } from "@/lib/ai-kentei-db";
 import { getForumAuthorRoleForUser } from "@/lib/forum-author-profile";
 import { FORUM_AI_FACILITATOR_NAME } from "@/lib/forum-constants";
+import { mapForumReplyForApi } from "@/lib/forum-ai-reply";
 import { notifyAdminsForumHumanActivityMilestones } from "@/lib/forum-article-notify";
-
-function mapForumReply(r: {
-  id: string;
-  author_id: string | null;
-  author_name: string;
-  author_role: string;
-  body: string;
-  ai_kentei_passed: boolean;
-  created_at: Date;
-}) {
-  const isAi = r.author_name === FORUM_AI_FACILITATOR_NAME || r.author_id === null;
-  return {
-    id: r.id,
-    authorName: isAi ? FORUM_AI_FACILITATOR_NAME : r.author_name,
-    authorUserId: r.author_id ?? undefined,
-    authorRole: r.author_role,
-    body: r.body,
-    likeCount: 0,
-    postedAt: r.created_at.toISOString(),
-    aiKenteiPassed: r.ai_kentei_passed,
-    isAi,
-  };
-}
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +16,19 @@ export async function GET(
 ) {
   try {
     const { id: postId } = await params;
+
+    const post = await prisma.forumPost.findUnique({
+      where: { id: postId },
+      select: {
+        author_id: true,
+        author_name: true,
+        created_at: true,
+        room: { select: { ai_discussion: true } },
+      },
+    });
+    if (!post) {
+      return NextResponse.json({ error: "Post not found" }, { status: 404 });
+    }
 
     const replies = await prisma.forumReply.findMany({
       where: { post_id: postId },
@@ -54,9 +45,18 @@ export async function GET(
     );
     const likeMap = Object.fromEntries(likeCounts.map((l) => [l.id, l.count]));
 
+    const replyContext = {
+      post: {
+        author_id: post.author_id,
+        author_name: post.author_name,
+        created_at: post.created_at,
+      },
+      roomAiDiscussion: post.room.ai_discussion,
+    };
+
     return NextResponse.json({
-      replies: replies.map((r) => ({
-        ...mapForumReply(r),
+      replies: replies.map((r, replyIndex) => ({
+        ...mapForumReplyForApi(r, { ...replyContext, replyIndex }),
         likeCount: likeMap[r.id] ?? 0,
       })),
     });
@@ -76,7 +76,14 @@ export async function POST(
 
     const post = await prisma.forumPost.findUnique({
       where: { id: postId },
-      select: { id: true, room_id: true },
+      select: {
+        id: true,
+        room_id: true,
+        author_id: true,
+        author_name: true,
+        created_at: true,
+        room: { select: { ai_discussion: true } },
+      },
     });
     if (!post) {
       return NextResponse.json({ error: "Post not found" }, { status: 404 });
@@ -137,6 +144,8 @@ export async function POST(
         guest && guest.length <= 120 && guest !== "匿名" ? guest : "一般";
     }
 
+    const priorReplyCount = await prisma.forumReply.count({ where: { post_id: postId } });
+
     const reply = await prisma.forumReply.create({
       data: {
         post_id: postId,
@@ -153,7 +162,18 @@ export async function POST(
     );
 
     return NextResponse.json({
-      reply: { ...mapForumReply(reply), likeCount: 0 },
+      reply: {
+        ...mapForumReplyForApi(reply, {
+          post: {
+            author_id: post.author_id,
+            author_name: post.author_name,
+            created_at: post.created_at,
+          },
+          roomAiDiscussion: post.room.ai_discussion,
+          replyIndex: priorReplyCount,
+        }),
+        likeCount: 0,
+      },
     }, { status: 201 });
   } catch (err) {
     console.error("[forum/posts/:id/replies POST]", err);

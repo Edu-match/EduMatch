@@ -1,45 +1,42 @@
 'use client'
 
 import { useState } from 'react'
-import { toPng } from 'html-to-image'
 import { Download, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { generateCertificatePng } from '@/lib/certificate-canvas'
 
 interface CertificateDownloadButtonProps {
-  targetId: string
+  name: string
+  date: Date | string
+  certificateId: string
   fileName: string
   className?: string
 }
 
 export function CertificateDownloadButton({
-  targetId,
+  name,
+  date,
+  certificateId,
   fileName,
   className,
 }: CertificateDownloadButtonProps) {
   const [isDownloading, setIsDownloading] = useState(false)
 
   const handleDownload = async () => {
-    const target = document.getElementById(targetId)
-    if (!target) {
-      toast.error('認定証の描画領域が見つかりませんでした')
-      return
-    }
-
     setIsDownloading(true)
     try {
-      const dataUrl = await toPng(target, {
-        cacheBust: true,
-        pixelRatio: 2,
-      })
+      const blob = await generateCertificatePng({ name, date, certificateId })
+      const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
-      a.href = dataUrl
+      a.href = url
       a.download = fileName
       a.click()
+      URL.revokeObjectURL(url)
       toast.success('認定証をダウンロードしました')
     } catch (error) {
       console.error('certificate download failed', error)
-      toast.error('ダウンロードに失敗しました。画像URLやネットワークをご確認ください。')
+      toast.error('ダウンロードに失敗しました。しばらくしてから再度お試しください。')
     } finally {
       setIsDownloading(false)
     }

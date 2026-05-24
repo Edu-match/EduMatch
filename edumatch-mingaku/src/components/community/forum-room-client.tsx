@@ -60,6 +60,7 @@ import { useAuthUser } from "@/components/community/answer-section";
 import { OpenAiChatButton } from "@/components/ui/open-ai-chat-button";
 import { ReportForumContentButton } from "@/components/community/report-forum-content-button";
 import { FORUM_AI_FACILITATOR_NAME } from "@/lib/forum-constants";
+import { isForumAiFacilitatorReply } from "@/lib/forum-ai-reply";
 
 // ─── 定数 ────────────────────────────────────────────────
 
@@ -194,13 +195,43 @@ function AiStreamingReply({ streamText }: { streamText: string }) {
 function ReplyCard({
   reply,
   isAi,
+  postAuthorId,
+  postAuthorName,
+  postPostedAt,
+  roomAiDiscussion,
+  replyIndex,
   onRequireLogin,
 }: {
   reply: ForumReply & { isAi?: boolean };
   isAi?: boolean;
+  postAuthorId?: string | null;
+  postAuthorName?: string;
+  postPostedAt?: string;
+  roomAiDiscussion?: boolean;
+  replyIndex?: number;
   onRequireLogin: () => void;
 }) {
-  const isAiReply = isAi || reply.isAi || reply.authorName === FORUM_AI_FACILITATOR_NAME;
+  const legacyAi =
+    postAuthorName &&
+    postPostedAt &&
+    typeof replyIndex === "number" &&
+    isForumAiFacilitatorReply(
+      {
+        author_id: reply.authorUserId ?? null,
+        author_name: reply.authorName,
+        created_at: new Date(reply.postedAt),
+      },
+      {
+        post: {
+          author_id: postAuthorId ?? null,
+          author_name: postAuthorName,
+          created_at: new Date(postPostedAt),
+        },
+        roomAiDiscussion: !!roomAiDiscussion,
+        replyIndex,
+      }
+    );
+  const isAiReply = isAi || reply.isAi || legacyAi || reply.authorName === FORUM_AI_FACILITATOR_NAME;
   const displayAuthorName = isAiReply ? FORUM_AI_FACILITATOR_NAME : reply.authorName;
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(reply.likeCount);
@@ -322,7 +353,26 @@ function PostCardWithStream({
   }, [isStreaming]);
 
   useEffect(() => {
-    if (replies.some((r) => r.isAi || r.authorName === FORUM_AI_FACILITATOR_NAME)) {
+    if (replies.some((r, i) =>
+      r.isAi ||
+      r.authorName === FORUM_AI_FACILITATOR_NAME ||
+      isForumAiFacilitatorReply(
+        {
+          author_id: r.authorUserId ?? null,
+          author_name: r.authorName,
+          created_at: new Date(r.postedAt),
+        },
+        {
+          post: {
+            author_id: post.authorUserId ?? null,
+            author_name: post.authorName,
+            created_at: new Date(post.postedAt),
+          },
+          roomAiDiscussion: aiDiscussion,
+          replyIndex: i,
+        }
+      )
+    )) {
       setRepliesOpen(true);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps -- AI返信追加時のみ展開
@@ -524,11 +574,16 @@ function PostCardWithStream({
       {/* 返信 + AIストリーミング */}
       {(autoOpenReplies && (hasReplies || isStreaming)) && (
         <div className="border-t bg-muted/10 px-5 py-4 space-y-4">
-          {replies.map((reply) => (
+          {replies.map((reply, replyIndex) => (
             <ReplyCard
               key={reply.id}
               reply={reply}
               isAi={reply.isAi}
+              postAuthorId={post.authorUserId}
+              postAuthorName={post.authorName}
+              postPostedAt={post.postedAt}
+              roomAiDiscussion={aiDiscussion}
+              replyIndex={replyIndex}
               onRequireLogin={onRequireLogin}
             />
           ))}

@@ -81,7 +81,9 @@ export default async function PublicCertificatePage({ params }: Props) {
           {/* CTA */}
           <div className="mt-8 text-center space-y-4">
             <CertificateDownloadButton
-              targetId="ai-kentei-public-certificate-canvas"
+              name={certificate.public_display_name}
+              date={new Date(certificate.passed_at)}
+              certificateId={certificate.certificate_id}
               fileName={`ai-kentei-certificate-${certificate.certificate_id}.png`}
               className="w-full sm:w-auto"
             />

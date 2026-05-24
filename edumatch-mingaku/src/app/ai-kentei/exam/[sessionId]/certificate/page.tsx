@@ -446,7 +446,9 @@ export default function CertificatePage({ params }: { params: Promise<{ sessionI
                 ) : (
                   <div className="space-y-3">
                     <CertificateDownloadButton
-                      targetId="ai-kentei-certificate-canvas"
+                      name={resolvedName}
+                      date={new Date(certificateData.passedAt)}
+                      certificateId={certificateId}
                       fileName={`ai-kentei-certificate-${certificateId}.png`}
                       className="w-full"
                     />

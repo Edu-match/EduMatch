@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser, getCurrentProfile } from "@/lib/auth";
 import { getAiKenteiDb } from "@/lib/ai-kentei-db";
 import { getForumAuthorRoleForUser } from "@/lib/forum-author-profile";
-import { FORUM_AI_FACILITATOR_NAME } from "@/lib/forum-constants";
+import { mapForumReplyForApi } from "@/lib/forum-ai-reply";
 import { notifyAdminsForumHumanActivityMilestones } from "@/lib/forum-article-notify";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +31,7 @@ export async function GET(
     }
     const hiddenFilter = includeHidden && isAdmin ? undefined : false;
 
-    const [posts, total] = await Promise.all([
+    const [posts, total, room] = await Promise.all([
       prisma.forumPost.findMany({
         where: { room_id: roomId, ...(hiddenFilter !== undefined && { is_hidden: hiddenFilter }) },
         orderBy: { created_at: "desc" },
@@ -50,6 +50,7 @@ export async function GET(
         },
       }),
       prisma.forumPost.count({ where: { room_id: roomId, ...(hiddenFilter !== undefined && { is_hidden: hiddenFilter }) } }),
+      prisma.forumRoom.findUnique({ where: { id: roomId }, select: { ai_discussion: true } }),
     ]);
 
     const likesByPost = await Promise.all(
@@ -61,6 +62,8 @@ export async function GET(
       })
     );
     const likeMap = Object.fromEntries(likesByPost.map((l) => [l.id, l.count]));
+
+    const roomAiDiscussion = room?.ai_discussion ?? false;
 
     const result = posts.map((post) => ({
       id: post.id,
@@ -78,20 +81,17 @@ export async function GET(
       isHidden: post.is_hidden,
       relatedArticleUrl: post.related_article_url ?? undefined,
       aiKenteiPassed: post.ai_kentei_passed,
-      replies: post.replies.map((r) => {
-        const isAi = r.author_name === FORUM_AI_FACILITATOR_NAME || r.author_id === null;
-        return {
-          id: r.id,
-          authorName: isAi ? FORUM_AI_FACILITATOR_NAME : r.author_name,
-          authorUserId: r.author_id ?? undefined,
-          authorRole: r.author_role,
-          body: r.body,
-          likeCount: 0,
-          postedAt: r.created_at.toISOString(),
-          aiKenteiPassed: r.ai_kentei_passed,
-          isAi,
-        };
-      }),
+      replies: post.replies.map((r, replyIndex) =>
+        mapForumReplyForApi(r, {
+          post: {
+            author_id: post.author_id,
+            author_name: post.author_name,
+            created_at: post.created_at,
+          },
+          roomAiDiscussion,
+          replyIndex,
+        })
+      ),
     }));
 
     return NextResponse.json({

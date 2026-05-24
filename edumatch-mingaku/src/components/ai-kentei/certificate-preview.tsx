@@ -1,6 +1,11 @@
 'use client'
 
 import { certificateMincho } from '@/lib/fonts/certificate-mincho'
+import {
+  CERTIFICATE_HEIGHT,
+  CERTIFICATE_TEXT_POS as POS,
+  CERTIFICATE_WIDTH,
+} from '@/lib/certificate-canvas'
 
 interface CertificatePreviewProps {
   name: string
@@ -11,16 +16,8 @@ interface CertificatePreviewProps {
   certificateId?: string | null
 }
 
-/** テンプレート原寸（certificate-template.jpg） */
-const W = 1024
-const H = 723
-
-/** viewBox 座標（テンプレート上で合成確認済み） */
-const POS = {
-  name: { x: 660, y: 430, fontSize: 32 },
-  date: { x: 520, y: 500, fontSize: 24 },
-  certificateId: { x: 520, y: 535, fontSize: 24 },
-} as const
+const W = CERTIFICATE_WIDTH
+const H = CERTIFICATE_HEIGHT
 
 export function CertificatePreview({
   name,
