@@ -59,7 +59,7 @@ import { ForumRoomIcon, ROOM_BG_COLORS } from "@/components/community/forum-room
 import { useAuthUser } from "@/components/community/answer-section";
 import { OpenAiChatButton } from "@/components/ui/open-ai-chat-button";
 import { ReportForumContentButton } from "@/components/community/report-forum-content-button";
-import { FORUM_AI_FACILITATOR_NAME } from "@/lib/forum-article-notify";
+import { FORUM_AI_FACILITATOR_NAME } from "@/lib/forum-constants";
 
 // ─── 定数 ────────────────────────────────────────────────
 

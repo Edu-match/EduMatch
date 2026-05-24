@@ -1,9 +1,9 @@
 import { prisma } from "@/lib/prisma";
+import { FORUM_AI_FACILITATOR_NAME } from "@/lib/forum-constants";
 import { FORUM_ARTICLE_SUGGESTION_KIND } from "@/lib/in-app-notification-constants";
 import { getSiteOrigin } from "@/lib/site-url";
 
-/** DB・表示で共通の AI ファシリテーター名（カウントから除外） */
-export const FORUM_AI_FACILITATOR_NAME = "AIファシリテーター";
+export { FORUM_AI_FACILITATOR_NAME };
 
 export function parseForumArticleNotifyThresholds(): number[] {
   const raw = process.env.FORUM_ARTICLE_NOTIFY_THRESHOLDS ?? "10,20";

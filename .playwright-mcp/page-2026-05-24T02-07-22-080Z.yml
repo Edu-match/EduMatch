@@ -1,0 +1,255 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e4]:
+        - link "エデュマッチ" [ref=e5] [cursor=pointer]:
+          - /url: /
+          - img "エデュマッチ" [ref=e6]
+        - navigation [ref=e7]:
+          - generic [ref=e8]:
+            - link "記事一覧" [ref=e9] [cursor=pointer]:
+              - /url: /articles
+            - link "サービス一覧" [ref=e10] [cursor=pointer]:
+              - /url: /services
+            - link "セミナー・イベント情報" [ref=e11] [cursor=pointer]:
+              - /url: /events
+            - link "井戸端会議" [ref=e12] [cursor=pointer]:
+              - /url: /forum
+            - link "掲載企業" [ref=e13] [cursor=pointer]:
+              - /url: /companies
+            - link "サービスのお気に入り" [ref=e14] [cursor=pointer]:
+              - /url: /request-info/list
+              - img [ref=e15]
+              - generic [ref=e18]: サービスのお気に入り
+          - button "チュートリアルを見る" [ref=e19]:
+            - img
+          - button "通知" [ref=e145]:
+            - img
+            - generic [ref=e146]: "2"
+          - button "Test Provider Company" [ref=e147]:
+            - generic [ref=e148]:
+              - img
+            - generic [ref=e149]: Test Provider Company
+            - img
+    - generic [ref=e22]:
+      - complementary [ref=e23]:
+        - generic [ref=e24]:
+          - button "サイドメニューを閉じる" [ref=e25]:
+            - img [ref=e26]
+          - complementary [ref=e28]:
+            - generic [ref=e29]:
+              - heading "メニュー" [level=2] [ref=e31]
+              - navigation [ref=e32]:
+                - link "ホーム" [ref=e33] [cursor=pointer]:
+                  - /url: /
+                  - img [ref=e34]
+                  - generic [ref=e37]: ホーム
+                - link "サービス一覧" [ref=e38] [cursor=pointer]:
+                  - /url: /services
+                  - img [ref=e39]
+                  - generic [ref=e42]: サービス一覧
+                - link "記事一覧" [ref=e43] [cursor=pointer]:
+                  - /url: /articles
+                  - img [ref=e44]
+                  - generic [ref=e47]: 記事一覧
+                - link "セミナー・イベント情報" [ref=e48] [cursor=pointer]:
+                  - /url: /events
+                  - img [ref=e49]
+                  - generic [ref=e51]: セミナー・イベント情報
+                - link "井戸端会議" [ref=e52] [cursor=pointer]:
+                  - /url: /forum
+                  - img [ref=e53]
+                  - generic [ref=e55]: 井戸端会議
+                - link "掲載企業一覧" [ref=e56] [cursor=pointer]:
+                  - /url: /companies
+                  - img [ref=e57]
+                  - generic [ref=e61]: 掲載企業一覧
+                - link "サービス比較" [ref=e62] [cursor=pointer]:
+                  - /url: /compare
+                  - img [ref=e63]
+                  - generic [ref=e67]: サービス比較
+                - link "AI検定" [ref=e68] [cursor=pointer]:
+                  - /url: /ai-kentei
+                  - img [ref=e69]
+                  - generic [ref=e72]: AI検定
+                - link "ヘルプ" [ref=e73] [cursor=pointer]:
+                  - /url: /help
+                  - img [ref=e74]
+                  - generic [ref=e77]: ヘルプ
+      - main [ref=e78]:
+        - generic [ref=e150]:
+          - generic [ref=e152]:
+            - link "AIUEO 井戸端会議" [ref=e153] [cursor=pointer]:
+              - /url: /forum
+              - img [ref=e154]
+              - text: AIUEO 井戸端会議
+            - generic [ref=e157]:
+              - img [ref=e159]
+              - generic [ref=e164]:
+                - generic [ref=e165]:
+                  - heading "AI×授業設計" [level=1] [ref=e166]
+                  - generic [ref=e167]:
+                    - img [ref=e168]
+                    - text: AIディスカッション
+                - paragraph [ref=e170]: 生成AI活用、個別最適化、教材づくりの変化など
+                - generic [ref=e171]:
+                  - generic [ref=e172]:
+                    - img [ref=e173]
+                    - text: 0 投稿
+                  - generic [ref=e175]:
+                    - img [ref=e176]
+                    - text: 0 人参加
+          - generic [ref=e184]:
+            - paragraph [ref=e186]:
+              - img [ref=e187]
+              - text: 今週のお題
+            - paragraph [ref=e190]: 授業にAIを取り入れるとしたら、どこから始めますか？
+            - paragraph [ref=e191]: このテーマについて、あなたの経験や考えを投稿しよう
+          - paragraph [ref=e195]:
+            - img [ref=e196]
+            - generic [ref=e199]: この部屋ではAIファシリテーターが投稿に返信し、ディスカッションを盛り上げます。
+          - generic [ref=e201]:
+            - generic [ref=e202]:
+              - generic [ref=e203]:
+                - paragraph [ref=e204]: このテーマに投稿する
+                - paragraph [ref=e205]: 授業にAIを取り入れるとしたら、どこから始めますか？
+              - generic [ref=e206]:
+                - generic [ref=e207]: T
+                - generic [ref=e208]: Test Provider Company
+                - generic [ref=e209]: ·
+                - generic [ref=e210]:
+                  - img [ref=e211]: 👤
+                  - generic "一般" [ref=e212]
+                - button "🎭 匿名" [ref=e214]
+              - generic [ref=e216]:
+                - paragraph [ref=e217]:
+                  - img [ref=e218]
+                  - generic [ref=e221]: 投稿前にAIと壁打ちして、意見を整えてから投稿できます。
+                - button "投稿をAIと壁打ちする" [ref=e222]:
+                  - img
+                  - text: 投稿をAIと壁打ちする
+              - textbox "今週のお題について、あなたの経験や意見を書いてください…" [ref=e224]
+              - generic [ref=e226]:
+                - button "関連記事URLを追加" [ref=e227]:
+                  - img [ref=e228]
+                - generic [ref=e231]:
+                  - generic [ref=e232]: "800"
+                  - button "投稿する" [disabled]:
+                    - img
+                    - text: 投稿する
+            - generic [ref=e233]:
+              - generic [ref=e234]:
+                - paragraph [ref=e235]: 0 件の投稿
+                - tablist [ref=e237]:
+                  - tab "新着順" [selected] [ref=e238]
+                  - tab "人気順" [ref=e239]:
+                    - img
+                    - text: 人気順
+              - generic [ref=e240]:
+                - img [ref=e241]
+                - generic [ref=e243]:
+                  - paragraph [ref=e244]: まだ投稿がありません
+                  - paragraph [ref=e245]: 最初の投稿者になりましょう
+            - generic [ref=e247]:
+              - paragraph [ref=e248]:
+                - img [ref=e249]
+                - text: 投稿者バッジの見方
+              - paragraph [ref=e252]: 表示文言はアカウント設定の「職業・役職」に連動します。色は大まかな分類（教員・学生・企業など）です。
+              - generic [ref=e253]:
+                - generic [ref=e254]:
+                  - img [ref=e255]: 🎓
+                  - generic "elem-teacher" [ref=e256]
+                - generic [ref=e257]:
+                  - img [ref=e258]: 🎓
+                  - generic "univ-faculty" [ref=e259]
+                - generic [ref=e260]:
+                  - img [ref=e261]: 📚
+                  - generic "学生" [ref=e262]
+                - generic [ref=e263]:
+                  - img [ref=e264]: 🏢
+                  - generic "企業・EdTech事業者" [ref=e265]
+                - generic [ref=e266]:
+                  - img [ref=e267]: 👤
+                  - generic "一般" [ref=e268]
+                - generic [ref=e269]:
+                  - img [ref=e270]
+                  - text: AI
+      - generic [ref=e83]:
+        - separator "AIパネル幅を変更" [ref=e84]
+        - generic [ref=e85]:
+          - generic [ref=e86]:
+            - img [ref=e88]
+            - generic [ref=e92]: AIナビゲーター
+            - button "閉じる" [ref=e94]:
+              - img
+          - generic [ref=e273]:
+            - generic [ref=e274]:
+              - paragraph [ref=e275]: AIナビゲーターご利用上の留意点
+              - paragraph [ref=e276]: 以下をご確認のうえ、同意してからご利用ください。
+            - generic [ref=e277]:
+              - paragraph [ref=e278]: 本サイトのAIナビゲーターは、エデュマッチが提供する教育サービス・ICTツール等の情報検索・相談支援の補助機能です。
+              - paragraph [ref=e279]: 本AIによる応答は、教育サービス選びや情報整理の参考を目的に自動生成されたものであり、内容の正確性・最新性・完全性を保証するものではありません。
+              - paragraph [ref=e280]: 回答内容に基づく最終的な判断（資料請求・契約・導入等）は、必ず各サービス提供元の公式情報・担当者への確認を行ってください。
+              - paragraph [ref=e281]: 本AIの回答や解析内容により利用者または第三者に発生した損害について、当サイトおよび運営者は一切責任を負いません。
+              - paragraph [ref=e282]: 本AIはすべての利用ケースに対応するものではなく、AIが誤った情報を生成する可能性（いわゆる「ハルシネーション」）をご了承ください。
+              - link "留意点の全文を確認する →" [ref=e284] [cursor=pointer]:
+                - /url: /help/ai-navigator-disclaimer
+            - generic [ref=e285]:
+              - generic [ref=e286] [cursor=pointer]:
+                - checkbox "上記の留意点を確認しました" [ref=e287]
+                - generic [ref=e288]: 上記の留意点を確認しました
+              - button "同意してチャットを開始する" [disabled]:
+                - img
+                - text: 同意してチャットを開始する
+    - contentinfo [ref=e102]:
+      - generic [ref=e103]:
+        - generic [ref=e104]:
+          - generic [ref=e105]:
+            - link "エデュマッチ" [ref=e106] [cursor=pointer]:
+              - /url: /
+              - generic [ref=e107]: エデュマッチ
+            - paragraph [ref=e108]: 教育の未来を見つける、つながる
+          - generic [ref=e109]:
+            - heading "プロダクト" [level=3] [ref=e110]
+            - list [ref=e111]:
+              - listitem [ref=e112]:
+                - link "記事一覧" [ref=e113] [cursor=pointer]:
+                  - /url: /articles
+              - listitem [ref=e114]:
+                - link "サービス一覧" [ref=e115] [cursor=pointer]:
+                  - /url: /services
+              - listitem [ref=e116]:
+                - link "セミナー・イベント情報" [ref=e117] [cursor=pointer]:
+                  - /url: /events
+              - listitem [ref=e118]:
+                - link "井戸端会議" [ref=e119] [cursor=pointer]:
+                  - /url: /forum
+          - generic [ref=e120]:
+            - heading "会社情報" [level=3] [ref=e121]
+            - list [ref=e122]:
+              - listitem [ref=e123]:
+                - link "運営について" [ref=e124] [cursor=pointer]:
+                  - /url: /about
+              - listitem [ref=e125]:
+                - link "お問い合わせ" [ref=e126] [cursor=pointer]:
+                  - /url: /contact
+          - generic [ref=e127]:
+            - heading "法的情報" [level=3] [ref=e128]
+            - list [ref=e129]:
+              - listitem [ref=e130]:
+                - link "利用規約" [ref=e131] [cursor=pointer]:
+                  - /url: /terms
+              - listitem [ref=e132]:
+                - link "プライバシーポリシー" [ref=e133] [cursor=pointer]:
+                  - /url: /privacy
+        - paragraph [ref=e135]: © 2026 エデュマッチ（主催：一般社団法人教育AI活用協会 / 運営：株式会社スタディパーク）. All rights reserved.
+  - generic: Ver1.251
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e289] [cursor=pointer]:
+    - generic [ref=e292]:
+      - text: Rendering
+      - generic [ref=e293]:
+        - generic [ref=e294]: .
+        - generic [ref=e295]: .
+        - generic [ref=e296]: .
+  - alert [ref=e297]

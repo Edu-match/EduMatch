@@ -3,7 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser, getCurrentProfile } from "@/lib/auth";
 import { getAiKenteiDb } from "@/lib/ai-kentei-db";
 import { getForumAuthorRoleForUser } from "@/lib/forum-author-profile";
-import { FORUM_AI_FACILITATOR_NAME, notifyAdminsForumHumanActivityMilestones } from "@/lib/forum-article-notify";
+import { FORUM_AI_FACILITATOR_NAME } from "@/lib/forum-constants";
+import { notifyAdminsForumHumanActivityMilestones } from "@/lib/forum-article-notify";
 
 export const dynamic = "force-dynamic";
 

@@ -25,7 +25,7 @@ export function ToggleSwitch({
       onClick={() => onCheckedChange(!checked)}
       className={cn(
         "relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-        checked ? "bg-primary" : "bg-muted-foreground/30",
+        checked ? "bg-emerald-500" : "bg-muted-foreground/30",
         className
       )}
     >
@@ -70,7 +70,7 @@ export function SettingToggleRow({
           {title}
         </p>
         <p className="text-xs text-muted-foreground leading-5">{description}</p>
-        <p className="text-[11px] font-medium text-muted-foreground">
+        <p className={cn("text-[11px] font-medium", checked ? "text-emerald-700" : "text-muted-foreground")}>
           {checked ? "オン — 有効" : "オフ — 無効"}
         </p>
       </div>
