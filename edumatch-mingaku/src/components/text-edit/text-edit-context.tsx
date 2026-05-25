@@ -10,6 +10,7 @@ import {
 } from "react";
 import { usePathname } from "next/navigation";
 import { toast } from "sonner";
+import { createSupabaseBrowserClient } from "@/utils/supabase/client";
 
 type OverrideEntry = { override: string; original: string };
 
@@ -163,6 +164,9 @@ export function TextEditProvider({ children }: { children: React.ReactNode }) {
   const highlightRef = useRef<HTMLDivElement | null>(null);
   // 各テキストノードに割り当てた安定キー（再描画で内容が変わっても保持）
   const nodeKeyRef = useRef<WeakMap<Text, string>>(new WeakMap());
+  // 自分が編集中でまだサーバー確定していない変更（同期で上書きされないよう保護）
+  // value: OverrideEntry = 保存中 / null = 削除(リセット)中
+  const pendingRef = useRef<Map<string, OverrideEntry | null>>(new Map());
 
   /* 管理者判定 */
   useEffect(() => {
@@ -233,31 +237,80 @@ export function TextEditProvider({ children }: { children: React.ReactNode }) {
     [walkAssign]
   );
 
-  /* ページが変わるたびに上書きを取得して適用 */
+  /* サーバーから最新の上書きを取得して適用（他ユーザーの変更も反映） */
+  const loadOverrides = useCallback(async () => {
+    try {
+      const res = await fetch(
+        `/api/text-overrides?pathname=${encodeURIComponent(pathname)}`,
+        { credentials: "include", cache: "no-store" }
+      );
+      const d: {
+        overrides?: { key: string; override: string; original: string }[];
+      } = await res.json();
+      const map = new Map<string, OverrideEntry>();
+      for (const o of d.overrides ?? []) {
+        map.set(o.key, { override: o.override, original: o.original });
+      }
+      // 自分が編集中でまだ確定していない変更は維持する
+      for (const [k, v] of pendingRef.current) {
+        if (v === null) map.delete(k);
+        else map.set(k, v);
+      }
+      overridesRef.current = map;
+      applyOverrides();
+      setTimeout(applyOverrides, 300);
+    } catch {
+      /* 取得失敗時は何もしない */
+    }
+  }, [pathname, applyOverrides]);
+
+  // 常に最新の loadOverrides を参照できるようにする（リアルタイム購読用）
+  const loadOverridesRef = useRef(loadOverrides);
   useEffect(() => {
-    let cancelled = false;
+    loadOverridesRef.current = loadOverrides;
+  }, [loadOverrides]);
+
+  /* ページが変わるたびに取得。さらに一定間隔・タブ復帰時にも再取得して同期する */
+  useEffect(() => {
     overridesRef.current = new Map();
     nodeKeyRef.current = new WeakMap();
-    fetch(`/api/text-overrides?pathname=${encodeURIComponent(pathname)}`, {
-      credentials: "include",
-    })
-      .then((r) => r.json())
-      .then((d: { overrides?: { key: string; override: string; original: string }[] }) => {
-        if (cancelled) return;
-        const map = new Map<string, OverrideEntry>();
-        for (const o of d.overrides ?? []) {
-          map.set(o.key, { override: o.override, original: o.original });
-        }
-        overridesRef.current = map;
-        applyOverrides();
-        setTimeout(applyOverrides, 300);
-        setTimeout(applyOverrides, 1000);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
+    void loadOverrides();
+
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") void loadOverrides();
+    }, 15000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void loadOverrides();
     };
-  }, [pathname, applyOverrides]);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [loadOverrides]);
+
+  /* Supabase リアルタイム購読：他ユーザーの保存を即時反映 */
+  useEffect(() => {
+    let supabase;
+    try {
+      supabase = createSupabaseBrowserClient();
+    } catch {
+      return;
+    }
+    const channel = supabase
+      .channel("text-overrides-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "text_overrides" },
+        () => {
+          void loadOverridesRef.current();
+        }
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, []);
 
   /* DOM 変化を監視して再適用 */
   useEffect(() => {
@@ -370,7 +423,9 @@ export function TextEditProvider({ children }: { children: React.ReactNode }) {
     const prev = overridesRef.current.get(key);
 
     // 楽観的更新：すぐ反映してパネルを閉じる
-    overridesRef.current.set(key, { override: newText, original });
+    const entry = { override: newText, original };
+    overridesRef.current.set(key, entry);
+    pendingRef.current.set(key, entry); // 同期で上書きされないよう保護
     applyOverrides();
     setEditor(EMPTY_EDITOR);
 
@@ -385,9 +440,11 @@ export function TextEditProvider({ children }: { children: React.ReactNode }) {
           const d = await res.json().catch(() => ({}));
           throw new Error(d.error || "保存に失敗しました");
         }
+        pendingRef.current.delete(key);
         toast.success("文言を保存しました");
       })
       .catch((err) => {
+        pendingRef.current.delete(key);
         // 失敗したら元に戻す
         if (prev) overridesRef.current.set(key, prev);
         else overridesRef.current.delete(key);
@@ -404,6 +461,7 @@ export function TextEditProvider({ children }: { children: React.ReactNode }) {
     const original = entry?.original ?? editor.original;
 
     overridesRef.current.delete(key);
+    pendingRef.current.set(key, null); // 削除中として保護
     restoreToOriginal(key, original);
     setEditor(EMPTY_EDITOR);
 
@@ -415,9 +473,11 @@ export function TextEditProvider({ children }: { children: React.ReactNode }) {
     )
       .then((res) => {
         if (!res.ok) throw new Error("リセットに失敗しました");
+        pendingRef.current.delete(key);
         toast.success("元の文言に戻しました");
       })
       .catch((err) => {
+        pendingRef.current.delete(key);
         // 失敗したら戻す
         if (entry) {
           overridesRef.current.set(key, entry);
