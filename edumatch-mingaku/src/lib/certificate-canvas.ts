@@ -1,6 +1,7 @@
-/** 認定証テンプレート原寸（certificate-template.jpg） */
+/** 認定証テンプレート原寸（certificate-template.png） */
 export const CERTIFICATE_WIDTH = 1024
 export const CERTIFICATE_HEIGHT = 723
+const CERTIFICATE_OUTPUT_SCALE = 2
 
 /** viewBox 座標（テンプレート上で合成確認済み） */
 export const CERTIFICATE_TEXT_POS = {
@@ -9,7 +10,7 @@ export const CERTIFICATE_TEXT_POS = {
   certificateId: { x: 520, y: 535, fontSize: 24, fontWeight: 400 },
 } as const
 
-const TEMPLATE_SRC = '/ai-kentei/certificate-template.jpg'
+const TEMPLATE_SRC = '/ai-kentei/certificate-template.png'
 const MINCHO_FAMILY = '"Shippori Mincho", serif'
 
 async function ensureShipporiMincho(): Promise<void> {
@@ -67,12 +68,15 @@ export async function generateCertificatePng(options: {
 
   const img = await loadTemplateImage()
   const canvas = document.createElement('canvas')
-  canvas.width = CERTIFICATE_WIDTH
-  canvas.height = CERTIFICATE_HEIGHT
+  canvas.width = CERTIFICATE_WIDTH * CERTIFICATE_OUTPUT_SCALE
+  canvas.height = CERTIFICATE_HEIGHT * CERTIFICATE_OUTPUT_SCALE
 
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('Canvas が利用できません')
 
+  ctx.scale(CERTIFICATE_OUTPUT_SCALE, CERTIFICATE_OUTPUT_SCALE)
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = 'high'
   ctx.drawImage(img, 0, 0, CERTIFICATE_WIDTH, CERTIFICATE_HEIGHT)
 
   const parsedDate =
