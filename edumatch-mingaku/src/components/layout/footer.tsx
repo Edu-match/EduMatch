@@ -90,7 +90,7 @@ export function Footer() {
         {/* Copyright */}
         <div className="mt-8 md:mt-12 border-t pt-6 md:pt-8">
           <p className="text-center text-xs sm:text-sm text-muted-foreground">
-            © {currentYear} エデュマッチ（主催：{OPERATOR_INFO.organizer} / 運営：{OPERATOR_INFO.operator}）. All rights reserved.
+            © {currentYear} エデュマッチ（運営：{OPERATOR_INFO.operator}／協力：{OPERATOR_INFO.organizer}）. All rights reserved.
           </p>
         </div>
       </div>
