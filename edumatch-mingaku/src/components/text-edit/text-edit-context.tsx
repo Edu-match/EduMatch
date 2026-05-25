@@ -36,6 +36,9 @@ export function useTextEdit() {
 /* DOM ユーティリティ                                                  */
 /* ------------------------------------------------------------------ */
 
+/** キー = 「出現順インデックス」+ SEP + 「元の文言(トリム済み)」 */
+const SEP = "";
+
 function isIgnored(node: Node | null): boolean {
   let el: Element | null =
     node && node.nodeType === Node.TEXT_NODE
@@ -49,21 +52,6 @@ function isIgnored(node: Node | null): boolean {
     el = el.parentElement;
   }
   return false;
-}
-
-/** body を基準にした、テキストノードの安定キー（子インデックスの並び）。 */
-function domPathOf(node: Node): string | null {
-  const parts: number[] = [];
-  let cur: Node | null = node;
-  const root = document.body;
-  while (cur && cur !== root) {
-    const parent: Node | null = cur.parentNode;
-    if (!parent) return null;
-    parts.unshift(Array.prototype.indexOf.call(parent.childNodes, cur));
-    cur = parent;
-  }
-  if (cur !== root) return null;
-  return parts.join("/");
 }
 
 function walkText(cb: (t: Text) => void) {
@@ -124,12 +112,9 @@ function resolveTextNode(target: EventTarget | null, x: number, y: number): Text
   const el = target as Element | null;
   if (!el || !(el instanceof Element) || isIgnored(el)) return null;
 
-  // 直下のテキストノードを優先
   for (const c of Array.from(el.childNodes)) {
     if (c.nodeType === Node.TEXT_NODE && c.nodeValue?.trim()) return c as Text;
   }
-  // なければ最初の子孫テキストノード
-  let found: Text | null = null;
   const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
     acceptNode(n) {
       const t = n as Text;
@@ -138,8 +123,13 @@ function resolveTextNode(target: EventTarget | null, x: number, y: number): Text
       return NodeFilter.FILTER_ACCEPT;
     },
   });
-  found = walker.nextNode() as Text | null;
-  return found;
+  return walker.nextNode() as Text | null;
+}
+
+function decodeKey(key: string): { idx: number; original: string } {
+  const i = key.indexOf(SEP);
+  if (i < 0) return { idx: 0, original: key };
+  return { idx: parseInt(key.slice(0, i), 10) || 0, original: key.slice(i + 1) };
 }
 
 /* ------------------------------------------------------------------ */
@@ -167,11 +157,12 @@ export function TextEditProvider({ children }: { children: React.ReactNode }) {
   const [canEdit, setCanEdit] = useState(false);
   const [editMode, setEditModeState] = useState(false);
   const [editor, setEditor] = useState<EditorState>(EMPTY_EDITOR);
-  const [saving, setSaving] = useState(false);
 
   const overridesRef = useRef<Map<string, OverrideEntry>>(new Map());
   const applyingRef = useRef(false);
   const highlightRef = useRef<HTMLDivElement | null>(null);
+  // 各テキストノードに割り当てた安定キー（再描画で内容が変わっても保持）
+  const nodeKeyRef = useRef<WeakMap<Text, string>>(new WeakMap());
 
   /* 管理者判定 */
   useEffect(() => {
@@ -189,15 +180,36 @@ export function TextEditProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  /**
+   * 全テキストノードを走査し、各ノードに安定キー（出現順＋元文言）を割り当てて cb を呼ぶ。
+   * 内容ベースのキーなので、リロードしても同じ文言・同じ並びなら同じキーになる。
+   */
+  const walkAssign = useCallback((cb: (t: Text, key: string) => void) => {
+    const counts = new Map<string, number>();
+    walkText((t) => {
+      let key = nodeKeyRef.current.get(t);
+      if (key) {
+        const { idx, original } = decodeKey(key);
+        const c = counts.get(original) ?? 0;
+        counts.set(original, Math.max(c, idx + 1));
+      } else {
+        const { core } = splitWhitespace(t.nodeValue ?? "");
+        const idx = counts.get(core) ?? 0;
+        counts.set(core, idx + 1);
+        key = `${idx}${SEP}${core}`;
+        nodeKeyRef.current.set(t, key);
+      }
+      cb(t, key);
+    });
+  }, []);
+
   /* 上書きの適用 */
   const applyOverrides = useCallback(() => {
     const map = overridesRef.current;
     if (!map.size) return;
     applyingRef.current = true;
     try {
-      walkText((t) => {
-        const key = domPathOf(t);
-        if (!key) return;
+      walkAssign((t, key) => {
         const entry = map.get(key);
         if (!entry) return;
         const { lead, trail } = splitWhitespace(t.nodeValue ?? "");
@@ -207,12 +219,25 @@ export function TextEditProvider({ children }: { children: React.ReactNode }) {
     } finally {
       applyingRef.current = false;
     }
-  }, []);
+  }, [walkAssign]);
+
+  /** クリックされたノードの安定キーを求める。 */
+  const computeKeyForNode = useCallback(
+    (target: Text): string | null => {
+      let found: string | null = null;
+      walkAssign((t, key) => {
+        if (t === target) found = key;
+      });
+      return found;
+    },
+    [walkAssign]
+  );
 
   /* ページが変わるたびに上書きを取得して適用 */
   useEffect(() => {
     let cancelled = false;
     overridesRef.current = new Map();
+    nodeKeyRef.current = new WeakMap();
     fetch(`/api/text-overrides?pathname=${encodeURIComponent(pathname)}`, {
       credentials: "include",
     })
@@ -225,8 +250,8 @@ export function TextEditProvider({ children }: { children: React.ReactNode }) {
         }
         overridesRef.current = map;
         applyOverrides();
-        // 初期描画が遅れても反映されるよう少し後にも適用
         setTimeout(applyOverrides, 300);
+        setTimeout(applyOverrides, 1000);
       })
       .catch(() => {});
     return () => {
@@ -276,14 +301,14 @@ export function TextEditProvider({ children }: { children: React.ReactNode }) {
       if (!node) return;
       e.preventDefault();
       e.stopPropagation();
-      const key = domPathOf(node);
+      const key = computeKeyForNode(node);
       if (!key) return;
       const { core } = splitWhitespace(node.nodeValue ?? "");
       const existing = overridesRef.current.get(key);
       setEditor({
         open: true,
         key,
-        value: core,
+        value: existing ? existing.override : core,
         original: existing ? existing.original : core,
         hasOverride: !!existing,
       });
@@ -318,69 +343,89 @@ export function TextEditProvider({ children }: { children: React.ReactNode }) {
       document.removeEventListener("click", onClick, true);
       document.removeEventListener("mousemove", onMove, true);
     };
-  }, [editMode, canEdit]);
+  }, [editMode, canEdit, computeKeyForNode]);
 
-  const handleSave = useCallback(async () => {
+  /** 指定キーのノードを元の文言に戻す（DOM上）。 */
+  const restoreToOriginal = useCallback(
+    (key: string, original: string) => {
+      applyingRef.current = true;
+      try {
+        walkAssign((t, k) => {
+          if (k !== key) return;
+          const { lead, trail } = splitWhitespace(t.nodeValue ?? "");
+          t.nodeValue = lead + original + trail;
+        });
+      } finally {
+        applyingRef.current = false;
+      }
+    },
+    [walkAssign]
+  );
+
+  /* 保存：先に画面へ反映し、サーバー保存はバックグラウンドで行う */
+  const handleSave = useCallback(() => {
     const key = editor.key;
     const newText = editor.value;
-    setSaving(true);
-    try {
-      const res = await fetch("/api/text-overrides", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          pathname,
-          textKey: key,
-          original: editor.original,
-          override: newText,
-        }),
-      });
-      if (!res.ok) {
-        const d = await res.json().catch(() => ({}));
-        throw new Error(d.error || "保存に失敗しました");
-      }
-      overridesRef.current.set(key, {
-        override: newText,
-        original: editor.original,
-      });
-      applyOverrides();
-      setEditor(EMPTY_EDITOR);
-      toast.success("文言を保存しました");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "保存に失敗しました");
-    } finally {
-      setSaving(false);
-    }
-  }, [editor, pathname, applyOverrides]);
+    const original = editor.original;
+    const prev = overridesRef.current.get(key);
 
-  const handleReset = useCallback(async () => {
-    const key = editor.key;
-    setSaving(true);
-    try {
-      const res = await fetch(
-        `/api/text-overrides?pathname=${encodeURIComponent(
-          pathname
-        )}&textKey=${encodeURIComponent(key)}`,
-        { method: "DELETE", credentials: "include" }
-      );
-      if (!res.ok) throw new Error("リセットに失敗しました");
-      const entry = overridesRef.current.get(key);
-      overridesRef.current.delete(key);
-      // 元の文言にDOMを戻す
-      walkText((t) => {
-        if (domPathOf(t) !== key) return;
-        const { lead, trail } = splitWhitespace(t.nodeValue ?? "");
-        t.nodeValue = lead + (entry?.original ?? editor.original) + trail;
+    // 楽観的更新：すぐ反映してパネルを閉じる
+    overridesRef.current.set(key, { override: newText, original });
+    applyOverrides();
+    setEditor(EMPTY_EDITOR);
+
+    void fetch("/api/text-overrides", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pathname, textKey: key, original, override: newText }),
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          const d = await res.json().catch(() => ({}));
+          throw new Error(d.error || "保存に失敗しました");
+        }
+        toast.success("文言を保存しました");
+      })
+      .catch((err) => {
+        // 失敗したら元に戻す
+        if (prev) overridesRef.current.set(key, prev);
+        else overridesRef.current.delete(key);
+        if (prev) applyOverrides();
+        else restoreToOriginal(key, original);
+        toast.error(err instanceof Error ? err.message : "保存に失敗しました");
       });
-      setEditor(EMPTY_EDITOR);
-      toast.success("元の文言に戻しました");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "リセットに失敗しました");
-    } finally {
-      setSaving(false);
-    }
-  }, [editor, pathname]);
+  }, [editor, pathname, applyOverrides, restoreToOriginal]);
+
+  /* リセット：元の文言に戻す */
+  const handleReset = useCallback(() => {
+    const key = editor.key;
+    const entry = overridesRef.current.get(key);
+    const original = entry?.original ?? editor.original;
+
+    overridesRef.current.delete(key);
+    restoreToOriginal(key, original);
+    setEditor(EMPTY_EDITOR);
+
+    void fetch(
+      `/api/text-overrides?pathname=${encodeURIComponent(
+        pathname
+      )}&textKey=${encodeURIComponent(key)}`,
+      { method: "DELETE", credentials: "include" }
+    )
+      .then((res) => {
+        if (!res.ok) throw new Error("リセットに失敗しました");
+        toast.success("元の文言に戻しました");
+      })
+      .catch((err) => {
+        // 失敗したら戻す
+        if (entry) {
+          overridesRef.current.set(key, entry);
+          applyOverrides();
+        }
+        toast.error(err instanceof Error ? err.message : "リセットに失敗しました");
+      });
+  }, [editor, pathname, applyOverrides, restoreToOriginal]);
 
   return (
     <TextEditContext.Provider value={{ editMode, setEditMode, canEdit }}>
@@ -404,7 +449,7 @@ export function TextEditProvider({ children }: { children: React.ReactNode }) {
             }}
           />
 
-          {/* 上部の操作バー */}
+          {/* 下部の操作バー */}
           <div
             data-te-ignore
             className="fixed inset-x-0 bottom-0 z-[60] flex items-center justify-center gap-3 border-t border-orange-300 bg-orange-50 px-4 py-2 text-sm shadow-[0_-2px_8px_rgba(0,0,0,0.06)]"
@@ -456,8 +501,7 @@ export function TextEditProvider({ children }: { children: React.ReactNode }) {
                   <button
                     type="button"
                     onClick={handleReset}
-                    disabled={saving}
-                    className="mr-auto rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                    className="mr-auto rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
                   >
                     元に戻す
                   </button>
@@ -465,18 +509,16 @@ export function TextEditProvider({ children }: { children: React.ReactNode }) {
                 <button
                   type="button"
                   onClick={() => setEditor(EMPTY_EDITOR)}
-                  disabled={saving}
-                  className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
                 >
                   キャンセル
                 </button>
                 <button
                   type="button"
                   onClick={handleSave}
-                  disabled={saving}
-                  className="rounded-md bg-orange-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-orange-500 disabled:opacity-50"
+                  className="rounded-md bg-orange-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-orange-500"
                 >
-                  {saving ? "保存中..." : "保存"}
+                  保存
                 </button>
               </div>
             </div>
