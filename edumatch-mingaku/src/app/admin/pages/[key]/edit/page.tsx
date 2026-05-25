@@ -1,6 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import { getCurrentProfile } from "@/lib/auth";
 import { getSitePage } from "@/app/_actions/site-pages";
+import { getOperatorInfo } from "@/app/_actions/operator-info";
 import { getDefaultContentForEdit } from "@/lib/default-site-pages";
 import { PageEditor } from "../../_components/page-editor";
 import { FaqEditor } from "../../_components/faq-editor";
@@ -45,11 +46,15 @@ export default async function EditSitePagePage({
     );
   }
 
+  const operatorInfo =
+    key === "terms" || key === "privacy" ? await getOperatorInfo() : undefined;
+
   return (
     <PageEditor
       keyType={key as SitePageKey}
       initialContent={initialContent}
       initialTitle={page.title}
+      initialOperatorInfo={operatorInfo}
     />
   );
 }

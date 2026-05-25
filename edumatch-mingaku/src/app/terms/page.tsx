@@ -3,7 +3,7 @@ import { ContentRenderer } from "@/components/ui/content-renderer";
 import { getSitePage } from "@/app/_actions/site-pages";
 import Link from "next/link";
 import { getCurrentProfile } from "@/lib/auth";
-import { OPERATOR_INFO } from "@/lib/operator-info";
+import { getOperatorInfo } from "@/app/_actions/operator-info";
 
 const DEFAULT_TERMS_INTRO = (
   <>
@@ -28,6 +28,7 @@ const DEFAULT_TERMS_INTRO = (
 export default async function TermsPage() {
   const page = await getSitePage("terms");
   const profile = await getCurrentProfile();
+  const operatorInfo = await getOperatorInfo();
   const useDbContent = !!page.body?.trim();
 
   return (
@@ -47,11 +48,11 @@ export default async function TermsPage() {
 
         <Card className="mb-6">
           <CardContent className="p-6">
-            <h2 className="text-lg font-bold mb-2">{OPERATOR_INFO.sectionTitle}</h2>
+            <h2 className="text-lg font-bold mb-2">{operatorInfo.sectionTitle}</h2>
             <p className="text-muted-foreground">
-              主催：{OPERATOR_INFO.organizer}<br />
-              運営：{OPERATOR_INFO.operator}<br />
-              設立年：{OPERATOR_INFO.established}
+              主催：{operatorInfo.organizer}<br />
+              運営：{operatorInfo.operator}<br />
+              設立年：{operatorInfo.established}
             </p>
           </CardContent>
         </Card>

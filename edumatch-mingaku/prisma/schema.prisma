@@ -611,3 +611,23 @@ model SystemPromptOverride {
 
   @@map("system_prompt_overrides")
 }
+
+/// 画面に表示されている文言の上書き。管理者の「テキスト編集モード」で編集する。
+/// ページ(pathname)ごとに個別管理し、text_key は画面内での位置を表す。
+model TextOverride {
+  id         String   @id @default(cuid())
+  /// 対象ページのパス（例: "/", "/services"）
+  pathname   String
+  /// ページ内での文言の位置を表す安定キー（DOM上の位置から生成）
+  text_key   String
+  /// 編集前の元の文言（リセット用に保持）
+  original   String
+  /// 上書き後の文言
+  override   String
+  updated_at DateTime @updatedAt
+  updated_by String?  @db.Uuid
+
+  @@unique([pathname, text_key])
+  @@index([pathname])
+  @@map("text_overrides")
+}

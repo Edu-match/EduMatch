@@ -8,9 +8,10 @@ import {
   Menu, LogOut, User, LayoutDashboard, Settings, 
   ChevronDown, UserPlus, LogIn, FileText, Bell,
   CheckCircle, Calendar, Newspaper, BookOpen, Bot, Activity, Flag, ArrowUpDown,
-  MessageSquare, CircleHelp
+  MessageSquare, CircleHelp, Pencil
 } from "lucide-react";
 import { useRequestList } from "@/components/request-list/request-list-context";
+import { useTextEdit } from "@/components/text-edit/text-edit-context";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -40,6 +41,7 @@ export function Header() {
   const pathname = usePathname();
   const { count: requestListCount } = useRequestList();
   const { startTutorial } = useTutorial();
+  const { editMode, setEditMode } = useTextEdit();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
@@ -361,12 +363,21 @@ export function Header() {
                   マイページ
                 </DropdownMenuItem>
                 {userRole === "ADMIN" && (
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     className="cursor-pointer"
                     onSelect={() => router.push("/provider-dashboard")}
                   >
                     <LayoutDashboard className="mr-2 h-4 w-4" />
                     管理者ダッシュボード
+                  </DropdownMenuItem>
+                )}
+                {userRole === "ADMIN" && (
+                  <DropdownMenuItem
+                    className="cursor-pointer"
+                    onSelect={() => setEditMode(!editMode)}
+                  >
+                    <Pencil className="mr-2 h-4 w-4 text-orange-600" />
+                    {editMode ? "テキスト編集モードを終了" : "テキスト編集モード"}
                   </DropdownMenuItem>
                 )}
                 {userRole === "ADMIN" && (
@@ -568,6 +579,19 @@ export function Header() {
                         <LayoutDashboard className="h-4 w-4 flex-shrink-0" />
                         管理者ダッシュボード
                       </Link>
+                    )}
+                    {userRole === "ADMIN" && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMobileMenuOpen(false);
+                          setEditMode(!editMode);
+                        }}
+                        className="flex w-full items-center gap-2 py-3 text-left text-sm font-medium text-foreground/60 hover:text-foreground border-b"
+                      >
+                        <Pencil className="h-4 w-4 flex-shrink-0 text-orange-600" />
+                        {editMode ? "テキスト編集モードを終了" : "テキスト編集モード"}
+                      </button>
                     )}
                     {userRole === "ADMIN" && (
                       <div className="border-t pt-3 mt-2">
