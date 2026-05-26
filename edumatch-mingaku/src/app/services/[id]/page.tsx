@@ -17,6 +17,7 @@ import { getServiceReviews } from "@/app/_actions/reviews";
 import { ThumbnailOrTitle } from "@/components/ui/thumbnail-or-title";
 import { FEATURES } from "@/lib/features";
 import { ImageWithUrlError } from "@/components/ui/image-with-url-error";
+import { shouldShowMaterialRequestButton } from "@/lib/service-material-request";
 
 export const dynamic = "force-dynamic";
 
@@ -47,9 +48,10 @@ export default async function ServiceDetailPage({
     await recordView(user.id, "SERVICE", id);
   }
   const canEdit = user && (user.id === service.provider_id || profile?.role === "ADMIN");
-  /** 表示順「なし」は資料請求不可。有料枠でもサービス設定でオフにできる */
-  const showMaterialRequestButton =
-    service.sort_order !== "NONE" && service.show_material_request_button !== false;
+  const showMaterialRequestButton = shouldShowMaterialRequestButton(
+    service.sort_order,
+    service.show_material_request_button
+  );
   const hasCustomProviderDisplayName =
     !!service.provider_display_name &&
     service.provider_display_name.trim() !== "" &&

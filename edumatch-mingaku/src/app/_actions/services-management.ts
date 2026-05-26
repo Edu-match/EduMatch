@@ -6,6 +6,7 @@ import { canManageProviderContent } from "@/lib/provider-access";
 import { revalidatePath } from "next/cache";
 import { serviceSchema, type ServiceFormData } from "@/lib/validations/service";
 import { normalizeImageUrl } from "@/lib/image-url-utils";
+import { resolveShowMaterialRequestButton } from "@/lib/service-material-request";
 
 function parseNotificationEmails(input?: string): string[] {
   if (!input) return [];
@@ -49,8 +50,10 @@ export async function createServiceManagement(data: ServiceFormData) {
         request_notification_emails: parseNotificationEmails(
           validatedData.request_notification_emails
         ),
-        show_material_request_button:
-          validatedData.show_material_request_button ?? true,
+        show_material_request_button: resolveShowMaterialRequestButton(
+          "NONE",
+          validatedData.show_material_request_button
+        ),
         title: validatedData.title,
         description: validatedData.description,
         category: validatedData.category,
@@ -114,6 +117,8 @@ export async function updateServiceManagement(serviceId: string, data: ServiceFo
       where: { id: serviceId },
       select: {
         provider_id: true,
+        sort_order: true,
+        show_material_request_button: true,
         provider: { select: { name: true } },
       },
     });
@@ -147,8 +152,11 @@ export async function updateServiceManagement(serviceId: string, data: ServiceFo
         request_notification_emails: parseNotificationEmails(
           validatedData.request_notification_emails
         ),
-        show_material_request_button:
-          validatedData.show_material_request_button ?? true,
+        show_material_request_button: resolveShowMaterialRequestButton(
+          existingService.sort_order,
+          validatedData.show_material_request_button ??
+            existingService.show_material_request_button
+        ),
         title: validatedData.title,
         description: validatedData.description,
         category: validatedData.category,

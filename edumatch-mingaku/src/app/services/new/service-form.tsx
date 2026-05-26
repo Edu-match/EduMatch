@@ -48,7 +48,7 @@ export function ServiceForm() {
   const form = useForm<ServiceFormData>({
     resolver: zodResolver(serviceSchema),
     defaultValues: {
-      show_material_request_button: true,
+      show_material_request_button: false,
       request_notification_emails: "",
       provider_display_name: "",
       title: "",
@@ -162,29 +162,9 @@ export function ServiceForm() {
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="show_material_request_button"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>資料請求ボタン表示</FormLabel>
-                    <FormControl>
-                      <label className="flex items-center gap-2 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={!!field.value}
-                          onChange={(e) => field.onChange(e.target.checked)}
-                        />
-                        サービス詳細に「資料請求する（無料）」ボタンを表示する
-                      </label>
-                    </FormControl>
-                    <FormDescription>
-                      有料プラン設定に関係なく、このスイッチで表示/非表示を切り替えます。
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <p className="text-sm text-muted-foreground rounded-md border p-3">
+                新規投稿は無料掲載（表示順「なし」）のため、資料請求ボタンは表示されません。有料枠へ変更後、管理者が表示順を更新したサービスでのみ資料請求を有効にできます。
+              </p>
 
               <FormField
                 control={form.control}

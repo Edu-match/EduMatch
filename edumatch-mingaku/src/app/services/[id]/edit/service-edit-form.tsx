@@ -40,6 +40,10 @@ import {
 } from "@/lib/categories";
 import { ImageWithUrlError } from "@/components/ui/image-with-url-error";
 import { isImportedContent } from "@/lib/imported-content";
+import {
+  isFreeServiceSortOrder,
+  resolveShowMaterialRequestButton,
+} from "@/lib/service-material-request";
 
 const AVATAR_TEMPLATES = [
   "/avatars/templates/1.svg",
@@ -80,9 +84,12 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
         .slice(0, 3);
       return [parsed[0] ?? "", parsed[1] ?? "", parsed[2] ?? ""];
     });
-  const materialRequestAllowed = initialData.sort_order !== "NONE";
-  const [showMaterialRequestButton, setShowMaterialRequestButton] = useState(
-    materialRequestAllowed ? (initialData.show_material_request_button ?? true) : false
+  const materialRequestAllowed = !isFreeServiceSortOrder(initialData.sort_order);
+  const [showMaterialRequestButton, setShowMaterialRequestButton] = useState(() =>
+    resolveShowMaterialRequestButton(
+      initialData.sort_order,
+      initialData.show_material_request_button
+    )
   );
   const [description, setDescription] = useState(initialData.description ?? "");
   const [category, setCategory] = useState(initialData.category ?? "");
@@ -211,7 +218,10 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
         requestNotificationEmails: requestNotificationEmailList
           .map((token) => token.trim())
           .filter(Boolean),
-        showMaterialRequestButton: materialRequestAllowed ? showMaterialRequestButton : false,
+        showMaterialRequestButton: resolveShowMaterialRequestButton(
+          initialData.sort_order,
+          showMaterialRequestButton
+        ),
         description: description.trim(),
         category: serializeServiceCategorySelection(selectedCategories, otherCategoryText),
         priceInfo: priceInfo.trim() || "お問い合わせ",

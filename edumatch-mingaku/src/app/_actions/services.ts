@@ -8,6 +8,7 @@ import { getCurrentUser } from "@/lib/auth";
 import type { Service, Role } from "@prisma/client";
 import { logActivity } from "./activity-log";
 import { revalidatePath } from "next/cache";
+import { resolveShowMaterialRequestButton } from "@/lib/service-material-request";
 
 export type ServiceWithProvider = Service & {
   request_notification_emails?: string[];
@@ -212,7 +213,7 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     provider_display_name: null,
     provider_display_avatar_url: null,
     review_count: 0,
-    show_material_request_button: true,
+    show_material_request_button: false,
     request_notification_emails: [],
     is_published: true,
     is_member_only: false,
@@ -246,7 +247,7 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     provider_display_name: null,
     provider_display_avatar_url: null,
     review_count: 0,
-    show_material_request_button: true,
+    show_material_request_button: false,
     request_notification_emails: [],
     is_published: true,
     is_member_only: false,
@@ -280,7 +281,7 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     provider_display_name: null,
     provider_display_avatar_url: null,
     review_count: 0,
-    show_material_request_button: true,
+    show_material_request_button: false,
     request_notification_emails: [],
     is_published: true,
     is_member_only: false,
@@ -314,7 +315,7 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     provider_display_name: null,
     provider_display_avatar_url: null,
     review_count: 0,
-    show_material_request_button: true,
+    show_material_request_button: false,
     request_notification_emails: [],
     is_published: true,
     is_member_only: false,
@@ -348,7 +349,7 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     provider_display_name: null,
     provider_display_avatar_url: null,
     review_count: 0,
-    show_material_request_button: true,
+    show_material_request_button: false,
     request_notification_emails: [],
     is_published: true,
     is_member_only: false,
@@ -662,7 +663,10 @@ export async function createService(input: CreateServiceInput): Promise<CreateSe
         request_notification_emails: (input.requestNotificationEmails ?? [])
           .map((e) => e.trim())
           .filter((e) => e.length > 0),
-        show_material_request_button: input.showMaterialRequestButton ?? true,
+        show_material_request_button: resolveShowMaterialRequestButton(
+          "NONE",
+          input.showMaterialRequestButton
+        ),
         title: input.title,
         description: input.description,
         content,
@@ -743,12 +747,10 @@ export async function updateService(
         ? input.content
         : blocksToContent(input.blocks ?? []);
     const images = input.blocks != null ? extractImagesFromBlocks(input.blocks) : [];
-    const materialRequestAllowed = existingService.sort_order !== "NONE";
-    const showMaterialRequestButton = materialRequestAllowed
-      ? (input.showMaterialRequestButton ??
-        existingService.show_material_request_button ??
-        true)
-      : false;
+    const showMaterialRequestButton = resolveShowMaterialRequestButton(
+      existingService.sort_order,
+      input.showMaterialRequestButton ?? existingService.show_material_request_button
+    );
 
     const contentFields = {
       provider_display_name:
@@ -893,7 +895,7 @@ export async function approveService(serviceId: string): Promise<SimpleResult> {
   try {
     const existing = await prisma.service.findUnique({
       where: { id: serviceId },
-      select: { sort_order: true },
+      select: { sort_order: true, show_material_request_button: true },
     });
     if (!existing) {
       return { success: false, error: "サービスが見つかりません" };
@@ -907,9 +909,10 @@ export async function approveService(serviceId: string): Promise<SimpleResult> {
         approved_at: new Date(),
         rejected_at: null,
         rejection_reason: null,
-        ...(existing.sort_order === "NONE"
-          ? { show_material_request_button: false }
-          : {}),
+        show_material_request_button: resolveShowMaterialRequestButton(
+          existing.sort_order,
+          existing.show_material_request_button
+        ),
       },
       select: { title: true },
     });

@@ -11,6 +11,7 @@ import { Pagination } from "@/components/ui/pagination";
 import { Search, ExternalLink } from "lucide-react";
 import { AddToRequestListButton } from "@/components/request-list/add-to-request-list-button";
 import type { ServiceForList } from "./page";
+import { isFreeServiceSortOrder } from "@/lib/service-material-request";
 
 const PAGE_SIZE = 30;
 
@@ -177,7 +178,7 @@ export function ServicesClient({
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
                   {/* サービスのお気に入りに追加（無料企業は非表示） */}
-                  {service.sort_order !== "NONE" && (
+                  {!isFreeServiceSortOrder(service.sort_order) && (
                     <div className="absolute top-3 left-3 z-10">
                       <AddToRequestListButton
                         item={{

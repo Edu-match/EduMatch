@@ -97,7 +97,7 @@ export default function ServiceCreatePage() {
     return [parsed[0] ?? "", parsed[1] ?? "", parsed[2] ?? ""];
   });
   const [showMaterialRequestButton, setShowMaterialRequestButton] = useState(
-    () => draft?.showMaterialRequestButton ?? true
+    () => draft?.showMaterialRequestButton ?? false
   );
   const [description, setDescription] = useState(() => draft?.description || "");
   const [category, setCategory] = useState(() => draft?.category || "");
@@ -584,19 +584,9 @@ export default function ServiceCreatePage() {
                 最大3件まで設定できます。1件以上設定すると、資料請求通知はこの宛先のみに送信され、作成者メールには送信されません。
               </p>
             </div>
-            <div className="space-y-2 rounded-md border p-3">
-              <label className="flex items-center gap-2 text-sm font-medium">
-                <input
-                  type="checkbox"
-                  checked={showMaterialRequestButton}
-                  onChange={(e) => setShowMaterialRequestButton(e.target.checked)}
-                />
-                サービス詳細に「資料請求する（無料）」ボタンを表示する
-              </label>
-              <p className="text-xs text-muted-foreground">
-                有料プラン設定に関わらず、このスイッチで表示/非表示を直接切り替えます。
-              </p>
-            </div>
+            <p className="text-sm text-muted-foreground rounded-md border p-3">
+              新規投稿は無料掲載（表示順「なし」）のため、資料請求ボタンは表示されません。有料枠へ変更後、管理者が表示順を更新したサービスでのみ資料請求を有効にできます。
+            </p>
             <div className="space-y-2">
               <div className="relative">
                 <Textarea
