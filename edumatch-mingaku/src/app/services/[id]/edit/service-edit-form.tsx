@@ -56,6 +56,7 @@ type ServiceEditFormProps = {
     provider_display_avatar_url: string;
     request_notification_emails: string;
     show_material_request_button: boolean;
+    sort_order: string;
     description: string;
     category: string;
     content: string;
@@ -79,8 +80,9 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
         .slice(0, 3);
       return [parsed[0] ?? "", parsed[1] ?? "", parsed[2] ?? ""];
     });
+  const materialRequestAllowed = initialData.sort_order !== "NONE";
   const [showMaterialRequestButton, setShowMaterialRequestButton] = useState(
-    initialData.show_material_request_button ?? true
+    materialRequestAllowed ? (initialData.show_material_request_button ?? true) : false
   );
   const [description, setDescription] = useState(initialData.description ?? "");
   const [category, setCategory] = useState(initialData.category ?? "");
@@ -180,7 +182,7 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
     return () => clearInterval(interval);
   }, [lastSaved]);
 
-  async function submit(publishType: "draft" | "submit") {
+  async function submit() {
     setError(null);
     if (titleLength > TITLE_MAX_LENGTH) {
       setError(`サービス名は${TITLE_MAX_LENGTH}文字以内で入力してください`);
@@ -194,15 +196,14 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
       setError(`本文は${CONTENT_MAX_LENGTH.toLocaleString()}文字以内で入力してください`);
       return;
     }
-    if (publishType === "submit") {
-      if (!title.trim() || !description.trim() || !category.trim() || !content.trim()) {
-        setError("申請にはサービス名・概要・カテゴリ・本文が必要です");
-        return;
-      }
+    if (!title.trim() || !description.trim() || !category.trim() || !content.trim()) {
+      setError("サービス名・概要・カテゴリ・本文を入力してください");
+      return;
     }
 
     setIsSubmitting(true);
     try {
+      const isApproved = initialData.status === "APPROVED";
       const result = await updateService(serviceId, {
         title: title.trim(),
         providerDisplayName: providerDisplayName.trim() || undefined,
@@ -210,7 +211,7 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
         requestNotificationEmails: requestNotificationEmailList
           .map((token) => token.trim())
           .filter(Boolean),
-        showMaterialRequestButton,
+        showMaterialRequestButton: materialRequestAllowed ? showMaterialRequestButton : false,
         description: description.trim(),
         category: serializeServiceCategorySelection(selectedCategories, otherCategoryText),
         priceInfo: priceInfo.trim() || "お問い合わせ",
@@ -223,13 +224,14 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
                 content
               ) as unknown as Parameters<typeof updateService>[1]["blocks"],
             }),
-        publishType,
+        publishType: isApproved ? "draft" : initialData.status === "DRAFT" ? "draft" : "submit",
       });
 
       if (result.success) {
         setLastSaved(new Date());
-        toast.success(publishType === "submit" ? "更新申請しました" : "下書きを更新しました");
+        toast.success("保存しました");
         router.push(`/services/${serviceId}`);
+        router.refresh();
       } else {
         setError(result.error || "サービスの更新に失敗しました");
       }
@@ -268,13 +270,9 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
             <span className={`text-sm ${canSubmit ? "text-muted-foreground" : "text-destructive"}`}>
               合計: {totalWordCount.toLocaleString()} 文字
             </span>
-            <Button variant="outline" size="sm" onClick={() => submit("draft")} disabled={isSubmitting}>
+            <Button size="sm" onClick={() => submit()} disabled={isSubmitting || !canSubmit}>
               <Save className="h-4 w-4 mr-2" />
-              下書き更新
-            </Button>
-            <Button size="sm" onClick={() => submit("submit")} disabled={isSubmitting || !canSubmit}>
-              <Save className="h-4 w-4 mr-2" />
-              更新申請
+              保存
             </Button>
             <Button
               variant="destructive"
@@ -449,14 +447,20 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
                   </div>
                 </div>
 
-                <label className="flex items-center gap-2 text-sm font-medium">
-                  <input
-                    type="checkbox"
-                    checked={showMaterialRequestButton}
-                    onChange={(e) => setShowMaterialRequestButton(e.target.checked)}
-                  />
-                  サービス詳細に「資料請求する（無料）」ボタンを表示する
-                </label>
+                {materialRequestAllowed ? (
+                  <label className="flex items-center gap-2 text-sm font-medium">
+                    <input
+                      type="checkbox"
+                      checked={showMaterialRequestButton}
+                      onChange={(e) => setShowMaterialRequestButton(e.target.checked)}
+                    />
+                    サービス詳細に「資料請求する（無料）」ボタンを表示する
+                  </label>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    表示順が「なし」のサービスでは、資料請求ボタンは表示されません。
+                  </p>
+                )}
               </CardContent>
             </Card>
 

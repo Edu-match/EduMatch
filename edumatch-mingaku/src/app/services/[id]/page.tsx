@@ -47,8 +47,9 @@ export default async function ServiceDetailPage({
     await recordView(user.id, "SERVICE", id);
   }
   const canEdit = user && (user.id === service.provider_id || profile?.role === "ADMIN");
-  /** サービス設定で資料請求ボタン表示を切り替え */
-  const showMaterialRequestButton = service.show_material_request_button !== false;
+  /** 表示順「なし」は資料請求不可。有料枠でもサービス設定でオフにできる */
+  const showMaterialRequestButton =
+    service.sort_order !== "NONE" && service.show_material_request_button !== false;
   const hasCustomProviderDisplayName =
     !!service.provider_display_name &&
     service.provider_display_name.trim() !== "" &&

@@ -713,6 +713,14 @@ export async function updateService(
       where: { id },
       select: {
         provider_id: true,
+        status: true,
+        is_published: true,
+        sort_order: true,
+        show_material_request_button: true,
+        approved_at: true,
+        submitted_at: true,
+        rejected_at: true,
+        rejection_reason: true,
         provider: { select: { name: true } },
       },
     });
@@ -729,41 +737,64 @@ export async function updateService(
       return { success: false, error: "このサービスを編集する権限がありません" };
     }
 
-    const status = input.publishType === "draft" ? "DRAFT" : "PENDING";
+    const isApproved = existingService.status === "APPROVED";
     const content =
       input.content != null && isImportedContent(input.content)
         ? input.content
         : blocksToContent(input.blocks ?? []);
     const images = input.blocks != null ? extractImagesFromBlocks(input.blocks) : [];
+    const materialRequestAllowed = existingService.sort_order !== "NONE";
+    const showMaterialRequestButton = materialRequestAllowed
+      ? (input.showMaterialRequestButton ??
+        existingService.show_material_request_button ??
+        true)
+      : false;
 
-    await prisma.service.update({
-      where: { id },
-      data: {
-        provider_display_name:
-          input.providerDisplayName?.trim() ||
-          existingService.provider?.name?.trim() ||
-          null,
-        provider_display_avatar_url: input.providerDisplayAvatarUrl?.trim() || null,
-        request_notification_emails: (input.requestNotificationEmails ?? [])
-          .map((e) => e.trim())
-          .filter((e) => e.length > 0),
-        show_material_request_button: input.showMaterialRequestButton ?? true,
-        title: input.title,
-        description: input.description,
-        category: input.category,
-        content,
-        price_info: input.priceInfo,
-        thumbnail_url: input.thumbnailUrl ? normalizeImageUrl(input.thumbnailUrl) : null,
-        youtube_url: input.youtubeUrl || null,
-        images,
-        is_published: false,
-        status,
-        submitted_at: status === "PENDING" ? new Date() : null,
-        approved_at: null,
-        rejected_at: null,
-        rejection_reason: null,
-      },
-    });
+    const contentFields = {
+      provider_display_name:
+        input.providerDisplayName?.trim() ||
+        existingService.provider?.name?.trim() ||
+        null,
+      provider_display_avatar_url: input.providerDisplayAvatarUrl?.trim() || null,
+      request_notification_emails: (input.requestNotificationEmails ?? [])
+        .map((e) => e.trim())
+        .filter((e) => e.length > 0),
+      show_material_request_button: showMaterialRequestButton,
+      title: input.title,
+      description: input.description,
+      category: input.category,
+      content,
+      price_info: input.priceInfo,
+      thumbnail_url: input.thumbnailUrl ? normalizeImageUrl(input.thumbnailUrl) : null,
+      youtube_url: input.youtubeUrl || null,
+      images,
+    };
+
+    if (isApproved) {
+      await prisma.service.update({
+        where: { id },
+        data: contentFields,
+      });
+    } else {
+      const status = input.publishType === "draft" ? "DRAFT" : "PENDING";
+      await prisma.service.update({
+        where: { id },
+        data: {
+          ...contentFields,
+          is_published: false,
+          status,
+          submitted_at: status === "PENDING" ? new Date() : null,
+          approved_at: null,
+          rejected_at: null,
+          rejection_reason: null,
+        },
+      });
+    }
+
+    revalidatePath("/");
+    revalidatePath("/services");
+    revalidatePath(`/services/${id}`);
+    revalidatePath("/provider-dashboard");
 
     return { success: true, serviceId: id };
   } catch (e) {
@@ -860,6 +891,14 @@ export async function approveService(serviceId: string): Promise<SimpleResult> {
   if (!auth.success) return auth;
 
   try {
+    const existing = await prisma.service.findUnique({
+      where: { id: serviceId },
+      select: { sort_order: true },
+    });
+    if (!existing) {
+      return { success: false, error: "サービスが見つかりません" };
+    }
+
     const service = await prisma.service.update({
       where: { id: serviceId },
       data: {
@@ -868,6 +907,9 @@ export async function approveService(serviceId: string): Promise<SimpleResult> {
         approved_at: new Date(),
         rejected_at: null,
         rejection_reason: null,
+        ...(existing.sort_order === "NONE"
+          ? { show_material_request_button: false }
+          : {}),
       },
       select: { title: true },
     });
