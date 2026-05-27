@@ -201,9 +201,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const needsOnboarding =
+      !!existingProfile &&
+      existingProfile.role !== "ADMIN" &&
+      !existingProfile.onboarding_completed_at;
+
     return NextResponse.json({
       user: data.user,
       session: data.session,
+      needsOnboarding,
     });
   } catch (error) {
     console.error("Login error:", error);

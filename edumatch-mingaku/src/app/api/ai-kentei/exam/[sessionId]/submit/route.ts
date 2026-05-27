@@ -1,5 +1,6 @@
 import { getAiKenteiDb } from '@/lib/ai-kentei-db'
 import { NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
 
 export async function POST(
   request: Request,
@@ -67,6 +68,18 @@ export async function POST(
         { error: '結果の保存に失敗しました' },
         { status: 500 }
       )
+    }
+
+    const uid = session.user_id as string | undefined | null
+    if (passed && uid) {
+      try {
+        await prisma.profile.update({
+          where: { id: uid },
+          data: { ai_kentei_passed: true },
+        })
+      } catch (e) {
+        console.error('[ai-kentei submit] profile ai_kentei_passed update', e)
+      }
     }
 
     return NextResponse.json({ score, totalQuestions: 25, passed, correctCount })

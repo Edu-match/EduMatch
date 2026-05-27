@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Wand2, Loader2, AlertCircle, CheckCircle2, Eye, EyeOff } from "lucide-react";
+import { Wand2, Loader2, AlertCircle, CheckCircle2, Eye, EyeOff, MessageSquare } from "lucide-react";
 import type { ThumbnailTemplateKind } from "@/lib/thumbnail-template";
 
 export interface GeneratedArticle {
@@ -23,6 +23,8 @@ interface AiArticleGeneratorProps {
   isPanelOpen?: boolean;
   onTogglePanel?: () => void;
   hasGeneratedArticle?: boolean;
+  /** 設定時は管理者向け：井戸端の発言ログから生成（URL入力は不要） */
+  forumRoomId?: string | null;
 }
 
 export function AiArticleGenerator({
@@ -30,6 +32,7 @@ export function AiArticleGenerator({
   isPanelOpen,
   onTogglePanel,
   hasGeneratedArticle,
+  forumRoomId,
 }: AiArticleGeneratorProps) {
   const [url, setUrl] = useState("");
   const [additionalPrompt, setAdditionalPrompt] = useState("");
@@ -37,9 +40,10 @@ export function AiArticleGenerator({
   const [error, setError] = useState<string | null>(null);
   const [generatedTitle, setGeneratedTitle] = useState<string | null>(null);
 
+  const fromForum = !!(forumRoomId && forumRoomId.trim());
+
   const handleGenerate = async () => {
-    const trimmedUrl = url.trim();
-    if (!trimmedUrl) return;
+    if (!fromForum && !url.trim()) return;
 
     setIsGenerating(true);
     setError(null);
@@ -49,10 +53,17 @@ export function AiArticleGenerator({
       const res = await fetch("/api/ai-article-generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          url: trimmedUrl,
-          ...(additionalPrompt.trim() ? { additionalPrompt: additionalPrompt.trim() } : {}),
-        }),
+        body: JSON.stringify(
+          fromForum
+            ? {
+                forumRoomId: forumRoomId!.trim(),
+                ...(additionalPrompt.trim() ? { additionalPrompt: additionalPrompt.trim() } : {}),
+              }
+            : {
+                url: url.trim(),
+                ...(additionalPrompt.trim() ? { additionalPrompt: additionalPrompt.trim() } : {}),
+              }
+        ),
       });
 
       const data = await res.json();
@@ -79,29 +90,42 @@ export function AiArticleGenerator({
           AI記事自動生成
         </CardTitle>
         <p className="text-xs text-muted-foreground">
-          URLを入力するとAIが記事を自動生成します
+          {fromForum
+            ? "この井戸端ルームの発言（AIファシリテーター除く）をもとに記事の下書きを生成します"
+            : "URLを入力するとAIが記事を自動生成します"}
         </p>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">参照URL</label>
-          <Input
-            type="url"
-            value={url}
-            onChange={(e) => {
-              setUrl(e.target.value);
-              setError(null);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !isGenerating && url.trim()) {
-                handleGenerate();
-              }
-            }}
-            placeholder="https://example.com/article"
-            disabled={isGenerating}
-            className="text-sm"
-          />
-        </div>
+        {fromForum && (
+          <div className="flex items-start gap-2 rounded-md border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground">
+            <MessageSquare className="h-4 w-4 shrink-0 text-primary mt-0.5" />
+            <p>
+              ルーム ID: <span className="font-mono text-foreground">{forumRoomId}</span>
+            </p>
+          </div>
+        )}
+
+        {!fromForum && (
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">参照URL</label>
+            <Input
+              type="url"
+              value={url}
+              onChange={(e) => {
+                setUrl(e.target.value);
+                setError(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !isGenerating && url.trim()) {
+                  handleGenerate();
+                }
+              }}
+              placeholder="https://example.com/article"
+              disabled={isGenerating}
+              className="text-sm"
+            />
+          </div>
+        )}
 
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-muted-foreground">
@@ -128,7 +152,9 @@ export function AiArticleGenerator({
         {isGenerating && (
           <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50 text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin shrink-0" />
-            <p className="text-xs">URLを読み込み、記事を生成中...</p>
+            <p className="text-xs">
+              {fromForum ? "井戸端のログを読み込み、記事を生成中..." : "URLを読み込み、記事を生成中..."}
+            </p>
           </div>
         )}
 
@@ -143,7 +169,7 @@ export function AiArticleGenerator({
           className="w-full"
           size="sm"
           onClick={handleGenerate}
-          disabled={isGenerating || !url.trim()}
+          disabled={isGenerating || (!fromForum && !url.trim())}
         >
           {isGenerating ? (
             <>

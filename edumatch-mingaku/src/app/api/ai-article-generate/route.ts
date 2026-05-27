@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, getCurrentProfile } from "@/lib/auth";
+import { buildForumTranscriptMarkdown } from "@/lib/forum-article-notify";
 import { parseThumbnailKind, type ThumbnailTemplateKind } from "@/lib/thumbnail-template";
 
 export const runtime = "nodejs";
@@ -237,128 +238,167 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let body: { url?: string; additionalPrompt?: string };
+  let body: { url?: string; additionalPrompt?: string; forumRoomId?: string };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "リクエスト形式が無効です" }, { status: 400 });
   }
 
-  const { url, additionalPrompt } = body;
-  if (!url || typeof url !== "string") {
-    return NextResponse.json({ error: "URLが指定されていません" }, { status: 400 });
-  }
+  const { url, additionalPrompt, forumRoomId } = body;
 
   let parsedUrl: URL;
-  try {
-    parsedUrl = new URL(url);
-    if (!["http:", "https:"].includes(parsedUrl.protocol)) {
-      throw new Error("invalid protocol");
-    }
-  } catch {
-    return NextResponse.json({ error: "有効なURLを入力してください" }, { status: 400 });
-  }
-
-  // Fetch webpage content server-side
   let pageText: string;
   let sourcePageTitle: string | null = null;
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30_000);
+  /** 井戸端由来のとき true（プロンプト文言を変える） */
+  let fromForumTranscript = false;
 
-    const response = await fetch(parsedUrl.toString(), {
-      signal: controller.signal,
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (compatible; EduMatch-ArticleBot/1.0; +https://edumatch.jp)",
-        Accept:
-          "text/html,application/xhtml+xml,application/xml,application/rss+xml,application/atom+xml,application/json,text/plain,text/markdown,application/pdf,*/*;q=0.8",
-        "Accept-Language": "ja,en;q=0.5",
-      },
-    });
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
+  if (forumRoomId && typeof forumRoomId === "string" && forumRoomId.trim()) {
+    const profile = await getCurrentProfile();
+    if (!profile || profile.role !== "ADMIN") {
       return NextResponse.json(
-        { error: `ページの取得に失敗しました（HTTP ${response.status}）` },
-        { status: 422 }
+        { error: "井戸端からの記事生成は管理者のみ利用できます" },
+        { status: 403 }
       );
     }
-
-    const contentType = (response.headers.get("content-type") ?? "").toLowerCase();
-
-    if (isNonPdfBinaryContentType(contentType)) {
-      return NextResponse.json(
-        { error: "画像・動画・ZIPなどのバイナリには対応していません（PDFは除く）" },
-        { status: 422 }
-      );
-    }
-
-    const raw = Buffer.from(await response.arrayBuffer());
-
-    const declaredPdf =
-      contentType.includes("application/pdf") ||
-      parsedUrl.pathname.toLowerCase().endsWith(".pdf");
-
-    if (isPdfMagicBuffer(raw) || declaredPdf) {
-      if (!isPdfMagicBuffer(raw) && declaredPdf) {
-        return NextResponse.json(
-          { error: "PDFとして解析できませんでした（ファイルが壊れているか、別形式の可能性があります）" },
-          { status: 422 }
-        );
+    try {
+      const built = await buildForumTranscriptMarkdown(forumRoomId.trim());
+      pageText = built.text;
+      sourcePageTitle = built.roomName;
+      parsedUrl = new URL(built.sourceUrl);
+      fromForumTranscript = true;
+    } catch (e) {
+      if (e instanceof Error && e.message === "ROOM_NOT_FOUND") {
+        return NextResponse.json({ error: "指定の井戸端ルームが見つかりません" }, { status: 404 });
       }
-      if (raw.length > MAX_PDF_BYTES) {
-        return NextResponse.json(
-          { error: `PDFは${Math.floor(MAX_PDF_BYTES / (1024 * 1024))}MB以下にしてください` },
-          { status: 422 }
-        );
-      }
-      try {
-        const pdfData = await extractPdfContent(raw);
-        pageText = pdfData.text;
-        sourcePageTitle = pdfData.title;
-      } catch (e) {
-        console.error("[ai-article-generate] PDF parse error:", e);
-        return NextResponse.json(
-          { error: "PDFからテキストを抽出できませんでした（スキャン画像のみのPDF等は読み取れない場合があります）" },
-          { status: 422 }
-        );
-      }
-    } else {
-      const body = raw.toString("utf8");
-      if (contentType.includes("text/html") || contentType.includes("application/xhtml")) {
-        sourcePageTitle = extractHtmlSourceTitle(body);
-      }
-      pageText = extractTextFromContent(body, contentType);
+      console.error("[ai-article-generate] forum transcript", e);
+      return NextResponse.json({ error: "井戸端ログの取得に失敗しました" }, { status: 500 });
     }
 
     if (pageText.length < 100) {
       return NextResponse.json(
-        { error: "ページからテキストを取得できませんでした" },
+        { error: "井戸端の人間の発言が十分にありません（AIファシリテーター除く）" },
         { status: 422 }
       );
     }
-
-    // Limit to 8000 chars to stay within token budget
     if (pageText.length > 8000) {
       pageText = pageText.slice(0, 8000) + "...（以下省略）";
     }
-  } catch (err) {
-    if (err instanceof Error && err.name === "AbortError") {
+  } else {
+    if (!url || typeof url !== "string") {
+      return NextResponse.json({ error: "URLが指定されていません" }, { status: 400 });
+    }
+
+    try {
+      parsedUrl = new URL(url);
+      if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+        throw new Error("invalid protocol");
+      }
+    } catch {
+      return NextResponse.json({ error: "有効なURLを入力してください" }, { status: 400 });
+    }
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30_000);
+
+      const response = await fetch(parsedUrl.toString(), {
+        signal: controller.signal,
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (compatible; EduMatch-ArticleBot/1.0; +https://edumatch.jp)",
+          Accept:
+            "text/html,application/xhtml+xml,application/xml,application/rss+xml,application/atom+xml,application/json,text/plain,text/markdown,application/pdf,*/*;q=0.8",
+          "Accept-Language": "ja,en;q=0.5",
+        },
+      });
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        return NextResponse.json(
+          { error: `ページの取得に失敗しました（HTTP ${response.status}）` },
+          { status: 422 }
+        );
+      }
+
+      const contentType = (response.headers.get("content-type") ?? "").toLowerCase();
+
+      if (isNonPdfBinaryContentType(contentType)) {
+        return NextResponse.json(
+          { error: "画像・動画・ZIPなどのバイナリには対応していません（PDFは除く）" },
+          { status: 422 }
+        );
+      }
+
+      const raw = Buffer.from(await response.arrayBuffer());
+
+      const declaredPdf =
+        contentType.includes("application/pdf") ||
+        parsedUrl.pathname.toLowerCase().endsWith(".pdf");
+
+      if (isPdfMagicBuffer(raw) || declaredPdf) {
+        if (!isPdfMagicBuffer(raw) && declaredPdf) {
+          return NextResponse.json(
+            { error: "PDFとして解析できませんでした（ファイルが壊れているか、別形式の可能性があります）" },
+            { status: 422 }
+          );
+        }
+        if (raw.length > MAX_PDF_BYTES) {
+          return NextResponse.json(
+            { error: `PDFは${Math.floor(MAX_PDF_BYTES / (1024 * 1024))}MB以下にしてください` },
+            { status: 422 }
+          );
+        }
+        try {
+          const pdfData = await extractPdfContent(raw);
+          pageText = pdfData.text;
+          sourcePageTitle = pdfData.title;
+        } catch (e) {
+          console.error("[ai-article-generate] PDF parse error:", e);
+          return NextResponse.json(
+            { error: "PDFからテキストを抽出できませんでした（スキャン画像のみのPDF等は読み取れない場合があります）" },
+            { status: 422 }
+          );
+        }
+      } else {
+        const fetchBody = raw.toString("utf8");
+        if (contentType.includes("text/html") || contentType.includes("application/xhtml")) {
+          sourcePageTitle = extractHtmlSourceTitle(fetchBody);
+        }
+        pageText = extractTextFromContent(fetchBody, contentType);
+      }
+
+      if (pageText.length < 100) {
+        return NextResponse.json(
+          { error: "ページからテキストを取得できませんでした" },
+          { status: 422 }
+        );
+      }
+
+      if (pageText.length > 8000) {
+        pageText = pageText.slice(0, 8000) + "...（以下省略）";
+      }
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") {
+        return NextResponse.json(
+          { error: "ページの読み込みがタイムアウトしました" },
+          { status: 422 }
+        );
+      }
       return NextResponse.json(
-        { error: "ページの読み込みがタイムアウトしました" },
+        { error: "ページの取得中にエラーが発生しました" },
         { status: 422 }
       );
     }
-    return NextResponse.json(
-      { error: "ページの取得中にエラーが発生しました" },
-      { status: 422 }
-    );
   }
 
   // Generate article with OpenAI
   try {
     const openai = new OpenAI({ apiKey });
+
+    const sourceIntro = fromForumTranscript
+      ? `以下は井戸端会議「${sourcePageTitle ?? "ルーム"}」の発言ログ（AIファシリテーター除く）です。参照ページ: ${parsedUrl.toString()}`
+      : `以下のWebページ（URL: ${parsedUrl.toString()}）の内容を元に、EduMatch向け記事を生成してください。`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-5.4",
@@ -368,7 +408,7 @@ export async function POST(req: NextRequest) {
         {
           role: "user",
           content: [
-            `以下のWebページ（URL: ${parsedUrl.toString()}）の内容を元に、EduMatch向け記事を生成してください。`,
+            sourceIntro,
             ...(additionalPrompt?.trim()
               ? [`\n## 追加条件・指示\n${additionalPrompt.trim()}`]
               : []),

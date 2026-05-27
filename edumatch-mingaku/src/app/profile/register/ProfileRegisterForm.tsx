@@ -18,8 +18,13 @@ import { Badge } from "@/components/ui/badge";
 import {
   User,
   Building2,
-  Handshake,
+  Briefcase,
   GraduationCap,
+  Handshake,
+  Lightbulb,
+  Mic,
+  PenLine,
+  Users,
   ArrowLeft,
   ArrowRight,
   Check,
@@ -45,12 +50,10 @@ export type InitialProfile = {
   organization?: string | null;
   organization_type?: string | null;
   organization_type_other?: string | null;
-  job_title?: string | null;
   bio?: string | null;
   website?: string | null;
   notification_email_2?: string | null;
   notification_email_3?: string | null;
-  address?: string | null;
   role?: string;
   is_corporate_profile?: boolean;
   registration_kind?: "general" | "service_business" | null;
@@ -72,14 +75,14 @@ const steps = [
 ];
 
 const TALENT_BADGE_OPTIONS = [
-  { value: "lecture", label: "講演依頼", desc: "イベント・セミナーでの講演" },
-  { value: "teaching", label: "講師依頼", desc: "授業・講座での講師活動" },
-  { value: "workshop", label: "研修・ワークショップ", desc: "チーム向け研修・ハンズオン" },
-  { value: "advisor", label: "顧問・アドバイザー", desc: "継続的なアドバイス・監修" },
-  { value: "consulting", label: "コンサルティング", desc: "課題解決・導入支援" },
-  { value: "writing", label: "執筆・寄稿", desc: "記事・書籍・教材の執筆" },
-  { value: "work", label: "仕事依頼（その他）", desc: "上記以外のお仕事全般" },
-] as const;
+  { value: "lecture",    icon: Mic,           label: "講演依頼",            desc: "各種イベント・セミナーでの講演" },
+  { value: "teaching",   icon: GraduationCap, label: "講師依頼",            desc: "授業・講座での講師活動" },
+  { value: "workshop",   icon: Users,         label: "研修・ワークショップ", desc: "チーム向け研修・ハンズオン" },
+  { value: "advisor",    icon: Lightbulb,     label: "顧問・アドバイザー",  desc: "継続的なアドバイス・監修" },
+  { value: "consulting", icon: Briefcase,     label: "コンサルティング",    desc: "課題解決・導入支援" },
+  { value: "writing",    icon: PenLine,       label: "執筆・寄稿",          desc: "記事・書籍・教材の執筆" },
+  { value: "work",       icon: Briefcase,     label: "仕事依頼（その他）",  desc: "上記以外のお仕事全般" },
+];
 
 const interests = [
   "学習管理", "コミュニケーション", "評価・分析", "協働学習",
@@ -88,6 +91,7 @@ const interests = [
 ];
 
 const INTEREST_OTHER_MAX = 100;
+
 const AVATAR_TEMPLATES = [
   "/avatars/templates/1.svg",
   "/avatars/templates/2.svg",
@@ -102,7 +106,6 @@ const roles = [
   { value: "curriculum", label: "カリキュラム担当" },
   { value: "other", label: "その他" },
 ];
-const ROLE_VALUES = new Set(roles.map((r) => r.value));
 
 type Props = {
   initialProfile: InitialProfile | null;
@@ -129,14 +132,8 @@ export function ProfileRegisterForm({
   const [organizationTypeOther, setOrganizationTypeOther] = useState(
     initialProfile?.organization_type_other ?? ""
   );
-  const initialJobTitle = initialProfile?.job_title ?? "";
-  const [role, setRole] = useState(
-    initialJobTitle && ROLE_VALUES.has(initialJobTitle) ? initialJobTitle : initialJobTitle ? "other" : ""
-  );
-  const [roleOther, setRoleOther] = useState(
-    initialJobTitle && !ROLE_VALUES.has(initialJobTitle) ? initialJobTitle : ""
-  );
-  const [address, setAddress] = useState(initialProfile?.address ?? "");
+  const [role, setRole] = useState("");
+  const [location, setLocation] = useState("");
   const [selectedInterests, setSelectedInterests] = useState<string[]>(
     initialProfile?.interests ?? []
   );
@@ -153,12 +150,12 @@ export function ProfileRegisterForm({
   const [talentMatchingDescription, setTalentMatchingDescription] = useState(
     initialProfile?.talent_matching_description ?? ""
   );
+  const [talentHourlyRate, setTalentHourlyRate] = useState(initialProfile?.talent_hourly_rate ?? "");
   const [talentBadges, setTalentBadges] = useState<string[]>(
     initialProfile?.talent_badges ?? []
   );
-  const [talentHourlyRate, setTalentHourlyRate] = useState(
-    initialProfile?.talent_hourly_rate ?? ""
-  );
+  const toggleTalentBadge = (badge: string) =>
+    setTalentBadges((prev) => prev.includes(badge) ? prev.filter((b) => b !== badge) : [...prev, badge]);
   const [saving, setSaving] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -174,12 +171,6 @@ export function ProfileRegisterForm({
     } else {
       setSelectedInterests([...selectedInterests, interest]);
     }
-  };
-
-  const toggleTalentBadge = (badge: string) => {
-    setTalentBadges((prev) =>
-      prev.includes(badge) ? prev.filter((item) => item !== badge) : [...prev, badge]
-    );
   };
 
   const renderStep = () => {
@@ -233,9 +224,7 @@ export function ProfileRegisterForm({
                     )}
                     画像をアップロード
                   </Button>
-                  <p className="text-[11px] text-muted-foreground">
-                    またはテンプレートから選ぶ
-                  </p>
+                  <p className="text-[11px] text-muted-foreground">またはテンプレートから選ぶ</p>
                   <div className="flex flex-wrap gap-2">
                     {AVATAR_TEMPLATES.map((url) => (
                       <button
@@ -243,9 +232,7 @@ export function ProfileRegisterForm({
                         type="button"
                         onClick={() => setAvatarUrl(url)}
                         className={`h-11 w-11 rounded-full border-2 overflow-hidden shrink-0 transition-all ${
-                          avatarUrl === url
-                            ? "border-primary ring-2 ring-primary/30"
-                            : "border-muted hover:border-primary/50"
+                          avatarUrl === url ? "border-primary ring-2 ring-primary/30" : "border-muted hover:border-primary/50"
                         }`}
                         aria-label="テンプレート画像を選択"
                       >
@@ -258,31 +245,28 @@ export function ProfileRegisterForm({
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                {isProvider ? "代表者名" : "名前"} <span className="text-red-500">*</span>
+                名前 <span className="text-red-500">*</span>
               </label>
               <Input value={legalName} onChange={(e) => setLegalName(e.target.value)} />
             </div>
-            {!isProvider && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium">年齢（年代）</label>
-                <Select value={age} onValueChange={setAge}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="選択してください" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {AGE_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">年齢（年代）</label>
+              <Select value={age} onValueChange={setAge}>
+                <SelectTrigger>
+                  <SelectValue placeholder="選択してください" />
+                </SelectTrigger>
+                <SelectContent>
+                  {AGE_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                {isProvider ? "ご登録いただく方のお名前" : "表示名（ニックネーム）"}{" "}
-                <span className="text-red-500">*</span>
+                表示名（ニックネーム） <span className="text-red-500">*</span>
               </label>
               <Input value={name} onChange={(e) => setName(e.target.value)} />
             </div>
@@ -295,18 +279,14 @@ export function ProfileRegisterForm({
                 メールアドレスはログインに使用しているため変更できません
               </p>
             </div>
-            {isProvider && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  事業者・団体のTEL <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  placeholder="03-1234-5678"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                />
-              </div>
-            )}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">電話番号（任意）</label>
+              <Input
+                placeholder="090-1234-5678"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+              />
+            </div>
           </div>
         );
 
@@ -315,7 +295,7 @@ export function ProfileRegisterForm({
           <div className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                {isProvider ? "事業者・団体名" : "所属"} <span className="text-red-500">*</span>
+                所属 <span className="text-red-500">*</span>
               </label>
               <Input
                 placeholder={isProvider ? "塾名・学校名など" : "学校名、学年、保護者など"}
@@ -325,11 +305,11 @@ export function ProfileRegisterForm({
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                所属の種類 <span className="text-red-500">*</span>
+                職業・役職 <span className="text-red-500">*</span>
               </label>
               <Select value={schoolType} onValueChange={setSchoolType}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="職業・役職を選択" />
                 </SelectTrigger>
                 <SelectContent>
                   {ORGANIZATION_TYPE_OPTIONS.map((type) => (
@@ -356,13 +336,7 @@ export function ProfileRegisterForm({
             {isProvider && (
               <div className="space-y-2">
                 <label className="text-sm font-medium">役職・職種</label>
-                <Select
-                  value={role}
-                  onValueChange={(value) => {
-                    setRole(value);
-                    if (value !== "other") setRoleOther("");
-                  }}
-                >
+                <Select value={role} onValueChange={setRole}>
                   <SelectTrigger>
                     <SelectValue placeholder="選択してください" />
                   </SelectTrigger>
@@ -374,32 +348,16 @@ export function ProfileRegisterForm({
                     ))}
                   </SelectContent>
                 </Select>
-                {role === "other" && (
-                  <Input
-                    placeholder="役職・職種を入力してください"
-                    value={roleOther}
-                    onChange={(e) => setRoleOther(e.target.value)}
-                  />
-                )}
               </div>
             )}
-            {isProvider && (
-              <>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">
-                    事業者・団体の所在地 <span className="text-red-500">*</span>
-                  </label>
-                  <Input
-                    placeholder="東京都千代田区..."
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                  />
-                </div>
-                <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-xs leading-relaxed text-muted-foreground">
-                  新規開業予定の方は、現時点ではご登録いただく方の情報をご記入ください。
-                </div>
-              </>
-            )}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">所在地</label>
+              <Input
+                placeholder="東京都"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+              />
+            </div>
           </div>
         );
 
@@ -460,7 +418,7 @@ export function ProfileRegisterForm({
                     key={interest}
                     type="button"
                     onClick={() => toggleInterest(interest)}
-                    className={`px-3 py-2 min-h-[40px] rounded-full text-sm transition-colors ${
+                    className={`px-3 py-1.5 rounded-full text-sm transition-colors ${
                       selectedInterests.includes(interest)
                         ? "bg-primary text-primary-foreground"
                         : "bg-muted hover:bg-muted/80"
@@ -495,86 +453,104 @@ export function ProfileRegisterForm({
                 onChange={(e) => setBio(e.target.value)}
               />
             </div>
-            {isProvider && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  公式サイトURL <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  type="url"
-                  placeholder="https://example.com"
-                  value={website}
-                  onChange={(e) => setWebsite(e.target.value)}
-                />
-              </div>
-            )}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                公式サイト・SNS（任意）
+              </label>
+              <Input
+                type="url"
+                placeholder="https://example.com"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+              />
+            </div>
+
           </div>
         );
 
       case 5:
         return (
           <div className="space-y-5">
-            <div className="rounded-lg border bg-muted/30 p-4">
-              <div className="flex items-start gap-3">
-                <input
-                  id="talent-matching-enabled"
-                  type="checkbox"
-                  checked={talentMatchingEnabled}
-                  onChange={(e) => setTalentMatchingEnabled(e.target.checked)}
-                  className="mt-1 h-4 w-4"
-                />
-                <div className="space-y-1">
-                  <label htmlFor="talent-matching-enabled" className="font-medium">
-                    人材マッチングに登録する
-                  </label>
-                  <p className="text-sm text-muted-foreground">
-                    mainでは登録情報のみ保存します。人材マッチングの一覧・詳細ページは公開しません。
-                  </p>
-                </div>
-              </div>
+            <div className="rounded-xl border bg-gradient-to-br from-sky-50 to-indigo-50 p-5">
+              <h3 className="font-semibold mb-1">人材マッチングとは？</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                プロフィールを公開することで、講演・研修・執筆などの依頼を受け取れます。
+                掲載は無料で、後からいつでも変更・停止できます。
+              </p>
             </div>
 
+            <button
+              type="button"
+              onClick={() => setTalentMatchingEnabled(!talentMatchingEnabled)}
+              className={[
+                "w-full flex items-start gap-4 rounded-xl border-2 p-5 text-left transition-all",
+                talentMatchingEnabled
+                  ? "border-primary bg-primary/5"
+                  : "border-dashed border-muted-foreground/30 bg-muted/20 hover:border-muted-foreground/50",
+              ].join(" ")}
+            >
+              <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${talentMatchingEnabled ? "border-primary bg-primary" : "border-muted-foreground/40"}`}>
+                {talentMatchingEnabled && <span className="block h-2 w-2 rounded-full bg-white" />}
+              </div>
+              <div>
+                <p className="font-semibold">人材マッチングに掲載する</p>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  チェックすると人材マッチングページに掲載されます（任意）
+                </p>
+              </div>
+            </button>
+
             {talentMatchingEnabled && (
-              <div className="space-y-5">
+              <div className="space-y-5 animate-in fade-in slide-in-from-top-2 duration-200">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">受け付ける依頼種別（複数選択可）</label>
+                  <p className="text-sm font-semibold">受け付ける依頼の種類（複数選択可）</p>
+                  <p className="text-xs text-muted-foreground">選択した種類はプロフィールにバッジとして表示されます</p>
                   <div className="grid gap-2 sm:grid-cols-2">
-                    {TALENT_BADGE_OPTIONS.map((option) => {
-                      const selected = talentBadges.includes(option.value);
+                    {TALENT_BADGE_OPTIONS.map(({ value, icon: Icon, label, desc }) => {
+                      const selected = talentBadges.includes(value);
                       return (
                         <button
-                          key={option.value}
+                          key={value}
                           type="button"
-                          onClick={() => toggleTalentBadge(option.value)}
-                          className={`rounded-lg border p-3 text-left transition-colors ${
-                            selected ? "border-primary bg-primary/10" : "hover:bg-muted"
-                          }`}
+                          onClick={() => toggleTalentBadge(value)}
+                          className={[
+                            "flex items-start gap-3 rounded-xl border p-3 text-left transition-all",
+                            selected
+                              ? "border-primary bg-primary/5"
+                              : "border-border bg-background hover:border-primary/40",
+                          ].join(" ")}
                         >
-                          <span className="block text-sm font-medium">{option.label}</span>
-                          <span className="block text-xs text-muted-foreground">{option.desc}</span>
+                          <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${selected ? "text-primary" : "text-muted-foreground"}`} />
+                          <div>
+                            <p className={`text-sm font-medium ${selected ? "text-primary" : ""}`}>{label}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
+                          </div>
                         </button>
                       );
                     })}
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <label className="text-sm font-medium">自己PR・対応できる依頼内容（任意）</label>
                   <Textarea
                     placeholder="例：教育ICT分野の講演・研修を承ります。プログラミング教育の導入支援や教員向けワークショップも可能です。"
                     rows={4}
                     value={talentMatchingDescription}
                     onChange={(e) => setTalentMatchingDescription(e.target.value)}
+                    className="resize-none text-sm"
                   />
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <label className="text-sm font-medium">ギャラ・料金目安（任意）</label>
                   <Input
                     placeholder="例：講演 1時間 5万円〜、応相談 など"
                     value={talentHourlyRate}
                     onChange={(e) => setTalentHourlyRate(e.target.value)}
+                    className="text-sm"
                   />
+                  <p className="text-[11px] text-muted-foreground">依頼者への目安表示用です。公開範囲の細かい制限は今後追加予定です。</p>
                 </div>
               </div>
             )}
@@ -602,12 +578,10 @@ export function ProfileRegisterForm({
                     <span className="text-muted-foreground shrink-0">名前</span>
                     <span className="text-right break-all">{legalName || "未入力"}</span>
                   </div>
-                  {!isProvider && (
-                    <div className="flex justify-between gap-4">
-                      <span className="text-muted-foreground shrink-0">年齢</span>
-                      <span>{AGE_OPTIONS.find(o => o.value === age)?.label || "未入力"}</span>
-                    </div>
-                  )}
+                  <div className="flex justify-between gap-4">
+                    <span className="text-muted-foreground shrink-0">年齢</span>
+                    <span>{AGE_OPTIONS.find(o => o.value === age)?.label || "未入力"}</span>
+                  </div>
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between gap-4">
                       <span className="text-muted-foreground">表示名（ニックネーム）</span>
@@ -617,12 +591,10 @@ export function ProfileRegisterForm({
                       <span className="text-muted-foreground">メールアドレス</span>
                       <span className="break-all">{email || "未入力"}</span>
                     </div>
-                    {isProvider && (
-                      <div className="flex justify-between gap-4">
-                        <span className="text-muted-foreground">事業者・団体のTEL</span>
-                        <span>{phone || "未入力"}</span>
-                      </div>
-                    )}
+                    <div className="flex justify-between gap-4">
+                      <span className="text-muted-foreground">電話番号</span>
+                      <span>{phone || "未入力"}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -639,7 +611,7 @@ export function ProfileRegisterForm({
                   <span>{organization || "未入力"}</span>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <span className="text-muted-foreground shrink-0">所属の種類</span>
+                  <span className="text-muted-foreground shrink-0">職業・役職</span>
                   <span className="text-right break-words">
                     {formatOrganizationTypeDisplay(schoolType, organizationTypeOther) ||
                       "未入力"}
@@ -649,18 +621,14 @@ export function ProfileRegisterForm({
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">役職・職種</span>
                     <span>
-                      {role === "other"
-                        ? roleOther || "未入力"
-                        : roles.find((r) => r.value === role)?.label || "未入力"}
+                      {roles.find((r) => r.value === role)?.label || "未入力"}
                     </span>
                   </div>
                 )}
-                {isProvider && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">事業者・団体の所在地</span>
-                    <span>{address || "未入力"}</span>
-                  </div>
-                )}
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">所在地</span>
+                  <span>{location || "未入力"}</span>
+                </div>
               </div>
             </div>
 
@@ -726,67 +694,25 @@ export function ProfileRegisterForm({
                     <p className="whitespace-pre-wrap">{bio}</p>
                   </div>
                 )}
-                {isProvider && (
+                {website && (
                   <div>
-                    <span className="text-muted-foreground block mb-1">公式サイトURL</span>
-                    {website ? (
-                      <a
-                        href={website}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary underline break-all"
-                      >
-                        {website}
-                      </a>
-                    ) : (
-                      <span className="text-muted-foreground">未入力</span>
-                    )}
+                    <span className="text-muted-foreground block mb-1">
+                      公式サイト・SNS
+                    </span>
+                    <a href={website} target="_blank" rel="noopener noreferrer" className="text-primary underline break-all">{website}</a>
                   </div>
                 )}
-              </div>
-            </div>
-
-            <div className="p-4 rounded-lg bg-muted/50">
-              <h3 className="font-medium mb-3 flex items-center gap-2">
-                <Handshake className="h-4 w-4" />
-                人材マッチング
-              </h3>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">登録</span>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">人材マッチング登録</span>
                   <span className={talentMatchingEnabled ? "text-primary font-medium" : ""}>
                     {talentMatchingEnabled ? "登録する" : "登録しない"}
                   </span>
                 </div>
-                {talentMatchingEnabled && (
-                  <>
-                    <div>
-                      <span className="text-muted-foreground block mb-2">依頼種別</span>
-                      <div className="flex flex-wrap gap-1">
-                        {talentBadges.length > 0 ? (
-                          talentBadges.map((badge) => (
-                            <Badge key={badge} variant="secondary">
-                              {TALENT_BADGE_OPTIONS.find((option) => option.value === badge)?.label ?? badge}
-                            </Badge>
-                          ))
-                        ) : (
-                          <span className="text-muted-foreground">未選択</span>
-                        )}
-                      </div>
-                    </div>
-                    {talentMatchingDescription.trim() && (
-                      <div>
-                        <span className="text-muted-foreground block mb-1">自己PR</span>
-                        <p className="whitespace-pre-wrap">{talentMatchingDescription.trim()}</p>
-                      </div>
-                    )}
-                    {talentHourlyRate.trim() && (
-                      <div className="flex justify-between gap-4">
-                        <span className="text-muted-foreground shrink-0">ギャラ・料金目安</span>
-                        <span className="text-right break-words">{talentHourlyRate.trim()}</span>
-                      </div>
-                    )}
-                  </>
+                {talentMatchingEnabled && talentHourlyRate.trim() && (
+                  <div className="flex justify-between gap-4 text-sm">
+                    <span className="text-muted-foreground shrink-0">ギャラ・料金目安</span>
+                    <span className="text-right break-words">{talentHourlyRate.trim()}</span>
+                  </div>
                 )}
               </div>
             </div>
@@ -813,26 +739,15 @@ export function ProfileRegisterForm({
         setValidationError("プロフィール画像をアップロードするか、テンプレートから選んでください。");
         return;
       }
-      if (isProvider && !phone.trim()) {
-        setValidationError("事業者・団体のTELを入力してください。");
-        return;
-      }
     } else if (currentStep === 2) {
       if (!organization.trim()) {
         setValidationError("所属を入力してください。");
         return;
       }
       if (!schoolType) {
-        setValidationError("所属の種類を選択してください。");
+        setValidationError("職業・役職を選択してください。");
         return;
       }
-      if (isProvider && !address.trim()) {
-        setValidationError("事業者・団体の所在地を入力してください。");
-        return;
-      }
-    } else if (currentStep === 4 && isProvider && !website.trim()) {
-      setValidationError("公式サイトURLを入力してください。");
-      return;
     }
     
     // 一般ユーザーの場合、ステップ2の次はステップ4へ
@@ -871,18 +786,6 @@ export function ProfileRegisterForm({
       setValidationError("職業・役職を選択してください。");
       return;
     }
-    if (isProvider && !phone.trim()) {
-      setValidationError("事業者・団体のTELを入力してください。");
-      return;
-    }
-    if (isProvider && !address.trim()) {
-      setValidationError("事業者・団体の所在地を入力してください。");
-      return;
-    }
-    if (isProvider && !website.trim()) {
-      setValidationError("公式サイトURLを入力してください。");
-      return;
-    }
     if (isFirstTime && !avatarUrl.trim()) {
       setValidationError("プロフィール画像をアップロードするか、テンプレートから選んでください。");
       return;
@@ -891,21 +794,15 @@ export function ProfileRegisterForm({
     const { success } = await updateProfile({
       name: name || undefined,
       legal_name: legalName.trim(),
-      age: isProvider ? null : age || null,
+      age: age || null,
       avatar_url: avatarUrl.trim() || null,
       phone: phone || null,
       organization: organization?.trim() || null,
       organization_type: schoolType || null,
       organization_type_other:
         schoolType === "other" ? organizationTypeOther.trim() || null : null,
-      job_title: isProvider
-        ? role === "other"
-          ? roleOther.trim() || null
-          : role || null
-        : null,
       bio: bio || null,
       website: website || null,
-      address: isProvider ? address.trim() || null : null,
       notification_email_2: isProvider ? (notificationEmail2.trim() || null) : null,
       notification_email_3: isProvider ? (notificationEmail3.trim() || null) : null,
       interests: selectedInterests,
@@ -921,19 +818,12 @@ export function ProfileRegisterForm({
       completeInitialSetup: true,
     });
     setSaving(false);
-    if (success) {
-      if (isFirstTime) {
-        router.push("/?tutorial=start");
-        return;
-      }
-
-      router.push(nextUrl ?? "/dashboard");
-    }
+    if (success) router.push(nextUrl ?? "/dashboard");
   };
 
   return (
-    <div className="container py-6 sm:py-8">
-      <Button variant="ghost" asChild className="mb-4 -ml-2">
+    <div className="container py-8">
+      <Button variant="ghost" asChild className="mb-4">
         <Link href="/mypage">
           <ArrowLeft className="h-4 w-4 mr-2" />
           マイページに戻る
@@ -943,7 +833,7 @@ export function ProfileRegisterForm({
       <div className="max-w-2xl mx-auto">
         {isFirstTime && (
           <div className="mb-6 p-4 rounded-lg bg-primary/10 border border-primary/20 text-center">
-            <p className="font-medium text-primary text-sm sm:text-base">
+            <p className="font-medium text-primary">
               {isProvider
                 ? "事業者アカウントとして登録済みです。事業者名・所属・資料請求の通知先まで入力してください。"
                 : "一般利用として登録済みです。表示名・所属・関心分野などを入力してください。"}
@@ -953,32 +843,32 @@ export function ProfileRegisterForm({
             </p>
           </div>
         )}
-        <div className="text-center mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold mb-2">アカウント設定</h1>
-          <p className="text-sm sm:text-base text-muted-foreground">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold mb-2">アカウント設定</h1>
+          <p className="text-muted-foreground">
             {isProvider
               ? "掲載・投稿に使う事業者情報と、資料請求の通知先を設定します"
               : "サイト上の表示名・所属・関心分野などを設定します"}
           </p>
         </div>
 
-        <div className="flex items-center justify-center mb-6 sm:mb-8 overflow-x-auto px-2">
+        <div className="flex items-center justify-center mb-8">
           {steps.map((step, index) => {
             const Icon = step.icon;
             return (
-              <div key={step.id} className="flex items-center flex-shrink-0">
+              <div key={step.id} className="flex items-center">
                 <div
-                  className={`flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full ${
+                  className={`flex items-center justify-center w-10 h-10 rounded-full ${
                     currentStep >= step.id
                       ? "bg-primary text-primary-foreground"
                       : "bg-muted text-muted-foreground"
                   }`}
                 >
-                  <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <Icon className="h-5 w-5" />
                 </div>
                 {index < steps.length - 1 && (
                   <div
-                    className={`w-8 sm:w-12 h-1 flex-shrink-0 ${
+                    className={`w-12 h-1 ${
                       currentStep > step.id ? "bg-primary" : "bg-muted"
                     }`}
                   />
