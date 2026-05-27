@@ -15,7 +15,7 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
   const { open, setOpen, mobileOpen, setMobileOpen } = useAiPanel();
   const examBlocksChat = useAiKenteiExamBlocksChat();
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [panelWidth, setPanelWidth] = useState(360);
+  const [panelWidth, setPanelWidth] = useState(520);
   const [resizing, setResizing] = useState(false);
 
   useEffect(() => {

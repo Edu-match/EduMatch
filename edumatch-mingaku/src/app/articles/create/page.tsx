@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -116,6 +116,9 @@ function loadDraftFromStorage(): ArticleDraft | null {
 }
 
 export default function ArticleCreatePage() {
+  const searchParams = useSearchParams();
+  const forumRoomFromQuery = searchParams.get("forumRoom");
+
   // 初期値をローカルストレージから読み込み（lazy initialization）
   const [draft] = useState<ArticleDraft | null>(() => loadDraftFromStorage());
   
@@ -145,7 +148,12 @@ export default function ArticleCreatePage() {
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
   const [editorResetKey, setEditorResetKey] = useState(0);
   const [showClearDialog, setShowClearDialog] = useState(false);
-  const [userProfile, setUserProfile] = useState<{ name: string; avatar_url: string | null; email: string } | null>(null);
+  const [userProfile, setUserProfile] = useState<{
+    name: string;
+    avatar_url: string | null;
+    email: string;
+    role: string | null;
+  } | null>(null);
   const [generatedArticle, setGeneratedArticle] = useState<GeneratedArticle | null>(null);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
   const [homeNewsTab, setHomeNewsTab] = useState<HomeNewsTab>(
@@ -202,6 +210,7 @@ export default function ArticleCreatePage() {
             name: data.profile.name ?? "ユーザー",
             avatar_url: data.profile.avatar_url ?? null,
             email: data.profile.email ?? "",
+            role: typeof data.profile.role === "string" ? data.profile.role : null,
           });
         }
       } catch (error) {
@@ -927,6 +936,11 @@ export default function ArticleCreatePage() {
               isPanelOpen={aiPanelOpen}
               onTogglePanel={() => setAiPanelOpen((v) => !v)}
               hasGeneratedArticle={!!generatedArticle}
+              forumRoomId={
+                userProfile?.role === "ADMIN" && forumRoomFromQuery?.trim()
+                  ? forumRoomFromQuery.trim()
+                  : null
+              }
             />
 
             {/* Publish settings */}

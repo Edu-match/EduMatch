@@ -20,6 +20,7 @@ import {
   Activity,
   ArrowUpDown,
   MessageSquare,
+  Users,
 } from "lucide-react";
 
 /** 一般ユーザー向けメニュー（全員閲覧用） */
@@ -30,6 +31,7 @@ const generalItems = [
   { href: "/events", label: "セミナー・イベント情報", icon: Calendar },
   { href: "/forum", label: "井戸端会議", icon: MessageSquare },
   { href: "/companies", label: "掲載企業一覧", icon: Building2 },
+  { href: "/talent", label: "人材マッチング", icon: Users },
   { href: "/compare", label: "サービス比較", icon: Scale },
   { href: "/ai-kentei", label: "AI検定", icon: Award },
   { href: "/help", label: "ヘルプ", icon: HelpCircle },

@@ -69,7 +69,11 @@ export function LoginForm({ onSuccess, redirectTo = "/" }: Props) {
           refresh_token: result.session.refresh_token,
         });
       }
-      window.location.href = redirectTo;
+      const needsOnboarding = !!(result as { needsOnboarding?: boolean }).needsOnboarding;
+      const nextUrl = needsOnboarding
+        ? `/profile/register?first=1&next=${encodeURIComponent(redirectTo)}`
+        : redirectTo;
+      window.location.href = nextUrl;
     } catch {
       setGlobalError("ログインに失敗しました。もう一度お試しください。");
       setIsSubmitting(false);
