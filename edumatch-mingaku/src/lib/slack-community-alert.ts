@@ -5,6 +5,8 @@
  */
 
 export type SlackCommunityAlertPayload = {
+  /** 機能名（例: "井戸端会議" / "動画コメント"）。省略時は "井戸端会議" */
+  featureLabel?: string;
   kindLabel: string;
   /** 掲載可否に関わらず運営が知りたい要約（日本語） */
   summaryJa: string;
@@ -12,6 +14,8 @@ export type SlackCommunityAlertPayload = {
   userId: string;
   userName: string;
   blocked: boolean;
+  /** 任意のコンテキストリンク（投稿先の動画・部屋など） */
+  contextUrl?: string;
 };
 
 function excerpt(text: string, max = 600): string {
@@ -24,16 +28,21 @@ export async function sendSlackCommunityAlert(
   webhookUrl: string,
   payload: SlackCommunityAlertPayload
 ): Promise<void> {
+  const featureLabel = payload.featureLabel?.trim() || "井戸端会議";
   const header = payload.blocked
-    ? "【井戸端会議】投稿ブロック"
-    : "【井戸端会議】要レビュー（掲載は可）";
-  const text = [
+    ? `【${featureLabel}】投稿ブロック`
+    : `【${featureLabel}】要レビュー（掲載は可）`;
+  const lines = [
     `*${header}*`,
     `*種別:* ${payload.kindLabel}`,
     `*ユーザー:* ${payload.userName} (\`${payload.userId}\`)`,
     `*判定メモ:* ${payload.summaryJa}`,
     `*本文抜粋:*\n\`\`\`${excerpt(payload.textExcerpt)}\`\`\``,
-  ].join("\n");
+  ];
+  if (payload.contextUrl) {
+    lines.splice(2, 0, `*コンテキスト:* ${payload.contextUrl}`);
+  }
+  const text = lines.join("\n");
 
   const ac = new AbortController();
   const t = setTimeout(() => ac.abort(), 8000);

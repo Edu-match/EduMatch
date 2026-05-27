@@ -6,7 +6,9 @@ import { getForumAuthorRoleForUser } from "@/lib/forum-author-profile";
 import { FORUM_AI_FACILITATOR_NAME } from "@/lib/forum-constants";
 import { mapForumReplyForApi } from "@/lib/forum-ai-reply";
 import { notifyAdminsForumHumanActivityMilestones } from "@/lib/forum-article-notify";
+import { moderateAndNotify } from "@/lib/post-moderation";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /** 返信一覧取得 */
@@ -130,6 +132,44 @@ export async function POST(
     const trimmedName = authorName.trim();
     const isAnon = trimmedName === "匿名ユーザー" || authorRole === "匿名";
     const isAiFacilitator = trimmedName === FORUM_AI_FACILITATOR_NAME;
+
+    // AIファシリテーター以外はモデレーション対象
+    if (!isAiFacilitator) {
+      const url = new URL(req.url);
+      const origin = `${url.protocol}//${url.host}`;
+      const moderation = await moderateAndNotify({
+        text: replyBody.trim(),
+        kind: "comment",
+        featureLabel: "井戸端会議",
+        userId: user.id,
+        userName: profile.name || user.email?.split("@")[0] || "（不明）",
+        contextUrl: `${origin}/forum/${post.room_id}`,
+      });
+      if (moderation.skipped) {
+        return NextResponse.json(
+          { error: "サーバー設定が不足しています。" },
+          { status: 503 }
+        );
+      }
+      if (!moderation.allowed) {
+        if (moderation.source === "error") {
+          return NextResponse.json(
+            {
+              error:
+                "返信内容の確認中にエラーが発生しました。しばらく経ってからお試しください。",
+            },
+            { status: 503 }
+          );
+        }
+        return NextResponse.json(
+          {
+            error:
+              "この内容はコミュニティガイドラインに適合しないため投稿できません。表現を見直してください。",
+          },
+          { status: 400 }
+        );
+      }
+    }
 
     let resolvedAuthorRole = "一般";
     if (isAiFacilitator) {

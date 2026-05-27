@@ -445,6 +445,9 @@ function PostCardWithStream({
         setReplyText("");
         setShowReplyForm(false);
         setRepliesOpen(true);
+      } else {
+        const errData = await res.json().catch(() => ({} as { error?: string }));
+        alert(errData?.error || "返信の投稿に失敗しました。");
       }
     } finally {
       setSubmittingReply(false);
@@ -1160,7 +1163,10 @@ export function ForumRoomClient({
           alert("投稿するにはログインしてください。");
           return;
         }
-        console.error("投稿に失敗しました", await res.text());
+        const errData = await res.json().catch(() => ({} as { error?: string }));
+        const msg = errData?.error || "投稿に失敗しました。";
+        alert(msg);
+        console.error("投稿に失敗しました", msg);
         return;
       }
 
