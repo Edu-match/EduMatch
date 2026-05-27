@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import type { VideoVisibility } from "@prisma/client";
 import { Loader2, Plus, Video as VideoIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,16 +10,16 @@ import { Badge } from "@/components/ui/badge";
 import { VideoForm, type VideoFormValue } from "@/components/admin/video-form";
 import { RelativeTime } from "@/components/community/relative-time";
 import { youtubeThumbnailUrl } from "@/lib/youtube";
+import { VIDEO_VISIBILITY_LABELS } from "@/lib/video-visibility";
 
 type AdminVideoItem = {
   id: string;
   title: string;
   description: string;
-  notes?: string | null;
   youtubeUrl: string;
   youtubeId: string;
   aiSummary: string | null;
-  isPublished: boolean;
+  visibility: VideoVisibility;
   createdAt: string;
   updatedAt: string;
 };
@@ -26,11 +27,16 @@ type AdminVideoItem = {
 const EMPTY_FORM: VideoFormValue = {
   title: "",
   description: "",
-  notes: "",
   youtubeUrl: "",
-  isPublished: false,
+  visibility: "PRIVATE",
   aiSummary: null,
 };
+
+function visibilityBadgeVariant(visibility: VideoVisibility) {
+  if (visibility === "PUBLIC") return "default" as const;
+  if (visibility === "UNLISTED") return "secondary" as const;
+  return "outline" as const;
+}
 
 export function AdminVideosClient() {
   const [videos, setVideos] = useState<AdminVideoItem[]>([]);
@@ -41,7 +47,7 @@ export function AdminVideosClient() {
   const reload = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/videos?includeUnpublished=true", {
+      const res = await fetch("/api/videos?includeAll=true", {
         credentials: "include",
       });
       const data = await res.json();
@@ -63,9 +69,8 @@ export function AdminVideosClient() {
         id: editingVideo.id,
         title: editingVideo.title,
         description: editingVideo.description,
-        notes: editingVideo.notes ?? "",
         youtubeUrl: editingVideo.youtubeUrl,
-        isPublished: editingVideo.isPublished,
+        visibility: editingVideo.visibility,
         aiSummary: editingVideo.aiSummary,
       }
     : null;
@@ -75,7 +80,7 @@ export function AdminVideosClient() {
       <header className="flex items-center justify-between gap-2">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <VideoIcon className="h-6 w-6 text-primary" />
-          動画を管理
+          学びの動画を管理
         </h1>
         {!creating && !editingId && (
           <Button onClick={() => setCreating(true)}>
@@ -154,13 +159,11 @@ export function AdminVideosClient() {
                       />
                     </div>
                     <div className="flex-1 min-w-0 space-y-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-semibold truncate">{v.title}</h3>
-                        {v.isPublished ? (
-                          <Badge variant="default">公開中</Badge>
-                        ) : (
-                          <Badge variant="secondary">非公開</Badge>
-                        )}
+                        <Badge variant={visibilityBadgeVariant(v.visibility)}>
+                          {VIDEO_VISIBILITY_LABELS[v.visibility]}
+                        </Badge>
                         {v.aiSummary && (
                           <Badge variant="outline" className="text-xs">AI要約あり</Badge>
                         )}

@@ -1,9 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { VideoVisibility } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getCurrentProfile } from "@/lib/auth";
 import { extractYoutubeId } from "@/lib/youtube";
+import { isVideoViewableByVisitor } from "@/lib/video-visibility";
 
 export const dynamic = "force-dynamic";
+
+const VISIBILITY_VALUES: VideoVisibility[] = ["PUBLIC", "UNLISTED", "PRIVATE"];
+
+function parseVisibility(value: unknown): VideoVisibility | null {
+  if (typeof value === "string" && VISIBILITY_VALUES.includes(value as VideoVisibility)) {
+    return value as VideoVisibility;
+  }
+  return null;
+}
 
 /** 動画詳細取得 */
 export async function GET(
@@ -12,6 +23,9 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    const profile = await getCurrentProfile();
+    const isAdmin = profile?.role === "ADMIN";
+
     const video = await prisma.video.findUnique({
       where: { id },
       include: {
@@ -22,11 +36,8 @@ export async function GET(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    if (!video.is_published) {
-      const profile = await getCurrentProfile();
-      if (!profile || profile.role !== "ADMIN") {
-        return NextResponse.json({ error: "Not found" }, { status: 404 });
-      }
+    if (!isVideoViewableByVisitor(video.visibility, isAdmin)) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
     return NextResponse.json({
@@ -34,11 +45,10 @@ export async function GET(
         id: video.id,
         title: video.title,
         description: video.description,
-        notes: video.notes,
         youtubeUrl: video.youtube_url,
         youtubeId: video.youtube_id,
         aiSummary: video.ai_summary ?? null,
-        isPublished: video.is_published,
+        visibility: video.visibility,
         createdAt: video.created_at.toISOString(),
         updatedAt: video.updated_at.toISOString(),
         commentCount: video._count.comments,
@@ -68,11 +78,12 @@ export async function PUT(
     }
 
     const body = await req.json();
-    const { title, description, notes, youtubeUrl, isPublished, aiSummary } = body as {
+    const { title, description, notes, youtubeUrl, visibility, isPublished, aiSummary } = body as {
       title?: string;
       description?: string;
       notes?: string | null;
       youtubeUrl?: string;
+      visibility?: VideoVisibility;
       isPublished?: boolean;
       aiSummary?: string | null;
     };
@@ -91,6 +102,17 @@ export async function PUT(
       resolvedUrl = youtubeUrl.trim();
     }
 
+    let resolvedVisibility: VideoVisibility | undefined;
+    if (visibility !== undefined) {
+      const parsed = parseVisibility(visibility);
+      if (!parsed) {
+        return NextResponse.json({ error: "visibility が不正です" }, { status: 400 });
+      }
+      resolvedVisibility = parsed;
+    } else if (isPublished !== undefined) {
+      resolvedVisibility = isPublished ? "PUBLIC" : "PRIVATE";
+    }
+
     const updated = await prisma.video.update({
       where: { id },
       data: {
@@ -98,7 +120,7 @@ export async function PUT(
         ...(description !== undefined && { description: description.trim() }),
         ...(notes !== undefined && { notes: notes?.toString().trim() || null }),
         ...(youtubeUrl !== undefined && { youtube_url: resolvedUrl, youtube_id: youtubeId }),
-        ...(isPublished !== undefined && { is_published: isPublished }),
+        ...(resolvedVisibility !== undefined && { visibility: resolvedVisibility }),
         ...(aiSummary !== undefined && { ai_summary: aiSummary?.toString().trim() || null }),
       },
     });
@@ -112,7 +134,7 @@ export async function PUT(
         youtubeUrl: updated.youtube_url,
         youtubeId: updated.youtube_id,
         aiSummary: updated.ai_summary ?? null,
-        isPublished: updated.is_published,
+        visibility: updated.visibility,
         createdAt: updated.created_at.toISOString(),
         updatedAt: updated.updated_at.toISOString(),
       },

@@ -1,23 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { VideoVisibility } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getCurrentProfile } from "@/lib/auth";
 import { extractYoutubeId } from "@/lib/youtube";
 
 export const dynamic = "force-dynamic";
 
-/** 動画一覧取得（公開済みのみ。管理者は ?includeUnpublished=true で全件） */
+const VISIBILITY_VALUES: VideoVisibility[] = ["PUBLIC", "UNLISTED", "PRIVATE"];
+
+function parseVisibility(value: unknown, fallback: VideoVisibility = "PRIVATE"): VideoVisibility {
+  if (typeof value === "string" && VISIBILITY_VALUES.includes(value as VideoVisibility)) {
+    return value as VideoVisibility;
+  }
+  return fallback;
+}
+
+/** 動画一覧取得（公開のみ。管理者は ?includeAll=true で全件） */
 export async function GET(req: NextRequest) {
   try {
     const url = new URL(req.url);
-    const includeUnpublished = url.searchParams.get("includeUnpublished") === "true";
+    const includeAll = url.searchParams.get("includeAll") === "true"
+      || url.searchParams.get("includeUnpublished") === "true";
 
     let isAdmin = false;
-    if (includeUnpublished) {
+    if (includeAll) {
       const profile = await getCurrentProfile();
       isAdmin = profile?.role === "ADMIN";
     }
 
-    const where = isAdmin && includeUnpublished ? {} : { is_published: true };
+    const where = isAdmin && includeAll ? {} : { visibility: "PUBLIC" as VideoVisibility };
 
     const videos = await prisma.video.findMany({
       where,
@@ -35,7 +46,7 @@ export async function GET(req: NextRequest) {
         youtubeUrl: v.youtube_url,
         youtubeId: v.youtube_id,
         aiSummary: v.ai_summary ?? null,
-        isPublished: v.is_published,
+        visibility: v.visibility,
         createdAt: v.created_at.toISOString(),
         updatedAt: v.updated_at.toISOString(),
         commentCount: v._count.comments,
@@ -61,12 +72,15 @@ export async function POST(req: NextRequest) {
       description,
       notes,
       youtubeUrl,
+      visibility,
       isPublished,
     } = body as {
       title: string;
       description?: string;
       notes?: string;
       youtubeUrl: string;
+      visibility?: VideoVisibility;
+      /** @deprecated 後方互換 */
       isPublished?: boolean;
     };
 
@@ -84,6 +98,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const resolvedVisibility = visibility
+      ? parseVisibility(visibility)
+      : isPublished === true
+        ? "PUBLIC"
+        : "PRIVATE";
+
     const video = await prisma.video.create({
       data: {
         title: title.trim(),
@@ -91,7 +111,7 @@ export async function POST(req: NextRequest) {
         notes: notes?.trim() || null,
         youtube_url: youtubeUrl.trim(),
         youtube_id: youtubeId,
-        is_published: isPublished ?? false,
+        visibility: resolvedVisibility,
         author_id: profile.id,
       },
     });
@@ -106,7 +126,7 @@ export async function POST(req: NextRequest) {
           youtubeUrl: video.youtube_url,
           youtubeId: video.youtube_id,
           aiSummary: video.ai_summary,
-          isPublished: video.is_published,
+          visibility: video.visibility,
           createdAt: video.created_at.toISOString(),
           updatedAt: video.updated_at.toISOString(),
         },

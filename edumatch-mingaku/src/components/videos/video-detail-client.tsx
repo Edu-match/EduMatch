@@ -1,14 +1,17 @@
 "use client";
 
-import { ChevronLeft, Sparkles } from "lucide-react";
+import { ChevronLeft, Link2, Sparkles } from "lucide-react";
 import Link from "next/link";
+import type { VideoVisibility } from "@prisma/client";
 import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { RelativeTime } from "@/components/community/relative-time";
 import { VideoPlayer } from "@/components/videos/video-player";
 import { VideoCommentSection } from "@/components/videos/video-comment-section";
+import { VIDEO_VISIBILITY_LABELS } from "@/lib/video-visibility";
 
 export type VideoDetail = {
   id: string;
@@ -17,7 +20,7 @@ export type VideoDetail = {
   youtubeUrl: string;
   youtubeId: string;
   aiSummary: string | null;
-  isPublished: boolean;
+  visibility: VideoVisibility;
   createdAt: string;
 };
 
@@ -34,21 +37,27 @@ export function VideoDetailClient({ video }: Props) {
           className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground gap-1"
         >
           <ChevronLeft className="h-4 w-4" />
-          動画一覧に戻る
+          学びの動画一覧に戻る
         </Link>
       </div>
 
       <VideoPlayer youtubeId={video.youtubeId} title={video.title} />
 
       <div className="space-y-2">
-        <h1 className="text-2xl font-bold leading-tight">{video.title}</h1>
+        <div className="flex items-start gap-2 flex-wrap">
+          <h1 className="text-2xl font-bold leading-tight">{video.title}</h1>
+          {video.visibility === "UNLISTED" && (
+            <Badge variant="secondary" className="gap-1">
+              <Link2 className="h-3 w-3" />
+              {VIDEO_VISIBILITY_LABELS.UNLISTED}
+            </Badge>
+          )}
+          {video.visibility === "PRIVATE" && (
+            <Badge variant="outline">{VIDEO_VISIBILITY_LABELS.PRIVATE}</Badge>
+          )}
+        </div>
         <p className="text-xs text-muted-foreground">
           投稿日: <RelativeTime iso={video.createdAt} />
-          {!video.isPublished && (
-            <span className="ml-2 inline-block px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 text-[10px] font-bold">
-              非公開
-            </span>
-          )}
         </p>
       </div>
 

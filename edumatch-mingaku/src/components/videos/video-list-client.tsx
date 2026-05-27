@@ -15,7 +15,7 @@ type VideoListItem = {
   youtubeUrl: string;
   youtubeId: string;
   aiSummary: string | null;
-  isPublished: boolean;
+  visibility: string;
   createdAt: string;
   commentCount: number;
 };
@@ -51,10 +51,10 @@ export function VideoListClient() {
       <header className="space-y-2">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <PlayCircle className="h-6 w-6 text-primary" />
-          動画
+          学びの動画
         </h1>
         <p className="text-sm text-muted-foreground">
-          運営が厳選した教育関連の動画を、AI要約・コメント付きで閲覧できます。
+          運営が厳選した教育関連の動画を、AI要約・コメント付きで視聴できます。
         </p>
       </header>
 

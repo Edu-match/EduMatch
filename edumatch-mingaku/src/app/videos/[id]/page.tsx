@@ -3,17 +3,19 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentProfile } from "@/lib/auth";
 import { VideoDetailClient, type VideoDetail } from "@/components/videos/video-detail-client";
+import { isVideoViewableByVisitor } from "@/lib/video-visibility";
 
 export const dynamic = "force-dynamic";
 
 async function getVideo(id: string): Promise<VideoDetail | null> {
   try {
+    const profile = await getCurrentProfile();
+    const isAdmin = profile?.role === "ADMIN";
+
     const video = await prisma.video.findUnique({ where: { id } });
     if (!video) return null;
-    if (!video.is_published) {
-      const profile = await getCurrentProfile();
-      if (!profile || profile.role !== "ADMIN") return null;
-    }
+    if (!isVideoViewableByVisitor(video.visibility, isAdmin)) return null;
+
     return {
       id: video.id,
       title: video.title,
@@ -21,7 +23,7 @@ async function getVideo(id: string): Promise<VideoDetail | null> {
       youtubeUrl: video.youtube_url,
       youtubeId: video.youtube_id,
       aiSummary: video.ai_summary ?? null,
-      isPublished: video.is_published,
+      visibility: video.visibility,
       createdAt: video.created_at.toISOString(),
     };
   } catch (e) {
@@ -39,7 +41,7 @@ export async function generateMetadata({
   const video = await getVideo(id);
   if (!video) return {};
   return {
-    title: `${video.title} | 動画 | エデュマッチ`,
+    title: `${video.title} | 学びの動画 | エデュマッチ`,
     description: video.aiSummary?.slice(0, 140) || video.description.slice(0, 140) || undefined,
   };
 }

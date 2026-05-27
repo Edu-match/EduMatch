@@ -1,21 +1,29 @@
 "use client";
 
 import { useState } from "react";
+import type { VideoVisibility } from "@prisma/client";
 import { Loader2, Save, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { extractYoutubeId } from "@/lib/youtube";
+import { VIDEO_VISIBILITY_LABELS } from "@/lib/video-visibility";
 
 export type VideoFormValue = {
   id?: string;
   title: string;
   description: string;
-  notes: string;
   youtubeUrl: string;
-  isPublished: boolean;
+  visibility: VideoVisibility;
   aiSummary: string | null;
 };
 
@@ -61,9 +69,8 @@ export function VideoForm({ initial, onSaved, onDeleted }: Props) {
           body: JSON.stringify({
             title: value.title.trim(),
             description: value.description.trim(),
-            notes: value.notes.trim(),
             youtubeUrl: value.youtubeUrl.trim(),
-            isPublished: value.isPublished,
+            visibility: value.visibility,
             ...(isUpdate && { aiSummary: value.aiSummary }),
           }),
         }
@@ -73,8 +80,13 @@ export function VideoForm({ initial, onSaved, onDeleted }: Props) {
         setError(data?.error ?? "保存に失敗しました。");
         return;
       }
-      const saved = data.video as { id: string; aiSummary: string | null };
-      const next = { ...value, id: saved.id, aiSummary: saved.aiSummary } as VideoFormValue & { id: string };
+      const saved = data.video as { id: string; aiSummary: string | null; visibility: VideoVisibility };
+      const next = {
+        ...value,
+        id: saved.id,
+        aiSummary: saved.aiSummary,
+        visibility: saved.visibility,
+      } as VideoFormValue & { id: string };
       setValue(next);
       setMessage(isUpdate ? "保存しました。" : "投稿しました。");
       onSaved(next);
@@ -91,10 +103,6 @@ export function VideoForm({ initial, onSaved, onDeleted }: Props) {
       setError("AI要約は保存後に生成できます。先に保存してください。");
       return;
     }
-    if (!value.description.trim() && !value.notes.trim()) {
-      setError("AI要約には説明文または運営メモが必要です。");
-      return;
-    }
     setGenerating(true);
     setError(null);
     setMessage(null);
@@ -109,7 +117,11 @@ export function VideoForm({ initial, onSaved, onDeleted }: Props) {
         return;
       }
       set("aiSummary", data.aiSummary as string);
-      setMessage("AI要約を生成しました。");
+      setMessage(
+        data.analyzedFrom
+          ? `AI要約を生成しました（${data.analyzedFrom} を分析）。`
+          : "AI要約を生成しました。"
+      );
     } catch (e) {
       console.error(e);
       setError("通信に失敗しました。");
@@ -168,7 +180,7 @@ export function VideoForm({ initial, onSaved, onDeleted }: Props) {
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="description">説明</Label>
+          <Label htmlFor="description">説明（任意）</Label>
           <Textarea
             id="description"
             rows={3}
@@ -179,28 +191,23 @@ export function VideoForm({ initial, onSaved, onDeleted }: Props) {
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="notes">運営メモ（AI要約のソース）</Label>
-          <Textarea
-            id="notes"
-            rows={3}
-            value={value.notes}
-            onChange={(e) => set("notes", e.target.value)}
-            placeholder="動画のスクリプト要点・補足など。AI要約の生成精度が上がります。"
-          />
+          <Label htmlFor="visibility">公開設定</Label>
+          <Select
+            value={value.visibility}
+            onValueChange={(v) => set("visibility", v as VideoVisibility)}
+          >
+            <SelectTrigger id="visibility">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="PUBLIC">{VIDEO_VISIBILITY_LABELS.PUBLIC} — 一覧に表示</SelectItem>
+              <SelectItem value="UNLISTED">{VIDEO_VISIBILITY_LABELS.UNLISTED} — リンクを知る人のみ</SelectItem>
+              <SelectItem value="PRIVATE">{VIDEO_VISIBILITY_LABELS.PRIVATE} — 管理者のみ</SelectItem>
+            </SelectContent>
+          </Select>
           <p className="text-xs text-muted-foreground">
-            ※ 運営メモは公開ページには表示されません。AI要約の生成に使用されます。
+            限定公開は一覧には出ませんが、URL を知っていれば誰でも閲覧・コメントできます。
           </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <input
-            id="isPublished"
-            type="checkbox"
-            checked={value.isPublished}
-            onChange={(e) => set("isPublished", e.target.checked)}
-            className="h-4 w-4"
-          />
-          <Label htmlFor="isPublished" className="text-sm">公開する</Label>
         </div>
 
         <div className="space-y-1.5">
@@ -218,14 +225,14 @@ export function VideoForm({ initial, onSaved, onDeleted }: Props) {
               ) : (
                 <Sparkles className="h-4 w-4" />
               )}
-              {value.aiSummary ? "再生成" : "要約を生成"}
+              {value.aiSummary ? "再生成" : "動画を分析して要約"}
             </Button>
           </div>
           <Textarea
             rows={5}
             value={value.aiSummary ?? ""}
             onChange={(e) => set("aiSummary", e.target.value || null)}
-            placeholder="（未生成）。説明・運営メモを入力して保存後、上のボタンで生成します。手動編集も可能です。"
+            placeholder="保存後、「動画を分析して要約」で YouTube の字幕・説明文から自動生成します。手動編集も可能です。"
           />
         </div>
 

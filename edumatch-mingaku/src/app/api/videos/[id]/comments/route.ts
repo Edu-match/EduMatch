@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser, getCurrentProfile } from "@/lib/auth";
 import { getForumAuthorRoleForUser } from "@/lib/forum-author-profile";
 import { moderateAndNotify } from "@/lib/post-moderation";
+import { canCommentOnVideo, isVideoViewableByVisitor } from "@/lib/video-visibility";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -72,17 +73,14 @@ export async function GET(
     const url = new URL(req.url);
     const includeHidden = url.searchParams.get("includeHidden") === "true";
 
-    let isAdmin = false;
-    if (includeHidden) {
-      const profile = await getCurrentProfile();
-      isAdmin = profile?.role === "ADMIN";
-    }
+    const profile = await getCurrentProfile();
+    const isAdmin = profile?.role === "ADMIN";
 
     const video = await prisma.video.findUnique({
       where: { id: videoId },
-      select: { id: true, is_published: true },
+      select: { id: true, visibility: true },
     });
-    if (!video) {
+    if (!video || !isVideoViewableByVisitor(video.visibility, isAdmin)) {
       return NextResponse.json({ error: "Video not found" }, { status: 404 });
     }
 
@@ -116,14 +114,17 @@ export async function POST(
 
     const video = await prisma.video.findUnique({
       where: { id: videoId },
-      select: { id: true, is_published: true, title: true },
+      select: { id: true, visibility: true, title: true },
     });
-    if (!video || !video.is_published) {
-      return NextResponse.json({ error: "Video not found" }, { status: 404 });
-    }
 
     const user = await getCurrentUser();
     const profile = user ? await getCurrentProfile() : null;
+    const isAdmin = profile?.role === "ADMIN";
+
+    if (!video || !canCommentOnVideo(video.visibility, isAdmin)) {
+      return NextResponse.json({ error: "Video not found" }, { status: 404 });
+    }
+
     if (!user || !profile) {
       return NextResponse.json(
         { error: "コメントするにはログインが必要です" },

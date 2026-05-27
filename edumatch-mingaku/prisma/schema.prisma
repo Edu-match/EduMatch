@@ -515,24 +515,25 @@ model ForumLike {
 
 /// 管理者が投稿するYouTube動画。ユーザーが閲覧・コメントできる。
 model Video {
-  id           String         @id @default(cuid())
-  title        String
-  description  String         @default("")
-  /// AI要約を生成する際のソースとなる補足メモ（管理者が記入）
-  notes        String?
-  youtube_url  String
+  id          String          @id @default(cuid())
+  title       String
+  description String          @default("")
+  /// 運営向け内部メモ（公開ページには表示しない）
+  notes       String?
+  youtube_url String
   /// YouTube動画ID（埋め込みURLや thumbnail生成に使用）
-  youtube_id   String
+  youtube_id  String
   /// OpenAI で生成されたAI要約（管理画面から生成）
-  ai_summary   String?
-  is_published Boolean        @default(false)
-  author_id    String?        @db.Uuid
-  created_at   DateTime       @default(now())
-  updated_at   DateTime       @updatedAt
-  author       Profile?       @relation(fields: [author_id], references: [id], onDelete: SetNull)
-  comments     VideoComment[]
+  ai_summary  String?
+  /// PUBLIC=一覧表示 / UNLISTED=リンクを知る人のみ / PRIVATE=非公開（管理者のみ）
+  visibility  VideoVisibility @default(PRIVATE)
+  author_id   String?         @db.Uuid
+  created_at  DateTime        @default(now())
+  updated_at  DateTime        @updatedAt
+  author      Profile?        @relation(fields: [author_id], references: [id], onDelete: SetNull)
+  comments    VideoComment[]
 
-  @@index([is_published, created_at(sort: Desc)])
+  @@index([visibility, created_at(sort: Desc)])
   @@map("videos")
 }
 
@@ -556,6 +557,12 @@ model VideoComment {
   @@index([video_id, created_at(sort: Asc)])
   @@index([parent_id])
   @@map("video_comments")
+}
+
+enum VideoVisibility {
+  PUBLIC
+  UNLISTED
+  PRIVATE
 }
 
 enum Role {
