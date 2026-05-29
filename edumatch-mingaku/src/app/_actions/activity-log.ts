@@ -19,7 +19,8 @@ export type ActivityTargetType =
   | "SITE_PAGE"
   | "EVENT"
   | "SITE_UPDATE"
-  | "FORUM_POST";
+  | "FORUM_POST"
+  | "SPONSOR_AD";
 
 export interface ActivityLogEntry {
   id: string;

@@ -3,6 +3,7 @@ import { Megaphone, Calendar, ChevronRight } from "lucide-react";
 import { getPopularServicesByEngagement } from "@/app/_actions/popularity";
 import { getUpcomingEvents } from "@/app/_actions/events";
 import { RankingServiceImage } from "./ranking-service-image";
+import { SponsorSidebarCard } from "./sponsor-sidebar-card";
 
 /** トップページ右サイドバー：ランキング（上位5社）＋セミナー・イベント情報 */
 export async function RightRankingSidebar() {
@@ -13,6 +14,9 @@ export async function RightRankingSidebar() {
 
   return (
     <aside className="lg:sticky lg:top-20 flex flex-col gap-6 min-w-0 w-full">
+      {/* スポンサーPR（登録があれば表示） */}
+      <SponsorSidebarCard />
+
       {/* [PR]注目のサービス */}
       <div className="border rounded-xl bg-card shadow-sm overflow-hidden flex flex-col">
         <div className="p-4 border-b flex items-center gap-3 shrink-0">

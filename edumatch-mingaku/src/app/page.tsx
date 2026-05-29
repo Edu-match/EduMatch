@@ -3,6 +3,7 @@ import { getHomeSliderItems } from "@/app/_actions/home";
 import { getCurrentUserRole } from "@/app/_actions/user";
 import { HeroSlider } from "@/components/home/hero-slider";
 import { RightRankingSidebar } from "@/components/home/right-ranking-sidebar";
+import { SponsorPRSection } from "@/components/home/sponsor-pr-section";
 import { TopicsSection } from "@/components/home/topics-section";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +24,8 @@ export default async function HomePage() {
           <main className="lg:col-span-8 order-1 space-y-4 sm:space-y-6 lg:space-y-8 min-w-0">
             {/* スライダー：運営お知らせ → ADMIN選択記事 */}
             <HeroSlider items={sliderItems} isAdmin={isAdmin} />
+            {/* スポンサーPR（メインカラム） */}
+            <SponsorPRSection />
             <TopicsSection />
           </main>
           <aside className="lg:col-span-4 order-2 w-full">

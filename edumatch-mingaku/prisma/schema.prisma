@@ -685,3 +685,39 @@ model TextOverride {
   @@index([pathname])
   @@map("text_overrides")
 }
+
+/// スポンサーPR（広告枠）。ADMINが管理画面から登録し、トップページなどに表示する。
+model SponsorAd {
+  id          String          @id @default(cuid())
+  /// スポンサー名・PRタイトル
+  title       String
+  /// バナー説明文（任意・キャッチコピー等）
+  description String?
+  /// バナー画像URL（Supabase Storage）
+  image_url   String
+  /// クリック遷移先URL
+  link_url    String
+  /// 表示位置
+  placement   SponsorPlacement @default(HOME_MAIN)
+  /// 表示ON/OFF
+  is_active   Boolean          @default(true)
+  /// 表示順（小さいほど先頭）
+  position    Int              @default(0)
+  /// 掲載開始日時（任意・未設定なら即時）
+  starts_at   DateTime?
+  /// 掲載終了日時（任意・未設定なら無期限）
+  ends_at     DateTime?
+  /// クリック数（簡易計測）
+  click_count Int              @default(0)
+  created_at  DateTime         @default(now())
+  updated_at  DateTime         @updatedAt
+
+  @@index([placement, is_active, position])
+  @@map("sponsor_ads")
+}
+
+/// スポンサーPRの表示位置
+enum SponsorPlacement {
+  HOME_MAIN /// トップページのメインカラム（スライダー下のバナー）
+  HOME_SIDEBAR /// トップページ右サイドバー
+}
