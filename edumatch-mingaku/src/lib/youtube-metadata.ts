@@ -36,16 +36,22 @@ async function fetchOEmbed(videoId: string): Promise<OEmbedResponse | null> {
 }
 
 function extractDescriptionFromHtml(html: string): string {
+  // ytInitialPlayerResponse の videoDetails.shortDescription を使う。
+  // og:description は YouTube プラットフォーム自体の説明文が入るため使わない。
   const shortDesc = html.match(/"shortDescription":"((?:\\.|[^"\\])*)"/);
   if (shortDesc?.[1]) {
     try {
       return JSON.parse(`"${shortDesc[1]}"`).trim();
     } catch {
-      return shortDesc[1].replace(/\\n/g, "\n").trim();
+      return shortDesc[1]
+        .replace(/\\n/g, "\n")
+        .replace(/\\t/g, "\t")
+        .replace(/\\\\/g, "\\")
+        .replace(/\\"/g, '"')
+        .trim();
     }
   }
-  const ogDesc = html.match(/<meta name="description" content="([^"]*)"/);
-  return ogDesc?.[1]?.trim() ?? "";
+  return "";
 }
 
 function extractChannelTitleFromHtml(html: string): string | null {
@@ -77,10 +83,18 @@ function extractTitleFromHtml(html: string): string | null {
 export async function fetchYoutubeMetadata(videoId: string): Promise<YoutubeMetadata | null> {
   let html = "";
   try {
-    const res = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
-      headers: { "User-Agent": USER_AGENT, "Accept-Language": "ja,en;q=0.9" },
-      signal: AbortSignal.timeout(12000),
-    });
+    // hl/gl を指定して同意画面・リダイレクトを回避する
+    const res = await fetch(
+      `https://www.youtube.com/watch?v=${videoId}&hl=ja&gl=JP&bpctr=9999999999`,
+      {
+        headers: {
+          "User-Agent": USER_AGENT,
+          "Accept-Language": "ja,en;q=0.9",
+          Cookie: "CONSENT=YES+; SOCS=CAE=",
+        },
+        signal: AbortSignal.timeout(12000),
+      }
+    );
     if (res.ok) html = await res.text();
   } catch {
     // フォールバックで oEmbed のみ使う
