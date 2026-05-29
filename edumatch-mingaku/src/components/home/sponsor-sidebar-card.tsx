@@ -25,9 +25,9 @@ export async function SponsorSidebarCard() {
                 href={`/api/sponsors/${ad.id}/click`}
                 target="_blank"
                 rel="nofollow sponsored noopener noreferrer"
-                className="block group"
+                className="group block rounded-lg border border-amber-200 bg-amber-50/60 p-2 transition-colors hover:bg-amber-100/60"
               >
-                <div className="relative aspect-video w-full overflow-hidden rounded border bg-muted">
+                <div className="relative aspect-video w-full overflow-hidden rounded bg-muted">
                   <SafeImage
                     src={ad.image_url}
                     alt={ad.title}
@@ -36,9 +36,12 @@ export async function SponsorSidebarCard() {
                     className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
                   />
                 </div>
-                <p className="mt-1 text-xs font-medium line-clamp-2 group-hover:text-[#1d4ed8] transition-colors">
+                <p className="mt-1.5 text-xs font-semibold line-clamp-2 text-amber-900 group-hover:text-[#1d4ed8] transition-colors">
                   {ad.title}
                 </p>
+                <span className="mt-0.5 inline-block text-[9px] font-bold tracking-wide text-amber-600 bg-amber-100 rounded px-1 py-px">
+                  PR
+                </span>
               </a>
             </li>
           ))}
