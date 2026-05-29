@@ -3,6 +3,9 @@
  * 公式 API キー不要。watch ページから captionTracks を解析する。
  */
 
+const USER_AGENT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
 type CaptionTrack = {
   baseUrl: string;
   languageCode: string;
@@ -70,53 +73,21 @@ function extractCaptionTracks(html: string): CaptionTrack[] {
   return [];
 }
 
-export type YoutubeTranscriptResult = {
+export type YoutubeCaptionsResult = {
   text: string;
   languageCode: string;
-  source: "captions" | "description";
 };
 
-/** YouTube 動画ページの説明文（meta / shortDescription）を取得 */
-export async function fetchYoutubeDescription(videoId: string): Promise<string | null> {
-  try {
-    const res = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept-Language": "ja,en;q=0.9",
-      },
-      signal: AbortSignal.timeout(12000),
-    });
-    if (!res.ok) return null;
-    const html = await res.text();
-
-    const shortDesc = html.match(/"shortDescription":"((?:\\.|[^"\\])*)"/);
-    if (shortDesc?.[1]) {
-      try {
-        return JSON.parse(`"${shortDesc[1]}"`).trim() || null;
-      } catch {
-        return shortDesc[1].replace(/\\n/g, "\n").trim() || null;
-      }
-    }
-
-    const ogDesc = html.match(/<meta name="description" content="([^"]*)"/);
-    return ogDesc?.[1]?.trim() || null;
-  } catch {
-    return null;
-  }
-}
-
-/** 字幕トラックを優先し、なければ YouTube 上の説明文を返す */
-export async function fetchYoutubeTranscript(
+/**
+ * 字幕（自動生成含む）のみを取得する。取得できなければ null。
+ * 説明文はフォールバックしない（呼び出し側で `fetchYoutubeMetadata` を使うこと）。
+ */
+export async function fetchYoutubeCaptions(
   videoId: string
-): Promise<YoutubeTranscriptResult | null> {
+): Promise<YoutubeCaptionsResult | null> {
   try {
     const res = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept-Language": "ja,en;q=0.9",
-      },
+      headers: { "User-Agent": USER_AGENT, "Accept-Language": "ja,en;q=0.9" },
       signal: AbortSignal.timeout(12000),
     });
     if (!res.ok) return null;
@@ -124,50 +95,24 @@ export async function fetchYoutubeTranscript(
 
     const tracks = extractCaptionTracks(html);
     const track = pickCaptionTrack(tracks);
-    if (track?.baseUrl) {
-      const captionUrl = track.baseUrl.includes("&fmt=")
-        ? track.baseUrl
-        : `${track.baseUrl}&fmt=srv3`;
-      const capRes = await fetch(captionUrl, {
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        },
-        signal: AbortSignal.timeout(12000),
-      });
-      if (capRes.ok) {
-        const xml = await capRes.text();
-        const text = parseTranscriptXml(xml);
-        if (text.length >= 80) {
-          return {
-            text: text.slice(0, 50000),
-            languageCode: track.languageCode,
-            source: "captions",
-          };
-        }
-      }
-    }
+    if (!track?.baseUrl) return null;
 
-    const shortDesc = html.match(/"shortDescription":"((?:\\.|[^"\\])*)"/);
-    let description: string | null = null;
-    if (shortDesc?.[1]) {
-      try {
-        description = JSON.parse(`"${shortDesc[1]}"`).trim();
-      } catch {
-        description = shortDesc[1].replace(/\\n/g, "\n").trim();
-      }
-    }
-    if (description && description.length >= 40) {
-      return {
-        text: description.slice(0, 8000),
-        languageCode: "description",
-        source: "description",
-      };
-    }
+    const captionUrl = track.baseUrl.includes("&fmt=")
+      ? track.baseUrl
+      : `${track.baseUrl}&fmt=srv3`;
+    const capRes = await fetch(captionUrl, {
+      headers: { "User-Agent": USER_AGENT },
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!capRes.ok) return null;
 
-    return null;
+    const xml = await capRes.text();
+    const text = parseTranscriptXml(xml);
+    if (text.length < 80) return null;
+
+    return { text: text.slice(0, 50000), languageCode: track.languageCode };
   } catch (e) {
-    console.error("[youtube-transcript]", e);
+    console.error("[youtube-transcript] captions", e);
     return null;
   }
 }

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { VideoVisibility } from "@prisma/client";
-import { Loader2, Save, Sparkles, Trash2 } from "lucide-react";
+import { Loader2, Save, Sparkles, Trash2, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { extractYoutubeId } from "@/lib/youtube";
 import { VIDEO_VISIBILITY_LABELS } from "@/lib/video-visibility";
 
@@ -33,18 +43,133 @@ interface Props {
   onDeleted?: (id: string) => void;
 }
 
+/** 字幕なし続行確認のターゲット（extract = 自動抽出 / regenerate = 既存動画の再生成） */
+type CaptionlessTarget = "extract" | "regenerate";
+
 export function VideoForm({ initial, onSaved, onDeleted }: Props) {
   const [value, setValue] = useState<VideoFormValue>(initial);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [extracting, setExtracting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [captionlessTarget, setCaptionlessTarget] = useState<CaptionlessTarget | null>(null);
 
   const youtubeId = extractYoutubeId(value.youtubeUrl);
 
   const set = <K extends keyof VideoFormValue>(k: K, v: VideoFormValue[K]) =>
     setValue((prev) => ({ ...prev, [k]: v }));
+
+  const runExtract = async (metadataOnly: boolean) => {
+    setExtracting(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/videos/extract", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          youtubeUrl: value.youtubeUrl.trim(),
+          generateSummary: true,
+          metadataOnly,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data?.error ?? "自動抽出に失敗しました。");
+        return;
+      }
+
+      setValue((prev) => ({
+        ...prev,
+        title: data.title ?? prev.title,
+        description: data.description ?? prev.description,
+        ...(data.aiSummary && { aiSummary: data.aiSummary as string }),
+      }));
+
+      if (data.needsCaptionlessConfirm) {
+        // タイトル・説明だけ反映済み。要約は別途確認ダイアログから生成
+        setCaptionlessTarget("extract");
+        setMessage(
+          "タイトル・概要欄を取得しました。字幕が見つからないため、AI要約の方針を確認してください。"
+        );
+        return;
+      }
+
+      const summaryNote = data.analyzedFrom
+        ? `AI要約は${data.analyzedFrom}から生成しました。`
+        : "";
+      setMessage(`タイトル・概要欄を自動入力しました。${summaryNote}`);
+    } catch (e) {
+      console.error(e);
+      setError("通信に失敗しました。");
+    } finally {
+      setExtracting(false);
+    }
+  };
+
+  const handleAutoExtract = () => {
+    if (!youtubeId) {
+      setError("有効な YouTube URL を入力してください。");
+      return;
+    }
+    void runExtract(false);
+  };
+
+  const runRegenerate = async (metadataOnly: boolean) => {
+    if (!value.id) return;
+    setGenerating(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const res = await fetch(`/api/videos/${value.id}/ai-summary`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ metadataOnly }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data?.error ?? "AI要約の生成に失敗しました。");
+        return;
+      }
+
+      if (data.needsCaptionlessConfirm) {
+        setCaptionlessTarget("regenerate");
+        setMessage("字幕が見つかりませんでした。タイトル・概要欄から要約するか確認してください。");
+        return;
+      }
+
+      if (data.aiSummary) set("aiSummary", data.aiSummary as string);
+      setMessage(
+        data.analyzedFrom
+          ? `AI要約を生成しました（${data.analyzedFrom} を分析）。`
+          : "AI要約を生成しました。"
+      );
+    } catch (e) {
+      console.error(e);
+      setError("通信に失敗しました。");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleRegenerateSummary = () => {
+    if (!value.id) {
+      setError("AI要約は保存後に生成できます。先に保存してください。");
+      return;
+    }
+    void runRegenerate(false);
+  };
+
+  const handleCaptionlessContinue = () => {
+    const target = captionlessTarget;
+    setCaptionlessTarget(null);
+    if (target === "extract") void runExtract(true);
+    else if (target === "regenerate") void runRegenerate(true);
+  };
 
   const save = async () => {
     if (!value.title.trim()) {
@@ -71,7 +196,7 @@ export function VideoForm({ initial, onSaved, onDeleted }: Props) {
             description: value.description.trim(),
             youtubeUrl: value.youtubeUrl.trim(),
             visibility: value.visibility,
-            ...(isUpdate && { aiSummary: value.aiSummary }),
+            aiSummary: value.aiSummary,
           }),
         }
       );
@@ -95,38 +220,6 @@ export function VideoForm({ initial, onSaved, onDeleted }: Props) {
       setError("通信に失敗しました。");
     } finally {
       setSaving(false);
-    }
-  };
-
-  const generateSummary = async () => {
-    if (!value.id) {
-      setError("AI要約は保存後に生成できます。先に保存してください。");
-      return;
-    }
-    setGenerating(true);
-    setError(null);
-    setMessage(null);
-    try {
-      const res = await fetch(`/api/videos/${value.id}/ai-summary`, {
-        method: "POST",
-        credentials: "include",
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(data?.error ?? "AI要約の生成に失敗しました。");
-        return;
-      }
-      set("aiSummary", data.aiSummary as string);
-      setMessage(
-        data.analyzedFrom
-          ? `AI要約を生成しました（${data.analyzedFrom} を分析）。`
-          : "AI要約を生成しました。"
-      );
-    } catch (e) {
-      console.error(e);
-      setError("通信に失敗しました。");
-    } finally {
-      setGenerating(false);
     }
   };
 
@@ -157,6 +250,38 @@ export function VideoForm({ initial, onSaved, onDeleted }: Props) {
     <Card>
       <CardContent className="p-4 space-y-4">
         <div className="space-y-1.5">
+          <Label htmlFor="youtube">YouTube URL *</Label>
+          <div className="flex gap-2">
+            <Input
+              id="youtube"
+              value={value.youtubeUrl}
+              onChange={(e) => set("youtubeUrl", e.target.value)}
+              placeholder="https://www.youtube.com/watch?v=…"
+              className="flex-1"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleAutoExtract}
+              disabled={extracting || !youtubeId}
+            >
+              {extracting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Wand2 className="h-4 w-4" />
+              )}
+              自動抽出
+            </Button>
+          </div>
+          {value.youtubeUrl && !youtubeId && (
+            <p className="text-xs text-destructive">URL から動画IDを抽出できません。</p>
+          )}
+          <p className="text-xs text-muted-foreground">
+            自動抽出を押すと、YouTube からタイトル・概要欄・AI要約を取得します。
+          </p>
+        </div>
+
+        <div className="space-y-1.5">
           <Label htmlFor="title">タイトル *</Label>
           <Input
             id="title"
@@ -164,19 +289,6 @@ export function VideoForm({ initial, onSaved, onDeleted }: Props) {
             onChange={(e) => set("title", e.target.value)}
             placeholder="動画のタイトル"
           />
-        </div>
-
-        <div className="space-y-1.5">
-          <Label htmlFor="youtube">YouTube URL *</Label>
-          <Input
-            id="youtube"
-            value={value.youtubeUrl}
-            onChange={(e) => set("youtubeUrl", e.target.value)}
-            placeholder="https://www.youtube.com/watch?v=…"
-          />
-          {value.youtubeUrl && !youtubeId && (
-            <p className="text-xs text-destructive">URL から動画IDを抽出できません。</p>
-          )}
         </div>
 
         <div className="space-y-1.5">
@@ -217,22 +329,23 @@ export function VideoForm({ initial, onSaved, onDeleted }: Props) {
               type="button"
               size="sm"
               variant="outline"
-              onClick={generateSummary}
+              onClick={handleRegenerateSummary}
               disabled={generating || !value.id}
+              title={!value.id ? "保存後に利用できます" : undefined}
             >
               {generating ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Sparkles className="h-4 w-4" />
               )}
-              {value.aiSummary ? "再生成" : "動画を分析して要約"}
+              {value.aiSummary ? "再生成" : "要約を生成"}
             </Button>
           </div>
           <Textarea
             rows={5}
             value={value.aiSummary ?? ""}
             onChange={(e) => set("aiSummary", e.target.value || null)}
-            placeholder="保存後、「動画を分析して要約」で YouTube の字幕・説明文から自動生成します。手動編集も可能です。"
+            placeholder="「自動抽出」または保存後の「要約を生成」で AI が作成します。手動編集も可能です。"
           />
         </div>
 
@@ -264,6 +377,32 @@ export function VideoForm({ initial, onSaved, onDeleted }: Props) {
           </Button>
         </div>
       </CardContent>
+
+      <AlertDialog
+        open={captionlessTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setCaptionlessTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>字幕が見つかりませんでした</AlertDialogTitle>
+            <AlertDialogDescription>
+              この動画には字幕が無いため、タイトルと概要欄の情報のみで AI 要約を作成します。
+              字幕がある場合と比べて精度は下がります。続けますか？
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={extracting || generating}>キャンセル</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCaptionlessContinue}
+              disabled={extracting || generating}
+            >
+              続けて要約する
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

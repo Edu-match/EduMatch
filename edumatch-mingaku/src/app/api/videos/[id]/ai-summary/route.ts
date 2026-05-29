@@ -1,27 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
 import { prisma } from "@/lib/prisma";
 import { getCurrentProfile } from "@/lib/auth";
-import { fetchYoutubeTranscript } from "@/lib/youtube-transcript";
+import { fetchYoutubeMetadata } from "@/lib/youtube-metadata";
+import { fetchYoutubeCaptions } from "@/lib/youtube-transcript";
+import {
+  generateVideoAiSummary,
+  VideoAiSummaryError,
+} from "@/lib/video-ai-summary";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const MODEL = "gpt-5.4";
-
-const SYSTEM_PROMPT = `あなたは日本の教育関係者向けプラットフォームの動画要約アシスタントです。
-入力として、YouTube動画のタイトルと字幕テキスト（または動画説明文）が与えられます。
-動画の内容を実際に分析し、視聴者が要点を素早く把握できる要約を書いてください。
-
-出力ルール:
-- 日本語で出力する
-- 「要点」を3〜5つの箇条書きで示し、最後に短いまとめを1〜2文添える
-- マークダウン記法（- や **）を使ってよい
-- 全体で300文字以内に収める
-- 字幕・説明文に基づき、具体的な内容を反映する（抽象的な決まり文句は避ける）`;
-
+/**
+ * 既存動画のAI要約を生成・保存する。
+ *
+ * Body（任意）:
+ * - metadataOnly?: boolean = false  字幕取得をスキップしてメタデータのみで要約
+ *
+ * metadataOnly=false で字幕が無かった場合は 200 で needsCaptionlessConfirm:true を返し、
+ * UI 側で確認後に metadataOnly=true で再リクエストさせる。
+ */
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -30,10 +30,10 @@ export async function POST(
       return NextResponse.json({ error: "管理者権限が必要です" }, { status: 403 });
     }
 
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: "OpenAI APIキーが未設定です" }, { status: 503 });
-    }
+    const body = (await req.json().catch(() => ({}))) as {
+      metadataOnly?: boolean;
+    };
+    const metadataOnly = body.metadataOnly === true;
 
     const { id } = await params;
     const video = await prisma.video.findUnique({ where: { id } });
@@ -41,70 +41,68 @@ export async function POST(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    const transcript = await fetchYoutubeTranscript(video.youtube_id);
-    if (!transcript) {
-      return NextResponse.json(
-        {
-          error:
-            "YouTube から字幕・説明文を取得できませんでした。動画に字幕が有効か、説明文があるか確認してください。",
-        },
-        { status: 400 }
-      );
-    }
+    const metadata = await fetchYoutubeMetadata(video.youtube_id);
+    const title = metadata?.title || video.title;
+    const description = metadata?.description || video.description;
+    const channelTitle = metadata?.channelTitle ?? null;
 
-    const sourceLabel =
-      transcript.source === "captions"
-        ? `字幕（${transcript.languageCode}）`
-        : "YouTube 説明文";
+    if (!metadataOnly) {
+      const captions = await fetchYoutubeCaptions(video.youtube_id);
+      if (captions) {
+        try {
+          const result = await generateVideoAiSummary({
+            title,
+            description,
+            channelTitle,
+            transcript: captions.text,
+            source: "captions",
+          });
+          const updated = await prisma.video.update({
+            where: { id },
+            data: { ai_summary: result.summary },
+          });
+          return NextResponse.json({
+            aiSummary: updated.ai_summary,
+            analyzedFrom: `${result.analyzedFrom}（${captions.languageCode}）`,
+            updatedAt: updated.updated_at.toISOString(),
+          });
+        } catch (e) {
+          if (e instanceof VideoAiSummaryError) {
+            return NextResponse.json({ error: e.message }, { status: e.status });
+          }
+          throw e;
+        }
+      }
 
-    const userContent = [
-      `タイトル: ${video.title}`,
-      `分析ソース: ${sourceLabel}`,
-      video.description?.trim() ? `サイト上の補足説明: ${video.description.trim()}` : null,
-      "---",
-      transcript.text,
-    ]
-      .filter(Boolean)
-      .join("\n");
-
-    const openai = new OpenAI({ apiKey });
-    let summary = "";
-    try {
-      const completion = await openai.chat.completions.create({
-        model: MODEL,
-        temperature: 0.3,
-        max_completion_tokens: 600,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: userContent },
-        ],
+      return NextResponse.json({
+        hasCaptions: false,
+        needsCaptionlessConfirm: true,
       });
-      summary = completion.choices[0]?.message?.content?.trim() ?? "";
+    }
+
+    // metadataOnly モード
+    try {
+      const result = await generateVideoAiSummary({
+        title,
+        description,
+        channelTitle,
+        source: "metadata",
+      });
+      const updated = await prisma.video.update({
+        where: { id },
+        data: { ai_summary: result.summary },
+      });
+      return NextResponse.json({
+        aiSummary: updated.ai_summary,
+        analyzedFrom: result.analyzedFrom,
+        updatedAt: updated.updated_at.toISOString(),
+      });
     } catch (e) {
-      console.error("[videos/:id/ai-summary] OpenAI", e);
-      return NextResponse.json(
-        { error: "AI要約の生成に失敗しました。時間をおいて再度お試しください。" },
-        { status: 502 }
-      );
+      if (e instanceof VideoAiSummaryError) {
+        return NextResponse.json({ error: e.message }, { status: e.status });
+      }
+      throw e;
     }
-
-    if (!summary) {
-      return NextResponse.json(
-        { error: "AI要約の本文が空でした。" },
-        { status: 502 }
-      );
-    }
-
-    const updated = await prisma.video.update({
-      where: { id },
-      data: { ai_summary: summary },
-    });
-
-    return NextResponse.json({
-      aiSummary: updated.ai_summary,
-      analyzedFrom: sourceLabel,
-      updatedAt: updated.updated_at.toISOString(),
-    });
   } catch (err) {
     console.error("[videos/:id/ai-summary POST]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
