@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Bot, Loader2, MessageSquare, Send, ShieldAlert } from "lucide-react";
+import { Bot, ChevronDown, ChevronUp, Loader2, MessageSquare, Send, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -273,6 +273,16 @@ function CommentItem({
   aiReplying?: boolean;
 }) {
   const isAi = node.authorRole === AI_AUTHOR_ROLE;
+  const hasChildren = node.replies.length > 0 || aiReplying;
+  // AI返信中は必ず開く。それ以外は初期展開。
+  const [open, setOpen] = useState(true);
+
+  // AI返信が始まったら自動で開く
+  useEffect(() => {
+    if (aiReplying) setOpen(true);
+  }, [aiReplying]);
+
+  const replyCount = node.replies.length;
 
   return (
     <Card
@@ -298,11 +308,14 @@ function CommentItem({
             <RelativeTime iso={node.postedAt} />
           </span>
         </div>
+
         <p className={`text-sm whitespace-pre-wrap break-words ${isAi ? "text-blue-900" : ""}`}>
           {node.body}
         </p>
-        {canReply && !isAi && depth < 2 && (
-          <div className="flex justify-end">
+
+        <div className="flex items-center justify-between gap-2 pt-0.5">
+          {/* 返信ボタン */}
+          {canReply && !isAi && depth < 2 ? (
             <button
               type="button"
               onClick={() => onReply({ id: node.id, authorName: node.authorName })}
@@ -310,12 +323,35 @@ function CommentItem({
             >
               返信
             </button>
-          </div>
-        )}
+          ) : (
+            <span />
+          )}
+
+          {/* 折りたたみトグル（返信がある場合のみ） */}
+          {hasChildren && depth === 0 && (
+            <button
+              type="button"
+              onClick={() => setOpen((v) => !v)}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {open ? (
+                <>
+                  <ChevronUp className="h-3.5 w-3.5" />
+                  返信を閉じる
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="h-3.5 w-3.5" />
+                  {aiReplying ? "返信を表示" : `返信 ${replyCount} 件を表示`}
+                </>
+              )}
+            </button>
+          )}
+        </div>
       </CardContent>
 
-      {/* 返信一覧 + AI返信中のローディング */}
-      {(node.replies.length > 0 || aiReplying) && (
+      {/* 返信一覧 + AI返信中ローディング（折りたたみ対応） */}
+      {hasChildren && open && (
         <div className="px-4 pb-4 space-y-2">
           {node.replies.map((r) => (
             <CommentItem
