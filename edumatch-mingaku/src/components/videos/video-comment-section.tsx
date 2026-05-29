@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Loader2, MessageSquare, Send, ShieldAlert } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Bot, Loader2, MessageSquare, Send, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,6 +25,8 @@ type LoggedInUser = {
   name: string;
 } | null;
 
+const AI_AUTHOR_ROLE = "AI";
+
 interface Props {
   videoId: string;
 }
@@ -37,6 +39,9 @@ export function VideoCommentSection({ videoId }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [replyTarget, setReplyTarget] = useState<{ id: string; authorName: string } | null>(null);
+  /** AI返信中のコメントID */
+  const [aiReplying, setAiReplying] = useState<Set<string>>(new Set());
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     fetch("/api/auth/me", { credentials: "include" })
@@ -72,6 +77,37 @@ export function VideoCommentSection({ videoId }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoId]);
 
+  /** コメント保存後に AI 返信を生成する（ルートコメントのみ） */
+  const triggerAiReply = async (commentId: string) => {
+    setAiReplying((prev) => new Set(prev).add(commentId));
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+    try {
+      const res = await fetch(
+        `/api/videos/${videoId}/comments/${commentId}/ai-reply`,
+        {
+          method: "POST",
+          credentials: "include",
+          signal: ctrl.signal,
+        }
+      );
+      if (res.ok) {
+        // AI返信が保存されたのでコメント一覧を再取得
+        await reload();
+      }
+    } catch (e) {
+      if ((e as Error).name !== "AbortError") {
+        console.warn("[ai-reply]", e);
+      }
+    } finally {
+      setAiReplying((prev) => {
+        const next = new Set(prev);
+        next.delete(commentId);
+        return next;
+      });
+    }
+  };
+
   const submit = async () => {
     if (!body.trim() || submitting) return;
     setSubmitting(true);
@@ -91,9 +127,19 @@ export function VideoCommentSection({ videoId }: Props) {
         setError(data?.error ?? "投稿に失敗しました。");
         return;
       }
+
+      const savedComment = data.comment as CommentNode | undefined;
       setBody("");
+
+      const wasReply = !!replyTarget;
       setReplyTarget(null);
+
       await reload();
+
+      // ルートコメント（返信でない）のときだけ AI 返信を生成
+      if (!wasReply && savedComment?.id) {
+        void triggerAiReply(savedComment.id);
+      }
     } catch (e) {
       console.error(e);
       setError("通信に失敗しました。");
@@ -203,6 +249,7 @@ export function VideoCommentSection({ videoId }: Props) {
                 onReply={(target) =>
                   setReplyTarget({ id: target.id, authorName: target.authorName })
                 }
+                aiReplying={aiReplying.has(c.id)}
               />
             </li>
           ))}
@@ -217,26 +264,44 @@ function CommentItem({
   canReply,
   onReply,
   depth = 0,
+  aiReplying = false,
 }: {
   node: CommentNode;
   canReply: boolean;
   onReply: (target: { id: string; authorName: string }) => void;
   depth?: number;
+  aiReplying?: boolean;
 }) {
+  const isAi = node.authorRole === AI_AUTHOR_ROLE;
+
   return (
-    <Card className={depth > 0 ? "border-l-4 border-l-muted" : ""}>
+    <Card
+      className={[
+        depth > 0 ? "border-l-4 border-l-muted" : "",
+        isAi ? "bg-blue-50/40 border-blue-100" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
       <CardContent className="p-4 space-y-2">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 text-sm">
-            <span className="font-semibold">{node.authorName}</span>
-            <span className="text-xs text-muted-foreground">({node.authorRole})</span>
+            {isAi && <Bot className="h-4 w-4 text-blue-500 flex-shrink-0" />}
+            <span className={`font-semibold ${isAi ? "text-blue-700" : ""}`}>
+              {node.authorName}
+            </span>
+            {!isAi && (
+              <span className="text-xs text-muted-foreground">（{node.authorRole}）</span>
+            )}
           </div>
           <span className="text-xs text-muted-foreground">
             <RelativeTime iso={node.postedAt} />
           </span>
         </div>
-        <p className="text-sm whitespace-pre-wrap break-words">{node.body}</p>
-        {canReply && depth < 2 && (
+        <p className={`text-sm whitespace-pre-wrap break-words ${isAi ? "text-blue-900" : ""}`}>
+          {node.body}
+        </p>
+        {canReply && !isAi && depth < 2 && (
           <div className="flex justify-end">
             <button
               type="button"
@@ -248,7 +313,9 @@ function CommentItem({
           </div>
         )}
       </CardContent>
-      {node.replies.length > 0 && (
+
+      {/* 返信一覧 + AI返信中のローディング */}
+      {(node.replies.length > 0 || aiReplying) && (
         <div className="px-4 pb-4 space-y-2">
           {node.replies.map((r) => (
             <CommentItem
@@ -259,6 +326,16 @@ function CommentItem({
               depth={depth + 1}
             />
           ))}
+          {aiReplying && (
+            <Card className="border-l-4 border-l-muted bg-blue-50/40 border-blue-100">
+              <CardContent className="p-4 flex items-center gap-3 text-sm text-blue-600">
+                <Bot className="h-4 w-4 flex-shrink-0" />
+                <span className="font-semibold mr-1">AIアシスタント</span>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <span className="text-muted-foreground">返信を考えています…</span>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
     </Card>
