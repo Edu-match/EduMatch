@@ -3,6 +3,7 @@ import { getCurrentProfile } from "@/lib/auth";
 import { extractYoutubeId } from "@/lib/youtube";
 import { fetchYoutubeMetadata } from "@/lib/youtube-metadata";
 import { fetchYoutubeCaptions } from "@/lib/youtube-transcript";
+import { fetchYoutubeVideoFrames } from "@/lib/youtube-video-frames";
 import {
   generateVideoAiSummary,
   VideoAiSummaryError,
@@ -10,6 +11,8 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// 映像フレーム取得 + Vision 推論で最大 60 秒かかることがある
+export const maxDuration = 60;
 
 /**
  * 保存前に YouTube URL からタイトル・概要欄・AI要約をまとめて取得する。
@@ -17,9 +20,13 @@ export const dynamic = "force-dynamic";
  * Body:
  * - youtubeUrl: 必須
  * - generateSummary?: boolean = true  要約も生成する
- * - metadataOnly?: boolean = false    字幕なし続行モード（タイトル＋概要欄のみで要約）
+ * - metadataOnly?: boolean = false    映像取得失敗後の続行モード（メタデータのみで要約）
  *
- * 字幕なし時は 200 で needsCaptionlessConfirm:true を返し、UI 側で確認ダイアログを出す。
+ * フロー:
+ * 1. 字幕あり → 字幕ベース要約
+ * 2. 字幕なし → 映像フレーム（storyboard）取得 → Vision ベース要約（ダイアログなし）
+ * 3. 映像取得も失敗 → needsCaptionlessConfirm:true を返し UI で確認ダイアログを表示
+ * 4. metadataOnly=true → メタデータのみ要約（確認済みフォールバック）
  */
 export async function POST(req: NextRequest) {
   try {
@@ -57,7 +64,6 @@ export async function POST(req: NextRequest) {
     const generateSummary = body.generateSummary !== false;
     const metadataOnly = body.metadataOnly === true;
 
-    // メタデータのみ要求された場合（または要約生成しない場合）
     if (!generateSummary) {
       return NextResponse.json({
         youtubeId,
@@ -68,68 +74,99 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    if (!metadataOnly) {
-      const captions = await fetchYoutubeCaptions(youtubeId);
-      if (captions) {
-        try {
-          const result = await generateVideoAiSummary({
-            title: metadata.title,
-            description: metadata.description,
-            channelTitle: metadata.channelTitle,
-            transcript: captions.text,
-            source: "captions",
-          });
-          return NextResponse.json({
-            youtubeId,
-            title: metadata.title,
-            description: metadata.description,
-            channelTitle: metadata.channelTitle,
-            hasCaptions: true,
-            aiSummary: result.summary,
-            analyzedFrom: `${result.analyzedFrom}（${captions.languageCode}）`,
-          });
-        } catch (e) {
-          if (e instanceof VideoAiSummaryError) {
-            return NextResponse.json({ error: e.message }, { status: e.status });
-          }
-          throw e;
+    // metadataOnly: 映像・字幕どちらも取得できなかった場合のフォールバック
+    if (metadataOnly) {
+      try {
+        const result = await generateVideoAiSummary({
+          title: metadata.title,
+          description: metadata.description,
+          channelTitle: metadata.channelTitle,
+          source: "metadata",
+        });
+        return NextResponse.json({
+          youtubeId,
+          title: metadata.title,
+          description: metadata.description,
+          channelTitle: metadata.channelTitle,
+          hasCaptions: false,
+          aiSummary: result.summary,
+          analyzedFrom: result.analyzedFrom,
+        });
+      } catch (e) {
+        if (e instanceof VideoAiSummaryError) {
+          return NextResponse.json({ error: e.message }, { status: e.status });
         }
+        throw e;
       }
-
-      // 字幕なし → UI に確認を促す
-      return NextResponse.json({
-        youtubeId,
-        title: metadata.title,
-        description: metadata.description,
-        channelTitle: metadata.channelTitle,
-        hasCaptions: false,
-        needsCaptionlessConfirm: true,
-      });
     }
 
-    // metadataOnly: 字幕なし続行モード
-    try {
-      const result = await generateVideoAiSummary({
-        title: metadata.title,
-        description: metadata.description,
-        channelTitle: metadata.channelTitle,
-        source: "metadata",
-      });
-      return NextResponse.json({
-        youtubeId,
-        title: metadata.title,
-        description: metadata.description,
-        channelTitle: metadata.channelTitle,
-        hasCaptions: false,
-        aiSummary: result.summary,
-        analyzedFrom: result.analyzedFrom,
-      });
-    } catch (e) {
-      if (e instanceof VideoAiSummaryError) {
-        return NextResponse.json({ error: e.message }, { status: e.status });
+    // ---- Step 1: 字幕を試みる ----------------------------------------
+    const captions = await fetchYoutubeCaptions(youtubeId);
+    if (captions) {
+      try {
+        const result = await generateVideoAiSummary({
+          title: metadata.title,
+          description: metadata.description,
+          channelTitle: metadata.channelTitle,
+          transcript: captions.text,
+          source: "captions",
+        });
+        return NextResponse.json({
+          youtubeId,
+          title: metadata.title,
+          description: metadata.description,
+          channelTitle: metadata.channelTitle,
+          hasCaptions: true,
+          aiSummary: result.summary,
+          analyzedFrom: `${result.analyzedFrom}（${captions.languageCode}）`,
+        });
+      } catch (e) {
+        if (e instanceof VideoAiSummaryError) {
+          return NextResponse.json({ error: e.message }, { status: e.status });
+        }
+        throw e;
       }
-      throw e;
     }
+
+    // ---- Step 2: 映像フレームで Vision 要約 --------------------------
+    const frames = await fetchYoutubeVideoFrames(youtubeId, { maxSprites: 3 });
+    if (frames) {
+      try {
+        const result = await generateVideoAiSummary({
+          title: metadata.title,
+          description: metadata.description,
+          channelTitle: metadata.channelTitle,
+          frames: frames.images,
+          source: "vision",
+        });
+        return NextResponse.json({
+          youtubeId,
+          title: metadata.title,
+          description: metadata.description,
+          channelTitle: metadata.channelTitle,
+          hasCaptions: false,
+          hasVision: true,
+          aiSummary: result.summary,
+          analyzedFrom: result.analyzedFrom,
+        });
+      } catch (e) {
+        if (e instanceof VideoAiSummaryError) {
+          return NextResponse.json({ error: e.message }, { status: e.status });
+        }
+        throw e;
+      }
+    }
+
+    // ---- Step 3: 映像も字幕も取得不可 → UI で確認 ------------------
+    return NextResponse.json({
+      youtubeId,
+      title: metadata.title,
+      description: metadata.description,
+      channelTitle: metadata.channelTitle,
+      hasCaptions: false,
+      hasVision: false,
+      needsCaptionlessConfirm: true,
+    });
   } catch (err) {
     console.error("[videos/extract POST]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

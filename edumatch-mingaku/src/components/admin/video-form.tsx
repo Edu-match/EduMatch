@@ -90,10 +90,10 @@ export function VideoForm({ initial, onSaved, onDeleted }: Props) {
       }));
 
       if (data.needsCaptionlessConfirm) {
-        // タイトル・説明だけ反映済み。要約は別途確認ダイアログから生成
+        // タイトル・説明だけ反映済み。字幕・映像どちらも取得失敗 → 確認ダイアログ
         setCaptionlessTarget("extract");
         setMessage(
-          "タイトル・概要欄を取得しました。字幕が見つからないため、AI要約の方針を確認してください。"
+          "タイトル・概要欄を取得しました。字幕も映像フレームも取得できなかったため、AI要約の方針を確認してください。"
         );
         return;
       }
@@ -138,7 +138,7 @@ export function VideoForm({ initial, onSaved, onDeleted }: Props) {
 
       if (data.needsCaptionlessConfirm) {
         setCaptionlessTarget("regenerate");
-        setMessage("字幕が見つかりませんでした。タイトル・概要欄から要約するか確認してください。");
+        setMessage("字幕も映像フレームも取得できませんでした。タイトル・概要欄から要約するか確認してください。");
         return;
       }
 
@@ -386,10 +386,10 @@ export function VideoForm({ initial, onSaved, onDeleted }: Props) {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>字幕が見つかりませんでした</AlertDialogTitle>
+            <AlertDialogTitle>映像・字幕を取得できませんでした</AlertDialogTitle>
             <AlertDialogDescription>
-              この動画には字幕が無いため、タイトルと概要欄の情報のみで AI 要約を作成します。
-              字幕がある場合と比べて精度は下がります。続けますか？
+              この動画の字幕と映像フレームのどちらも取得できませんでした。
+              タイトル・概要欄の情報だけで AI 要約を作成しますが、精度は低くなります。続けますか？
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

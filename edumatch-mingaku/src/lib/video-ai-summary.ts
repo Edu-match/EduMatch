@@ -1,6 +1,9 @@
 import OpenAI from "openai";
+import type { VideoFrameImage } from "@/lib/youtube-video-frames";
 
 const MODEL = "gpt-5.4";
+
+// ---- システムプロンプト ------------------------------------------------
 
 const SYSTEM_PROMPT_CAPTIONS = `あなたは日本の教育関係者向けプラットフォームの動画要約アシスタントです。
 入力として、YouTube動画のタイトルと字幕テキストが与えられます。
@@ -13,31 +16,48 @@ const SYSTEM_PROMPT_CAPTIONS = `あなたは日本の教育関係者向けプラ
 - 全体で300文字以内に収める
 - 字幕に基づき、具体的な内容を反映する（抽象的な決まり文句は避ける）`;
 
-const SYSTEM_PROMPT_METADATA = `あなたは日本の教育関係者向けプラットフォームの動画要約アシスタントです。
-この動画には字幕が見つからなかったため、タイトル・概要欄・チャンネル名を手がかりに、視聴者向けの推定要約を作成してください。
+const SYSTEM_PROMPT_VISION = `あなたは日本の教育関係者向けプラットフォームの動画要約アシスタントです。
+添付された画像はYouTube動画から抽出した映像フレームです。
+スプライトシート形式の場合、1枚の画像に動画全体から抽出した複数の場面が格子状に並んでいます。
+これらの映像を分析して、動画の内容を把握し、視聴者向けの要約を作成してください。
 
 出力ルール:
 - 日本語で出力する
-- 冒頭に「（字幕が取得できなかったため、タイトル・概要欄からの推定です）」と1行添える
+- 「要点」を3〜5つの箇条書きで示し、最後に短いまとめを1〜2文添える
+- マークダウン記法（- や **）を使ってよい
+- 全体で300文字以内に収める
+- 映像から読み取れる情報（テロップ・図表・示される画面・登場人物など）を積極的に反映する
+- 映像から判断できない事項は断定せず「と思われる」等で明示する`;
+
+const SYSTEM_PROMPT_METADATA = `あなたは日本の教育関係者向けプラットフォームの動画要約アシスタントです。
+この動画には字幕も映像フレームも取得できなかったため、タイトル・概要欄・チャンネル名を手がかりに視聴者向けの推定要約を作成してください。
+
+出力ルール:
+- 日本語で出力する
+- 冒頭に「（字幕・映像が取得できなかったため、タイトル・概要欄からの推定です）」と1行添える
 - 「想定される要点」を3〜5つの箇条書きで示し、最後に短いまとめを1〜2文添える
 - マークダウン記法（- や **）を使ってよい
 - 全体で350文字以内に収める
 - 不明な点を断定的に書かない。概要欄に書かれた情報を優先する`;
 
-export type SummarySource = "captions" | "metadata";
+// ---- 型定義 ------------------------------------------------------------
+
+export type SummarySource = "captions" | "vision" | "metadata";
 
 export type GenerateVideoAiSummaryArgs = {
   title: string;
   description?: string;
   channelTitle?: string | null;
-  /** captions 時に必須。字幕本文 */
+  /** captions 時に必須 */
   transcript?: string;
+  /** vision 時に必須 */
+  frames?: VideoFrameImage[];
   source: SummarySource;
 };
 
 export type GenerateVideoAiSummaryResult = {
   summary: string;
-  /** UI表示用ラベル */
+  /** UI 表示用ラベル */
   analyzedFrom: string;
 };
 
@@ -49,23 +69,61 @@ export class VideoAiSummaryError extends Error {
   }
 }
 
-function buildUserContent(args: GenerateVideoAiSummaryArgs): string {
-  if (args.source === "captions") {
-    if (!args.transcript?.trim()) {
-      throw new VideoAiSummaryError("transcript is required for captions source", 400);
-    }
-    return [
-      `タイトル: ${args.title}`,
-      args.channelTitle?.trim() ? `チャンネル: ${args.channelTitle.trim()}` : null,
-      args.description?.trim() ? `補足説明: ${args.description.trim()}` : null,
-      "---字幕---",
-      args.transcript,
-    ]
-      .filter(Boolean)
-      .join("\n");
-  }
+// ---- メッセージ構築 ----------------------------------------------------
 
-  // metadata
+type TextPart = { type: "text"; text: string };
+type ImagePart = {
+  type: "image_url";
+  image_url: { url: string; detail: "low" | "auto" };
+};
+type ContentPart = TextPart | ImagePart;
+
+function buildCaptionContent(args: GenerateVideoAiSummaryArgs): string {
+  if (!args.transcript?.trim()) {
+    throw new VideoAiSummaryError("transcript is required for captions source", 400);
+  }
+  return [
+    `タイトル: ${args.title}`,
+    args.channelTitle?.trim() ? `チャンネル: ${args.channelTitle.trim()}` : null,
+    args.description?.trim() ? `補足説明: ${args.description.trim()}` : null,
+    "---字幕---",
+    args.transcript,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function buildVisionContent(args: GenerateVideoAiSummaryArgs): ContentPart[] {
+  if (!args.frames?.length) {
+    throw new VideoAiSummaryError("frames are required for vision source", 400);
+  }
+  const parts: ContentPart[] = [
+    {
+      type: "text",
+      text: [
+        `タイトル: ${args.title}`,
+        args.channelTitle?.trim() ? `チャンネル: ${args.channelTitle.trim()}` : null,
+        args.description?.trim() ? `概要欄: ${args.description.trim()}` : null,
+        "\n以下の映像フレームを分析して動画の内容を要約してください。",
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    },
+  ];
+  for (const frame of args.frames) {
+    parts.push({
+      type: "image_url",
+      image_url: {
+        url: frame.url,
+        // スプライトは detail:low でも十分読める。コスト削減のため低解像度で送る
+        detail: frame.kind === "storyboard" ? "low" : "auto",
+      },
+    });
+  }
+  return parts;
+}
+
+function buildMetadataContent(args: GenerateVideoAiSummaryArgs): string {
   const description = args.description?.trim() ?? "";
   if (!args.title.trim() && !description) {
     throw new VideoAiSummaryError(
@@ -82,6 +140,8 @@ function buildUserContent(args: GenerateVideoAiSummaryArgs): string {
     .join("\n");
 }
 
+// ---- メイン関数 --------------------------------------------------------
+
 /** OpenAI を呼び出して要約を生成する。エラー時は VideoAiSummaryError を投げる */
 export async function generateVideoAiSummary(
   args: GenerateVideoAiSummaryArgs
@@ -91,24 +151,49 @@ export async function generateVideoAiSummary(
     throw new VideoAiSummaryError("OpenAI APIキーが未設定です", 503);
   }
 
-  const userContent = buildUserContent(args);
-  const systemPrompt =
-    args.source === "captions" ? SYSTEM_PROMPT_CAPTIONS : SYSTEM_PROMPT_METADATA;
-
   const openai = new OpenAI({ apiKey });
   let summary = "";
+
   try {
-    const completion = await openai.chat.completions.create({
-      model: MODEL,
-      temperature: args.source === "captions" ? 0.3 : 0.5,
-      max_completion_tokens: args.source === "captions" ? 600 : 700,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userContent },
-      ],
-    });
-    summary = completion.choices[0]?.message?.content?.trim() ?? "";
+    if (args.source === "captions") {
+      const userContent = buildCaptionContent(args);
+      const completion = await openai.chat.completions.create({
+        model: MODEL,
+        temperature: 0.3,
+        max_completion_tokens: 600,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT_CAPTIONS },
+          { role: "user", content: userContent },
+        ],
+      });
+      summary = completion.choices[0]?.message?.content?.trim() ?? "";
+    } else if (args.source === "vision") {
+      const userContent = buildVisionContent(args);
+      const completion = await openai.chat.completions.create({
+        model: MODEL,
+        temperature: 0.3,
+        max_completion_tokens: 600,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT_VISION },
+          { role: "user", content: userContent },
+        ],
+      });
+      summary = completion.choices[0]?.message?.content?.trim() ?? "";
+    } else {
+      const userContent = buildMetadataContent(args);
+      const completion = await openai.chat.completions.create({
+        model: MODEL,
+        temperature: 0.5,
+        max_completion_tokens: 700,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT_METADATA },
+          { role: "user", content: userContent },
+        ],
+      });
+      summary = completion.choices[0]?.message?.content?.trim() ?? "";
+    }
   } catch (e) {
+    if (e instanceof VideoAiSummaryError) throw e;
     console.error("[video-ai-summary] OpenAI", e);
     throw new VideoAiSummaryError(
       "AI要約の生成に失敗しました。時間をおいて再度お試しください。",
@@ -120,8 +205,11 @@ export async function generateVideoAiSummary(
     throw new VideoAiSummaryError("AI要約の本文が空でした。", 502);
   }
 
-  const analyzedFrom =
-    args.source === "captions" ? "字幕" : "メタデータ（タイトル・概要）";
+  const analyzedFrom: Record<SummarySource, string> = {
+    captions: "字幕",
+    vision: "映像フレーム",
+    metadata: "メタデータ（タイトル・概要）",
+  };
 
-  return { summary, analyzedFrom };
+  return { summary, analyzedFrom: analyzedFrom[args.source] };
 }
