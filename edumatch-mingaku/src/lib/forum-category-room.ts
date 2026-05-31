@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { ForumRoom } from "@/lib/mock-forum";
+import { randomUUID } from "node:crypto";
 
 export type ForumCategoryInfo = {
   id: string;
@@ -25,6 +26,10 @@ export type CategoryRoomResult = {
 
 function categoryRoomId(categorySlug: string, subSlug: string): string {
   return `cat-${categorySlug}--${subSlug}`;
+}
+
+function newRoomId(): string {
+  return randomUUID();
 }
 
 /**
@@ -62,6 +67,7 @@ export async function getOrCreateCategoryRoom(
     if (!category || !subCategory) return null;
 
     const id = categoryRoomId(categorySlug, subSlug);
+    const expectedName = `${category.name} / ${subCategory.name}`;
 
     // まず決定論的 ID で検索（category_id/sub_category_id カラム不要）
     let room = await prisma.forumRoom.findFirst({
@@ -84,9 +90,17 @@ export async function getOrCreateCategoryRoom(
       }
     }
 
+    // 旧実装やカラム未適用環境向け: 名前で救済
+    if (!room) {
+      room = await prisma.forumRoom.findFirst({
+        where: { name: expectedName },
+        select: BASE_ROOM_SELECT,
+      });
+    }
+
     // それでも見つからない場合は新規作成
     if (!room) {
-      const name = `${category.name} / ${subCategory.name}`;
+      const name = expectedName;
       const description =
         subCategory.content_kind === "community"
           ? `${category.name} に関する話題を自由に語り合うコミュニティ掲示板です。`
@@ -96,7 +110,7 @@ export async function getOrCreateCategoryRoom(
         // category_id / sub_category_id カラムを含めて作成（カラムがある環境向け）
         room = await prisma.forumRoom.create({
           data: {
-            id,
+            id: newRoomId(),
             name,
             description,
             emoji: "",
@@ -112,7 +126,7 @@ export async function getOrCreateCategoryRoom(
         // フォールバック: カラムなしで作成（未マイグレーション環境向け）
         room = await prisma.forumRoom.create({
           data: {
-            id,
+            id: newRoomId(),
             name,
             description,
             emoji: "",
