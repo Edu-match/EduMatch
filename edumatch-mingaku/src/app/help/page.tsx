@@ -11,6 +11,9 @@ import { MessageCircle, Mail, BookOpen, HelpCircle } from "lucide-react";
 import { OpenAiChatButton } from "@/components/ui/open-ai-chat-button";
 import { prisma } from "@/lib/prisma";
 
+/** ビルド時に DB 認証が無い環境でも静的生成を失敗させない */
+export const dynamic = "force-dynamic";
+
 const HELP_GUIDE_TITLE = "エデュマッチ 利用ガイド";
 
 const faqCategories = [
@@ -97,11 +100,16 @@ const faqCategories = [
 ];
 
 export default async function HelpPage() {
-  const guideArticle = await prisma.siteUpdate.findFirst({
-    where: { title: HELP_GUIDE_TITLE },
-    orderBy: { published_at: "desc" },
-    select: { id: true, link: true, title: true },
-  });
+  let guideArticle: { id: string; link: string | null; title: string } | null = null;
+  try {
+    guideArticle = await prisma.siteUpdate.findFirst({
+      where: { title: HELP_GUIDE_TITLE },
+      orderBy: { published_at: "desc" },
+      select: { id: true, link: true, title: true },
+    });
+  } catch (e) {
+    console.error("help page guide lookup failed:", e);
+  }
   const guideHref = guideArticle?.link || (guideArticle ? `/site-updates/${guideArticle.id}` : null);
 
   return (
