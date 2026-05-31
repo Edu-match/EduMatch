@@ -244,24 +244,30 @@ export function ForumCategoryExplorer({
                       className="group absolute -translate-x-1/2 -translate-y-1/2"
                       style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
                     >
-                      {/* ラベル */}
-                      <span className="pointer-events-none absolute -top-9 left-1/2 z-10 w-max max-w-[220px] -translate-x-1/2 rounded-lg bg-muted/90 px-3 py-1.5 text-center text-[11px] font-medium leading-tight text-foreground/80 shadow-sm">
-                        {cat.name}
+                      {/* バブル（テキストを内包） */}
+                      <span
+                        className="flex flex-col items-center justify-center rounded-full px-3 shadow-[0_12px_30px_-8px_rgba(0,0,0,0.25)] transition-transform duration-300 ease-out group-hover:scale-105"
+                        style={{
+                          width: "clamp(100px, 16vw, 190px)",
+                          height: "clamp(100px, 16vw, 190px)",
+                          backgroundColor: color,
+                        }}
+                      >
+                        <span
+                          className="w-full text-center font-bold leading-tight text-foreground/85"
+                          style={{ fontSize: "clamp(10px, 1.2vw, 14px)", wordBreak: "keep-all", overflowWrap: "anywhere" }}
+                        >
+                          {cat.name}
+                        </span>
                         {cat.description ? (
-                          <span className="block text-[10px] text-muted-foreground">
+                          <span
+                            className="mt-1 line-clamp-3 w-full text-center leading-tight text-foreground/60"
+                            style={{ fontSize: "clamp(8px, 0.9vw, 11px)", wordBreak: "keep-all", overflowWrap: "anywhere" }}
+                          >
                             {cat.description}
                           </span>
                         ) : null}
                       </span>
-                      {/* バブル */}
-                      <span
-                        className="block rounded-full shadow-[0_12px_30px_-8px_rgba(0,0,0,0.25)] transition-transform duration-300 ease-out group-hover:scale-105"
-                        style={{
-                          width: "clamp(96px, 16vw, 190px)",
-                          height: "clamp(96px, 16vw, 190px)",
-                          backgroundColor: color,
-                        }}
-                      />
                     </button>
                   );
                 })}
@@ -286,13 +292,13 @@ export function ForumCategoryExplorer({
                           selected.color || FALLBACK_COLORS[0],
                       }}
                     >
-                      {/* 楕円上部のラベル */}
-                      <div className="absolute left-1/2 top-3 z-20 w-max max-w-[80%] -translate-x-1/2 rounded-xl bg-background/85 px-4 py-2 text-center shadow-sm backdrop-blur">
-                        <p className="text-sm font-semibold leading-tight">
+                      {/* 楕円上部のカテゴリ名ラベル */}
+                      <div className="absolute left-1/2 top-3 z-20 w-[55%] -translate-x-1/2 rounded-xl bg-background/85 px-3 py-2 text-center shadow-sm backdrop-blur">
+                        <p className="break-keep text-sm font-bold leading-tight text-foreground/90">
                           {selected.name}
                         </p>
                         {selected.description ? (
-                          <p className="text-[11px] text-muted-foreground">
+                          <p className="mt-0.5 break-keep text-[10px] leading-snug text-muted-foreground line-clamp-2">
                             {selected.description}
                           </p>
                         ) : null}

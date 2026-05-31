@@ -478,7 +478,6 @@ model ForumRoom {
   posts                   ForumPost[]
   roomTopics              ForumRoomTopic[]
 
-  @@unique([category_id, sub_category_id], map: "forum_rooms_category_sub_unique")
   @@map("forum_rooms")
 }
 
