@@ -69,28 +69,22 @@ export async function getOrCreateCategoryRoom(
     const id = categoryRoomId(categorySlug, subSlug);
     const expectedName = `${category.name} / ${subCategory.name}`;
 
-    // まず決定論的 ID で検索（category_id/sub_category_id カラム不要）
     let room = await prisma.forumRoom.findFirst({
       where: { id },
       select: BASE_ROOM_SELECT,
     });
 
-    // ID で見つからない場合、category_id+sub_category_id で検索（カラムがあれば）
     if (!room) {
       try {
         room = await prisma.forumRoom.findFirst({
-          where: {
-            category_id: category.id,
-            sub_category_id: subCategory.id,
-          },
+          where: { category_id: category.id, sub_category_id: subCategory.id },
           select: BASE_ROOM_SELECT,
         });
       } catch {
-        // カラムがまだ存在しない環境では無視して次へ
+        // category_id / sub_category_id が無い環境を許容
       }
     }
 
-    // 旧実装やカラム未適用環境向け: 名前で救済
     if (!room) {
       room = await prisma.forumRoom.findFirst({
         where: { name: expectedName },
@@ -98,20 +92,17 @@ export async function getOrCreateCategoryRoom(
       });
     }
 
-    // それでも見つからない場合は新規作成
     if (!room) {
-      const name = expectedName;
       const description =
         subCategory.content_kind === "community"
           ? `${category.name} に関する話題を自由に語り合うコミュニティ掲示板です。`
           : `${category.name} に関連する${subCategory.name}について語り合う部屋です。`;
 
       try {
-        // category_id / sub_category_id カラムを含めて作成（カラムがある環境向け）
         room = await prisma.forumRoom.create({
           data: {
             id: newRoomId(),
-            name,
+            name: expectedName,
             description,
             emoji: "",
             weekly_topic: "",
@@ -123,11 +114,10 @@ export async function getOrCreateCategoryRoom(
           select: BASE_ROOM_SELECT,
         });
       } catch {
-        // フォールバック: カラムなしで作成（未マイグレーション環境向け）
         room = await prisma.forumRoom.create({
           data: {
             id: newRoomId(),
-            name,
+            name: expectedName,
             description,
             emoji: "",
             weekly_topic: "",
@@ -139,24 +129,35 @@ export async function getOrCreateCategoryRoom(
       }
     }
 
-    const postCount = await prisma.forumPost.count({
-      where: { room_id: room.id, is_hidden: false },
-    });
-    const distinctAuthors = await prisma.forumPost.findMany({
-      where: { room_id: room.id, is_hidden: false, author_id: { not: null } },
-      select: { author_id: true },
-      distinct: ["author_id"],
-    });
-    const latestPost = await prisma.forumPost.findFirst({
-      where: { room_id: room.id, is_hidden: false },
-      orderBy: { created_at: "desc" },
-      select: { created_at: true },
-    });
-    const latestTopic = await prisma.forumRoomTopic.findFirst({
-      where: { room_id: room.id },
-      orderBy: { period_start: "desc" },
-      select: { id: true, title: true },
-    });
+    if (!room) return null;
+
+    const [postCountRes, distinctAuthorsRes, latestPostRes, latestTopicRes] =
+      await Promise.allSettled([
+        prisma.forumPost.count({ where: { room_id: room.id, is_hidden: false } }),
+        prisma.forumPost.findMany({
+          where: { room_id: room.id, is_hidden: false, author_id: { not: null } },
+          select: { author_id: true },
+          distinct: ["author_id"],
+        }),
+        prisma.forumPost.findFirst({
+          where: { room_id: room.id, is_hidden: false },
+          orderBy: { created_at: "desc" },
+          select: { created_at: true },
+        }),
+        prisma.forumRoomTopic.findFirst({
+          where: { room_id: room.id },
+          orderBy: { period_start: "desc" },
+          select: { id: true, title: true },
+        }),
+      ]);
+
+    const postCount = postCountRes.status === "fulfilled" ? postCountRes.value : 0;
+    const distinctAuthors =
+      distinctAuthorsRes.status === "fulfilled" ? distinctAuthorsRes.value : [];
+    const latestPost =
+      latestPostRes.status === "fulfilled" ? latestPostRes.value : null;
+    const latestTopic =
+      latestTopicRes.status === "fulfilled" ? latestTopicRes.value : null;
 
     return {
       room: {
