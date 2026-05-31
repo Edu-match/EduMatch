@@ -61,6 +61,17 @@ import { OpenAiChatButton } from "@/components/ui/open-ai-chat-button";
 import { ReportForumContentButton } from "@/components/community/report-forum-content-button";
 import { FORUM_AI_FACILITATOR_NAME } from "@/lib/forum-constants";
 import { isForumAiFacilitatorReply } from "@/lib/forum-ai-reply";
+import { ForumCategoryContentPanel } from "@/components/community/forum-category-content-panel";
+import type { CategoryContentItem } from "@/lib/forum-category-content";
+
+/** カテゴリルーム（大カテゴリ×サブカテゴリ）で上部に表示するコンテキスト */
+export type ForumCategoryContext = {
+  categorySlug: string;
+  categoryName: string;
+  subCategoryName: string;
+  contentKind: string;
+  items: CategoryContentItem[];
+};
 
 // ─── 定数 ────────────────────────────────────────────────
 
@@ -1057,10 +1068,13 @@ type SortKey = "newest" | "popular";
 export function ForumRoomClient({
   room,
   highlightFromNotify = false,
+  categoryContext,
 }: {
   room: ForumRoom;
   /** サイト内通知から遷移したときの案内バナー */
   highlightFromNotify?: boolean;
+  /** カテゴリルームの場合のDBコンテンツ・コンテキスト */
+  categoryContext?: ForumCategoryContext;
 }) {
   const auth = useAuthUser();
   const [sort, setSort] = useState<SortKey>("newest");
@@ -1235,8 +1249,12 @@ export function ForumRoomClient({
       {/* ─── 部屋ヘッダー ─── */}
       <section className="relative overflow-hidden border-b bg-gradient-to-br from-primary/8 via-primary/4 to-background">
         <div className="container py-8 md:py-12">
-          <Link href="/forum" className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
-            <ArrowLeft className="h-4 w-4" />AIUEO 井戸端会議
+          <Link
+            href={categoryContext ? `/forum?cat=${encodeURIComponent(categoryContext.categorySlug)}` : "/forum"}
+            className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            {categoryContext ? `${categoryContext.categoryName} に戻る` : "AIUEO 井戸端会議"}
           </Link>
 
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -1288,6 +1306,14 @@ export function ForumRoomClient({
         </div>
         <div className="pointer-events-none absolute -top-20 -right-20 h-80 w-80 rounded-full bg-primary/5 blur-3xl" />
       </section>
+
+      {/* ─── カテゴリ別の関連コンテンツ（記事・サービス・メディア・イベント） ─── */}
+      {categoryContext && (
+        <ForumCategoryContentPanel
+          items={categoryContext.items}
+          contentKind={categoryContext.contentKind}
+        />
+      )}
 
       {/* ─── 今週のお題（大きな吹き出しボックス） ─── */}
       <div className="border-b bg-gradient-to-r from-primary/8 via-primary/4 to-background/80">

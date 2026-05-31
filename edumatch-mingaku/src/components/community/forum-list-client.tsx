@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   ArrowUpRight,
   Bot,
@@ -42,7 +43,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { ForumRoom } from "@/lib/mock-forum";
 import { RelativeTime } from "@/components/community/relative-time";
 import { ForumRoomIcon, ROOM_BG_COLORS } from "@/components/community/forum-room-icon";
-import { ForumBubbleView } from "@/components/community/forum-bubble-view";
+import { ForumCategoryExplorer } from "@/components/community/forum-category-explorer";
 
 type SortKey = "popular" | "newest" | "participants";
 type CategoryKey = "all" | "innovation" | "practice" | "management";
@@ -298,6 +299,8 @@ function CreateRoomDialog({
 // ─── メインコンポーネント ─────────────────────────────────
 
 export function ForumListClient() {
+  const searchParams = useSearchParams();
+  const catParam = searchParams.get("cat") ?? undefined;
   const [sort, setSort] = useState<SortKey>("popular");
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<CategoryKey>("all");
@@ -305,6 +308,7 @@ export function ForumListClient() {
   const [rooms, setRooms] = useState<ForumRoom[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    if (catParam) return "bubble";
     if (typeof window === "undefined") return "bubble";
     const saved = localStorage.getItem("forum_view_mode") as ViewMode | null;
     return saved === "list" || saved === "bubble" ? saved : "bubble";
@@ -314,6 +318,11 @@ export function ForumListClient() {
     setViewMode(mode);
     localStorage.setItem("forum_view_mode", mode);
   };
+
+  // ?cat= で遷移してきたときはマップビューを表示
+  useEffect(() => {
+    if (catParam) setViewMode("bubble");
+  }, [catParam]);
 
   // 部屋一覧取得
   useEffect(() => {
@@ -506,10 +515,10 @@ export function ForumListClient() {
           </div>
         ) : (
           <div data-tutorial="forum-room-list">
-            {/* ─── バブルビュー ─── */}
+            {/* ─── マップビュー（大カテゴリ → サブカテゴリ） ─── */}
             {viewMode === "bubble" && (
-              <section aria-label="バブルビュー">
-                <ForumBubbleView rooms={sortedRooms.length > 0 ? sortedRooms : rooms} />
+              <section aria-label="カテゴリマップ">
+                <ForumCategoryExplorer initialCategorySlug={catParam} />
               </section>
             )}
 

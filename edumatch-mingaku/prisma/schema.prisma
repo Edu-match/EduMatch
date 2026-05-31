@@ -427,22 +427,58 @@ model ActivityLogComment {
   @@index([created_at(sort: Desc)])
 }
 
+model ForumCategory {
+  id          String      @id @default(uuid()) @db.Uuid
+  name        String
+  slug        String      @unique
+  description String      @default("")
+  color       String      @default("#FFB5C8")
+  sort_order  Int         @default(0)
+  is_active   Boolean     @default(true)
+  created_at  DateTime    @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime    @updatedAt @db.Timestamptz(6)
+  rooms       ForumRoom[]
+
+  @@map("forum_categories")
+}
+
+model ForumSubCategory {
+  id           String      @id @default(uuid()) @db.Uuid
+  name         String
+  slug         String      @unique
+  icon         String?
+  /// community = 純粋な掲示板 / article / service / media / events-info = DBコンテンツ表示
+  content_kind String      @default("community")
+  sort_order   Int         @default(0)
+  is_active    Boolean     @default(true)
+  created_at   DateTime    @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime    @updatedAt @db.Timestamptz(6)
+  rooms        ForumRoom[]
+
+  @@map("forum_sub_categories")
+}
+
 model ForumRoom {
-  id                      String           @id
+  id                      String            @id
   name                    String
-  description             String           @default("")
-  emoji                   String           @default("")
-  weekly_topic            String           @default("")
-  ai_discussion           Boolean          @default(false)
-  ai_weekly_topic_enabled Boolean          @default(false)
-  is_hidden               Boolean          @default(false)
-  created_by              String?          @db.Uuid
-  created_at              DateTime         @default(now())
-  updated_at              DateTime         @updatedAt
-  creator                 Profile?         @relation(fields: [created_by], references: [id], onDelete: SetNull)
+  description             String            @default("")
+  emoji                   String            @default("")
+  weekly_topic            String            @default("")
+  ai_discussion           Boolean           @default(false)
+  ai_weekly_topic_enabled Boolean           @default(false)
+  is_hidden               Boolean           @default(false)
+  category_id             String?           @db.Uuid
+  sub_category_id         String?           @db.Uuid
+  created_by              String?           @db.Uuid
+  created_at              DateTime          @default(now())
+  updated_at              DateTime          @updatedAt
+  creator                 Profile?          @relation(fields: [created_by], references: [id], onDelete: SetNull)
+  category                ForumCategory?    @relation(fields: [category_id], references: [id], onDelete: SetNull)
+  subCategory             ForumSubCategory? @relation(fields: [sub_category_id], references: [id], onDelete: SetNull)
   posts                   ForumPost[]
   roomTopics              ForumRoomTopic[]
 
+  @@unique([category_id, sub_category_id], map: "forum_rooms_category_sub_unique")
   @@map("forum_rooms")
 }
 

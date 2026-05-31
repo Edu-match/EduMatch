@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic'
 import type { ForumRoom } from '@/lib/mock-forum'
+import type { ForumCategoryContext } from '@/components/community/forum-room-client'
 
 const ForumRoomClient = dynamic(
   () =>
@@ -21,9 +22,17 @@ const ForumRoomClient = dynamic(
 export function ForumRoomClientDynamic({
   room,
   highlightFromNotify = false,
+  categoryContext,
 }: {
   room: ForumRoom;
   highlightFromNotify?: boolean;
+  categoryContext?: ForumCategoryContext;
 }) {
-  return <ForumRoomClient room={room} highlightFromNotify={highlightFromNotify} />
+  return (
+    <ForumRoomClient
+      room={room}
+      highlightFromNotify={highlightFromNotify}
+      categoryContext={categoryContext}
+    />
+  )
 }
