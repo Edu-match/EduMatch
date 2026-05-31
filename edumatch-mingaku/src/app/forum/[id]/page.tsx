@@ -20,7 +20,6 @@ const ROOM_DB_SELECT = {
   weekly_topic: true,
   ai_discussion: true,
   ai_weekly_topic_enabled: true,
-  is_hidden: true,
   created_by: true,
   created_at: true,
   updated_at: true,

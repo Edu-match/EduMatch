@@ -1,5 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import type { ForumRoom } from "@/lib/mock-forum";
+import {
+  SAFE_FORUM_ROOM_SELECT,
+  createForumRoomCompat,
+} from "@/lib/prisma-schema-fallback";
 import { randomUUID } from "node:crypto";
 
 export type ForumCategoryInfo = {
@@ -33,24 +37,6 @@ function newRoomId(): string {
 }
 
 /**
- * category_id / sub_category_id を SELECT しない共通フィールドセット。
- * これらのカラムが DB にまだ追加されていない環境でも安全に動く。
- */
-const BASE_ROOM_SELECT = {
-  id: true,
-  name: true,
-  description: true,
-  emoji: true,
-  weekly_topic: true,
-  ai_discussion: true,
-  ai_weekly_topic_enabled: true,
-  is_hidden: true,
-  created_by: true,
-  created_at: true,
-  updated_at: true,
-} as const;
-
-/**
  * 大カテゴリ × サブカテゴリのルームを取得。存在しなければオンデマンドで作成する。
  * - slug が DB に存在しない場合は null を返す
  * - DB エラー（カラム未存在を含む）も null に落として 404 扱いにする
@@ -71,14 +57,14 @@ export async function getOrCreateCategoryRoom(
 
     let room = await prisma.forumRoom.findFirst({
       where: { id },
-      select: BASE_ROOM_SELECT,
+      select: SAFE_FORUM_ROOM_SELECT,
     });
 
     if (!room) {
       try {
         room = await prisma.forumRoom.findFirst({
           where: { category_id: category.id, sub_category_id: subCategory.id },
-          select: BASE_ROOM_SELECT,
+          select: SAFE_FORUM_ROOM_SELECT,
         });
       } catch {
         // category_id / sub_category_id が無い環境を許容
@@ -88,7 +74,7 @@ export async function getOrCreateCategoryRoom(
     if (!room) {
       room = await prisma.forumRoom.findFirst({
         where: { name: expectedName },
-        select: BASE_ROOM_SELECT,
+        select: SAFE_FORUM_ROOM_SELECT,
       });
     }
 
@@ -98,35 +84,13 @@ export async function getOrCreateCategoryRoom(
           ? `${category.name} に関する話題を自由に語り合うコミュニティ掲示板です。`
           : `${category.name} に関連する${subCategory.name}について語り合う部屋です。`;
 
-      try {
-        room = await prisma.forumRoom.create({
-          data: {
-            id: newRoomId(),
-            name: expectedName,
-            description,
-            emoji: "",
-            weekly_topic: "",
-            ai_discussion: true,
-            ai_weekly_topic_enabled: false,
-            category_id: category.id,
-            sub_category_id: subCategory.id,
-          },
-          select: BASE_ROOM_SELECT,
-        });
-      } catch {
-        room = await prisma.forumRoom.create({
-          data: {
-            id: newRoomId(),
-            name: expectedName,
-            description,
-            emoji: "",
-            weekly_topic: "",
-            ai_discussion: true,
-            ai_weekly_topic_enabled: false,
-          },
-          select: BASE_ROOM_SELECT,
-        });
-      }
+      room = await createForumRoomCompat({
+        id: newRoomId(),
+        name: expectedName,
+        description,
+        categoryId: category.id,
+        subCategoryId: subCategory.id,
+      });
     }
 
     if (!room) return null;
