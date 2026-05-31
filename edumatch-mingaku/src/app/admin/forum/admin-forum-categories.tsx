@@ -69,10 +69,20 @@ export function AdminForumCategories() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/forum/categories?includeInactive=true", { credentials: "include" }).then((r) => r.json()),
-      fetch("/api/forum/sub-categories?includeInactive=true", { credentials: "include" }).then((r) => r.json()),
+      fetch("/api/forum/categories?includeInactive=true", { credentials: "include" }),
+      fetch("/api/forum/sub-categories?includeInactive=true", { credentials: "include" }),
     ])
-      .then(([cat, sub]) => {
+      .then(async ([catRes, subRes]) => {
+        const cat = await catRes.json();
+        const sub = await subRes.json();
+        if (!catRes.ok) {
+          alert(cat.error ?? "大カテゴリの取得に失敗しました");
+          return;
+        }
+        if (!subRes.ok) {
+          alert(sub.error ?? "サブカテゴリの取得に失敗しました");
+          return;
+        }
         if (Array.isArray(cat.categories)) setCategories(cat.categories);
         if (Array.isArray(sub.subCategories)) setSubCategories(sub.subCategories);
       })
@@ -102,7 +112,12 @@ export function AdminForumCategories() {
         setNewCatName("");
         setNewCatDesc("");
       } else {
-        alert("大カテゴリの作成に失敗しました");
+        const err = await res.json().catch(() => ({} as { error?: string }));
+        alert(
+          err.error === "Forbidden"
+            ? "管理者権限が必要です。"
+            : err.error ?? `大カテゴリの作成に失敗しました（${res.status}）`
+        );
       }
     } finally {
       setSavingCat(false);

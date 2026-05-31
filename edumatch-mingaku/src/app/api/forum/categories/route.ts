@@ -1,17 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentProfile } from "@/lib/auth";
+import { uniqueForumSlug } from "@/lib/forum-slug";
 
 export const dynamic = "force-dynamic";
 
-function slugify(input: string): string {
-  return input
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, "-")
-    .replace(/[^\w-]/g, "")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
+function prismaErrorMessage(err: unknown): string | null {
+  const code = (err as { code?: string })?.code;
+  if (code === "P2021") {
+    return "forum_categories テーブルがありません。Supabase SQL でマイグレーションを実行してください。";
+  }
+  return null;
 }
 
 /** 大カテゴリ一覧（公開） */
@@ -44,7 +43,11 @@ export async function GET(req: NextRequest) {
     });
   } catch (err) {
     console.error("[forum/categories GET]", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    const hint = prismaErrorMessage(err);
+    return NextResponse.json(
+      { error: hint ?? "Internal server error" },
+      { status: hint ? 503 : 500 }
+    );
   }
 }
 
@@ -68,7 +71,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "name is required" }, { status: 400 });
     }
 
-    let slug = slugify(name) || `category-${Date.now()}`;
+    let slug = uniqueForumSlug(name, "category");
     const existing = await prisma.forumCategory.findUnique({ where: { slug } });
     if (existing) slug = `${slug}-${Date.now()}`;
 
@@ -98,6 +101,10 @@ export async function POST(req: NextRequest) {
     );
   } catch (err) {
     console.error("[forum/categories POST]", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    const hint = prismaErrorMessage(err);
+    return NextResponse.json(
+      { error: hint ?? "Internal server error" },
+      { status: hint ? 503 : 500 }
+    );
   }
 }

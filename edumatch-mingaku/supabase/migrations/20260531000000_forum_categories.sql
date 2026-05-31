@@ -31,9 +31,8 @@ CREATE TABLE IF NOT EXISTS public.forum_sub_categories (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name       TEXT NOT NULL,         -- 表示名（例: "Article" / "コミュニティ"）
   slug       TEXT NOT NULL UNIQUE,  -- 例: "article" / "community"
-  icon       TEXT,                  -- lucide アイコン名
-  /** community = 純粋な掲示板 / article / service / media / events-info = DBコンテンツ表示 */
-  content_kind TEXT NOT NULL DEFAULT 'community',
+  icon         TEXT,                  -- lucide アイコン名
+  content_kind TEXT NOT NULL DEFAULT 'community', -- community|article|service|media|events-info
   sort_order INT NOT NULL DEFAULT 0,
   is_active  BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

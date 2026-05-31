@@ -1,19 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentProfile } from "@/lib/auth";
+import { uniqueForumSlug } from "@/lib/forum-slug";
 
 export const dynamic = "force-dynamic";
 
 const VALID_CONTENT_KINDS = ["community", "article", "service", "media", "events-info"];
 
-function slugify(input: string): string {
-  return input
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, "-")
-    .replace(/[^\w-]/g, "")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
+function prismaErrorMessage(err: unknown): string | null {
+  const code = (err as { code?: string })?.code;
+  if (code === "P2021") {
+    return "forum_sub_categories テーブルがありません。Supabase SQL でマイグレーションを実行してください。";
+  }
+  return null;
 }
 
 /** サブカテゴリ一覧（公開） */
@@ -74,7 +73,7 @@ export async function POST(req: NextRequest) {
       ? (contentKind as string)
       : "community";
 
-    let slug = slugify(name) || `sub-${Date.now()}`;
+    let slug = uniqueForumSlug(name, "sub");
     const existing = await prisma.forumSubCategory.findUnique({ where: { slug } });
     if (existing) slug = `${slug}-${Date.now()}`;
 
