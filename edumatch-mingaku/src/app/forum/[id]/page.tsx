@@ -11,9 +11,24 @@ export function generateStaticParams() {
   return FORUM_ROOMS.map((room) => ({ id: room.id }));
 }
 
+/** category_id / sub_category_id は DB に未追加の可能性があるため SELECT しない */
+const ROOM_DB_SELECT = {
+  id: true,
+  name: true,
+  description: true,
+  emoji: true,
+  weekly_topic: true,
+  ai_discussion: true,
+  ai_weekly_topic_enabled: true,
+  is_hidden: true,
+  created_by: true,
+  created_at: true,
+  updated_at: true,
+} as const;
+
 async function getRoomFromDb(id: string): Promise<ForumRoom | null> {
   try {
-    const room = await prisma.forumRoom.findUnique({ where: { id } });
+    const room = await prisma.forumRoom.findUnique({ where: { id }, select: ROOM_DB_SELECT });
     if (!room) return null;
 
     const postCount = await prisma.forumPost.count({
