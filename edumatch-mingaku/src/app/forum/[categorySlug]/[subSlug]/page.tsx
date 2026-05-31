@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ForumRoomClientDynamic } from "@/components/community/forum-room-client-dynamic";
-import { getOrCreateCategoryRoom } from "@/lib/forum-category-room";
-import { getCategoryRoomContent } from "@/lib/forum-category-content";
+import { getOrCreateCategoryRoom, lookupCategoryRoom } from "@/lib/forum-category-room";
+import { getCategoryRoomContentForPage } from "@/lib/forum-category-content";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +12,7 @@ export async function generateMetadata({
   params: Promise<{ categorySlug: string; subSlug: string }>;
 }): Promise<Metadata> {
   const { categorySlug, subSlug } = await params;
-  const result = await getOrCreateCategoryRoom(categorySlug, subSlug);
+  const result = await lookupCategoryRoom(categorySlug, subSlug);
   if (!result) return {};
   return {
     title: `${result.room.name} | AIUEO 井戸端会議 | エデュマッチ`,
@@ -35,7 +35,7 @@ export default async function ForumCategoryRoomPage({
   const items =
     subCategory.contentKind === "community"
       ? []
-      : await getCategoryRoomContent({
+      : await getCategoryRoomContentForPage({
           categoryId: category.id,
           categoryName: category.name,
           categoryDescription: category.description,
@@ -49,6 +49,7 @@ export default async function ForumCategoryRoomPage({
       room={room}
       categoryContext={{
         categorySlug: category.slug,
+        subCategorySlug: subCategory.slug,
         categoryName: category.name,
         subCategoryName: subCategory.name,
         contentKind: subCategory.contentKind,

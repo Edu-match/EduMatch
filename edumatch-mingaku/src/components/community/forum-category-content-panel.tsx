@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, Briefcase, Calendar, FileText, Video } from "lucide-react";
+import { ArrowUpRight, Briefcase, Calendar, FileText, Loader2, Video } from "lucide-react";
 import type { CategoryContentItem } from "@/lib/forum-category-content";
 
 const KIND_META: Record<
@@ -15,15 +16,49 @@ const KIND_META: Record<
 };
 
 export function ForumCategoryContentPanel({
-  items,
+  items: initialItems,
   contentKind,
+  categorySlug,
+  subCategorySlug,
 }: {
   items: CategoryContentItem[];
   contentKind: string;
+  categorySlug?: string;
+  subCategorySlug?: string;
 }) {
-  // community などコンテンツ表示しない種別は描画しない
   const meta = KIND_META[contentKind];
-  if (!meta || items.length === 0) return null;
+  const [items, setItems] = useState(initialItems);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  useEffect(() => {
+    setItems(initialItems);
+  }, [initialItems]);
+
+  useEffect(() => {
+    if (initialItems.length > 0 || !categorySlug || !subCategorySlug || !meta) return;
+
+    let cancelled = false;
+    setLoadingMore(true);
+    const q = new URLSearchParams({ categorySlug, subSlug: subCategorySlug });
+    fetch(`/api/forum/rooms/category-content?${q}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled && Array.isArray(data.items) && data.items.length > 0) {
+          setItems(data.items);
+        }
+      })
+      .catch(console.error)
+      .finally(() => {
+        if (!cancelled) setLoadingMore(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialItems.length, categorySlug, subCategorySlug, meta]);
+
+  if (!meta) return null;
+  if (items.length === 0 && !loadingMore) return null;
 
   const Icon = meta.icon;
   const isExternal = (href: string) => /^https?:\/\//.test(href);
@@ -38,6 +73,9 @@ export function ForumCategoryContentPanel({
             <span className="text-[11px] text-muted-foreground">
               このテーマに紐づくコンテンツ
             </span>
+            {loadingMore && (
+              <Loader2 className="ml-auto h-3.5 w-3.5 animate-spin text-muted-foreground" />
+            )}
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

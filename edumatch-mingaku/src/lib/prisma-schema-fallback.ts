@@ -9,6 +9,14 @@ export function isPrismaMissingColumn(err: unknown): boolean {
   );
 }
 
+export function isPrismaUniqueViolation(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    (err as { code?: string }).code === "P2002"
+  );
+}
+
 type PublishedServiceOptions = {
   memberOnlyPublic?: boolean;
   take?: number;
@@ -245,6 +253,17 @@ export async function createForumRoomCompat(data: {
       select: SAFE_FORUM_ROOM_SELECT,
     });
   } catch (err) {
+    if (isPrismaUniqueViolation(err) && data.categoryId && data.subCategoryId) {
+      const existing = await prisma.forumRoom.findFirst({
+        where: {
+          category_id: data.categoryId,
+          sub_category_id: data.subCategoryId,
+        },
+        select: SAFE_FORUM_ROOM_SELECT,
+      });
+      if (existing) return existing;
+    }
+
     if (!isPrismaMissingColumn(err)) throw err;
 
     if (data.categoryId && data.subCategoryId) {
@@ -273,10 +292,19 @@ export async function createForumRoomCompat(data: {
       `;
     }
 
-    const room = await prisma.forumRoom.findFirst({
+    let room = await prisma.forumRoom.findFirst({
       where: { id: data.id },
       select: SAFE_FORUM_ROOM_SELECT,
     });
+    if (!room && data.categoryId && data.subCategoryId) {
+      room = await prisma.forumRoom.findFirst({
+        where: {
+          category_id: data.categoryId,
+          sub_category_id: data.subCategoryId,
+        },
+        select: SAFE_FORUM_ROOM_SELECT,
+      });
+    }
     if (!room) throw new Error("forum room insert failed");
     return room;
   }

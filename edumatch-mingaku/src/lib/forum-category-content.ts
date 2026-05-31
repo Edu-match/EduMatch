@@ -25,12 +25,10 @@ export type CategoryContentParams = {
 };
 
 /**
- * カテゴリルーム上部に表示する関連コンテンツ。
- * 1) 日次AIスキャンのキャッシュ
- * 2) キャッシュが空ならその場でAI選定（初回・Cron前）
- * 3) 最後の手段としてキーワード一致（旧ロジック）
+ * ページ表示用（高速）: キャッシュ → キーワードフォールバックのみ。
+ * AI 選定は日次 Cron またはクライアントの API 取得で行う。
  */
-export async function getCategoryRoomContent(
+export async function getCategoryRoomContentForPage(
   params: CategoryContentParams
 ): Promise<CategoryContentItem[]> {
   const limit = params.limit ?? 6;
@@ -44,17 +42,48 @@ export async function getCategoryRoomContent(
       limit
     );
     if (cached.length > 0) return cached;
+    return await getCategoryRoomContentKeywordFallback(
+      params.categoryName,
+      params.contentKind,
+      limit
+    );
+  } catch (err) {
+    console.error("[getCategoryRoomContentForPage]", err);
+    return getCategoryRoomContentKeywordFallback(params.categoryName, params.contentKind, limit);
+  }
+}
 
-    const { items } = await refreshCategoryContentCache({
-      categoryId: params.categoryId,
-      categoryName: params.categoryName,
-      categoryDescription: params.categoryDescription,
-      subCategoryId: params.subCategoryId,
-      subCategoryName: params.subCategoryName,
-      contentKind: params.contentKind,
-      limit,
-    });
-    if (items.length > 0) return items;
+/**
+ * カテゴリルーム上部に表示する関連コンテンツ（API・手動同期用）。
+ * allowAiRefresh=true のときキャッシュが空ならその場で AI 選定する。
+ */
+export async function getCategoryRoomContent(
+  params: CategoryContentParams & { allowAiRefresh?: boolean }
+): Promise<CategoryContentItem[]> {
+  const limit = params.limit ?? 6;
+  if (params.contentKind === "community") return [];
+
+  try {
+    const cached = await readCategoryContentCache(
+      params.categoryId,
+      params.subCategoryId,
+      params.contentKind,
+      limit
+    );
+    if (cached.length > 0) return cached;
+
+    if (params.allowAiRefresh) {
+      const { items } = await refreshCategoryContentCache({
+        categoryId: params.categoryId,
+        categoryName: params.categoryName,
+        categoryDescription: params.categoryDescription,
+        subCategoryId: params.subCategoryId,
+        subCategoryName: params.subCategoryName,
+        contentKind: params.contentKind,
+        limit,
+      });
+      if (items.length > 0) return items;
+    }
 
     return await getCategoryRoomContentKeywordFallback(params.categoryName, params.contentKind, limit);
   } catch (err) {

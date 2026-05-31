@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  ArrowLeft,
   Briefcase,
   Calendar,
   FileText,
@@ -114,12 +116,13 @@ export function ForumCategoryExplorer({
 }: {
   initialCategorySlug?: string;
 }) {
-  const router = useRouter();
   const [categories, setCategories] = useState<ForumCategory[]>([]);
   const [subCategories, setSubCategories] = useState<ForumSubCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<ForumCategory | null>(null);
   const [zooming, setZooming] = useState(false);
+  const [pendingSubId, setPendingSubId] = useState<string | null>(null);
+  const router = useRouter();
 
   // データ取得
   useEffect(() => {
@@ -161,18 +164,19 @@ export function ForumCategoryExplorer({
   );
 
   const handleBack = useCallback(() => {
+    setPendingSubId(null);
     setSelected(null);
     router.push("/forum", { scroll: false });
   }, [router]);
 
-  const handleSelectSub = useCallback(
-    (cat: ForumCategory, sub: ForumSubCategory) => {
-      router.push(`/forum/${cat.slug}/${sub.slug}`);
-    },
-    [router]
-  );
-
   const subLayout = useMemo(() => subCategoryLayout(subCategories), [subCategories]);
+
+  useEffect(() => {
+    if (!selected) return;
+    for (const { sub } of subLayout) {
+      router.prefetch(`/forum/${selected.slug}/${sub.slug}`);
+    }
+  }, [selected, subLayout, router]);
 
   return (
     <div>
@@ -189,21 +193,21 @@ export function ForumCategoryExplorer({
       {/* グラフ枠 */}
       <div className="relative overflow-hidden rounded-3xl border bg-gradient-to-b from-muted/30 to-background shadow-sm">
         {/* 右上のコントロール（装飾＋戻る） */}
+        {selected ? (
+          <button
+            type="button"
+            onClick={handleBack}
+            className="absolute left-4 top-4 z-30 flex items-center gap-1.5 rounded-full border bg-background/95 px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm backdrop-blur transition-colors hover:bg-muted"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            大カテゴリ一覧に戻る
+          </button>
+        ) : null}
+
         <div className="absolute right-4 top-4 z-30 flex items-center gap-1 rounded-full border bg-background/90 px-1.5 py-1 shadow-sm backdrop-blur">
-          {selected ? (
-            <button
-              type="button"
-              onClick={handleBack}
-              className="flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted"
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-              概要
-            </button>
-          ) : (
-            <span className="px-2.5 py-1 text-xs font-medium text-muted-foreground">
-              概要
-            </span>
-          )}
+          <span className="px-2.5 py-1 text-xs font-medium text-muted-foreground">
+            {selected ? "サブカテゴリ" : "概要"}
+          </span>
           <span className="mx-0.5 h-4 w-px bg-border" />
           <span className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground/60">
             <Minus className="h-3.5 w-3.5" />
@@ -310,12 +314,19 @@ export function ForumCategoryExplorer({
                         const isCommunity =
                           sub.contentKind === "community" ||
                           sub.slug === "community";
+                        const href = `/forum/${selected.slug}/${sub.slug}`;
+                        const isNavigating = pendingSubId === sub.id;
                         return (
-                          <button
+                          <Link
                             key={sub.id}
-                            type="button"
-                            onClick={() => handleSelectSub(selected, sub)}
-                            className="group absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full text-foreground/80 shadow-[0_10px_24px_-8px_rgba(0,0,0,0.3)] transition-transform duration-300 ease-out hover:scale-105"
+                            href={href}
+                            prefetch
+                            aria-busy={isNavigating}
+                            onClick={() => setPendingSubId(sub.id)}
+                            className={cn(
+                              "group absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full text-foreground/80 shadow-[0_10px_24px_-8px_rgba(0,0,0,0.3)] transition-transform duration-300 ease-out hover:scale-105",
+                              isNavigating && "pointer-events-none scale-95 opacity-80"
+                            )}
                             style={{
                               left: `${x}%`,
                               top: `${y}%`,
@@ -326,11 +337,15 @@ export function ForumCategoryExplorer({
                                 : "rgba(214,200,236,0.92)",
                             }}
                           >
-                            <Icon className="mb-1 h-5 w-5 opacity-70" />
+                            {isNavigating ? (
+                              <Loader2 className="mb-1 h-5 w-5 animate-spin opacity-70" />
+                            ) : (
+                              <Icon className="mb-1 h-5 w-5 opacity-70" />
+                            )}
                             <span className="px-2 text-center text-xs font-semibold leading-tight">
                               {sub.name}
                             </span>
-                          </button>
+                          </Link>
                         );
                       })}
                     </div>

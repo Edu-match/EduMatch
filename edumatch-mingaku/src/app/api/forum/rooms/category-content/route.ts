@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ items: [], contentKind: null });
     }
 
+    const allowAiRefresh = url.searchParams.get("refresh") === "1";
     const items = await getCategoryRoomContent({
       categoryId: category.id,
       categoryName: category.name,
@@ -38,6 +39,7 @@ export async function GET(req: NextRequest) {
       subCategoryId: subCategory.id,
       subCategoryName: subCategory.name,
       contentKind: subCategory.content_kind,
+      allowAiRefresh,
     });
 
     return NextResponse.json({ items, contentKind: subCategory.content_kind });
