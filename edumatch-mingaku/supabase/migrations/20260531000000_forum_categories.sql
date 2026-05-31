@@ -13,6 +13,29 @@
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
+-- app_private は井戸端マイグレーションで作成されるが、単体実行時用にここでも用意
+CREATE SCHEMA IF NOT EXISTS app_private;
+REVOKE ALL ON SCHEMA app_private FROM PUBLIC;
+GRANT USAGE ON SCHEMA app_private TO anon, authenticated;
+
+CREATE OR REPLACE FUNCTION app_private.is_forum_admin()
+RETURNS BOOLEAN
+LANGUAGE SQL
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public."Profile"
+    WHERE id = auth.uid()
+      AND role = 'ADMIN'
+  );
+$$;
+
+REVOKE ALL ON FUNCTION app_private.is_forum_admin() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION app_private.is_forum_admin() TO anon, authenticated;
+
 -- ─── 大カテゴリ ──────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.forum_categories (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
