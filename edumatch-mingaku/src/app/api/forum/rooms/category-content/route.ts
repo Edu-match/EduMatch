@@ -31,10 +31,14 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ items: [], contentKind: null });
     }
 
-    const items = await getCategoryRoomContent(
-      category.name,
-      subCategory.content_kind
-    );
+    const items = await getCategoryRoomContent({
+      categoryId: category.id,
+      categoryName: category.name,
+      categoryDescription: category.description,
+      subCategoryId: subCategory.id,
+      subCategoryName: subCategory.name,
+      contentKind: subCategory.content_kind,
+    });
 
     return NextResponse.json({ items, contentKind: subCategory.content_kind });
   } catch (err) {

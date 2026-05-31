@@ -17,7 +17,6 @@ import {
   Clock,
   Filter,
   Flame,
-  Sparkles,
   TrendingUp,
   Users,
   Zap,
@@ -119,21 +118,11 @@ function RoomCard({ room, isFeatured }: { room: ForumRoom; isFeatured?: boolean 
                 <Zap className="h-2.5 w-2.5" />AIディスカッション
               </span>
             )}
-            {room.aiWeeklyTopicEnabled && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700">
-                <Sparkles className="h-2.5 w-2.5" />AI週次お題
-              </span>
-            )}
           </div>
 
-          <div className="rounded-lg bg-primary/5 px-3.5 py-2.5 border border-primary/10">
-            <p className="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-primary/70">
-              <Sparkles className="h-3 w-3" />今週のお題
-            </p>
-            <p className="text-xs font-medium leading-5 text-foreground line-clamp-2">
-              {room.weeklyTopic}
-            </p>
-          </div>
+          {room.description ? (
+            <p className="text-xs text-muted-foreground line-clamp-2">{room.description}</p>
+          ) : null}
 
           <div className="mt-auto flex items-center justify-between text-xs text-muted-foreground">
             <div className="flex items-center gap-3">
@@ -162,9 +151,7 @@ function RoomCard({ room, isFeatured }: { room: ForumRoom; isFeatured?: boolean 
 type NewRoomDraft = {
   name: string;
   description: string;
-  weeklyTopic: string;
   aiDiscussion: boolean;
-  aiWeeklyTopicEnabled: boolean;
 };
 
 function CreateRoomDialog({
@@ -179,9 +166,7 @@ function CreateRoomDialog({
   const [draft, setDraft] = useState<NewRoomDraft>({
     name: "",
     description: "",
-    weeklyTopic: "",
     aiDiscussion: true,
-    aiWeeklyTopicEnabled: true,
   });
 
   const isValid = draft.name.trim();
@@ -197,9 +182,9 @@ function CreateRoomDialog({
         body: JSON.stringify({
           name: draft.name.trim(),
           description: draft.description.trim(),
-          weeklyTopic: draft.aiWeeklyTopicEnabled ? "" : draft.weeklyTopic.trim(),
+          weeklyTopic: "",
           aiDiscussion: draft.aiDiscussion,
-          aiWeeklyTopicEnabled: draft.aiWeeklyTopicEnabled,
+          aiWeeklyTopicEnabled: false,
         }),
       });
       if (res.ok) {
@@ -208,9 +193,7 @@ function CreateRoomDialog({
         setDraft({
           name: "",
           description: "",
-          weeklyTopic: "",
           aiDiscussion: true,
-          aiWeeklyTopicEnabled: true,
         });
         setOpen(false);
       }
@@ -247,32 +230,6 @@ function CreateRoomDialog({
             <Label>説明文</Label>
             <Textarea rows={2} value={draft.description} onChange={(e) => setDraft((p) => ({ ...p, description: e.target.value }))} className="resize-none" placeholder="この部屋のテーマを簡潔に説明してください" />
           </div>
-          <SettingToggleRow
-            checked={draft.aiWeeklyTopicEnabled}
-            onCheckedChange={(aiWeeklyTopicEnabled) => setDraft((p) => ({ ...p, aiWeeklyTopicEnabled }))}
-            icon={Sparkles}
-            title="AI が週次で「今週のお題」を設定する"
-            description="部屋名と説明をもとに、お題を自動で作成します。"
-            activeClassName="border-sky-300 bg-sky-50"
-            iconClassName={draft.aiWeeklyTopicEnabled ? "text-sky-600" : undefined}
-          />
-
-          {!draft.aiWeeklyTopicEnabled && (
-            <div className="space-y-1.5">
-              <Label>
-                今週のお題{" "}
-                <span className="text-xs text-muted-foreground">（任意・後から設定可）</span>
-              </Label>
-              <Textarea
-                rows={3}
-                value={draft.weeklyTopic}
-                onChange={(e) => setDraft((p) => ({ ...p, weeklyTopic: e.target.value }))}
-                className="resize-none"
-                placeholder="参加者への問いかけを入力してください"
-              />
-            </div>
-          )}
-
           <SettingToggleRow
             checked={draft.aiDiscussion}
             onCheckedChange={(aiDiscussion) => setDraft((p) => ({ ...p, aiDiscussion }))}
@@ -339,7 +296,7 @@ export function ForumListClient() {
     const q = query.trim().toLowerCase();
     return rooms.filter((room) => {
       const inCategory = category === "all" || (ROOM_CATEGORIES[room.id] ?? []).includes(category);
-      const inSearch = !q || room.name.toLowerCase().includes(q) || room.description.toLowerCase().includes(q) || room.weeklyTopic.toLowerCase().includes(q);
+      const inSearch = !q || room.name.toLowerCase().includes(q) || room.description.toLowerCase().includes(q);
       const inActivity = activeOnly ? room.postCount >= 5 : true;
       return inCategory && inSearch && inActivity;
     });

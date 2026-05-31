@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrCreateCategoryRoom } from "@/lib/forum-category-room";
-import { getCategoryRoomContent } from "@/lib/forum-category-content";
-import { FORUM_AI_FACILITATOR_NAME } from "@/lib/forum-constants";
+import { refreshCategoryContentCache } from "@/lib/forum-category-content-ai";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 function verifyCron(req: NextRequest): boolean {
   const secret = process.env.CRON_SECRET?.trim();
@@ -14,14 +13,8 @@ function verifyCron(req: NextRequest): boolean {
   return auth === `Bearer ${secret}`;
 }
 
-const AI_AUTHOR_ROLE = "専門家";
-const AUTO_PREFIX = "【自動追加】";
-
 /**
- * 毎日1回:
- * 1) 各カテゴリ × サブカテゴリ（community除く）のルームを確保
- * 2) DBの関連コンテンツ候補を取得
- * 3) 未投稿のものだけAI名義でフォーラム投稿へ投入
+ * 毎日1回: DB をスキャンし、各カテゴリ×サブカテゴリに AI で関連コンテンツを選定してキャッシュする。
  */
 export async function GET(req: NextRequest) {
   if (!verifyCron(req)) {
@@ -33,7 +26,7 @@ export async function GET(req: NextRequest) {
       prisma.forumCategory.findMany({
         where: { is_active: true },
         orderBy: [{ sort_order: "asc" }, { created_at: "asc" }],
-        select: { id: true, name: true, slug: true },
+        select: { id: true, name: true, slug: true, description: true },
       }),
       prisma.forumSubCategory.findMany({
         where: { is_active: true, content_kind: { not: "community" } },
@@ -45,9 +38,8 @@ export async function GET(req: NextRequest) {
     const results: {
       categorySlug: string;
       subSlug: string;
-      roomId?: string;
-      inserted: number;
-      skipped: number;
+      itemCount: number;
+      cached: boolean;
       error?: string;
     }[] = [];
 
@@ -56,53 +48,25 @@ export async function GET(req: NextRequest) {
         const row = {
           categorySlug: category.slug,
           subSlug: sub.slug,
-          roomId: undefined as string | undefined,
-          inserted: 0,
-          skipped: 0,
+          itemCount: 0,
+          cached: false,
           error: undefined as string | undefined,
         };
 
         try {
-          const roomResult = await getOrCreateCategoryRoom(category.slug, sub.slug);
-          if (!roomResult) {
-            row.error = "room-not-available";
-            results.push(row);
-            continue;
-          }
-          row.roomId = roomResult.room.id;
+          await getOrCreateCategoryRoom(category.slug, sub.slug);
 
-          const items = await getCategoryRoomContent(
-            category.name,
-            sub.content_kind,
-            6
-          );
+          const { items, cached } = await refreshCategoryContentCache({
+            categoryId: category.id,
+            categoryName: category.name,
+            categoryDescription: category.description,
+            subCategoryId: sub.id,
+            subCategoryName: sub.name,
+            contentKind: sub.content_kind,
+          });
 
-          for (const item of items) {
-            const existing = await prisma.forumPost.findFirst({
-              where: {
-                room_id: roomResult.room.id,
-                author_name: FORUM_AI_FACILITATOR_NAME,
-                related_article_url: item.href,
-              },
-              select: { id: true },
-            });
-
-            if (existing) {
-              row.skipped += 1;
-              continue;
-            }
-
-            await prisma.forumPost.create({
-              data: {
-                room_id: roomResult.room.id,
-                author_name: FORUM_AI_FACILITATOR_NAME,
-                author_role: AI_AUTHOR_ROLE,
-                body: `${AUTO_PREFIX} ${item.title}\n\n${item.description || ""}`,
-                related_article_url: item.href,
-              },
-            });
-            row.inserted += 1;
-          }
+          row.itemCount = items.length;
+          row.cached = cached;
         } catch (e) {
           row.error = e instanceof Error ? e.message : String(e);
         }
@@ -111,14 +75,12 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const insertedTotal = results.reduce((n, r) => n + r.inserted, 0);
-    const skippedTotal = results.reduce((n, r) => n + r.skipped, 0);
+    const totalItems = results.reduce((n, r) => n + r.itemCount, 0);
     const failed = results.filter((r) => !!r.error).length;
 
     return NextResponse.json({
       processedPairs: results.length,
-      insertedTotal,
-      skippedTotal,
+      totalItems,
       failed,
       results,
     });
@@ -127,4 +89,3 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
-

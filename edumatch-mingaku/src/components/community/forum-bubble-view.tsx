@@ -17,7 +17,6 @@ import {
   Move,
   Plus,
   RotateCcw,
-  Sparkles,
   Users,
   X,
   Zap,
@@ -184,8 +183,8 @@ function extractKeywords(text: string): Set<string> {
 }
 
 function similarityScore(a: ForumRoom, b: ForumRoom): number {
-  const aText = `${a.name} ${a.description} ${a.weeklyTopic}`;
-  const bText = `${b.name} ${b.description} ${b.weeklyTopic}`;
+  const aText = `${a.name} ${a.description}`;
+  const bText = `${b.name} ${b.description}`;
   const aNormalized = normalizeRoomText(aText);
   const bNormalized = normalizeRoomText(bText);
   const aKw = extractKeywords(aText);
@@ -348,7 +347,7 @@ function computeGraphPoints(
 
 function estimateNodeSize(room: ForumRoom, detailLevel: ZoomDetailLevel): { width: number; height: number } {
   const visibleNameLength = Math.min(room.name.length, 18);
-  const topicLength = (room.weeklyTopic || room.description).length;
+  const topicLength = (room.description || room.name).length;
 
   switch (detailLevel) {
     case "overview":
@@ -647,12 +646,6 @@ function GraphNode({
                   AI
                 </span>
               )}
-              {room.aiWeeklyTopicEnabled && (
-                <span className="inline-flex items-center gap-0.5 text-sky-600">
-                  <Sparkles className="h-2.5 w-2.5" />
-                  週次お題
-                </span>
-              )}
             </span>
           )}
         </span>
@@ -667,7 +660,7 @@ function GraphNode({
       {!isOverview && (
         <span className="absolute left-1/2 top-[calc(100%+8px)] hidden min-w-max -translate-x-1/2 rounded-xl border border-white/80 bg-white/95 px-3 py-2 text-[11px] text-slate-500 shadow-[0_20px_50px_rgba(15,23,42,0.15)] backdrop-blur-xl group-hover:block">
           <span className="mb-1 block max-w-[220px] text-xs font-semibold text-slate-950 line-clamp-1">
-            {room.weeklyTopic || room.description}
+            {room.description || room.name}
           </span>
           <span className="inline-flex items-center gap-1">
             <MessageSquare className="h-3 w-3" />
@@ -1002,7 +995,7 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
         {detailLevel === "detail" && focusedRoom && (
           <div className="absolute bottom-4 right-4 z-30 w-[320px] rounded-2xl border border-slate-200/80 bg-white/92 p-4 text-xs text-slate-600 shadow-[0_20px_48px_rgba(15,23,42,0.12)] backdrop-blur-xl">
             <p className="text-sm font-semibold text-slate-900">{focusedRoom.name}</p>
-            <p className="mt-1 line-clamp-2">{focusedRoom.weeklyTopic || focusedRoom.description}</p>
+            <p className="mt-1 line-clamp-2">{focusedRoom.description || focusedRoom.name}</p>
             <div className="mt-2 flex items-center gap-3 text-[11px] text-slate-500">
               <span className="inline-flex items-center gap-1">
                 <MessageSquare className="h-3 w-3" />
@@ -1016,12 +1009,6 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
                 <span className="inline-flex items-center gap-1 text-violet-600">
                   <Zap className="h-3 w-3" />
                   AI
-                </span>
-              )}
-              {focusedRoom.aiWeeklyTopicEnabled && (
-                <span className="inline-flex items-center gap-1 text-sky-600">
-                  <Sparkles className="h-3 w-3" />
-                  週次お題
                 </span>
               )}
             </div>

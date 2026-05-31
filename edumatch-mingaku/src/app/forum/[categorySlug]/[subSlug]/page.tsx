@@ -35,7 +35,14 @@ export default async function ForumCategoryRoomPage({
   const items =
     subCategory.contentKind === "community"
       ? []
-      : await getCategoryRoomContent(category.name, subCategory.contentKind);
+      : await getCategoryRoomContent({
+          categoryId: category.id,
+          categoryName: category.name,
+          categoryDescription: category.description,
+          subCategoryId: subCategory.id,
+          subCategoryName: subCategory.name,
+          contentKind: subCategory.contentKind,
+        });
 
   return (
     <ForumRoomClientDynamic

@@ -5,10 +5,6 @@
   "outputDirectory": ".next",
   "crons": [
     {
-      "path": "/api/cron/forum-weekly-topics",
-      "schedule": "0 15 * * 0"
-    },
-    {
       "path": "/api/cron/forum-category-content-sync",
       "schedule": "10 15 * * *"
     }

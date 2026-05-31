@@ -438,6 +438,7 @@ model ForumCategory {
   created_at  DateTime    @default(now()) @db.Timestamptz(6)
   updated_at  DateTime    @updatedAt @db.Timestamptz(6)
   rooms       ForumRoom[]
+  contentCache ForumCategoryContentCache[]
 
   @@map("forum_categories")
 }
@@ -454,8 +455,32 @@ model ForumSubCategory {
   created_at   DateTime    @default(now()) @db.Timestamptz(6)
   updated_at   DateTime    @updatedAt @db.Timestamptz(6)
   rooms        ForumRoom[]
+  contentCache ForumCategoryContentCache[]
 
   @@map("forum_sub_categories")
+}
+
+/// AI日次スキャンで選んだカテゴリ×サブカテゴリ向けコンテンツ
+model ForumCategoryContentCache {
+  id              String           @id @default(uuid()) @db.Uuid
+  category_id     String           @db.Uuid
+  sub_category_id String           @db.Uuid
+  content_kind    String
+  source_type     String
+  source_id       String
+  title           String
+  description     String           @default("")
+  thumbnail_url   String?
+  href            String
+  meta            String?
+  rank_order      Int              @default(0)
+  refreshed_at    DateTime         @default(now()) @db.Timestamptz(6)
+  category        ForumCategory    @relation(fields: [category_id], references: [id], onDelete: Cascade)
+  subCategory     ForumSubCategory @relation(fields: [sub_category_id], references: [id], onDelete: Cascade)
+
+  @@unique([category_id, sub_category_id, source_type, source_id], map: "forum_category_content_cache_unique")
+  @@index([category_id, sub_category_id, content_kind, rank_order], map: "forum_category_content_cache_lookup_idx")
+  @@map("forum_category_content_cache")
 }
 
 model ForumRoom {
