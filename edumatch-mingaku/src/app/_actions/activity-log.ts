@@ -19,7 +19,13 @@ export type ActivityTargetType =
   | "SITE_PAGE"
   | "EVENT"
   | "SITE_UPDATE"
-  | "FORUM_POST";
+  | "FORUM_POST"
+  | "FORUM_ROOM"
+  | "AI_KENTEI_QUESTION"
+  | "AI_CHAT_PROMPT"
+  | "HOME_SLIDER"
+  | "HOME_TOPICS"
+  | "TEXT_OVERRIDE";
 
 export interface ActivityLogEntry {
   id: string;

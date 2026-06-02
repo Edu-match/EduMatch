@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentProfile } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logActivity } from "@/app/_actions/activity-log";
 
 export const dynamic = "force-dynamic";
 
@@ -80,6 +81,15 @@ export async function POST(req: NextRequest) {
         updated_by: profile.id,
       },
     });
+    void logActivity({
+      actorId: profile.id,
+      actorName: profile.name,
+      action: "UPDATE",
+      targetType: "TEXT_OVERRIDE",
+      targetId: `${pathname}:${textKey}`,
+      targetTitle: pathname,
+      detail: original ? `文言を変更: ${original.slice(0, 80)}` : "文言を変更",
+    });
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("POST /api/text-overrides error:", e);
@@ -111,6 +121,15 @@ export async function DELETE(req: NextRequest) {
   try {
     await prisma.textOverride.deleteMany({
       where: { pathname, text_key: textKey },
+    });
+    void logActivity({
+      actorId: profile.id,
+      actorName: profile.name,
+      action: "DELETE",
+      targetType: "TEXT_OVERRIDE",
+      targetId: `${pathname}:${textKey}`,
+      targetTitle: pathname,
+      detail: "文言上書きを削除",
     });
     return NextResponse.json({ success: true });
   } catch (e) {

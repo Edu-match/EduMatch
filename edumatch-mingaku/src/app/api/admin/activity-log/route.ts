@@ -34,7 +34,10 @@ export async function GET(req: NextRequest) {
       orderBy: { created_at: "desc" },
       take: limit,
       skip: offset,
-      include: { _count: { select: { comments: true } } },
+      include: {
+        actor: { select: { name: true } },
+        _count: { select: { comments: true } },
+      },
     }),
     prisma.activityLog.count({ where }),
   ]);
@@ -43,7 +46,7 @@ export async function GET(req: NextRequest) {
     logs: logs.map((l) => ({
       id: l.id,
       actor_id: l.actor_id,
-      actor_name: l.actor_name,
+      actor_name: l.actor?.name ?? l.actor_name,
       action: l.action,
       target_type: l.target_type,
       target_id: l.target_id,

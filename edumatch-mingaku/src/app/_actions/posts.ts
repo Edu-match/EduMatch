@@ -352,7 +352,7 @@ export async function updatePost(
     // 記事の所有者を確認
     const existingPost = await prisma.post.findUnique({
       where: { id },
-      select: { provider_id: true },
+      select: { provider_id: true, title: true },
     });
     
     if (!existingPost) {
@@ -361,7 +361,7 @@ export async function updatePost(
     
     const profile = await prisma.profile.findUnique({
       where: { id: user.id },
-      select: { role: true },
+      select: { role: true, name: true },
     });
     const isAdmin = profile?.role === ("ADMIN" as Role);
     if (existingPost.provider_id !== user.id && !isAdmin) {
@@ -413,15 +413,26 @@ export async function updatePost(
       updateData.home_news_tab = input.homeNewsTab;
     }
 
-    await prisma.post.update({
+    const updatedPost = await prisma.post.update({
       where: { id },
       data: updateData,
+      select: { title: true },
     });
 
     revalidatePath("/articles");
     revalidatePath(`/articles/${id}`);
     revalidatePath("/provider-dashboard");
     revalidatePath("/");
+
+    await logActivity({
+      actorId: user.id,
+      actorName: profile?.name ?? user.email?.split("@")[0] ?? "ユーザー",
+      action: input.publishType && input.publishType !== "draft" ? "SUBMIT" : "UPDATE",
+      targetType: "POST",
+      targetId: id,
+      targetTitle: updatedPost.title || existingPost.title,
+      detail: input.publishType && input.publishType !== "draft" ? "承認申請" : undefined,
+    });
     
     return { success: true, postId: id };
   } catch (error) {

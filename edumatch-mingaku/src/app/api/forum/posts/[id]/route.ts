@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentProfile } from "@/lib/auth";
+import { logActivity } from "@/app/_actions/activity-log";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,22 @@ export async function PATCH(
       },
     });
 
+    const action = isHidden === true ? "HIDE" : isHidden === false ? "SHOW" : "UPDATE";
+    const detail = isPinned !== undefined
+      ? (isPinned ? "投稿を注目に設定" : "投稿の注目を解除")
+      : isHidden !== undefined
+        ? (isHidden ? "投稿を非表示" : "投稿を再表示")
+        : "投稿設定を更新";
+    void logActivity({
+      actorId: profile.id,
+      actorName: profile.name,
+      action,
+      targetType: "FORUM_POST",
+      targetId: id,
+      targetTitle: post.body.slice(0, 80),
+      detail,
+    });
+
     return NextResponse.json({
       post: {
         id: post.id,
@@ -55,7 +72,16 @@ export async function DELETE(
     }
 
     const { id } = await params;
+    const post = await prisma.forumPost.findUnique({ where: { id }, select: { body: true } });
     await prisma.forumPost.delete({ where: { id } });
+    void logActivity({
+      actorId: profile.id,
+      actorName: profile.name,
+      action: "DELETE",
+      targetType: "FORUM_POST",
+      targetId: id,
+      targetTitle: post?.body.slice(0, 80) ?? id,
+    });
 
     return NextResponse.json({ ok: true });
   } catch (err) {

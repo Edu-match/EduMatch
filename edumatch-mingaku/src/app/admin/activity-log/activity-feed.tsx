@@ -51,6 +51,9 @@ const ACTION_META: Record<string, { label: string; icon: React.ElementType; bg: 
 const TARGET_LABELS: Record<string, string> = {
   POST: "記事", SERVICE: "サービス", SITE_PAGE: "固定ページ",
   EVENT: "イベント", SITE_UPDATE: "運営記事", FORUM_POST: "井戸端会議投稿",
+  FORUM_ROOM: "井戸端会議ルーム", AI_KENTEI_QUESTION: "AI検定問題",
+  AI_CHAT_PROMPT: "AIチャット設定", HOME_SLIDER: "トップスライダー",
+  HOME_TOPICS: "トップトピックス", TEXT_OVERRIDE: "文言編集",
 };
 
 const ACTION_LABELS: Record<string, string> = {
@@ -65,6 +68,7 @@ function getTargetHref(type: string, id: string): string | null {
     case "SERVICE": return `/services/${id}`;
     case "EVENT": return `/events/${id}`;
     case "SITE_UPDATE": return `/site-updates/${id}`;
+    case "FORUM_ROOM": return `/forum/${id}`;
     default: return null;
   }
 }

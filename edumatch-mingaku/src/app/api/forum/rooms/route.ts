@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, getCurrentProfile } from "@/lib/auth";
 import { createAiWeeklyTopicForRoom } from "@/lib/forum-weekly-topic-ai";
+import { logActivity } from "@/app/_actions/activity-log";
 
 export const dynamic = "force-dynamic";
 
@@ -134,6 +135,17 @@ export async function POST(req: NextRequest) {
 
     const refreshed = await prisma.forumRoom.findUnique({ where: { id: room.id } });
     const weekly = refreshed?.weekly_topic ?? room.weekly_topic;
+
+    if (profile.role === "ADMIN") {
+      void logActivity({
+        actorId: profile.id,
+        actorName: profile.name,
+        action: "CREATE",
+        targetType: "FORUM_ROOM",
+        targetId: room.id,
+        targetTitle: room.name,
+      });
+    }
 
     return NextResponse.json({
       room: {
