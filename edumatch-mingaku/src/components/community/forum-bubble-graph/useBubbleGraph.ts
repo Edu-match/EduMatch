@@ -7,7 +7,6 @@ import {
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
-  type WheelEvent as ReactWheelEvent,
 } from "react";
 import type { BubbleGraphNode, DragOffset, GraphPoint } from "./types";
 import {
@@ -20,16 +19,7 @@ import {
 const MAP_ZOOM_MIN = 0.72;
 const MAP_ZOOM_MAX = 1.75;
 const MAP_ZOOM_STEP = 0.1;
-
-type DragSession = {
-  id: string;
-  startX: number;
-  startY: number;
-  originX: number;
-  originY: number;
-  moved: boolean;
-  pointerId: number;
-};
+const PAN_CLICK_THRESHOLD_PX = 4;
 
 type PanSession = {
   startX: number;
@@ -37,32 +27,73 @@ type PanSession = {
   originX: number;
   originY: number;
   pointerId: number;
+  moved: boolean;
 };
 
-function readSavedLayout(key: string): Record<string, DragOffset> {
-  if (typeof window === "undefined") return {};
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw) as Record<string, DragOffset>;
-    return Object.fromEntries(
-      Object.entries(parsed).filter(
-        ([, v]) => typeof v?.x === "number" && typeof v?.y === "number"
-      )
-    );
-  } catch {
-    return {};
+type PendingBubbleClick = {
+  href?: string;
+  onActivate?: () => void;
+};
+
+type DriftParticle = {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  radius: number;
+};
+
+function hashSeed(id: string, index: number): number {
+  let h = index * 2654435761;
+  for (let i = 0; i < id.length; i += 1) {
+    h = (h ^ id.charCodeAt(i)) * 1597334677;
   }
+  return Math.abs(h);
+}
+
+function initDriftParticle(id: string, index: number): DriftParticle {
+  const seed = hashSeed(id, index);
+  const angle = ((seed % 360) * Math.PI) / 180;
+  const speed = 6 + (seed % 12);
+  const radius = 48 + (seed % 32);
+  return {
+    x: ((seed % 100) / 100 - 0.5) * radius * 0.3,
+    y: (((seed >> 8) % 100) / 100 - 0.5) * radius * 0.3,
+    vx: Math.cos(angle) * speed,
+    vy: Math.sin(angle) * speed,
+    radius,
+  };
+}
+
+function stepDrift(p: DriftParticle, dt: number): DriftParticle {
+  let { x, y, vx, vy, radius } = p;
+  x += vx * dt;
+  y += vy * dt;
+  if (x > radius) {
+    x = radius;
+    vx = -Math.abs(vx);
+  } else if (x < -radius) {
+    x = -radius;
+    vx = Math.abs(vx);
+  }
+  if (y > radius) {
+    y = radius;
+    vy = -Math.abs(vy);
+  } else if (y < -radius) {
+    y = -radius;
+    vy = Math.abs(vy);
+  }
+  return { x, y, vx, vy, radius };
 }
 
 export function useBubbleGraph(options: {
   nodes: BubbleGraphNode[];
-  layoutStorageKey: string;
   layoutMode: "category" | "subcategory";
   /** コミュニティから他サブへのスポーク（視覚用） */
   spokeFromPrimary?: boolean;
+  onBubbleNavigate?: (href: string) => void;
 }) {
-  const { nodes, layoutStorageKey, layoutMode, spokeFromPrimary } = options;
+  const { nodes, layoutMode, spokeFromPrimary, onBubbleNavigate } = options;
   const nodeIds = useMemo(() => nodes.map((n) => n.id).join(","), [nodes]);
 
   const graphDimensions = useMemo(
@@ -85,30 +116,17 @@ export function useBubbleGraph(options: {
     );
   }, [nodeIds, layoutMode, nodes, graphDimensions.height, graphDimensions.width]);
 
-  const [dragOffsets, setDragOffsets] = useState<Record<string, DragOffset>>(() =>
-    readSavedLayout(layoutStorageKey)
-  );
-  const [scale, setScale] = useState(() =>
-    nodes.length >= 10 ? 0.82 : 0.9
-  );
+  const [scale, setScale] = useState(() => (nodes.length >= 10 ? 0.82 : 0.9));
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const [draggingId, setDraggingId] = useState<string | null>(null);
   const [isPanning, setIsPanning] = useState(false);
-  const [floatPhase, setFloatPhase] = useState(0);
+  const [floatOffsets, setFloatOffsets] = useState<Record<string, DragOffset>>({});
   const [reduceMotion, setReduceMotion] = useState(false);
 
-  const dragSessionRef = useRef<DragSession | null>(null);
   const panSessionRef = useRef<PanSession | null>(null);
-  const dragBlockRef = useRef(false);
-
-  useEffect(() => {
-    setDragOffsets(readSavedLayout(layoutStorageKey));
-  }, [layoutStorageKey]);
-
-  useEffect(() => {
-    localStorage.setItem(layoutStorageKey, JSON.stringify(dragOffsets));
-  }, [dragOffsets, layoutStorageKey]);
+  const pendingClickRef = useRef<PendingBubbleClick | null>(null);
+  const driftRef = useRef<Record<string, DriftParticle>>({});
+  const lastFrameTimeRef = useRef<number | null>(null);
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -119,135 +137,137 @@ export function useBubbleGraph(options: {
   }, []);
 
   useEffect(() => {
-    if (reduceMotion || draggingId) return;
-    let frame = 0;
+    driftRef.current = {};
+    lastFrameTimeRef.current = null;
+    setFloatOffsets({});
+  }, [nodeIds]);
+
+  useEffect(() => {
+    if (reduceMotion || isPanning || nodes.length === 0) {
+      setFloatOffsets({});
+      return;
+    }
+
     let raf = 0;
-    const tick = () => {
-      frame += 1;
-      setFloatPhase(frame * 0.018);
+    const tick = (now: number) => {
+      const last = lastFrameTimeRef.current ?? now;
+      lastFrameTimeRef.current = now;
+      const dt = Math.min(0.05, (now - last) / 1000);
+
+      const next: Record<string, DragOffset> = {};
+      for (let i = 0; i < nodes.length; i += 1) {
+        const node = nodes[i];
+        if (!driftRef.current[node.id]) {
+          driftRef.current[node.id] = initDriftParticle(node.id, i);
+        }
+        const stepped = stepDrift(driftRef.current[node.id], dt);
+        driftRef.current[node.id] = stepped;
+        next[node.id] = { x: stepped.x, y: stepped.y };
+      }
+      setFloatOffsets(next);
       raf = requestAnimationFrame(tick);
     };
+
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [reduceMotion, draggingId]);
+  }, [reduceMotion, isPanning, nodes, nodeIds]);
 
   const applyZoom = useCallback((next: number) => {
     setScale((s) => Math.min(MAP_ZOOM_MAX, Math.max(MAP_ZOOM_MIN, next)));
   }, []);
 
-  const handleWheelZoom = useCallback(
-    (event: ReactWheelEvent) => {
-      event.preventDefault();
-      const delta = event.deltaY > 0 ? -MAP_ZOOM_STEP : MAP_ZOOM_STEP;
-      applyZoom(scale + delta);
+  const resolvePendingClick = useCallback(
+    (target: EventTarget | null) => {
+      const el = target instanceof HTMLElement ? target.closest("[data-bubble-id]") : null;
+      if (!el) {
+        pendingClickRef.current = null;
+        return;
+      }
+      const id = el.getAttribute("data-bubble-id");
+      const node = nodes.find((n) => n.id === id);
+      if (!node) {
+        pendingClickRef.current = null;
+        return;
+      }
+      pendingClickRef.current = {
+        href: node.href,
+        onActivate: node.onActivate,
+      };
     },
-    [applyZoom, scale]
+    [nodes]
   );
 
-  const handleGraphPanStart = useCallback(
+  const firePendingClick = useCallback(() => {
+    const pending = pendingClickRef.current;
+    pendingClickRef.current = null;
+    if (!pending) return;
+    if (pending.href) {
+      onBubbleNavigate?.(pending.href);
+    } else {
+      pending.onActivate?.();
+    }
+  }, [onBubbleNavigate]);
+
+  const handleViewportPanStart = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
-      if (event.button !== 0 || draggingId) return;
+      if (event.button !== 0) return;
+      resolvePendingClick(event.target);
       panSessionRef.current = {
         startX: event.clientX,
         startY: event.clientY,
         originX: pan.x,
         originY: pan.y,
         pointerId: event.pointerId,
+        moved: false,
       };
       setIsPanning(true);
       event.currentTarget.setPointerCapture(event.pointerId);
     },
-    [draggingId, pan]
+    [pan, resolvePendingClick]
   );
 
-  const handleGraphPanMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+  const handleViewportPanMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     const session = panSessionRef.current;
-    if (!session) return;
-    setPan({
-      x: session.originX + event.clientX - session.startX,
-      y: session.originY + event.clientY - session.startY,
-    });
-  }, []);
-
-  const handleGraphPanEnd = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    const session = panSessionRef.current;
-    if (!session) return;
-    if (event.currentTarget.hasPointerCapture(session.pointerId)) {
-      event.currentTarget.releasePointerCapture(session.pointerId);
-    }
-    panSessionRef.current = null;
-    setIsPanning(false);
-  }, []);
-
-  const consumeDragBlock = useCallback(() => {
-    if (!dragBlockRef.current) return false;
-    dragBlockRef.current = false;
-    return true;
-  }, []);
-
-  const handleNodeDragStart = useCallback(
-    (id: string, event: ReactPointerEvent) => {
-      event.stopPropagation();
-      dragBlockRef.current = false;
-      const origin = dragOffsets[id] ?? { x: 0, y: 0 };
-      dragSessionRef.current = {
-        id,
-        startX: event.clientX,
-        startY: event.clientY,
-        originX: origin.x,
-        originY: origin.y,
-        moved: false,
-        pointerId: event.pointerId,
-      };
-      setDraggingId(id);
-      (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
-    },
-    [dragOffsets]
-  );
-
-  const handleNodeDragMove = useCallback((event: ReactPointerEvent) => {
-    const session = dragSessionRef.current;
     if (!session) return;
     const dx = event.clientX - session.startX;
     const dy = event.clientY - session.startY;
-    if (Math.hypot(dx, dy) > 4) session.moved = true;
-    setDragOffsets((prev) => ({
-      ...prev,
-      [session.id]: {
-        x: session.originX + dx / scale,
-        y: session.originY + dy / scale,
-      },
-    }));
-  }, [scale]);
-
-  const handleNodeDragEnd = useCallback((event: ReactPointerEvent) => {
-    const session = dragSessionRef.current;
-    if (!session) return;
-    if ((event.currentTarget as HTMLElement).hasPointerCapture(session.pointerId)) {
-      (event.currentTarget as HTMLElement).releasePointerCapture(session.pointerId);
+    if (!session.moved && Math.hypot(dx, dy) > PAN_CLICK_THRESHOLD_PX) {
+      session.moved = true;
+      pendingClickRef.current = null;
     }
-    if (session.moved) dragBlockRef.current = true;
-    dragSessionRef.current = null;
-    setDraggingId(null);
+    setPan({
+      x: session.originX + dx,
+      y: session.originY + dy,
+    });
   }, []);
 
+  const handleViewportPanEnd = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      const session = panSessionRef.current;
+      if (!session) return;
+      if (event.currentTarget.hasPointerCapture(session.pointerId)) {
+        event.currentTarget.releasePointerCapture(session.pointerId);
+      }
+      const wasClick = !session.moved;
+      panSessionRef.current = null;
+      setIsPanning(false);
+      if (wasClick) firePendingClick();
+      else pendingClickRef.current = null;
+    },
+    [firePendingClick]
+  );
+
   const resetLayout = useCallback(() => {
-    setDragOffsets({});
     setPan({ x: 0, y: 0 });
     setScale(nodes.length >= 10 ? 0.82 : 0.9);
+    driftRef.current = {};
+    lastFrameTimeRef.current = null;
+    setFloatOffsets({});
   }, [nodes.length]);
 
   const getFloatOffset = useCallback(
-    (nodeId: string, index: number): DragOffset => {
-      if (reduceMotion || draggingId) return { x: 0, y: 0 };
-      const amp = 5;
-      const phase = index * 1.3 + nodeId.charCodeAt(0) * 0.01;
-      return {
-        x: Math.sin(floatPhase + phase) * amp,
-        y: Math.cos(floatPhase * 0.85 + phase) * amp * 0.7,
-      };
-    },
-    [reduceMotion, draggingId, floatPhase]
+    (nodeId: string): DragOffset => floatOffsets[nodeId] ?? { x: 0, y: 0 },
+    [floatOffsets]
   );
 
   const spokeConnections = useMemo(() => {
@@ -259,29 +279,27 @@ export function useBubbleGraph(options: {
       .map((n) => ({ from: primary.id, to: n.id, weight: 1 }));
   }, [nodes, spokeFromPrimary]);
 
+  const zoomPercent = Math.round(scale * 100);
+
   return {
     basePoints: basePoints as Record<string, GraphPoint>,
     graphDimensions,
-    dragOffsets,
+    floatOffsets,
     scale,
+    zoomPercent,
     pan,
     hoveredId,
     setHoveredId,
-    draggingId,
     isPanning,
     applyZoom,
-    handleWheelZoom,
-    handleGraphPanStart,
-    handleGraphPanMove,
-    handleGraphPanEnd,
-    handleNodeDragStart,
-    handleNodeDragMove,
-    handleNodeDragEnd,
+    handleViewportPanStart,
+    handleViewportPanMove,
+    handleViewportPanEnd,
     resetLayout,
     getFloatOffset,
     spokeConnections,
-    consumeDragBlock,
     MAP_ZOOM_MIN,
     MAP_ZOOM_MAX,
+    MAP_ZOOM_STEP,
   };
 }

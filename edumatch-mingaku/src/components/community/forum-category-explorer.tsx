@@ -275,8 +275,8 @@ export function ForumCategoryExplorer({
         <div className="pointer-events-none absolute bottom-4 left-4 z-20 flex items-center gap-1.5 rounded-full border bg-background/85 px-3 py-1.5 text-[11px] text-muted-foreground shadow-sm backdrop-blur">
           <Move className="h-3.5 w-3.5" />
           {selected
-            ? "バブルをドラッグして移動できます。サブカテゴリを選ぶと部屋に入れます"
-            : "大カテゴリを選ぶとサブカテゴリが開きます。ドラッグ・スクロールで操作できます"}
+            ? "ドラッグでマップを移動。タップでサブカテゴリの部屋へ。右下のボタンで拡大・縮小"
+            : "ドラッグでマップを移動。タップで大カテゴリを選択。右下のボタンで拡大・縮小"}
         </div>
       </div>
     </div>

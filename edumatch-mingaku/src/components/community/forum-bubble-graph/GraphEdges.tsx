@@ -4,14 +4,14 @@ import type { BubbleConnection, DragOffset, GraphPoint } from "./types";
 
 export function GraphEdges({
   points,
-  offsets,
+  floatOffsets,
   connections,
   hoveredId,
   graphWidth,
   graphHeight,
 }: {
   points: Record<string, GraphPoint>;
-  offsets: Record<string, DragOffset>;
+  floatOffsets: Record<string, DragOffset>;
   connections: BubbleConnection[];
   hoveredId: string | null;
   graphWidth: number;
@@ -30,8 +30,8 @@ export function GraphEdges({
         const toPoint = points[to];
         if (!fromPoint || !toPoint) return null;
 
-        const fo = offsets[from] ?? { x: 0, y: 0 };
-        const toO = offsets[to] ?? { x: 0, y: 0 };
+        const fo = floatOffsets[from] ?? { x: 0, y: 0 };
+        const toO = floatOffsets[to] ?? { x: 0, y: 0 };
         const x1 = fromPoint.x + fo.x;
         const y1 = fromPoint.y + fo.y;
         const x2 = toPoint.x + toO.x;
