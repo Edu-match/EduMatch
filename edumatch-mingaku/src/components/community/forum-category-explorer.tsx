@@ -122,8 +122,16 @@ export function ForumCategoryExplorer({
   const categoryConnections = useMemo(
     () =>
       computeCategoryConnectionsFromTags(
-        categories.map((c) => ({ id: c.id, tags: c.tags }))
-      ).map((e) => ({ from: e.from, to: e.to, weight: e.sharedCount })),
+        categories.map((c) => ({
+          id: c.id,
+          tags: c.tags,
+          sortOrder: c.sortOrder,
+        }))
+      ).map((e) => ({
+        from: e.from,
+        to: e.to,
+        weight: e.sharedCount > 0 ? e.sharedCount : 1,
+      })),
     [categories]
   );
 

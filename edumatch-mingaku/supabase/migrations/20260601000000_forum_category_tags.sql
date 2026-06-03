@@ -9,19 +9,19 @@ UPDATE public.forum_categories SET tags = ARRAY['AI', '授業設計', '教育現
 UPDATE public.forum_categories SET tags = ARRAY['教員', '働き方', '教育現場']::TEXT[]
   WHERE slug = 'teacher-work-life';
 
-UPDATE public.forum_categories SET tags = ARRAY['GIGA', 'デジタル化', '端末']::TEXT[]
+UPDATE public.forum_categories SET tags = ARRAY['GIGA', 'デジタル化', '教育現場']::TEXT[]
   WHERE slug = 'giga-digital';
 
-UPDATE public.forum_categories SET tags = ARRAY['多様な学び', '支援', '居場所']::TEXT[]
+UPDATE public.forum_categories SET tags = ARRAY['多様な学び', '支援', '教育現場']::TEXT[]
   WHERE slug = 'diverse-learning';
 
-UPDATE public.forum_categories SET tags = ARRAY['プログラミング', 'STEAM', 'コード']::TEXT[]
+UPDATE public.forum_categories SET tags = ARRAY['プログラミング', 'STEAM', 'デジタル化']::TEXT[]
   WHERE slug = 'programming-education';
 
 UPDATE public.forum_categories SET tags = ARRAY['政策', '国際', '社会']::TEXT[]
   WHERE slug = 'society-policy';
 
-UPDATE public.forum_categories SET tags = ARRAY['SNS', 'メディアリテラシー', '情報モラル']::TEXT[]
+UPDATE public.forum_categories SET tags = ARRAY['SNS', 'メディアリテラシー', '社会']::TEXT[]
   WHERE slug = 'sns-media-literacy';
 
 -- 空タグの行はプレースホルダ（運営が管理画面で差し替え）
