@@ -1111,11 +1111,15 @@ export function ForumRoomClient({
       <section className="relative overflow-hidden border-b bg-gradient-to-br from-primary/8 via-primary/4 to-background">
         <div className="container py-8 md:py-10">
           <Link
-            href={categoryContext ? "/forum" : "/forum"}
+            href={
+              categoryContext
+                ? `/forum?cat=${encodeURIComponent(categoryContext.categorySlug)}`
+                : "/forum"
+            }
             className="mb-5 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
-            {categoryContext ? "大カテゴリの選択に戻る" : "AIUEO 井戸端会議"}
+            {categoryContext ? "サブカテゴリの選択に戻る" : "AIUEO 井戸端会議"}
           </Link>
 
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

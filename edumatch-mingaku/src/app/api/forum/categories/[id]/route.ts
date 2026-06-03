@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentProfile } from "@/lib/auth";
+import { validateForumCategoryTags } from "@/lib/forum-category-tags";
 
 export const dynamic = "force-dynamic";
 
@@ -17,13 +18,23 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await req.json();
-    const { name, description, color, sortOrder, isActive } = body as {
+    const { name, description, color, sortOrder, isActive, tags } = body as {
       name?: string;
       description?: string;
       color?: string;
       sortOrder?: number;
       isActive?: boolean;
+      tags?: string[];
     };
+
+    let tagsData: string[] | undefined;
+    if (tags !== undefined) {
+      const tagCheck = validateForumCategoryTags(tags);
+      if (!tagCheck.ok) {
+        return NextResponse.json({ error: tagCheck.error }, { status: 400 });
+      }
+      tagsData = tagCheck.tags;
+    }
 
     const category = await prisma.forumCategory.update({
       where: { id },
@@ -33,6 +44,7 @@ export async function PATCH(
         ...(color !== undefined ? { color: color.trim() || "#FFB5C8" } : {}),
         ...(sortOrder !== undefined ? { sort_order: sortOrder } : {}),
         ...(isActive !== undefined ? { is_active: isActive } : {}),
+        ...(tagsData !== undefined ? { tags: tagsData } : {}),
       },
     });
 
@@ -45,6 +57,7 @@ export async function PATCH(
         color: category.color,
         sortOrder: category.sort_order,
         isActive: category.is_active,
+        tags: category.tags,
       },
     });
   } catch (err) {

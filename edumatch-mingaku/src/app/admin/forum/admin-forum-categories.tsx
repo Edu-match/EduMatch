@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Loader2, Plus, Save, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,7 @@ type Category = {
   slug: string;
   description: string;
   color: string;
+  tags: string[];
   sortOrder: number;
   isActive: boolean;
 };
@@ -59,6 +61,7 @@ export function AdminForumCategories() {
   const [newCatName, setNewCatName] = useState("");
   const [newCatColor, setNewCatColor] = useState("#FBC9D4");
   const [newCatDesc, setNewCatDesc] = useState("");
+  const [newCatTags, setNewCatTags] = useState(["", "", ""]);
   const [savingCat, setSavingCat] = useState(false);
 
   // 新規サブカテゴリ
@@ -104,6 +107,7 @@ export function AdminForumCategories() {
           description: newCatDesc.trim(),
           color: newCatColor,
           sortOrder: categories.length,
+          tags: newCatTags.map((t) => t.trim()),
         }),
       });
       if (res.ok) {
@@ -111,6 +115,7 @@ export function AdminForumCategories() {
         setCategories((prev) => [...prev, data.category]);
         setNewCatName("");
         setNewCatDesc("");
+        setNewCatTags(["", "", ""]);
       } else {
         const err = await res.json().catch(() => ({} as { error?: string }));
         alert(
@@ -223,7 +228,7 @@ export function AdminForumCategories() {
         <div>
           <h2 className="text-base font-bold">大カテゴリ</h2>
           <p className="text-xs text-muted-foreground">
-            マップビューに表示されるバブル。色はパステルカラーのHEXで指定します。
+            マップビューに表示されるバブル。関連タグは3つ必須（他カテゴリとの接続線に使用）。
           </p>
         </div>
 
@@ -257,7 +262,31 @@ export function AdminForumCategories() {
                   }}
                   className="min-w-[200px] flex-1"
                 />
+                <div className="flex flex-wrap gap-1 min-w-[200px]">
+                  {(cat.tags?.length === 3 ? cat.tags : ["", "", ""]).map((tag, i) => (
+                    <Input
+                      key={`${cat.id}-tag-${i}`}
+                      defaultValue={tag}
+                      placeholder={`タグ${i + 1}`}
+                      className="h-8 w-24 text-xs"
+                      onBlur={(e) => {
+                        const next = [...(cat.tags?.length === 3 ? cat.tags : ["", "", ""])];
+                        next[i] = e.target.value.trim();
+                        if (next.join(",") !== (cat.tags ?? []).join(",")) {
+                          handleUpdateCategory(cat, { tags: next });
+                        }
+                      }}
+                    />
+                  ))}
+                </div>
                 <span className="text-[11px] text-muted-foreground">/{cat.slug}</span>
+                <div className="flex flex-wrap gap-1">
+                  {(cat.tags ?? []).map((t) => (
+                    <Badge key={t} variant="secondary" className="text-[10px]">
+                      {t}
+                    </Badge>
+                  ))}
+                </div>
                 <Button
                   size="sm"
                   variant={cat.isActive ? "outline" : "secondary"}
@@ -299,7 +328,28 @@ export function AdminForumCategories() {
                 className="min-w-[200px]"
               />
             </div>
-            <Button onClick={handleAddCategory} disabled={!newCatName.trim() || savingCat} className="gap-1.5">
+            <div className="flex gap-2">
+              {newCatTags.map((tag, i) => (
+                <div key={i} className="space-y-1">
+                  <Label className="text-xs">タグ{i + 1} *</Label>
+                  <Input
+                    value={tag}
+                    onChange={(e) => {
+                      const next = [...newCatTags];
+                      next[i] = e.target.value;
+                      setNewCatTags(next);
+                    }}
+                    placeholder="例: AI"
+                    className="w-24"
+                  />
+                </div>
+              ))}
+            </div>
+            <Button
+              onClick={handleAddCategory}
+              disabled={!newCatName.trim() || newCatTags.some((t) => !t.trim()) || savingCat}
+              className="gap-1.5"
+            >
               {savingCat ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
               追加
             </Button>

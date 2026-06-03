@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentProfile } from "@/lib/auth";
 import { uniqueForumSlug } from "@/lib/forum-slug";
+import { validateForumCategoryTags } from "@/lib/forum-category-tags";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,7 @@ export async function GET(req: NextRequest) {
         color: c.color,
         sortOrder: c.sort_order,
         isActive: c.is_active,
+        tags: c.tags ?? [],
       })),
     });
   } catch (err) {
@@ -60,15 +62,21 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { name, description, color, sortOrder } = body as {
+    const { name, description, color, sortOrder, tags } = body as {
       name?: string;
       description?: string;
       color?: string;
       sortOrder?: number;
+      tags?: string[];
     };
 
     if (!name?.trim()) {
       return NextResponse.json({ error: "name is required" }, { status: 400 });
+    }
+
+    const tagCheck = validateForumCategoryTags(tags);
+    if (!tagCheck.ok) {
+      return NextResponse.json({ error: tagCheck.error }, { status: 400 });
     }
 
     let slug = uniqueForumSlug(name, "category");
@@ -82,6 +90,7 @@ export async function POST(req: NextRequest) {
         description: description?.trim() ?? "",
         color: color?.trim() || "#FFB5C8",
         sort_order: typeof sortOrder === "number" ? sortOrder : 0,
+        tags: tagCheck.tags,
       },
     });
 
@@ -95,6 +104,7 @@ export async function POST(req: NextRequest) {
           color: category.color,
           sortOrder: category.sort_order,
           isActive: category.is_active,
+          tags: category.tags,
         },
       },
       { status: 201 }

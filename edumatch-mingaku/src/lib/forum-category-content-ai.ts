@@ -117,28 +117,55 @@ export async function fetchContentCandidates(
     }
 
     case "media": {
-      const rows = await prisma.video.findMany({
-        where: { visibility: "PUBLIC" },
-        orderBy: { created_at: "desc" },
-        take: poolSize,
-        select: {
-          id: true,
-          title: true,
-          description: true,
-          youtube_id: true,
-        },
-      });
-      return rows.map((v) => ({
-        sourceType: "video",
-        id: v.id,
-        title: v.title,
-        description: clip(v.description ?? ""),
-        tags: [],
-        href: `/videos/${v.id}`,
-        thumbnailUrl: v.youtube_id
-          ? `https://i.ytimg.com/vi/${v.youtube_id}/hqdefault.jpg`
-          : null,
-      }));
+      try {
+        const rows = await (
+          prisma as unknown as {
+            video: {
+              findMany: (args: {
+                where: { visibility: string };
+                orderBy: { created_at: "desc" };
+                take: number;
+                select: {
+                  id: true;
+                  title: true;
+                  description: true;
+                  youtube_id: true;
+                };
+              }) => Promise<
+                {
+                  id: string;
+                  title: string;
+                  description: string | null;
+                  youtube_id: string | null;
+                }[]
+              >;
+            };
+          }
+        ).video.findMany({
+          where: { visibility: "PUBLIC" },
+          orderBy: { created_at: "desc" },
+          take: poolSize,
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            youtube_id: true,
+          },
+        });
+        return rows.map((v) => ({
+          sourceType: "video" as const,
+          id: v.id,
+          title: v.title,
+          description: clip(v.description ?? ""),
+          tags: [],
+          href: `/videos/${v.id}`,
+          thumbnailUrl: v.youtube_id
+            ? `https://i.ytimg.com/vi/${v.youtube_id}/hqdefault.jpg`
+            : null,
+        }));
+      } catch {
+        return [];
+      }
     }
 
     case "events-info": {
