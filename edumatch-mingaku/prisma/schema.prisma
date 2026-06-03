@@ -10,44 +10,44 @@ datasource db {
 
 /// ログイン共通の1行。一般は VIEWER、事業者は PROVIDER、管理者は ADMIN。拡張は GeneralProfile / CorporateProfile
 model Profile {
-  id                              String            @id @db.Uuid
-  role                            Role              @default(VIEWER)
+  id                              String               @id @db.Uuid
+  role                            Role                 @default(VIEWER)
   name                            String
-  email                           String            @unique
+  email                           String               @unique
   avatar_url                      String?
-  subscription_status             String            @default("INACTIVE")
-  created_at                      DateTime          @default(now())
-  updated_at                      DateTime          @updatedAt
+  subscription_status             String               @default("INACTIVE")
+  created_at                      DateTime             @default(now())
+  updated_at                      DateTime             @updatedAt
   phone                           String?
   bio                             String?
   website                         String?
   subscription_plan               String?
-  stripe_customer_id              String?           @unique
+  stripe_customer_id              String?              @unique
   stripe_subscription_id          String?
   subscription_current_period_end DateTime?
   /// チャット利用履歴（24時間ローリング） [{ mode, at }] at は ISO 文字列
-  chat_usage_events                Json?
+  chat_usage_events               Json?
   /// AIナビゲーター利用規約に同意した日時（null = 未同意）
-  ai_navigator_agreed_at           DateTime?
+  ai_navigator_agreed_at          DateTime?
   /// 関心のあるカテゴリ（複数選択）
-  interests                        String[]  @default([])
+  interests                       String[]             @default([])
   /// 関心カテゴリで「その他」を選んだときの自由記述（最大100文字）
-  interest_other                   String?
+  interest_other                  String?
   /// Table Editor 用: 手動で general | corporate（ジョブで GeneralProfile / CorporateProfile に反映）
-  manual_profile_kind              String?
+  manual_profile_kind             String?
   /// 初回プロフィール設定完了日時。null の間は OAuth 後も登録ウィザードへ誘導する
   onboarding_completed_at         DateTime?
   /// AI検定合格フラグ（井戸端会議・人材マッチングのバッジ表示用）
-  ai_kentei_passed                Boolean           @default(false)
+  ai_kentei_passed                Boolean              @default(false)
   material_requests               MaterialRequest[]
   posts                           Post[]
   reviews                         Review[]
   services                        Service[]
   view_histories                  ViewHistory[]
   chat_sessions                   ChatSession[]
-  in_app_notifications           InAppNotification[]
-  reports_made                    UserReport[] @relation("UserReportReporter")
-  reports_received                UserReport[] @relation("UserReportSubject")
+  in_app_notifications            InAppNotification[]
+  reports_made                    UserReport[]         @relation("UserReportReporter")
+  reports_received                UserReport[]         @relation("UserReportSubject")
   generalProfile                  GeneralProfile?
   corporateProfile                CorporateProfile?
   activity_logs                   ActivityLog[]
@@ -56,6 +56,8 @@ model Profile {
   forum_posts                     ForumPost[]
   forum_replies                   ForumReply[]
   forum_likes                     ForumLike[]
+  videos                          Video[]
+  video_comments                  VideoComment[]
 
   @@index([email])
   @@index([stripe_customer_id])
@@ -63,47 +65,47 @@ model Profile {
 
 /// 一般ユーザー向け拡張（所属・年代など）。Profile と 1:1
 model GeneralProfile {
-  id                 String   @id @db.Uuid
-  profile            Profile  @relation(fields: [id], references: [id], onDelete: Cascade)
-  legal_name         String?
-  age                String?
-  organization       String?
-  organization_type  String?
+  id                          String   @id @db.Uuid
+  profile                     Profile  @relation(fields: [id], references: [id], onDelete: Cascade)
+  legal_name                  String?
+  age                         String?
+  organization                String?
+  organization_type           String?
   /// 所属の種類が「その他」のときの補足（任意）
-  organization_type_other String?
+  organization_type_other     String?
   /// 人材マッチングへの登録可否。公開ページは main では提供しない
   talent_matching_enabled     Boolean  @default(false)
   talent_matching_description String?
   talent_badges               String[] @default([])
   talent_hourly_rate          String?
-  created_at         DateTime @default(now())
-  updated_at         DateTime @updatedAt
+  created_at                  DateTime @default(now())
+  updated_at                  DateTime @updatedAt
 }
 
 /// 企業ユーザー向け拡張（資料請求通知先・事業者住所など）。Profile と 1:1。行があれば投稿・サービス掲載を許可
 model CorporateProfile {
-  id                    String   @id @db.Uuid
-  profile               Profile  @relation(fields: [id], references: [id], onDelete: Cascade)
-  legal_name            String?
+  id                          String   @id @db.Uuid
+  profile                     Profile  @relation(fields: [id], references: [id], onDelete: Cascade)
+  legal_name                  String?
   /// 役職・職種（「その他」の自由記述を含む）
-  job_title             String?
-  organization          String?
-  organization_type     String?
+  job_title                   String?
+  organization                String?
+  organization_type           String?
   /// 所属の種類が「その他」のときの補足（任意）
-  organization_type_other String?
-  notification_email_2  String?
-  notification_email_3  String?
-  address               String?
-  city                  String?
-  postal_code           String?
-  prefecture            String?
+  organization_type_other     String?
+  notification_email_2        String?
+  notification_email_3        String?
+  address                     String?
+  city                        String?
+  postal_code                 String?
+  prefecture                  String?
   /// 人材マッチングへの登録可否。公開ページは main では提供しない
   talent_matching_enabled     Boolean  @default(false)
   talent_matching_description String?
   talent_badges               String[] @default([])
   talent_hourly_rate          String?
-  created_at            DateTime @default(now())
-  updated_at            DateTime @updatedAt
+  created_at                  DateTime @default(now())
+  updated_at                  DateTime @updatedAt
 }
 
 /// サイト内通知（「通知」一覧・マイページ）
@@ -160,9 +162,9 @@ model MaterialRequest {
   delivery_address      String?
   delivery_email        String
   message               String?
-  created_at           DateTime @default(now())
-  service              Service  @relation(fields: [service_id], references: [id], onDelete: Cascade)
-  user                 Profile  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  created_at            DateTime @default(now())
+  service               Service  @relation(fields: [service_id], references: [id], onDelete: Cascade)
+  user                  Profile  @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
   @@index([service_id])
@@ -199,48 +201,48 @@ model ChatSession {
 }
 
 model Service {
-  id                    String            @id @default(cuid())
-  provider_id           String            @db.Uuid
-  title                 String
-  description           String
-  content               String
-  thumbnail_url         String?
-  category              String
-  price_info            String
-  is_published          Boolean           @default(false)
-  created_at            DateTime          @default(now())
-  updated_at            DateTime          @updatedAt
-  images                String[]
-  youtube_url           String?
-  approved_at           DateTime?
-  rejected_at           DateTime?
-  rejection_reason      String?
-  status                PublishStatus     @default(DRAFT)
-  submitted_at          DateTime?
-  is_member_only        Boolean           @default(false)
-  view_count            Int               @default(0)
-  favorite_count        Int               @default(0)
-  request_count         Int               @default(0)
+  id                           String               @id @default(cuid())
+  provider_id                  String               @db.Uuid
+  title                        String
+  description                  String
+  content                      String
+  thumbnail_url                String?
+  category                     String
+  price_info                   String
+  is_published                 Boolean              @default(false)
+  created_at                   DateTime             @default(now())
+  updated_at                   DateTime             @updatedAt
+  images                       String[]
+  youtube_url                  String?
+  approved_at                  DateTime?
+  rejected_at                  DateTime?
+  rejection_reason             String?
+  status                       PublishStatus        @default(DRAFT)
+  submitted_at                 DateTime?
+  is_member_only               Boolean              @default(false)
+  view_count                   Int                  @default(0)
+  favorite_count               Int                  @default(0)
+  request_count                Int                  @default(0)
   /// サービス個別の表示順（小さいほど先に表示）
-  display_order         Int               @default(999)
-  tags                  String[]          @default([])
+  display_order                Int                  @default(999)
+  tags                         String[]             @default([])
   /// 表示順（Supabase でプルダウン: プレミアム/スタンダード/ベーシック/その他/なし）
-  sort_order            ServiceSortOrderTier @default(NONE)
+  sort_order                   ServiceSortOrderTier @default(NONE)
   /// 表示用提供者名。未設定時は provider.name
-  provider_display_name String?
+  provider_display_name        String?
   /// 表示用提供者アイコン。未設定時は provider.avatar_url
-  provider_display_avatar_url String?
+  provider_display_avatar_url  String?
   /// WooCommerce product (post) ID。XML とのマッチ・再インポート用
-  wp_product_id         Int?
+  wp_product_id                Int?
   /// 口コミ数（非正規化キャッシュ）
-  review_count          Int               @default(0)
+  review_count                 Int                  @default(0)
   /// サービス詳細で資料請求ボタンを表示するか
-  show_material_request_button Boolean    @default(true)
+  show_material_request_button Boolean              @default(true)
   /// 資料請求通知先メール（サービス単位・任意）。1件以上設定時は provider.email には送らない
-  request_notification_emails String[]    @default([])
-  material_requests     MaterialRequest[]
-  reviews               Review[]
-  provider              Profile           @relation(fields: [provider_id], references: [id], onDelete: Cascade)
+  request_notification_emails  String[]             @default([])
+  material_requests            MaterialRequest[]
+  reviews                      Review[]
+  provider                     Profile              @relation(fields: [provider_id], references: [id], onDelete: Cascade)
 
   @@index([provider_id])
   @@index([category])
@@ -327,18 +329,18 @@ model SitePage {
 
 /// 運営情報（サイト更新情報）。WordPress インポートまたは手動登録。
 model SiteUpdate {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  title           String
-  body            String   @default("")
-  excerpt         String?
-  published_at    DateTime @db.Timestamptz(6)
-  link            String?
-  wp_post_id      Int?     @unique
-  thumbnail_url   String?
-  category        String?
-  show_in_slider  Boolean  @default(false)
-  created_at      DateTime @default(now()) @db.Timestamptz(6)
-  updated_at      DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title          String
+  body           String   @default("")
+  excerpt        String?
+  published_at   DateTime @db.Timestamptz(6)
+  link           String?
+  wp_post_id     Int?     @unique
+  thumbnail_url  String?
+  category       String?
+  show_in_slider Boolean  @default(false)
+  created_at     DateTime @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime @default(now()) @updatedAt @db.Timestamptz(6)
 
   @@index([published_at(sort: Desc)])
   @@index([show_in_slider])
@@ -375,12 +377,12 @@ model SeminarEvent {
   id           String   @id @default(cuid())
   title        String
   description  String   @default("")
-  event_date   String?               /// イベント開催日 YYYY-MM-DD 文字列
-  venue        String?               /// 開催場所
-  company      String?               /// 主催者
-  external_url String?               /// 詳細・申込URL
-  wp_post_id   Int?     @unique      /// WordPress post_id（重複インポート防止）
-  wp_link      String?               /// WordPress 元ページURL
+  event_date   String? /// イベント開催日 YYYY-MM-DD 文字列
+  venue        String? /// 開催場所
+  company      String? /// 主催者
+  external_url String? /// 詳細・申込URL
+  wp_post_id   Int?     @unique /// WordPress post_id（重複インポート防止）
+  wp_link      String? /// WordPress 元ページURL
   created_at   DateTime @default(now())
   updated_at   DateTime @updatedAt
 
@@ -426,38 +428,40 @@ model ActivityLogComment {
 }
 
 model ForumCategory {
-  id           String                      @id @default(uuid()) @db.Uuid
-  name         String
-  slug         String                      @unique
-  description  String                      @default("")
-  color        String                      @default("#FFB5C8")
-  tags         String[]                    @default([])
-  sort_order   Int                         @default(0)
-  is_active    Boolean                     @default(true)
-  created_at   DateTime                    @default(now()) @db.Timestamptz(6)
-  updated_at   DateTime                    @updatedAt @db.Timestamptz(6)
-  rooms        ForumRoom[]
+  id          String      @id @default(uuid()) @db.Uuid
+  name        String
+  slug        String      @unique
+  description String      @default("")
+  color       String      @default("#FFB5C8")
+  tags        String[]    @default([])
+  sort_order  Int         @default(0)
+  is_active   Boolean     @default(true)
+  created_at  DateTime    @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime    @updatedAt @db.Timestamptz(6)
+  rooms       ForumRoom[]
   contentCache ForumCategoryContentCache[]
 
   @@map("forum_categories")
 }
 
 model ForumSubCategory {
-  id           String                      @id @default(uuid()) @db.Uuid
+  id           String      @id @default(uuid()) @db.Uuid
   name         String
-  slug         String                      @unique
+  slug         String      @unique
   icon         String?
-  content_kind String                      @default("community")
-  sort_order   Int                         @default(0)
-  is_active    Boolean                     @default(true)
-  created_at   DateTime                    @default(now()) @db.Timestamptz(6)
-  updated_at   DateTime                    @updatedAt @db.Timestamptz(6)
+  /// community = 純粋な掲示板 / article / service / media / events-info = DBコンテンツ表示
+  content_kind String      @default("community")
+  sort_order   Int         @default(0)
+  is_active    Boolean     @default(true)
+  created_at   DateTime    @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime    @updatedAt @db.Timestamptz(6)
   rooms        ForumRoom[]
   contentCache ForumCategoryContentCache[]
 
   @@map("forum_sub_categories")
 }
 
+/// AI日次スキャンで選んだカテゴリ×サブカテゴリ向けコンテンツ
 model ForumCategoryContentCache {
   id              String           @id @default(uuid()) @db.Uuid
   category_id     String           @db.Uuid
@@ -570,6 +574,58 @@ model ForumLike {
   @@map("forum_likes")
 }
 
+/// 管理者が投稿するYouTube動画。ユーザーが閲覧・コメントできる。
+model Video {
+  id          String          @id @default(cuid())
+  title       String
+  description String          @default("")
+  /// 運営向け内部メモ（公開ページには表示しない）
+  notes       String?
+  youtube_url String
+  /// YouTube動画ID（埋め込みURLや thumbnail生成に使用）
+  youtube_id  String
+  /// OpenAI で生成されたAI要約（管理画面から生成）
+  ai_summary  String?
+  /// PUBLIC=一覧表示 / UNLISTED=リンクを知る人のみ / PRIVATE=非公開（管理者のみ）
+  visibility  VideoVisibility @default(PRIVATE)
+  author_id   String?         @db.Uuid
+  created_at  DateTime        @default(now())
+  updated_at  DateTime        @updatedAt
+  author      Profile?        @relation(fields: [author_id], references: [id], onDelete: SetNull)
+  comments    VideoComment[]
+
+  @@index([visibility, created_at(sort: Desc)])
+  @@map("videos")
+}
+
+/// 動画への一般ユーザーコメント（返信は parent_id で表現するスレッド型）
+model VideoComment {
+  id          String   @id @default(cuid())
+  video_id    String
+  parent_id   String?
+  author_id   String?  @db.Uuid
+  author_name String
+  author_role String   @default("一般")
+  body        String
+  is_hidden   Boolean  @default(false)
+  created_at  DateTime @default(now())
+
+  video   Video          @relation(fields: [video_id], references: [id], onDelete: Cascade)
+  parent  VideoComment?  @relation("VideoCommentReplies", fields: [parent_id], references: [id], onDelete: Cascade)
+  replies VideoComment[] @relation("VideoCommentReplies")
+  author  Profile?       @relation(fields: [author_id], references: [id], onDelete: SetNull)
+
+  @@index([video_id, created_at(sort: Asc)])
+  @@index([parent_id])
+  @@map("video_comments")
+}
+
+enum VideoVisibility {
+  PUBLIC
+  UNLISTED
+  PRIVATE
+}
+
 enum Role {
   ADMIN
   PROVIDER
@@ -595,38 +651,38 @@ enum ServiceSortOrderTier {
 
 /// トップページのニュースタブ分類
 enum HomeNewsTab {
-  NONE         /// どのタブにも表示しない
-  DOMESTIC     /// 国内ニュース
+  NONE /// どのタブにも表示しない
+  DOMESTIC /// 国内ニュース
   INTERNATIONAL /// 海外ニュース
-  WEEKLY       /// 週間ニュース
+  WEEKLY /// 週間ニュース
 }
 
 /// 教育公的文書などのナレッジ文書（RAG参照源）
 model KnowledgeDocument {
-  id                  String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  title               String
+  id                String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title             String
   /// curriculum_elementary | curriculum_middle | curriculum_high | mext_giga | mext_digital | mext_special | mext_guideline | oecd_learning | oecd_teaching | oecd_other | school_standard | education_plan | cue_answer | law_education | other
-  source_type         String
+  source_type       String
   /// source_type = 'other' のときの自由記述
-  source_type_other   String?
-  source_url          String?
-  description         String?
-  created_at          DateTime         @default(now()) @db.Timestamptz(6)
-  chunks              KnowledgeChunk[]
+  source_type_other String?
+  source_url        String?
+  description       String?
+  created_at        DateTime         @default(now()) @db.Timestamptz(6)
+  chunks            KnowledgeChunk[]
 
   @@map("knowledge_documents")
 }
 
 /// 文書をチャンク分割したテキスト断片（ベクトル埋め込み付き）
 model KnowledgeChunk {
-  id          String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  document_id String            @db.Uuid
+  id          String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  document_id String                       @db.Uuid
   chunk_index Int
   content     String
   /// pgvector vector(1536) — Prisma では Unsupported として管理し、挿入は Supabase client 経由で行う
   embedding   Unsupported("vector(1536)")?
-  created_at  DateTime          @default(now()) @db.Timestamptz(6)
-  document    KnowledgeDocument @relation(fields: [document_id], references: [id], onDelete: Cascade)
+  created_at  DateTime                     @default(now()) @db.Timestamptz(6)
+  document    KnowledgeDocument            @relation(fields: [document_id], references: [id], onDelete: Cascade)
 
   @@unique([document_id, chunk_index])
   @@index([document_id])
@@ -635,7 +691,7 @@ model KnowledgeChunk {
 
 /// アプリ内コンテンツのチャンク（RAG検索用）
 model AppContentChunk {
-  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id                String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   /// "service" | "post" | "review" | "forum_post" | "seminar_event" | "site_update"
   source_table      String
   source_id         String
@@ -644,14 +700,14 @@ model AppContentChunk {
   /// "サービス" | "記事" | "レビュー" | "フォーラム投稿" | "セミナー・イベント" | "更新情報"
   source_type_label String?
   /// 投稿者 ID（ユーザーコンテンツの場合）
-  author_id         String?           @db.Uuid
+  author_id         String?                      @db.Uuid
   chunk_index       Int
   content           String
   /// pgvector vector(1536)
   embedding         Unsupported("vector(1536)")?
-  is_published      Boolean           @default(true)
-  created_at        DateTime          @default(now()) @db.Timestamptz(6)
-  updated_at        DateTime          @updatedAt @db.Timestamptz(6)
+  is_published      Boolean                      @default(true)
+  created_at        DateTime                     @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime                     @updatedAt @db.Timestamptz(6)
 
   @@unique([source_table, source_id, chunk_index])
   @@index([source_table, source_id])
@@ -689,4 +745,40 @@ model TextOverride {
   @@unique([pathname, text_key])
   @@index([pathname])
   @@map("text_overrides")
+}
+
+/// スポンサーPR（広告枠）。ADMINが管理画面から登録し、トップページなどに表示する。
+model SponsorAd {
+  id          String          @id @default(cuid())
+  /// スポンサー名・PRタイトル
+  title       String
+  /// バナー説明文（任意・キャッチコピー等）
+  description String?
+  /// バナー画像URL（Supabase Storage）
+  image_url   String
+  /// クリック遷移先URL
+  link_url    String
+  /// 表示位置
+  placement   SponsorPlacement @default(HOME_MAIN)
+  /// 表示ON/OFF
+  is_active   Boolean          @default(true)
+  /// 表示順（小さいほど先頭）
+  position    Int              @default(0)
+  /// 掲載開始日時（任意・未設定なら即時）
+  starts_at   DateTime?
+  /// 掲載終了日時（任意・未設定なら無期限）
+  ends_at     DateTime?
+  /// クリック数（簡易計測）
+  click_count Int              @default(0)
+  created_at  DateTime         @default(now())
+  updated_at  DateTime         @updatedAt
+
+  @@index([placement, is_active, position])
+  @@map("sponsor_ads")
+}
+
+/// スポンサーPRの表示位置
+enum SponsorPlacement {
+  HOME_MAIN /// トップページのメインカラム（スライダー下のバナー）
+  HOME_SIDEBAR /// トップページ右サイドバー
 }
