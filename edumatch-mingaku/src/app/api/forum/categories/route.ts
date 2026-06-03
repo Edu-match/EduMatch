@@ -3,16 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentProfile } from "@/lib/auth";
 import { uniqueForumSlug } from "@/lib/forum-slug";
 import { validateForumCategoryTags } from "@/lib/forum-category-tags";
+import { findForumCategoriesList } from "@/lib/forum-category-query";
+import { forumPrismaErrorMessage } from "@/lib/forum-prisma-errors";
 
 export const dynamic = "force-dynamic";
-
-function prismaErrorMessage(err: unknown): string | null {
-  const code = (err as { code?: string })?.code;
-  if (code === "P2021") {
-    return "forum_categories テーブルがありません。Supabase SQL でマイグレーションを実行してください。";
-  }
-  return null;
-}
 
 /** 大カテゴリ一覧（公開） */
 export async function GET(req: NextRequest) {
@@ -26,7 +20,7 @@ export async function GET(req: NextRequest) {
       isAdmin = profile?.role === "ADMIN";
     }
 
-    const categories = await prisma.forumCategory.findMany({
+    const categories = await findForumCategoriesList({
       where: includeInactive && isAdmin ? {} : { is_active: true },
       orderBy: [{ sort_order: "asc" }, { created_at: "asc" }],
     });
@@ -45,7 +39,7 @@ export async function GET(req: NextRequest) {
     });
   } catch (err) {
     console.error("[forum/categories GET]", err);
-    const hint = prismaErrorMessage(err);
+    const hint = forumPrismaErrorMessage(err);
     return NextResponse.json(
       { error: hint ?? "Internal server error" },
       { status: hint ? 503 : 500 }
@@ -111,7 +105,7 @@ export async function POST(req: NextRequest) {
     );
   } catch (err) {
     console.error("[forum/categories POST]", err);
-    const hint = prismaErrorMessage(err);
+    const hint = forumPrismaErrorMessage(err);
     return NextResponse.json(
       { error: hint ?? "Internal server error" },
       { status: hint ? 503 : 500 }
