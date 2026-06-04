@@ -5,6 +5,27 @@ import { getCurrentProfile } from "@/lib/auth";
 import { VideoDetailClient, type VideoDetail } from "@/components/videos/video-detail-client";
 import { isVideoViewableByVisitor } from "@/lib/video-visibility";
 
+/** 動画タイトル・説明からキーワード一致でフォーラムカテゴリを推定し community ルームの href を返す */
+async function resolveForumHref(title: string, description: string): Promise<string> {
+  try {
+    const categories = await prisma.forumCategory.findMany({
+      where: { is_active: true },
+      select: { slug: true, name: true, description: true },
+      orderBy: { sort_order: "asc" },
+    });
+    if (categories.length === 0) return "/forum";
+    const haystack = `${title} ${description}`.toLowerCase();
+    const match = categories.find((cat) => {
+      const parts = cat.name.normalize("NFKC").toLowerCase().split(/[\s・、]+/);
+      return parts.some((p) => p.length >= 2 && haystack.includes(p));
+    });
+    const slug = (match ?? categories[0]).slug;
+    return `/forum/${slug}/community`;
+  } catch {
+    return "/forum";
+  }
+}
+
 export const dynamic = "force-dynamic";
 
 async function getVideo(id: string): Promise<VideoDetail | null> {
@@ -54,5 +75,6 @@ export default async function VideoPage({
   const { id } = await params;
   const video = await getVideo(id);
   if (!video) notFound();
-  return <VideoDetailClient video={video} />;
+  const forumHref = await resolveForumHref(video.title, video.description);
+  return <VideoDetailClient video={video} forumHref={forumHref} />;
 }

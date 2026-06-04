@@ -239,7 +239,7 @@ export function useBubbleGraph(options: {
 
   const handleViewportPanStart = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
-      if (!panEnabled || event.button !== 0) return;
+      if (event.button !== 0) return;
       resolvePendingClick(event.target);
       panSessionRef.current = {
         startX: event.clientX,
@@ -249,7 +249,7 @@ export function useBubbleGraph(options: {
         pointerId: event.pointerId,
         moved: false,
       };
-      setIsPanning(true);
+      if (panEnabled) setIsPanning(true);
       event.currentTarget.setPointerCapture(event.pointerId);
     },
     [pan, resolvePendingClick, panEnabled]
@@ -264,11 +264,13 @@ export function useBubbleGraph(options: {
       session.moved = true;
       pendingClickRef.current = null;
     }
-    setPan({
-      x: session.originX + dx,
-      y: session.originY + dy,
-    });
-  }, []);
+    if (panEnabled) {
+      setPan({
+        x: session.originX + dx,
+        y: session.originY + dy,
+      });
+    }
+  }, [panEnabled]);
 
   const handleViewportPanEnd = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {

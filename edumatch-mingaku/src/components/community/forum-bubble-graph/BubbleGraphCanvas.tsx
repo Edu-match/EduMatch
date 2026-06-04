@@ -122,10 +122,10 @@ export function BubbleGraphCanvas({
         className
       )}
       style={canvasBackgroundColor ? { backgroundColor: canvasBackgroundColor } : undefined}
-      onPointerDown={isSubcategory ? undefined : graph.handleViewportPanStart}
-      onPointerMove={isSubcategory ? undefined : graph.handleViewportPanMove}
-      onPointerUp={isSubcategory ? undefined : graph.handleViewportPanEnd}
-      onPointerCancel={isSubcategory ? undefined : graph.handleViewportPanEnd}
+      onPointerDown={graph.handleViewportPanStart}
+      onPointerMove={graph.handleViewportPanMove}
+      onPointerUp={graph.handleViewportPanEnd}
+      onPointerCancel={graph.handleViewportPanEnd}
     >
       {!isSubcategory && (
       <div

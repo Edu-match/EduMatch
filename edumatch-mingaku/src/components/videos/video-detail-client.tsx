@@ -25,9 +25,10 @@ export type VideoDetail = {
 
 interface Props {
   video: VideoDetail;
+  forumHref?: string;
 }
 
-export function VideoDetailClient({ video }: Props) {
+export function VideoDetailClient({ video, forumHref = "/forum" }: Props) {
   return (
     <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
       <div>
@@ -87,7 +88,7 @@ export function VideoDetailClient({ video }: Props) {
 
       {/* 井戸端会議への動線：動画の話題は井戸端会議でじっくり語り合う */}
       <Link
-        href="/forum"
+        href={forumHref}
         className="group block rounded-xl border border-primary/30 bg-primary/5 p-4 transition-colors hover:border-primary/50 hover:bg-primary/10"
       >
         <div className="flex items-center gap-3">
