@@ -30,6 +30,10 @@ export function HeroSlider({ items, isAdmin }: Props) {
   );
 
   useEffect(() => {
+    setIndex((i) => (len <= 0 ? 0 : Math.min(i, len - 1)));
+  }, [len]);
+
+  useEffect(() => {
     if (len <= 1) return;
     const id = setInterval(() => go(1), INTERVAL_MS);
     return () => clearInterval(id);

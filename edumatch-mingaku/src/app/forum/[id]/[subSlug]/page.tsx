@@ -9,9 +9,9 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ categorySlug: string; subSlug: string }>;
+  params: Promise<{ id: string; subSlug: string }>;
 }): Promise<Metadata> {
-  const { categorySlug, subSlug } = await params;
+  const { id: categorySlug, subSlug } = await params;
   const result = await lookupCategoryRoom(categorySlug, subSlug);
   if (!result) return {};
   return {
@@ -23,15 +23,14 @@ export async function generateMetadata({
 export default async function ForumCategoryRoomPage({
   params,
 }: {
-  params: Promise<{ categorySlug: string; subSlug: string }>;
+  params: Promise<{ id: string; subSlug: string }>;
 }) {
-  const { categorySlug, subSlug } = await params;
+  const { id: categorySlug, subSlug } = await params;
   const result = await getOrCreateCategoryRoom(categorySlug, subSlug);
   if (!result) notFound();
 
   const { room, category, subCategory } = result;
 
-  // community 以外は関連DBコンテンツを取得して上部に表示
   const items =
     subCategory.contentKind === "community"
       ? []
