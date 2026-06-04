@@ -93,8 +93,10 @@ export function useBubbleGraph(options: {
   /** コミュニティから他サブへのスポーク（視覚用） */
   spokeFromPrimary?: boolean;
   onBubbleNavigate?: (href: string) => void;
+  /** false にするとパン操作を無効化 */
+  panEnabled?: boolean;
 }) {
-  const { nodes, layoutMode, spokeFromPrimary, onBubbleNavigate } = options;
+  const { nodes, layoutMode, spokeFromPrimary, onBubbleNavigate, panEnabled = true } = options;
   const nodeIds = useMemo(() => nodes.map((n) => n.id).join(","), [nodes]);
 
   const graphDimensions = useMemo(
@@ -117,7 +119,7 @@ export function useBubbleGraph(options: {
     );
   }, [nodeIds, layoutMode, nodes, graphDimensions.height, graphDimensions.width]);
 
-  const [scale, setScale] = useState(() => (nodes.length >= 10 ? 0.82 : 0.9));
+  const [scale, setScale] = useState(() => (nodes.length >= 10 ? 0.65 : 0.72));
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [isPanning, setIsPanning] = useState(false);
@@ -237,7 +239,7 @@ export function useBubbleGraph(options: {
 
   const handleViewportPanStart = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
-      if (event.button !== 0) return;
+      if (!panEnabled || event.button !== 0) return;
       resolvePendingClick(event.target);
       panSessionRef.current = {
         startX: event.clientX,
@@ -250,7 +252,7 @@ export function useBubbleGraph(options: {
       setIsPanning(true);
       event.currentTarget.setPointerCapture(event.pointerId);
     },
-    [pan, resolvePendingClick]
+    [pan, resolvePendingClick, panEnabled]
   );
 
   const handleViewportPanMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
@@ -286,7 +288,7 @@ export function useBubbleGraph(options: {
 
   const resetLayout = useCallback(() => {
     setPan({ x: 0, y: 0 });
-    setScale(nodes.length >= 10 ? 0.82 : 0.9);
+    setScale(nodes.length >= 10 ? 0.65 : 0.72);
     driftRef.current = {};
     lastFrameTimeRef.current = null;
     setFloatOffsets({});

@@ -61,28 +61,41 @@ export function computeCircularGraphPoints(
   return points;
 }
 
-/** コミュニティを上部中央に寄せた初期配置 */
+/**
+ * サブカテゴリ初期配置。
+ * パン無効前提のため全ノードを画面内に収める。
+ * topReserve: タイトル領域に食い込まないよう上部を空ける比率（グラフ高さ基準）
+ */
 export function computeSubCategoryGraphPoints(
   nodes: BubbleGraphNode[],
   graphWidth: number,
-  graphHeight: number
+  graphHeight: number,
+  topReserve = 0.18
 ): Record<string, GraphPoint> {
   const community = nodes.find((n) => n.isPrimary);
   const others = nodes.filter((n) => !n.isPrimary);
   const points: Record<string, GraphPoint> = {};
 
+  const usableTop = graphHeight * topReserve;
+  const usableHeight = graphHeight - usableTop;
+  const cx = graphWidth / 2;
+
   if (community) {
-    points[community.id] = { id: community.id, x: graphWidth / 2, y: graphHeight * 0.22 };
+    points[community.id] = {
+      id: community.id,
+      x: cx,
+      y: usableTop + usableHeight * 0.32,
+    };
   }
 
   const slots = others.length;
   others.forEach((node, i) => {
-    const angle = Math.PI * 0.15 + (Math.PI * 0.7 * i) / Math.max(1, slots - 1 || 1);
-    const r = Math.min(graphWidth, graphHeight) * 0.28;
+    const angle = Math.PI * 0.1 + (Math.PI * 0.8 * i) / Math.max(1, slots - 1);
+    const r = Math.min(graphWidth * 0.38, usableHeight * 0.45);
     points[node.id] = {
       id: node.id,
-      x: graphWidth / 2 + Math.cos(angle) * r * (i % 2 === 0 ? 1 : 0.92),
-      y: graphHeight * 0.55 + Math.sin(angle) * r * 0.55,
+      x: cx + Math.cos(angle) * r * (i % 2 === 0 ? 1.0 : 0.88),
+      y: usableTop + usableHeight * 0.7 + Math.sin(angle) * r * 0.35,
     };
   });
 

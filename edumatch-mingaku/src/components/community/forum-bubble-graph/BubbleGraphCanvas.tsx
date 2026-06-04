@@ -85,21 +85,23 @@ export function BubbleGraphCanvas({
   connections,
   layoutMode,
   className,
-  clipEllipse = false,
+  canvasBackgroundColor,
 }: {
   nodes: BubbleGraphNode[];
   connections: BubbleConnection[];
   layoutMode: "category" | "subcategory";
   className?: string;
-  clipEllipse?: boolean;
+  canvasBackgroundColor?: string;
 }) {
   const router = useRouter();
+  const isSubcategory = layoutMode === "subcategory";
 
   const graph = useBubbleGraph({
     nodes,
     layoutMode,
-    spokeFromPrimary: layoutMode === "subcategory",
+    spokeFromPrimary: isSubcategory,
     onBubbleNavigate: (href) => router.push(href),
+    panEnabled: !isSubcategory,
   });
 
   const allConnections = [...connections, ...graph.spokeConnections];
@@ -116,22 +118,20 @@ export function BubbleGraphCanvas({
     <div
       className={cn(
         "relative h-full w-full overflow-hidden touch-none",
-        graph.isPanning ? "cursor-grabbing" : "cursor-grab",
+        !isSubcategory && (graph.isPanning ? "cursor-grabbing" : "cursor-grab"),
         className
       )}
-      onPointerDown={graph.handleViewportPanStart}
-      onPointerMove={graph.handleViewportPanMove}
-      onPointerUp={graph.handleViewportPanEnd}
-      onPointerCancel={graph.handleViewportPanEnd}
+      style={canvasBackgroundColor ? { backgroundColor: canvasBackgroundColor } : undefined}
+      onPointerDown={isSubcategory ? undefined : graph.handleViewportPanStart}
+      onPointerMove={isSubcategory ? undefined : graph.handleViewportPanMove}
+      onPointerUp={isSubcategory ? undefined : graph.handleViewportPanEnd}
+      onPointerCancel={isSubcategory ? undefined : graph.handleViewportPanEnd}
     >
+      {!isSubcategory && (
       <div
-        className="pointer-events-auto absolute bottom-4 right-4 z-40 flex items-center gap-2 rounded-2xl border-2 border-foreground/10 bg-background px-2 py-2 shadow-lg"
+        className="pointer-events-auto absolute bottom-4 right-4 z-40 flex items-center gap-1.5 rounded-2xl border-2 border-foreground/10 bg-background px-2 py-2 shadow-lg"
         onPointerDown={(e) => e.stopPropagation()}
       >
-        <span className="min-w-[3rem] px-1 text-center text-sm font-semibold tabular-nums text-foreground">
-          {graph.zoomPercent}%
-        </span>
-        <span className="h-8 w-px bg-border" aria-hidden />
         <button
           type="button"
           aria-label="表示をリセット"
@@ -159,6 +159,7 @@ export function BubbleGraphCanvas({
           <Plus className="h-4 w-4" />
         </button>
       </div>
+      )}
 
       <div
         className="pointer-events-none absolute left-1/2 top-1/2"
@@ -168,7 +169,7 @@ export function BubbleGraphCanvas({
           transform: `translate(calc(-50% + ${graph.pan.x}px), calc(-50% + ${graph.pan.y}px)) scale(${graph.scale})`,
           transformOrigin: "center center",
           transition: graph.isPanning ? "none" : "transform 380ms cubic-bezier(.2,.8,.2,1)",
-          clipPath: clipEllipse ? "ellipse(44% 46% at 50% 50%)" : undefined,
+          clipPath: isSubcategory ? "ellipse(44% 46% at 50% 50%)" : undefined,
         }}
       >
         <GraphEdges

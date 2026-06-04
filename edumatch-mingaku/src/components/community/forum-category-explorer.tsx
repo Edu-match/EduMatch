@@ -239,32 +239,27 @@ export function ForumCategoryExplorer({
                 )}
               >
                 {selected && (
-                  <div className="absolute inset-0 flex items-center justify-center p-4">
-                    <div
-                      className="relative h-[88%] w-[92%] rounded-[50%] shadow-inner"
-                      style={{
-                        backgroundColor: selected.color || FALLBACK_COLORS[0],
-                      }}
-                    >
-                      <div className="absolute left-1/2 top-3 z-20 w-[55%] -translate-x-1/2 rounded-xl bg-background/85 px-3 py-2 text-center shadow-sm backdrop-blur">
-                        <p className="break-keep text-sm font-bold leading-tight text-foreground/90">
-                          {selected.name}
+                  <div className="absolute inset-0">
+                    {/* タイトル（パン対象外・常に上部固定） */}
+                    <div className="pointer-events-none absolute left-1/2 top-4 z-20 w-[56%] max-w-sm -translate-x-1/2 rounded-xl bg-background/90 px-3 py-2 text-center shadow-sm backdrop-blur">
+                      <p className="break-keep text-sm font-bold leading-tight text-foreground/90">
+                        {selected.name}
+                      </p>
+                      {selected.description ? (
+                        <p className="mt-0.5 line-clamp-1 break-keep text-[10px] leading-snug text-muted-foreground">
+                          {selected.description}
                         </p>
-                        {selected.description ? (
-                          <p className="mt-0.5 line-clamp-2 break-keep text-[10px] leading-snug text-muted-foreground">
-                            {selected.description}
-                          </p>
-                        ) : null}
-                      </div>
-
-                      <BubbleGraphCanvas
-                        nodes={subNodes}
-                        connections={[]}
-                        layoutMode="subcategory"
-                        clipEllipse
-                        className="h-full w-full pt-12"
-                      />
+                      ) : null}
                     </div>
+
+                    {/* サブカテゴリバブル（パン無効、背景色は viewport に直接適用） */}
+                    <BubbleGraphCanvas
+                      nodes={subNodes}
+                      connections={[]}
+                      layoutMode="subcategory"
+                      canvasBackgroundColor={selected.color || FALLBACK_COLORS[0]}
+                      className="absolute inset-0 h-full w-full rounded-[28px]"
+                    />
                   </div>
                 )}
               </div>
