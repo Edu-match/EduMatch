@@ -13,6 +13,7 @@ import {
   computeCircularGraphPoints,
   computeSubCategoryGraphPoints,
   getGraphDimensions,
+  resolveFloatOffsetsCollisions,
   resolveGraphCollisions,
 } from "./layout";
 
@@ -164,13 +165,39 @@ export function useBubbleGraph(options: {
         driftRef.current[node.id] = stepped;
         next[node.id] = { x: stepped.x, y: stepped.y };
       }
-      setFloatOffsets(next);
+
+      const resolved = resolveFloatOffsetsCollisions(
+        basePoints,
+        next,
+        nodes,
+        graphDimensions.width,
+        graphDimensions.height
+      );
+      for (const node of nodes) {
+        const off = resolved[node.id];
+        if (off && driftRef.current[node.id]) {
+          driftRef.current[node.id] = {
+            ...driftRef.current[node.id],
+            x: off.x,
+            y: off.y,
+          };
+        }
+      }
+      setFloatOffsets(resolved);
       raf = requestAnimationFrame(tick);
     };
 
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [reduceMotion, isPanning, nodes, nodeIds]);
+  }, [
+    reduceMotion,
+    isPanning,
+    nodes,
+    nodeIds,
+    basePoints,
+    graphDimensions.width,
+    graphDimensions.height,
+  ]);
 
   const applyZoom = useCallback((next: number) => {
     setScale((s) => Math.min(MAP_ZOOM_MAX, Math.max(MAP_ZOOM_MIN, next)));

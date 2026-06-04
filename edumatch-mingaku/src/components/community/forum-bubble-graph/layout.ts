@@ -159,3 +159,72 @@ export function getGraphDimensions(nodeCount: number) {
     height: Math.round(BASE_GRAPH_HEIGHT * scale),
   };
 }
+
+/** 浮遊オフセット適用後のバブル同士が重ならないよう調整 */
+export function resolveFloatOffsetsCollisions(
+  basePoints: Record<string, GraphPoint>,
+  floatOffsets: Record<string, { x: number; y: number }>,
+  nodes: BubbleGraphNode[],
+  graphWidth: number,
+  graphHeight: number,
+  padding = 14,
+  iterations = 10
+): Record<string, { x: number; y: number }> {
+  const offsets: Record<string, { x: number; y: number }> = {};
+  const nodeById = new Map(nodes.map((n) => [n.id, n]));
+  const ids = nodes.map((n) => n.id).filter((id) => basePoints[id]);
+
+  for (const id of ids) {
+    offsets[id] = { ...(floatOffsets[id] ?? { x: 0, y: 0 }) };
+  }
+
+  for (let iter = 0; iter < iterations; iter += 1) {
+    for (let i = 0; i < ids.length; i += 1) {
+      for (let j = i + 1; j < ids.length; j += 1) {
+        const idA = ids[i];
+        const idB = ids[j];
+        const aNode = nodeById.get(idA);
+        const bNode = nodeById.get(idB);
+        const baseA = basePoints[idA];
+        const baseB = basePoints[idB];
+        if (!aNode || !bNode || !baseA || !baseB) continue;
+
+        const offA = offsets[idA];
+        const offB = offsets[idB];
+        const ax = baseA.x + offA.x;
+        const ay = baseA.y + offA.y;
+        const bx = baseB.x + offB.x;
+        const by = baseB.y + offB.y;
+
+        const minDist = (aNode.diameter + bNode.diameter) / 2 + padding;
+        const dx = bx - ax;
+        const dy = by - ay;
+        const dist = Math.hypot(dx, dy) || 1;
+        if (dist >= minDist) continue;
+
+        const push = (minDist - dist) / 2 + 0.5;
+        const nx = dx / dist;
+        const ny = dy / dist;
+        offsets[idA] = { x: offA.x - nx * push, y: offA.y - ny * push };
+        offsets[idB] = { x: offB.x + nx * push, y: offB.y + ny * push };
+      }
+    }
+
+    for (const id of ids) {
+      const node = nodeById.get(id);
+      const base = basePoints[id];
+      if (!node || !base) continue;
+      const off = offsets[id];
+      const margin = node.diameter / 2 + padding * 0.5;
+      let x = base.x + off.x;
+      let y = base.y + off.y;
+      if (x < margin) x = margin;
+      if (x > graphWidth - margin) x = graphWidth - margin;
+      if (y < margin) y = margin;
+      if (y > graphHeight - margin) y = graphHeight - margin;
+      offsets[id] = { x: x - base.x, y: y - base.y };
+    }
+  }
+
+  return offsets;
+}
