@@ -5,6 +5,7 @@ import {
   createForumRoomCompat,
   type SafeForumRoomRow,
 } from "@/lib/prisma-schema-fallback";
+import { refreshCategoryContentCache } from "@/lib/forum-category-content-ai";
 
 export type ForumCategoryInfo = {
   id: string;
@@ -164,6 +165,76 @@ async function resolveCategoryAndSub(
     category: toCategoryInfo(category),
     subCategory: toSubCategoryInfo(subCategory),
   };
+}
+
+/**
+ * 新規大カテゴリ作成時に、全サブカテゴリ分のルームを事前生成し、
+ * コンテンツ系（community 以外）は関連コンテンツのキャッシュも紐付ける。
+ * これによりバブルのタップ先ルームが必ず存在し、関連コンテンツのボタンも即座に反応する。
+ *
+ * ルーム生成は確実に await し、AI による紐付けは失敗してもカテゴリ作成を妨げない。
+ */
+export async function provisionCategoryRooms(category: {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  color: string;
+}): Promise<void> {
+  let subCategories: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    icon: string | null;
+    content_kind: string;
+  }>;
+  try {
+    subCategories = await prisma.forumSubCategory.findMany({
+      where: { is_active: true },
+      orderBy: [{ sort_order: "asc" }, { created_at: "asc" }],
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        icon: true,
+        content_kind: true,
+      },
+    });
+  } catch (err) {
+    console.error("[provisionCategoryRooms] サブカテゴリ取得失敗", err);
+    return;
+  }
+
+  const categoryInfo = toCategoryInfo(category);
+
+  // 1) 全サブカテゴリのルームを確実に生成（タップ先を保証）
+  await Promise.allSettled(
+    subCategories.map((sub) =>
+      getOrCreateCategoryRoom(category.slug, sub.slug)
+    )
+  );
+
+  // 2) community 以外は関連コンテンツのキャッシュを紐付け（ボタン即時表示）
+  await Promise.allSettled(
+    subCategories
+      .filter((sub) => sub.content_kind !== "community")
+      .map((sub) =>
+        refreshCategoryContentCache({
+          categoryId: categoryInfo.id,
+          categoryName: categoryInfo.name,
+          categoryDescription: categoryInfo.description,
+          subCategoryId: sub.id,
+          subCategoryName: sub.name,
+          contentKind: sub.content_kind,
+        }).catch((err) => {
+          console.error(
+            `[provisionCategoryRooms] コンテンツ紐付け失敗 (${sub.slug})`,
+            err
+          );
+          return { items: [], cached: false };
+        })
+      )
+  );
 }
 
 /** 既存ルームのみ参照（metadata 用。作成しない） */

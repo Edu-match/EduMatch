@@ -5,6 +5,7 @@ import { uniqueForumSlug } from "@/lib/forum-slug";
 import { validateForumCategoryTags } from "@/lib/forum-category-tags";
 import { findForumCategoriesList } from "@/lib/forum-category-query";
 import { forumPrismaErrorMessage } from "@/lib/forum-prisma-errors";
+import { provisionCategoryRooms } from "@/lib/forum-category-room";
 
 export const dynamic = "force-dynamic";
 
@@ -86,6 +87,16 @@ export async function POST(req: NextRequest) {
         sort_order: typeof sortOrder === "number" ? sortOrder : 0,
         tags: tagCheck.tags,
       },
+    });
+
+    // 全サブカテゴリのルーム生成＋コンテンツ紐付けを事前実行
+    // （タップ先ルームと関連コンテンツのボタンを即座に反応させる）
+    await provisionCategoryRooms({
+      id: category.id,
+      name: category.name,
+      slug: category.slug,
+      description: category.description,
+      color: category.color,
     });
 
     return NextResponse.json(

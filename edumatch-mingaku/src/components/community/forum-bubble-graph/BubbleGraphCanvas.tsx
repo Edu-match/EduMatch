@@ -169,7 +169,6 @@ export function BubbleGraphCanvas({
           transform: `translate(calc(-50% + ${graph.pan.x}px), calc(-50% + ${graph.pan.y}px)) scale(${graph.scale})`,
           transformOrigin: "center center",
           transition: graph.isPanning ? "none" : "transform 380ms cubic-bezier(.2,.8,.2,1)",
-          clipPath: isSubcategory ? "ellipse(44% 46% at 50% 50%)" : undefined,
         }}
       >
         <GraphEdges

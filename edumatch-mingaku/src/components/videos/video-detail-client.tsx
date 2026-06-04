@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, Link2, Sparkles } from "lucide-react";
+import { ArrowRight, ChevronLeft, Link2, MessageSquare, Sparkles } from "lucide-react";
 import Link from "next/link";
 import type { VideoVisibility } from "@prisma/client";
 import ReactMarkdown from "react-markdown";
@@ -10,7 +10,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { RelativeTime } from "@/components/community/relative-time";
 import { VideoPlayer } from "@/components/videos/video-player";
-import { VideoCommentSection } from "@/components/videos/video-comment-section";
 import { VIDEO_VISIBILITY_LABELS } from "@/lib/video-visibility";
 
 export type VideoDetail = {
@@ -86,7 +85,26 @@ export function VideoDetailClient({ video }: Props) {
         </Card>
       )}
 
-      <VideoCommentSection videoId={video.id} />
+      {/* 井戸端会議への動線：動画の話題は井戸端会議でじっくり語り合う */}
+      <Link
+        href="/forum"
+        className="group block rounded-xl border border-primary/30 bg-primary/5 p-4 transition-colors hover:border-primary/50 hover:bg-primary/10"
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+            <MessageSquare className="h-5 w-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold text-foreground">
+              この動画の話題を井戸端会議で語り合おう
+            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              教育のテーマごとに部屋があります。動画で学んだことを、みんなと深掘りできます。
+            </p>
+          </div>
+          <ArrowRight className="h-4 w-4 shrink-0 text-primary transition-transform group-hover:translate-x-0.5" />
+        </div>
+      </Link>
     </div>
   );
 }
