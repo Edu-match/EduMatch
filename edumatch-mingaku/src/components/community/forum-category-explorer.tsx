@@ -4,20 +4,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
-  Briefcase,
-  Calendar,
-  FileText,
   Loader2,
-  MessageCircle,
   Move,
-  Video,
-  type LucideIcon,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { computeCategoryConnectionsFromTags } from "@/lib/forum-category-tags";
 import { BubbleGraphCanvas } from "@/components/community/forum-bubble-graph/BubbleGraphCanvas";
 import { computeBubbleDiameter } from "@/components/community/forum-bubble-graph/layout";
 import type { BubbleGraphNode } from "@/components/community/forum-bubble-graph/types";
+import { CategorySubAreaView } from "@/components/community/forum-category-sub-area-view";
 
 export type ForumCategory = {
   id: string;
@@ -40,14 +34,6 @@ export type ForumSubCategory = {
   isActive: boolean;
 };
 
-const ICON_MAP: Record<string, LucideIcon> = {
-  MessageCircle,
-  FileText,
-  Briefcase,
-  Video,
-  Calendar,
-};
-
 const FALLBACK_COLORS = [
   "#FBC9D4",
   "#C9D4F6",
@@ -56,11 +42,6 @@ const FALLBACK_COLORS = [
   "#E7CCF4",
   "#FFD9B8",
 ];
-
-function subIcon(sub: ForumSubCategory) {
-  const Icon = (sub.icon && ICON_MAP[sub.icon]) || MessageCircle;
-  return <Icon className="h-5 w-5" />;
-}
 
 export function ForumCategoryExplorer({
   initialCategorySlug,
@@ -153,30 +134,6 @@ export function ForumCategoryExplorer({
     [categories, categoryDiameter.default, handleSelectCategory]
   );
 
-  const subDiameter = useMemo(
-    () => computeBubbleDiameter(subCategories.length, { max: 150, min: 68 }),
-    [subCategories.length]
-  );
-
-  const subNodes: BubbleGraphNode[] = useMemo(() => {
-    if (!selected) return [];
-    return subCategories.map((sub) => {
-      const isCommunity =
-        sub.contentKind === "community" || sub.slug === "community";
-      return {
-        id: sub.id,
-        label: sub.name,
-        diameter: isCommunity ? subDiameter.primary : subDiameter.default,
-        backgroundColor: isCommunity
-          ? "rgba(255,255,255,0.92)"
-          : "rgba(214,200,236,0.92)",
-        href: `/forum/${selected.slug}/${sub.slug}`,
-        isPrimary: isCommunity,
-        icon: subIcon(sub),
-      };
-    });
-  }, [selected, subCategories, subDiameter]);
-
   useEffect(() => {
     if (!selected) return;
     for (const sub of subCategories) {
@@ -195,85 +152,69 @@ export function ForumCategoryExplorer({
         </h2>
       </div>
 
-      <div className="relative overflow-hidden rounded-3xl border bg-gradient-to-b from-muted/30 to-background shadow-sm">
-        {selected ? (
-          <button
-            type="button"
-            onClick={handleBack}
-            className="absolute left-4 top-4 z-30 flex items-center gap-1.5 rounded-full border bg-background/95 px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm backdrop-blur transition-colors hover:bg-muted"
+      {/* ===== カテゴリマップビュー ===== */}
+      {!selected && (
+        <div className="relative overflow-hidden rounded-3xl border bg-gradient-to-b from-muted/30 to-background shadow-sm">
+          <div className="relative aspect-[16/9] w-full">
+            {loading ? (
+              <div className="flex h-full items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : categories.length === 0 ? (
+              <div className="flex h-full items-center justify-center px-6 text-center text-sm text-muted-foreground">
+                まだ大カテゴリが登録されていません。管理画面から追加してください。
+              </div>
+            ) : (
+              <BubbleGraphCanvas
+                nodes={categoryNodes}
+                connections={categoryConnections}
+                layoutMode="category"
+                className="h-full"
+              />
+            )}
+          </div>
+
+          <div className="pointer-events-none absolute bottom-4 left-4 z-20 flex items-center gap-1.5 rounded-full border bg-background/85 px-3 py-1.5 text-[11px] text-muted-foreground shadow-sm backdrop-blur">
+            <Move className="h-3.5 w-3.5" />
+            ドラッグでマップを移動。タップで大カテゴリを選択。右下のボタンで拡大・縮小
+          </div>
+        </div>
+      )}
+
+      {/* ===== サブカテゴリエリアビュー ===== */}
+      {selected && (
+        <div className="overflow-hidden rounded-3xl border bg-gradient-to-b from-muted/20 to-background shadow-sm">
+          {/* ヘッダー */}
+          <div
+            className="flex items-center justify-between px-5 py-4"
+            style={{ borderBottom: "1px solid hsl(var(--border))" }}
           >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            大カテゴリ一覧に戻る
-          </button>
-        ) : null}
+            <button
+              type="button"
+              onClick={handleBack}
+              className="flex items-center gap-1.5 rounded-full border bg-background/95 px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm backdrop-blur transition-colors hover:bg-muted"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              大カテゴリ一覧に戻る
+            </button>
 
-        <div className="relative aspect-[16/9] w-full">
-          {loading ? (
-            <div className="flex h-full items-center justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <div className="text-right">
+              <p className="text-sm font-bold text-foreground">{selected.name}</p>
+              {selected.description ? (
+                <p className="mt-0.5 text-[11px] text-muted-foreground line-clamp-1">
+                  {selected.description}
+                </p>
+              ) : null}
             </div>
-          ) : categories.length === 0 ? (
-            <div className="flex h-full items-center justify-center px-6 text-center text-sm text-muted-foreground">
-              まだ大カテゴリが登録されていません。管理画面から追加してください。
-            </div>
-          ) : (
-            <>
-              <div
-                className={cn(
-                  "absolute inset-0 transition-all duration-500 ease-out",
-                  selected ? "pointer-events-none scale-105 opacity-0" : "opacity-100"
-                )}
-              >
-                <BubbleGraphCanvas
-                  nodes={categoryNodes}
-                  connections={categoryConnections}
-                  layoutMode="category"
-                  className="h-full"
-                />
-              </div>
+          </div>
 
-              <div
-                className={cn(
-                  "absolute inset-0 transition-all duration-500 ease-out",
-                  selected ? "opacity-100" : "pointer-events-none scale-95 opacity-0"
-                )}
-              >
-                {selected && (
-                  <div className="absolute inset-0">
-                    {/* タイトル（パン対象外・常に上部固定） */}
-                    <div className="pointer-events-none absolute left-1/2 top-4 z-20 w-[56%] max-w-sm -translate-x-1/2 rounded-xl bg-background/90 px-3 py-2 text-center shadow-sm backdrop-blur">
-                      <p className="break-keep text-sm font-bold leading-tight text-foreground/90">
-                        {selected.name}
-                      </p>
-                      {selected.description ? (
-                        <p className="mt-0.5 line-clamp-1 break-keep text-[10px] leading-snug text-muted-foreground">
-                          {selected.description}
-                        </p>
-                      ) : null}
-                    </div>
-
-                    {/* サブカテゴリバブル（パン無効、背景色は viewport に直接適用） */}
-                    <BubbleGraphCanvas
-                      nodes={subNodes}
-                      connections={[]}
-                      layoutMode="subcategory"
-                      canvasBackgroundColor={selected.color || FALLBACK_COLORS[0]}
-                      className="absolute inset-0 h-full w-full rounded-[28px]"
-                    />
-                  </div>
-                )}
-              </div>
-            </>
-          )}
+          {/* サブカテゴリエリアグリッド */}
+          <CategorySubAreaView
+            category={selected}
+            subCategories={subCategories}
+          />
         </div>
-
-        <div className="pointer-events-none absolute bottom-4 left-4 z-20 flex items-center gap-1.5 rounded-full border bg-background/85 px-3 py-1.5 text-[11px] text-muted-foreground shadow-sm backdrop-blur">
-          <Move className="h-3.5 w-3.5" />
-          {selected
-            ? "ドラッグでマップを移動。タップでサブカテゴリの部屋へ。右下のボタンで拡大・縮小"
-            : "ドラッグでマップを移動。タップで大カテゴリを選択。右下のボタンで拡大・縮小"}
-        </div>
-      </div>
+      )}
     </div>
   );
 }
