@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -14,16 +14,16 @@ import type { CategoryContentItem } from "@/lib/forum-category-content";
 import type { ForumCategory, ForumSubCategory } from "./forum-category-explorer";
 
 /* ------------------------------------------------------------------ */
-/* エリア定義                                                            */
+/* エリアメタ定義                                                        */
 /* ------------------------------------------------------------------ */
 
 type AreaMeta = {
   label: string;
   icon: typeof MessageCircle;
-  blobColor: string;    // 楕円の背景色
-  bubbleBg: string;     // 中のバブル色
+  blobColor: string;
+  bubbleBg: string;
   textColor: string;
-  glowColor: string;    // shadow glow
+  glowColor: string;
 };
 
 const AREA_META: Record<string, AreaMeta> = {
@@ -31,41 +31,41 @@ const AREA_META: Record<string, AreaMeta> = {
     label: "記事",
     icon: FileText,
     blobColor: "#FFDDE8",
-    bubbleBg: "rgba(255,255,255,0.88)",
-    textColor: "#c0526f",
-    glowColor: "rgba(255,180,200,0.35)",
+    bubbleBg: "rgba(255,255,255,0.92)",
+    textColor: "#b84065",
+    glowColor: "rgba(255,160,190,0.4)",
   },
   service: {
     label: "サービス",
     icon: Briefcase,
-    blobColor: "#C9F0DC",
-    bubbleBg: "rgba(255,255,255,0.88)",
-    textColor: "#2d7a52",
-    glowColor: "rgba(120,220,170,0.35)",
+    blobColor: "#C6F0DA",
+    bubbleBg: "rgba(255,255,255,0.92)",
+    textColor: "#237a4e",
+    glowColor: "rgba(100,210,150,0.4)",
   },
   media: {
     label: "動画・メディア",
     icon: Video,
-    blobColor: "#E3D4F8",
-    bubbleBg: "rgba(255,255,255,0.88)",
-    textColor: "#6b3fa0",
-    glowColor: "rgba(190,150,240,0.35)",
+    blobColor: "#E2D1F9",
+    bubbleBg: "rgba(255,255,255,0.92)",
+    textColor: "#6933a8",
+    glowColor: "rgba(180,130,245,0.4)",
   },
   "events-info": {
     label: "イベント情報",
     icon: Calendar,
-    blobColor: "#FFF0C2",
-    bubbleBg: "rgba(255,255,255,0.88)",
-    textColor: "#9a6e00",
-    glowColor: "rgba(255,210,80,0.35)",
+    blobColor: "#FFF0BE",
+    bubbleBg: "rgba(255,255,255,0.92)",
+    textColor: "#8a6000",
+    glowColor: "rgba(255,205,60,0.4)",
   },
   community: {
     label: "コミュニティ",
     icon: MessageCircle,
-    blobColor: "#C7E8FB",
-    bubbleBg: "rgba(255,255,255,0.88)",
-    textColor: "#1e6fa0",
-    glowColor: "rgba(100,190,240,0.35)",
+    blobColor: "#BDE8FB",
+    bubbleBg: "rgba(255,255,255,0.92)",
+    textColor: "#1060a0",
+    glowColor: "rgba(80,180,240,0.4)",
   },
 };
 
@@ -73,66 +73,56 @@ const DEFAULT_META: AreaMeta = {
   label: "その他",
   icon: MessageCircle,
   blobColor: "#E8E8E8",
-  bubbleBg: "rgba(255,255,255,0.88)",
+  bubbleBg: "rgba(255,255,255,0.9)",
   textColor: "#555",
-  glowColor: "rgba(180,180,180,0.3)",
+  glowColor: "rgba(160,160,160,0.3)",
 };
 
 /* ------------------------------------------------------------------ */
-/* 浮遊アニメーション用 hook                                             */
-/* ------------------------------------------------------------------ */
-
-function useFloatStyle(index: number) {
-  const duration = 5 + (index % 3) * 1.5;
-  const delay = index * 0.6;
-  return {
-    animation: `floatBubble ${duration}s ease-in-out ${delay}s infinite`,
-  };
-}
-
-/* ------------------------------------------------------------------ */
-/* コンテンツバブル（小さい浮遊バブル）                                  */
+/* 個別コンテンツバブル                                                  */
 /* ------------------------------------------------------------------ */
 
 function SmallBubble({
   item,
   meta,
-  index,
+  floatIndex,
 }: {
   item: CategoryContentItem;
   meta: AreaMeta;
-  index: number;
+  floatIndex: number;
 }) {
-  const floatStyle = useFloatStyle(index);
+  const dur = 4.5 + (floatIndex % 4) * 1.2;
+  const delay = floatIndex * 0.55;
   const isExternal = /^https?:\/\//.test(item.href);
-  const commonClass =
-    "block max-w-[90%] rounded-full border px-3 py-1.5 text-[11px] font-semibold leading-snug shadow-md " +
-    "transition-transform hover:scale-105 hover:shadow-lg cursor-pointer text-center line-clamp-1 " +
-    "backdrop-blur-sm";
-  const commonStyle = {
+
+  const style: React.CSSProperties = {
     background: meta.bubbleBg,
-    borderColor: `${meta.textColor}30`,
+    borderColor: `${meta.textColor}28`,
     color: meta.textColor,
-    boxShadow: `0 3px 12px ${meta.glowColor}`,
-    ...floatStyle,
+    boxShadow: `0 3px 14px ${meta.glowColor}`,
+    animation: `subBubbleFloat ${dur}s ease-in-out ${delay}s infinite`,
   };
+  const cls =
+    "block w-[88%] rounded-full border px-3 py-1.5 text-center text-[11px] " +
+    "font-semibold leading-snug backdrop-blur-sm transition-transform " +
+    "hover:scale-105 hover:shadow-lg line-clamp-1 cursor-pointer";
 
   if (isExternal) {
     return (
-      <a href={item.href} target="_blank" rel="noopener noreferrer" className={commonClass} style={commonStyle}>
+      <a href={item.href} target="_blank" rel="noopener noreferrer" className={cls} style={style}>
         {item.title}
       </a>
     );
   }
   return (
-    <Link href={item.href} className={commonClass} style={commonStyle}>
+    <Link href={item.href} className={cls} style={style}>
       {item.title}
     </Link>
   );
 }
 
 /* ------------------------------------------------------------------ */
-/* 楕円ブロブ（エリア本体）                                              */
+/* ブロブ本体                                                            */
 /* ------------------------------------------------------------------ */
 
 function BlobArea({
@@ -164,81 +154,88 @@ function BlobArea({
     return () => { cancelled = true; };
   }, [categorySlug, sub.slug, isCommunity]);
 
-  // 楕円の浮遊アニメーション（ブロブ自体も少し動く）
-  const blobFloatDuration = 7 + blobIndex * 1.3;
-  const blobFloatDelay = blobIndex * 0.9;
+  const blobDur = 7 + blobIndex * 1.2;
+  const blobDelay = blobIndex * 0.85;
 
   return (
-    <div
-      className="relative flex flex-col items-center justify-center overflow-hidden"
-      style={{
-        borderRadius: "50%",
-        aspectRatio: "5 / 4",
-        background: `radial-gradient(ellipse at 35% 35%, ${meta.blobColor}ff 0%, ${meta.blobColor}cc 60%, ${meta.blobColor}88 100%)`,
-        boxShadow: `0 6px 30px ${meta.glowColor}, inset 0 1px 1px rgba(255,255,255,0.7)`,
-        animation: `floatBlob ${blobFloatDuration}s ease-in-out ${blobFloatDelay}s infinite`,
-      }}
-    >
-      {/* ハイライト */}
+    <div className="flex flex-col items-center gap-3">
+      {/* ── タイトル（ブロブの外、常に表示） ── */}
+      <div className="flex items-center gap-1.5">
+        <Icon className="h-4 w-4 shrink-0" style={{ color: meta.textColor }} />
+        <span className="text-sm font-bold" style={{ color: meta.textColor }}>
+          {meta.label}
+        </span>
+      </div>
+
+      {/* ── 楕円ブロブ ── */}
       <div
-        className="pointer-events-none absolute inset-0 rounded-full"
+        className="relative w-full overflow-hidden"
         style={{
-          background: "radial-gradient(ellipse at 30% 25%, rgba(255,255,255,0.55) 0%, transparent 60%)",
+          borderRadius: "50%",
+          aspectRatio: "1 / 1",
+          background: `radial-gradient(ellipse at 38% 32%, ${meta.blobColor} 0%, ${meta.blobColor}bb 55%, ${meta.blobColor}66 100%)`,
+          boxShadow: `0 8px 32px ${meta.glowColor}, inset 0 1px 2px rgba(255,255,255,0.75)`,
+          animation: `blobDrift ${blobDur}s ease-in-out ${blobDelay}s infinite`,
         }}
-      />
+      >
+        {/* ハイライト */}
+        <div
+          className="pointer-events-none absolute inset-0 rounded-full"
+          style={{
+            background:
+              "radial-gradient(ellipse at 32% 26%, rgba(255,255,255,0.6) 0%, transparent 55%)",
+          }}
+        />
 
-      {/* コンテンツ */}
-      <div className="relative flex w-full flex-col items-center gap-2 px-[12%] py-[10%]">
-        {/* エリアラベル */}
-        <div className="flex items-center gap-1.5 mb-1">
-          <Icon className="h-4 w-4 shrink-0" style={{ color: meta.textColor }} />
-          <span className="text-sm font-bold" style={{ color: meta.textColor }}>
-            {meta.label}
-          </span>
-        </div>
-
-        {/* コンテンツバブルまたはコミュニティCTA */}
-        {isCommunity ? (
-          <Link
-            href={roomHref}
-            className="flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold shadow-md transition-transform hover:scale-105 hover:shadow-lg"
-            style={{
-              background: meta.bubbleBg,
-              color: meta.textColor,
-              border: `1.5px solid ${meta.textColor}40`,
-              boxShadow: `0 4px 16px ${meta.glowColor}`,
-            }}
-          >
-            掲示板に参加する
-            <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-        ) : loading ? (
-          <span className="text-[10px] opacity-50" style={{ color: meta.textColor }}>
-            読み込み中…
-          </span>
-        ) : items.length === 0 ? (
-          <Link
-            href={roomHref}
-            className="text-[10px] font-medium opacity-60 hover:opacity-90 transition-opacity"
-            style={{ color: meta.textColor }}
-          >
-            ルームを見る →
-          </Link>
-        ) : (
-          <>
-            {items.map((item, i) => (
-              <SmallBubble key={item.id} item={item} meta={meta} index={i + blobIndex * 4} />
-            ))}
+        {/* コンテンツ */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5 px-[12%] py-[10%]">
+          {isCommunity ? (
             <Link
               href={roomHref}
-              className="mt-1 flex items-center gap-0.5 text-[10px] font-medium opacity-50 hover:opacity-80 transition-opacity"
+              className="flex items-center gap-2 rounded-full px-5 py-2.5 text-xs font-bold shadow-md transition-transform hover:scale-105"
+              style={{
+                background: meta.bubbleBg,
+                color: meta.textColor,
+                border: `1.5px solid ${meta.textColor}35`,
+                boxShadow: `0 4px 16px ${meta.glowColor}`,
+              }}
+            >
+              掲示板に参加する
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          ) : loading ? (
+            <span className="text-[11px] opacity-50" style={{ color: meta.textColor }}>
+              読み込み中…
+            </span>
+          ) : items.length === 0 ? (
+            <Link
+              href={roomHref}
+              className="text-[11px] font-medium opacity-60 hover:opacity-90 transition-opacity"
               style={{ color: meta.textColor }}
             >
-              もっと見る
-              <ArrowRight className="h-2.5 w-2.5" />
+              ルームを見る →
             </Link>
-          </>
-        )}
+          ) : (
+            <>
+              {items.map((item, i) => (
+                <SmallBubble
+                  key={item.id}
+                  item={item}
+                  meta={meta}
+                  floatIndex={i + blobIndex * 4}
+                />
+              ))}
+              <Link
+                href={roomHref}
+                className="mt-0.5 flex items-center gap-0.5 text-[10px] font-semibold opacity-50 hover:opacity-80 transition-opacity"
+                style={{ color: meta.textColor }}
+              >
+                もっと見る
+                <ArrowRight className="h-2.5 w-2.5" />
+              </Link>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -263,24 +260,21 @@ export function CategorySubAreaView({
 
   return (
     <>
-      {/* CSS アニメーション定義 */}
       <style>{`
-        @keyframes floatBubble {
-          0%, 100% { transform: translateY(0px); }
-          33%       { transform: translateY(-4px) translateX(1.5px); }
-          66%       { transform: translateY(2px)  translateX(-1px); }
+        @keyframes subBubbleFloat {
+          0%,100% { transform: translateY(0px); }
+          35%      { transform: translateY(-5px) translateX(1.5px); }
+          65%      { transform: translateY(3px)  translateX(-1px); }
         }
-        @keyframes floatBlob {
-          0%, 100% { transform: translateY(0px) scale(1); }
-          40%       { transform: translateY(-6px) scale(1.012); }
-          70%       { transform: translateY(3px)  scale(0.99); }
+        @keyframes blobDrift {
+          0%,100% { transform: translateY(0px) scale(1); }
+          40%      { transform: translateY(-8px) scale(1.015); }
+          70%      { transform: translateY(4px)  scale(0.988); }
         }
       `}</style>
 
-      <div
-        className="grid gap-5 p-6"
-        style={{ gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))" }}
-      >
+      {/* 3列×2行グリッド（モバイル2列） */}
+      <div className="grid grid-cols-2 gap-6 p-6 md:grid-cols-3">
         {sorted.map((sub, i) => {
           const meta = AREA_META[sub.contentKind] ?? DEFAULT_META;
           return (
