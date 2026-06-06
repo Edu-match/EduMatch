@@ -100,11 +100,15 @@ type CommunityRoomItem = {
 function CommunityRoomsSection({
   categoryId,
   subCategoryId,
+  categorySlug,
+  subCategorySlug,
   mainRoomId,
   isLoggedIn,
 }: {
   categoryId: string;
   subCategoryId: string;
+  categorySlug: string;
+  subCategorySlug: string;
   mainRoomId: string;
   isLoggedIn: boolean;
 }) {
@@ -117,7 +121,13 @@ function CommunityRoomsSection({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`/api/forum/rooms?subCategoryId=${encodeURIComponent(subCategoryId)}`, { credentials: "include" })
+    const q = new URLSearchParams({
+      categoryId,
+      subCategoryId,
+      categorySlug,
+      subSlug: subCategorySlug,
+    });
+    fetch(`/api/forum/rooms?${q}`, { credentials: "include" })
       .then((r) => r.json())
       .then((d) => {
         if (Array.isArray(d.rooms)) {
@@ -125,7 +135,7 @@ function CommunityRoomsSection({
         }
       })
       .catch(console.error);
-  }, [subCategoryId, mainRoomId]);
+  }, [categoryId, subCategoryId, categorySlug, subCategorySlug, mainRoomId]);
 
   const handleOpenCreate = () => {
     if (!isLoggedIn) {
@@ -154,6 +164,8 @@ function CommunityRoomsSection({
           aiWeeklyTopicEnabled: false,
           categoryId,
           subCategoryId,
+          categorySlug,
+          subCategorySlug,
         }),
       });
       if (res.status === 401) {
@@ -162,7 +174,12 @@ function CommunityRoomsSection({
       }
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
-        setError((d as { error?: string }).error ?? "作成に失敗しました");
+        const msg = (d as { error?: string }).error ?? "作成に失敗しました";
+        if (res.status === 401) {
+          router.push("/auth/login");
+          return;
+        }
+        setError(msg);
         return;
       }
       const data = await res.json();
@@ -1359,6 +1376,8 @@ export function ForumRoomClient({
         <CommunityRoomsSection
           categoryId={categoryContext.categoryId}
           subCategoryId={categoryContext.subCategoryId}
+          categorySlug={categoryContext.categorySlug}
+          subCategorySlug={categoryContext.subCategorySlug}
           mainRoomId={room.id}
           isLoggedIn={auth.isLoggedIn}
         />
