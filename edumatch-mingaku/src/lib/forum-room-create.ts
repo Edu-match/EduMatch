@@ -31,16 +31,20 @@ async function insertForumRoomRaw(
   withCategoryLink: boolean
 ): Promise<void> {
   if (withCategoryLink && data.categoryId) {
-    await prisma.$executeRaw`
-      INSERT INTO forum_rooms (
-        id, name, description, emoji, weekly_topic,
-        ai_discussion, ai_weekly_topic_enabled, created_by, category_id
-      ) VALUES (
-        ${data.id}, ${data.name}, ${data.description}, ${data.emoji}, ${data.weeklyTopic},
-        ${data.aiDiscussion}, ${data.aiWeeklyTopicEnabled}, ${data.createdBy}::uuid, ${data.categoryId}::uuid
-      )
-    `;
-    return;
+    try {
+      await prisma.$executeRaw`
+        INSERT INTO forum_rooms (
+          id, name, description, emoji, weekly_topic,
+          ai_discussion, ai_weekly_topic_enabled, created_by, category_id
+        ) VALUES (
+          ${data.id}, ${data.name}, ${data.description}, ${data.emoji}, ${data.weeklyTopic},
+          ${data.aiDiscussion}, ${data.aiWeeklyTopicEnabled}, ${data.createdBy}::uuid, ${data.categoryId}::uuid
+        )
+      `;
+      return;
+    } catch {
+      // category_id 列が無い旧環境ではカテゴリ紐付けなしで作成する
+    }
   }
 
   await prisma.$executeRaw`
