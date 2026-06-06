@@ -8,6 +8,8 @@ import {
   Move,
 } from "lucide-react";
 import { computeCategoryConnectionsFromTags } from "@/lib/forum-category-tags";
+import { isForumHot } from "@/lib/forum-hot";
+import { ForumHotFlame } from "@/components/community/forum-hot-flame";
 import { BubbleGraphCanvas } from "@/components/community/forum-bubble-graph/BubbleGraphCanvas";
 import { computeBubbleDiameter } from "@/components/community/forum-bubble-graph/layout";
 import type { BubbleGraphNode } from "@/components/community/forum-bubble-graph/types";
@@ -34,6 +36,20 @@ export type ForumSubCategory = {
   isActive: boolean;
 };
 
+type RoomActivity = {
+  id: string;
+  postCount: number;
+  participantCount: number;
+  lastPostedAt: string;
+};
+
+function roomBelongsToCategory(roomId: string, categorySlug: string): boolean {
+  return (
+    roomId.startsWith(`cat-${categorySlug}--`) ||
+    roomId.startsWith(`room-${categorySlug}--`)
+  );
+}
+
 const FALLBACK_COLORS = [
   "#FBC9D4",
   "#C9D4F6",
@@ -53,14 +69,16 @@ export function ForumCategoryExplorer({
   const [subCategories, setSubCategories] = useState<ForumSubCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<ForumCategory | null>(null);
+  const [roomActivity, setRoomActivity] = useState<RoomActivity[]>([]);
 
   useEffect(() => {
     let cancelled = false;
     Promise.all([
       fetch("/api/forum/categories").then((r) => r.json()),
       fetch("/api/forum/sub-categories").then((r) => r.json()),
+      fetch("/api/forum/rooms", { credentials: "include" }).then((r) => r.json()),
     ])
-      .then(([cat, sub]) => {
+      .then(([cat, sub, rooms]) => {
         if (cancelled) return;
         if (Array.isArray(cat.categories)) {
           setCategories(
@@ -71,6 +89,7 @@ export function ForumCategoryExplorer({
           );
         }
         if (Array.isArray(sub.subCategories)) setSubCategories(sub.subCategories);
+        if (Array.isArray(rooms.rooms)) setRoomActivity(rooms.rooms);
       })
       .catch(console.error)
       .finally(() => {
@@ -121,6 +140,23 @@ export function ForumCategoryExplorer({
     [categories.length]
   );
 
+  const hotCategoryIds = useMemo(() => {
+    const hot = new Set<string>();
+    for (const cat of categories) {
+      const related = roomActivity.filter((r) => roomBelongsToCategory(r.id, cat.slug));
+      const totalPosts = related.reduce((s, r) => s + r.postCount, 0);
+      const totalParticipants = related.reduce((s, r) => s + r.participantCount, 0);
+      const latest = related
+        .map((r) => r.lastPostedAt)
+        .sort()
+        .at(-1);
+      if (isForumHot({ postCount: totalPosts, participantCount: totalParticipants, lastPostedAt: latest })) {
+        hot.add(cat.id);
+      }
+    }
+    return hot;
+  }, [categories, roomActivity]);
+
   const categoryNodes: BubbleGraphNode[] = useMemo(
     () =>
       categories.map((cat, i) => ({
@@ -129,10 +165,13 @@ export function ForumCategoryExplorer({
         sublabel: cat.description || undefined,
         diameter: categoryDiameter.default,
         backgroundColor: cat.color || FALLBACK_COLORS[i % FALLBACK_COLORS.length],
+        isHot: hotCategoryIds.has(cat.id),
         onActivate: () => handleSelectCategory(cat),
       })),
-    [categories, categoryDiameter.default, handleSelectCategory]
+    [categories, categoryDiameter.default, handleSelectCategory, hotCategoryIds]
   );
+
+  const selectedIsHot = selected ? hotCategoryIds.has(selected.id) : false;
 
   useEffect(() => {
     if (!selected) return;
@@ -199,7 +238,10 @@ export function ForumCategoryExplorer({
             </button>
 
             <div className="text-right">
-              <p className="text-sm font-bold text-foreground">{selected.name}</p>
+              <p className="flex items-center justify-end gap-1.5 text-sm font-bold text-foreground">
+                {selectedIsHot && <ForumHotFlame size="sm" />}
+                {selected.name}
+              </p>
               {selected.description ? (
                 <p className="mt-0.5 text-[11px] text-muted-foreground line-clamp-1">
                   {selected.description}

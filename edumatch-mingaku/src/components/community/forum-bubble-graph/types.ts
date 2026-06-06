@@ -30,5 +30,7 @@ export type BubbleGraphNode = {
   onActivate?: () => void;
   /** コミュニティ等のメインバブル */
   isPrimary?: boolean;
+  /** 議論が活発（炎エフェクト表示） */
+  isHot?: boolean;
   icon?: ReactNode;
 };

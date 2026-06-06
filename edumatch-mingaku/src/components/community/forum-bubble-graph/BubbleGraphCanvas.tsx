@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Minus, Plus, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { GraphEdges } from "./GraphEdges";
+import { ForumHotFlame } from "@/components/community/forum-hot-flame";
 import type { BubbleConnection, BubbleGraphNode } from "./types";
 import { useBubbleGraph } from "./useBubbleGraph";
 
@@ -24,10 +25,21 @@ function BubbleNode({
     <div
       className={cn(
         "relative flex h-full w-full flex-col items-center justify-center rounded-full text-center shadow-[0_12px_30px_-8px_rgba(0,0,0,0.25)] transition-transform hover:scale-[1.03]",
-        node.isPrimary && "ring-2 ring-primary/50 ring-offset-2 ring-offset-transparent"
+        node.isPrimary && "ring-2 ring-primary/50 ring-offset-2 ring-offset-transparent",
+        node.isHot && "ring-2 ring-orange-400/70 ring-offset-2 ring-offset-transparent"
       )}
-      style={{ backgroundColor: node.backgroundColor }}
+      style={{
+        backgroundColor: node.backgroundColor,
+        boxShadow: node.isHot
+          ? "0 0 28px rgba(255, 130, 50, 0.45), 0 12px 30px -8px rgba(0,0,0,0.25)"
+          : undefined,
+      }}
     >
+      {node.isHot && (
+        <span className="absolute -right-1 -top-1 z-20">
+          <ForumHotFlame size="sm" />
+        </span>
+      )}
       {node.isPrimary && (
         <span className="absolute -top-1 left-1/2 z-10 -translate-x-1/2 rounded-full bg-primary px-2 py-0.5 text-[9px] font-bold text-primary-foreground shadow-sm">
           メイン

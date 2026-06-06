@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -11,11 +11,21 @@ import {
   Video,
 } from "lucide-react";
 import type { CategoryContentItem } from "@/lib/forum-category-content";
+import { isForumHot } from "@/lib/forum-hot";
+import { ForumHotFlame } from "@/components/community/forum-hot-flame";
 import type { ForumCategory, ForumSubCategory } from "./forum-category-explorer";
 
 /* ------------------------------------------------------------------ */
-/* エリアメタ定義                                                        */
+/* 型・エリアメタ                                                        */
 /* ------------------------------------------------------------------ */
+
+type CommunityRoomItem = {
+  id: string;
+  name: string;
+  postCount: number;
+  participantCount: number;
+  lastPostedAt: string;
+};
 
 type AreaMeta = {
   label: string;
@@ -79,7 +89,7 @@ const DEFAULT_META: AreaMeta = {
 };
 
 /* ------------------------------------------------------------------ */
-/* 個別コンテンツバブル（真円・番号＋短縮タイトル・サブカテゴリルームへ） */
+/* コンテンツバブル                                                      */
 /* ------------------------------------------------------------------ */
 
 function SmallBubble({
@@ -97,8 +107,6 @@ function SmallBubble({
 }) {
   const dur = 4.5 + (floatIndex % 4) * 1.2;
   const delay = floatIndex * 0.55;
-
-  // タイトルを最大6文字に短縮（日本語対応）
   const shortTitle = item.title.length > 8 ? item.title.slice(0, 7) + "…" : item.title;
 
   const style: React.CSSProperties = {
@@ -114,7 +122,7 @@ function SmallBubble({
   return (
     <Link
       href={roomHref}
-      className="flex shrink-0 flex-col items-center justify-center gap-0.5 rounded-full border backdrop-blur-sm transition-transform hover:scale-110 hover:shadow-lg cursor-pointer overflow-hidden"
+      className="relative flex shrink-0 flex-col items-center justify-center gap-0.5 rounded-full border backdrop-blur-sm transition-transform hover:scale-110 hover:shadow-lg cursor-pointer overflow-hidden"
       style={style}
       title={item.title}
     >
@@ -132,63 +140,148 @@ function SmallBubble({
 }
 
 /* ------------------------------------------------------------------ */
+/* コミュニティルームバブル                                              */
+/* ------------------------------------------------------------------ */
+
+function RoomBubble({
+  room,
+  meta,
+  floatIndex,
+}: {
+  room: CommunityRoomItem;
+  meta: AreaMeta;
+  floatIndex: number;
+}) {
+  const dur = 4.5 + (floatIndex % 4) * 1.2;
+  const delay = floatIndex * 0.55;
+  const shortName = room.name.length > 8 ? room.name.slice(0, 7) + "…" : room.name;
+  const hot = isForumHot({
+    postCount: room.postCount,
+    participantCount: room.participantCount,
+    lastPostedAt: room.lastPostedAt,
+  });
+
+  const style: React.CSSProperties = {
+    background: meta.bubbleBg,
+    borderColor: hot ? "rgba(255,120,40,0.45)" : `${meta.textColor}22`,
+    color: meta.textColor,
+    boxShadow: hot
+      ? "0 0 18px rgba(255,120,40,0.4), 0 4px 16px rgba(80,180,240,0.25)"
+      : `0 4px 16px ${meta.glowColor}`,
+    animation: `subBubbleFloat ${dur}s ease-in-out ${delay}s infinite`,
+    width: 76,
+    height: 76,
+  };
+
+  return (
+    <Link
+      href={`/forum/${room.id}`}
+      className="relative flex shrink-0 flex-col items-center justify-center gap-0.5 rounded-full border backdrop-blur-sm transition-transform hover:scale-110 hover:shadow-lg cursor-pointer overflow-visible px-1"
+      style={style}
+      title={room.name}
+    >
+      {hot && (
+        <span className="absolute -right-1 -top-1 z-10">
+          <ForumHotFlame size="sm" />
+        </span>
+      )}
+      <MessageCircle className="h-4 w-4 opacity-70" />
+      <span className="w-full text-center text-[9px] font-semibold leading-tight">
+        {shortName}
+      </span>
+    </Link>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* ブロブ本体                                                            */
 /* ------------------------------------------------------------------ */
 
 function BlobArea({
+  category,
   sub,
-  categorySlug,
   meta,
   blobIndex,
 }: {
+  category: ForumCategory;
   sub: ForumSubCategory;
-  categorySlug: string;
   meta: AreaMeta;
   blobIndex: number;
 }) {
   const [items, setItems] = useState<CategoryContentItem[]>([]);
+  const [communityRooms, setCommunityRooms] = useState<CommunityRoomItem[]>([]);
   const [loading, setLoading] = useState(true);
   const isCommunity = sub.contentKind === "community";
   const Icon = meta.icon;
-  const roomHref = `/forum/${categorySlug}/${sub.slug}`;
+  const roomHref = `/forum/${category.slug}/${sub.slug}`;
 
   useEffect(() => {
-    if (isCommunity) { setLoading(false); return; }
     let cancelled = false;
-    const q = new URLSearchParams({ categorySlug, subSlug: sub.slug });
+
+    if (isCommunity) {
+      const q = new URLSearchParams({
+        categoryId: category.id,
+        subCategoryId: sub.id,
+        categorySlug: category.slug,
+        subSlug: sub.slug,
+      });
+      fetch(`/api/forum/rooms?${q}`, { credentials: "include" })
+        .then((r) => r.json())
+        .then((d) => {
+          if (!cancelled && Array.isArray(d.rooms)) {
+            setCommunityRooms(d.rooms);
+          }
+        })
+        .catch(console.error)
+        .finally(() => { if (!cancelled) setLoading(false); });
+      return () => { cancelled = true; };
+    }
+
+    const q = new URLSearchParams({ categorySlug: category.slug, subSlug: sub.slug });
     fetch(`/api/forum/rooms/category-content?${q}`)
       .then((r) => r.json())
       .then((d) => { if (!cancelled && Array.isArray(d.items)) setItems(d.items); })
       .catch(console.error)
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [categorySlug, sub.slug, isCommunity]);
+  }, [category.id, category.slug, sub.id, sub.slug, isCommunity]);
+
+  const blobHot = useMemo(() => {
+    if (!isCommunity) return false;
+    return communityRooms.some((r) =>
+      isForumHot({
+        postCount: r.postCount,
+        participantCount: r.participantCount,
+        lastPostedAt: r.lastPostedAt,
+      })
+    );
+  }, [isCommunity, communityRooms]);
 
   const blobDur = 7 + blobIndex * 1.2;
   const blobDelay = blobIndex * 0.85;
 
   return (
     <div className="flex w-[260px] flex-col items-center gap-3 sm:w-[290px] md:w-[320px]">
-      {/* ── タイトル（ブロブの外、常に表示） ── */}
       <div className="flex items-center gap-1.5">
         <Icon className="h-4 w-4 shrink-0" style={{ color: meta.textColor }} />
         <span className="text-sm font-bold" style={{ color: meta.textColor }}>
           {meta.label}
         </span>
+        {blobHot && <ForumHotFlame size="sm" />}
       </div>
 
-      {/* ── 楕円ブロブ ── */}
       <div
         className="relative w-full overflow-hidden"
         style={{
           borderRadius: "50%",
           aspectRatio: "1 / 1",
           background: `radial-gradient(ellipse at 38% 32%, ${meta.blobColor} 0%, ${meta.blobColor}bb 55%, ${meta.blobColor}66 100%)`,
-          boxShadow: `0 8px 32px ${meta.glowColor}, inset 0 1px 2px rgba(255,255,255,0.75)`,
+          boxShadow: blobHot
+            ? `0 0 36px rgba(255, 120, 50, 0.45), 0 8px 32px ${meta.glowColor}, inset 0 1px 2px rgba(255,255,255,0.75)`
+            : `0 8px 32px ${meta.glowColor}, inset 0 1px 2px rgba(255,255,255,0.75)`,
           animation: `blobDrift ${blobDur}s ease-in-out ${blobDelay}s infinite`,
         }}
       >
-        {/* ハイライト */}
         <div
           className="pointer-events-none absolute inset-0 rounded-full"
           style={{
@@ -197,22 +290,38 @@ function BlobArea({
           }}
         />
 
-        {/* コンテンツ */}
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-[8%] py-[8%]">
           {isCommunity ? (
-            <Link
-              href={roomHref}
-              className="flex items-center gap-2 rounded-full px-5 py-2.5 text-xs font-bold shadow-md transition-transform hover:scale-105"
-              style={{
-                background: meta.bubbleBg,
-                color: meta.textColor,
-                border: `1.5px solid ${meta.textColor}35`,
-                boxShadow: `0 4px 16px ${meta.glowColor}`,
-              }}
-            >
-              掲示板に参加する
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
+            loading ? (
+              <span className="text-[11px] opacity-50" style={{ color: meta.textColor }}>
+                読み込み中…
+              </span>
+            ) : communityRooms.length > 0 ? (
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                {communityRooms.map((room, i) => (
+                  <RoomBubble
+                    key={room.id}
+                    room={room}
+                    meta={meta}
+                    floatIndex={i + blobIndex * 4}
+                  />
+                ))}
+              </div>
+            ) : (
+              <Link
+                href={roomHref}
+                className="flex items-center gap-2 rounded-full px-5 py-2.5 text-xs font-bold shadow-md transition-transform hover:scale-105"
+                style={{
+                  background: meta.bubbleBg,
+                  color: meta.textColor,
+                  border: `1.5px solid ${meta.textColor}35`,
+                  boxShadow: `0 4px 16px ${meta.glowColor}`,
+                }}
+              >
+                掲示板に参加する
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            )
           ) : loading ? (
             <span className="text-[11px] opacity-50" style={{ color: meta.textColor }}>
               読み込み中…
@@ -256,7 +365,6 @@ export function CategorySubAreaView({
   category: ForumCategory;
   subCategories: ForumSubCategory[];
 }) {
-  // community を最後に
   const sorted = [
     ...subCategories.filter((s) => s.contentKind !== "community"),
     ...subCategories.filter((s) => s.contentKind === "community"),
@@ -277,15 +385,14 @@ export function CategorySubAreaView({
         }
       `}</style>
 
-      {/* flex-wrap + justify-center で5個が自然にまとまる */}
       <div className="flex flex-wrap justify-center gap-8 p-8">
         {sorted.map((sub, i) => {
           const meta = AREA_META[sub.contentKind] ?? DEFAULT_META;
           return (
             <BlobArea
               key={sub.id}
+              category={category}
               sub={sub}
-              categorySlug={category.slug}
               meta={meta}
               blobIndex={i}
             />
