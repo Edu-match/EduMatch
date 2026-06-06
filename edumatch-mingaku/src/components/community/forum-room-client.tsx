@@ -101,10 +101,12 @@ function CommunityRoomsSection({
   categoryId,
   subCategoryId,
   mainRoomId,
+  isLoggedIn,
 }: {
   categoryId: string;
   subCategoryId: string;
   mainRoomId: string;
+  isLoggedIn: boolean;
 }) {
   const router = useRouter();
   const [rooms, setRooms] = useState<CommunityRoomItem[]>([]);
@@ -112,6 +114,7 @@ function CommunityRoomsSection({
   const [roomName, setRoomName] = useState("");
   const [roomDesc, setRoomDesc] = useState("");
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(`/api/forum/rooms?subCategoryId=${encodeURIComponent(subCategoryId)}`, { credentials: "include" })
@@ -124,9 +127,20 @@ function CommunityRoomsSection({
       .catch(console.error);
   }, [subCategoryId, mainRoomId]);
 
+  const handleOpenCreate = () => {
+    if (!isLoggedIn) {
+      router.push("/auth/login");
+      return;
+    }
+    setCreateOpen(true);
+    setError(null);
+  };
+
   const handleCreate = async () => {
     if (!roomName.trim() || saving) return;
+    if (!isLoggedIn) { router.push("/auth/login"); return; }
     setSaving(true);
+    setError(null);
     try {
       const res = await fetch("/api/forum/rooms", {
         method: "POST",
@@ -142,11 +156,19 @@ function CommunityRoomsSection({
           subCategoryId,
         }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        // 作成したルームへ即遷移
-        router.push(`/forum/${data.room.id}`);
+      if (res.status === 401) {
+        router.push("/auth/login");
+        return;
       }
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setError((d as { error?: string }).error ?? "作成に失敗しました");
+        return;
+      }
+      const data = await res.json();
+      router.push(`/forum/${data.room.id}`);
+    } catch {
+      setError("通信エラーが発生しました");
     } finally {
       setSaving(false);
     }
@@ -184,18 +206,18 @@ function CommunityRoomsSection({
             {!createOpen ? (
               <button
                 type="button"
-                onClick={() => setCreateOpen(true)}
+                onClick={handleOpenCreate}
                 className="flex items-center justify-center gap-2 rounded-xl border-2 border-dashed bg-background/60 p-4 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
               >
                 <Plus className="h-4 w-4" />
-                新しい部屋を作る
+                {isLoggedIn ? "新しい部屋を作る" : "ログインして部屋を作る"}
               </button>
             ) : (
               <div className="rounded-xl border-2 border-primary/30 bg-background p-4 space-y-3">
                 <p className="text-sm font-semibold text-foreground">新しい部屋</p>
                 <Input
                   value={roomName}
-                  onChange={(e) => setRoomName(e.target.value)}
+                  onChange={(e) => { setRoomName(e.target.value); setError(null); }}
                   placeholder="部屋名（例: 授業実践シェア）"
                   className="text-sm"
                   autoFocus
@@ -208,12 +230,15 @@ function CommunityRoomsSection({
                   className="resize-none text-sm"
                   placeholder="説明（省略可）"
                 />
+                {error && (
+                  <p className="text-xs font-medium text-destructive">{error}</p>
+                )}
                 <div className="flex justify-end gap-2">
                   <Button
                     type="button"
                     size="sm"
                     variant="ghost"
-                    onClick={() => { setCreateOpen(false); setRoomName(""); setRoomDesc(""); }}
+                    onClick={() => { setCreateOpen(false); setRoomName(""); setRoomDesc(""); setError(null); }}
                   >
                     キャンセル
                   </Button>
@@ -1335,6 +1360,7 @@ export function ForumRoomClient({
           categoryId={categoryContext.categoryId}
           subCategoryId={categoryContext.subCategoryId}
           mainRoomId={room.id}
+          isLoggedIn={auth.isLoggedIn}
         />
       )}
 
