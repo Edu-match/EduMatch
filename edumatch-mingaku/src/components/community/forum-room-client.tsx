@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Bold,
@@ -105,6 +106,7 @@ function CommunityRoomsSection({
   subCategoryId: string;
   mainRoomId: string;
 }) {
+  const router = useRouter();
   const [rooms, setRooms] = useState<CommunityRoomItem[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
   const [roomName, setRoomName] = useState("");
@@ -116,7 +118,6 @@ function CommunityRoomsSection({
       .then((r) => r.json())
       .then((d) => {
         if (Array.isArray(d.rooms)) {
-          // 自動生成のカテゴリルーム自身は除外
           setRooms(d.rooms.filter((r: CommunityRoomItem) => r.id !== mainRoomId));
         }
       })
@@ -143,10 +144,8 @@ function CommunityRoomsSection({
       });
       if (res.ok) {
         const data = await res.json();
-        setRooms((prev) => [...prev, data.room as CommunityRoomItem]);
-        setRoomName("");
-        setRoomDesc("");
-        setCreateOpen(false);
+        // 作成したルームへ即遷移
+        router.push(`/forum/${data.room.id}`);
       }
     } finally {
       setSaving(false);

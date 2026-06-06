@@ -79,21 +79,22 @@ const DEFAULT_META: AreaMeta = {
 };
 
 /* ------------------------------------------------------------------ */
-/* 個別コンテンツバブル（真円・タイトル短縮）                             */
+/* 個別コンテンツバブル（真円・サブカテゴリルームへ遷移）                 */
 /* ------------------------------------------------------------------ */
 
 function SmallBubble({
   item,
   meta,
   floatIndex,
+  roomHref,
 }: {
   item: CategoryContentItem;
   meta: AreaMeta;
   floatIndex: number;
+  roomHref: string;
 }) {
   const dur = 4.5 + (floatIndex % 4) * 1.2;
   const delay = floatIndex * 0.55;
-  const isExternal = /^https?:\/\//.test(item.href);
 
   const style: React.CSSProperties = {
     background: meta.bubbleBg,
@@ -105,23 +106,21 @@ function SmallBubble({
     height: 72,
   };
   const cls =
-    "flex shrink-0 items-center justify-center rounded-full border " +
-    "text-center text-[10px] font-semibold leading-tight backdrop-blur-sm " +
-    "transition-transform hover:scale-110 hover:shadow-lg cursor-pointer overflow-hidden p-1.5";
+    "flex shrink-0 flex-col items-center justify-center rounded-full border " +
+    "overflow-hidden backdrop-blur-sm transition-transform hover:scale-110 " +
+    "hover:shadow-lg cursor-pointer";
 
-  const inner = (
-    <span className="line-clamp-3 w-full text-center">{item.title}</span>
+  const inner = item.thumbnailUrl ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={item.thumbnailUrl} alt={item.title} className="h-full w-full object-cover" />
+  ) : (
+    <span className="line-clamp-3 w-full px-1 text-center text-[9px] font-semibold leading-tight">
+      {item.title}
+    </span>
   );
 
-  if (isExternal) {
-    return (
-      <a href={item.href} target="_blank" rel="noopener noreferrer" className={cls} style={style}>
-        {inner}
-      </a>
-    );
-  }
   return (
-    <Link href={item.href} className={cls} style={style}>
+    <Link href={roomHref} className={cls} style={style} title={item.title}>
       {inner}
     </Link>
   );
@@ -229,6 +228,7 @@ function BlobArea({
                   item={item}
                   meta={meta}
                   floatIndex={i + blobIndex * 4}
+                  roomHref={roomHref}
                 />
               ))}
             </div>

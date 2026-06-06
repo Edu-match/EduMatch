@@ -6,7 +6,6 @@ import { useSearchParams } from "next/navigation";
 import {
   ArrowUpRight,
   Bot,
-  Compass,
   LayoutGrid,
   LayoutList,
   Loader2,
@@ -196,54 +195,17 @@ export function ForumListClient() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
 
-      {/* ─── ヒーローセクション ─── */}
-      <section
-        className="relative overflow-hidden border-b bg-gradient-to-br from-primary/8 via-primary/4 to-background"
-        data-tutorial="forum-hero-section"
-      >
-        <div className="container py-10 md:py-14">
-          <div className="mx-auto max-w-3xl text-center">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border bg-background/80 px-4 py-1.5 text-xs text-muted-foreground backdrop-blur-sm">
-              <MessageSquare className="h-3.5 w-3.5 text-primary" />
-              AIUEO コミュニティ
-            </div>
-            <h1 className="mb-3 text-3xl font-bold tracking-tight md:text-4xl">
-              AIUEO 井戸端会議
-            </h1>
-            <p className="mb-6 text-sm leading-7 text-muted-foreground">
-              教育に関わるすべての人が、テーマ別の「部屋」でざっくばらんに語り合う場。
-              <br className="hidden sm:block" />
-              教員・専門家・保護者・企業、立場を超えてつながりましょう。
-            </p>
-
-            <div className="flex flex-wrap items-center justify-center gap-3 text-sm">
-              <span className="rounded-full border bg-background/80 px-4 py-2 backdrop-blur-sm">
-                <strong>{rooms.length}</strong> 部屋
-              </span>
-              <span className="rounded-full border bg-background/80 px-4 py-2 backdrop-blur-sm">
-                投稿 <strong>{totalPosts.toLocaleString()}</strong> 件
-              </span>
-              <span className="rounded-full border bg-background/80 px-4 py-2 backdrop-blur-sm">
-                参加者 <strong>{totalParticipants}</strong> 人
-              </span>
-            </div>
-
-            <div className="mt-7 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center sm:gap-4">
-              <Button asChild size="lg" className="min-h-11 gap-2 px-6 text-base font-semibold shadow-sm">
-                <a href="#forum-rooms" className="inline-flex items-center gap-2.5">
-                  <Compass className="h-5 w-5 shrink-0" />
-                  <span className="flex flex-col items-start text-left leading-tight">
-                    <span>コミュニティを探す</span>
-                    <span className="text-xs font-normal opacity-80">大カテゴリから話題の部屋へ</span>
-                  </span>
-                </a>
-              </Button>
-            </div>
+      {/* ─── タイトルバー ─── */}
+      <div className="border-b bg-background/80 backdrop-blur-sm" data-tutorial="forum-hero-section">
+        <div className="container flex items-center gap-3 py-4">
+          <MessageSquare className="h-5 w-5 text-primary" />
+          <h1 className="text-lg font-bold tracking-tight">井戸端会議</h1>
+          <div className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
+            <span><strong className="text-foreground">{rooms.length}</strong> 部屋</span>
+            <span>投稿 <strong className="text-foreground">{totalPosts.toLocaleString()}</strong> 件</span>
           </div>
         </div>
-        <div className="pointer-events-none absolute -top-20 -right-20 h-80 w-80 rounded-full bg-primary/5 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-10 -left-10 h-60 w-60 rounded-full bg-primary/5 blur-2xl" />
-      </section>
+      </div>
 
       {/* ─── コンテンツエリア ─── */}
       <div id="forum-rooms" className="container space-y-6 py-8">
