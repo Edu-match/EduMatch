@@ -155,77 +155,81 @@ function CommunityRoomsSection({
   return (
     <div className="border-b bg-muted/20">
       <div className="container py-6">
-        <div className="mx-auto max-w-5xl">
-          <div className="mb-4 flex items-center justify-between">
-            <p className="text-sm font-semibold text-foreground">このコミュニティの部屋</p>
-            <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" variant="outline" className="gap-1.5">
-                  <Plus className="h-4 w-4" />
-                  部屋を作る
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>新しい部屋を作成</DialogTitle>
-                  <DialogDescription>このコミュニティに新しいテーマ部屋を追加します</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div className="space-y-1.5">
-                    <Label>部屋名 <span className="text-destructive">*</span></Label>
-                    <Input
-                      value={roomName}
-                      onChange={(e) => setRoomName(e.target.value)}
-                      placeholder="例: 授業実践シェア"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>説明文</Label>
-                    <Textarea
-                      rows={2}
-                      value={roomDesc}
-                      onChange={(e) => setRoomDesc(e.target.value)}
-                      className="resize-none"
-                      placeholder="この部屋のテーマを簡潔に説明してください"
-                    />
-                  </div>
-                  <div className="flex justify-end gap-2 pt-1">
-                    <Button variant="outline" onClick={() => setCreateOpen(false)}>キャンセル</Button>
-                    <Button onClick={handleCreate} disabled={!roomName.trim() || saving}>
-                      {saving ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1 h-3.5 w-3.5" />}
-                      作成する
-                    </Button>
+        <div className="mx-auto max-w-5xl space-y-4">
+          <p className="text-sm font-semibold text-foreground">このコミュニティの部屋</p>
+
+          {/* 部屋カード一覧 */}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {rooms.map((r) => (
+              <Link
+                key={r.id}
+                href={`/forum/${r.id}`}
+                className="group flex items-start gap-3 rounded-xl border bg-background p-3 transition-all hover:border-primary/30 hover:shadow-sm"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold group-hover:text-primary">{r.name}</p>
+                  {r.description ? (
+                    <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{r.description}</p>
+                  ) : null}
+                  <div className="mt-1.5 flex items-center gap-2 text-[11px] text-muted-foreground">
+                    <span className="flex items-center gap-0.5"><MessageSquare className="h-3 w-3" />{r.postCount}</span>
+                    <span className="flex items-center gap-0.5"><Users className="h-3 w-3" />{r.participantCount}</span>
                   </div>
                 </div>
-              </DialogContent>
-            </Dialog>
-          </div>
+                <ArrowLeft className="mt-0.5 h-3.5 w-3.5 shrink-0 rotate-180 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-primary/60" />
+              </Link>
+            ))}
 
-          {rooms.length === 0 ? (
-            <p className="text-xs text-muted-foreground">まだ部屋がありません。「部屋を作る」から最初の部屋を作ってみましょう。</p>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {rooms.map((room) => (
-                <Link
-                  key={room.id}
-                  href={`/forum/${room.id}`}
-                  className="group flex items-start gap-3 rounded-xl border bg-background p-3 transition-all hover:border-primary/30 hover:shadow-sm"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold group-hover:text-primary">{room.name}</p>
-                    {room.description ? (
-                      <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{room.description}</p>
-                    ) : null}
-                    <div className="mt-1.5 flex items-center gap-2 text-[11px] text-muted-foreground">
-                      <span className="flex items-center gap-0.5"><MessageSquare className="h-3 w-3" />{room.postCount}</span>
-                      <span className="flex items-center gap-0.5"><Users className="h-3 w-3" />{room.participantCount}</span>
-                    </div>
-                  </div>
-                  <ArrowLeft className="mt-0.5 h-3.5 w-3.5 shrink-0 rotate-180 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-primary/60" />
-                </Link>
-              ))}
-            </div>
-          )}
+            {/* 部屋作成カード（インライン展開） */}
+            {!createOpen ? (
+              <button
+                type="button"
+                onClick={() => setCreateOpen(true)}
+                className="flex items-center justify-center gap-2 rounded-xl border-2 border-dashed bg-background/60 p-4 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+              >
+                <Plus className="h-4 w-4" />
+                新しい部屋を作る
+              </button>
+            ) : (
+              <div className="rounded-xl border-2 border-primary/30 bg-background p-4 space-y-3">
+                <p className="text-sm font-semibold text-foreground">新しい部屋</p>
+                <Input
+                  value={roomName}
+                  onChange={(e) => setRoomName(e.target.value)}
+                  placeholder="部屋名（例: 授業実践シェア）"
+                  className="text-sm"
+                  autoFocus
+                  onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+                />
+                <Textarea
+                  rows={2}
+                  value={roomDesc}
+                  onChange={(e) => setRoomDesc(e.target.value)}
+                  className="resize-none text-sm"
+                  placeholder="説明（省略可）"
+                />
+                <div className="flex justify-end gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => { setCreateOpen(false); setRoomName(""); setRoomDesc(""); }}
+                  >
+                    キャンセル
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleCreate}
+                    disabled={!roomName.trim() || saving}
+                  >
+                    {saving ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1 h-3.5 w-3.5" />}
+                    作成して入室
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

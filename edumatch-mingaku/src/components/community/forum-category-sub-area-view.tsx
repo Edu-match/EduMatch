@@ -79,7 +79,7 @@ const DEFAULT_META: AreaMeta = {
 };
 
 /* ------------------------------------------------------------------ */
-/* 個別コンテンツバブル（真円・サブカテゴリルームへ遷移）                 */
+/* 個別コンテンツバブル（真円・番号＋短縮タイトル・サブカテゴリルームへ） */
 /* ------------------------------------------------------------------ */
 
 function SmallBubble({
@@ -87,41 +87,46 @@ function SmallBubble({
   meta,
   floatIndex,
   roomHref,
+  index,
 }: {
   item: CategoryContentItem;
   meta: AreaMeta;
   floatIndex: number;
   roomHref: string;
+  index: number;
 }) {
   const dur = 4.5 + (floatIndex % 4) * 1.2;
   const delay = floatIndex * 0.55;
 
+  // タイトルを最大6文字に短縮（日本語対応）
+  const shortTitle = item.title.length > 8 ? item.title.slice(0, 7) + "…" : item.title;
+
   const style: React.CSSProperties = {
     background: meta.bubbleBg,
-    borderColor: `${meta.textColor}28`,
+    borderColor: `${meta.textColor}22`,
     color: meta.textColor,
-    boxShadow: `0 3px 14px ${meta.glowColor}`,
+    boxShadow: `0 4px 16px ${meta.glowColor}`,
     animation: `subBubbleFloat ${dur}s ease-in-out ${delay}s infinite`,
-    width: 72,
-    height: 72,
+    width: 76,
+    height: 76,
   };
-  const cls =
-    "flex shrink-0 flex-col items-center justify-center rounded-full border " +
-    "overflow-hidden backdrop-blur-sm transition-transform hover:scale-110 " +
-    "hover:shadow-lg cursor-pointer";
-
-  const inner = item.thumbnailUrl ? (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={item.thumbnailUrl} alt={item.title} className="h-full w-full object-cover" />
-  ) : (
-    <span className="line-clamp-3 w-full px-1 text-center text-[9px] font-semibold leading-tight">
-      {item.title}
-    </span>
-  );
 
   return (
-    <Link href={roomHref} className={cls} style={style} title={item.title}>
-      {inner}
+    <Link
+      href={roomHref}
+      className="flex shrink-0 flex-col items-center justify-center gap-0.5 rounded-full border backdrop-blur-sm transition-transform hover:scale-110 hover:shadow-lg cursor-pointer overflow-hidden"
+      style={style}
+      title={item.title}
+    >
+      <span
+        className="flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-bold"
+        style={{ background: `${meta.textColor}18` }}
+      >
+        {index + 1}
+      </span>
+      <span className="w-[90%] text-center text-[9px] font-semibold leading-tight">
+        {shortTitle}
+      </span>
     </Link>
   );
 }
@@ -229,6 +234,7 @@ function BlobArea({
                   meta={meta}
                   floatIndex={i + blobIndex * 4}
                   roomHref={roomHref}
+                  index={i}
                 />
               ))}
             </div>
