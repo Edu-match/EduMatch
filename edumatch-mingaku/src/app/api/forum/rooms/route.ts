@@ -10,6 +10,7 @@ export async function GET(req: NextRequest) {
   try {
     const url = new URL(req.url);
     const includeHidden = url.searchParams.get("includeHidden") === "true";
+    const subCategoryId = url.searchParams.get("subCategoryId") ?? undefined;
     let isAdmin = false;
     if (includeHidden) {
       const profile = await getCurrentProfile();
@@ -18,6 +19,7 @@ export async function GET(req: NextRequest) {
 
     // is_hidden カラムが未追加の場合に備えてフォールバック
     const roomsWithCounts = await prisma.forumRoom.findMany({
+      where: subCategoryId ? { sub_category_id: subCategoryId } : undefined,
       orderBy: { created_at: "asc" },
       include: {
         _count: { select: { posts: { where: { is_hidden: false } } } },
@@ -89,13 +91,15 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { name, description, weeklyTopic, aiDiscussion, emoji, aiWeeklyTopicEnabled } = body as {
+    const { name, description, weeklyTopic, aiDiscussion, emoji, aiWeeklyTopicEnabled, categoryId, subCategoryId } = body as {
       name: string;
       description?: string;
       weeklyTopic: string;
       aiDiscussion?: boolean;
       emoji?: string;
       aiWeeklyTopicEnabled?: boolean;
+      categoryId?: string;
+      subCategoryId?: string;
     };
 
     if (!name?.trim()) {
@@ -121,6 +125,8 @@ export async function POST(req: NextRequest) {
         ai_weekly_topic_enabled: aiWeeklyTopicEnabled ?? true,
         emoji: emoji ?? "",
         created_by: user.id,
+        ...(categoryId ? { category_id: categoryId } : {}),
+        ...(subCategoryId ? { sub_category_id: subCategoryId } : {}),
       },
     });
 

@@ -47,6 +47,8 @@ export default async function ForumCategoryRoomPage({
     <ForumRoomClientDynamic
       room={room}
       categoryContext={{
+        categoryId: category.id,
+        subCategoryId: subCategory.id,
         categorySlug: category.slug,
         subCategorySlug: subCategory.slug,
         categoryName: category.name,

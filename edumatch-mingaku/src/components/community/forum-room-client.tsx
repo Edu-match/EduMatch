@@ -20,7 +20,9 @@ import {
   MessageSquare,
   PenSquare,
   Pin,
+  Plus,
   Quote,
+  Save,
   Sparkles,
   Strikethrough,
   Underline,
@@ -38,8 +40,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -71,6 +76,8 @@ import type { CategoryContentItem } from "@/lib/forum-category-content";
 
 /** カテゴリルーム（大カテゴリ×サブカテゴリ）で上部に表示するコンテキスト */
 export type ForumCategoryContext = {
+  categoryId: string;
+  subCategoryId: string;
   categorySlug: string;
   subCategorySlug: string;
   categoryName: string;
@@ -78,6 +85,153 @@ export type ForumCategoryContext = {
   contentKind: string;
   items: CategoryContentItem[];
 };
+
+// ─── コミュニティルーム管理セクション ─────────────────────
+
+type CommunityRoomItem = {
+  id: string;
+  name: string;
+  description: string;
+  postCount: number;
+  participantCount: number;
+};
+
+function CommunityRoomsSection({
+  categoryId,
+  subCategoryId,
+  mainRoomId,
+}: {
+  categoryId: string;
+  subCategoryId: string;
+  mainRoomId: string;
+}) {
+  const [rooms, setRooms] = useState<CommunityRoomItem[]>([]);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [roomName, setRoomName] = useState("");
+  const [roomDesc, setRoomDesc] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/forum/rooms?subCategoryId=${encodeURIComponent(subCategoryId)}`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (Array.isArray(d.rooms)) {
+          // 自動生成のカテゴリルーム自身は除外
+          setRooms(d.rooms.filter((r: CommunityRoomItem) => r.id !== mainRoomId));
+        }
+      })
+      .catch(console.error);
+  }, [subCategoryId, mainRoomId]);
+
+  const handleCreate = async () => {
+    if (!roomName.trim() || saving) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/forum/rooms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          name: roomName.trim(),
+          description: roomDesc.trim(),
+          weeklyTopic: "",
+          aiDiscussion: true,
+          aiWeeklyTopicEnabled: false,
+          categoryId,
+          subCategoryId,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setRooms((prev) => [...prev, data.room as CommunityRoomItem]);
+        setRoomName("");
+        setRoomDesc("");
+        setCreateOpen(false);
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="border-b bg-muted/20">
+      <div className="container py-6">
+        <div className="mx-auto max-w-5xl">
+          <div className="mb-4 flex items-center justify-between">
+            <p className="text-sm font-semibold text-foreground">このコミュニティの部屋</p>
+            <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" variant="outline" className="gap-1.5">
+                  <Plus className="h-4 w-4" />
+                  部屋を作る
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>新しい部屋を作成</DialogTitle>
+                  <DialogDescription>このコミュニティに新しいテーマ部屋を追加します</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label>部屋名 <span className="text-destructive">*</span></Label>
+                    <Input
+                      value={roomName}
+                      onChange={(e) => setRoomName(e.target.value)}
+                      placeholder="例: 授業実践シェア"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>説明文</Label>
+                    <Textarea
+                      rows={2}
+                      value={roomDesc}
+                      onChange={(e) => setRoomDesc(e.target.value)}
+                      className="resize-none"
+                      placeholder="この部屋のテーマを簡潔に説明してください"
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2 pt-1">
+                    <Button variant="outline" onClick={() => setCreateOpen(false)}>キャンセル</Button>
+                    <Button onClick={handleCreate} disabled={!roomName.trim() || saving}>
+                      {saving ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1 h-3.5 w-3.5" />}
+                      作成する
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          {rooms.length === 0 ? (
+            <p className="text-xs text-muted-foreground">まだ部屋がありません。「部屋を作る」から最初の部屋を作ってみましょう。</p>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {rooms.map((room) => (
+                <Link
+                  key={room.id}
+                  href={`/forum/${room.id}`}
+                  className="group flex items-start gap-3 rounded-xl border bg-background p-3 transition-all hover:border-primary/30 hover:shadow-sm"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold group-hover:text-primary">{room.name}</p>
+                    {room.description ? (
+                      <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{room.description}</p>
+                    ) : null}
+                    <div className="mt-1.5 flex items-center gap-2 text-[11px] text-muted-foreground">
+                      <span className="flex items-center gap-0.5"><MessageSquare className="h-3 w-3" />{room.postCount}</span>
+                      <span className="flex items-center gap-0.5"><Users className="h-3 w-3" />{room.participantCount}</span>
+                    </div>
+                  </div>
+                  <ArrowLeft className="mt-0.5 h-3.5 w-3.5 shrink-0 rotate-180 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-primary/60" />
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ─── 定数 ────────────────────────────────────────────────
 
@@ -1163,12 +1317,21 @@ export function ForumRoomClient({
       </section>
 
       {/* ─── カテゴリ別の関連コンテンツ ─── */}
-      {categoryContext && (
+      {categoryContext && categoryContext.contentKind !== "community" && (
         <ForumCategoryContentPanel
           items={categoryContext.items}
           contentKind={categoryContext.contentKind}
           categorySlug={categoryContext.categorySlug}
           subCategorySlug={categoryContext.subCategorySlug}
+        />
+      )}
+
+      {/* ─── コミュニティ: 部屋一覧・作成 ─── */}
+      {categoryContext?.contentKind === "community" && (
+        <CommunityRoomsSection
+          categoryId={categoryContext.categoryId}
+          subCategoryId={categoryContext.subCategoryId}
+          mainRoomId={room.id}
         />
       )}
 

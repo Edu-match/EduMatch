@@ -11,8 +11,6 @@ import {
   LayoutList,
   Loader2,
   MessageSquare,
-  Plus,
-  Save,
   Search,
   Clock,
   Filter,
@@ -25,20 +23,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { OpenAiChatButton } from "@/components/ui/open-ai-chat-button";
 import { cn } from "@/lib/utils";
-import { SettingToggleRow } from "@/components/ui/toggle-switch";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
 import type { ForumRoom } from "@/lib/mock-forum";
 import { RelativeTime } from "@/components/community/relative-time";
 import { ForumRoomIcon, ROOM_BG_COLORS } from "@/components/community/forum-room-icon";
@@ -146,113 +133,6 @@ function RoomCard({ room, isFeatured }: { room: ForumRoom; isFeatured?: boolean 
   );
 }
 
-// ─── 新規ルーム作成ダイアログ ─────────────────────────────
-
-type NewRoomDraft = {
-  name: string;
-  description: string;
-  aiDiscussion: boolean;
-};
-
-function CreateRoomDialog({
-  onCreated,
-  hero = false,
-}: {
-  onCreated: (room: ForumRoom) => void;
-  hero?: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [draft, setDraft] = useState<NewRoomDraft>({
-    name: "",
-    description: "",
-    aiDiscussion: true,
-  });
-
-  const isValid = draft.name.trim();
-
-  const handleCreate = async () => {
-    if (!isValid || saving) return;
-    setSaving(true);
-    try {
-      const res = await fetch("/api/forum/rooms", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          name: draft.name.trim(),
-          description: draft.description.trim(),
-          weeklyTopic: "",
-          aiDiscussion: draft.aiDiscussion,
-          aiWeeklyTopicEnabled: false,
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        onCreated(data.room as ForumRoom);
-        setDraft({
-          name: "",
-          description: "",
-          aiDiscussion: true,
-        });
-        setOpen(false);
-      }
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          type="button"
-          size={hero ? "lg" : "sm"}
-          variant={hero ? "default" : "outline"}
-          className={cn(hero ? "min-h-11 gap-2 px-6 text-base font-semibold shadow-sm" : "gap-1.5")}
-          data-tutorial="forum-thread-create"
-        >
-          <Plus className={hero ? "h-5 w-5" : "h-4 w-4"} />
-          {hero ? "新しい部屋を作成" : "部屋を作成"}
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>新しい部屋を作成</DialogTitle>
-          <DialogDescription>フォーラムに新しいテーマ部屋を追加します</DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>部屋名 <span className="text-destructive">*</span></Label>
-            <Input value={draft.name} onChange={(e) => setDraft((p) => ({ ...p, name: e.target.value }))} placeholder="例: 保護者・家庭教育" />
-          </div>
-          <div className="space-y-1.5">
-            <Label>説明文</Label>
-            <Textarea rows={2} value={draft.description} onChange={(e) => setDraft((p) => ({ ...p, description: e.target.value }))} className="resize-none" placeholder="この部屋のテーマを簡潔に説明してください" />
-          </div>
-          <SettingToggleRow
-            checked={draft.aiDiscussion}
-            onCheckedChange={(aiDiscussion) => setDraft((p) => ({ ...p, aiDiscussion }))}
-            icon={Zap}
-            title="AIディスカッション"
-            description="投稿にAIファシリテーターが返信し、議論をサポートします。"
-            activeClassName="border-violet-300 bg-violet-50"
-            iconClassName={draft.aiDiscussion ? "text-violet-600" : undefined}
-          />
-
-          <div className="flex justify-end gap-2 pt-1">
-            <Button variant="outline" onClick={() => setOpen(false)}>キャンセル</Button>
-            <Button onClick={handleCreate} disabled={!isValid || saving}>
-              {saving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1" />}
-              作成する
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 // ─── メインコンポーネント ─────────────────────────────────
 
 export function ForumListClient() {
@@ -349,13 +229,12 @@ export function ForumListClient() {
             </div>
 
             <div className="mt-7 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center sm:gap-4">
-              <CreateRoomDialog onCreated={(r) => setRooms((prev) => [...prev, r])} hero />
-              <Button asChild variant="outline" size="lg" className="min-h-11 border-2 px-6 text-base font-semibold">
+              <Button asChild size="lg" className="min-h-11 gap-2 px-6 text-base font-semibold shadow-sm">
                 <a href="#forum-rooms" className="inline-flex items-center gap-2.5">
                   <Compass className="h-5 w-5 shrink-0" />
                   <span className="flex flex-col items-start text-left leading-tight">
-                    <span>部屋を探す</span>
-                    <span className="text-xs font-normal text-muted-foreground">キーワードやカテゴリで選ぶ</span>
+                    <span>コミュニティを探す</span>
+                    <span className="text-xs font-normal opacity-80">大カテゴリから話題の部屋へ</span>
                   </span>
                 </a>
               </Button>
