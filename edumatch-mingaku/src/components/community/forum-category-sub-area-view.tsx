@@ -79,7 +79,7 @@ const DEFAULT_META: AreaMeta = {
 };
 
 /* ------------------------------------------------------------------ */
-/* 個別コンテンツバブル                                                  */
+/* 個別コンテンツバブル（真円・タイトル短縮）                             */
 /* ------------------------------------------------------------------ */
 
 function SmallBubble({
@@ -101,22 +101,28 @@ function SmallBubble({
     color: meta.textColor,
     boxShadow: `0 3px 14px ${meta.glowColor}`,
     animation: `subBubbleFloat ${dur}s ease-in-out ${delay}s infinite`,
+    width: 64,
+    height: 64,
   };
   const cls =
-    "block w-[88%] rounded-full border px-3 py-1.5 text-center text-[11px] " +
-    "font-semibold leading-snug backdrop-blur-sm transition-transform " +
-    "hover:scale-105 hover:shadow-lg line-clamp-1 cursor-pointer";
+    "flex shrink-0 items-center justify-center rounded-full border " +
+    "text-center text-[10px] font-semibold leading-tight backdrop-blur-sm " +
+    "transition-transform hover:scale-110 hover:shadow-lg cursor-pointer overflow-hidden p-1.5";
+
+  const inner = (
+    <span className="line-clamp-3 w-full text-center">{item.title}</span>
+  );
 
   if (isExternal) {
     return (
       <a href={item.href} target="_blank" rel="noopener noreferrer" className={cls} style={style}>
-        {item.title}
+        {inner}
       </a>
     );
   }
   return (
     <Link href={item.href} className={cls} style={style}>
-      {item.title}
+      {inner}
     </Link>
   );
 }
@@ -158,7 +164,7 @@ function BlobArea({
   const blobDelay = blobIndex * 0.85;
 
   return (
-    <div className="flex flex-col items-center gap-3">
+    <div className="flex w-[180px] flex-col items-center gap-3 sm:w-[200px] md:w-[220px]">
       {/* ── タイトル（ブロブの外、常に表示） ── */}
       <div className="flex items-center gap-1.5">
         <Icon className="h-4 w-4 shrink-0" style={{ color: meta.textColor }} />
@@ -188,7 +194,7 @@ function BlobArea({
         />
 
         {/* コンテンツ */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5 px-[12%] py-[10%]">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-[8%] py-[8%]">
           {isCommunity ? (
             <Link
               href={roomHref}
@@ -217,17 +223,20 @@ function BlobArea({
             </Link>
           ) : (
             <>
-              {items.map((item, i) => (
-                <SmallBubble
-                  key={item.id}
-                  item={item}
-                  meta={meta}
-                  floatIndex={i + blobIndex * 4}
-                />
-              ))}
+              {/* 真円バブルを横並び・折り返しで配置 */}
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                {items.map((item, i) => (
+                  <SmallBubble
+                    key={item.id}
+                    item={item}
+                    meta={meta}
+                    floatIndex={i + blobIndex * 4}
+                  />
+                ))}
+              </div>
               <Link
                 href={roomHref}
-                className="mt-0.5 flex items-center gap-0.5 text-[10px] font-semibold opacity-50 hover:opacity-80 transition-opacity"
+                className="flex items-center gap-0.5 text-[10px] font-semibold opacity-50 hover:opacity-80 transition-opacity"
                 style={{ color: meta.textColor }}
               >
                 もっと見る
@@ -273,8 +282,8 @@ export function CategorySubAreaView({
         }
       `}</style>
 
-      {/* 3列×2行グリッド（モバイル2列） */}
-      <div className="grid grid-cols-2 gap-6 p-6 md:grid-cols-3">
+      {/* flex-wrap + justify-center で5個が自然にまとまる */}
+      <div className="flex flex-wrap justify-center gap-6 p-6">
         {sorted.map((sub, i) => {
           const meta = AREA_META[sub.contentKind] ?? DEFAULT_META;
           return (
