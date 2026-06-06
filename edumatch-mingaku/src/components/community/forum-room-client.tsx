@@ -1329,7 +1329,7 @@ export function ForumRoomClient({
         />
       )}
 
-      {/* ─── コミュニティ: 部屋一覧・作成 ─── */}
+      {/* ─── コミュニティ: 部屋一覧・作成（投稿欄は出さない） ─── */}
       {categoryContext?.contentKind === "community" && (
         <CommunityRoomsSection
           categoryId={categoryContext.categoryId}
@@ -1338,7 +1338,8 @@ export function ForumRoomClient({
         />
       )}
 
-      {/* ─── メインコンテンツ ─── */}
+      {/* ─── メインコンテンツ（コミュニティページでは表示しない） ─── */}
+      {categoryContext?.contentKind === "community" ? null : (
       <div className="container py-8">
         <div className="mx-auto max-w-5xl space-y-8">
 
@@ -1439,6 +1440,7 @@ export function ForumRoomClient({
           )}
         </div>
       </div>
+      )}
 
       <Dialog open={loginDialogOpen} onOpenChange={setLoginDialogOpen}>
         <DialogContent className="sm:max-w-sm">
