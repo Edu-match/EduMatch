@@ -123,9 +123,12 @@ export function ForumCategoryExplorer({
       if (typeof window !== "undefined") {
         window.localStorage.setItem("forum_selected_category_slug", cat.slug);
       }
-      router.push(`/forum?cat=${encodeURIComponent(cat.slug)}`, { scroll: false });
+      // 埋め込み（特設LP等）ではページ遷移せず、その場でサブエリアへ展開して回遊を保つ
+      if (!embedded) {
+        router.push(`/forum?cat=${encodeURIComponent(cat.slug)}`, { scroll: false });
+      }
     },
-    [router]
+    [router, embedded]
   );
 
   const handleBack = useCallback(() => {
@@ -133,8 +136,10 @@ export function ForumCategoryExplorer({
     if (typeof window !== "undefined") {
       window.localStorage.removeItem("forum_selected_category_slug");
     }
-    router.push("/forum", { scroll: false });
-  }, [router]);
+    if (!embedded) {
+      router.push("/forum", { scroll: false });
+    }
+  }, [router, embedded]);
 
   const categoryConnections = useMemo(
     () =>
@@ -212,7 +217,40 @@ export function ForumCategoryExplorer({
 
       {/* ===== カテゴリマップビュー ===== */}
       {!selected && (
-        <div className="relative overflow-hidden rounded-3xl border bg-gradient-to-b from-muted/30 to-background shadow-sm">
+        <div
+          className="relative overflow-hidden rounded-3xl border border-white/15 shadow-sm"
+          style={{
+            background: "linear-gradient(135deg, #33529e 0%, #4a78d8 52%, #7aa3f0 100%)",
+            minHeight: embedded ? 420 : 520,
+          }}
+        >
+          {/* 中央の発光（サブカテゴリ地図と統一） */}
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(ellipse at 50% 44%, rgba(225,238,255,0.28) 0%, rgba(120,160,240,0.10) 40%, transparent 70%)",
+            }}
+          />
+          {/* サイバーなグリッド（うっすら） */}
+          <div
+            className="pointer-events-none absolute inset-0 opacity-[0.18]"
+            style={{
+              backgroundImage:
+                "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
+              backgroundSize: "38px 38px",
+              maskImage: "radial-gradient(ellipse at 50% 50%, #000 35%, transparent 78%)",
+              WebkitMaskImage: "radial-gradient(ellipse at 50% 50%, #000 35%, transparent 78%)",
+            }}
+          />
+          {/* 端のビネット（軽め） */}
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(ellipse at 50% 50%, transparent 60%, rgba(28,48,120,0.30) 100%)",
+            }}
+          />
           <div className={embedded ? "relative aspect-[16/10] w-full" : "relative aspect-[16/9] w-full"}>
             {loading ? (
               <div className="flex h-full items-center justify-center">
