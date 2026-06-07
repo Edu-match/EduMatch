@@ -122,7 +122,7 @@ function cornerForAngle(deg: number): ExpandCorner {
 const MAP_SLOTS_BY_KIND: Record<string, AreaSlot> = {
   article: {
     leftPct: 8,
-    topPct: 12,
+    topPct: 18,
     diameterPct: 48,
     expandCorner: "top-left",
     zIndex: 16,
@@ -133,7 +133,7 @@ const MAP_SLOTS_BY_KIND: Record<string, AreaSlot> = {
   },
   service: {
     leftPct: 92,
-    topPct: 12,
+    topPct: 18,
     diameterPct: 46,
     expandCorner: "top-right",
     zIndex: 16,
@@ -144,7 +144,7 @@ const MAP_SLOTS_BY_KIND: Record<string, AreaSlot> = {
   },
   "events-info": {
     leftPct: 8,
-    topPct: 90,
+    topPct: 84,
     diameterPct: 46,
     expandCorner: "bottom-left",
     zIndex: 16,
@@ -155,7 +155,7 @@ const MAP_SLOTS_BY_KIND: Record<string, AreaSlot> = {
   },
   media: {
     leftPct: 92,
-    topPct: 90,
+    topPct: 84,
     diameterPct: 48,
     expandCorner: "bottom-right",
     zIndex: 16,
