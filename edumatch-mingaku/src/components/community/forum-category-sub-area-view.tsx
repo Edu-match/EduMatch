@@ -117,37 +117,37 @@ function cornerForAngle(deg: number): ExpandCorner {
 /** 標準5エリア：四隅＋中央（斜めに散らし、端でクリップする地図配置） */
 const MAP_SLOTS_BY_KIND: Record<string, AreaSlot> = {
   article: {
-    leftPct: 20,
-    topPct: 18,
-    diameterPct: 58,
+    leftPct: 8,
+    topPct: 10,
+    diameterPct: 48,
     expandCorner: "top-left",
     zIndex: 16,
   },
   service: {
-    leftPct: 82,
-    topPct: 20,
-    diameterPct: 56,
+    leftPct: 92,
+    topPct: 10,
+    diameterPct: 46,
     expandCorner: "top-right",
     zIndex: 16,
   },
   "events-info": {
-    leftPct: 18,
-    topPct: 82,
-    diameterPct: 56,
+    leftPct: 8,
+    topPct: 90,
+    diameterPct: 46,
     expandCorner: "bottom-left",
     zIndex: 16,
   },
   media: {
-    leftPct: 84,
-    topPct: 80,
-    diameterPct: 58,
+    leftPct: 92,
+    topPct: 90,
+    diameterPct: 48,
     expandCorner: "bottom-right",
     zIndex: 16,
   },
   community: {
     leftPct: 50,
     topPct: 50,
-    diameterPct: 42,
+    diameterPct: 38,
     expandCorner: "bottom-right",
     zIndex: 24,
   },
@@ -171,14 +171,14 @@ function computeAreaSlots(subs: { id: string; contentKind: string }[]): Record<s
   }
 
   if (extras.length > 0) {
-    const ringD = Math.max(24, Math.min(34, Math.round(150 / extras.length)));
+    const ringD = Math.max(22, Math.min(30, Math.round(132 / extras.length)));
     extras.forEach((s, i) => {
       // 45°ずらしたリングで十字にならないよう配置
       const angle = -45 + (360 / extras.length) * i;
       const rad = (angle * Math.PI) / 180;
       slots[s.id] = {
-        leftPct: 50 + 40 * Math.cos(rad),
-        topPct: 50 + 38 * Math.sin(rad),
+        leftPct: 50 + 46 * Math.cos(rad),
+        topPct: 50 + 42 * Math.sin(rad),
         diameterPct: ringD,
         expandCorner: cornerForAngle(angle),
         zIndex: 14,
@@ -685,37 +685,56 @@ export function CategorySubAreaView({
           className="relative mx-auto aspect-[4/3] w-full max-w-6xl overflow-hidden rounded-3xl sm:aspect-[16/10]"
           style={{
             minHeight: 480,
-            background: "linear-gradient(135deg, #33529e 0%, #4a78d8 52%, #7aa3f0 100%)",
-            boxShadow: "inset 0 1px 36px rgba(20,40,110,0.22)",
+            background: "linear-gradient(145deg, #20356d 0%, #2f57a8 48%, #4d7ed3 100%)",
+            boxShadow:
+              "inset 0 1px 42px rgba(9, 22, 58, 0.42), inset 0 -24px 44px rgba(8, 18, 46, 0.3)",
           }}
         >
-          {/* 中央の発光（やわらかい青に馴染ませる） */}
+          {/* マップの柔らかい光 */}
           <div
             className="pointer-events-none absolute inset-0"
             style={{
               background:
-                "radial-gradient(ellipse at 50% 44%, rgba(225,238,255,0.28) 0%, rgba(120,160,240,0.10) 40%, transparent 70%)",
+                "radial-gradient(ellipse at 50% 48%, rgba(208, 230, 255, 0.2) 0%, rgba(120, 160, 240, 0.05) 42%, transparent 72%)",
             }}
           />
-          {/* サイバーなグリッド（うっすら） */}
+
+          {/* 地形図っぽい等高線 */}
           <div
-            className="pointer-events-none absolute inset-0 opacity-[0.18]"
+            className="pointer-events-none absolute inset-0 opacity-[0.24]"
             style={{
               backgroundImage:
-                "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
-              backgroundSize: "38px 38px",
-              maskImage:
-                "radial-gradient(ellipse at 50% 50%, #000 20%, transparent 92%)",
-              WebkitMaskImage:
-                "radial-gradient(ellipse at 50% 50%, #000 20%, transparent 92%)",
+                "repeating-radial-gradient(circle at 18% 22%, rgba(255,255,255,0.22) 0 2px, transparent 2px 22px), repeating-radial-gradient(circle at 80% 28%, rgba(255,255,255,0.14) 0 2px, transparent 2px 26px), repeating-radial-gradient(circle at 52% 78%, rgba(255,255,255,0.14) 0 2px, transparent 2px 24px)",
             }}
           />
-          {/* 端を締めるビネット（軽め） */}
+
+          {/* 薄い経路ライン */}
+          <div
+            className="pointer-events-none absolute inset-0 opacity-[0.16]"
+            style={{
+              backgroundImage:
+                "repeating-linear-gradient(26deg, rgba(255,255,255,0.28) 0 2px, transparent 2px 34px), repeating-linear-gradient(-38deg, rgba(255,255,255,0.2) 0 1px, transparent 1px 28px)",
+              maskImage: "radial-gradient(ellipse at 50% 50%, #000 18%, transparent 92%)",
+              WebkitMaskImage:
+                "radial-gradient(ellipse at 50% 50%, #000 18%, transparent 92%)",
+            }}
+          />
+
+          {/* 霧感 */}
+          <div
+            className="pointer-events-none absolute inset-0 opacity-80"
+            style={{
+              background:
+                "radial-gradient(ellipse at 14% 74%, rgba(255,255,255,0.1), transparent 55%), radial-gradient(ellipse at 86% 18%, rgba(255,255,255,0.08), transparent 52%)",
+            }}
+          />
+
+          {/* 端を締めるビネット */}
           <div
             className="pointer-events-none absolute inset-0"
             style={{
               background:
-                "radial-gradient(ellipse at 50% 50%, transparent 72%, rgba(28,48,120,0.22) 100%)",
+                "radial-gradient(ellipse at 50% 50%, transparent 66%, rgba(12, 24, 56, 0.42) 100%)",
             }}
           />
           {sorted.map((sub, i) => {
