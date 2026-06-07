@@ -118,14 +118,14 @@ function cornerForAngle(deg: number): ExpandCorner {
 const MAP_SLOTS_BY_KIND: Record<string, AreaSlot> = {
   article: {
     leftPct: 8,
-    topPct: 10,
+    topPct: 12,
     diameterPct: 48,
     expandCorner: "top-left",
     zIndex: 16,
   },
   service: {
     leftPct: 92,
-    topPct: 10,
+    topPct: 12,
     diameterPct: 46,
     expandCorner: "top-right",
     zIndex: 16,
@@ -191,13 +191,13 @@ function computeAreaSlots(subs: { id: string; contentKind: string }[]): Record<s
 
 /** プレビュー用：大きめエリア内のゆるい座標 */
 const PREVIEW_SPOTS = [
-  { top: "32%", left: "22%" },
-  { top: "46%", left: "58%" },
-  { top: "64%", left: "30%" },
+  { top: "34%", left: "26%" },
+  { top: "50%", left: "56%" },
+  { top: "66%", left: "32%" },
 ];
 
 const PREVIEW_LIMIT = 3;
-const CHIP_SIZE = 80;
+const CHIP_SIZE = 68;
 
 const CORNER_ARROW: Record<
   ExpandCorner,
@@ -229,7 +229,7 @@ function ContentChip({
   staticLayout?: boolean;
 }) {
   const Icon = meta.icon;
-  const shortTitle = item.title.length > 9 ? item.title.slice(0, 8) + "…" : item.title;
+  const shortTitle = item.title.length > 14 ? item.title.slice(0, 13) + "…" : item.title;
   const dur = 4.5 + (floatIndex % 4) * 1.3;
 
   return (
@@ -257,7 +257,7 @@ function ContentChip({
       >
         <Icon className="h-4 w-4" strokeWidth={2.25} />
       </span>
-      <span className="w-[90%] text-center text-[10px] font-semibold leading-tight">{shortTitle}</span>
+      <span className="w-[90%] text-center text-[11px] font-semibold leading-tight">{shortTitle}</span>
     </Link>
   );
 }
@@ -275,7 +275,7 @@ function RoomChip({
   style?: React.CSSProperties;
   staticLayout?: boolean;
 }) {
-  const shortName = room.name.length > 9 ? room.name.slice(0, 8) + "…" : room.name;
+  const shortName = room.name.length > 14 ? room.name.slice(0, 13) + "…" : room.name;
   const hot = isForumHot({
     postCount: room.postCount,
     participantCount: room.participantCount,
@@ -309,7 +309,7 @@ function RoomChip({
       >
         {room.emoji?.trim() ? room.emoji.trim() : <Users className="h-4 w-4" strokeWidth={2.25} />}
       </span>
-      <span className="w-[90%] text-center text-[10px] font-semibold leading-tight">{shortName}</span>
+      <span className="w-[90%] text-center text-[11px] font-semibold leading-tight">{shortName}</span>
     </Link>
   );
 }
@@ -539,7 +539,7 @@ function BlobArea({
         }}
       >
       <div
-        className="relative h-full w-full rounded-full"
+        className="relative h-full w-full overflow-hidden rounded-full"
         style={{
           background: meta.solidColor,
           boxShadow: blobHot
@@ -549,11 +549,11 @@ function BlobArea({
       >
         {/* ラベル */}
         <div
-          className="absolute left-1/2 top-[18%] z-10 flex -translate-x-1/2 items-center gap-1 rounded-full px-2.5 py-0.5 shadow-sm"
+          className="absolute left-1/2 top-[22%] z-10 flex -translate-x-1/2 items-center gap-1 rounded-full px-3 py-1 shadow-sm"
           style={{
             background: "rgba(255,255,255,0.78)",
             color: meta.textColor,
-            fontSize: 10,
+            fontSize: 12,
             fontWeight: 700,
           }}
         >
