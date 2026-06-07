@@ -104,6 +104,10 @@ type AreaSlot = {
   diameterPct: number; // 直径＝コンテナ幅に対する%（aspect-square で真円）
   expandCorner: ExpandCorner;
   zIndex: number;
+  contentXPct: number;
+  contentYPct: number;
+  contentWidthPct: number;
+  labelYPct: number;
 };
 
 function cornerForAngle(deg: number): ExpandCorner {
@@ -122,6 +126,10 @@ const MAP_SLOTS_BY_KIND: Record<string, AreaSlot> = {
     diameterPct: 48,
     expandCorner: "top-left",
     zIndex: 16,
+    contentXPct: 68,
+    contentYPct: 62,
+    contentWidthPct: 62,
+    labelYPct: 34,
   },
   service: {
     leftPct: 92,
@@ -129,6 +137,10 @@ const MAP_SLOTS_BY_KIND: Record<string, AreaSlot> = {
     diameterPct: 46,
     expandCorner: "top-right",
     zIndex: 16,
+    contentXPct: 32,
+    contentYPct: 62,
+    contentWidthPct: 62,
+    labelYPct: 34,
   },
   "events-info": {
     leftPct: 8,
@@ -136,6 +148,10 @@ const MAP_SLOTS_BY_KIND: Record<string, AreaSlot> = {
     diameterPct: 46,
     expandCorner: "bottom-left",
     zIndex: 16,
+    contentXPct: 68,
+    contentYPct: 38,
+    contentWidthPct: 62,
+    labelYPct: 18,
   },
   media: {
     leftPct: 92,
@@ -143,6 +159,10 @@ const MAP_SLOTS_BY_KIND: Record<string, AreaSlot> = {
     diameterPct: 48,
     expandCorner: "bottom-right",
     zIndex: 16,
+    contentXPct: 32,
+    contentYPct: 38,
+    contentWidthPct: 62,
+    labelYPct: 18,
   },
   community: {
     leftPct: 50,
@@ -150,6 +170,10 @@ const MAP_SLOTS_BY_KIND: Record<string, AreaSlot> = {
     diameterPct: 38,
     expandCorner: "bottom-right",
     zIndex: 24,
+    contentXPct: 50,
+    contentYPct: 56,
+    contentWidthPct: 76,
+    labelYPct: 22,
   },
 };
 
@@ -182,6 +206,10 @@ function computeAreaSlots(subs: { id: string; contentKind: string }[]): Record<s
         diameterPct: ringD,
         expandCorner: cornerForAngle(angle),
         zIndex: 14,
+        contentXPct: 50,
+        contentYPct: 56,
+        contentWidthPct: 72,
+        labelYPct: 22,
       };
     });
   }
@@ -190,7 +218,8 @@ function computeAreaSlots(subs: { id: string; contentKind: string }[]): Record<s
 }
 
 const PREVIEW_LIMIT = 4;
-const CHIP_SIZE = 76;
+const CHIP_WIDTH = 132;
+const CHIP_HEIGHT = 58;
 
 const CORNER_ARROW: Record<
   ExpandCorner,
@@ -224,10 +253,10 @@ function ContentChip({
   return (
     <Link
       href={roomHref}
-      className="flex shrink-0 flex-col items-center justify-center gap-1 rounded-full border shadow-md transition-transform hover:scale-105 pointer-events-auto"
+      className="pointer-events-auto flex shrink-0 items-center gap-2 rounded-[22px] border px-2.5 shadow-md transition-transform hover:scale-105"
       style={{
-        width: CHIP_SIZE,
-        height: CHIP_SIZE,
+        width: CHIP_WIDTH,
+        height: CHIP_HEIGHT,
         background: meta.bubbleBg,
         borderColor: `${meta.textColor}28`,
         color: meta.textColor,
@@ -236,12 +265,14 @@ function ContentChip({
       title={item.title}
     >
       <span
-        className="flex h-9 w-9 items-center justify-center rounded-full"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
         style={{ background: `${meta.textColor}16` }}
       >
-        <Icon className="h-4.5 w-4.5 h-[18px] w-[18px]" strokeWidth={2.2} />
+        <Icon className="h-[18px] w-[18px]" strokeWidth={2.2} />
       </span>
-      <span className="w-[88%] text-center text-[12px] font-bold leading-tight">{shortTitle}</span>
+      <span className="line-clamp-2 min-w-0 flex-1 text-left text-[13px] font-bold leading-snug">
+        {shortTitle}
+      </span>
     </Link>
   );
 }
@@ -266,10 +297,10 @@ function RoomChip({
   return (
     <Link
       href={`/forum/${room.id}`}
-      className="flex shrink-0 flex-col items-center justify-center gap-1 rounded-full border shadow-md transition-transform hover:scale-105 pointer-events-auto"
+      className="pointer-events-auto flex shrink-0 items-center gap-2 rounded-[22px] border px-2.5 shadow-md transition-transform hover:scale-105"
       style={{
-        width: CHIP_SIZE,
-        height: CHIP_SIZE,
+        width: CHIP_WIDTH,
+        height: CHIP_HEIGHT,
         background: meta.bubbleBg,
         borderColor: hot ? "rgba(255,120,40,0.55)" : `${meta.textColor}28`,
         color: meta.textColor,
@@ -279,12 +310,14 @@ function RoomChip({
       title={room.name}
     >
       <span
-        className="flex h-9 w-9 items-center justify-center rounded-full text-xl leading-none"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xl leading-none"
         style={{ background: `${meta.textColor}16` }}
       >
         {room.emoji?.trim() ? room.emoji.trim() : <Users className="h-[18px] w-[18px]" strokeWidth={2.2} />}
       </span>
-      <span className="w-[88%] text-center text-[12px] font-bold leading-tight">{shortName}</span>
+      <span className="line-clamp-2 min-w-0 flex-1 text-left text-[13px] font-bold leading-snug">
+        {shortName}
+      </span>
     </Link>
   );
 }
@@ -519,8 +552,10 @@ function BlobArea({
       >
         {/* ラベル（上部） */}
         <div
-          className="absolute left-1/2 top-[13%] z-10 flex w-max max-w-[80%] -translate-x-1/2 items-center gap-1.5 rounded-full px-3 py-1.5 shadow"
+          className="absolute z-10 flex w-max max-w-[82%] -translate-x-1/2 items-center gap-1.5 rounded-full px-3 py-1.5 shadow"
           style={{
+            left: `${slot.contentXPct}%`,
+            top: `${slot.labelYPct}%`,
             background: "rgba(255,255,255,0.88)",
             color: meta.textColor,
             fontSize: 13,
@@ -534,8 +569,15 @@ function BlobArea({
         </div>
 
         {/* チップグリッド（中央フレックス — はみ出しなし） */}
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center pt-[30%] pb-[8%]">
-          <div className="flex flex-wrap items-center justify-center gap-2 px-[10%]">
+        <div
+          className="pointer-events-none absolute flex -translate-x-1/2 -translate-y-1/2 items-center justify-center"
+          style={{
+            left: `${slot.contentXPct}%`,
+            top: `${slot.contentYPct}%`,
+            width: `${slot.contentWidthPct}%`,
+          }}
+        >
+          <div className="flex flex-wrap items-center justify-center gap-2">
             {isCommunity ? (
               loading ? (
                 <span className="text-[13px] opacity-40" style={{ color: meta.textColor }}>…</span>
@@ -634,10 +676,14 @@ export function CategorySubAreaView({
           60%      { transform: translateY(5px) translateX(-3px) rotate(-0.5deg); }
           85%      { transform: translateY(-3px) translateX(2px) rotate(0.2deg); }
         }
+        @media (prefers-reduced-motion: reduce) {
+          [data-forum-map] *, [data-forum-map] { animation: none !important; }
+        }
       `}</style>
 
       <div className="px-3 py-4 sm:px-5 sm:py-6">
         <div
+          data-forum-map
           className="relative mx-auto aspect-[4/3] w-full max-w-6xl overflow-hidden rounded-3xl sm:aspect-[16/10]"
           style={{
             minHeight: 480,
