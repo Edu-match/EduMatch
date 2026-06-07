@@ -492,8 +492,8 @@ function BlobArea({
         style={{
           background: meta.solidColor,
           boxShadow: blobHot
-            ? `0 0 40px rgba(255,140,60,0.5), 0 0 24px ${meta.glowColor}, inset 0 2px 16px rgba(255,255,255,0.6)`
-            : `0 0 32px ${meta.glowColor}, 0 12px 38px rgba(2,3,60,0.38), inset 0 2px 16px rgba(255,255,255,0.6)`,
+            ? `0 0 0 1.5px rgba(255,190,130,0.6), 0 0 46px rgba(255,140,60,0.55), 0 0 24px ${meta.glowColor}, inset 0 2px 18px rgba(255,255,255,0.65)`
+            : `0 0 0 1.5px rgba(255,255,255,0.42), 0 0 38px ${meta.glowColor}, 0 12px 40px rgba(20,40,110,0.30), inset 0 2px 18px rgba(255,255,255,0.65)`,
         }}
       >
         {/* ラベル */}
@@ -626,27 +626,40 @@ export function CategorySubAreaView({
 
       <div className="px-3 py-4 sm:px-5 sm:py-6">
         <div
-          className="relative mx-auto aspect-[4/3] w-full max-w-3xl overflow-hidden rounded-3xl sm:aspect-[16/10]"
+          className="relative mx-auto aspect-[4/3] w-full max-w-5xl overflow-hidden rounded-3xl sm:aspect-[16/9]"
           style={{
-            minHeight: 360,
-            background: "linear-gradient(135deg, #020381 0%, #0b2bb0 52%, #2874fc 100%)",
-            boxShadow: "inset 0 1px 40px rgba(0,0,0,0.30)",
+            minHeight: 520,
+            background: "linear-gradient(135deg, #33529e 0%, #4a78d8 52%, #7aa3f0 100%)",
+            boxShadow: "inset 0 1px 36px rgba(20,40,110,0.22)",
           }}
         >
-          {/* 中央の発光（Interopのホームページ背景に寄せた青グラデに馴染ませる） */}
+          {/* 中央の発光（やわらかい青に馴染ませる） */}
           <div
             className="pointer-events-none absolute inset-0"
             style={{
               background:
-                "radial-gradient(ellipse at 50% 44%, rgba(125,185,255,0.30) 0%, rgba(40,116,252,0.10) 38%, transparent 68%)",
+                "radial-gradient(ellipse at 50% 44%, rgba(225,238,255,0.28) 0%, rgba(120,160,240,0.10) 40%, transparent 70%)",
             }}
           />
-          {/* 端を締めるビネット */}
+          {/* サイバーなグリッド（うっすら） */}
+          <div
+            className="pointer-events-none absolute inset-0 opacity-[0.18]"
+            style={{
+              backgroundImage:
+                "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
+              backgroundSize: "38px 38px",
+              maskImage:
+                "radial-gradient(ellipse at 50% 50%, #000 35%, transparent 78%)",
+              WebkitMaskImage:
+                "radial-gradient(ellipse at 50% 50%, #000 35%, transparent 78%)",
+            }}
+          />
+          {/* 端を締めるビネット（軽め） */}
           <div
             className="pointer-events-none absolute inset-0"
             style={{
               background:
-                "radial-gradient(ellipse at 50% 50%, transparent 56%, rgba(2,3,60,0.42) 100%)",
+                "radial-gradient(ellipse at 50% 50%, transparent 60%, rgba(28,48,120,0.30) 100%)",
             }}
           />
           {sorted.map((sub, i) => {

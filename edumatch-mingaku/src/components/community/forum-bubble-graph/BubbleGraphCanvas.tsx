@@ -31,8 +31,8 @@ function BubbleNode({
       style={{
         backgroundColor: node.backgroundColor,
         boxShadow: node.isHot
-          ? "0 0 28px rgba(255, 130, 50, 0.45), 0 12px 30px -8px rgba(0,0,0,0.25)"
-          : undefined,
+          ? "0 0 0 1.5px rgba(255,190,130,0.6), 0 0 40px rgba(255,130,50,0.5), inset 0 2px 14px rgba(255,255,255,0.55)"
+          : "0 0 0 1.5px rgba(255,255,255,0.4), 0 0 26px rgba(150,190,255,0.45), 0 12px 30px -8px rgba(20,40,110,0.30), inset 0 2px 14px rgba(255,255,255,0.55)",
       }}
     >
       {node.isHot && (
