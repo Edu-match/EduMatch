@@ -231,7 +231,7 @@ export async function searchKnowledgeChunks(
 
     // ドキュメントの source_url を取得（RPC が返さない場合は Prisma で補完）
     const docIds = [...new Set(rows.map((r) => r.document_id))];
-    let sourceUrlMap: Record<string, string | null> = {};
+    const sourceUrlMap: Record<string, string | null> = {};
     try {
       const docs = await prisma.knowledgeDocument.findMany({
         where: { id: { in: docIds } },
@@ -317,8 +317,51 @@ export async function searchAppContent(
       }
     }
 
+    const groupedArray = Array.from(grouped.values());
+
+    // ── 公開ステータスフィルタリング ─────────────────────────────────────────
+    // RPC はチャンクのベクトル検索のみを行うため、非公開コンテンツが混入する場合がある。
+    // post / service については Prisma で公開済みかどうかを確認してフィルタする。
+    const postIds = groupedArray
+      .filter((c) => c.source_table === "post")
+      .map((c) => c.source_id as string);
+    const serviceIds = groupedArray
+      .filter((c) => c.source_table === "service")
+      .map((c) => c.source_id as string);
+
+    const [publishedPosts, publishedServices] = await Promise.all([
+      postIds.length > 0
+        ? prisma.post.findMany({
+            where: {
+              id: { in: postIds },
+              OR: [{ status: "APPROVED" }, { is_published: true }],
+            },
+            select: { id: true },
+          })
+        : Promise.resolve([]),
+      serviceIds.length > 0
+        ? prisma.service.findMany({
+            where: {
+              id: { in: serviceIds },
+              OR: [{ status: "APPROVED" }, { is_published: true }],
+            },
+            select: { id: true },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const publishedPostSet = new Set(publishedPosts.map((p) => p.id));
+    const publishedServiceSet = new Set(publishedServices.map((s) => s.id));
+
+    const filteredChunks = groupedArray.filter((chunk) => {
+      if (chunk.source_table === "post") return publishedPostSet.has(chunk.source_id);
+      if (chunk.source_table === "service") return publishedServiceSet.has(chunk.source_id);
+      // forum_post / review / seminar_event / site_update は別の公開ロジックのためそのまま
+      return true;
+    });
+
     // ChatContextItem に変換
-    return Array.from(grouped.values()).map((chunk: any) => {
+    return filteredChunks.map((chunk: any) => {
       const typeLabel: Record<string, "article" | "service"> = {
         post: "article",
         service: "service",

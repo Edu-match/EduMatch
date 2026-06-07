@@ -474,6 +474,8 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
   const listRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  /** ユーザーが自分でスクロール操作をしていない（= 下端付近にいる）かどうか */
+  const isNearBottomRef = useRef(true);
 
   const pageContext = useMemo(() => parsePageContext(pathname), [pathname]);
   const forumRoomId = useMemo(() => parseForumRoomId(pathname), [pathname]);
@@ -645,14 +647,28 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
     clearActivation();
   }, [pendingActivation, hasAgreed, chatMode, clearActivation]);
 
-  const scrollToBottom = useCallback(() => {
+  /** リスト上でスクロールが起きたとき、下端付近かどうかを更新 */
+  const handleListScroll = useCallback(() => {
+    const el = listRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    isNearBottomRef.current = distanceFromBottom < 80;
+  }, []);
+
+  /**
+   * @param force true のとき isNearBottomRef を無視して強制スクロール
+   *              （新しいメッセージ追加時など、ユーザーの意図に沿うケース）
+   */
+  const scrollToBottom = useCallback((force = false) => {
+    if (!force && !isNearBottomRef.current) return;
     requestAnimationFrame(() => {
       listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
     });
   }, []);
 
   useEffect(() => {
-    scrollToBottom();
+    // 新しいメッセージが追加された（= 送信 or 受信開始）ときは強制スクロール
+    scrollToBottom(true);
   }, [messages.length, scrollToBottom]);
 
   useEffect(() => {
@@ -889,6 +905,8 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
     if (!overrideText) setInput("");
     setEditingMessageId(null);
     setIsStreaming(true);
+    // 送信時は返答を見せるためスクロールを下端にリセット
+    isNearBottomRef.current = true;
     if (textareaRef.current) textareaRef.current.style.height = "auto";
 
     // Notify the tutorial system that the user has sent a chat message.
@@ -1267,7 +1285,7 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
       {/* ---- Chat view ---- */}
       {view === "chat" && userId && hasAgreed && chatMode && (
         <>
-          <div ref={listRef} className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 min-h-0">
+          <div ref={listRef} onScroll={handleListScroll} className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 min-h-0">
             <div className="space-y-4">
               {messages.length === 0 && (
                 <>
