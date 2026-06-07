@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
-import { ArrowRight, MapPin, Sparkles, MessageCircle, GraduationCap, Layers } from "lucide-react";
+import { ArrowRight, MapPin, Sparkles, MessageCircle, GraduationCap, Layers, Loader2 } from "lucide-react";
 import { ForumCategoryExplorer } from "@/components/community/forum-category-explorer";
 
 export const metadata: Metadata = {
@@ -84,7 +85,16 @@ export default function InteropLandingPage() {
           <p className="mt-2 text-sm text-white/80">タップでテーマを開く／二本指で拡大。記事・サービス・動画・コミュニティへ。</p>
         </div>
         <div className="rounded-[2rem] border border-white/15 bg-white/5 p-2 shadow-2xl shadow-blue-950/40 backdrop-blur-sm sm:p-3">
-          <ForumCategoryExplorer embedded />
+          <Suspense
+            fallback={
+              <div className="flex min-h-[420px] items-center justify-center text-white/70">
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" aria-hidden />
+                マップを読み込み中…
+              </div>
+            }
+          >
+            <ForumCategoryExplorer embedded />
+          </Suspense>
         </div>
       </section>
 
