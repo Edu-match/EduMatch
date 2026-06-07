@@ -1231,7 +1231,7 @@ export function ForumRoomClient({
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [loginDialogOpen, setLoginDialogOpen] = useState(false);
-  const { pending: aiPending, streamTexts, generate } = useAiComment();
+  const { pending: aiPending, streamTexts } = useAiComment();
   const [composerBody, setComposerBody] = useState("");
 
   const roomDiscussionContext = useMemo(() => {
@@ -1287,33 +1287,12 @@ export function ForumRoomClient({
       const data = await res.json();
       const newPost: ForumPost = data.post;
       setPosts((prev) => [newPost, ...prev]);
-      if (!room.aiDiscussion) return;
-      const recentContext = posts.slice(0, 5).map((p) => ({ authorName: p.authorName, body: p.body }));
-      const aiText = await generate(newPost.id, newPost.body, room.name, roomDiscussionContext, recentContext);
-      if (aiText) {
-        let savedReply: ForumReply | null = null;
-        try {
-          const saveRes = await fetch(`/api/forum/posts/${newPost.id}/replies`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ authorName: FORUM_AI_FACILITATOR_NAME, authorRole: "専門家", replyBody: aiText }),
-          });
-          if (saveRes.ok) { const saveData = await saveRes.json(); savedReply = saveData.reply as ForumReply; }
-        } catch { /* 保存失敗しても表示上は反映済み */ }
-        const aiReply: ForumReply = savedReply ?? {
-          id: `ai-r-${Date.now()}`,
-          authorName: FORUM_AI_FACILITATOR_NAME,
-          authorRole: "専門家",
-          body: aiText,
-          likeCount: 0,
-          postedAt: new Date().toISOString(),
-          isAi: true,
-        };
-        setPosts((prev) => prev.map((p) => p.id !== newPost.id ? p : { ...p, replies: [...(p.replies ?? []), aiReply] }));
-      }
+      // AIファシリテーターの返信は即時生成しない。
+      // 一定時間（投稿ごとに2〜5時間のランダム）返信が付かなかった投稿に対して、
+      // サーバの定期ジョブ（/api/cron/forum-ai-delayed-replies）が後からAI返信を付与する。
+      // これにより「まず人どうしの会話を促し、停滞したときだけAIが入る」挙動になる。
     } finally { setSubmitting(false); }
-  }, [auth, room, posts, generate, submitting, roomDiscussionContext]);
+  }, [auth, room, submitting]);
 
   const handleReplyAdded = useCallback((postId: string, reply: ForumReply) => {
     setPosts((prev) => prev.map((p) => p.id !== postId ? p : { ...p, replies: [...(p.replies ?? []), reply] }));

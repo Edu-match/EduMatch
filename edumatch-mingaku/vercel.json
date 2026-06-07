@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/forum-category-content-sync",
       "schedule": "10 15 * * *"
+    },
+    {
+      "path": "/api/cron/forum-ai-delayed-replies",
+      "schedule": "*/30 * * * *"
     }
   ]
 }
