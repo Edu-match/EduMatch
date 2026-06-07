@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   Loader2,
@@ -68,6 +68,7 @@ export function ForumCategoryExplorer({
   embedded?: boolean;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [categories, setCategories] = useState<ForumCategory[]>([]);
   const [subCategories, setSubCategories] = useState<ForumSubCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -104,14 +105,24 @@ export function ForumCategoryExplorer({
   }, []);
 
   useEffect(() => {
-    if (!initialCategorySlug || categories.length === 0) return;
-    const cat = categories.find((c) => c.slug === initialCategorySlug);
+    if (categories.length === 0) return;
+    const querySlug = searchParams.get("cat") ?? undefined;
+    const savedSlug =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem("forum_selected_category_slug") ?? undefined
+        : undefined;
+    const targetSlug = initialCategorySlug ?? querySlug ?? savedSlug;
+    if (!targetSlug) return;
+    const cat = categories.find((c) => c.slug === targetSlug);
     if (cat) setSelected(cat);
-  }, [initialCategorySlug, categories]);
+  }, [initialCategorySlug, categories, searchParams]);
 
   const handleSelectCategory = useCallback(
     (cat: ForumCategory) => {
       setSelected(cat);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("forum_selected_category_slug", cat.slug);
+      }
       router.push(`/forum?cat=${encodeURIComponent(cat.slug)}`, { scroll: false });
     },
     [router]
@@ -119,6 +130,9 @@ export function ForumCategoryExplorer({
 
   const handleBack = useCallback(() => {
     setSelected(null);
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem("forum_selected_category_slug");
+    }
     router.push("/forum", { scroll: false });
   }, [router]);
 
