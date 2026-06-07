@@ -437,7 +437,19 @@ export async function POST(req: NextRequest) {
   });
 
   const openai = new OpenAI({ apiKey });
-  const model = "gpt-5.4";
+
+  // ── モデルルーティング（コスト最適化）──
+  // RAG（資料参照）が絡む・長文の相談・多ターンの深い議論など “重い” 質問は高性能モデル、
+  // 短く単純な質問は安価な軽量モデルへ振り分ける。
+  const SMART_MODEL = "gpt-5.4";
+  const FAST_MODEL = "gpt-4o-mini";
+  // lastUserContent は入力長バリデーションで算出済みのもの（最後のユーザー発話）を再利用
+  const userTurnCount = trimmedRaw.filter((m) => m.role === "user").length;
+  const needsSmartModel =
+    knowledgeHits.length > 0 ||      // 資料参照を伴う回答は精度重視
+    lastUserContent.length > 160 ||  // 長い／詳細な相談
+    userTurnCount >= 4;              // 深い多ターンの議論
+  const model = needsSmartModel ? SMART_MODEL : FAST_MODEL;
   const temperature = knowledgeHits.length > 0 ? 0.55 : 0.8;
 
   try {
