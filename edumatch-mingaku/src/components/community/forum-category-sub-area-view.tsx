@@ -189,24 +189,17 @@ function computeAreaSlots(subs: { id: string; contentKind: string }[]): Record<s
   return slots;
 }
 
-/** プレビュー用：大きめエリア内のゆるい座標 */
-const PREVIEW_SPOTS = [
-  { top: "34%", left: "26%" },
-  { top: "50%", left: "56%" },
-  { top: "66%", left: "32%" },
-];
-
-const PREVIEW_LIMIT = 3;
-const CHIP_SIZE = 68;
+const PREVIEW_LIMIT = 4;
+const CHIP_SIZE = 76;
 
 const CORNER_ARROW: Record<
   ExpandCorner,
   { Icon: typeof ArrowUpLeft; position: React.CSSProperties }
 > = {
-  "top-left": { Icon: ArrowUpLeft, position: { top: 2, left: 2 } },
-  "top-right": { Icon: ArrowUpRight, position: { top: 2, right: 2 } },
-  "bottom-left": { Icon: ArrowDownLeft, position: { bottom: 2, left: 2 } },
-  "bottom-right": { Icon: ArrowDownRight, position: { bottom: 2, right: 2 } },
+  "top-left": { Icon: ArrowUpLeft, position: { top: 6, left: 6 } },
+  "top-right": { Icon: ArrowUpRight, position: { top: 6, right: 6 } },
+  "bottom-left": { Icon: ArrowDownLeft, position: { bottom: 6, left: 6 } },
+  "bottom-right": { Icon: ArrowDownRight, position: { bottom: 6, right: 6 } },
 };
 
 /* ------------------------------------------------------------------ */
@@ -218,46 +211,37 @@ function ContentChip({
   meta,
   roomHref,
   floatIndex,
-  style,
-  staticLayout = false,
 }: {
   item: CategoryContentItem;
   meta: AreaMeta;
   roomHref: string;
   floatIndex: number;
-  style?: React.CSSProperties;
-  staticLayout?: boolean;
 }) {
   const Icon = meta.icon;
-  const shortTitle = item.title.length > 14 ? item.title.slice(0, 13) + "…" : item.title;
-  const dur = 4.5 + (floatIndex % 4) * 1.3;
+  const shortTitle = item.title.length > 12 ? item.title.slice(0, 11) + "…" : item.title;
+  const dur = 5 + (floatIndex % 4) * 1.2;
 
   return (
     <Link
       href={roomHref}
-      className={
-        staticLayout
-          ? "flex flex-col items-center justify-center gap-0.5 rounded-full border shadow-sm transition-transform hover:scale-110 pointer-events-auto"
-          : "absolute flex flex-col items-center justify-center gap-0.5 rounded-full border shadow-sm transition-transform hover:scale-110 pointer-events-auto"
-      }
+      className="flex shrink-0 flex-col items-center justify-center gap-1 rounded-full border shadow-md transition-transform hover:scale-105 pointer-events-auto"
       style={{
         width: CHIP_SIZE,
         height: CHIP_SIZE,
         background: meta.bubbleBg,
-        borderColor: `${meta.textColor}22`,
+        borderColor: `${meta.textColor}28`,
         color: meta.textColor,
-        animation: `subBubbleFloat ${dur}s ease-in-out ${floatIndex * 0.4}s infinite`,
-        ...style,
+        animation: `subBubbleFloat ${dur}s ease-in-out ${floatIndex * 0.45}s infinite`,
       }}
       title={item.title}
     >
       <span
-        className="flex h-8 w-8 items-center justify-center rounded-full"
-        style={{ background: `${meta.textColor}14` }}
+        className="flex h-9 w-9 items-center justify-center rounded-full"
+        style={{ background: `${meta.textColor}16` }}
       >
-        <Icon className="h-4 w-4" strokeWidth={2.25} />
+        <Icon className="h-4.5 w-4.5 h-[18px] w-[18px]" strokeWidth={2.2} />
       </span>
-      <span className="w-[90%] text-center text-[11px] font-semibold leading-tight">{shortTitle}</span>
+      <span className="w-[88%] text-center text-[12px] font-bold leading-tight">{shortTitle}</span>
     </Link>
   );
 }
@@ -266,50 +250,41 @@ function RoomChip({
   room,
   meta,
   floatIndex,
-  style,
-  staticLayout = false,
 }: {
   room: CommunityRoomItem;
   meta: AreaMeta;
   floatIndex: number;
-  style?: React.CSSProperties;
-  staticLayout?: boolean;
 }) {
-  const shortName = room.name.length > 14 ? room.name.slice(0, 13) + "…" : room.name;
+  const shortName = room.name.length > 12 ? room.name.slice(0, 11) + "…" : room.name;
   const hot = isForumHot({
     postCount: room.postCount,
     participantCount: room.participantCount,
     lastPostedAt: room.lastPostedAt,
   });
-  const dur = 4.5 + (floatIndex % 4) * 1.3;
+  const dur = 5 + (floatIndex % 4) * 1.2;
 
   return (
     <Link
       href={`/forum/${room.id}`}
-      className={
-        staticLayout
-          ? "flex flex-col items-center justify-center gap-0.5 rounded-full border shadow-sm transition-transform hover:scale-110 pointer-events-auto"
-          : "absolute flex flex-col items-center justify-center gap-0.5 rounded-full border shadow-sm transition-transform hover:scale-110 pointer-events-auto"
-      }
+      className="flex shrink-0 flex-col items-center justify-center gap-1 rounded-full border shadow-md transition-transform hover:scale-105 pointer-events-auto"
       style={{
         width: CHIP_SIZE,
         height: CHIP_SIZE,
         background: meta.bubbleBg,
-        borderColor: hot ? "rgba(255,120,40,0.5)" : `${meta.textColor}22`,
+        borderColor: hot ? "rgba(255,120,40,0.55)" : `${meta.textColor}28`,
         color: meta.textColor,
-        boxShadow: hot ? "0 0 10px rgba(255,120,40,0.25)" : undefined,
-        animation: `subBubbleFloat ${dur}s ease-in-out ${floatIndex * 0.4}s infinite`,
-        ...style,
+        boxShadow: hot ? "0 0 12px rgba(255,120,40,0.3)" : undefined,
+        animation: `subBubbleFloat ${dur}s ease-in-out ${floatIndex * 0.45}s infinite`,
       }}
       title={room.name}
     >
       <span
-        className="flex h-8 w-8 items-center justify-center rounded-full text-lg leading-none"
-        style={{ background: `${meta.textColor}14` }}
+        className="flex h-9 w-9 items-center justify-center rounded-full text-xl leading-none"
+        style={{ background: `${meta.textColor}16` }}
       >
-        {room.emoji?.trim() ? room.emoji.trim() : <Users className="h-4 w-4" strokeWidth={2.25} />}
+        {room.emoji?.trim() ? room.emoji.trim() : <Users className="h-[18px] w-[18px]" strokeWidth={2.2} />}
       </span>
-      <span className="w-[90%] text-center text-[11px] font-semibold leading-tight">{shortName}</span>
+      <span className="w-[88%] text-center text-[12px] font-bold leading-tight">{shortName}</span>
     </Link>
   );
 }
@@ -394,17 +369,10 @@ function ExpandedAreaPanel({
           <div className="flex flex-wrap justify-center gap-3">
             {isCommunity
               ? rooms.map((room, i) => (
-                  <RoomChip key={room.id} room={room} meta={meta} floatIndex={i} staticLayout />
+                  <RoomChip key={room.id} room={room} meta={meta} floatIndex={i} />
                 ))
               : items.map((item, i) => (
-                  <ContentChip
-                    key={item.id}
-                    item={item}
-                    meta={meta}
-                    roomHref={roomHref}
-                    floatIndex={i}
-                    staticLayout
-                  />
+                  <ContentChip key={item.id} item={item} meta={meta} roomHref={roomHref} floatIndex={i} />
                 ))}
           </div>
         </div>
@@ -502,9 +470,11 @@ function BlobArea({
   }, [hotOverride, isCommunity, communityRooms]);
 
   const totalCount = isCommunity ? communityRooms.length : items.length;
-  const previewItems = items.slice(0, PREVIEW_LIMIT);
-  const previewRooms = communityRooms.slice(0, PREVIEW_LIMIT);
-  const hiddenCount = Math.max(0, totalCount - PREVIEW_LIMIT);
+  // コミュニティ（中央・小さめ）は 2件、他は 4件まで表示
+  const previewLimit = isCommunity ? 2 : PREVIEW_LIMIT;
+  const previewItems = items.slice(0, previewLimit);
+  const previewRooms = communityRooms.slice(0, previewLimit);
+  const hiddenCount = Math.max(0, totalCount - previewLimit);
 
   const blobDur = 7 + blobIndex * 1.1;
   const blobDelay = blobIndex * 0.85;
@@ -547,85 +517,71 @@ function BlobArea({
             : `0 0 0 1.5px rgba(255,255,255,0.42), 0 0 38px ${meta.glowColor}, 0 12px 40px rgba(20,40,110,0.30), inset 0 2px 18px rgba(255,255,255,0.65)`,
         }}
       >
-        {/* ラベル */}
+        {/* ラベル（上部） */}
         <div
-          className="absolute left-1/2 top-[22%] z-10 flex -translate-x-1/2 items-center gap-1 rounded-full px-3 py-1 shadow-sm"
+          className="absolute left-1/2 top-[13%] z-10 flex w-max max-w-[80%] -translate-x-1/2 items-center gap-1.5 rounded-full px-3 py-1.5 shadow"
           style={{
-            background: "rgba(255,255,255,0.78)",
+            background: "rgba(255,255,255,0.88)",
             color: meta.textColor,
-            fontSize: 12,
-            fontWeight: 700,
+            fontSize: 13,
+            fontWeight: 800,
+            whiteSpace: "nowrap",
           }}
         >
-          <Icon className="h-3 w-3 shrink-0" />
+          <Icon className="h-3.5 w-3.5 shrink-0" />
           <span>{meta.label}</span>
-          {blobHot && <ForumHotFlame size="sm" className="scale-[0.6]" />}
+          {blobHot && <ForumHotFlame size="sm" className="scale-[0.65]" />}
         </div>
 
-        {/* プレビューチップ（有機配置） */}
-        <div className="pointer-events-none absolute inset-0">
-          {isCommunity ? (
-            loading ? (
-              <span
-                className="absolute left-1/2 top-[52%] -translate-x-1/2 text-[10px] opacity-40"
-                style={{ color: meta.textColor }}
-              >
-                …
-              </span>
-            ) : communityRooms.length === 0 ? (
+        {/* チップグリッド（中央フレックス — はみ出しなし） */}
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center pt-[30%] pb-[8%]">
+          <div className="flex flex-wrap items-center justify-center gap-2 px-[10%]">
+            {isCommunity ? (
+              loading ? (
+                <span className="text-[13px] opacity-40" style={{ color: meta.textColor }}>…</span>
+              ) : communityRooms.length === 0 ? (
+                <Link
+                  href={roomHref}
+                  className="pointer-events-auto flex items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-bold shadow transition-transform hover:scale-105"
+                  style={{
+                    background: meta.bubbleBg,
+                    color: meta.textColor,
+                    border: `1px solid ${meta.textColor}30`,
+                  }}
+                >
+                  参加する
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              ) : (
+                previewRooms.map((room, i) => (
+                  <RoomChip key={room.id} room={room} meta={meta} floatIndex={i + blobIndex * 4} />
+                ))
+              )
+            ) : loading ? (
+              <span className="text-[13px] opacity-40" style={{ color: meta.textColor }}>…</span>
+            ) : items.length === 0 ? (
               <Link
                 href={roomHref}
-                className="pointer-events-auto absolute left-1/2 top-[48%] flex -translate-x-1/2 items-center gap-1 rounded-full px-3 py-1.5 text-[10px] font-semibold shadow-sm transition-transform hover:scale-105"
-                style={{
-                  background: meta.bubbleBg,
-                  color: meta.textColor,
-                  border: `1px solid ${meta.textColor}25`,
-                }}
+                className="pointer-events-auto text-[13px] font-semibold opacity-60 hover:opacity-90"
+                style={{ color: meta.textColor }}
               >
-                参加する
-                <ArrowRight className="h-3 w-3" />
+                見る →
               </Link>
             ) : (
-              previewRooms.map((room, i) => (
-                <RoomChip
-                  key={room.id}
-                  room={room}
+              previewItems.map((item, i) => (
+                <ContentChip
+                  key={item.id}
+                  item={item}
                   meta={meta}
-                  floatIndex={i + blobIndex * 3}
-                  style={PREVIEW_SPOTS[i]}
+                  roomHref={roomHref}
+                  floatIndex={i + blobIndex * 4}
                 />
               ))
-            )
-          ) : loading ? (
-            <span
-              className="absolute left-1/2 top-[52%] -translate-x-1/2 text-[10px] opacity-40"
-              style={{ color: meta.textColor }}
-            >
-              …
-            </span>
-          ) : items.length === 0 ? (
-            <Link
-              href={roomHref}
-              className="pointer-events-auto absolute left-1/2 top-[48%] -translate-x-1/2 text-[10px] font-medium opacity-50 hover:opacity-80"
-              style={{ color: meta.textColor }}
-            >
-              見る →
-            </Link>
-          ) : (
-            previewItems.map((item, i) => (
-              <ContentChip
-                key={item.id}
-                item={item}
-                meta={meta}
-                roomHref={roomHref}
-                floatIndex={i + blobIndex * 3}
-                style={PREVIEW_SPOTS[i]}
-              />
-            ))
-          )}
+            )}
+          </div>
         </div>
 
-        {/* 隅の展開矢印 */}
+        {/* 展開矢印（コンテンツが PREVIEW_LIMIT を超えるとき） */}
         {hiddenCount > 0 && (
           <ExpandCornerButton
             corner={slot.expandCorner}
