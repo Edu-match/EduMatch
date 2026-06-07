@@ -148,8 +148,13 @@ export async function middleware(request: NextRequest) {
   );
 
   if (isAuthPath && user) {
-    // 認証済みユーザーはトップページにリダイレクト
-    return NextResponse.redirect(new URL("/", request.url));
+    // 認証済みユーザーは next 指定（特設LP等）があればそこへ、無ければトップへ
+    const nextParam = request.nextUrl.searchParams.get("next");
+    const dest =
+      nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//")
+        ? nextParam
+        : "/";
+    return NextResponse.redirect(new URL(dest, request.url));
   }
 
   return response;

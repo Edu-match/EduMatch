@@ -201,9 +201,10 @@ export function MaintenanceAwareLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const isMaintenance = pathname === "/maintenance";
+  // メンテナンス画面と特設LP(/interop)は共通ヘッダー等を出さず全画面で表示する
+  const isBareLayout = pathname === "/maintenance" || !!pathname?.startsWith("/interop");
 
-  if (isMaintenance) {
+  if (isBareLayout) {
     return <div className="min-h-screen flex flex-col">{children}</div>;
   }
 

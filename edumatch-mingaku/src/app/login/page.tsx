@@ -13,7 +13,13 @@ function safeRedirect(next: string | undefined): string {
   return next;
 }
 
-function LoginPageContent({ redirectTo }: { redirectTo: string }) {
+function LoginPageContent({
+  redirectTo,
+  defaultTab,
+}: {
+  redirectTo: string;
+  defaultTab: "login" | "signup";
+}) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background via-background to-muted/30 px-4 py-12">
       <div className="w-full max-w-2xl">
@@ -37,7 +43,7 @@ function LoginPageContent({ redirectTo }: { redirectTo: string }) {
             </CardTitle>
           </CardHeader>
           <CardContent className="px-6 pb-6 pt-2">
-            <Tabs defaultValue="login" className="w-full">
+            <Tabs defaultValue={defaultTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2 h-11 p-1 mb-6 rounded-lg bg-muted/60">
                 <TabsTrigger
                   value="login"
@@ -75,10 +81,11 @@ function LoginPageContent({ redirectTo }: { redirectTo: string }) {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; tab?: string }>;
 }) {
   const sp = await searchParams;
   const redirectTo = safeRedirect(sp.next);
+  const defaultTab = sp.tab === "signup" ? "signup" : "login";
 
   return (
     <Suspense
@@ -88,7 +95,7 @@ export default async function LoginPage({
         </div>
       }
     >
-      <LoginPageContent redirectTo={redirectTo} />
+      <LoginPageContent redirectTo={redirectTo} defaultTab={defaultTab} />
     </Suspense>
   );
 }
