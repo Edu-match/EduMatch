@@ -8,6 +8,7 @@ import {
   Calendar,
   FileText,
   MessageCircle,
+  Users,
   Video,
 } from "lucide-react";
 import type { CategoryContentItem } from "@/lib/forum-category-content";
@@ -40,99 +41,98 @@ const AREA_META: Record<string, AreaMeta> = {
   article: {
     label: "記事",
     icon: FileText,
-    blobColor: "#FFDDE8",
-    bubbleBg: "rgba(255,255,255,0.92)",
+    blobColor: "rgba(255, 221, 232, 0.55)",
+    bubbleBg: "rgba(255, 255, 255, 0.88)",
     textColor: "#b84065",
-    glowColor: "rgba(255,160,190,0.4)",
+    glowColor: "rgba(255, 160, 190, 0.25)",
   },
   service: {
     label: "サービス",
     icon: Briefcase,
-    blobColor: "#C6F0DA",
-    bubbleBg: "rgba(255,255,255,0.92)",
+    blobColor: "rgba(198, 240, 218, 0.55)",
+    bubbleBg: "rgba(255, 255, 255, 0.88)",
     textColor: "#237a4e",
-    glowColor: "rgba(100,210,150,0.4)",
+    glowColor: "rgba(100, 210, 150, 0.25)",
   },
   media: {
-    label: "動画・メディア",
+    label: "動画",
     icon: Video,
-    blobColor: "#E2D1F9",
-    bubbleBg: "rgba(255,255,255,0.92)",
+    blobColor: "rgba(226, 209, 249, 0.55)",
+    bubbleBg: "rgba(255, 255, 255, 0.88)",
     textColor: "#6933a8",
-    glowColor: "rgba(180,130,245,0.4)",
+    glowColor: "rgba(180, 130, 245, 0.25)",
   },
   "events-info": {
-    label: "イベント情報",
+    label: "イベント",
     icon: Calendar,
-    blobColor: "#FFF0BE",
-    bubbleBg: "rgba(255,255,255,0.92)",
+    blobColor: "rgba(255, 240, 190, 0.55)",
+    bubbleBg: "rgba(255, 255, 255, 0.88)",
     textColor: "#8a6000",
-    glowColor: "rgba(255,205,60,0.4)",
+    glowColor: "rgba(255, 205, 60, 0.25)",
   },
   community: {
     label: "コミュニティ",
     icon: MessageCircle,
-    blobColor: "#BDE8FB",
-    bubbleBg: "rgba(255,255,255,0.92)",
+    blobColor: "rgba(189, 232, 251, 0.55)",
+    bubbleBg: "rgba(255, 255, 255, 0.88)",
     textColor: "#1060a0",
-    glowColor: "rgba(80,180,240,0.4)",
+    glowColor: "rgba(80, 180, 240, 0.25)",
   },
 };
 
 const DEFAULT_META: AreaMeta = {
   label: "その他",
   icon: MessageCircle,
-  blobColor: "#E8E8E8",
-  bubbleBg: "rgba(255,255,255,0.9)",
+  blobColor: "rgba(232, 232, 232, 0.5)",
+  bubbleBg: "rgba(255, 255, 255, 0.88)",
   textColor: "#555",
-  glowColor: "rgba(160,160,160,0.3)",
+  glowColor: "rgba(160, 160, 160, 0.2)",
 };
 
+const BUBBLE_SIZE = 68;
+
 /* ------------------------------------------------------------------ */
-/* コンテンツバブル                                                      */
+/* コンテンツバブル（アイコン＋短いタイトル）                             */
 /* ------------------------------------------------------------------ */
 
-function SmallBubble({
+function ContentBubble({
   item,
   meta,
   floatIndex,
   roomHref,
-  index,
 }: {
   item: CategoryContentItem;
   meta: AreaMeta;
   floatIndex: number;
   roomHref: string;
-  index: number;
 }) {
-  const dur = 4.5 + (floatIndex % 4) * 1.2;
-  const delay = floatIndex * 0.55;
-  const shortTitle = item.title.length > 8 ? item.title.slice(0, 7) + "…" : item.title;
-
-  const style: React.CSSProperties = {
-    background: meta.bubbleBg,
-    borderColor: `${meta.textColor}22`,
-    color: meta.textColor,
-    boxShadow: `0 4px 16px ${meta.glowColor}`,
-    animation: `subBubbleFloat ${dur}s ease-in-out ${delay}s infinite`,
-    width: 76,
-    height: 76,
-  };
+  const dur = 5 + (floatIndex % 4) * 1.1;
+  const delay = floatIndex * 0.5;
+  const Icon = meta.icon;
+  const shortTitle = item.title.length > 10 ? item.title.slice(0, 9) + "…" : item.title;
 
   return (
     <Link
       href={roomHref}
-      className="relative flex shrink-0 flex-col items-center justify-center gap-0.5 rounded-full border backdrop-blur-sm transition-transform hover:scale-110 hover:shadow-lg cursor-pointer overflow-hidden"
-      style={style}
+      className="relative flex shrink-0 flex-col items-center justify-center gap-1 rounded-full border backdrop-blur-sm transition-transform hover:scale-105 hover:shadow-md"
+      style={{
+        width: BUBBLE_SIZE,
+        height: BUBBLE_SIZE,
+        background: meta.bubbleBg,
+        borderColor: `${meta.textColor}20`,
+        color: meta.textColor,
+        boxShadow: `0 2px 10px ${meta.glowColor}`,
+        animation: `subBubbleFloat ${dur}s ease-in-out ${delay}s infinite`,
+      }}
       title={item.title}
     >
       <span
-        className="flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-bold"
-        style={{ background: `${meta.textColor}18` }}
+        className="flex h-7 w-7 items-center justify-center rounded-full"
+        style={{ background: `${meta.textColor}14` }}
       >
-        {index + 1}
+        <Icon className="h-3.5 w-3.5" strokeWidth={2.25} />
       </span>
-      <span className="w-[90%] text-center text-[9px] font-semibold leading-tight">
+      <span className="line-clamp-2 w-[88%] text-center text-[8px] font-medium leading-tight">
         {shortTitle}
       </span>
     </Link>
@@ -152,41 +152,44 @@ function RoomBubble({
   meta: AreaMeta;
   floatIndex: number;
 }) {
-  const dur = 4.5 + (floatIndex % 4) * 1.2;
-  const delay = floatIndex * 0.55;
-  const shortName = room.name.length > 8 ? room.name.slice(0, 7) + "…" : room.name;
+  const dur = 5 + (floatIndex % 4) * 1.1;
+  const delay = floatIndex * 0.5;
+  const shortName = room.name.length > 10 ? room.name.slice(0, 9) + "…" : room.name;
   const hot = isForumHot({
     postCount: room.postCount,
     participantCount: room.participantCount,
     lastPostedAt: room.lastPostedAt,
   });
 
-  const style: React.CSSProperties = {
-    background: meta.bubbleBg,
-    borderColor: hot ? "rgba(255,120,40,0.45)" : `${meta.textColor}22`,
-    color: meta.textColor,
-    boxShadow: hot
-      ? "0 0 18px rgba(255,120,40,0.4), 0 4px 16px rgba(80,180,240,0.25)"
-      : `0 4px 16px ${meta.glowColor}`,
-    animation: `subBubbleFloat ${dur}s ease-in-out ${delay}s infinite`,
-    width: 76,
-    height: 76,
-  };
-
   return (
     <Link
       href={`/forum/${room.id}`}
-      className="relative flex shrink-0 flex-col items-center justify-center gap-0.5 rounded-full border backdrop-blur-sm transition-transform hover:scale-110 hover:shadow-lg cursor-pointer overflow-visible px-1"
-      style={style}
+      className="relative flex shrink-0 flex-col items-center justify-center gap-1 rounded-full border backdrop-blur-sm transition-transform hover:scale-105 hover:shadow-md"
+      style={{
+        width: BUBBLE_SIZE,
+        height: BUBBLE_SIZE,
+        background: meta.bubbleBg,
+        borderColor: hot ? "rgba(255,120,40,0.4)" : `${meta.textColor}20`,
+        color: meta.textColor,
+        boxShadow: hot
+          ? "0 0 14px rgba(255,120,40,0.35), 0 2px 10px rgba(80,180,240,0.2)"
+          : `0 2px 10px ${meta.glowColor}`,
+        animation: `subBubbleFloat ${dur}s ease-in-out ${delay}s infinite`,
+      }}
       title={room.name}
     >
       {hot && (
-        <span className="absolute -right-1 -top-1 z-10">
+        <span className="absolute -right-0.5 -top-0.5 z-10">
           <ForumHotFlame size="sm" />
         </span>
       )}
-      <MessageCircle className="h-4 w-4 opacity-70" />
-      <span className="w-full text-center text-[9px] font-semibold leading-tight">
+      <span
+        className="flex h-7 w-7 items-center justify-center rounded-full"
+        style={{ background: `${meta.textColor}14` }}
+      >
+        <Users className="h-3.5 w-3.5" strokeWidth={2.25} />
+      </span>
+      <span className="line-clamp-2 w-[88%] text-center text-[8px] font-medium leading-tight">
         {shortName}
       </span>
     </Link>
@@ -228,9 +231,7 @@ function BlobArea({
       fetch(`/api/forum/rooms?${q}`, { credentials: "include" })
         .then((r) => r.json())
         .then((d) => {
-          if (!cancelled && Array.isArray(d.rooms)) {
-            setCommunityRooms(d.rooms);
-          }
+          if (!cancelled && Array.isArray(d.rooms)) setCommunityRooms(d.rooms);
         })
         .catch(console.error)
         .finally(() => { if (!cancelled) setLoading(false); });
@@ -257,47 +258,50 @@ function BlobArea({
     );
   }, [isCommunity, communityRooms]);
 
-  const blobDur = 7 + blobIndex * 1.2;
-  const blobDelay = blobIndex * 0.85;
+  const blobDur = 8 + blobIndex * 0.9;
+  const blobDelay = blobIndex * 0.7;
+  const nudgeY = blobIndex % 2 === 0 ? 0 : 8;
 
   return (
-    <div className="flex w-[260px] flex-col items-center gap-3 sm:w-[290px] md:w-[320px]">
-      <div className="flex items-center gap-1.5">
-        <Icon className="h-4 w-4 shrink-0" style={{ color: meta.textColor }} />
-        <span className="text-sm font-bold" style={{ color: meta.textColor }}>
-          {meta.label}
-        </span>
-        {blobHot && <ForumHotFlame size="sm" />}
-      </div>
-
+    <div
+      className="relative flex w-[168px] flex-col items-center sm:w-[178px]"
+      style={{ marginTop: nudgeY }}
+    >
       <div
-        className="relative w-full overflow-hidden"
+        className="relative w-full overflow-visible"
         style={{
           borderRadius: "50%",
           aspectRatio: "1 / 1",
-          background: `radial-gradient(ellipse at 38% 32%, ${meta.blobColor} 0%, ${meta.blobColor}bb 55%, ${meta.blobColor}66 100%)`,
+          background: `radial-gradient(ellipse at 40% 35%, ${meta.blobColor} 0%, transparent 72%)`,
           boxShadow: blobHot
-            ? `0 0 36px rgba(255, 120, 50, 0.45), 0 8px 32px ${meta.glowColor}, inset 0 1px 2px rgba(255,255,255,0.75)`
-            : `0 8px 32px ${meta.glowColor}, inset 0 1px 2px rgba(255,255,255,0.75)`,
+            ? "0 0 20px rgba(255, 120, 50, 0.3)"
+            : "none",
           animation: `blobDrift ${blobDur}s ease-in-out ${blobDelay}s infinite`,
         }}
       >
+        {/* エリアラベル（ブロブ内上部） */}
         <div
-          className="pointer-events-none absolute inset-0 rounded-full"
+          className="absolute left-1/2 top-[10%] z-10 flex -translate-x-1/2 items-center gap-1 rounded-full px-2 py-0.5 backdrop-blur-sm"
           style={{
-            background:
-              "radial-gradient(ellipse at 32% 26%, rgba(255,255,255,0.6) 0%, transparent 55%)",
+            background: "rgba(255,255,255,0.72)",
+            color: meta.textColor,
+            fontSize: 10,
+            fontWeight: 700,
           }}
-        />
+        >
+          <Icon className="h-3 w-3 shrink-0" />
+          <span>{meta.label}</span>
+          {blobHot && <ForumHotFlame size="sm" className="scale-75" />}
+        </div>
 
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-[8%] py-[8%]">
+        <div className="absolute inset-0 flex flex-col items-center justify-center px-[10%] pt-[18%]">
           {isCommunity ? (
             loading ? (
-              <span className="text-[11px] opacity-50" style={{ color: meta.textColor }}>
-                読み込み中…
+              <span className="text-[10px] opacity-40" style={{ color: meta.textColor }}>
+                …
               </span>
             ) : communityRooms.length > 0 ? (
-              <div className="flex flex-wrap items-center justify-center gap-2">
+              <div className="flex flex-wrap items-center justify-center gap-1.5">
                 {communityRooms.map((room, i) => (
                   <RoomBubble
                     key={room.id}
@@ -310,40 +314,38 @@ function BlobArea({
             ) : (
               <Link
                 href={roomHref}
-                className="flex items-center gap-2 rounded-full px-5 py-2.5 text-xs font-bold shadow-md transition-transform hover:scale-105"
+                className="flex items-center gap-1 rounded-full px-3 py-1.5 text-[10px] font-semibold shadow-sm transition-transform hover:scale-105"
                 style={{
                   background: meta.bubbleBg,
                   color: meta.textColor,
-                  border: `1.5px solid ${meta.textColor}35`,
-                  boxShadow: `0 4px 16px ${meta.glowColor}`,
+                  border: `1px solid ${meta.textColor}25`,
                 }}
               >
-                掲示板に参加する
-                <ArrowRight className="h-3.5 w-3.5" />
+                参加する
+                <ArrowRight className="h-3 w-3" />
               </Link>
             )
           ) : loading ? (
-            <span className="text-[11px] opacity-50" style={{ color: meta.textColor }}>
-              読み込み中…
+            <span className="text-[10px] opacity-40" style={{ color: meta.textColor }}>
+              …
             </span>
           ) : items.length === 0 ? (
             <Link
               href={roomHref}
-              className="text-[11px] font-medium opacity-60 hover:opacity-90 transition-opacity"
+              className="text-[10px] font-medium opacity-50 hover:opacity-80"
               style={{ color: meta.textColor }}
             >
-              ルームを見る →
+              見る →
             </Link>
           ) : (
-            <div className="flex flex-wrap items-center justify-center gap-2">
+            <div className="flex flex-wrap items-center justify-center gap-1.5">
               {items.map((item, i) => (
-                <SmallBubble
+                <ContentBubble
                   key={item.id}
                   item={item}
                   meta={meta}
                   floatIndex={i + blobIndex * 4}
                   roomHref={roomHref}
-                  index={i}
                 />
               ))}
             </div>
@@ -375,29 +377,38 @@ export function CategorySubAreaView({
       <style>{`
         @keyframes subBubbleFloat {
           0%,100% { transform: translateY(0px); }
-          35%      { transform: translateY(-5px) translateX(1.5px); }
-          65%      { transform: translateY(3px)  translateX(-1px); }
+          40%      { transform: translateY(-3px) translateX(1px); }
+          70%      { transform: translateY(2px); }
         }
         @keyframes blobDrift {
-          0%,100% { transform: translateY(0px) scale(1); }
-          40%      { transform: translateY(-8px) scale(1.015); }
-          70%      { transform: translateY(4px)  scale(0.988); }
+          0%,100% { transform: translateY(0px); }
+          50%      { transform: translateY(-4px); }
         }
       `}</style>
 
-      <div className="flex flex-wrap justify-center gap-8 p-8">
-        {sorted.map((sub, i) => {
-          const meta = AREA_META[sub.contentKind] ?? DEFAULT_META;
-          return (
-            <BlobArea
-              key={sub.id}
-              category={category}
-              sub={sub}
-              meta={meta}
-              blobIndex={i}
-            />
-          );
-        })}
+      {/* 1つのキャンバスにまとめて、エリア同士が近接・重なり気味に */}
+      <div className="relative mx-auto max-w-3xl px-3 py-5">
+        <div
+          className="pointer-events-none absolute inset-4 rounded-[40%] opacity-60"
+          style={{
+            background:
+              "radial-gradient(ellipse at 50% 45%, rgba(255,255,255,0.9) 0%, rgba(248,250,252,0.4) 55%, transparent 80%)",
+          }}
+        />
+        <div className="relative flex flex-wrap items-center justify-center gap-x-1 gap-y-0 sm:gap-x-2">
+          {sorted.map((sub, i) => {
+            const meta = AREA_META[sub.contentKind] ?? DEFAULT_META;
+            return (
+              <BlobArea
+                key={sub.id}
+                category={category}
+                sub={sub}
+                meta={meta}
+                blobIndex={i}
+              />
+            );
+          })}
+        </div>
       </div>
     </>
   );
