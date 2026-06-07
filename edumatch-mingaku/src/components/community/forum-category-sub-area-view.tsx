@@ -397,6 +397,7 @@ function BlobArea({
 }) {
   const [items, setItems] = useState<CategoryContentItem[]>([]);
   const [communityRooms, setCommunityRooms] = useState<CommunityRoomItem[]>([]);
+  const [hotOverride, setHotOverride] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const isCommunity = sub.contentKind === "community";
   const Icon = meta.icon;
@@ -410,6 +411,18 @@ function BlobArea({
 
   useEffect(() => {
     let cancelled = false;
+
+    // 面の炎マーク手動上書き（記事/サービス等もコミュニティも共通で取得）
+    const faceQ = new URLSearchParams({ categorySlug: category.slug, subSlug: sub.slug });
+    fetch(`/api/forum/rooms/category-content?${faceQ}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled) return;
+        if (typeof d.hotOverride === "boolean" || d.hotOverride === null) setHotOverride(d.hotOverride);
+        if (!isCommunity && Array.isArray(d.items)) setItems(d.items);
+      })
+      .catch(console.error)
+      .finally(() => { if (!cancelled && !isCommunity) setLoading(false); });
 
     if (isCommunity) {
       const q = new URLSearchParams({
@@ -425,19 +438,13 @@ function BlobArea({
         })
         .catch(console.error)
         .finally(() => { if (!cancelled) setLoading(false); });
-      return () => { cancelled = true; };
     }
-
-    const q = new URLSearchParams({ categorySlug: category.slug, subSlug: sub.slug });
-    fetch(`/api/forum/rooms/category-content?${q}`)
-      .then((r) => r.json())
-      .then((d) => { if (!cancelled && Array.isArray(d.items)) setItems(d.items); })
-      .catch(console.error)
-      .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [category.id, category.slug, sub.id, sub.slug, isCommunity]);
 
   const blobHot = useMemo(() => {
+    if (hotOverride === true) return true;
+    if (hotOverride === false) return false;
     if (!isCommunity) return false;
     return communityRooms.some((r) =>
       isForumHot({
@@ -446,7 +453,7 @@ function BlobArea({
         lastPostedAt: r.lastPostedAt,
       })
     );
-  }, [isCommunity, communityRooms]);
+  }, [hotOverride, isCommunity, communityRooms]);
 
   const totalCount = isCommunity ? communityRooms.length : items.length;
   const previewItems = items.slice(0, PREVIEW_LIMIT);

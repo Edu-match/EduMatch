@@ -4,6 +4,7 @@ import {
   readCategoryContentCache,
   refreshCategoryContentCache,
 } from "@/lib/forum-category-content-ai";
+import { mergePinnedFirst, readPinnedContentItems } from "@/lib/forum-pinned-content";
 
 export type CategoryContentItem = {
   id: string;
@@ -34,6 +35,9 @@ export async function getCategoryRoomContentForPage(
   const limit = params.limit ?? 6;
   if (params.contentKind === "community") return [];
 
+  const pinned = await readPinnedContentItems(params.categoryId, params.subCategoryId, limit);
+
+  let base: CategoryContentItem[];
   try {
     const cached = await readCategoryContentCache(
       params.categoryId,
@@ -41,16 +45,23 @@ export async function getCategoryRoomContentForPage(
       params.contentKind,
       limit
     );
-    if (cached.length > 0) return cached;
-    return await getCategoryRoomContentKeywordFallback(
+    base =
+      cached.length > 0
+        ? cached
+        : await getCategoryRoomContentKeywordFallback(
+            params.categoryName,
+            params.contentKind,
+            limit
+          );
+  } catch (err) {
+    console.error("[getCategoryRoomContentForPage]", err);
+    base = await getCategoryRoomContentKeywordFallback(
       params.categoryName,
       params.contentKind,
       limit
     );
-  } catch (err) {
-    console.error("[getCategoryRoomContentForPage]", err);
-    return getCategoryRoomContentKeywordFallback(params.categoryName, params.contentKind, limit);
   }
+  return mergePinnedFirst(pinned, base, limit);
 }
 
 /**
@@ -63,6 +74,9 @@ export async function getCategoryRoomContent(
   const limit = params.limit ?? 6;
   if (params.contentKind === "community") return [];
 
+  const pinned = await readPinnedContentItems(params.categoryId, params.subCategoryId, limit);
+
+  let base: CategoryContentItem[];
   try {
     const cached = await readCategoryContentCache(
       params.categoryId,
@@ -70,9 +84,9 @@ export async function getCategoryRoomContent(
       params.contentKind,
       limit
     );
-    if (cached.length > 0) return cached;
-
-    if (params.allowAiRefresh) {
+    if (cached.length > 0) {
+      base = cached;
+    } else if (params.allowAiRefresh) {
       const { items } = await refreshCategoryContentCache({
         categoryId: params.categoryId,
         categoryName: params.categoryName,
@@ -82,14 +96,18 @@ export async function getCategoryRoomContent(
         contentKind: params.contentKind,
         limit,
       });
-      if (items.length > 0) return items;
+      base =
+        items.length > 0
+          ? items
+          : await getCategoryRoomContentKeywordFallback(params.categoryName, params.contentKind, limit);
+    } else {
+      base = await getCategoryRoomContentKeywordFallback(params.categoryName, params.contentKind, limit);
     }
-
-    return await getCategoryRoomContentKeywordFallback(params.categoryName, params.contentKind, limit);
   } catch (err) {
     console.error("[getCategoryRoomContent]", err);
-    return getCategoryRoomContentKeywordFallback(params.categoryName, params.contentKind, limit);
+    base = await getCategoryRoomContentKeywordFallback(params.categoryName, params.contentKind, limit);
   }
+  return mergePinnedFirst(pinned, base, limit);
 }
 
 /** キーワード一致のみ（AI・キャッシュ不可時のフォールバック） */
