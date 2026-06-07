@@ -230,25 +230,25 @@ export function ForumCategoryExplorer({
         <div className="overflow-hidden rounded-3xl border bg-gradient-to-b from-muted/20 to-background shadow-sm">
           {/* ヘッダー */}
           <div
-            className="flex items-center justify-between px-5 py-4"
-            style={{ borderBottom: "1px solid hsl(var(--border))" }}
+            className="relative border-b px-4 py-3 sm:px-5 sm:py-4"
           >
             <button
               type="button"
               onClick={handleBack}
-              className="flex items-center gap-1.5 rounded-full border bg-background/95 px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm backdrop-blur transition-colors hover:bg-muted"
+              className="absolute left-4 top-1/2 z-10 flex -translate-y-1/2 items-center gap-1.5 rounded-full border bg-background/95 px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm backdrop-blur transition-colors hover:bg-muted sm:left-5"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
-              大カテゴリ一覧に戻る
+              <span className="hidden sm:inline">大カテゴリ一覧に戻る</span>
+              <span className="sm:hidden">戻る</span>
             </button>
 
-            <div className="text-right">
-              <p className="flex items-center justify-end gap-1.5 text-sm font-bold text-foreground">
-                {selectedIsHot && <ForumHotFlame size="sm" />}
+            <div className="mx-auto max-w-lg px-24 text-center sm:px-36">
+              <p className="flex items-center justify-center gap-1.5 text-sm font-bold text-foreground">
+                {selectedIsHot && <ForumHotFlame size="sm" className="scale-75" />}
                 {selected.name}
               </p>
               {selected.description ? (
-                <p className="mt-0.5 text-[11px] text-muted-foreground line-clamp-1">
+                <p className="mt-0.5 text-[11px] text-muted-foreground line-clamp-2">
                   {selected.description}
                 </p>
               ) : null}

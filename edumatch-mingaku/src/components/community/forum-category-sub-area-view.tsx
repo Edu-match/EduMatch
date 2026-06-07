@@ -3,13 +3,18 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
+  ArrowDownLeft,
+  ArrowDownRight,
   ArrowRight,
+  ArrowUpLeft,
+  ArrowUpRight,
   Briefcase,
   Calendar,
   FileText,
   MessageCircle,
   Users,
   Video,
+  X,
 } from "lucide-react";
 import type { CategoryContentItem } from "@/lib/forum-category-content";
 import { isForumHot } from "@/lib/forum-hot";
@@ -29,10 +34,12 @@ type CommunityRoomItem = {
   lastPostedAt: string;
 };
 
+type ExpandCorner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
+
 type AreaMeta = {
   label: string;
   icon: typeof MessageCircle;
-  blobColor: string;
+  solidColor: string;
   bubbleBg: string;
   textColor: string;
   glowColor: string;
@@ -42,167 +49,323 @@ const AREA_META: Record<string, AreaMeta> = {
   article: {
     label: "記事",
     icon: FileText,
-    blobColor: "rgba(255, 221, 232, 0.55)",
-    bubbleBg: "rgba(255, 255, 255, 0.88)",
+    solidColor: "#fddbe8",
+    bubbleBg: "rgba(255, 255, 255, 0.92)",
     textColor: "#b84065",
-    glowColor: "rgba(255, 160, 190, 0.25)",
+    glowColor: "rgba(255, 160, 190, 0.3)",
   },
   service: {
     label: "サービス",
     icon: Briefcase,
-    blobColor: "rgba(198, 240, 218, 0.55)",
-    bubbleBg: "rgba(255, 255, 255, 0.88)",
+    solidColor: "#c8f0da",
+    bubbleBg: "rgba(255, 255, 255, 0.92)",
     textColor: "#237a4e",
-    glowColor: "rgba(100, 210, 150, 0.25)",
+    glowColor: "rgba(100, 210, 150, 0.3)",
   },
   media: {
     label: "動画",
     icon: Video,
-    blobColor: "rgba(226, 209, 249, 0.55)",
-    bubbleBg: "rgba(255, 255, 255, 0.88)",
+    solidColor: "#e2d1f9",
+    bubbleBg: "rgba(255, 255, 255, 0.92)",
     textColor: "#6933a8",
-    glowColor: "rgba(180, 130, 245, 0.25)",
+    glowColor: "rgba(180, 130, 245, 0.3)",
   },
   "events-info": {
     label: "イベント",
     icon: Calendar,
-    blobColor: "rgba(255, 240, 190, 0.55)",
-    bubbleBg: "rgba(255, 255, 255, 0.88)",
+    solidColor: "#fff0be",
+    bubbleBg: "rgba(255, 255, 255, 0.92)",
     textColor: "#8a6000",
-    glowColor: "rgba(255, 205, 60, 0.25)",
+    glowColor: "rgba(255, 205, 60, 0.3)",
   },
   community: {
     label: "コミュニティ",
     icon: MessageCircle,
-    blobColor: "rgba(189, 232, 251, 0.55)",
-    bubbleBg: "rgba(255, 255, 255, 0.88)",
+    solidColor: "#bde8fb",
+    bubbleBg: "rgba(255, 255, 255, 0.92)",
     textColor: "#1060a0",
-    glowColor: "rgba(80, 180, 240, 0.25)",
+    glowColor: "rgba(80, 180, 240, 0.3)",
   },
 };
 
 const DEFAULT_META: AreaMeta = {
   label: "その他",
   icon: MessageCircle,
-  blobColor: "rgba(232, 232, 232, 0.5)",
-  bubbleBg: "rgba(255, 255, 255, 0.88)",
+  solidColor: "#e8e8e8",
+  bubbleBg: "rgba(255, 255, 255, 0.92)",
   textColor: "#555",
-  glowColor: "rgba(160, 160, 160, 0.2)",
+  glowColor: "rgba(160, 160, 160, 0.25)",
 };
 
-const BUBBLE_SIZE = 68;
+/** 添付イメージに合わせた有機的配置（中央＋四隅、端でクリップ） */
+const BLOB_SLOTS: Record<
+  string,
+  { style: React.CSSProperties; expandCorner: ExpandCorner; diameter: string }
+> = {
+  article: {
+    style: { top: "-14%", left: "-11%" },
+    expandCorner: "bottom-right",
+    diameter: "44%",
+  },
+  service: {
+    style: { top: "-12%", right: "-10%" },
+    expandCorner: "bottom-left",
+    diameter: "40%",
+  },
+  media: {
+    style: { top: "50%", left: "50%" },
+    expandCorner: "bottom-right",
+    diameter: "50%",
+  },
+  "events-info": {
+    style: { bottom: "-14%", left: "-9%" },
+    expandCorner: "top-right",
+    diameter: "42%",
+  },
+  community: {
+    style: { bottom: "-12%", right: "-11%" },
+    expandCorner: "top-left",
+    diameter: "42%",
+  },
+};
+
+/** プレビュー用：バブル内のゆるい座標 */
+const PREVIEW_SPOTS = [
+  { top: "34%", left: "28%" },
+  { top: "48%", left: "54%" },
+  { top: "60%", left: "36%" },
+];
+
+const PREVIEW_LIMIT = 3;
+const CHIP_SIZE = 54;
+
+const CORNER_ARROW: Record<
+  ExpandCorner,
+  { Icon: typeof ArrowUpLeft; position: React.CSSProperties }
+> = {
+  "top-left": { Icon: ArrowUpLeft, position: { top: 10, left: 10 } },
+  "top-right": { Icon: ArrowUpRight, position: { top: 10, right: 10 } },
+  "bottom-left": { Icon: ArrowDownLeft, position: { bottom: 10, left: 10 } },
+  "bottom-right": { Icon: ArrowDownRight, position: { bottom: 10, right: 10 } },
+};
 
 /* ------------------------------------------------------------------ */
-/* コンテンツバブル（アイコン＋短いタイトル）                             */
+/* 小バブル                                                              */
 /* ------------------------------------------------------------------ */
 
-function ContentBubble({
+function ContentChip({
   item,
   meta,
-  floatIndex,
   roomHref,
+  floatIndex,
+  style,
+  staticLayout = false,
 }: {
   item: CategoryContentItem;
   meta: AreaMeta;
-  floatIndex: number;
   roomHref: string;
+  floatIndex: number;
+  style?: React.CSSProperties;
+  staticLayout?: boolean;
 }) {
-  const dur = 5 + (floatIndex % 4) * 1.1;
-  const delay = floatIndex * 0.5;
   const Icon = meta.icon;
-  const shortTitle = item.title.length > 10 ? item.title.slice(0, 9) + "…" : item.title;
+  const shortTitle = item.title.length > 7 ? item.title.slice(0, 6) + "…" : item.title;
+  const dur = 5 + (floatIndex % 4) * 1.1;
 
   return (
     <Link
       href={roomHref}
-      className="relative flex shrink-0 flex-col items-center justify-center gap-1 rounded-full border backdrop-blur-sm transition-transform hover:scale-105 hover:shadow-md"
+      className={
+        staticLayout
+          ? "flex flex-col items-center justify-center gap-0.5 rounded-full border shadow-sm transition-transform hover:scale-110"
+          : "absolute flex flex-col items-center justify-center gap-0.5 rounded-full border shadow-sm transition-transform hover:scale-110"
+      }
       style={{
-        width: BUBBLE_SIZE,
-        height: BUBBLE_SIZE,
+        width: CHIP_SIZE,
+        height: CHIP_SIZE,
         background: meta.bubbleBg,
-        borderColor: `${meta.textColor}20`,
+        borderColor: `${meta.textColor}22`,
         color: meta.textColor,
-        boxShadow: `0 2px 10px ${meta.glowColor}`,
-        animation: `subBubbleFloat ${dur}s ease-in-out ${delay}s infinite`,
+        animation: `subBubbleFloat ${dur}s ease-in-out ${floatIndex * 0.4}s infinite`,
+        ...style,
       }}
       title={item.title}
     >
       <span
-        className="flex h-7 w-7 items-center justify-center rounded-full"
-        style={{ background: `${meta.textColor}14` }}
+        className="flex h-6 w-6 items-center justify-center rounded-full"
+        style={{ background: `${meta.textColor}12` }}
       >
-        <Icon className="h-3.5 w-3.5" strokeWidth={2.25} />
+        <Icon className="h-3 w-3" strokeWidth={2.25} />
       </span>
-      <span className="line-clamp-2 w-[88%] text-center text-[8px] font-medium leading-tight">
-        {shortTitle}
-      </span>
+      <span className="w-[88%] text-center text-[7px] font-medium leading-tight">{shortTitle}</span>
     </Link>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* コミュニティルームバブル                                              */
-/* ------------------------------------------------------------------ */
-
-function RoomBubble({
+function RoomChip({
   room,
   meta,
   floatIndex,
+  style,
+  staticLayout = false,
 }: {
   room: CommunityRoomItem;
   meta: AreaMeta;
   floatIndex: number;
+  style?: React.CSSProperties;
+  staticLayout?: boolean;
 }) {
-  const dur = 5 + (floatIndex % 4) * 1.1;
-  const delay = floatIndex * 0.5;
-  const shortName = room.name.length > 10 ? room.name.slice(0, 9) + "…" : room.name;
+  const shortName = room.name.length > 7 ? room.name.slice(0, 6) + "…" : room.name;
   const hot = isForumHot({
     postCount: room.postCount,
     participantCount: room.participantCount,
     lastPostedAt: room.lastPostedAt,
   });
+  const dur = 5 + (floatIndex % 4) * 1.1;
 
   return (
     <Link
       href={`/forum/${room.id}`}
-      className="relative flex shrink-0 flex-col items-center justify-center gap-1 rounded-full border backdrop-blur-sm transition-transform hover:scale-105 hover:shadow-md"
+      className={
+        staticLayout
+          ? "flex flex-col items-center justify-center gap-0.5 rounded-full border shadow-sm transition-transform hover:scale-110"
+          : "absolute flex flex-col items-center justify-center gap-0.5 rounded-full border shadow-sm transition-transform hover:scale-110"
+      }
       style={{
-        width: BUBBLE_SIZE,
-        height: BUBBLE_SIZE,
+        width: CHIP_SIZE,
+        height: CHIP_SIZE,
         background: meta.bubbleBg,
-        borderColor: hot ? "rgba(255,120,40,0.4)" : `${meta.textColor}20`,
+        borderColor: hot ? "rgba(255,120,40,0.5)" : `${meta.textColor}22`,
         color: meta.textColor,
-        boxShadow: hot
-          ? "0 0 14px rgba(255,120,40,0.35), 0 2px 10px rgba(80,180,240,0.2)"
-          : `0 2px 10px ${meta.glowColor}`,
-        animation: `subBubbleFloat ${dur}s ease-in-out ${delay}s infinite`,
+        boxShadow: hot ? "0 0 10px rgba(255,120,40,0.25)" : undefined,
+        animation: `subBubbleFloat ${dur}s ease-in-out ${floatIndex * 0.4}s infinite`,
+        ...style,
       }}
       title={room.name}
     >
-      {hot && (
-        <span className="absolute -right-0.5 -top-0.5 z-10">
-          <ForumHotFlame size="sm" />
-        </span>
-      )}
       <span
-        className="flex h-7 w-7 items-center justify-center rounded-full text-base leading-none"
-        style={{ background: `${meta.textColor}14` }}
+        className="flex h-6 w-6 items-center justify-center rounded-full text-sm leading-none"
+        style={{ background: `${meta.textColor}12` }}
       >
-        {room.emoji?.trim() ? (
-          room.emoji.trim()
-        ) : (
-          <Users className="h-3.5 w-3.5" strokeWidth={2.25} />
-        )}
+        {room.emoji?.trim() ? room.emoji.trim() : <Users className="h-3 w-3" strokeWidth={2.25} />}
       </span>
-      <span className="line-clamp-2 w-[88%] text-center text-[8px] font-medium leading-tight">
-        {shortName}
-      </span>
+      <span className="w-[88%] text-center text-[7px] font-medium leading-tight">{shortName}</span>
     </Link>
   );
 }
 
+function ExpandCornerButton({
+  corner,
+  count,
+  onClick,
+  color,
+}: {
+  corner: ExpandCorner;
+  count: number;
+  onClick: () => void;
+  color: string;
+}) {
+  const { Icon, position } = CORNER_ARROW[corner];
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      className="absolute z-20 flex items-center gap-0.5 rounded-full border bg-white/90 px-2 py-1 text-[10px] font-bold shadow-md backdrop-blur-sm transition-transform hover:scale-105"
+      style={{ ...position, color, borderColor: `${color}30` }}
+      aria-label={`${count}件をもっと見る`}
+    >
+      <Icon className="h-3.5 w-3.5" strokeWidth={2.5} />
+      <span>+{count}</span>
+    </button>
+  );
+}
+
 /* ------------------------------------------------------------------ */
-/* ブロブ本体                                                            */
+/* 展開オーバーレイ                                                      */
+/* ------------------------------------------------------------------ */
+
+function ExpandedAreaPanel({
+  meta,
+  roomHref,
+  isCommunity,
+  items,
+  rooms,
+  onClose,
+}: {
+  meta: AreaMeta;
+  roomHref: string;
+  isCommunity: boolean;
+  items: CategoryContentItem[];
+  rooms: CommunityRoomItem[];
+  onClose: () => void;
+}) {
+  const Icon = meta.icon;
+
+  return (
+    <div className="absolute inset-0 z-50 flex items-center justify-center p-4 sm:p-8">
+      <button
+        type="button"
+        className="absolute inset-0 bg-background/60 backdrop-blur-[2px]"
+        onClick={onClose}
+        aria-label="閉じる"
+      />
+      <div
+        className="relative z-10 flex max-h-[88%] w-full max-w-md flex-col overflow-hidden rounded-[2.5rem] shadow-2xl"
+        style={{ background: meta.solidColor }}
+      >
+        <div className="flex items-center justify-between gap-2 border-b border-black/5 px-5 py-3">
+          <div className="flex items-center gap-2 text-sm font-bold" style={{ color: meta.textColor }}>
+            <Icon className="h-4 w-4" />
+            {meta.label}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-black/5"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+          <div className="flex flex-wrap justify-center gap-3">
+            {isCommunity
+              ? rooms.map((room, i) => (
+                  <RoomChip key={room.id} room={room} meta={meta} floatIndex={i} staticLayout />
+                ))
+              : items.map((item, i) => (
+                  <ContentChip
+                    key={item.id}
+                    item={item}
+                    meta={meta}
+                    roomHref={roomHref}
+                    floatIndex={i}
+                    staticLayout
+                  />
+                ))}
+          </div>
+        </div>
+
+        <div className="border-t border-black/5 px-5 py-3">
+          <Link
+            href={roomHref}
+            className="flex items-center justify-center gap-1 rounded-full bg-white/80 px-4 py-2 text-xs font-semibold shadow-sm transition-colors hover:bg-white"
+            style={{ color: meta.textColor }}
+          >
+            {isCommunity ? "掲示板へ" : "一覧を見る"}
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* ブロブ（大きなパステル円）                                            */
 /* ------------------------------------------------------------------ */
 
 function BlobArea({
@@ -210,11 +373,17 @@ function BlobArea({
   sub,
   meta,
   blobIndex,
+  isExpanded,
+  onExpand,
+  onCollapse,
 }: {
   category: ForumCategory;
   sub: ForumSubCategory;
   meta: AreaMeta;
   blobIndex: number;
+  isExpanded: boolean;
+  onExpand: () => void;
+  onCollapse: () => void;
 }) {
   const [items, setItems] = useState<CategoryContentItem[]>([]);
   const [communityRooms, setCommunityRooms] = useState<CommunityRoomItem[]>([]);
@@ -222,6 +391,11 @@ function BlobArea({
   const isCommunity = sub.contentKind === "community";
   const Icon = meta.icon;
   const roomHref = `/forum/${category.slug}/${sub.slug}`;
+  const slot = BLOB_SLOTS[sub.contentKind] ?? {
+    style: { top: "20%", left: "20%" },
+    expandCorner: "bottom-right" as ExpandCorner,
+    diameter: "38%",
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -263,32 +437,58 @@ function BlobArea({
     );
   }, [isCommunity, communityRooms]);
 
-  const blobDur = 8 + blobIndex * 0.9;
-  const blobDelay = blobIndex * 0.7;
-  const nudgeY = blobIndex % 2 === 0 ? 0 : 8;
+  const totalCount = isCommunity ? communityRooms.length : items.length;
+  const previewItems = items.slice(0, PREVIEW_LIMIT);
+  const previewRooms = communityRooms.slice(0, PREVIEW_LIMIT);
+  const hiddenCount = Math.max(0, totalCount - PREVIEW_LIMIT);
+  const blobDur = 9 + blobIndex * 0.8;
+  const blobDelay = blobIndex * 0.6;
+
+  if (isExpanded) {
+    return (
+      <ExpandedAreaPanel
+        meta={meta}
+        roomHref={roomHref}
+        isCommunity={isCommunity}
+        items={items}
+        rooms={communityRooms}
+        onClose={onCollapse}
+      />
+    );
+  }
 
   return (
     <div
-      className="relative flex w-[168px] flex-col items-center sm:w-[178px]"
-      style={{ marginTop: nudgeY }}
+      className="absolute"
+      style={{
+        width: slot.diameter,
+        height: slot.diameter,
+        ...slot.style,
+        ...(sub.contentKind === "media"
+          ? { transform: "translate(-50%, -50%)" }
+          : undefined),
+      }}
     >
       <div
-        className="relative w-full overflow-visible"
+        className="relative h-full w-full rounded-full"
         style={{
-          borderRadius: "50%",
-          aspectRatio: "1 / 1",
-          background: `radial-gradient(ellipse at 40% 35%, ${meta.blobColor} 0%, transparent 72%)`,
-          boxShadow: blobHot
-            ? "0 0 20px rgba(255, 120, 50, 0.3)"
-            : "none",
           animation: `blobDrift ${blobDur}s ease-in-out ${blobDelay}s infinite`,
         }}
       >
-        {/* エリアラベル（ブロブ内上部） */}
+      <div
+        className="relative h-full w-full rounded-full shadow-[0_8px_32px_rgba(15,23,42,0.08)]"
+        style={{
+          background: meta.solidColor,
+          boxShadow: blobHot
+            ? "0 0 28px rgba(255, 120, 50, 0.22), 0 8px 32px rgba(15,23,42,0.08)"
+            : "0 8px 32px rgba(15,23,42,0.08)",
+        }}
+      >
+        {/* ラベル */}
         <div
-          className="absolute left-1/2 top-[10%] z-10 flex -translate-x-1/2 items-center gap-1 rounded-full px-2 py-0.5 backdrop-blur-sm"
+          className="absolute left-1/2 top-[18%] z-10 flex -translate-x-1/2 items-center gap-1 rounded-full px-2.5 py-0.5 shadow-sm"
           style={{
-            background: "rgba(255,255,255,0.72)",
+            background: "rgba(255,255,255,0.78)",
             color: meta.textColor,
             fontSize: 10,
             fontWeight: 700,
@@ -296,30 +496,23 @@ function BlobArea({
         >
           <Icon className="h-3 w-3 shrink-0" />
           <span>{meta.label}</span>
-          {blobHot && <ForumHotFlame size="sm" className="scale-75" />}
+          {blobHot && <ForumHotFlame size="sm" className="scale-[0.6]" />}
         </div>
 
-        <div className="absolute inset-0 flex flex-col items-center justify-center px-[10%] pt-[18%]">
+        {/* プレビューチップ（有機配置） */}
+        <div className="absolute inset-0">
           {isCommunity ? (
             loading ? (
-              <span className="text-[10px] opacity-40" style={{ color: meta.textColor }}>
+              <span
+                className="absolute left-1/2 top-[52%] -translate-x-1/2 text-[10px] opacity-40"
+                style={{ color: meta.textColor }}
+              >
                 …
               </span>
-            ) : communityRooms.length > 0 ? (
-              <div className="flex flex-wrap items-center justify-center gap-1.5">
-                {communityRooms.map((room, i) => (
-                  <RoomBubble
-                    key={room.id}
-                    room={room}
-                    meta={meta}
-                    floatIndex={i + blobIndex * 4}
-                  />
-                ))}
-              </div>
-            ) : (
+            ) : communityRooms.length === 0 ? (
               <Link
                 href={roomHref}
-                className="flex items-center gap-1 rounded-full px-3 py-1.5 text-[10px] font-semibold shadow-sm transition-transform hover:scale-105"
+                className="absolute left-1/2 top-[48%] flex -translate-x-1/2 items-center gap-1 rounded-full px-3 py-1.5 text-[10px] font-semibold shadow-sm transition-transform hover:scale-105"
                 style={{
                   background: meta.bubbleBg,
                   color: meta.textColor,
@@ -329,33 +522,56 @@ function BlobArea({
                 参加する
                 <ArrowRight className="h-3 w-3" />
               </Link>
+            ) : (
+              previewRooms.map((room, i) => (
+                <RoomChip
+                  key={room.id}
+                  room={room}
+                  meta={meta}
+                  floatIndex={i + blobIndex * 3}
+                  style={PREVIEW_SPOTS[i]}
+                />
+              ))
             )
           ) : loading ? (
-            <span className="text-[10px] opacity-40" style={{ color: meta.textColor }}>
+            <span
+              className="absolute left-1/2 top-[52%] -translate-x-1/2 text-[10px] opacity-40"
+              style={{ color: meta.textColor }}
+            >
               …
             </span>
           ) : items.length === 0 ? (
             <Link
               href={roomHref}
-              className="text-[10px] font-medium opacity-50 hover:opacity-80"
+              className="absolute left-1/2 top-[48%] -translate-x-1/2 text-[10px] font-medium opacity-50 hover:opacity-80"
               style={{ color: meta.textColor }}
             >
               見る →
             </Link>
           ) : (
-            <div className="flex flex-wrap items-center justify-center gap-1.5">
-              {items.map((item, i) => (
-                <ContentBubble
-                  key={item.id}
-                  item={item}
-                  meta={meta}
-                  floatIndex={i + blobIndex * 4}
-                  roomHref={roomHref}
-                />
-              ))}
-            </div>
+            previewItems.map((item, i) => (
+              <ContentChip
+                key={item.id}
+                item={item}
+                meta={meta}
+                roomHref={roomHref}
+                floatIndex={i + blobIndex * 3}
+                style={PREVIEW_SPOTS[i]}
+              />
+            ))
           )}
         </div>
+
+        {/* 隅の展開矢印 */}
+        {hiddenCount > 0 && (
+          <ExpandCornerButton
+            corner={slot.expandCorner}
+            count={hiddenCount}
+            onClick={onExpand}
+            color={meta.textColor}
+          />
+        )}
+      </div>
       </div>
     </div>
   );
@@ -372,37 +588,38 @@ export function CategorySubAreaView({
   category: ForumCategory;
   subCategories: ForumSubCategory[];
 }) {
+  const [expandedSubId, setExpandedSubId] = useState<string | null>(null);
+
   const sorted = [
     ...subCategories.filter((s) => s.contentKind !== "community"),
     ...subCategories.filter((s) => s.contentKind === "community"),
   ];
+
+  const expandedSub = sorted.find((s) => s.id === expandedSubId);
 
   return (
     <>
       <style>{`
         @keyframes subBubbleFloat {
           0%,100% { transform: translateY(0px); }
-          40%      { transform: translateY(-3px) translateX(1px); }
-          70%      { transform: translateY(2px); }
+          45%      { transform: translateY(-3px) translateX(1px); }
+          75%      { transform: translateY(2px); }
         }
         @keyframes blobDrift {
           0%,100% { transform: translateY(0px); }
-          50%      { transform: translateY(-4px); }
+          50%      { transform: translateY(-5px); }
         }
       `}</style>
 
-      {/* 1つのキャンバスにまとめて、エリア同士が近接・重なり気味に */}
-      <div className="relative mx-auto max-w-3xl px-3 py-5">
+      <div className="px-3 py-4 sm:px-5 sm:py-6">
+        {/* 添付イメージ：中央＋四隅、端でクリップされるマップキャンバス */}
         <div
-          className="pointer-events-none absolute inset-4 rounded-[40%] opacity-60"
-          style={{
-            background:
-              "radial-gradient(ellipse at 50% 45%, rgba(255,255,255,0.9) 0%, rgba(248,250,252,0.4) 55%, transparent 80%)",
-          }}
-        />
-        <div className="relative flex flex-wrap items-center justify-center gap-x-1 gap-y-0 sm:gap-x-2">
+          className="relative mx-auto aspect-[16/10] w-full max-w-3xl overflow-hidden rounded-3xl bg-[#efefef]"
+          style={{ minHeight: 280 }}
+        >
           {sorted.map((sub, i) => {
             const meta = AREA_META[sub.contentKind] ?? DEFAULT_META;
+            if (expandedSubId === sub.id) return null;
             return (
               <BlobArea
                 key={sub.id}
@@ -410,9 +627,24 @@ export function CategorySubAreaView({
                 sub={sub}
                 meta={meta}
                 blobIndex={i}
+                isExpanded={false}
+                onExpand={() => setExpandedSubId(sub.id)}
+                onCollapse={() => setExpandedSubId(null)}
               />
             );
           })}
+
+          {expandedSub && (
+            <BlobArea
+              category={category}
+              sub={expandedSub}
+              meta={AREA_META[expandedSub.contentKind] ?? DEFAULT_META}
+              blobIndex={0}
+              isExpanded
+              onExpand={() => {}}
+              onCollapse={() => setExpandedSubId(null)}
+            />
+          )}
         </div>
       </div>
     </>
