@@ -52,7 +52,7 @@ const AREA_META: Record<string, AreaMeta> = {
     solidColor: "#fddbe8",
     bubbleBg: "rgba(255, 255, 255, 0.92)",
     textColor: "#b84065",
-    glowColor: "rgba(255, 160, 190, 0.3)",
+    glowColor: "rgba(255, 150, 190, 0.5)",
   },
   service: {
     label: "サービス",
@@ -60,7 +60,7 @@ const AREA_META: Record<string, AreaMeta> = {
     solidColor: "#c8f0da",
     bubbleBg: "rgba(255, 255, 255, 0.92)",
     textColor: "#237a4e",
-    glowColor: "rgba(100, 210, 150, 0.3)",
+    glowColor: "rgba(90, 220, 150, 0.5)",
   },
   media: {
     label: "動画",
@@ -68,7 +68,7 @@ const AREA_META: Record<string, AreaMeta> = {
     solidColor: "#e2d1f9",
     bubbleBg: "rgba(255, 255, 255, 0.92)",
     textColor: "#6933a8",
-    glowColor: "rgba(180, 130, 245, 0.3)",
+    glowColor: "rgba(180, 130, 245, 0.5)",
   },
   "events-info": {
     label: "イベント",
@@ -76,7 +76,7 @@ const AREA_META: Record<string, AreaMeta> = {
     solidColor: "#fff0be",
     bubbleBg: "rgba(255, 255, 255, 0.92)",
     textColor: "#8a6000",
-    glowColor: "rgba(255, 205, 60, 0.3)",
+    glowColor: "rgba(255, 205, 70, 0.5)",
   },
   community: {
     label: "コミュニティ",
@@ -84,7 +84,7 @@ const AREA_META: Record<string, AreaMeta> = {
     solidColor: "#bde8fb",
     bubbleBg: "rgba(255, 255, 255, 0.92)",
     textColor: "#1060a0",
-    glowColor: "rgba(80, 180, 240, 0.3)",
+    glowColor: "rgba(90, 190, 255, 0.55)",
   },
 };
 
@@ -97,56 +97,116 @@ const DEFAULT_META: AreaMeta = {
   glowColor: "rgba(160, 160, 160, 0.25)",
 };
 
-/** 添付イメージに合わせた有機的配置（中央＋四隅、端でクリップ） */
-const BLOB_SLOTS: Record<
-  string,
-  { style: React.CSSProperties; expandCorner: ExpandCorner; diameter: string }
-> = {
+/** エリアの配置（動的計算）。重ならないように中央＋リング配置し、エリア数が増えても破綻しない。 */
+type AreaSlot = {
+  leftPct: number;
+  topPct: number;
+  diameterPct: number; // 直径＝コンテナ幅に対する%（aspect-square で真円）
+  expandCorner: ExpandCorner;
+  zIndex: number;
+};
+
+function cornerForAngle(deg: number): ExpandCorner {
+  const d = ((deg % 360) + 360) % 360;
+  if (d < 90) return "bottom-right";
+  if (d < 180) return "bottom-left";
+  if (d < 270) return "top-left";
+  return "top-right";
+}
+
+/** 標準5エリア：四隅＋中央（斜めに散らし、端でクリップする地図配置） */
+const MAP_SLOTS_BY_KIND: Record<string, AreaSlot> = {
   article: {
-    style: { top: "-14%", left: "-11%" },
-    expandCorner: "bottom-right",
-    diameter: "44%",
+    leftPct: 20,
+    topPct: 18,
+    diameterPct: 58,
+    expandCorner: "top-left",
+    zIndex: 16,
   },
   service: {
-    style: { top: "-12%", right: "-10%" },
-    expandCorner: "bottom-left",
-    diameter: "40%",
-  },
-  media: {
-    style: { bottom: "-12%", right: "-11%" },
-    expandCorner: "top-left",
-    diameter: "42%",
+    leftPct: 82,
+    topPct: 20,
+    diameterPct: 56,
+    expandCorner: "top-right",
+    zIndex: 16,
   },
   "events-info": {
-    style: { bottom: "-14%", left: "-9%" },
-    expandCorner: "top-right",
-    diameter: "42%",
+    leftPct: 18,
+    topPct: 82,
+    diameterPct: 56,
+    expandCorner: "bottom-left",
+    zIndex: 16,
+  },
+  media: {
+    leftPct: 84,
+    topPct: 80,
+    diameterPct: 58,
+    expandCorner: "bottom-right",
+    zIndex: 16,
   },
   community: {
-    style: { top: "50%", left: "50%" },
+    leftPct: 50,
+    topPct: 50,
+    diameterPct: 42,
     expandCorner: "bottom-right",
-    diameter: "52%",
+    zIndex: 24,
   },
 };
 
-/** プレビュー用：バブル内のゆるい座標 */
+/**
+ * サブカテゴリ群からエリアの座標・サイズを算出する。
+ * 標準5種は四隅＋中央の有機配置。それ以外は外周リングにフォールバック。
+ */
+function computeAreaSlots(subs: { id: string; contentKind: string }[]): Record<string, AreaSlot> {
+  const slots: Record<string, AreaSlot> = {};
+  const extras: { id: string; contentKind: string }[] = [];
+
+  for (const s of subs) {
+    const preset = MAP_SLOTS_BY_KIND[s.contentKind];
+    if (preset) {
+      slots[s.id] = { ...preset };
+    } else {
+      extras.push(s);
+    }
+  }
+
+  if (extras.length > 0) {
+    const ringD = Math.max(24, Math.min(34, Math.round(150 / extras.length)));
+    extras.forEach((s, i) => {
+      // 45°ずらしたリングで十字にならないよう配置
+      const angle = -45 + (360 / extras.length) * i;
+      const rad = (angle * Math.PI) / 180;
+      slots[s.id] = {
+        leftPct: 50 + 40 * Math.cos(rad),
+        topPct: 50 + 38 * Math.sin(rad),
+        diameterPct: ringD,
+        expandCorner: cornerForAngle(angle),
+        zIndex: 14,
+      };
+    });
+  }
+
+  return slots;
+}
+
+/** プレビュー用：大きめエリア内のゆるい座標 */
 const PREVIEW_SPOTS = [
-  { top: "34%", left: "28%" },
-  { top: "48%", left: "54%" },
-  { top: "60%", left: "36%" },
+  { top: "32%", left: "22%" },
+  { top: "46%", left: "58%" },
+  { top: "64%", left: "30%" },
 ];
 
 const PREVIEW_LIMIT = 3;
-const CHIP_SIZE = 54;
+const CHIP_SIZE = 80;
 
 const CORNER_ARROW: Record<
   ExpandCorner,
   { Icon: typeof ArrowUpLeft; position: React.CSSProperties }
 > = {
-  "top-left": { Icon: ArrowUpLeft, position: { top: 10, left: 10 } },
-  "top-right": { Icon: ArrowUpRight, position: { top: 10, right: 10 } },
-  "bottom-left": { Icon: ArrowDownLeft, position: { bottom: 10, left: 10 } },
-  "bottom-right": { Icon: ArrowDownRight, position: { bottom: 10, right: 10 } },
+  "top-left": { Icon: ArrowUpLeft, position: { top: 2, left: 2 } },
+  "top-right": { Icon: ArrowUpRight, position: { top: 2, right: 2 } },
+  "bottom-left": { Icon: ArrowDownLeft, position: { bottom: 2, left: 2 } },
+  "bottom-right": { Icon: ArrowDownRight, position: { bottom: 2, right: 2 } },
 };
 
 /* ------------------------------------------------------------------ */
@@ -169,7 +229,7 @@ function ContentChip({
   staticLayout?: boolean;
 }) {
   const Icon = meta.icon;
-  const shortTitle = item.title.length > 7 ? item.title.slice(0, 6) + "…" : item.title;
+  const shortTitle = item.title.length > 9 ? item.title.slice(0, 8) + "…" : item.title;
   const dur = 4.5 + (floatIndex % 4) * 1.3;
 
   return (
@@ -177,8 +237,8 @@ function ContentChip({
       href={roomHref}
       className={
         staticLayout
-          ? "flex flex-col items-center justify-center gap-0.5 rounded-full border shadow-sm transition-transform hover:scale-110"
-          : "absolute flex flex-col items-center justify-center gap-0.5 rounded-full border shadow-sm transition-transform hover:scale-110"
+          ? "flex flex-col items-center justify-center gap-0.5 rounded-full border shadow-sm transition-transform hover:scale-110 pointer-events-auto"
+          : "absolute flex flex-col items-center justify-center gap-0.5 rounded-full border shadow-sm transition-transform hover:scale-110 pointer-events-auto"
       }
       style={{
         width: CHIP_SIZE,
@@ -192,12 +252,12 @@ function ContentChip({
       title={item.title}
     >
       <span
-        className="flex h-6 w-6 items-center justify-center rounded-full"
-        style={{ background: `${meta.textColor}12` }}
+        className="flex h-8 w-8 items-center justify-center rounded-full"
+        style={{ background: `${meta.textColor}14` }}
       >
-        <Icon className="h-3 w-3" strokeWidth={2.25} />
+        <Icon className="h-4 w-4" strokeWidth={2.25} />
       </span>
-      <span className="w-[88%] text-center text-[7px] font-medium leading-tight">{shortTitle}</span>
+      <span className="w-[90%] text-center text-[10px] font-semibold leading-tight">{shortTitle}</span>
     </Link>
   );
 }
@@ -215,7 +275,7 @@ function RoomChip({
   style?: React.CSSProperties;
   staticLayout?: boolean;
 }) {
-  const shortName = room.name.length > 7 ? room.name.slice(0, 6) + "…" : room.name;
+  const shortName = room.name.length > 9 ? room.name.slice(0, 8) + "…" : room.name;
   const hot = isForumHot({
     postCount: room.postCount,
     participantCount: room.participantCount,
@@ -228,8 +288,8 @@ function RoomChip({
       href={`/forum/${room.id}`}
       className={
         staticLayout
-          ? "flex flex-col items-center justify-center gap-0.5 rounded-full border shadow-sm transition-transform hover:scale-110"
-          : "absolute flex flex-col items-center justify-center gap-0.5 rounded-full border shadow-sm transition-transform hover:scale-110"
+          ? "flex flex-col items-center justify-center gap-0.5 rounded-full border shadow-sm transition-transform hover:scale-110 pointer-events-auto"
+          : "absolute flex flex-col items-center justify-center gap-0.5 rounded-full border shadow-sm transition-transform hover:scale-110 pointer-events-auto"
       }
       style={{
         width: CHIP_SIZE,
@@ -244,12 +304,12 @@ function RoomChip({
       title={room.name}
     >
       <span
-        className="flex h-6 w-6 items-center justify-center rounded-full text-sm leading-none"
-        style={{ background: `${meta.textColor}12` }}
+        className="flex h-8 w-8 items-center justify-center rounded-full text-lg leading-none"
+        style={{ background: `${meta.textColor}14` }}
       >
-        {room.emoji?.trim() ? room.emoji.trim() : <Users className="h-3 w-3" strokeWidth={2.25} />}
+        {room.emoji?.trim() ? room.emoji.trim() : <Users className="h-4 w-4" strokeWidth={2.25} />}
       </span>
-      <span className="w-[88%] text-center text-[7px] font-medium leading-tight">{shortName}</span>
+      <span className="w-[90%] text-center text-[10px] font-semibold leading-tight">{shortName}</span>
     </Link>
   );
 }
@@ -273,7 +333,7 @@ function ExpandCornerButton({
         e.stopPropagation();
         onClick();
       }}
-      className="absolute z-20 flex items-center gap-0.5 rounded-full border bg-white/90 px-2 py-1 text-[10px] font-bold shadow-md backdrop-blur-sm transition-transform hover:scale-105"
+      className="absolute z-30 flex items-center gap-0.5 rounded-full border bg-white/95 px-2 py-1 text-[10px] font-bold shadow-md backdrop-blur-sm transition-transform hover:scale-105 pointer-events-auto"
       style={{ ...position, color, borderColor: `${color}30` }}
       aria-label={`${count}件をもっと見る`}
     >
@@ -305,7 +365,7 @@ function ExpandedAreaPanel({
   const Icon = meta.icon;
 
   return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center p-4 sm:p-8">
+    <div className="absolute inset-0 z-[60] flex items-center justify-center p-4 sm:p-8">
       <button
         type="button"
         className="absolute inset-0 bg-background/60 backdrop-blur-[2px]"
@@ -373,6 +433,7 @@ function BlobArea({
   sub,
   meta,
   blobIndex,
+  slot,
   isExpanded,
   onExpand,
   onCollapse,
@@ -381,24 +442,33 @@ function BlobArea({
   sub: ForumSubCategory;
   meta: AreaMeta;
   blobIndex: number;
+  slot: AreaSlot;
   isExpanded: boolean;
   onExpand: () => void;
   onCollapse: () => void;
 }) {
   const [items, setItems] = useState<CategoryContentItem[]>([]);
   const [communityRooms, setCommunityRooms] = useState<CommunityRoomItem[]>([]);
+  const [hotOverride, setHotOverride] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const isCommunity = sub.contentKind === "community";
   const Icon = meta.icon;
   const roomHref = `/forum/${category.slug}/${sub.slug}`;
-  const slot = BLOB_SLOTS[sub.contentKind] ?? {
-    style: { top: "20%", left: "20%" },
-    expandCorner: "bottom-right" as ExpandCorner,
-    diameter: "38%",
-  };
 
   useEffect(() => {
     let cancelled = false;
+
+    // 面の炎マーク手動上書き（記事/サービス等もコミュニティも共通で取得）
+    const faceQ = new URLSearchParams({ categorySlug: category.slug, subSlug: sub.slug });
+    fetch(`/api/forum/rooms/category-content?${faceQ}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled) return;
+        if (typeof d.hotOverride === "boolean" || d.hotOverride === null) setHotOverride(d.hotOverride);
+        if (!isCommunity && Array.isArray(d.items)) setItems(d.items);
+      })
+      .catch(console.error)
+      .finally(() => { if (!cancelled && !isCommunity) setLoading(false); });
 
     if (isCommunity) {
       const q = new URLSearchParams({
@@ -414,19 +484,13 @@ function BlobArea({
         })
         .catch(console.error)
         .finally(() => { if (!cancelled) setLoading(false); });
-      return () => { cancelled = true; };
     }
-
-    const q = new URLSearchParams({ categorySlug: category.slug, subSlug: sub.slug });
-    fetch(`/api/forum/rooms/category-content?${q}`)
-      .then((r) => r.json())
-      .then((d) => { if (!cancelled && Array.isArray(d.items)) setItems(d.items); })
-      .catch(console.error)
-      .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [category.id, category.slug, sub.id, sub.slug, isCommunity]);
 
   const blobHot = useMemo(() => {
+    if (hotOverride === true) return true;
+    if (hotOverride === false) return false;
     if (!isCommunity) return false;
     return communityRooms.some((r) =>
       isForumHot({
@@ -435,12 +499,13 @@ function BlobArea({
         lastPostedAt: r.lastPostedAt,
       })
     );
-  }, [isCommunity, communityRooms]);
+  }, [hotOverride, isCommunity, communityRooms]);
 
   const totalCount = isCommunity ? communityRooms.length : items.length;
   const previewItems = items.slice(0, PREVIEW_LIMIT);
   const previewRooms = communityRooms.slice(0, PREVIEW_LIMIT);
   const hiddenCount = Math.max(0, totalCount - PREVIEW_LIMIT);
+
   const blobDur = 7 + blobIndex * 1.1;
   const blobDelay = blobIndex * 0.85;
 
@@ -459,29 +524,27 @@ function BlobArea({
 
   return (
     <div
-      className="absolute"
+      className="absolute aspect-square pointer-events-none -translate-x-1/2 -translate-y-1/2"
       style={{
-        width: slot.diameter,
-        height: slot.diameter,
-        ...slot.style,
-        ...(sub.contentKind === "community"
-          ? { transform: "translate(-50%, -50%)" }
-          : undefined),
+        width: `${slot.diameterPct}%`,
+        left: `${slot.leftPct}%`,
+        top: `${slot.topPct}%`,
+        zIndex: slot.zIndex,
       }}
     >
       <div
-        className="relative h-full w-full rounded-full"
+        className="pointer-events-auto relative h-full w-full rounded-full"
         style={{
           animation: `blobDrift ${blobDur}s ease-in-out ${blobDelay}s infinite`,
         }}
       >
       <div
-        className="relative h-full w-full rounded-full shadow-[0_8px_32px_rgba(15,23,42,0.08)]"
+        className="relative h-full w-full rounded-full"
         style={{
           background: meta.solidColor,
           boxShadow: blobHot
-            ? "0 0 28px rgba(255, 120, 50, 0.22), 0 8px 32px rgba(15,23,42,0.08)"
-            : "0 8px 32px rgba(15,23,42,0.08)",
+            ? `0 0 0 1.5px rgba(255,190,130,0.6), 0 0 46px rgba(255,140,60,0.55), 0 0 24px ${meta.glowColor}, inset 0 2px 18px rgba(255,255,255,0.65)`
+            : `0 0 0 1.5px rgba(255,255,255,0.42), 0 0 38px ${meta.glowColor}, 0 12px 40px rgba(20,40,110,0.30), inset 0 2px 18px rgba(255,255,255,0.65)`,
         }}
       >
         {/* ラベル */}
@@ -500,7 +563,7 @@ function BlobArea({
         </div>
 
         {/* プレビューチップ（有機配置） */}
-        <div className="absolute inset-0">
+        <div className="pointer-events-none absolute inset-0">
           {isCommunity ? (
             loading ? (
               <span
@@ -512,7 +575,7 @@ function BlobArea({
             ) : communityRooms.length === 0 ? (
               <Link
                 href={roomHref}
-                className="absolute left-1/2 top-[48%] flex -translate-x-1/2 items-center gap-1 rounded-full px-3 py-1.5 text-[10px] font-semibold shadow-sm transition-transform hover:scale-105"
+                className="pointer-events-auto absolute left-1/2 top-[48%] flex -translate-x-1/2 items-center gap-1 rounded-full px-3 py-1.5 text-[10px] font-semibold shadow-sm transition-transform hover:scale-105"
                 style={{
                   background: meta.bubbleBg,
                   color: meta.textColor,
@@ -543,7 +606,7 @@ function BlobArea({
           ) : items.length === 0 ? (
             <Link
               href={roomHref}
-              className="absolute left-1/2 top-[48%] -translate-x-1/2 text-[10px] font-medium opacity-50 hover:opacity-80"
+              className="pointer-events-auto absolute left-1/2 top-[48%] -translate-x-1/2 text-[10px] font-medium opacity-50 hover:opacity-80"
               style={{ color: meta.textColor }}
             >
               見る →
@@ -590,12 +653,15 @@ export function CategorySubAreaView({
 }) {
   const [expandedSubId, setExpandedSubId] = useState<string | null>(null);
 
+  // コミュニティを最後に描画して中央で前面に
   const sorted = [
     ...subCategories.filter((s) => s.contentKind !== "community"),
     ...subCategories.filter((s) => s.contentKind === "community"),
   ];
-
-  const expandedSub = sorted.find((s) => s.id === expandedSubId);
+  const slots = useMemo(
+    () => computeAreaSlots(subCategories.map((s) => ({ id: s.id, contentKind: s.contentKind }))),
+    [subCategories]
+  );
 
   return (
     <>
@@ -608,32 +674,55 @@ export function CategorySubAreaView({
         }
         @keyframes blobDrift {
           0%, 100% { transform: translateY(0px) translateX(0px) rotate(0deg); }
-          30%      { transform: translateY(-10px) translateX(5px) rotate(0.8deg); }
-          60%      { transform: translateY(6px) translateX(-4px) rotate(-0.6deg); }
-          85%      { transform: translateY(-4px) translateX(2px) rotate(0.3deg); }
+          30%      { transform: translateY(-8px) translateX(4px) rotate(0.6deg); }
+          60%      { transform: translateY(5px) translateX(-3px) rotate(-0.5deg); }
+          85%      { transform: translateY(-3px) translateX(2px) rotate(0.2deg); }
         }
       `}</style>
 
       <div className="px-3 py-4 sm:px-5 sm:py-6">
-        {/* 中央＋四隅、端でクリップされるマップキャンバス */}
         <div
-          className="relative mx-auto aspect-[16/10] w-full max-w-3xl overflow-hidden rounded-3xl"
+          className="relative mx-auto aspect-[4/3] w-full max-w-6xl overflow-hidden rounded-3xl sm:aspect-[16/10]"
           style={{
-            minHeight: 280,
-            background: "linear-gradient(165deg, #e0e0e0 0%, #cfcfcf 55%, #c4c4c4 100%)",
-            boxShadow: "inset 0 2px 24px rgba(0,0,0,0.06)",
+            minHeight: 480,
+            background: "linear-gradient(135deg, #33529e 0%, #4a78d8 52%, #7aa3f0 100%)",
+            boxShadow: "inset 0 1px 36px rgba(20,40,110,0.22)",
           }}
         >
+          {/* 中央の発光（やわらかい青に馴染ませる） */}
           <div
             className="pointer-events-none absolute inset-0"
             style={{
               background:
-                "radial-gradient(ellipse at 50% 42%, rgba(255,255,255,0.18) 0%, transparent 62%)",
+                "radial-gradient(ellipse at 50% 44%, rgba(225,238,255,0.28) 0%, rgba(120,160,240,0.10) 40%, transparent 70%)",
+            }}
+          />
+          {/* サイバーなグリッド（うっすら） */}
+          <div
+            className="pointer-events-none absolute inset-0 opacity-[0.18]"
+            style={{
+              backgroundImage:
+                "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
+              backgroundSize: "38px 38px",
+              maskImage:
+                "radial-gradient(ellipse at 50% 50%, #000 20%, transparent 92%)",
+              WebkitMaskImage:
+                "radial-gradient(ellipse at 50% 50%, #000 20%, transparent 92%)",
+            }}
+          />
+          {/* 端を締めるビネット（軽め） */}
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(ellipse at 50% 50%, transparent 72%, rgba(28,48,120,0.22) 100%)",
             }}
           />
           {sorted.map((sub, i) => {
             const meta = AREA_META[sub.contentKind] ?? DEFAULT_META;
-            if (expandedSubId === sub.id) return null;
+            const slot = slots[sub.id];
+            if (!slot) return null;
+            const isThisExpanded = expandedSubId === sub.id;
             return (
               <BlobArea
                 key={sub.id}
@@ -641,24 +730,13 @@ export function CategorySubAreaView({
                 sub={sub}
                 meta={meta}
                 blobIndex={i}
-                isExpanded={false}
+                slot={slot}
+                isExpanded={isThisExpanded}
                 onExpand={() => setExpandedSubId(sub.id)}
                 onCollapse={() => setExpandedSubId(null)}
               />
             );
           })}
-
-          {expandedSub && (
-            <BlobArea
-              category={category}
-              sub={expandedSub}
-              meta={AREA_META[expandedSub.contentKind] ?? DEFAULT_META}
-              blobIndex={0}
-              isExpanded
-              onExpand={() => {}}
-              onCollapse={() => setExpandedSubId(null)}
-            />
-          )}
         </div>
       </div>
     </>
