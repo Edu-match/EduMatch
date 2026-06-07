@@ -114,47 +114,74 @@ function cornerForAngle(deg: number): ExpandCorner {
   return "top-right";
 }
 
+/** 標準5エリア：四隅＋中央（斜めに散らし、端でクリップする地図配置） */
+const MAP_SLOTS_BY_KIND: Record<string, AreaSlot> = {
+  article: {
+    leftPct: 20,
+    topPct: 18,
+    diameterPct: 58,
+    expandCorner: "top-left",
+    zIndex: 16,
+  },
+  service: {
+    leftPct: 82,
+    topPct: 20,
+    diameterPct: 56,
+    expandCorner: "top-right",
+    zIndex: 16,
+  },
+  "events-info": {
+    leftPct: 18,
+    topPct: 82,
+    diameterPct: 56,
+    expandCorner: "bottom-left",
+    zIndex: 16,
+  },
+  media: {
+    leftPct: 84,
+    topPct: 80,
+    diameterPct: 58,
+    expandCorner: "bottom-right",
+    zIndex: 16,
+  },
+  community: {
+    leftPct: 50,
+    topPct: 50,
+    diameterPct: 42,
+    expandCorner: "bottom-right",
+    zIndex: 24,
+  },
+};
+
 /**
  * サブカテゴリ群からエリアの座標・サイズを算出する。
- * - community は中央。
- * - それ以外は中央を囲むリング上に等間隔。
- * - 直径はエリア数に応じて控えめにして重なりを防ぐ。
+ * 標準5種は四隅＋中央の有機配置。それ以外は外周リングにフォールバック。
  */
 function computeAreaSlots(subs: { id: string; contentKind: string }[]): Record<string, AreaSlot> {
   const slots: Record<string, AreaSlot> = {};
-  const community = subs.find((s) => s.contentKind === "community");
-  const others = subs.filter((s) => s.contentKind !== "community");
-  const m = others.length;
+  const extras: { id: string; contentKind: string }[] = [];
 
-  if (community) {
-    slots[community.id] = {
-      leftPct: 50,
-      topPct: 50,
-      diameterPct: m > 0 ? 16 : 36,
-      expandCorner: "bottom-right",
-      zIndex: 10,
-    };
+  for (const s of subs) {
+    const preset = MAP_SLOTS_BY_KIND[s.contentKind];
+    if (preset) {
+      slots[s.id] = { ...preset };
+    } else {
+      extras.push(s);
+    }
   }
 
-  if (m > 0) {
-    // エリア数が増えるほど小さく（重なり防止。直径は%幅基準）
-    const ringD = Math.max(11, Math.min(18, Math.round(90 / m)));
-    const rx = 34; // 横方向の半径(%幅)
-    const ry = 34; // 縦方向の半径(%高)
-    const single = m === 1 && !community;
-    others.forEach((s, i) => {
-      if (single) {
-        slots[s.id] = { leftPct: 50, topPct: 50, diameterPct: 36, expandCorner: "bottom-right", zIndex: 20 };
-        return;
-      }
-      const angle = -90 + (360 / m) * i; // 上から時計回り
+  if (extras.length > 0) {
+    const ringD = Math.max(24, Math.min(34, Math.round(150 / extras.length)));
+    extras.forEach((s, i) => {
+      // 45°ずらしたリングで十字にならないよう配置
+      const angle = -45 + (360 / extras.length) * i;
       const rad = (angle * Math.PI) / 180;
       slots[s.id] = {
-        leftPct: 50 + rx * Math.cos(rad),
-        topPct: 50 + ry * Math.sin(rad),
+        leftPct: 50 + 40 * Math.cos(rad),
+        topPct: 50 + 38 * Math.sin(rad),
         diameterPct: ringD,
         expandCorner: cornerForAngle(angle),
-        zIndex: 20,
+        zIndex: 14,
       };
     });
   }
@@ -162,11 +189,11 @@ function computeAreaSlots(subs: { id: string; contentKind: string }[]): Record<s
   return slots;
 }
 
-/** プレビュー用：バブル内のゆるい座標（大きめチップが重ならない配置） */
+/** プレビュー用：大きめエリア内のゆるい座標 */
 const PREVIEW_SPOTS = [
-  { top: "30%", left: "24%" },
-  { top: "44%", left: "60%" },
-  { top: "66%", left: "34%" },
+  { top: "32%", left: "22%" },
+  { top: "46%", left: "58%" },
+  { top: "64%", left: "30%" },
 ];
 
 const PREVIEW_LIMIT = 3;
@@ -479,6 +506,9 @@ function BlobArea({
   const previewRooms = communityRooms.slice(0, PREVIEW_LIMIT);
   const hiddenCount = Math.max(0, totalCount - PREVIEW_LIMIT);
 
+  const blobDur = 7 + blobIndex * 1.1;
+  const blobDelay = blobIndex * 0.85;
+
   if (isExpanded) {
     return (
       <ExpandedAreaPanel
@@ -502,7 +532,12 @@ function BlobArea({
         zIndex: slot.zIndex,
       }}
     >
-      <div className="pointer-events-auto relative h-full w-full rounded-full">
+      <div
+        className="pointer-events-auto relative h-full w-full rounded-full"
+        style={{
+          animation: `blobDrift ${blobDur}s ease-in-out ${blobDelay}s infinite`,
+        }}
+      >
       <div
         className="relative h-full w-full rounded-full"
         style={{
@@ -618,7 +653,7 @@ export function CategorySubAreaView({
 }) {
   const [expandedSubId, setExpandedSubId] = useState<string | null>(null);
 
-  // 表示順（記事→...→コミュニティ）と、重ならない動的配置スロット
+  // コミュニティを最後に描画して中央で前面に
   const sorted = [
     ...subCategories.filter((s) => s.contentKind !== "community"),
     ...subCategories.filter((s) => s.contentKind === "community"),
@@ -637,13 +672,19 @@ export function CategorySubAreaView({
           55%      { transform: translateY(4px) translateX(-2px); }
           80%      { transform: translateY(-3px) translateX(1px); }
         }
+        @keyframes blobDrift {
+          0%, 100% { transform: translateY(0px) translateX(0px) rotate(0deg); }
+          30%      { transform: translateY(-8px) translateX(4px) rotate(0.6deg); }
+          60%      { transform: translateY(5px) translateX(-3px) rotate(-0.5deg); }
+          85%      { transform: translateY(-3px) translateX(2px) rotate(0.2deg); }
+        }
       `}</style>
 
       <div className="px-3 py-4 sm:px-5 sm:py-6">
         <div
           className="relative mx-auto aspect-[4/3] w-full max-w-6xl overflow-hidden rounded-3xl sm:aspect-[16/10]"
           style={{
-            minHeight: 620,
+            minHeight: 480,
             background: "linear-gradient(135deg, #33529e 0%, #4a78d8 52%, #7aa3f0 100%)",
             boxShadow: "inset 0 1px 36px rgba(20,40,110,0.22)",
           }}
@@ -664,9 +705,9 @@ export function CategorySubAreaView({
                 "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
               backgroundSize: "38px 38px",
               maskImage:
-                "radial-gradient(ellipse at 50% 50%, #000 35%, transparent 78%)",
+                "radial-gradient(ellipse at 50% 50%, #000 20%, transparent 92%)",
               WebkitMaskImage:
-                "radial-gradient(ellipse at 50% 50%, #000 35%, transparent 78%)",
+                "radial-gradient(ellipse at 50% 50%, #000 20%, transparent 92%)",
             }}
           />
           {/* 端を締めるビネット（軽め） */}
@@ -674,7 +715,7 @@ export function CategorySubAreaView({
             className="pointer-events-none absolute inset-0"
             style={{
               background:
-                "radial-gradient(ellipse at 50% 50%, transparent 60%, rgba(28,48,120,0.30) 100%)",
+                "radial-gradient(ellipse at 50% 50%, transparent 72%, rgba(28,48,120,0.22) 100%)",
             }}
           />
           {sorted.map((sub, i) => {
