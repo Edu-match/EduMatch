@@ -113,9 +113,9 @@ const BLOB_SLOTS: Record<
     diameter: "40%",
   },
   media: {
-    style: { top: "50%", left: "50%" },
-    expandCorner: "bottom-right",
-    diameter: "50%",
+    style: { bottom: "-12%", right: "-11%" },
+    expandCorner: "top-left",
+    diameter: "42%",
   },
   "events-info": {
     style: { bottom: "-14%", left: "-9%" },
@@ -123,9 +123,9 @@ const BLOB_SLOTS: Record<
     diameter: "42%",
   },
   community: {
-    style: { bottom: "-12%", right: "-11%" },
-    expandCorner: "top-left",
-    diameter: "42%",
+    style: { top: "50%", left: "50%" },
+    expandCorner: "bottom-right",
+    diameter: "52%",
   },
 };
 
@@ -170,7 +170,7 @@ function ContentChip({
 }) {
   const Icon = meta.icon;
   const shortTitle = item.title.length > 7 ? item.title.slice(0, 6) + "…" : item.title;
-  const dur = 5 + (floatIndex % 4) * 1.1;
+  const dur = 4.5 + (floatIndex % 4) * 1.3;
 
   return (
     <Link
@@ -221,7 +221,7 @@ function RoomChip({
     participantCount: room.participantCount,
     lastPostedAt: room.lastPostedAt,
   });
-  const dur = 5 + (floatIndex % 4) * 1.1;
+  const dur = 4.5 + (floatIndex % 4) * 1.3;
 
   return (
     <Link
@@ -441,8 +441,8 @@ function BlobArea({
   const previewItems = items.slice(0, PREVIEW_LIMIT);
   const previewRooms = communityRooms.slice(0, PREVIEW_LIMIT);
   const hiddenCount = Math.max(0, totalCount - PREVIEW_LIMIT);
-  const blobDur = 9 + blobIndex * 0.8;
-  const blobDelay = blobIndex * 0.6;
+  const blobDur = 7 + blobIndex * 1.1;
+  const blobDelay = blobIndex * 0.85;
 
   if (isExpanded) {
     return (
@@ -464,7 +464,7 @@ function BlobArea({
         width: slot.diameter,
         height: slot.diameter,
         ...slot.style,
-        ...(sub.contentKind === "media"
+        ...(sub.contentKind === "community"
           ? { transform: "translate(-50%, -50%)" }
           : undefined),
       }}
@@ -601,22 +601,36 @@ export function CategorySubAreaView({
     <>
       <style>{`
         @keyframes subBubbleFloat {
-          0%,100% { transform: translateY(0px); }
-          45%      { transform: translateY(-3px) translateX(1px); }
-          75%      { transform: translateY(2px); }
+          0%, 100% { transform: translateY(0px) translateX(0px); }
+          25%      { transform: translateY(-6px) translateX(2px); }
+          55%      { transform: translateY(4px) translateX(-2px); }
+          80%      { transform: translateY(-3px) translateX(1px); }
         }
         @keyframes blobDrift {
-          0%,100% { transform: translateY(0px); }
-          50%      { transform: translateY(-5px); }
+          0%, 100% { transform: translateY(0px) translateX(0px) rotate(0deg); }
+          30%      { transform: translateY(-10px) translateX(5px) rotate(0.8deg); }
+          60%      { transform: translateY(6px) translateX(-4px) rotate(-0.6deg); }
+          85%      { transform: translateY(-4px) translateX(2px) rotate(0.3deg); }
         }
       `}</style>
 
       <div className="px-3 py-4 sm:px-5 sm:py-6">
-        {/* 添付イメージ：中央＋四隅、端でクリップされるマップキャンバス */}
+        {/* 中央＋四隅、端でクリップされるマップキャンバス */}
         <div
-          className="relative mx-auto aspect-[16/10] w-full max-w-3xl overflow-hidden rounded-3xl bg-[#efefef]"
-          style={{ minHeight: 280 }}
+          className="relative mx-auto aspect-[16/10] w-full max-w-3xl overflow-hidden rounded-3xl"
+          style={{
+            minHeight: 280,
+            background: "linear-gradient(165deg, #e0e0e0 0%, #cfcfcf 55%, #c4c4c4 100%)",
+            boxShadow: "inset 0 2px 24px rgba(0,0,0,0.06)",
+          }}
         >
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(ellipse at 50% 42%, rgba(255,255,255,0.18) 0%, transparent 62%)",
+            }}
+          />
           {sorted.map((sub, i) => {
             const meta = AREA_META[sub.contentKind] ?? DEFAULT_META;
             if (expandedSubId === sub.id) return null;
