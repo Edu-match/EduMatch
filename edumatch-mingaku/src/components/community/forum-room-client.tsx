@@ -67,6 +67,10 @@ import {
 } from "@/lib/organization-types";
 import { RelativeTime } from "@/components/community/relative-time";
 import { ForumRoomIcon, ROOM_BG_COLORS } from "@/components/community/forum-room-icon";
+import {
+  FORUM_ROOM_EMOJI_OPTIONS,
+  ForumEmojiPicker,
+} from "@/components/community/forum-emoji-picker";
 import { useAuthUser } from "@/components/community/answer-section";
 import { OpenAiChatButton } from "@/components/ui/open-ai-chat-button";
 import { ReportForumContentButton } from "@/components/community/report-forum-content-button";
@@ -93,6 +97,7 @@ type CommunityRoomItem = {
   id: string;
   name: string;
   description: string;
+  emoji: string;
   postCount: number;
   participantCount: number;
 };
@@ -117,6 +122,7 @@ function CommunityRoomsSection({
   const [createOpen, setCreateOpen] = useState(false);
   const [roomName, setRoomName] = useState("");
   const [roomDesc, setRoomDesc] = useState("");
+  const [roomEmoji, setRoomEmoji] = useState<string>(FORUM_ROOM_EMOJI_OPTIONS[0]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -159,6 +165,7 @@ function CommunityRoomsSection({
         body: JSON.stringify({
           name: roomName.trim(),
           description: roomDesc.trim(),
+          emoji: roomEmoji,
           weeklyTopic: "",
           aiDiscussion: true,
           aiWeeklyTopicEnabled: false,
@@ -205,6 +212,9 @@ function CommunityRoomsSection({
                 href={`/forum/${r.id}`}
                 className="group flex items-start gap-3 rounded-xl border bg-background p-3 transition-all hover:border-primary/30 hover:shadow-sm"
               >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-muted/30">
+                  <ForumRoomIcon roomId={r.id} emoji={r.emoji} size={36} />
+                </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold group-hover:text-primary">{r.name}</p>
                   {r.description ? (
@@ -247,6 +257,7 @@ function CommunityRoomsSection({
                   className="resize-none text-sm"
                   placeholder="説明（省略可）"
                 />
+                <ForumEmojiPicker value={roomEmoji} onChange={setRoomEmoji} />
                 {error && (
                   <p className="text-xs font-medium text-destructive">{error}</p>
                 )}
@@ -255,7 +266,13 @@ function CommunityRoomsSection({
                     type="button"
                     size="sm"
                     variant="ghost"
-                    onClick={() => { setCreateOpen(false); setRoomName(""); setRoomDesc(""); setError(null); }}
+                    onClick={() => {
+                      setCreateOpen(false);
+                      setRoomName("");
+                      setRoomDesc("");
+                      setRoomEmoji(FORUM_ROOM_EMOJI_OPTIONS[0]);
+                      setError(null);
+                    }}
                   >
                     キャンセル
                   </Button>
@@ -1324,7 +1341,7 @@ export function ForumRoomClient({
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex items-start gap-4">
               <div className={`shrink-0 rounded-2xl border p-3 ${ROOM_BG_COLORS[room.id] ?? "bg-muted border-border"}`}>
-                <ForumRoomIcon roomId={room.id} size={36} />
+                <ForumRoomIcon roomId={room.id} emoji={room.emoji} size={36} />
               </div>
               <div>
                 <div className="flex flex-wrap items-center gap-2 mb-1">

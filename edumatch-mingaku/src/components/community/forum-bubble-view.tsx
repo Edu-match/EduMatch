@@ -615,7 +615,7 @@ function GraphNode({
             : "group-hover:shadow-[0_0_0_5px_rgba(15,23,42,0.05)]",
         ].join(" ")}
       >
-        <ForumRoomIcon roomId={room.id} size={iconSize} />
+        <ForumRoomIcon roomId={room.id} emoji={room.emoji} size={iconSize} />
         {active && (
           <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border border-white bg-emerald-500" />
         )}
@@ -894,7 +894,7 @@ export function ForumBubbleView({ rooms }: { rooms: ForumRoom[] }) {
           Room Graph
         </p>
         <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-3xl">
-          話題のつながりを、グラフで探索する
+          話題のつながりを、マップで探索する
         </h2>
       </div>
 

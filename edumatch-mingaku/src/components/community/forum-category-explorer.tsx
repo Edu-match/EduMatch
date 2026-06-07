@@ -61,8 +61,11 @@ const FALLBACK_COLORS = [
 
 export function ForumCategoryExplorer({
   initialCategorySlug,
+  embedded = false,
 }: {
   initialCategorySlug?: string;
+  /** トップページ等に埋め込むときは見出しを省略 */
+  embedded?: boolean;
 }) {
   const router = useRouter();
   const [categories, setCategories] = useState<ForumCategory[]>([]);
@@ -182,19 +185,21 @@ export function ForumCategoryExplorer({
 
   return (
     <div>
-      <div className="mb-4 text-center">
-        <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-muted-foreground/70">
-          Room Graph
-        </p>
-        <h2 className="mt-1 text-2xl font-bold tracking-tight md:text-3xl">
-          話題のつながりを、グラフで探索する
-        </h2>
-      </div>
+      {!embedded && (
+        <div className="mb-4 text-center">
+          <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-muted-foreground/70">
+            Room Map
+          </p>
+          <h2 className="mt-1 text-2xl font-bold tracking-tight md:text-3xl">
+            話題のつながりを、マップで探索する
+          </h2>
+        </div>
+      )}
 
       {/* ===== カテゴリマップビュー ===== */}
       {!selected && (
         <div className="relative overflow-hidden rounded-3xl border bg-gradient-to-b from-muted/30 to-background shadow-sm">
-          <div className="relative aspect-[16/9] w-full">
+          <div className={embedded ? "relative aspect-[16/10] w-full" : "relative aspect-[16/9] w-full"}>
             {loading ? (
               <div className="flex h-full items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
