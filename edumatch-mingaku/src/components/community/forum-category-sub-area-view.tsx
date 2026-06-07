@@ -97,47 +97,70 @@ const DEFAULT_META: AreaMeta = {
   glowColor: "rgba(160, 160, 160, 0.25)",
 };
 
-/** 添付イメージに合わせた有機的配置（中央＋四隅、端でクリップ） */
-const BLOB_SLOTS: Record<
-  string,
-  {
-    style: React.CSSProperties;
-    expandCorner: ExpandCorner;
-    diameter: string;
-    zIndex: number;
-  }
-> = {
-  article: {
-    style: { top: "-8%", left: "-7%" },
-    expandCorner: "top-left",
-    diameter: "46%",
-    zIndex: 20,
-  },
-  service: {
-    style: { top: "-7%", right: "-6%" },
-    expandCorner: "top-right",
-    diameter: "45%",
-    zIndex: 20,
-  },
-  media: {
-    style: { bottom: "-7%", right: "-7%" },
-    expandCorner: "bottom-right",
-    diameter: "45%",
-    zIndex: 20,
-  },
-  "events-info": {
-    style: { bottom: "-8%", left: "-6%" },
-    expandCorner: "bottom-left",
-    diameter: "45%",
-    zIndex: 20,
-  },
-  community: {
-    style: { top: "50%", left: "50%" },
-    expandCorner: "bottom-right",
-    diameter: "50%",
-    zIndex: 10,
-  },
+/** エリアの配置（動的計算）。重ならないように中央＋リング配置し、エリア数が増えても破綻しない。 */
+type AreaSlot = {
+  leftPct: number;
+  topPct: number;
+  diameterPct: number; // 直径＝コンテナ幅に対する%（aspect-square で真円）
+  expandCorner: ExpandCorner;
+  zIndex: number;
 };
+
+function cornerForAngle(deg: number): ExpandCorner {
+  const d = ((deg % 360) + 360) % 360;
+  if (d < 90) return "bottom-right";
+  if (d < 180) return "bottom-left";
+  if (d < 270) return "top-left";
+  return "top-right";
+}
+
+/**
+ * サブカテゴリ群からエリアの座標・サイズを算出する。
+ * - community は中央。
+ * - それ以外は中央を囲むリング上に等間隔。
+ * - 直径はエリア数に応じて控えめにして重なりを防ぐ。
+ */
+function computeAreaSlots(subs: { id: string; contentKind: string }[]): Record<string, AreaSlot> {
+  const slots: Record<string, AreaSlot> = {};
+  const community = subs.find((s) => s.contentKind === "community");
+  const others = subs.filter((s) => s.contentKind !== "community");
+  const m = others.length;
+
+  if (community) {
+    slots[community.id] = {
+      leftPct: 50,
+      topPct: 50,
+      diameterPct: m > 0 ? 16 : 36,
+      expandCorner: "bottom-right",
+      zIndex: 10,
+    };
+  }
+
+  if (m > 0) {
+    // エリア数が増えるほど小さく（重なり防止。直径は%幅基準）
+    const ringD = Math.max(11, Math.min(18, Math.round(90 / m)));
+    const rx = 34; // 横方向の半径(%幅)
+    const ry = 34; // 縦方向の半径(%高)
+    const single = m === 1 && !community;
+    others.forEach((s, i) => {
+      if (single) {
+        slots[s.id] = { leftPct: 50, topPct: 50, diameterPct: 36, expandCorner: "bottom-right", zIndex: 20 };
+        return;
+      }
+      const angle = -90 + (360 / m) * i; // 上から時計回り
+      const rad = (angle * Math.PI) / 180;
+      slots[s.id] = {
+        leftPct: 50 + rx * Math.cos(rad),
+        topPct: 50 + ry * Math.sin(rad),
+        diameterPct: ringD,
+        expandCorner: cornerForAngle(angle),
+        zIndex: 20,
+      };
+    });
+  }
+
+  return slots;
+}
 
 /** プレビュー用：バブル内のゆるい座標（大きめチップが重ならない配置） */
 const PREVIEW_SPOTS = [
@@ -383,6 +406,7 @@ function BlobArea({
   sub,
   meta,
   blobIndex,
+  slot,
   isExpanded,
   onExpand,
   onCollapse,
@@ -391,6 +415,7 @@ function BlobArea({
   sub: ForumSubCategory;
   meta: AreaMeta;
   blobIndex: number;
+  slot: AreaSlot;
   isExpanded: boolean;
   onExpand: () => void;
   onCollapse: () => void;
@@ -402,12 +427,6 @@ function BlobArea({
   const isCommunity = sub.contentKind === "community";
   const Icon = meta.icon;
   const roomHref = `/forum/${category.slug}/${sub.slug}`;
-  const slot = BLOB_SLOTS[sub.contentKind] ?? {
-    style: { top: "20%", left: "20%" },
-    expandCorner: "bottom-right" as ExpandCorner,
-    diameter: "38%",
-    zIndex: 15,
-  };
 
   useEffect(() => {
     let cancelled = false;
@@ -459,8 +478,6 @@ function BlobArea({
   const previewItems = items.slice(0, PREVIEW_LIMIT);
   const previewRooms = communityRooms.slice(0, PREVIEW_LIMIT);
   const hiddenCount = Math.max(0, totalCount - PREVIEW_LIMIT);
-  const blobDur = 7 + blobIndex * 1.1;
-  const blobDelay = blobIndex * 0.85;
 
   if (isExpanded) {
     return (
@@ -477,23 +494,15 @@ function BlobArea({
 
   return (
     <div
-      className="absolute pointer-events-none"
+      className="absolute aspect-square pointer-events-none -translate-x-1/2 -translate-y-1/2"
       style={{
-        width: slot.diameter,
-        height: slot.diameter,
+        width: `${slot.diameterPct}%`,
+        left: `${slot.leftPct}%`,
+        top: `${slot.topPct}%`,
         zIndex: slot.zIndex,
-        ...slot.style,
-        ...(sub.contentKind === "community"
-          ? { transform: "translate(-50%, -50%)" }
-          : undefined),
       }}
     >
-      <div
-        className="pointer-events-auto relative h-full w-full rounded-full"
-        style={{
-          animation: `blobDrift ${blobDur}s ease-in-out ${blobDelay}s infinite`,
-        }}
-      >
+      <div className="pointer-events-auto relative h-full w-full rounded-full">
       <div
         className="relative h-full w-full rounded-full"
         style={{
@@ -609,10 +618,15 @@ export function CategorySubAreaView({
 }) {
   const [expandedSubId, setExpandedSubId] = useState<string | null>(null);
 
+  // 表示順（記事→...→コミュニティ）と、重ならない動的配置スロット
   const sorted = [
     ...subCategories.filter((s) => s.contentKind !== "community"),
     ...subCategories.filter((s) => s.contentKind === "community"),
   ];
+  const slots = useMemo(
+    () => computeAreaSlots(subCategories.map((s) => ({ id: s.id, contentKind: s.contentKind }))),
+    [subCategories]
+  );
 
   return (
     <>
@@ -623,19 +637,13 @@ export function CategorySubAreaView({
           55%      { transform: translateY(4px) translateX(-2px); }
           80%      { transform: translateY(-3px) translateX(1px); }
         }
-        @keyframes blobDrift {
-          0%, 100% { transform: translateY(0px) translateX(0px) rotate(0deg); }
-          30%      { transform: translateY(-10px) translateX(5px) rotate(0.8deg); }
-          60%      { transform: translateY(6px) translateX(-4px) rotate(-0.6deg); }
-          85%      { transform: translateY(-4px) translateX(2px) rotate(0.3deg); }
-        }
       `}</style>
 
       <div className="px-3 py-4 sm:px-5 sm:py-6">
         <div
-          className="relative mx-auto aspect-[4/3] w-full max-w-5xl overflow-hidden rounded-3xl sm:aspect-[16/9]"
+          className="relative mx-auto aspect-[4/3] w-full max-w-6xl overflow-hidden rounded-3xl sm:aspect-[16/10]"
           style={{
-            minHeight: 520,
+            minHeight: 620,
             background: "linear-gradient(135deg, #33529e 0%, #4a78d8 52%, #7aa3f0 100%)",
             boxShadow: "inset 0 1px 36px rgba(20,40,110,0.22)",
           }}
@@ -671,6 +679,8 @@ export function CategorySubAreaView({
           />
           {sorted.map((sub, i) => {
             const meta = AREA_META[sub.contentKind] ?? DEFAULT_META;
+            const slot = slots[sub.id];
+            if (!slot) return null;
             const isThisExpanded = expandedSubId === sub.id;
             return (
               <BlobArea
@@ -679,6 +689,7 @@ export function CategorySubAreaView({
                 sub={sub}
                 meta={meta}
                 blobIndex={i}
+                slot={slot}
                 isExpanded={isThisExpanded}
                 onExpand={() => setExpandedSubId(sub.id)}
                 onCollapse={() => setExpandedSubId(null)}
