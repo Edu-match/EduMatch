@@ -18,7 +18,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /** 直近24時間の利用回数上限（全チャット共通） */
-const USAGE_LIMIT = 30;
+const USAGE_LIMIT = 10;
 
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 
