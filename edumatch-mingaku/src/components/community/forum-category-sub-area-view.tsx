@@ -23,6 +23,7 @@ import type { ForumCategory, ForumSubCategory } from "./forum-category-explorer"
 type CommunityRoomItem = {
   id: string;
   name: string;
+  emoji: string;
   postCount: number;
   participantCount: number;
   lastPostedAt: string;
@@ -184,10 +185,14 @@ function RoomBubble({
         </span>
       )}
       <span
-        className="flex h-7 w-7 items-center justify-center rounded-full"
+        className="flex h-7 w-7 items-center justify-center rounded-full text-base leading-none"
         style={{ background: `${meta.textColor}14` }}
       >
-        <Users className="h-3.5 w-3.5" strokeWidth={2.25} />
+        {room.emoji?.trim() ? (
+          room.emoji.trim()
+        ) : (
+          <Users className="h-3.5 w-3.5" strokeWidth={2.25} />
+        )}
       </span>
       <span className="line-clamp-2 w-[88%] text-center text-[8px] font-medium leading-tight">
         {shortName}

@@ -76,7 +76,7 @@ function RoomCard({ room, isFeatured }: { room: ForumRoom; isFeatured?: boolean 
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <div className={`shrink-0 rounded-xl border p-2 ${ROOM_BG_COLORS[room.id] ?? "bg-muted border-border"}`}>
-                <ForumRoomIcon roomId={room.id} size={28} />
+                <ForumRoomIcon roomId={room.id} emoji={room.emoji} size={28} />
               </div>
               <div className="min-w-0">
                 <h2 className="text-base font-bold leading-tight group-hover:text-primary transition-colors">
