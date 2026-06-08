@@ -341,19 +341,59 @@ function AgreementScreen({
   );
 }
 
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function processInlineLinks(text: string): string {
+  const linkHtml: string[] = [];
+  const placeholder = (index: number) => `__CHAT_LINK_${index}__`;
+
+  let processed = text;
+
+  processed = processed.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, label, url) => {
+    const index = linkHtml.length;
+    const safeUrl = escapeHtml(url.trim());
+    const safeLabel = escapeHtml(label);
+    linkHtml.push(
+      `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline break-all">${safeLabel}</a>`
+    );
+    return placeholder(index);
+  });
+
+  processed = processed.replace(/(https?:\/\/[^\s<>\[\]()]+)/g, (url) => {
+    let href = url;
+    while (/[.,;:!?）】\]}>]+$/.test(href)) href = href.slice(0, -1);
+    if (!href) return url;
+    const index = linkHtml.length;
+    const safeHref = escapeHtml(href);
+    linkHtml.push(
+      `<a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline break-all">${safeHref}</a>`
+    );
+    return placeholder(index);
+  });
+
+  let escaped = escapeHtml(processed);
+  linkHtml.forEach((html, index) => {
+    escaped = escaped.replace(placeholder(index), html);
+  });
+  return escaped;
+}
+
 function MarkdownContent({ text }: { text: string }) {
   const html = useMemo(() => {
-    let result = text
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
+    let result = processInlineLinks(text);
 
     result = result.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
     result = result.replace(
       /(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g,
       "<em>$1</em>"
     );
-    result = result.replace(/`([^`]+)`/g, '<code class="bg-black/10 dark:bg-white/10 px-1.5 py-0.5 rounded text-xs font-mono">$1</code>');
+    result = result.replace(/`([^`]+)`/g, '<code class="bg-black/10 dark:bg-white/10 px-1.5 py-0.5 rounded text-xs font-mono break-all">$1</code>');
 
     const lines = result.split("\n");
     const processed: string[] = [];
@@ -416,7 +456,7 @@ function MarkdownContent({ text }: { text: string }) {
 
   return (
     <div
-      className="text-sm leading-relaxed [&_p]:mb-0.5 [&_ul]:mb-1 [&_ol]:mb-1 [&_br]:leading-tight prose prose-sm dark:prose-invert max-w-none"
+      className="text-sm leading-relaxed min-w-0 max-w-full break-words [overflow-wrap:anywhere] [&_p]:mb-0.5 [&_p]:break-words [&_ul]:mb-1 [&_ol]:mb-1 [&_br]:leading-tight [&_a]:break-all prose prose-sm dark:prose-invert max-w-none"
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );
@@ -1316,7 +1356,7 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
                 const assistantPrompt = parsed?.prompt ?? null;
                 const assistantBody = m.role === "assistant" ? (parsed?.body ?? "") : "";
                 return (
-                <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start items-start gap-0"}`}>
+                <div key={m.id} className={`flex min-w-0 w-full ${m.role === "user" ? "justify-end" : "justify-start items-start gap-0"}`}>
                   {/* YES/NO question card */}
                   {m.yesNo && !m.yesNo.answered ? (
                     <div className="max-w-[92%] w-full flex flex-col gap-3 rounded-2xl rounded-tl-md rounded-bl-none bg-muted/80 px-4 py-3 shadow-sm">
@@ -1364,7 +1404,7 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
                         <div className="w-3 h-3 shrink-0 mt-5 rounded-bl-full bg-muted/80" aria-hidden />
                       )}
                       <div
-                        className={`max-w-[88%] px-4 py-2.5 rounded-2xl ${
+                        className={`min-w-0 max-w-[88%] overflow-hidden break-words [overflow-wrap:anywhere] px-4 py-2.5 rounded-2xl ${
                           m.role === "user"
                             ? "bg-primary text-primary-foreground rounded-tr-md shadow-sm group relative"
                             : m.yesNo?.answered
@@ -1416,13 +1456,13 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
                                       <span>公的文書を参照して回答 ({m.ragKnowledgeHits}件)</span>
                                     </button>
                                     {openedRagRefsMessageId === m.id && (
-                                      <div className="mt-1 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50/60 dark:bg-indigo-950/30 p-2 space-y-1">
+                                      <div className="mt-1 min-w-0 max-w-full overflow-hidden rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50/60 dark:bg-indigo-950/30 p-2 space-y-1">
                                         <p className="text-[11px] font-medium text-indigo-700 dark:text-indigo-300">参照した文書</p>
                                         {(m.ragDocRefs ?? []).length === 0 ? (
                                           <p className="text-[11px] text-muted-foreground">文書名を取得できませんでした</p>
                                         ) : (
                                           (m.ragDocRefs ?? []).map((ref) => (
-                                            <div key={ref.title} className="text-[11px]">
+                                            <div key={ref.title} className="min-w-0 text-[11px]">
                                               <p className="font-medium text-foreground">{ref.title}</p>
                                               {ref.url ? (
                                                 <Link
@@ -1464,10 +1504,10 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
                                       <span>Web 検索結果を参照して回答 ({m.webSources.length}件)</span>
                                     </button>
                                     {openedWebSourcesMsgId === m.id && (
-                                      <div className="mt-1 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/30 p-2 space-y-1">
+                                      <div className="mt-1 min-w-0 max-w-full overflow-hidden rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/30 p-2 space-y-1">
                                         <p className="text-[11px] font-medium text-amber-700 dark:text-amber-300">参照した Web ページ</p>
                                         {m.webSources.map((src) => (
-                                          <div key={src.url} className="text-[11px]">
+                                          <div key={src.url} className="min-w-0 text-[11px]">
                                             <Link
                                               href={src.url}
                                               target="_blank"
@@ -1571,7 +1611,7 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
                           </>
                         ) : (
                           <>
-                            <div className="text-sm leading-relaxed whitespace-pre-wrap pr-8">{m.content}</div>
+                            <div className="text-sm leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] pr-8">{m.content}</div>
                             {!isStreaming && (
                               <button
                                 type="button"

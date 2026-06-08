@@ -91,6 +91,23 @@ export function parseServiceCategorySelection(rawCategory: string): {
   };
 }
 
+/** カンマ区切りのカテゴリ文字列を個別トークンに分割 */
+export function splitServiceCategoryTokens(rawCategory: string): string[] {
+  return rawCategory
+    .split(",")
+    .map((token) => token.trim())
+    .filter(Boolean);
+}
+
+/** 1件のカテゴリトークンを表示用ラベルに変換 */
+export function formatServiceCategoryLabel(token: string): string {
+  if (token.startsWith(SERVICE_CATEGORY_OTHER_PREFIX)) {
+    const text = token.slice(SERVICE_CATEGORY_OTHER_PREFIX.length).trim();
+    return text ? `その他（${text}）` : SERVICE_CATEGORY_OTHER_VALUE;
+  }
+  return token;
+}
+
 export function serializeServiceCategorySelection(
   selectedCategories: string[],
   otherText: string

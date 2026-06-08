@@ -12,6 +12,7 @@ import { Search, ExternalLink } from "lucide-react";
 import { AddToRequestListButton } from "@/components/request-list/add-to-request-list-button";
 import type { ServiceForList } from "./page";
 import { isFreeServiceSortOrder } from "@/lib/service-material-request";
+import { ServiceCategoryBadges } from "@/components/services/service-category-badges";
 
 const PAGE_SIZE = 30;
 
@@ -194,10 +195,12 @@ export function ServicesClient({
                   )}
 
                   {/* カテゴリバッジ（画像上） */}
-                  <div className="absolute top-3 right-3">
-                    <Badge className="bg-white/95 text-foreground border shadow-lg">
-                      {service.category}
-                    </Badge>
+                  <div className="absolute top-3 right-3 left-3 flex justify-end min-w-0">
+                    <ServiceCategoryBadges
+                      category={service.category}
+                      compact
+                      badgeClassName="bg-white/95 text-foreground border shadow-lg"
+                    />
                   </div>
 
                   {/* ホバー時のアイコン */}
