@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, FileText, Video, Calendar, MessageCircle, Info, Loader2 } from "lucide-react";
+import { ArrowLeft, Info, Loader2 } from "lucide-react";
 import { BubbleGraphCanvas } from "@/components/community/forum-bubble-graph/BubbleGraphCanvas";
 import { computeBubbleDiameter } from "@/components/community/forum-bubble-graph/layout";
 import type { BubbleGraphNode } from "@/components/community/forum-bubble-graph/types";
@@ -16,17 +16,12 @@ type Category = {
 };
 type SubCategory = {
   id: string;
+  categoryId: string;
   name: string;
   slug: string;
-  contentKind: string;
+  description: string;
 };
 
-const KIND_ICON: Record<string, React.ReactNode> = {
-  article: <FileText className="h-4 w-4" />,
-  media: <Video className="h-4 w-4" />,
-  "events-info": <Calendar className="h-4 w-4" />,
-  community: <MessageCircle className="h-4 w-4" />,
-};
 
 function MapShell({ children }: { children: React.ReactNode }) {
   return (
@@ -62,25 +57,34 @@ function MapShell({ children }: { children: React.ReactNode }) {
 export function InteropExplorer() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingCats, setLoadingCats] = useState(true);
+  const [loadingSubs, setLoadingSubs] = useState(false);
   const [selectedCat, setSelectedCat] = useState<Category | null>(null);
   const [selectedSub, setSelectedSub] = useState<SubCategory | null>(null);
 
+  // カテゴリ一覧を取得
   useEffect(() => {
     let cancelled = false;
-    Promise.all([
-      fetch("/api/interop/categories").then((r) => r.json()),
-      fetch("/api/interop/sub-categories").then((r) => r.json()),
-    ])
-      .then(([cat, sub]) => {
-        if (cancelled) return;
-        if (Array.isArray(cat.categories)) setCategories(cat.categories);
-        if (Array.isArray(sub.subCategories)) setSubCategories(sub.subCategories);
-      })
+    fetch("/api/interop/categories")
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && Array.isArray(d.categories)) setCategories(d.categories); })
       .catch(console.error)
-      .finally(() => { if (!cancelled) setLoading(false); });
+      .finally(() => { if (!cancelled) setLoadingCats(false); });
     return () => { cancelled = true; };
   }, []);
+
+  // カテゴリ選択時にそのカテゴリのサブカテゴリを取得
+  useEffect(() => {
+    if (!selectedCat) { setSubCategories([]); return; }
+    let cancelled = false;
+    setLoadingSubs(true);
+    fetch(`/api/interop/sub-categories?categoryId=${selectedCat.id}`)
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && Array.isArray(d.subCategories)) setSubCategories(d.subCategories); })
+      .catch(console.error)
+      .finally(() => { if (!cancelled) setLoadingSubs(false); });
+    return () => { cancelled = true; };
+  }, [selectedCat]);
 
   const diameter = useMemo(() => computeBubbleDiameter(Math.max(categories.length, 1)).default, [categories.length]);
   const nodes: BubbleGraphNode[] = useMemo(
@@ -99,23 +103,19 @@ export function InteropExplorer() {
   );
 
   const subNodes: BubbleGraphNode[] = useMemo(() => {
-    const colors: Record<string, string> = {
-      article: "#fddbe8",
-      media: "#e2d1f9",
-      "events-info": "#fff0be",
-      community: "#bde8fb",
-    };
     const d = computeBubbleDiameter(Math.max(subCategories.length, 1)).default;
     return subCategories.map((s, i) => ({
       id: s.id,
       label: s.name,
+      sublabel: s.description || undefined,
       diameter: d,
-      backgroundColor: colors[s.contentKind] ?? "#e8e8e8",
+      backgroundColor: selectedCat?.color ?? "#c9d4f6",
       isPrimary: i === 0,
       onActivate: () => setSelectedSub(s),
     }));
-  }, [subCategories]);
+  }, [subCategories, selectedCat]);
 
+  const loading = loadingCats;
   if (loading) {
     return (
       <MapShell>
@@ -145,25 +145,35 @@ export function InteropExplorer() {
     );
   }
 
-  // ── レベル2：サブカテゴリ マップ（大カテゴリを選ぶとマップで表示） ──
+  // ── レベル2：サブカテゴリ マップ ──
   if (!selectedSub) {
     return (
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-2">
           <button
             type="button"
-            onClick={() => setSelectedCat(null)}
+            onClick={() => { setSelectedCat(null); setSelectedSub(null); }}
             className="inline-flex items-center gap-1.5 rounded text-sm text-white/85 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden /> マップに戻る
           </button>
-          <span className="flex items-center gap-1.5 text-sm font-bold">
+          <span className="flex items-center gap-1.5 text-sm font-bold text-white">
             <span className="h-3 w-3 rounded-full" style={{ background: selectedCat.color }} aria-hidden />
             {selectedCat.name}
           </span>
         </div>
         <MapShell>
-          <BubbleGraphCanvas nodes={subNodes} connections={[]} layoutMode="subcategory" className="h-full" />
+          {loadingSubs ? (
+            <div className="flex h-full items-center justify-center text-white/60">
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" /> 読み込み中…
+            </div>
+          ) : subNodes.length === 0 ? (
+            <div className="flex h-full items-center justify-center px-6 text-center text-sm text-white/70">
+              まだサブカテゴリがありません。管理画面（/admin/interop）から追加してください。
+            </div>
+          ) : (
+            <BubbleGraphCanvas nodes={subNodes} connections={[]} layoutMode="subcategory" className="h-full" />
+          )}
         </MapShell>
       </div>
     );
@@ -179,14 +189,16 @@ export function InteropExplorer() {
       >
         <ArrowLeft className="h-4 w-4" aria-hidden /> {selectedCat.name} に戻る
       </button>
-      <div className="rounded-2xl border border-white/15 bg-white/10 p-5 backdrop-blur">
-        <div className="flex items-center gap-2 text-base font-bold">
-          {KIND_ICON[selectedSub.contentKind] ?? <FileText className="h-4 w-4" />}
-          {selectedCat.name} / {selectedSub.name}
-        </div>
-        <div className="mt-4 rounded-xl border border-white/10 bg-[#0a1a5c]/30 p-6 text-center">
-          <p className="text-xs leading-relaxed text-white/70">
-            ここに案内記事（タイムテーブル等）が表示されます。記事は管理画面から投稿・紐づけできます。
+      <div className="rounded-2xl border border-white/15 bg-white/10 p-5">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-white/50">{selectedCat.name}</p>
+        <p className="mt-0.5 text-base font-bold text-white">{selectedSub.name}</p>
+        {selectedSub.description && (
+          <p className="mt-1 text-[13px] text-white/65">{selectedSub.description}</p>
+        )}
+        <div className="mt-5 rounded-xl border border-white/10 bg-black/20 p-6 text-center">
+          <p className="text-xs leading-relaxed text-white/55">
+            案内記事・タイムテーブルはここに表示されます。<br />
+            管理画面（/admin/interop）からサブカテゴリに紐づけた記事を投稿できます。
           </p>
         </div>
       </div>
