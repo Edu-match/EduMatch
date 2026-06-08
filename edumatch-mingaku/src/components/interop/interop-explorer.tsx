@@ -31,21 +31,27 @@ const KIND_ICON: Record<string, React.ReactNode> = {
 function MapShell({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="relative aspect-[4/3] w-full overflow-hidden rounded-[2rem] border border-white/15 shadow-2xl shadow-blue-950/40 sm:aspect-[16/10]"
-      style={{ minHeight: 460, background: "linear-gradient(135deg, #33529e 0%, #4a78d8 52%, #7aa3f0 100%)" }}
+      className="relative w-full overflow-hidden sm:aspect-[16/9]"
+      style={{
+        minHeight: 500,
+        background: "linear-gradient(160deg, #020d28 0%, #041840 40%, #071f5a 70%, #0a2870 100%)",
+      }}
     >
+      {/* ドットグリッド */}
       <div
         className="pointer-events-none absolute inset-0"
-        style={{ background: "radial-gradient(ellipse at 50% 44%, rgba(225,238,255,0.28) 0%, rgba(120,160,240,0.10) 40%, transparent 70%)" }}
-      />
-      <div
-        className="pointer-events-none absolute inset-0 opacity-[0.16]"
         style={{
-          backgroundImage:
-            "linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)",
-          backgroundSize: "40px 40px",
-          maskImage: "radial-gradient(ellipse at 50% 50%, #000 35%, transparent 80%)",
-          WebkitMaskImage: "radial-gradient(ellipse at 50% 50%, #000 35%, transparent 80%)",
+          backgroundImage: "radial-gradient(rgba(140,190,255,0.35) 1px, transparent 1px)",
+          backgroundSize: "32px 32px",
+          maskImage: "radial-gradient(ellipse 80% 70% at 50% 50%, #000 40%, transparent 100%)",
+          WebkitMaskImage: "radial-gradient(ellipse 80% 70% at 50% 50%, #000 40%, transparent 100%)",
+        }}
+      />
+      {/* 中心グロー */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background: "radial-gradient(ellipse 60% 50% at 50% 50%, rgba(30,80,200,0.25) 0%, transparent 70%)",
         }}
       />
       {children}
