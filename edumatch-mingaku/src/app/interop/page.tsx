@@ -64,16 +64,34 @@ export default function InteropPage() {
 
             {/* ── 左：テキスト ── */}
             <div className="flex-1">
-              <p className={`${bebas.className} mb-4 text-[clamp(0.9rem,2vw,1.2rem)] tracking-[0.35em] text-cyan-300/80`}>
-                Education AI Summit 2026
-              </p>
-              <h1 className={`${zenKaku.className} text-[clamp(3.2rem,9vw,7.5rem)] font-bold leading-[1.0] tracking-tight text-white`}>
-                教育AI<wbr />サミット
+
+              {/* ロゴバッジ */}
+              <div className="mb-6 inline-flex items-center gap-3 rounded-xl bg-white px-4 py-2.5 shadow-lg shadow-black/30">
+                {/* Education AI Summit */}
+                <div className="flex items-center gap-1">
+                  <div className="flex flex-col items-end leading-[1.1]">
+                    <span className="text-[8px] font-black tracking-wider text-gray-800">Education</span>
+                    <span className="text-[8px] font-black tracking-wider text-gray-800">Summit</span>
+                  </div>
+                  <span className={`${bebas.className} text-[2.4rem] leading-none text-gray-900`}>AI</span>
+                </div>
+                {/* × */}
+                <span className="text-lg font-bold text-gray-400">×</span>
+                {/* Interop 26 Tokyo */}
+                <div className="flex items-end gap-0.5 leading-none">
+                  <span className={`${bebas.className} text-[1.5rem] tracking-wide text-[#1a3070]`}>Interop</span>
+                  <span className={`${bebas.className} text-[2.2rem] leading-none text-[#1a3070]`}>26</span>
+                  <span className="mb-0.5 self-end text-[9px] font-black text-[#1a3070]">Tokyo</span>
+                </div>
+              </div>
+
+              <h1 className={`${zenKaku.className} text-[clamp(2.6rem,7vw,5.5rem)] font-bold leading-[1.05] tracking-tight text-white`}>
+                教育AIサミット
               </h1>
-              <p className={`${zenKaku.className} mt-3 text-[clamp(1.4rem,3.5vw,2.8rem)] font-bold leading-snug text-white/75`}>
+              <p className={`${zenKaku.className} mt-2 text-[clamp(1.1rem,2.8vw,2rem)] font-bold text-white/70`}>
                 in Interop Tokyo 2026。
               </p>
-              <div className="mt-8 flex flex-wrap items-center gap-5 text-sm text-white/45">
+              <div className="mt-7 flex flex-wrap items-center gap-5 text-sm text-white/45">
                 <span className="flex items-center gap-1.5">
                   <CalendarDays className="h-4 w-4" /> 2026年6月10日–12日
                 </span>
