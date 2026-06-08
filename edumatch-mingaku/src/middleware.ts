@@ -53,23 +53,6 @@ const authPaths = ["/login", "/auth/login"];
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
-  // 特設サブドメイン（special.*）は常に総合案内所(/interop)を表示する。
-  // 来場者向けの公開ページなので Basic認証/メンテナンスゲートはバイパスする。
-  const host = request.headers.get("host") ?? "";
-  if (host.startsWith("special.")) {
-    if (
-      pathname.startsWith("/_next") ||
-      pathname.startsWith("/api") ||
-      pathname.startsWith("/interop") ||
-      /\.[a-zA-Z0-9]+$/.test(pathname)
-    ) {
-      return NextResponse.next();
-    }
-    const url = request.nextUrl.clone();
-    url.pathname = pathname === "/" ? "/interop" : `/interop${pathname}`;
-    return NextResponse.rewrite(url);
-  }
-
   // NEXT_PUBLIC_IS_RELEASED が false のとき: 最初の画面は常にメンテナンス。管理者は「管理者」から Basic 認証で入場
   // （Vercel の Preview デプロイでは PR 確認のためメンテに閉じない）
   if (BASIC_AUTH_ENABLED && !SKIP_MAINTENANCE_FOR_VERCEL_PREVIEW) {

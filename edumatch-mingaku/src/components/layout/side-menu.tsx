@@ -22,7 +22,6 @@ import {
   MessageSquare,
   Video,
   Megaphone,
-  MapPin,
 } from "lucide-react";
 
 /** 一般ユーザー向けメニュー（全員閲覧用） */
@@ -50,7 +49,6 @@ const bottomItems = [
   { href: "/admin/videos", label: "学びの動画を管理", icon: Video, roles: ["ADMIN"] },
   { href: "/admin/sponsors", label: "スポンサーPRを管理", icon: Megaphone, roles: ["ADMIN"] },
   { href: "/admin/pages", label: "固定ページ・表示設定", icon: FileText, roles: ["ADMIN"] },
-  { href: "/admin/interop", label: "教育AIサミット管理", icon: MapPin, roles: ["ADMIN"] },
   { href: "/admin/ai-kentei/questions", label: "AI検定の問題を管理", icon: ListChecks, roles: ["ADMIN"] },
   { href: "/dashboard/admin/knowledge", label: "ナレッジ文書管理", icon: BookOpen, roles: ["ADMIN"] },
   { href: "/admin/ai-chat", label: "AIチャット管理", icon: Bot, roles: ["ADMIN"] },

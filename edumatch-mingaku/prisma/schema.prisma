@@ -461,40 +461,6 @@ model ForumSubCategory {
   @@map("forum_sub_categories")
 }
 
-/// Interop特設ページ専用カテゴリ（井戸端のコピー。本体フォーラムとは完全に別データ）
-model InteropCategory {
-  id            String               @id @default(uuid()) @db.Uuid
-  name          String
-  slug          String               @unique
-  description   String               @default("")
-  color         String               @default("#C9D4F6")
-  /// 中心に配置するインフォメーション等
-  is_primary    Boolean              @default(false)
-  sort_order    Int                  @default(0)
-  is_active     Boolean              @default(true)
-  created_at    DateTime             @default(now()) @db.Timestamptz(6)
-  updated_at    DateTime             @updatedAt @db.Timestamptz(6)
-  subCategories InteropSubCategory[]
-
-  @@map("interop_categories")
-}
-
-/// Interop特設ページ専用サブカテゴリ（カテゴリ配下）
-model InteropSubCategory {
-  id           String          @id @default(uuid()) @db.Uuid
-  category_id  String          @db.Uuid
-  category     InteropCategory @relation(fields: [category_id], references: [id], onDelete: Cascade)
-  name         String
-  slug         String          @unique
-  description  String          @default("")
-  sort_order   Int             @default(0)
-  is_active    Boolean         @default(true)
-  created_at   DateTime        @default(now()) @db.Timestamptz(6)
-  updated_at   DateTime        @updatedAt @db.Timestamptz(6)
-
-  @@map("interop_sub_categories")
-}
-
 /// AI日次スキャンで選んだカテゴリ×サブカテゴリ向けコンテンツ
 model ForumCategoryContentCache {
   id              String           @id @default(uuid()) @db.Uuid
