@@ -197,15 +197,21 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
 
 export function MaintenanceAwareLayout({
   children,
+  forceBare = false,
 }: {
   children: React.ReactNode;
+  /** サーバー側で host から判定した特設サブドメイン(special.*)フラグ。
+   *  SSR時点で bare を確定させ、ヘッダー等の一瞬の表示（フラッシュ）を防ぐ。 */
+  forceBare?: boolean;
 }) {
   const pathname = usePathname();
   // メンテナンス画面と特設LP(/interop)は共通ヘッダー等を出さず全画面で表示する。
   // 特設サブドメイン(special.*)はmiddlewareで /interop にリライトされるが、
-  // ブラウザURLは "/" のままで usePathname() が "/" を返すため、ホスト名でも判定する。
+  // ブラウザURLは "/" のままで usePathname() が "/" を返すため、サーバーで host 判定した
+  // forceBare とクライアントの window.location.hostname の両方で判定する。
   const isSpecialHost =
-    typeof window !== "undefined" && window.location.hostname.startsWith("special.");
+    forceBare ||
+    (typeof window !== "undefined" && window.location.hostname.startsWith("special."));
   const isBareLayout =
     pathname === "/maintenance" || !!pathname?.startsWith("/interop") || isSpecialHost;
 

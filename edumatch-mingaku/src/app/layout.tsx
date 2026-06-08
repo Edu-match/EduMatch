@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { Geist_Mono, Noto_Sans_JP } from "next/font/google";
 import { Suspense } from "react";
 import { GoogleAnalytics } from "@/components/analytics/google-analytics";
@@ -56,12 +57,15 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   const appVersion = getAppVersionLabel();
+  // 特設サブドメイン(special.*)は SSR 時点で共通ヘッダー等を出さず全画面表示にする
+  const host = (await headers()).get("host") ?? "";
+  const isSpecialHost = host.startsWith("special.");
 
   return (
     <html lang="ja">
@@ -77,7 +81,9 @@ export default function RootLayout({
           <FavoritesProvider>
             <TutorialProvider>
               <TextEditProvider>
-                <MaintenanceAwareLayout>{children}</MaintenanceAwareLayout>
+                <MaintenanceAwareLayout forceBare={isSpecialHost}>
+                  {children}
+                </MaintenanceAwareLayout>
               </TextEditProvider>
               <div className="pointer-events-none fixed bottom-2 left-2 z-[100] rounded bg-background/80 px-2 py-1 text-[11px] text-muted-foreground shadow-sm backdrop-blur">
                 {appVersion}
