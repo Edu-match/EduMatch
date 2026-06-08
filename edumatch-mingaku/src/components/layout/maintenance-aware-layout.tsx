@@ -201,8 +201,13 @@ export function MaintenanceAwareLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  // メンテナンス画面と特設LP(/interop)は共通ヘッダー等を出さず全画面で表示する
-  const isBareLayout = pathname === "/maintenance" || !!pathname?.startsWith("/interop");
+  // メンテナンス画面と特設LP(/interop)は共通ヘッダー等を出さず全画面で表示する。
+  // 特設サブドメイン(special.*)はmiddlewareで /interop にリライトされるが、
+  // ブラウザURLは "/" のままで usePathname() が "/" を返すため、ホスト名でも判定する。
+  const isSpecialHost =
+    typeof window !== "undefined" && window.location.hostname.startsWith("special.");
+  const isBareLayout =
+    pathname === "/maintenance" || !!pathname?.startsWith("/interop") || isSpecialHost;
 
   if (isBareLayout) {
     return <div className="min-h-screen flex flex-col">{children}</div>;
