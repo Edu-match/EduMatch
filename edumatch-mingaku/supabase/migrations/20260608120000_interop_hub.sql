@@ -40,7 +40,7 @@ ON CONFLICT (slug) DO NOTHING;
 -- 各カテゴリのサブカテゴリを初期投入
 -- ※ category_id は slug で引く
 INSERT INTO interop_sub_categories (category_id, name, slug, description, sort_order)
-SELECT c.id, s.name, c.slug || '-' || s.suffix, s.desc, s.ord
+SELECT c.id, s.name, c.slug || '-' || s.suffix, s.descr, s.ord
 FROM interop_categories c
 JOIN (VALUES
   ('information', 'タイムテーブル',     'timetable',   'セッション・展示のスケジュール',   0),
@@ -56,5 +56,5 @@ JOIN (VALUES
   ('edumatch',    'デモ展示',           'demo',        'ブースでのライブデモ情報',         1),
   ('ai-bu',       '部活紹介',           'about',       '青楓館高等学院 AI部の活動',        0),
   ('ai-bu',       '発表・展示内容',     'presentation','ブース展示・発表の詳細',           1)
-) AS s(cat_slug, name, suffix, desc, ord) ON c.slug = s.cat_slug
+) AS s(cat_slug, name, suffix, descr, ord) ON c.slug = s.cat_slug
 ON CONFLICT (slug) DO NOTHING;
