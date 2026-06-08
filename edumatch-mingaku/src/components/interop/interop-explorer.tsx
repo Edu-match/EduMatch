@@ -19,19 +19,24 @@ type SubCategory = {
   description: string;
 };
 
-/* ── SVG layout ── */
+/* ── SVG layout constants ── */
 const VB_W = 640;
 const VB_H = 460;
-const CX = VB_W / 2;
-const CY = VB_H / 2;
-const R_DIST = 170;
-const R_CENTER = 72;
-const R_SAT = 52;
+const CX = VB_W / 2;   // 320
+const CY = VB_H / 2;   // 230
+const R_DIST   = 170;  // center → satellite distance
+const R_CENTER = 72;   // center bubble radius
+const R_SAT    = 52;   // satellite bubble radius
 
+/*
+  CSS アニメーションは別 <g> 要素に適用し、
+  SVG transform 属性（位置決め）と CSS transform（アニメーション）を
+  同一要素で競合させないことで位置ズレを防ぐ。
+*/
 const FLOAT_CSS = `
   @keyframes itmFloat {
-    0%,100% { transform: translateY(0px); }
-    50%      { transform: translateY(-12px); }
+    0%, 100% { transform: translateY(0px); }
+    50%       { transform: translateY(-12px); }
   }
   .itm-float {
     animation: itmFloat var(--itm-dur, 3s) ease-in-out var(--itm-del, 0s) infinite;
@@ -52,11 +57,11 @@ function splitLabel(name: string): string[] {
 }
 
 export function InteropExplorer() {
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories,   setCategories]   = useState<Category[]>([]);
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
-  const [loadingCats, setLoadingCats] = useState(true);
-  const [loadingSubs, setLoadingSubs] = useState(false);
-  const [selectedCat, setSelectedCat] = useState<Category | null>(null);
+  const [loadingCats,  setLoadingCats]  = useState(true);
+  const [loadingSubs,  setLoadingSubs]  = useState(false);
+  const [selectedCat,  setSelectedCat]  = useState<Category | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -80,7 +85,7 @@ export function InteropExplorer() {
     return () => { cancelled = true; };
   }, [selectedCat]);
 
-  const primary = categories.find((c) => c.isPrimary) ?? null;
+  const primary    = categories.find((c) => c.isPrimary) ?? null;
   const satellites = categories.filter((c) => !c.isPrimary);
 
   if (loadingCats) {
@@ -122,7 +127,7 @@ export function InteropExplorer() {
             </filter>
           </defs>
 
-          {/* コネクターライン */}
+          {/* ── コネクターライン（位置固定、アニメーションなし） ── */}
           {satellites.map((cat, i) => {
             const { x, y } = satPos(i, satellites.length);
             return (
@@ -136,52 +141,69 @@ export function InteropExplorer() {
             );
           })}
 
-          {/* サテライトバブル */}
+          {/* ── サテライトバブル ── */}
           {satellites.map((cat, i) => {
             const { x, y } = satPos(i, satellites.length);
             const isSelected = selectedCat?.id === cat.id;
-            const dur = 2.8 + (i * 0.35);
+            const dur = 2.8 + i * 0.35;
             const del = (i * 0.5) % 2;
             const lines = splitLabel(cat.name);
             return (
+              /* 外側 <g>: SVG transform 属性で位置決め（CSS と競合しない） */
+              <g key={cat.id} transform={`translate(${x}, ${y})`}>
+                {/* 内側 <g>: CSS アニメーション専用 */}
+                <g
+                  className="itm-float"
+                  style={{
+                    "--itm-dur": `${dur}s`,
+                    "--itm-del": `${del}s`,
+                    cursor: "pointer",
+                  } as React.CSSProperties}
+                  onClick={() => setSelectedCat(isSelected ? null : cat)}
+                >
+                  {isSelected && (
+                    <circle r={R_SAT + 10} fill="none" stroke={cat.color} strokeWidth="2" opacity="0.7" />
+                  )}
+                  <circle r={R_SAT} fill={cat.color} fillOpacity={isSelected ? 0.95 : 0.82} filter="url(#satGlow)" />
+                  {lines.map((line, li) => (
+                    <text
+                      key={li}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      y={lines.length === 1 ? 0 : (li - 0.5) * 16}
+                      fill="white"
+                      fontSize="13"
+                      fontWeight="bold"
+                      style={{ pointerEvents: "none", userSelect: "none" }}
+                    >
+                      {line}
+                    </text>
+                  ))}
+                </g>
+              </g>
+            );
+          })}
+
+          {/* ── センターバブル（インフォメーション） ── */}
+          {primary && (
+            /* 外側 <g>: SVG transform 属性で中央位置決め */
+            <g transform={`translate(${CX}, ${CY})`}>
+              {/* 内側 <g>: CSS アニメーション専用 */}
               <g
-                key={cat.id}
                 className="itm-float"
-                style={{
-                  "--itm-dur": `${dur}s`,
-                  "--itm-del": `${del}s`,
-                  cursor: "pointer",
-                } as React.CSSProperties}
-                transform={`translate(${x}, ${y})`}
-                onClick={() => setSelectedCat(isSelected ? null : cat)}
+                style={{ "--itm-dur": "3.5s", "--itm-del": "0s" } as React.CSSProperties}
               >
-                {/* 選択時リング */}
-                {isSelected && (
-                  <circle
-                    r={R_SAT + 10}
-                    fill="none"
-                    stroke={cat.color}
-                    strokeWidth="2"
-                    opacity="0.7"
-                  />
-                )}
-                {/* バブル */}
-                <circle
-                  r={R_SAT}
-                  fill={cat.color}
-                  fillOpacity={isSelected ? 0.95 : 0.82}
-                  filter="url(#satGlow)"
-                  style={{ cursor: "pointer" }}
-                />
-                {/* テキスト */}
-                {lines.map((line, li) => (
+                <circle r={R_CENTER + 18} fill="rgba(0,200,255,0.08)" />
+                <circle r={R_CENTER + 10} fill="none" stroke="rgba(0,210,255,0.35)" strokeWidth="1.5" />
+                <circle r={R_CENTER} fill={primary.color} fillOpacity={0.95} filter="url(#hubGlow)" />
+                {splitLabel(primary.name).map((line, li, arr) => (
                   <text
                     key={li}
                     textAnchor="middle"
                     dominantBaseline="middle"
-                    y={(lines.length === 1 ? 0 : (li - 0.5) * 16)}
+                    y={arr.length === 1 ? 0 : (li - 0.5) * 18}
                     fill="white"
-                    fontSize="13"
+                    fontSize="15"
                     fontWeight="bold"
                     style={{ pointerEvents: "none", userSelect: "none" }}
                   >
@@ -189,41 +211,6 @@ export function InteropExplorer() {
                   </text>
                 ))}
               </g>
-            );
-          })}
-
-          {/* センターバブル（インフォメーション） */}
-          {primary && (
-            <g
-              className="itm-float"
-              style={{ "--itm-dur": "3.5s", "--itm-del": "0s" } as React.CSSProperties}
-              transform={`translate(${CX}, ${CY})`}
-            >
-              {/* 外グロー */}
-              <circle r={R_CENTER + 18} fill="rgba(0,200,255,0.08)" />
-              <circle r={R_CENTER + 10} fill="none" stroke="rgba(0,210,255,0.35)" strokeWidth="1.5" />
-              {/* メインバブル */}
-              <circle
-                r={R_CENTER}
-                fill={primary.color}
-                fillOpacity={0.95}
-                filter="url(#hubGlow)"
-              />
-              {/* テキスト */}
-              {splitLabel(primary.name).map((line, li, arr) => (
-                <text
-                  key={li}
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  y={(arr.length === 1 ? 0 : (li - 0.5) * 18)}
-                  fill="white"
-                  fontSize="15"
-                  fontWeight="bold"
-                  style={{ pointerEvents: "none", userSelect: "none" }}
-                >
-                  {line}
-                </text>
-              ))}
             </g>
           )}
         </svg>
@@ -233,11 +220,7 @@ export function InteropExplorer() {
       {selectedCat && (
         <div className="rounded-2xl border border-white/15 bg-white/5 p-5">
           <div className="mb-3 flex items-center gap-2">
-            <span
-              className="inline-block h-3 w-3 rounded-full"
-              style={{ background: selectedCat.color }}
-              aria-hidden
-            />
+            <span className="inline-block h-3 w-3 rounded-full" style={{ background: selectedCat.color }} aria-hidden />
             <span className="text-sm font-bold text-white">{selectedCat.name}</span>
             {selectedCat.description && (
               <span className="text-xs text-white/50">— {selectedCat.description}</span>
@@ -257,7 +240,7 @@ export function InteropExplorer() {
               {subCategories.map((sub) => (
                 <span
                   key={sub.id}
-                  className="rounded-full border border-white/20 px-3.5 py-1.5 text-sm font-medium text-white/85 transition-colors"
+                  className="rounded-full border border-white/20 px-3.5 py-1.5 text-sm font-medium text-white/85"
                   style={{ background: selectedCat.color + "33" }}
                   title={sub.description || undefined}
                 >
