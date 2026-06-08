@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { getCurrentUser, getCurrentProfile } from "@/lib/auth";
 import { InteropAdminGate } from "@/components/interop/interop-admin-gate";
 import { InteropSettingsEditor } from "@/components/interop/interop-settings-editor";
-import { InteropAdminClient } from "@/app/admin/interop/interop-admin-client";
+import { InteropContentAdmin } from "@/components/interop/interop-content-admin";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +39,7 @@ export default async function InteropAdminPage() {
 
       <div className="container max-w-3xl space-y-6 py-8">
         <InteropSettingsEditor />
-        <InteropAdminClient />
+        <InteropContentAdmin />
       </div>
     </main>
   );

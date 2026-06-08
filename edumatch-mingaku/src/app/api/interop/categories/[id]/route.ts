@@ -4,7 +4,7 @@ import { requireAdmin } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-/** サブカテゴリの編集（名前・説明・並び順・公開）。ADMIN のみ。 */
+/** カテゴリの編集（名前・説明・色・中心・並び順・公開）。ADMIN のみ。 */
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requireAdmin();
@@ -16,6 +16,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const body = (await req.json().catch(() => ({}))) as {
     name?: string;
     description?: string;
+    color?: string;
+    isPrimary?: boolean;
     sortOrder?: number;
     isActive?: boolean;
   };
@@ -23,6 +25,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const data: Record<string, unknown> = {};
   if (typeof body.name === "string" && body.name.trim()) data.name = body.name.trim();
   if (typeof body.description === "string") data.description = body.description.trim();
+  if (typeof body.color === "string" && body.color.trim()) data.color = body.color.trim();
+  if (typeof body.isPrimary === "boolean") data.is_primary = body.isPrimary;
   if (typeof body.sortOrder === "number") data.sort_order = body.sortOrder;
   if (typeof body.isActive === "boolean") data.is_active = body.isActive;
 
@@ -31,16 +35,24 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   try {
-    const s = await prisma.interopSubCategory.update({ where: { id }, data });
+    // 中心（メイン）は1つだけにする
+    if (data.is_primary === true) {
+      await prisma.interopCategory.updateMany({
+        where: { is_primary: true, NOT: { id } },
+        data: { is_primary: false },
+      });
+    }
+    const c = await prisma.interopCategory.update({ where: { id }, data });
     return NextResponse.json({
-      subCategory: {
-        id: s.id,
-        categoryId: s.category_id,
-        name: s.name,
-        slug: s.slug,
-        description: s.description,
-        sortOrder: s.sort_order,
-        isActive: s.is_active,
+      category: {
+        id: c.id,
+        name: c.name,
+        slug: c.slug,
+        description: c.description,
+        color: c.color,
+        isPrimary: c.is_primary,
+        sortOrder: c.sort_order,
+        isActive: c.is_active,
       },
     });
   } catch {
@@ -48,6 +60,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 }
 
+/** カテゴリの削除（配下のサブカテゴリ・投稿も連鎖削除）。ADMIN のみ。 */
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requireAdmin();
@@ -57,7 +70,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   const { id } = await params;
   try {
-    await prisma.interopSubCategory.delete({ where: { id } });
+    await prisma.interopCategory.delete({ where: { id } });
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "Not found" }, { status: 404 });

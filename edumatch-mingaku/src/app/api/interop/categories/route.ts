@@ -4,11 +4,15 @@ import { requireAdmin } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-/** Interop特設の大カテゴリ一覧（公開） */
-export async function GET() {
+/** Interop特設の大カテゴリ一覧（公開）。?all=true は管理者のみ非公開も含む。 */
+export async function GET(req: NextRequest) {
   try {
+    let includeInactive = false;
+    if (req.nextUrl.searchParams.get("all") === "true") {
+      try { await requireAdmin(); includeInactive = true; } catch { includeInactive = false; }
+    }
     const categories = await prisma.interopCategory.findMany({
-      where: { is_active: true },
+      where: includeInactive ? {} : { is_active: true },
       orderBy: [{ sort_order: "asc" }, { created_at: "asc" }],
     });
     return NextResponse.json({

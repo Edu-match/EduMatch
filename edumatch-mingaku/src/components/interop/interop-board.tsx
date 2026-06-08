@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Loader2, MessageCircle, Send } from "lucide-react";
+import { ArrowLeft, Loader2, MessageCircle, Pin, Send } from "lucide-react";
 import { InteropBackdrop } from "@/components/interop/interop-backdrop";
 import type { InteropThemeMode } from "@/lib/interop-settings";
 
@@ -11,6 +11,7 @@ type Post = {
   authorName: string;
   authorRole: string;
   body: string;
+  isPinned?: boolean;
   postedAt: string;
 };
 
@@ -155,8 +156,24 @@ export function InteropBoard({
           ) : (
             <ul className="space-y-3">
               {posts.map((p) => (
-                <li key={p.id} className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
+                <li
+                  key={p.id}
+                  className="rounded-2xl border px-4 py-3"
+                  style={
+                    p.isPinned
+                      ? { borderColor: `${accent}66`, background: `${accent}14` }
+                      : { borderColor: "rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)" }
+                  }
+                >
                   <div className="flex items-center gap-2 text-xs text-white/55">
+                    {p.isPinned && (
+                      <span
+                        className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold"
+                        style={{ background: `${accent}33`, color: "#fff" }}
+                      >
+                        <Pin className="h-2.5 w-2.5" /> お知らせ
+                      </span>
+                    )}
                     <span className="font-bold text-white/85">{p.authorName}</span>
                     {p.authorRole && <span className="text-white/40">· {p.authorRole}</span>}
                     <span className="ml-auto shrink-0">{timeAgo(p.postedAt)}</span>

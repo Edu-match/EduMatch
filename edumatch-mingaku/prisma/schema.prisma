@@ -507,6 +507,8 @@ model InteropPost {
   author_role     String             @default("")
   body            String
   is_hidden       Boolean            @default(false)
+  /// 運営からのお知らせ・記事として上部に固定表示する
+  is_pinned       Boolean            @default(false)
   created_at      DateTime           @default(now()) @db.Timestamptz(6)
 
   @@index([sub_category_id, created_at])

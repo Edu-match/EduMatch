@@ -10,9 +10,13 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   try {
     const categoryId = req.nextUrl.searchParams.get("categoryId") ?? undefined;
+    let includeInactive = false;
+    if (req.nextUrl.searchParams.get("all") === "true") {
+      try { await requireAdmin(); includeInactive = true; } catch { includeInactive = false; }
+    }
     const subs = await prisma.interopSubCategory.findMany({
       where: {
-        is_active: true,
+        ...(includeInactive ? {} : { is_active: true }),
         ...(categoryId ? { category_id: categoryId } : {}),
       },
       orderBy: [{ sort_order: "asc" }, { created_at: "asc" }],

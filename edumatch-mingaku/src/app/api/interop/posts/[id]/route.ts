@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** サブカテゴリの編集（名前・説明・並び順・公開）。ADMIN のみ。 */
+/** 投稿の編集（本文・固定・非表示）。ADMIN のみ。 */
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requireAdmin();
@@ -14,33 +15,32 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params;
   const body = (await req.json().catch(() => ({}))) as {
-    name?: string;
-    description?: string;
-    sortOrder?: number;
-    isActive?: boolean;
+    body?: string;
+    isPinned?: boolean;
+    isHidden?: boolean;
   };
 
-  const data: Record<string, unknown> = {};
-  if (typeof body.name === "string" && body.name.trim()) data.name = body.name.trim();
-  if (typeof body.description === "string") data.description = body.description.trim();
-  if (typeof body.sortOrder === "number") data.sort_order = body.sortOrder;
-  if (typeof body.isActive === "boolean") data.is_active = body.isActive;
+  const data: { body?: string; is_pinned?: boolean; is_hidden?: boolean } = {};
+  if (typeof body.body === "string" && body.body.trim()) data.body = body.body.trim().slice(0, 1000);
+  if (typeof body.isPinned === "boolean") data.is_pinned = body.isPinned;
+  if (typeof body.isHidden === "boolean") data.is_hidden = body.isHidden;
 
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: "更新内容がありません" }, { status: 400 });
   }
 
   try {
-    const s = await prisma.interopSubCategory.update({ where: { id }, data });
+    const post = await prisma.interopPost.update({ where: { id }, data });
     return NextResponse.json({
-      subCategory: {
-        id: s.id,
-        categoryId: s.category_id,
-        name: s.name,
-        slug: s.slug,
-        description: s.description,
-        sortOrder: s.sort_order,
-        isActive: s.is_active,
+      post: {
+        id: post.id,
+        subCategoryId: post.sub_category_id,
+        authorName: post.author_name,
+        authorRole: post.author_role,
+        body: post.body,
+        isPinned: post.is_pinned,
+        isHidden: post.is_hidden,
+        postedAt: post.created_at.toISOString(),
       },
     });
   } catch {
@@ -48,6 +48,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 }
 
+/** 投稿の削除。ADMIN のみ。 */
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requireAdmin();
@@ -57,7 +58,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   const { id } = await params;
   try {
-    await prisma.interopSubCategory.delete({ where: { id } });
+    await prisma.interopPost.delete({ where: { id } });
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "Not found" }, { status: 404 });

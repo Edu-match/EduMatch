@@ -18,9 +18,20 @@ export async function GET(req: NextRequest) {
     if (!subCategoryId) {
       return NextResponse.json({ error: "subCategoryId is required" }, { status: 400 });
     }
+
+    // includeHidden=true は管理者のみ（非表示投稿も含めて返す）
+    let includeHidden = false;
+    if (req.nextUrl.searchParams.get("includeHidden") === "true") {
+      const profile = await getCurrentProfile().catch(() => null);
+      includeHidden = profile?.role === "ADMIN";
+    }
+
     const posts = await prisma.interopPost.findMany({
-      where: { sub_category_id: subCategoryId, is_hidden: false },
-      orderBy: { created_at: "desc" },
+      where: {
+        sub_category_id: subCategoryId,
+        ...(includeHidden ? {} : { is_hidden: false }),
+      },
+      orderBy: [{ is_pinned: "desc" }, { created_at: "desc" }],
       take: PAGE_SIZE,
     });
     return NextResponse.json({
@@ -30,6 +41,8 @@ export async function GET(req: NextRequest) {
         authorName: p.author_name,
         authorRole: p.author_role,
         body: p.body,
+        isPinned: p.is_pinned,
+        isHidden: p.is_hidden,
         postedAt: p.created_at.toISOString(),
       })),
     });
@@ -47,6 +60,8 @@ export async function POST(req: NextRequest) {
       authorName?: string;
       authorRole?: string;
       postBody?: string;
+      /** 管理者のみ：運営のお知らせ・記事として上部に固定する */
+      isPinned?: boolean;
     };
 
     if (!body.subCategoryId) {
@@ -71,26 +86,32 @@ export async function POST(req: NextRequest) {
     const authorName = (body.authorName?.trim() || "匿名").slice(0, 40);
     const authorRole = (body.authorRole?.trim() ?? "").slice(0, 60);
 
-    // モデレーション（ベストエフォート）：APIキー未設定など skipped の場合は許可。
-    // 明確に不適切と判定された場合のみ拒否する。
     const user = await getCurrentUser().catch(() => null);
     const profile = user ? await getCurrentProfile().catch(() => null) : null;
-    const url = new URL(req.url);
-    const origin = `${url.protocol}//${url.host}`;
-    const moderation = await moderateAndNotify({
-      text,
-      kind: "comment",
-      featureLabel: "Interop特設掲示板",
-      userId: user?.id ?? "guest",
-      userName: profile?.name || authorName,
-      contextUrl: `${origin}/interop`,
-    }).catch(() => null);
+    const isAdmin = profile?.role === "ADMIN";
+    // 固定（記事化）は管理者のみ。管理者の投稿はモデレーションをスキップする。
+    const isPinned = isAdmin && body.isPinned === true;
 
-    if (moderation && !moderation.skipped && !moderation.allowed) {
-      return NextResponse.json(
-        { error: "この内容は掲示板のガイドラインに適合しないため投稿できません。表現を見直してください。" },
-        { status: 400 }
-      );
+    if (!isAdmin) {
+      // モデレーション（ベストエフォート）：APIキー未設定など skipped の場合は許可。
+      // 明確に不適切と判定された場合のみ拒否する。
+      const url = new URL(req.url);
+      const origin = `${url.protocol}//${url.host}`;
+      const moderation = await moderateAndNotify({
+        text,
+        kind: "comment",
+        featureLabel: "Interop特設掲示板",
+        userId: user?.id ?? "guest",
+        userName: profile?.name || authorName,
+        contextUrl: `${origin}/interop`,
+      }).catch(() => null);
+
+      if (moderation && !moderation.skipped && !moderation.allowed) {
+        return NextResponse.json(
+          { error: "この内容は掲示板のガイドラインに適合しないため投稿できません。表現を見直してください。" },
+          { status: 400 }
+        );
+      }
     }
 
     const post = await prisma.interopPost.create({
@@ -99,6 +120,7 @@ export async function POST(req: NextRequest) {
         author_name: authorName,
         author_role: authorRole,
         body: text,
+        is_pinned: isPinned,
       },
     });
 
@@ -110,6 +132,8 @@ export async function POST(req: NextRequest) {
           authorName: post.author_name,
           authorRole: post.author_role,
           body: post.body,
+          isPinned: post.is_pinned,
+          isHidden: post.is_hidden,
           postedAt: post.created_at.toISOString(),
         },
       },
