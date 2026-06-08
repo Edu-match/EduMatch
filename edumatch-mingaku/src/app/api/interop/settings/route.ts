@@ -3,9 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import {
   DEFAULT_INTEROP_SETTINGS,
-  getInteropSettings,
   type InteropSettings,
 } from "@/lib/interop-settings";
+import { getInteropSettings } from "@/lib/interop-settings.server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

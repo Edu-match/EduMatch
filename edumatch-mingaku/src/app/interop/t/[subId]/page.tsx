@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { InteropBoard } from "@/components/interop/interop-board";
-import { getInteropSettings } from "@/lib/interop-settings";
+import { getInteropSettings } from "@/lib/interop-settings.server";
 
 export const dynamic = "force-dynamic";
 

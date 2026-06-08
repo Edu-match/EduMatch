@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { Bebas_Neue, Zen_Kaku_Gothic_New } from "next/font/google";
 import { CalendarDays, ChevronRight } from "lucide-react";
 import { InteropExplorer } from "@/components/interop/interop-explorer";
-import { getInteropSettings } from "@/lib/interop-settings";
+import { getInteropSettings } from "@/lib/interop-settings.server";
 
 const bebas   = Bebas_Neue({ weight: "400", subsets: ["latin"], display: "swap" });
 const zenKaku = Zen_Kaku_Gothic_New({ weight: ["700"], subsets: ["latin"], display: "swap" });

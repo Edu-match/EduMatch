@@ -296,15 +296,6 @@ export function InteropExplorer({
       ) : (
         /* ════════ レベル2：サブカテゴリ（静止した星座配置） ════════ */
         <div className="absolute inset-0">
-          {/* 戻る（大カテゴリ選択へ） */}
-          <button
-            type="button"
-            onClick={() => setSelected(null)}
-            className="absolute left-4 top-4 z-30 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.06] px-3.5 py-1.5 text-xs font-bold text-white/75 backdrop-blur transition-colors hover:bg-white/12 hover:text-white"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" /> カテゴリ選択に戻る
-          </button>
-
           {/* カテゴリナビ（下部タブ） */}
           <div
             className="absolute inset-x-0 bottom-6 z-30 flex justify-center px-4"
@@ -405,16 +396,19 @@ export function InteropExplorer({
                 </div>
               </div>
 
-              {/* 中心ハブ：カテゴリ名＋案内 */}
-              <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 w-[min(42vmin,280px)] -translate-x-1/2 -translate-y-1/2 text-center">
-                <div
-                  className="rounded-3xl px-5 py-5"
+              {/* 中心ハブ：タップでカテゴリ選択に戻る */}
+              <div className="absolute left-1/2 top-1/2 z-20 w-[min(42vmin,280px)] -translate-x-1/2 -translate-y-1/2 text-center">
+                <button
+                  type="button"
+                  onClick={() => setSelected(null)}
+                  className="group w-full rounded-3xl px-5 py-5 text-center transition-transform hover:scale-[1.03] focus:outline-none"
                   style={{
                     background: "rgba(8,11,32,0.8)",
                     border: `1px solid ${accent}55`,
                     boxShadow: `0 0 24px ${accent}22`,
                     backdropFilter: "blur(8px)",
                   }}
+                  aria-label="カテゴリ選択に戻る"
                 >
                   {(() => {
                     const Icon = iconFor(selected.slug);
@@ -426,7 +420,12 @@ export function InteropExplorer({
                       ? "トピックは準備中です。"
                       : "まわりのトピックをタップすると、掲示板が開きます。"}
                   </p>
-                </div>
+                  <span
+                    className="mt-3 inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/[0.06] px-3 py-1 text-[11px] font-bold text-white/70 transition group-hover:bg-white/15 group-hover:text-white"
+                  >
+                    <ArrowLeft className="h-3 w-3" /> カテゴリ選択に戻る
+                  </span>
+                </button>
               </div>
             </>
           )}

@@ -1,4 +1,5 @@
-import { prisma } from "@/lib/prisma";
+// クライアント・サーバー両用の型と既定値（prisma 等のサーバー専用依存は持たない）。
+// 実データ取得は interop-settings.server.ts を参照。
 
 export type InteropThemeMode = "auto" | "dawn" | "day" | "dusk" | "night";
 
@@ -31,15 +32,3 @@ export const DEFAULT_INTEROP_SETTINGS: InteropSettings = {
   footerCredit: "青楓館高等学院 / みんがく / AI検定協会 / AI部 © 2026",
   themeMode: "auto",
 };
-
-/** 設定を取得（テーブル未作成やキー欠落時はデフォルトで補完）。 */
-export async function getInteropSettings(): Promise<InteropSettings> {
-  try {
-    const rows = await prisma.interopSetting.findMany();
-    const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
-    const stored = (map["site"] ?? {}) as Partial<InteropSettings>;
-    return { ...DEFAULT_INTEROP_SETTINGS, ...stored };
-  } catch {
-    return DEFAULT_INTEROP_SETTINGS;
-  }
-}
