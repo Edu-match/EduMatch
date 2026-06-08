@@ -287,7 +287,7 @@ export function InteropExplorer() {
           );
         })}
 
-        {/* センターバブル */}
+        {/* センターバブル（クリック可） */}
         {primary && (
           <Bubble
             x={CX} y={CY} r={R_CENTER}
@@ -295,6 +295,7 @@ export function InteropExplorer() {
             label={primary.name}
             glow="hub"
             dur={3.5} del={0}
+            onClick={() => setSelectedCat(primary)}
           />
         )}
       </svg>
