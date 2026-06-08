@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft, Info, Loader2, Move } from "lucide-react";
+import { BubbleGraphCanvas } from "@/components/community/forum-bubble-graph/BubbleGraphCanvas";
+import { computeBubbleDiameter } from "@/components/community/forum-bubble-graph/layout";
+import type { BubbleGraphNode } from "@/components/community/forum-bubble-graph/types";
 
 type Category = {
   id: string;
@@ -19,100 +22,56 @@ type SubCategory = {
   description: string;
 };
 
-/* ── SVG layout constants ── */
-const VB_W = 640;
-const VB_H = 460;
-const CX = VB_W / 2;
-const CY = VB_H / 2;
-const R_DIST   = 170;
-const R_CENTER = 72;
-const R_SAT    = 52;
-const R_SUB    = 46;
+const FALLBACK_COLORS = ["#FBC9D4", "#C9D4F6", "#C7EFC0", "#F6EBB0", "#E7CCF4", "#FFD9B8"];
 
-/*
-  位置決め（外側 <g> の SVG transform 属性）と
-  アニメーション（内側 <g> の CSS transform）を別要素に分離して競合を防ぐ。
-*/
-const FLOAT_CSS = `
-  @keyframes itmFloat {
-    0%, 100% { transform: translateY(0px); }
-    50%       { transform: translateY(-12px); }
-  }
-  .itm-float {
-    animation: itmFloat var(--itm-dur, 3s) ease-in-out var(--itm-del, 0s) infinite;
-    transform-box: fill-box;
-    transform-origin: center;
-  }
-`;
-
-function satPos(i: number, total: number, dist = R_DIST) {
-  const angle = (-90 + (360 / total) * i) * (Math.PI / 180);
-  return { x: CX + dist * Math.cos(angle), y: CY + dist * Math.sin(angle) };
-}
-
-function splitLabel(name: string): string[] {
-  if (name.length <= 4) return [name];
-  const mid = Math.ceil(name.length / 2);
-  return [name.slice(0, mid), name.slice(mid)];
-}
-
-/* ── 共通バブル描画 ── */
-function Bubble({
-  x, y, r, color, label, glow, dur, del, selected, onClick,
-}: {
-  x: number; y: number; r: number; color: string; label: string;
-  glow: "hub" | "sat"; dur: number; del: number;
-  selected?: boolean; onClick?: () => void;
-}) {
-  const lines = splitLabel(label);
-  const fontSize = r >= 60 ? 15 : 13;
-  const lineH    = r >= 60 ? 18 : 16;
+/** 井戸端と統一した青グラデ＋グリッド＋発光のマップ枠 */
+function MapShell({ children }: { children: React.ReactNode }) {
   return (
-    <g transform={`translate(${x}, ${y})`}>
-      <g
-        className="itm-float"
+    <div
+      className="relative overflow-hidden rounded-3xl border border-white/15 shadow-sm"
+      style={{
+        background: "linear-gradient(135deg, #33529e 0%, #4a78d8 52%, #7aa3f0 100%)",
+        minHeight: 420,
+      }}
+    >
+      {/* 中央の発光 */}
+      <div
+        className="pointer-events-none absolute inset-0"
         style={{
-          "--itm-dur": `${dur}s`,
-          "--itm-del": `${del}s`,
-          cursor: onClick ? "pointer" : "default",
-        } as React.CSSProperties}
-        onClick={onClick}
-      >
-        {selected && (
-          <circle r={r + 10} fill="none" stroke={color} strokeWidth="2" opacity="0.7" />
-        )}
-        {glow === "hub" && (
-          <>
-            <circle r={r + 18} fill="rgba(0,200,255,0.08)" />
-            <circle r={r + 10} fill="none" stroke="rgba(0,210,255,0.35)" strokeWidth="1.5" />
-          </>
-        )}
-        <circle r={r} fill={color} fillOpacity={selected ? 0.95 : 0.85} filter={`url(#${glow}Glow)`} />
-        {lines.map((line, li) => (
-          <text
-            key={li}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            y={lines.length === 1 ? 0 : (li - 0.5) * lineH}
-            fill="white"
-            fontSize={fontSize}
-            fontWeight="bold"
-            style={{ pointerEvents: "none", userSelect: "none" }}
-          >
-            {line}
-          </text>
-        ))}
-      </g>
-    </g>
+          background:
+            "radial-gradient(ellipse at 50% 44%, rgba(225,238,255,0.28) 0%, rgba(120,160,240,0.10) 40%, transparent 70%)",
+        }}
+      />
+      {/* サイバーなグリッド */}
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.18]"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
+          backgroundSize: "38px 38px",
+          maskImage: "radial-gradient(ellipse at 50% 50%, #000 35%, transparent 78%)",
+          WebkitMaskImage: "radial-gradient(ellipse at 50% 50%, #000 35%, transparent 78%)",
+        }}
+      />
+      {/* 端のビネット */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse at 50% 50%, transparent 60%, rgba(28,48,120,0.30) 100%)",
+        }}
+      />
+      <div className="relative aspect-[16/10] w-full">{children}</div>
+    </div>
   );
 }
 
 export function InteropExplorer() {
-  const [categories,    setCategories]    = useState<Category[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
-  const [loadingCats,   setLoadingCats]   = useState(true);
-  const [loadingSubs,   setLoadingSubs]   = useState(false);
-  const [selectedCat,   setSelectedCat]   = useState<Category | null>(null);
+  const [loadingCats, setLoadingCats] = useState(true);
+  const [loadingSubs, setLoadingSubs] = useState(false);
+  const [selected, setSelected] = useState<Category | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -125,180 +84,123 @@ export function InteropExplorer() {
   }, []);
 
   useEffect(() => {
-    if (!selectedCat) { setSubCategories([]); return; }
+    if (!selected) { setSubCategories([]); return; }
     let cancelled = false;
     setLoadingSubs(true);
-    fetch(`/api/interop/sub-categories?categoryId=${selectedCat.id}`)
+    fetch(`/api/interop/sub-categories?categoryId=${selected.id}`)
       .then((r) => r.json())
       .then((d) => { if (!cancelled && Array.isArray(d.subCategories)) setSubCategories(d.subCategories); })
       .catch(console.error)
       .finally(() => { if (!cancelled) setLoadingSubs(false); });
     return () => { cancelled = true; };
-  }, [selectedCat]);
+  }, [selected]);
 
-  const primary    = categories.find((c) => c.isPrimary) ?? null;
-  const satellites = categories.filter((c) => !c.isPrimary);
-
-  if (loadingCats) {
-    return (
-      <div className="flex h-64 items-center justify-center text-white/60">
-        <Loader2 className="mr-2 h-5 w-5 animate-spin" aria-hidden /> 読み込み中…
-      </div>
-    );
-  }
-
-  if (categories.length === 0) {
-    return (
-      <div className="flex h-48 items-center justify-center text-center text-sm text-white/60">
-        まだカテゴリがありません。管理画面（/admin/interop）から追加してください。
-      </div>
-    );
-  }
-
-  const svgDefs = (
-    <defs>
-      <filter id="hubGlow" x="-40%" y="-40%" width="180%" height="180%">
-        <feGaussianBlur stdDeviation="10" result="blur" />
-        <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-      </filter>
-      <filter id="satGlow" x="-30%" y="-30%" width="160%" height="160%">
-        <feGaussianBlur stdDeviation="6" result="blur" />
-        <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-      </filter>
-    </defs>
+  // ── レベル1：カテゴリマップ（中心=インフォメーション） ──
+  const categoryDiameter = useMemo(
+    () => computeBubbleDiameter(Math.max(categories.length, 1)),
+    [categories.length]
+  );
+  const categoryNodes: BubbleGraphNode[] = useMemo(
+    () =>
+      categories.map((cat, i) => ({
+        id: cat.id,
+        label: cat.name,
+        sublabel: cat.description || undefined,
+        diameter: cat.isPrimary ? categoryDiameter.primary : categoryDiameter.default,
+        backgroundColor: cat.color || FALLBACK_COLORS[i % FALLBACK_COLORS.length],
+        isPrimary: cat.isPrimary,
+        icon: cat.isPrimary ? <Info className="h-5 w-5" /> : undefined,
+        onActivate: () => setSelected(cat),
+      })),
+    [categories, categoryDiameter]
   );
 
-  /* ── レベル2：サブカテゴリマップ ── */
-  if (selectedCat) {
-    return (
-      <div className="space-y-3">
-        <button
-          type="button"
-          onClick={() => setSelectedCat(null)}
-          className="inline-flex items-center gap-1.5 text-sm text-white/70 transition-colors hover:text-white"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden /> マップに戻る
-        </button>
+  // ── レベル2：サブカテゴリマップ（中心=選択カテゴリ + 放射状にサブ） ──
+  const subDiameter = useMemo(
+    () => computeBubbleDiameter(Math.max(subCategories.length + 1, 1)),
+    [subCategories.length]
+  );
+  const subNodes: BubbleGraphNode[] = useMemo(() => {
+    if (!selected) return [];
+    const center: BubbleGraphNode = {
+      id: `center-${selected.id}`,
+      label: selected.name,
+      sublabel: selected.description || undefined,
+      diameter: subDiameter.primary,
+      backgroundColor: selected.color || "#C9D4F6",
+      isPrimary: true,
+      icon: selected.isPrimary ? <Info className="h-5 w-5" /> : undefined,
+    };
+    const subs: BubbleGraphNode[] = subCategories.map((s) => ({
+      id: s.id,
+      label: s.name,
+      sublabel: s.description || undefined,
+      diameter: subDiameter.default,
+      backgroundColor: selected.color || "#C9D4F6",
+    }));
+    return [center, ...subs];
+  }, [selected, subCategories, subDiameter]);
 
-        <div className="w-full overflow-hidden rounded-2xl" style={{ background: "rgba(0,10,40,0.55)" }}>
-          <svg
-            viewBox={`0 0 ${VB_W} ${VB_H}`}
-            className="w-full"
-            style={{ maxHeight: 480 }}
-            aria-label={`${selectedCat.name} サブカテゴリマップ`}
-          >
-            {svgDefs}
-            <style>{FLOAT_CSS}</style>
-
-            {loadingSubs ? (
-              <foreignObject x="0" y="0" width={VB_W} height={VB_H}>
-                <div className="flex h-full items-center justify-center text-white/60">
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" /> 読み込み中…
-                </div>
-              </foreignObject>
-            ) : (
-              <>
-                {/* コネクターライン */}
-                {subCategories.map((_, i) => {
-                  const { x, y } = satPos(i, subCategories.length, R_DIST - 10);
-                  return (
-                    <line
-                      key={i + "-line"}
-                      x1={CX} y1={CY} x2={x} y2={y}
-                      stroke="rgba(120,180,255,0.2)"
-                      strokeWidth="1.5"
-                      strokeDasharray="6 5"
-                    />
-                  );
-                })}
-
-                {/* サブカテゴリ衛星 */}
-                {subCategories.map((sub, i) => {
-                  const { x, y } = satPos(i, subCategories.length, R_DIST - 10);
-                  return (
-                    <Bubble
-                      key={sub.id}
-                      x={x} y={y} r={R_SUB}
-                      color={selectedCat.color}
-                      label={sub.name}
-                      glow="sat"
-                      dur={2.6 + i * 0.3}
-                      del={(i * 0.45) % 2}
-                    />
-                  );
-                })}
-
-                {/* 中心：選択カテゴリ */}
-                <Bubble
-                  x={CX} y={CY} r={R_CENTER}
-                  color={selectedCat.color}
-                  label={selectedCat.name}
-                  glow="hub"
-                  dur={3.5} del={0}
-                />
-              </>
-            )}
-          </svg>
-        </div>
-      </div>
-    );
-  }
-
-  /* ── レベル1：メインハブマップ ── */
   return (
-    <div className="w-full overflow-hidden rounded-2xl" style={{ background: "rgba(0,10,40,0.55)" }}>
-      <svg
-        viewBox={`0 0 ${VB_W} ${VB_H}`}
-        className="w-full"
-        style={{ maxHeight: 480 }}
-        aria-label="インフォメーションマップ"
-      >
-        {svgDefs}
-        <style>{FLOAT_CSS}</style>
+    <div>
+      {/* ===== カテゴリマップビュー ===== */}
+      {!selected && (
+        <>
+          <MapShell>
+            {loadingCats ? (
+              <div className="flex h-full items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-white/80" />
+              </div>
+            ) : categories.length === 0 ? (
+              <div className="flex h-full items-center justify-center px-6 text-center text-sm text-white/80">
+                まだカテゴリが登録されていません。管理画面（/admin/interop）から追加してください。
+              </div>
+            ) : (
+              <BubbleGraphCanvas
+                nodes={categoryNodes}
+                connections={[]}
+                layoutMode="category"
+                className="h-full"
+              />
+            )}
+          </MapShell>
+          <div className="mt-3 flex items-center gap-1.5 text-[11px] text-white/50">
+            <Move className="h-3.5 w-3.5" />
+            ドラッグでマップを移動。タップでカテゴリを選択。右下のボタンで拡大・縮小
+          </div>
+        </>
+      )}
 
-        {/* コネクターライン */}
-        {satellites.map((cat, i) => {
-          const { x, y } = satPos(i, satellites.length);
-          return (
-            <line
-              key={cat.id + "-line"}
-              x1={CX} y1={CY} x2={x} y2={y}
-              stroke="rgba(120,180,255,0.2)"
-              strokeWidth="1.5"
-              strokeDasharray="6 5"
-            />
-          );
-        })}
-
-        {/* サテライトバブル */}
-        {satellites.map((cat, i) => {
-          const { x, y } = satPos(i, satellites.length);
-          return (
-            <Bubble
-              key={cat.id}
-              x={x} y={y} r={R_SAT}
-              color={cat.color}
-              label={cat.name}
-              glow="sat"
-              dur={2.8 + i * 0.35}
-              del={(i * 0.5) % 2}
-              onClick={() => setSelectedCat(cat)}
-            />
-          );
-        })}
-
-        {/* センターバブル（クリック可） */}
-        {primary && (
-          <Bubble
-            x={CX} y={CY} r={R_CENTER}
-            color={primary.color}
-            label={primary.name}
-            glow="hub"
-            dur={3.5} del={0}
-            onClick={() => setSelectedCat(primary)}
-          />
-        )}
-      </svg>
+      {/* ===== サブカテゴリマップビュー ===== */}
+      {selected && (
+        <div className="space-y-3">
+          <button
+            type="button"
+            onClick={() => setSelected(null)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm backdrop-blur transition-colors hover:bg-white/20"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" /> マップに戻る
+          </button>
+          <MapShell>
+            {loadingSubs ? (
+              <div className="flex h-full items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-white/80" />
+              </div>
+            ) : subCategories.length === 0 ? (
+              <div className="flex h-full items-center justify-center px-6 text-center text-sm text-white/80">
+                まだサブカテゴリがありません。管理画面（/admin/interop）から追加してください。
+              </div>
+            ) : (
+              <BubbleGraphCanvas
+                nodes={subNodes}
+                connections={[]}
+                layoutMode="subcategory"
+                className="h-full"
+              />
+            )}
+          </MapShell>
+        </div>
+      )}
     </div>
   );
 }
