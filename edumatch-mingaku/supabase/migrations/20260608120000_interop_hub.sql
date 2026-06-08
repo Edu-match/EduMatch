@@ -1,5 +1,8 @@
 -- Interop特設ページ専用テーブル（本体フォーラムとは完全に別）
 -- Supabase SQL Editor で実行する。
+-- 既存テーブルをリセットしてから再作成（スキーマ変更があった場合）
+DROP TABLE IF EXISTS interop_sub_categories;
+DROP TABLE IF EXISTS interop_categories;
 
 CREATE TABLE IF NOT EXISTS interop_categories (
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
