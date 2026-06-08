@@ -1,0 +1,137 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e4]:
+        - link "エデュマッチ" [ref=e5] [cursor=pointer]:
+          - /url: /
+          - img "エデュマッチ" [ref=e6]
+        - navigation [ref=e7]:
+          - generic [ref=e8]:
+            - link "サービス一覧" [ref=e9] [cursor=pointer]:
+              - /url: /services
+            - link "記事一覧" [ref=e10] [cursor=pointer]:
+              - /url: /articles
+            - link "井戸端会議" [ref=e11] [cursor=pointer]:
+              - /url: /forum
+            - link "セミナー・イベント情報" [ref=e12] [cursor=pointer]:
+              - /url: /events
+            - link "掲載企業" [ref=e13] [cursor=pointer]:
+              - /url: /companies
+            - link "サービスのお気に入り" [ref=e14] [cursor=pointer]:
+              - /url: /request-info/list
+              - img [ref=e15]
+              - generic [ref=e18]: サービスのお気に入り
+          - button "チュートリアルを見る" [ref=e19]:
+            - img
+    - generic [ref=e22]:
+      - complementary [ref=e23]:
+        - generic [ref=e24]:
+          - button "サイドメニューを閉じる" [ref=e25]:
+            - img [ref=e26]
+          - complementary [ref=e28]:
+            - generic [ref=e29]:
+              - heading "メニュー" [level=2] [ref=e31]
+              - navigation [ref=e32]:
+                - link "ホーム" [ref=e33] [cursor=pointer]:
+                  - /url: /
+                  - img [ref=e34]
+                  - generic [ref=e37]: ホーム
+                - link "サービス一覧" [ref=e38] [cursor=pointer]:
+                  - /url: /services
+                  - img [ref=e39]
+                  - generic [ref=e42]: サービス一覧
+                - link "記事一覧" [ref=e43] [cursor=pointer]:
+                  - /url: /articles
+                  - img [ref=e44]
+                  - generic [ref=e47]: 記事一覧
+                - link "井戸端会議" [ref=e48] [cursor=pointer]:
+                  - /url: /forum
+                  - img [ref=e49]
+                  - generic [ref=e51]: 井戸端会議
+                - link "学びの動画" [ref=e52] [cursor=pointer]:
+                  - /url: /videos
+                  - img [ref=e53]
+                  - generic [ref=e56]: 学びの動画
+                - link "セミナー・イベント情報" [ref=e57] [cursor=pointer]:
+                  - /url: /events
+                  - img [ref=e58]
+                  - generic [ref=e60]: セミナー・イベント情報
+                - link "掲載企業一覧" [ref=e61] [cursor=pointer]:
+                  - /url: /companies
+                  - img [ref=e62]
+                  - generic [ref=e66]: 掲載企業一覧
+                - link "サービス比較" [ref=e67] [cursor=pointer]:
+                  - /url: /compare
+                  - img [ref=e68]
+                  - generic [ref=e72]: サービス比較
+                - link "AI検定" [ref=e73] [cursor=pointer]:
+                  - /url: /ai-kentei
+                  - img [ref=e74]
+                  - generic [ref=e77]: AI検定
+                - link "ヘルプ" [ref=e78] [cursor=pointer]:
+                  - /url: /help
+                  - img [ref=e79]
+                  - generic [ref=e82]: ヘルプ
+      - main [ref=e83]:
+        - generic [ref=e85]: 読み込み中…
+      - generic [ref=e88]:
+        - separator "AIパネル幅を変更" [ref=e89]
+        - generic [ref=e90]:
+          - generic [ref=e91]:
+            - img [ref=e93]
+            - generic [ref=e97]: AIナビゲーター
+            - button "閉じる" [ref=e99]:
+              - img
+          - generic [ref=e100]:
+            - img [ref=e102]
+            - paragraph [ref=e105]:
+              - text: AIチャットは会員限定です。
+              - text: ログインまたは会員登録するとご利用いただけます。
+            - link "ログイン・会員登録" [ref=e106] [cursor=pointer]:
+              - /url: /auth/login
+    - contentinfo [ref=e107]:
+      - generic [ref=e108]:
+        - generic [ref=e109]:
+          - generic [ref=e110]:
+            - link "エデュマッチ" [ref=e111] [cursor=pointer]:
+              - /url: /
+              - generic [ref=e112]: エデュマッチ
+            - paragraph [ref=e113]: 教育の未来を見つける、つながる
+          - generic [ref=e114]:
+            - heading "プロダクト" [level=3] [ref=e115]
+            - list [ref=e116]:
+              - listitem [ref=e117]:
+                - link "記事一覧" [ref=e118] [cursor=pointer]:
+                  - /url: /articles
+              - listitem [ref=e119]:
+                - link "サービス一覧" [ref=e120] [cursor=pointer]:
+                  - /url: /services
+              - listitem [ref=e121]:
+                - link "セミナー・イベント情報" [ref=e122] [cursor=pointer]:
+                  - /url: /events
+              - listitem [ref=e123]:
+                - link "井戸端会議" [ref=e124] [cursor=pointer]:
+                  - /url: /forum
+          - generic [ref=e125]:
+            - heading "会社情報" [level=3] [ref=e126]
+            - list [ref=e127]:
+              - listitem [ref=e128]:
+                - link "運営について" [ref=e129] [cursor=pointer]:
+                  - /url: /about
+              - listitem [ref=e130]:
+                - link "お問い合わせ" [ref=e131] [cursor=pointer]:
+                  - /url: /contact
+          - generic [ref=e132]:
+            - heading "法的情報" [level=3] [ref=e133]
+            - list [ref=e134]:
+              - listitem [ref=e135]:
+                - link "利用規約" [ref=e136] [cursor=pointer]:
+                  - /url: /terms
+              - listitem [ref=e137]:
+                - link "プライバシーポリシー" [ref=e138] [cursor=pointer]:
+                  - /url: /privacy
+        - paragraph [ref=e140]: © 2026 エデュマッチ（運営：株式会社スタディパーク／協力：一般社団法人教育AI活用協会）. All rights reserved.
+  - generic: Ver1.322
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e146] [cursor=pointer]:
+    - img [ref=e147]
