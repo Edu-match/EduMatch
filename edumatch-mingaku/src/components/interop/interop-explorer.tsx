@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Award,
@@ -15,7 +16,8 @@ import {
   Sparkles,
   type LucideIcon,
 } from "lucide-react";
-import { InteropBoardPanel } from "@/components/interop/interop-board-panel";
+import { InteropBackdrop } from "@/components/interop/interop-backdrop";
+import type { InteropThemeMode } from "@/lib/interop-settings";
 
 type Category = {
   id: string;
@@ -57,7 +59,6 @@ const FX_CSS = `
     50%      { transform: translateY(-5px); }
   }
   @keyframes itmDash { to { stroke-dashoffset: -22; } }
-  @keyframes itmTwinkle { 0%,100% { opacity: 0.12; } 50% { opacity: 0.6; } }
   @keyframes itmBob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
   @keyframes itmFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes itmHalo { 0%,100% { opacity: 0.35; } 50% { opacity: 0.6; } }
@@ -69,56 +70,6 @@ const RY = 31;
 function satXY(i: number, total: number) {
   const ang = (-90 + (360 / total) * i) * (Math.PI / 180);
   return { x: 50 + RX * Math.cos(ang), y: 50 + RY * Math.sin(ang) };
-}
-
-/** 背景（静かなダーク宇宙・星図） */
-function SpaceBackdrop() {
-  const stars = useMemo(
-    () =>
-      Array.from({ length: 64 }, () => ({
-        left: Math.random() * 100,
-        top: Math.random() * 100,
-        d: 0.8 + Math.random() * 1.6,
-        delay: Math.random() * 6,
-        dur: 3.5 + Math.random() * 4,
-      })),
-    []
-  );
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      {/* ベースグラデ（深い紺〜藍） */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background: [
-            "radial-gradient(ellipse 60% 45% at 50% 40%, rgba(70,90,180,0.16) 0%, transparent 65%)",
-            "radial-gradient(ellipse 70% 50% at 15% 12%, rgba(40,120,170,0.12) 0%, transparent 60%)",
-            "linear-gradient(180deg, #060816 0%, #080b22 55%, #0a0e2e 100%)",
-          ].join(", "),
-        }}
-      />
-      {/* 星 */}
-      {stars.map((s, i) => (
-        <span
-          key={i}
-          className="absolute rounded-full bg-white"
-          style={{
-            left: `${s.left}%`,
-            top: `${s.top}%`,
-            width: s.d,
-            height: s.d,
-            animation: `itmTwinkle ${s.dur}s ease-in-out ${s.delay}s infinite`,
-            opacity: 0.3,
-          }}
-        />
-      ))}
-      {/* 周辺ビネット */}
-      <div
-        className="absolute inset-0"
-        style={{ background: "radial-gradient(ellipse 90% 90% at 50% 48%, transparent 62%, rgba(3,5,16,0.6) 100%)" }}
-      />
-    </div>
-  );
 }
 
 /* ════════ カテゴリ・ノード ════════ */
@@ -193,13 +144,19 @@ function CategoryPod({
   );
 }
 
-export function InteropExplorer() {
+export function InteropExplorer({
+  themeMode = "auto",
+  guideText = "気になるエリアをタップして、セミナー・展示・登壇情報を探そう",
+}: {
+  themeMode?: InteropThemeMode;
+  guideText?: string;
+}) {
+  const router = useRouter();
   const [categories, setCategories] = useState<Category[]>([]);
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
   const [loadingCats, setLoadingCats] = useState(true);
   const [loadingSubs, setLoadingSubs] = useState(false);
   const [selected, setSelected] = useState<Category | null>(null);
-  const [boardSub, setBoardSub] = useState<SubCategory | null>(null);
 
   // 画面幅に応じてポッドサイズを調整
   const [vw, setVw] = useState(1280);
@@ -241,7 +198,7 @@ export function InteropExplorer() {
   return (
     <div className="absolute inset-0 overflow-hidden">
       <style>{FX_CSS}</style>
-      <SpaceBackdrop />
+      <InteropBackdrop themeMode={themeMode} />
 
       {/* ════════ ローディング / 空 ════════ */}
       {loadingCats ? (
@@ -319,7 +276,7 @@ export function InteropExplorer() {
               }}
             >
               <Hand className="h-4 w-4 shrink-0 text-white/50" style={{ animation: "itmBob 1.6s ease-in-out infinite" }} />
-              気になるエリアをタップして、セミナー・展示・登壇情報を探そう
+              {guideText}
             </div>
           </div>
         </div>
@@ -392,7 +349,7 @@ export function InteropExplorer() {
                       <button
                         key={sub.id}
                         type="button"
-                        onClick={() => setBoardSub(sub)}
+                        onClick={() => router.push(`/interop/t/${sub.id}`)}
                         className="group absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center focus:outline-none"
                         style={{
                           left: `${left}%`,
@@ -451,15 +408,6 @@ export function InteropExplorer() {
             </>
           )}
         </div>
-      )}
-
-      {/* ════════ 掲示板パネル ════════ */}
-      {boardSub && (
-        <InteropBoardPanel
-          sub={boardSub}
-          accent={accent}
-          onClose={() => setBoardSub(null)}
-        />
       )}
     </div>
   );

@@ -513,6 +513,15 @@ model InteropPost {
   @@map("interop_posts")
 }
 
+/// Interop特設ページのサイト設定（テキスト・テーマ等のkey-value）
+model InteropSetting {
+  key        String   @id
+  value      Json
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+
+  @@map("interop_settings")
+}
+
 /// AI日次スキャンで選んだカテゴリ×サブカテゴリ向けコンテンツ
 model ForumCategoryContentCache {
   id              String           @id @default(uuid()) @db.Uuid
