@@ -92,6 +92,24 @@ export function InteropExplorer() {
     [categories, diameter]
   );
 
+  const subNodes: BubbleGraphNode[] = useMemo(() => {
+    const colors: Record<string, string> = {
+      article: "#fddbe8",
+      media: "#e2d1f9",
+      "events-info": "#fff0be",
+      community: "#bde8fb",
+    };
+    const d = computeBubbleDiameter(Math.max(subCategories.length, 1)).default;
+    return subCategories.map((s, i) => ({
+      id: s.id,
+      label: s.name,
+      diameter: d,
+      backgroundColor: colors[s.contentKind] ?? "#e8e8e8",
+      isPrimary: i === 0,
+      onActivate: () => setSelectedSub(s),
+    }));
+  }, [subCategories]);
+
   if (loading) {
     return (
       <MapShell>
@@ -121,60 +139,49 @@ export function InteropExplorer() {
     );
   }
 
-  // ── レベル2/3：サブカテゴリ → コンテンツ ──
+  // ── レベル2：サブカテゴリ マップ（大カテゴリを選ぶとマップで表示） ──
+  if (!selectedSub) {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => setSelectedCat(null)}
+            className="inline-flex items-center gap-1.5 rounded text-sm text-white/85 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden /> マップに戻る
+          </button>
+          <span className="flex items-center gap-1.5 text-sm font-bold">
+            <span className="h-3 w-3 rounded-full" style={{ background: selectedCat.color }} aria-hidden />
+            {selectedCat.name}
+          </span>
+        </div>
+        <MapShell>
+          <BubbleGraphCanvas nodes={subNodes} connections={[]} layoutMode="subcategory" className="h-full" />
+        </MapShell>
+      </div>
+    );
+  }
+
+  // ── レベル3：コンテンツ（案内記事など） ──
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <button
         type="button"
-        onClick={() => { setSelectedCat(null); setSelectedSub(null); }}
-        className="inline-flex items-center gap-1.5 text-sm text-white/80 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 rounded"
+        onClick={() => setSelectedSub(null)}
+        className="inline-flex items-center gap-1.5 rounded text-sm text-white/85 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
       >
-        <ArrowLeft className="h-4 w-4" aria-hidden /> マップに戻る
+        <ArrowLeft className="h-4 w-4" aria-hidden /> {selectedCat.name} に戻る
       </button>
-
       <div className="rounded-2xl border border-white/15 bg-white/10 p-5 backdrop-blur">
-        <div className="flex items-center gap-3">
-          <span className="flex h-11 w-11 items-center justify-center rounded-xl text-[#13287a]" style={{ background: selectedCat.color }} aria-hidden>
-            {selectedCat.isPrimary ? <Info className="h-5 w-5" /> : <FileText className="h-5 w-5" />}
-          </span>
-          <div>
-            <h2 className="text-lg font-bold">{selectedCat.name}</h2>
-            {selectedCat.description && <p className="text-xs text-white/75">{selectedCat.description}</p>}
-          </div>
+        <div className="flex items-center gap-2 text-base font-bold">
+          {KIND_ICON[selectedSub.contentKind] ?? <FileText className="h-4 w-4" />}
+          {selectedCat.name} / {selectedSub.name}
         </div>
-
-        {/* サブカテゴリ（面）選択 */}
-        <div className="mt-4 flex flex-wrap gap-2">
-          {subCategories.map((s) => {
-            const active = selectedSub?.id === s.id;
-            return (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => setSelectedSub(s)}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${
-                  active ? "border-white bg-white text-[#13287a]" : "border-white/30 bg-white/5 text-white hover:bg-white/10"
-                }`}
-              >
-                {KIND_ICON[s.contentKind] ?? <FileText className="h-4 w-4" />}
-                {s.name}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* コンテンツ */}
-        <div className="mt-5 rounded-xl border border-white/10 bg-[#0a1a5c]/30 p-5">
-          {selectedSub ? (
-            <div className="text-center">
-              <p className="text-sm font-semibold text-white">{selectedCat.name} / {selectedSub.name}</p>
-              <p className="mt-2 text-xs leading-relaxed text-white/70">
-                ここに案内記事（タイムテーブル等）が表示されます。記事は管理画面から投稿・紐づけできます。
-              </p>
-            </div>
-          ) : (
-            <p className="text-center text-xs text-white/60">面（{subCategories.map((s) => s.name).join("・")}）を選ぶと内容が表示されます。</p>
-          )}
+        <div className="mt-4 rounded-xl border border-white/10 bg-[#0a1a5c]/30 p-6 text-center">
+          <p className="text-xs leading-relaxed text-white/70">
+            ここに案内記事（タイムテーブル等）が表示されます。記事は管理画面から投稿・紐づけできます。
+          </p>
         </div>
       </div>
     </div>
