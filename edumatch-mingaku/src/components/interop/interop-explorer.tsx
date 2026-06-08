@@ -10,6 +10,7 @@ import {
   Hand,
   Info,
   Landmark,
+  LayoutGrid,
   Loader2,
   MessageCircle,
   Network,
@@ -295,13 +296,13 @@ export function InteropExplorer({
       ) : (
         /* ════════ レベル2：サブカテゴリ（静止した星座配置） ════════ */
         <div className="absolute inset-0">
-          {/* 戻る */}
+          {/* 戻る（大カテゴリ選択へ） */}
           <button
             type="button"
             onClick={() => setSelected(null)}
             className="absolute left-4 top-4 z-30 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.06] px-3.5 py-1.5 text-xs font-bold text-white/75 backdrop-blur transition-colors hover:bg-white/12 hover:text-white"
           >
-            <ArrowLeft className="h-3.5 w-3.5" /> マップに戻る
+            <ArrowLeft className="h-3.5 w-3.5" /> カテゴリ選択に戻る
           </button>
 
           {/* カテゴリナビ（下部タブ） */}
@@ -310,6 +311,16 @@ export function InteropExplorer({
             style={{ animation: "itmFadeIn 0.3s ease-out both" }}
           >
             <div className="flex items-center gap-2 overflow-x-auto pb-1">
+              {/* 大カテゴリ選択（マップ全体）へ戻るチップ */}
+              <button
+                type="button"
+                onClick={() => setSelected(null)}
+                className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/[0.08] px-3 py-1.5 text-[11px] font-bold text-white/80 transition-all hover:bg-white/15 focus:outline-none"
+                aria-label="カテゴリ選択に戻る"
+              >
+                <LayoutGrid className="h-3 w-3 shrink-0" />
+                全体
+              </button>
               {categories.map((cat) => {
                 const CatIcon = iconFor(cat.slug);
                 const active = selected.id === cat.id;
@@ -361,7 +372,7 @@ export function InteropExplorer({
                       <button
                         key={sub.id}
                         type="button"
-                        onClick={() => router.push(`/interop/t/${sub.id}`)}
+                        onClick={() => router.push(`/t/${sub.id}`)}
                         className="group absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center focus:outline-none"
                         style={{
                           left: `${left}%`,

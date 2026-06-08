@@ -28,7 +28,7 @@ export default async function InteropAdminPage() {
       <div className="border-b bg-card">
         <div className="container flex max-w-3xl items-center justify-between py-3">
           <Link
-            href="/interop"
+            href="/"
             className="inline-flex items-center gap-1.5 text-sm font-bold text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" /> 特設サイトを開く

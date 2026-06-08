@@ -102,14 +102,16 @@ export function InteropBoard({
         {/* 戻る（大カテゴリ／マップ） */}
         <div className="flex flex-wrap items-center gap-2">
           <Link
-            href={`/interop?cat=${sub.categoryId}`}
+            href={`/?cat=${sub.categoryId}`}
+            prefetch={false}
             className="inline-flex w-fit items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-bold text-white/85 backdrop-blur transition-colors hover:brightness-110"
             style={{ background: `${accent}22`, borderColor: `${accent}66` }}
           >
             <ArrowLeft className="h-3.5 w-3.5" /> {sub.categoryName}に戻る
           </Link>
           <Link
-            href="/interop"
+            href="/"
+            prefetch={false}
             className="inline-flex w-fit items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.06] px-3.5 py-1.5 text-xs font-bold text-white/70 backdrop-blur transition-colors hover:bg-white/12 hover:text-white"
           >
             マップ全体
