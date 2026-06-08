@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
-import { Bebas_Neue } from "next/font/google";
+import { Bebas_Neue, Noto_Serif_JP } from "next/font/google";
 import { CalendarDays, Building2, Mail, ChevronRight } from "lucide-react";
 import { InteropExplorer } from "@/components/interop/interop-explorer";
 
 const bebas = Bebas_Neue({ weight: "400", subsets: ["latin"], display: "swap" });
+const serifJP = Noto_Serif_JP({ weight: ["900"], subsets: ["latin"], display: "swap" });
 
 export const metadata: Metadata = {
   title: "教育AIサミット | Interop Tokyo 2026",
@@ -77,7 +78,7 @@ export default function InteropPage() {
 
             {/* メインタイトル */}
             <h1
-              className="text-[clamp(3.5rem,12vw,10rem)] font-black leading-[0.9] tracking-tighter text-white"
+              className={`${serifJP.className} text-[clamp(3.5rem,12vw,10rem)] leading-[0.92] tracking-tight text-white`}
             >
               教育AI
               <br />
@@ -111,26 +112,6 @@ export default function InteropPage() {
           className="absolute bottom-0 left-0 right-0"
           style={{ height: "72px", background: "white", clipPath: "polygon(0 100%, 100% 0, 100% 100%)" }}
         />
-      </section>
-
-      {/* ══════════════════════════════════════════
-          MISSION — 白セクション
-      ══════════════════════════════════════════ */}
-      <section className="bg-white px-6 py-20 sm:px-14 sm:py-28">
-        <div className="mx-auto max-w-4xl">
-          {/* プルクオート */}
-          <p className="mb-10 text-[clamp(1.4rem,3vw,2.2rem)] font-black leading-snug tracking-tight text-gray-900">
-            「生成AIが急速に普及する一方、<br className="hidden sm:block" />
-            教育現場での活用には<br className="hidden sm:block" />
-            大きなキッカケ格差が生まれている。」
-          </p>
-          <div className="w-12 border-t-2 border-gray-200 mb-8" />
-          <p className="max-w-2xl text-base leading-relaxed text-gray-500">
-            Interop Tokyo 2026 教育AIサミットは、その格差をなくすための場です。
-            高校生・教員・議員・企業が一堂に会し、
-            展示・登壇・ライブデモ・AI検定体験を通じて、教育×AIの「今」と「これから」を共創します。
-          </p>
-        </div>
       </section>
 
       {/* ══════════════════════════════════════════
