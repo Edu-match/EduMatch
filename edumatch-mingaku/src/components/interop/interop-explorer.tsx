@@ -44,27 +44,27 @@ function iconFor(slug: string): LucideIcon {
   return ICONS[slug] ?? Sparkles;
 }
 
-/** サイバーネオンの全演出CSS */
+/** 演出CSS（洗練されたダークテック） */
 const FX_CSS = `
   @keyframes itmFloat {
     0%,100% { transform: translate(-50%, -50%) translateY(0); }
-    50%      { transform: translate(-50%, -50%) translateY(-10px); }
+    50%      { transform: translate(-50%, -50%) translateY(-7px); }
   }
   @keyframes itmPulseRing {
-    0%   { transform: scale(0.85); opacity: 0.9; }
-    70%  { transform: scale(1.45); opacity: 0; }
-    100% { transform: scale(1.45); opacity: 0; }
+    0%   { transform: scale(0.88); opacity: 0.6; }
+    70%  { transform: scale(1.38); opacity: 0; }
+    100% { transform: scale(1.38); opacity: 0; }
   }
   @keyframes itmDash { to { stroke-dashoffset: -28; } }
-  @keyframes itmGridScroll { to { background-position: 0 44px, 44px 0; } }
   @keyframes itmSpinCCW { from { transform: rotate(0deg); }   to { transform: rotate(-360deg); } }
   @keyframes itmSpinCW  { from { transform: rotate(0deg); }   to { transform: rotate(360deg); } }
-  @keyframes itmBob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(7px); } }
-  @keyframes itmTwinkle { 0%,100% { opacity: 0.25; } 50% { opacity: 1; } }
+  @keyframes itmBob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(5px); } }
+  @keyframes itmTwinkle { 0%,100% { opacity: 0.15; } 50% { opacity: 0.7; } }
   @keyframes itmHueGlow {
-    0%,100% { filter: drop-shadow(0 0 14px var(--g)) drop-shadow(0 0 30px var(--g)); }
-    50%      { filter: drop-shadow(0 0 22px var(--g)) drop-shadow(0 0 48px var(--g)); }
+    0%,100% { filter: drop-shadow(0 0 8px var(--g)); }
+    50%      { filter: drop-shadow(0 0 16px var(--g)); }
   }
+  @keyframes itmFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 `;
 
 /* 中心からの配置（%座標、コネクタSVGと共有） */
@@ -75,30 +75,30 @@ function satXY(i: number, total: number) {
   return { x: 50 + RX * Math.cos(ang), y: 50 + RY * Math.sin(ang) };
 }
 
-/** サイバー遊園地の背景（シンセウェーブのグリッド床＋星＋ネオン） */
+/** 背景（落ち着いたダーク宇宙） */
 function CyberBackdrop() {
   const stars = useMemo(
     () =>
-      Array.from({ length: 46 }, () => ({
+      Array.from({ length: 56 }, () => ({
         left: Math.random() * 100,
-        top: Math.random() * 70,
-        d: 1.4 + Math.random() * 2.2,
-        delay: Math.random() * 4,
-        dur: 2.5 + Math.random() * 3,
+        top: Math.random() * 85,
+        d: 1 + Math.random() * 1.8,
+        delay: Math.random() * 5,
+        dur: 3 + Math.random() * 4,
       })),
     []
   );
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      {/* ベースのネオングラデ */}
+      {/* ベースグラデ */}
       <div
         className="absolute inset-0"
         style={{
           background: [
-            "radial-gradient(ellipse 70% 55% at 50% 38%, rgba(120,40,220,0.40) 0%, transparent 60%)",
-            "radial-gradient(ellipse 90% 60% at 12% 8%, rgba(0,200,255,0.30) 0%, transparent 55%)",
-            "radial-gradient(ellipse 80% 60% at 90% 14%, rgba(255,40,180,0.28) 0%, transparent 55%)",
-            "linear-gradient(180deg, #07021f 0%, #0a0530 45%, #120a4a 72%, #1b0c5e 100%)",
+            "radial-gradient(ellipse 65% 50% at 50% 35%, rgba(80,30,170,0.28) 0%, transparent 60%)",
+            "radial-gradient(ellipse 80% 55% at 10% 10%, rgba(0,160,220,0.18) 0%, transparent 55%)",
+            "radial-gradient(ellipse 70% 55% at 92% 12%, rgba(200,30,140,0.16) 0%, transparent 55%)",
+            "linear-gradient(180deg, #07021f 0%, #090428 50%, #0e0840 100%)",
           ].join(", "),
         }}
       />
@@ -113,28 +113,21 @@ function CyberBackdrop() {
             width: s.d,
             height: s.d,
             animation: `itmTwinkle ${s.dur}s ease-in-out ${s.delay}s infinite`,
-            boxShadow: "0 0 6px rgba(180,220,255,0.9)",
+            opacity: 0.4,
           }}
         />
       ))}
-      {/* シンセウェーブのグリッド床（下半分・遠近） */}
+      {/* 下部のほのかな境界光 */}
       <div
-        className="absolute inset-x-0 bottom-0 h-[55%]"
+        className="absolute inset-x-0 bottom-0 h-[30%]"
         style={{
-          backgroundImage:
-            "linear-gradient(rgba(0,230,255,0.55) 1px, transparent 1px), linear-gradient(90deg, rgba(255,60,200,0.45) 1px, transparent 1px)",
-          backgroundSize: "44px 44px, 44px 44px",
-          transform: "perspective(420px) rotateX(62deg)",
-          transformOrigin: "bottom center",
-          maskImage: "linear-gradient(to top, #000 5%, transparent 95%)",
-          WebkitMaskImage: "linear-gradient(to top, #000 5%, transparent 95%)",
-          animation: "itmGridScroll 4.5s linear infinite",
+          background: "linear-gradient(to top, rgba(60,20,120,0.35) 0%, transparent 100%)",
         }}
       />
-      {/* 上部ビネット */}
+      {/* 周辺ビネット */}
       <div
         className="absolute inset-0"
-        style={{ background: "radial-gradient(ellipse 80% 80% at 50% 45%, transparent 55%, rgba(4,1,18,0.7) 100%)" }}
+        style={{ background: "radial-gradient(ellipse 85% 85% at 50% 48%, transparent 60%, rgba(4,1,18,0.55) 100%)" }}
       />
     </div>
   );
@@ -167,47 +160,49 @@ function CategoryPod({
       aria-label={`${cat.name} を開く`}
     >
       <span className="relative grid place-items-center" style={{ width: size, height: size }}>
-        {/* 注意喚起のパルスリング（押せる合図） */}
+        {/* パルスリング（控えめ） */}
         <span
           className="absolute inset-0 rounded-full"
           style={{
-            border: `2px solid ${glow}`,
-            animation: `itmPulseRing 2.6s ease-out ${delay}s infinite`,
+            border: `1.5px solid ${glow}`,
+            animation: `itmPulseRing 3.8s ease-out ${delay}s infinite`,
+            opacity: 0.7,
           }}
         />
         {/* ポッド本体 */}
         <span
-          className="relative grid h-full w-full place-items-center rounded-full transition-transform duration-300 group-hover:scale-110 group-active:scale-95"
+          className="relative grid h-full w-full place-items-center rounded-full transition-transform duration-300 group-hover:scale-108 group-active:scale-95"
           style={{
-            background: `radial-gradient(circle at 38% 30%, rgba(255,255,255,0.95) 0%, ${glow} 42%, rgba(8,4,40,0.92) 100%)`,
-            border: "2px solid rgba(255,255,255,0.65)",
+            background: `radial-gradient(circle at 40% 32%, rgba(255,255,255,0.18) 0%, ${glow}55 40%, rgba(8,4,40,0.88) 100%)`,
+            border: `1.5px solid ${glow}88`,
+            boxShadow: `0 0 20px ${glow}44, inset 0 1px 1px rgba(255,255,255,0.12)`,
             // @ts-expect-error CSS var
             "--g": glow,
-            animation: `itmHueGlow 3.4s ease-in-out ${delay}s infinite`,
+            animation: `itmHueGlow 4.5s ease-in-out ${delay}s infinite`,
           }}
         >
           <Icon
-            className="text-white drop-shadow"
+            className="text-white/90"
             style={{ width: size * (center ? 0.34 : 0.32), height: size * (center ? 0.34 : 0.32) }}
-            strokeWidth={2.2}
+            strokeWidth={2}
           />
         </span>
       </span>
       {/* ラベルチップ */}
       <span className="mt-2 flex flex-col items-center">
         <span
-          className="rounded-full px-3 py-1 text-center font-bold leading-tight text-white shadow-lg backdrop-blur-sm"
+          className="rounded-full px-3 py-1 text-center font-bold leading-tight text-white backdrop-blur-sm"
           style={{
             fontSize: center ? "clamp(13px,1.5vmin,17px)" : "clamp(11px,1.3vmin,15px)",
-            background: "rgba(10,6,42,0.78)",
-            border: `1.5px solid ${glow}`,
-            boxShadow: `0 0 14px ${glow}66`,
+            background: "rgba(8,5,32,0.82)",
+            border: `1px solid ${glow}55`,
+            boxShadow: `0 0 8px ${glow}33`,
           }}
         >
           {cat.name}
         </span>
         <span
-          className="mt-1 inline-flex items-center gap-0.5 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold tracking-wide text-white/90 opacity-90 transition group-hover:bg-white/30"
+          className="mt-1 inline-flex items-center gap-0.5 rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold tracking-wide text-white/75 transition group-hover:bg-white/20 group-hover:text-white/95"
         >
           {center ? "ここから探索 ▶" : "タップ ▶"}
         </span>
@@ -294,11 +289,11 @@ export function InteropExplorer() {
                   key={cat.id}
                   x1="50" y1="50" x2={x} y2={y}
                   stroke={cat.color || "#7ad0ff"}
-                  strokeWidth="2"
+                  strokeWidth="1.5"
                   strokeLinecap="round"
-                  strokeDasharray="4 6"
+                  strokeDasharray="3 7"
                   vectorEffect="non-scaling-stroke"
-                  style={{ animation: `itmDash 1.1s linear infinite`, opacity: 0.7 }}
+                  style={{ animation: `itmDash 1.8s linear infinite`, opacity: 0.45 }}
                 />
               );
             })}
@@ -334,11 +329,10 @@ export function InteropExplorer() {
           {/* 初見ユーザー向けガイド */}
           <div className="pointer-events-none absolute inset-x-0 top-3 z-20 flex justify-center px-4">
             <div
-              className="flex items-center gap-2 rounded-full px-4 py-2 text-center text-[12px] font-bold text-white shadow-lg sm:text-sm"
+              className="flex items-center gap-2 rounded-full px-4 py-2 text-center text-[12px] font-bold text-white/80 sm:text-sm"
               style={{
-                background: "rgba(12,6,48,0.72)",
-                border: "1.5px solid rgba(0,230,255,0.55)",
-                boxShadow: "0 0 18px rgba(0,200,255,0.35)",
+                background: "rgba(10,6,38,0.75)",
+                border: "1px solid rgba(180,200,255,0.25)",
                 backdropFilter: "blur(6px)",
               }}
             >
@@ -354,10 +348,45 @@ export function InteropExplorer() {
           <button
             type="button"
             onClick={() => setSelected(null)}
-            className="absolute left-4 top-4 z-30 inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-white/10 px-3.5 py-1.5 text-xs font-bold text-white shadow backdrop-blur transition-colors hover:bg-white/25"
+            className="absolute left-4 top-4 z-30 inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/8 px-3.5 py-1.5 text-xs font-bold text-white/80 shadow backdrop-blur transition-colors hover:bg-white/18 hover:text-white"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> マップに戻る
           </button>
+
+          {/* カテゴリナビ（下部タブ） */}
+          <div
+            className="absolute inset-x-0 bottom-14 z-30 flex justify-center px-4"
+            style={{ animation: "itmFadeIn 0.3s ease-out both" }}
+          >
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-full">
+              {categories.map((cat) => {
+                const CatIcon = iconFor(cat.slug);
+                const active = selected?.id === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => { setSelected(cat); setSelectedSub(null); }}
+                    className="shrink-0 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold text-white transition-all focus:outline-none"
+                    style={{
+                      background: active
+                        ? `${cat.color || "#7ad0ff"}33`
+                        : "rgba(255,255,255,0.06)",
+                      border: active
+                        ? `1.5px solid ${cat.color || "#7ad0ff"}88`
+                        : "1px solid rgba(255,255,255,0.15)",
+                      boxShadow: active ? `0 0 10px ${cat.color || "#7ad0ff"}30` : "none",
+                      opacity: active ? 1 : 0.65,
+                    }}
+                    aria-current={active ? "page" : undefined}
+                  >
+                    <CatIcon className="h-3 w-3 shrink-0" />
+                    {cat.name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           {loadingSubs ? (
             <div className="absolute inset-0 grid place-items-center text-white/70">
@@ -379,8 +408,7 @@ export function InteropExplorer() {
                   <span
                     className="absolute inset-[6%] rounded-full"
                     style={{
-                      border: `1.5px dashed ${(selected.color || "#7ad0ff")}88`,
-                      boxShadow: `0 0 30px ${(selected.color || "#7ad0ff")}44 inset`,
+                      border: `1px dashed ${(selected.color || "#7ad0ff")}55`,
                     }}
                   />
                   {subCategories.map((sub, i) => {
@@ -406,9 +434,11 @@ export function InteropExplorer() {
                           <span
                             className="grid h-12 w-12 place-items-center rounded-full text-white transition-transform hover:scale-110 sm:h-14 sm:w-14"
                             style={{
-                              background: `radial-gradient(circle at 38% 30%, #fff 0%, ${selected.color || "#7ad0ff"} 45%, rgba(8,4,40,0.9) 100%)`,
-                              border: active ? "2.5px solid #fff" : "2px solid rgba(255,255,255,0.6)",
-                              boxShadow: `0 0 16px ${(selected.color || "#7ad0ff")}aa`,
+                              background: `radial-gradient(circle at 40% 32%, rgba(255,255,255,0.14) 0%, ${selected.color || "#7ad0ff"}44 40%, rgba(8,4,40,0.88) 100%)`,
+                              border: active ? `2px solid ${selected.color || "#7ad0ff"}` : `1.5px solid ${(selected.color || "#7ad0ff")}66`,
+                              boxShadow: active
+                                ? `0 0 18px ${(selected.color || "#7ad0ff")}77`
+                                : `0 0 8px ${(selected.color || "#7ad0ff")}44`,
                             }}
                           >
                             <Sparkles className="h-4 w-4" />
@@ -434,10 +464,10 @@ export function InteropExplorer() {
                 <div
                   className="rounded-3xl px-5 py-5"
                   style={{
-                    background: "rgba(10,6,42,0.78)",
-                    border: `2px solid ${selected.color || "#7ad0ff"}`,
-                    boxShadow: `0 0 30px ${(selected.color || "#7ad0ff")}66`,
-                    backdropFilter: "blur(6px)",
+                    background: "rgba(8,5,28,0.82)",
+                    border: `1.5px solid ${(selected.color || "#7ad0ff")}66`,
+                    boxShadow: `0 0 20px ${(selected.color || "#7ad0ff")}33`,
+                    backdropFilter: "blur(8px)",
                   }}
                 >
                   {(() => {
