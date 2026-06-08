@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { MapPin, CalendarDays, Building2, Mail, ExternalLink, ChevronRight } from "lucide-react";
+import { MapPin, CalendarDays, Building2, Mail, ChevronRight } from "lucide-react";
 import { InteropExplorer } from "@/components/interop/interop-explorer";
 
 export const metadata: Metadata = {
@@ -160,61 +160,6 @@ export default function InteropPage() {
             </p>
           </div>
           <InteropExplorer />
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════
-          EVENT INFO
-      ══════════════════════════════════════════ */}
-      <section className="bg-white px-6 py-16 sm:px-12">
-        <div className="mx-auto max-w-5xl grid gap-10 sm:grid-cols-2">
-          <div>
-            <h2 className="mb-6 text-2xl font-black tracking-tight text-gray-900">開催概要</h2>
-            <table className="w-full text-sm">
-              <tbody>
-                {[
-                  ["名称",  "教育AIサミット × Interop Tokyo 2026"],
-                  ["会期",  "2026年6月10日（水）〜12日（金）"],
-                  ["時間",  "10:00–17:00（最終日 〜16:30）"],
-                  ["会場",  "幕張メッセ（千葉市美浜区）"],
-                  ["ブース","8A14（Education×AI ゾーン）"],
-                  ["入場",  "Interop Tokyo 2026 来場登録（無料）"],
-                ].map(([l, v]) => (
-                  <tr key={l} className="border-b border-gray-100">
-                    <td className="py-3 pr-4 align-top text-[11px] font-bold uppercase tracking-wide text-gray-400 w-14">{l}</td>
-                    <td className="py-3 text-gray-800 leading-snug">{v}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div>
-            <h2 className="mb-6 text-2xl font-black tracking-tight text-gray-900">アクセス</h2>
-            <div className="space-y-4 text-[13px]">
-              {[
-                { icon: "🚃", label: "JR・京葉線", body: "海浜幕張駅 南口より徒歩約5分" },
-                { icon: "🚍", label: "バス",       body: "幕張メッセ中央バス停 下車すぐ" },
-                { icon: "🚗", label: "車",         body: "幕張メッセ第1〜3駐車場（有料）" },
-              ].map((a) => (
-                <div key={a.label} className="flex gap-3">
-                  <span className="text-xl leading-none">{a.icon}</span>
-                  <div>
-                    <p className="font-bold text-gray-700">{a.label}</p>
-                    <p className="text-gray-500">{a.body}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <a
-              href="https://www.m-messe.co.jp/access/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-5 inline-flex items-center gap-1 text-[12px] text-sky-600 hover:underline"
-            >
-              幕張メッセ 公式アクセスページ <ExternalLink className="h-3 w-3" />
-            </a>
-          </div>
         </div>
       </section>
 
