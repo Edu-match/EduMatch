@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Bebas_Neue, Zen_Kaku_Gothic_New } from "next/font/google";
-import { CalendarDays, Building2, Mail, ChevronRight } from "lucide-react";
+import { CalendarDays, Building2, Mail, ChevronRight, Settings } from "lucide-react";
 import { InteropExplorer } from "@/components/interop/interop-explorer";
+import { getCurrentUserRole } from "@/app/_actions/user";
 
 const bebas   = Bebas_Neue({ weight: "400", subsets: ["latin"], display: "swap" });
 const zenKaku = Zen_Kaku_Gothic_New({ weight: ["700"], subsets: ["latin"], display: "swap" });
@@ -12,9 +14,22 @@ export const metadata: Metadata = {
     "Interop Tokyo 2026 教育AIサミット。議員会館・AI検定・エデュマッチ・AI部の展示・登壇・セミナー情報。会場：幕張メッセ。",
 };
 
-export default function InteropPage() {
+export default async function InteropPage() {
+  const role = await getCurrentUserRole();
+  const isAdmin = role === "ADMIN";
+
   return (
     <main className="min-h-screen bg-white text-gray-900">
+
+      {/* 管理者向けフローティングボタン（ADMINのみ表示） */}
+      {isAdmin && (
+        <Link
+          href="/admin/interop"
+          className="fixed bottom-6 right-6 z-50 inline-flex items-center gap-2 rounded-full bg-gray-900 px-5 py-3 text-sm font-bold text-white shadow-xl shadow-black/30 transition-transform hover:scale-105"
+        >
+          <Settings className="h-4 w-4" /> 管理者ページ
+        </Link>
+      )}
 
       {/* ══════════════════════════════════════════
           HERO — 流体波グラデーション + 2カラム

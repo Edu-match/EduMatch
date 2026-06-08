@@ -115,30 +115,20 @@ export function InteropExplorer() {
     [categories, categoryDiameter]
   );
 
-  // ── レベル2：サブカテゴリマップ（中心=選択カテゴリ + 放射状にサブ） ──
+  // ── レベル2：サブカテゴリマップ（親は繰り返さず、サブだけを円形表示） ──
   const subDiameter = useMemo(
-    () => computeBubbleDiameter(Math.max(subCategories.length + 1, 1)),
+    () => computeBubbleDiameter(Math.max(subCategories.length, 1)),
     [subCategories.length]
   );
   const subNodes: BubbleGraphNode[] = useMemo(() => {
     if (!selected) return [];
-    const center: BubbleGraphNode = {
-      id: `center-${selected.id}`,
-      label: selected.name,
-      sublabel: selected.description || undefined,
-      diameter: subDiameter.primary,
-      backgroundColor: selected.color || "#C9D4F6",
-      isPrimary: true,
-      icon: selected.isPrimary ? <Info className="h-5 w-5" /> : undefined,
-    };
-    const subs: BubbleGraphNode[] = subCategories.map((s) => ({
+    return subCategories.map((s) => ({
       id: s.id,
       label: s.name,
       sublabel: s.description || undefined,
       diameter: subDiameter.default,
       backgroundColor: selected.color || "#C9D4F6",
     }));
-    return [center, ...subs];
   }, [selected, subCategories, subDiameter]);
 
   return (
@@ -174,13 +164,23 @@ export function InteropExplorer() {
       {/* ===== サブカテゴリマップビュー ===== */}
       {selected && (
         <div className="space-y-3">
-          <button
-            type="button"
-            onClick={() => setSelected(null)}
-            className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm backdrop-blur transition-colors hover:bg-white/20"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" /> マップに戻る
-          </button>
+          <div className="flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={() => setSelected(null)}
+              className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm backdrop-blur transition-colors hover:bg-white/20"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" /> マップに戻る
+            </button>
+            <span className="flex items-center gap-2 text-sm font-bold text-white">
+              <span
+                className="inline-block h-3 w-3 rounded-full ring-2 ring-white/30"
+                style={{ background: selected.color || "#C9D4F6" }}
+                aria-hidden
+              />
+              {selected.name}
+            </span>
+          </div>
           <MapShell>
             {loadingSubs ? (
               <div className="flex h-full items-center justify-center">
@@ -194,7 +194,7 @@ export function InteropExplorer() {
               <BubbleGraphCanvas
                 nodes={subNodes}
                 connections={[]}
-                layoutMode="subcategory"
+                layoutMode="category"
                 className="h-full"
               />
             )}
