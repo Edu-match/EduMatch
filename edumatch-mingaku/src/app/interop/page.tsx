@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
-import { MapPin, CalendarDays, Building2, Mail, ChevronRight } from "lucide-react";
+import { Bebas_Neue } from "next/font/google";
+import { CalendarDays, Building2, Mail, ChevronRight } from "lucide-react";
 import { InteropExplorer } from "@/components/interop/interop-explorer";
+
+const bebas = Bebas_Neue({ weight: "400", subsets: ["latin"], display: "swap" });
 
 export const metadata: Metadata = {
   title: "教育AIサミット | Interop Tokyo 2026",
@@ -10,152 +13,168 @@ export const metadata: Metadata = {
 
 export default function InteropPage() {
   return (
-    <main className="min-h-screen bg-white font-sans antialiased">
+    <main className="min-h-screen bg-white text-gray-900">
 
       {/* ══════════════════════════════════════════
           HERO
       ══════════════════════════════════════════ */}
       <section
-        className="relative overflow-hidden"
-        style={{ minHeight: "520px", height: "65svh" }}
+        className="relative flex flex-col justify-end overflow-hidden"
+        style={{
+          minHeight: "100svh",
+          background: "linear-gradient(170deg, #01081c 0%, #030f38 40%, #071d70 80%, #0c2a96 100%)",
+        }}
       >
-        {/* 背景：CSS建物アート（/public/images/makuhari-hero.jpg があればそちらを使用） */}
+        {/* グリッドオーバーレイ */}
         <div
           aria-hidden
-          className="absolute inset-0"
-          style={{
-            background: "linear-gradient(165deg, #020b22 0%, #04174a 35%, #082880 65%, #0b3399 100%)",
-          }}
-        />
-        {/* ガラスファサード風グリッド */}
-        <div
-          aria-hidden
-          className="absolute inset-0 opacity-[0.06]"
+          className="pointer-events-none absolute inset-0"
           style={{
             backgroundImage:
-              "linear-gradient(rgba(180,210,255,1) 1px, transparent 1px)," +
-              "linear-gradient(90deg, rgba(180,210,255,1) 1px, transparent 1px)",
-            backgroundSize: "72px 72px",
+              "linear-gradient(rgba(100,150,255,0.07) 1px, transparent 1px)," +
+              "linear-gradient(90deg, rgba(100,150,255,0.07) 1px, transparent 1px)",
+            backgroundSize: "80px 80px",
           }}
         />
+
         {/* 建物シルエット */}
         <svg
           aria-hidden
-          className="absolute bottom-0 left-0 right-0 w-full opacity-[0.16]"
-          viewBox="0 0 1440 220"
+          className="absolute bottom-0 left-0 right-0 w-full"
+          viewBox="0 0 1440 300"
           preserveAspectRatio="none"
           xmlns="http://www.w3.org/2000/svg"
+          style={{ opacity: 0.12 }}
         >
-          <rect x="80"  y="40"  width="540" height="180" fill="#a0c0ff" />
-          <polygon points="80,40 0,110 0,220 80,220" fill="#8ab0f0" />
-          <rect x="400" y="0"  width="120" height="220" fill="#b0ccff" />
-          <rect x="640" y="70" width="360" height="150" fill="#90b8f8" />
-          <rect x="1000" y="110" width="440" height="110" fill="#7aa8f0" />
-          {Array.from({ length: 8 }).map((_, i) => (
-            <rect key={i} x={100 + i * 60} y="60" width="40" height="140" fill="none" stroke="#c0d8ff" strokeWidth="0.8" />
+          <rect x="0"   y="80"  width="480" height="220" fill="#90b8ff" />
+          <rect x="350" y="20"  width="100" height="280" fill="#a8caff" />
+          <rect x="480" y="100" width="340" height="200" fill="#80a8f0" />
+          <rect x="820" y="60"  width="200" height="240" fill="#9ab8f8" />
+          <rect x="1020" y="120" width="420" height="180" fill="#7898e8" />
+          {[0,1,2,3,4,5,6,7,8,9,10,11].map(i => (
+            <rect key={i} x={20 + i * 38} y="100" width="22" height="180" fill="none" stroke="#b0ccff" strokeWidth="0.6" />
           ))}
         </svg>
+
+        {/* ボトムフェード */}
         <div
           aria-hidden
-          className="absolute bottom-0 left-0 right-0 h-36"
-          style={{ background: "linear-gradient(to top, rgba(2,11,34,0.75) 0%, transparent 100%)" }}
+          className="pointer-events-none absolute bottom-0 left-0 right-0"
+          style={{ height: "40%", background: "linear-gradient(to top, #01081c 0%, transparent 100%)" }}
         />
 
-        {/* テキストオーバーレイ */}
-        <div className="relative z-10 flex h-full flex-col justify-end px-6 pb-12 sm:px-12 sm:pb-14">
-          <div className="mx-auto w-full max-w-5xl">
-            <div className="mb-3 flex flex-wrap items-center gap-2">
-              <span className="rounded border border-white/30 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white/70">
-                Interop Tokyo 2026
+        {/* テキストブロック */}
+        <div className="relative z-10 px-6 pb-16 sm:px-14 sm:pb-20 lg:pb-24">
+          <div className="mx-auto max-w-6xl">
+
+            {/* INTEROP TOKYO 2026 — 大きく目立つ扱い */}
+            <p
+              className={`${bebas.className} mb-4 text-[clamp(2.2rem,6vw,5rem)] leading-none tracking-wider`}
+              style={{ color: "rgba(100,160,255,0.85)" }}
+            >
+              Interop Tokyo 2026
+            </p>
+
+            {/* メインタイトル */}
+            <h1
+              className="text-[clamp(3.5rem,12vw,10rem)] font-black leading-[0.9] tracking-tighter text-white"
+            >
+              教育AI
+              <br />
+              サミット
+            </h1>
+
+            {/* サブコピー */}
+            <p className="mt-8 max-w-md text-[clamp(0.9rem,2vw,1.1rem)] leading-relaxed text-white/60">
+              生成AIで変わる教育の未来を体感せよ。<br />
+              現場・政策・産業が一堂に会す最前線。
+            </p>
+
+            {/* 日時・会場 — バッジなし、テキストのみ */}
+            <div className="mt-8 flex flex-wrap items-center gap-6 text-sm text-white/45">
+              <span className="flex items-center gap-1.5">
+                <CalendarDays className="h-4 w-4" />
+                2026年6月10日–12日
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Building2 className="h-4 w-4" />
+                幕張メッセ
               </span>
             </div>
-            <h1 className="text-[40px] font-black leading-none tracking-tighter text-white sm:text-[68px] lg:text-[80px]">
-              教育AI<wbr />サミット
-            </h1>
-            <p className="mt-4 max-w-lg text-[14px] leading-relaxed text-white/70 sm:text-base">
-              生成AIで変わる教育の未来を体感せよ。
-              現場・政策・産業が一堂に会す、教育×AIの最前線。
-            </p>
-            <div className="mt-5 flex flex-wrap gap-4 text-[13px]">
-              {[
-                { icon: <CalendarDays className="h-3.5 w-3.5" />, text: "2026年6月10日–12日" },
-                { icon: <Building2 className="h-3.5 w-3.5" />, text: "幕張メッセ" },
-                { icon: <MapPin className="h-3.5 w-3.5" />, text: "ブース 8A14" },
-              ].map((b) => (
-                <span key={b.text} className="inline-flex items-center gap-1.5 text-white/65">
-                  {b.icon} {b.text}
-                </span>
-              ))}
-            </div>
+
           </div>
         </div>
 
-        {/* 下端の斜めカット */}
+        {/* 斜めカット */}
         <div
           aria-hidden
           className="absolute bottom-0 left-0 right-0"
-          style={{ height: "60px", background: "white", clipPath: "polygon(0 100%, 100% 0, 100% 100%)" }}
+          style={{ height: "72px", background: "white", clipPath: "polygon(0 100%, 100% 0, 100% 100%)" }}
         />
       </section>
 
       {/* ══════════════════════════════════════════
-          OVERVIEW
+          MISSION — 白セクション
       ══════════════════════════════════════════ */}
-      <section className="bg-white px-6 py-14 sm:px-12">
-        <div className="mx-auto max-w-5xl">
-          <div className="grid gap-8 sm:grid-cols-3">
-            {[
-              { no: "01", title: "キッカケ格差をなくす", body: "生成AIの恩恵を受けられる学生・教員の偏りを打破。正しい理解と実践の場を提供します。" },
-              { no: "02", title: "現場・政策・産業を繋ぐ", body: "高校生・教員・議員・企業が一堂に会し、教育×AIの未来を共創します。" },
-              { no: "03", title: "体験型の展示・登壇", body: "講演・ライブデモ・AI検定体験など、来場者が直接触れる機会を用意します。" },
-            ].map((c) => (
-              <div key={c.no}>
-                <p className="mb-2 text-[11px] font-black tracking-[0.2em] text-sky-500">{c.no}</p>
-                <h3 className="mb-2 text-base font-bold text-gray-900">{c.title}</h3>
-                <p className="text-[13px] leading-relaxed text-gray-500">{c.body}</p>
-              </div>
-            ))}
-          </div>
+      <section className="bg-white px-6 py-20 sm:px-14 sm:py-28">
+        <div className="mx-auto max-w-4xl">
+          {/* プルクオート */}
+          <p className="mb-10 text-[clamp(1.4rem,3vw,2.2rem)] font-black leading-snug tracking-tight text-gray-900">
+            「生成AIが急速に普及する一方、<br className="hidden sm:block" />
+            教育現場での活用には<br className="hidden sm:block" />
+            大きなキッカケ格差が生まれている。」
+          </p>
+          <div className="w-12 border-t-2 border-gray-200 mb-8" />
+          <p className="max-w-2xl text-base leading-relaxed text-gray-500">
+            Interop Tokyo 2026 教育AIサミットは、その格差をなくすための場です。
+            高校生・教員・議員・企業が一堂に会し、
+            展示・登壇・ライブデモ・AI検定体験を通じて、教育×AIの「今」と「これから」を共創します。
+          </p>
         </div>
       </section>
 
       {/* ══════════════════════════════════════════
-          インフォメーション・マップ（中心）
+          インフォメーション・マップ
       ══════════════════════════════════════════ */}
       <section
         id="map"
-        className="relative overflow-hidden px-6 py-16 sm:px-12 sm:py-20"
-        style={{ background: "linear-gradient(160deg, #030e28 0%, #061e5a 50%, #092880 100%)" }}
+        className="relative overflow-hidden px-6 py-20 sm:px-14 sm:py-24"
+        style={{ background: "linear-gradient(160deg, #01081c 0%, #040f38 50%, #071d70 100%)" }}
       >
+        {/* 上カット */}
         <div
           aria-hidden
           className="absolute left-0 right-0 top-0"
-          style={{ height: "60px", background: "white", clipPath: "polygon(0 0, 100% 0, 0 100%)" }}
+          style={{ height: "72px", background: "white", clipPath: "polygon(0 0, 100% 0, 0 100%)" }}
         />
+        {/* 下カット */}
         <div
           aria-hidden
           className="absolute bottom-0 left-0 right-0"
-          style={{ height: "60px", background: "white", clipPath: "polygon(0 100%, 100% 0, 100% 100%)" }}
+          style={{ height: "72px", background: "white", clipPath: "polygon(0 100%, 100% 0, 100% 100%)" }}
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-[0.04]"
+          className="pointer-events-none absolute inset-0"
           style={{
-            backgroundImage:
-              "linear-gradient(rgba(180,210,255,1) 1px, transparent 1px)," +
-              "linear-gradient(90deg, rgba(180,210,255,1) 1px, transparent 1px)",
-            backgroundSize: "48px 48px",
+            backgroundImage: "radial-gradient(rgba(120,180,255,0.25) 1px, transparent 1px)",
+            backgroundSize: "36px 36px",
+            maskImage: "radial-gradient(ellipse 75% 65% at 50% 50%, #000 30%, transparent 100%)",
+            WebkitMaskImage: "radial-gradient(ellipse 75% 65% at 50% 50%, #000 30%, transparent 100%)",
           }}
         />
-        <div className="relative z-10 mx-auto max-w-5xl">
-          <div className="mb-10 text-center">
-            <p className="mb-2 text-[10px] font-black uppercase tracking-[0.3em] text-sky-400">
+
+        <div className="relative z-10 mx-auto max-w-5xl pt-6">
+          <div className="mb-12">
+            <p
+              className={`${bebas.className} mb-1 text-[clamp(0.7rem,1.5vw,0.85rem)] tracking-[0.35em] text-blue-400`}
+            >
               Information Map
             </p>
-            <h2 className="text-3xl font-black tracking-tight text-white sm:text-4xl">
+            <h2 className="text-[clamp(1.8rem,4vw,3rem)] font-black tracking-tight text-white">
               インフォメーション・マップ
             </h2>
-            <p className="mt-3 text-[13px] text-white/50">
+            <p className="mt-2 text-sm text-white/40">
               カテゴリを選択 → サブカテゴリ → 案内・タイムテーブルへ
             </p>
           </div>
@@ -166,42 +185,55 @@ export default function InteropPage() {
       {/* ══════════════════════════════════════════
           CONTACT
       ══════════════════════════════════════════ */}
-      <section
-        className="relative overflow-hidden px-6 py-16 text-white sm:px-12 sm:py-20"
-        style={{ background: "linear-gradient(160deg, #030e28 0%, #06174a 100%)" }}
-      >
-        <div
-          aria-hidden
-          className="absolute left-0 right-0 top-0"
-          style={{ height: "60px", background: "white", clipPath: "polygon(0 0, 100% 0, 0 100%)" }}
-        />
-        <div className="relative z-10 mx-auto max-w-5xl pt-4">
-          <h2 className="mb-2 text-2xl font-black tracking-tight sm:text-3xl">お問い合わせ</h2>
-          <p className="mb-8 text-[14px] text-white/60">
+      <section className="bg-white px-6 py-20 sm:px-14">
+        <div className="mx-auto max-w-4xl">
+          <h2 className="mb-2 text-[clamp(1.6rem,3.5vw,2.5rem)] font-black tracking-tight text-gray-900">
+            お問い合わせ
+          </h2>
+          <p className="mb-8 text-sm text-gray-400">
             取材・協賛・登壇ご依頼はお気軽にどうぞ。
           </p>
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-wrap gap-3">
             <a
               href="mailto:info@edu-match.com"
-              className="inline-flex items-center gap-2 rounded border border-white/20 px-5 py-2.5 text-sm font-semibold text-white/85 transition-colors hover:bg-white/10"
+              className="inline-flex items-center gap-2 rounded-none border border-gray-300 px-6 py-3 text-sm font-semibold text-gray-700 transition-colors hover:border-gray-900 hover:text-gray-900"
             >
-              <Mail className="h-4 w-4" /> info@edu-match.com
+              <Mail className="h-4 w-4" />
+              info@edu-match.com
             </a>
             <a
               href="https://edu-match.com/contact"
-              className="inline-flex items-center gap-2 rounded bg-white px-5 py-2.5 text-sm font-bold text-[#06174a] transition-opacity hover:opacity-90"
+              className="inline-flex items-center gap-2 rounded-none bg-gray-900 px-6 py-3 text-sm font-bold text-white transition-opacity hover:opacity-80"
             >
-              お問い合わせフォーム <ChevronRight className="h-4 w-4" />
+              お問い合わせフォーム
+              <ChevronRight className="h-4 w-4" />
             </a>
           </div>
         </div>
       </section>
 
-      {/* FOOTER */}
-      <footer className="px-6 py-8 text-center" style={{ background: "#020b20" }}>
-        <p className="text-xs font-semibold text-white/70">教育AIサミット × Interop Tokyo 2026</p>
-        <p className="mt-1 text-[11px] text-white/40">青楓館高等学院 / みんがく（EduMatch） / AI検定協会 / AI部</p>
-        <p className="mt-4 text-[10px] text-white/25">© 2026 EduMatch / みんがく</p>
+      {/* ══════════════════════════════════════════
+          FOOTER
+      ══════════════════════════════════════════ */}
+      <footer
+        className="px-6 py-10"
+        style={{ background: "#01081c" }}
+      >
+        <div className="mx-auto max-w-6xl flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p
+              className={`${bebas.className} text-xl tracking-widest text-white/70`}
+            >
+              Interop Tokyo 2026
+            </p>
+            <p className="text-[11px] font-black tracking-tight text-white/40">
+              教育AIサミット
+            </p>
+          </div>
+          <p className="text-[11px] text-white/25">
+            青楓館高等学院 / みんがく / AI検定協会 / AI部 &nbsp;© 2026
+          </p>
+        </div>
       </footer>
     </main>
   );
