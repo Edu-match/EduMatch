@@ -1,0 +1,27 @@
+[    1725ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/06j-_next_dist_0_ujkl8._.js:2431
+[    1766ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/06j-_next_dist_0_ujkl8._.js:2431
+[    1880ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/06j-_next_dist_0_ujkl8._.js:2431
+[    2393ms] [LOG] [Fast Refresh] done in 614ms @ http://localhost:3000/_next/static/chunks/06j-_next_dist_0_ujkl8._.js:2431
+[    4647ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/api/forum/rooms:0
+[    4882ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/api/forum/rooms:0
+[    5264ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://localhost:3000/api/forum/categories:0
+[    5381ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/api/forum/sub-categories:0
+[    5574ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/api/forum/rooms:0
+[    5905ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://localhost:3000/api/forum/categories:0
+[    6139ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/api/forum/sub-categories:0
+[    6263ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/api/forum/rooms:0
+[   20934ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/06j-_next_dist_0_ujkl8._.js:2431
+[   21051ms] [LOG] [Fast Refresh] done in 165ms @ http://localhost:3000/_next/static/chunks/06j-_next_dist_0_ujkl8._.js:2431
+[   26732ms] [ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://localhost:3000/api/forum/categories:0
+[   42006ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/06j-_next_dist_0_ujkl8._.js:2431
+[   42059ms] [LOG] [Fast Refresh] done in 97ms @ http://localhost:3000/_next/static/chunks/06j-_next_dist_0_ujkl8._.js:2431
+[   53749ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/06j-_next_dist_0_ujkl8._.js:2431
+[   53803ms] [LOG] [Fast Refresh] done in 94ms @ http://localhost:3000/_next/static/chunks/06j-_next_dist_0_ujkl8._.js:2431
+[   68608ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/06j-_next_dist_0_ujkl8._.js:2431
+[   68681ms] [LOG] [Fast Refresh] done in 119ms @ http://localhost:3000/_next/static/chunks/06j-_next_dist_0_ujkl8._.js:2431
+[   69959ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/06j-_next_dist_0_ujkl8._.js:2431
+[   69987ms] [LOG] [Fast Refresh] done in 60ms @ http://localhost:3000/_next/static/chunks/06j-_next_dist_0_ujkl8._.js:2431
+[   77084ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/06j-_next_dist_0_ujkl8._.js:2431
+[   77139ms] [LOG] [Fast Refresh] done in 96ms @ http://localhost:3000/_next/static/chunks/06j-_next_dist_0_ujkl8._.js:2431
+[   92401ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/06j-_next_dist_0_ujkl8._.js:2431
+[   92429ms] [LOG] [Fast Refresh] done in 75ms @ http://localhost:3000/_next/static/chunks/06j-_next_dist_0_ujkl8._.js:2431
