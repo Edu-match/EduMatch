@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { Bebas_Neue, Noto_Serif_JP } from "next/font/google";
+import { Bebas_Neue, Shippori_Mincho } from "next/font/google";
 import { CalendarDays, Building2, Mail, ChevronRight } from "lucide-react";
 import { InteropExplorer } from "@/components/interop/interop-explorer";
 
 const bebas = Bebas_Neue({ weight: "400", subsets: ["latin"], display: "swap" });
-const serifJP = Noto_Serif_JP({ weight: ["900"], subsets: ["latin"], display: "swap" });
+const shippori = Shippori_Mincho({ weight: ["500"], subsets: ["latin"], display: "swap" });
 
 export const metadata: Metadata = {
   title: "教育AIサミット | Interop Tokyo 2026",
@@ -78,7 +78,7 @@ export default function InteropPage() {
 
             {/* メインタイトル */}
             <h1
-              className={`${serifJP.className} text-[clamp(3.5rem,12vw,10rem)] leading-[0.92] tracking-tight text-white`}
+              className={`${shippori.className} text-[clamp(3.5rem,12vw,10rem)] leading-[0.95] tracking-[0.05em] text-white`}
             >
               教育AI
               <br />
