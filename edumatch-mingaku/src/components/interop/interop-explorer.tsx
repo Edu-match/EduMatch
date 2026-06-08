@@ -10,10 +10,12 @@ import {
   Info,
   Landmark,
   Loader2,
+  MessageCircle,
   Network,
   Sparkles,
   type LucideIcon,
 } from "lucide-react";
+import { InteropBoardPanel } from "@/components/interop/interop-board-panel";
 
 type Category = {
   id: string;
@@ -44,27 +46,21 @@ function iconFor(slug: string): LucideIcon {
   return ICONS[slug] ?? Sparkles;
 }
 
-/** 演出CSS（洗練されたダークテック） */
+/** 演出CSS（静かなダーク・星図） */
 const FX_CSS = `
   @keyframes itmFloat {
     0%,100% { transform: translate(-50%, -50%) translateY(0); }
-    50%      { transform: translate(-50%, -50%) translateY(-7px); }
+    50%      { transform: translate(-50%, -50%) translateY(-6px); }
   }
-  @keyframes itmPulseRing {
-    0%   { transform: scale(0.88); opacity: 0.6; }
-    70%  { transform: scale(1.38); opacity: 0; }
-    100% { transform: scale(1.38); opacity: 0; }
+  @keyframes itmFloatY {
+    0%,100% { transform: translateY(0); }
+    50%      { transform: translateY(-5px); }
   }
-  @keyframes itmDash { to { stroke-dashoffset: -28; } }
-  @keyframes itmSpinCCW { from { transform: rotate(0deg); }   to { transform: rotate(-360deg); } }
-  @keyframes itmSpinCW  { from { transform: rotate(0deg); }   to { transform: rotate(360deg); } }
-  @keyframes itmBob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(5px); } }
-  @keyframes itmTwinkle { 0%,100% { opacity: 0.15; } 50% { opacity: 0.7; } }
-  @keyframes itmHueGlow {
-    0%,100% { filter: drop-shadow(0 0 8px var(--g)); }
-    50%      { filter: drop-shadow(0 0 16px var(--g)); }
-  }
+  @keyframes itmDash { to { stroke-dashoffset: -22; } }
+  @keyframes itmTwinkle { 0%,100% { opacity: 0.12; } 50% { opacity: 0.6; } }
+  @keyframes itmBob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
   @keyframes itmFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes itmHalo { 0%,100% { opacity: 0.35; } 50% { opacity: 0.6; } }
 `;
 
 /* 中心からの配置（%座標、コネクタSVGと共有） */
@@ -75,30 +71,29 @@ function satXY(i: number, total: number) {
   return { x: 50 + RX * Math.cos(ang), y: 50 + RY * Math.sin(ang) };
 }
 
-/** 背景（落ち着いたダーク宇宙） */
-function CyberBackdrop() {
+/** 背景（静かなダーク宇宙・星図） */
+function SpaceBackdrop() {
   const stars = useMemo(
     () =>
-      Array.from({ length: 56 }, () => ({
+      Array.from({ length: 64 }, () => ({
         left: Math.random() * 100,
-        top: Math.random() * 85,
-        d: 1 + Math.random() * 1.8,
-        delay: Math.random() * 5,
-        dur: 3 + Math.random() * 4,
+        top: Math.random() * 100,
+        d: 0.8 + Math.random() * 1.6,
+        delay: Math.random() * 6,
+        dur: 3.5 + Math.random() * 4,
       })),
     []
   );
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      {/* ベースグラデ */}
+      {/* ベースグラデ（深い紺〜藍） */}
       <div
         className="absolute inset-0"
         style={{
           background: [
-            "radial-gradient(ellipse 65% 50% at 50% 35%, rgba(80,30,170,0.28) 0%, transparent 60%)",
-            "radial-gradient(ellipse 80% 55% at 10% 10%, rgba(0,160,220,0.18) 0%, transparent 55%)",
-            "radial-gradient(ellipse 70% 55% at 92% 12%, rgba(200,30,140,0.16) 0%, transparent 55%)",
-            "linear-gradient(180deg, #07021f 0%, #090428 50%, #0e0840 100%)",
+            "radial-gradient(ellipse 60% 45% at 50% 40%, rgba(70,90,180,0.16) 0%, transparent 65%)",
+            "radial-gradient(ellipse 70% 50% at 15% 12%, rgba(40,120,170,0.12) 0%, transparent 60%)",
+            "linear-gradient(180deg, #060816 0%, #080b22 55%, #0a0e2e 100%)",
           ].join(", "),
         }}
       />
@@ -113,27 +108,20 @@ function CyberBackdrop() {
             width: s.d,
             height: s.d,
             animation: `itmTwinkle ${s.dur}s ease-in-out ${s.delay}s infinite`,
-            opacity: 0.4,
+            opacity: 0.3,
           }}
         />
       ))}
-      {/* 下部のほのかな境界光 */}
-      <div
-        className="absolute inset-x-0 bottom-0 h-[30%]"
-        style={{
-          background: "linear-gradient(to top, rgba(60,20,120,0.35) 0%, transparent 100%)",
-        }}
-      />
       {/* 周辺ビネット */}
       <div
         className="absolute inset-0"
-        style={{ background: "radial-gradient(ellipse 85% 85% at 50% 48%, transparent 60%, rgba(4,1,18,0.55) 100%)" }}
+        style={{ background: "radial-gradient(ellipse 90% 90% at 50% 48%, transparent 62%, rgba(3,5,16,0.6) 100%)" }}
       />
     </div>
   );
 }
 
-/* ════════ カテゴリ・ノード（HTMLポッド） ════════ */
+/* ════════ カテゴリ・ノード ════════ */
 function CategoryPod({
   cat,
   style,
@@ -150,61 +138,55 @@ function CategoryPod({
   onClick: () => void;
 }) {
   const Icon = iconFor(cat.slug);
-  const glow = cat.color || "#7ad0ff";
+  const glow = cat.color || "#9fb4e8";
   return (
     <button
       type="button"
       onClick={onClick}
       className="group absolute z-10 flex flex-col items-center focus:outline-none"
-      style={{ ...style, animation: `itmFloat 5s ease-in-out ${delay}s infinite` }}
+      style={{ ...style, animation: `itmFloat 6s ease-in-out ${delay}s infinite` }}
       aria-label={`${cat.name} を開く`}
     >
       <span className="relative grid place-items-center" style={{ width: size, height: size }}>
-        {/* パルスリング（控えめ） */}
+        {/* ほのかなハロー */}
         <span
-          className="absolute inset-0 rounded-full"
+          className="absolute rounded-full"
           style={{
-            border: `1.5px solid ${glow}`,
-            animation: `itmPulseRing 3.8s ease-out ${delay}s infinite`,
-            opacity: 0.7,
+            inset: "-14%",
+            background: `radial-gradient(circle, ${glow}33 0%, transparent 70%)`,
+            animation: `itmHalo 4.5s ease-in-out ${delay}s infinite`,
           }}
         />
-        {/* ポッド本体 */}
+        {/* ポッド本体（ガラス円） */}
         <span
-          className="relative grid h-full w-full place-items-center rounded-full transition-transform duration-300 group-hover:scale-108 group-active:scale-95"
+          className="relative grid h-full w-full place-items-center rounded-full transition-transform duration-300 group-hover:scale-105 group-active:scale-95"
           style={{
-            background: `radial-gradient(circle at 40% 32%, rgba(255,255,255,0.18) 0%, ${glow}55 40%, rgba(8,4,40,0.88) 100%)`,
-            border: `1.5px solid ${glow}88`,
-            boxShadow: `0 0 20px ${glow}44, inset 0 1px 1px rgba(255,255,255,0.12)`,
-            // @ts-expect-error CSS var
-            "--g": glow,
-            animation: `itmHueGlow 4.5s ease-in-out ${delay}s infinite`,
+            background: `radial-gradient(circle at 38% 30%, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.03) 45%, rgba(10,14,40,0.85) 100%)`,
+            border: `1px solid ${glow}55`,
+            boxShadow: `0 4px 24px rgba(0,0,0,0.35), inset 0 1px 1px rgba(255,255,255,0.10)`,
           }}
         >
           <Icon
-            className="text-white/90"
-            style={{ width: size * (center ? 0.34 : 0.32), height: size * (center ? 0.34 : 0.32) }}
-            strokeWidth={2}
+            className="text-white/85"
+            style={{ width: size * (center ? 0.34 : 0.32), height: size * (center ? 0.34 : 0.32), color: glow }}
+            strokeWidth={1.8}
           />
         </span>
       </span>
-      {/* ラベルチップ */}
+      {/* ラベル */}
       <span className="mt-2 flex flex-col items-center">
         <span
-          className="rounded-full px-3 py-1 text-center font-bold leading-tight text-white backdrop-blur-sm"
+          className="rounded-full px-3 py-1 text-center font-bold leading-tight text-white/90 backdrop-blur-sm"
           style={{
             fontSize: center ? "clamp(13px,1.5vmin,17px)" : "clamp(11px,1.3vmin,15px)",
-            background: "rgba(8,5,32,0.82)",
-            border: `1px solid ${glow}55`,
-            boxShadow: `0 0 8px ${glow}33`,
+            background: "rgba(8,11,32,0.7)",
+            border: "1px solid rgba(255,255,255,0.1)",
           }}
         >
           {cat.name}
         </span>
-        <span
-          className="mt-1 inline-flex items-center gap-0.5 rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold tracking-wide text-white/75 transition group-hover:bg-white/20 group-hover:text-white/95"
-        >
-          {center ? "ここから探索 ▶" : "タップ ▶"}
+        <span className="mt-1 inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[10px] font-medium tracking-wide text-white/45 transition group-hover:text-white/70">
+          {center ? "ここから探索" : "タップ"}
         </span>
       </span>
     </button>
@@ -217,7 +199,7 @@ export function InteropExplorer() {
   const [loadingCats, setLoadingCats] = useState(true);
   const [loadingSubs, setLoadingSubs] = useState(false);
   const [selected, setSelected] = useState<Category | null>(null);
-  const [selectedSub, setSelectedSub] = useState<SubCategory | null>(null);
+  const [boardSub, setBoardSub] = useState<SubCategory | null>(null);
 
   // 画面幅に応じてポッドサイズを調整
   const [vw, setVw] = useState(1280);
@@ -227,8 +209,8 @@ export function InteropExplorer() {
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
-  const SAT_SIZE = vw < 480 ? 84 : vw < 768 ? 100 : 120;
-  const CENTER_SIZE = vw < 480 ? 120 : vw < 768 ? 144 : 172;
+  const SAT_SIZE = vw < 480 ? 82 : vw < 768 ? 98 : 116;
+  const CENTER_SIZE = vw < 480 ? 116 : vw < 768 ? 140 : 168;
 
   useEffect(() => {
     let cancelled = false;
@@ -241,10 +223,9 @@ export function InteropExplorer() {
   }, []);
 
   useEffect(() => {
-    if (!selected) { setSubCategories([]); setSelectedSub(null); return; }
+    if (!selected) { setSubCategories([]); return; }
     let cancelled = false;
     setLoadingSubs(true);
-    setSelectedSub(null);
     fetch(`/api/interop/sub-categories?categoryId=${selected.id}`)
       .then((r) => r.json())
       .then((d) => { if (!cancelled && Array.isArray(d.subCategories)) setSubCategories(d.subCategories); })
@@ -255,27 +236,28 @@ export function InteropExplorer() {
 
   const primary = categories.find((c) => c.isPrimary) ?? null;
   const satellites = categories.filter((c) => !c.isPrimary);
+  const accent = selected?.color || "#9fb4e8";
 
   return (
     <div className="absolute inset-0 overflow-hidden">
       <style>{FX_CSS}</style>
-      <CyberBackdrop />
+      <SpaceBackdrop />
 
       {/* ════════ ローディング / 空 ════════ */}
       {loadingCats ? (
-        <div className="absolute inset-0 grid place-items-center text-white/70">
+        <div className="absolute inset-0 grid place-items-center text-white/60">
           <span className="flex items-center gap-2">
             <Loader2 className="h-6 w-6 animate-spin" /> マップを起動中…
           </span>
         </div>
       ) : categories.length === 0 ? (
-        <div className="absolute inset-0 grid place-items-center px-8 text-center text-sm text-white/70">
+        <div className="absolute inset-0 grid place-items-center px-8 text-center text-sm text-white/60">
           まだカテゴリがありません。管理画面（/admin/interop）から追加してください。
         </div>
       ) : !selected ? (
         /* ════════ レベル1：カテゴリマップ ════════ */
         <div className="absolute inset-0">
-          {/* コネクタ（中心→各エリアのネオン光路） */}
+          {/* コネクタ */}
           <svg
             className="absolute inset-0 h-full w-full"
             viewBox="0 0 100 100"
@@ -288,18 +270,18 @@ export function InteropExplorer() {
                 <line
                   key={cat.id}
                   x1="50" y1="50" x2={x} y2={y}
-                  stroke={cat.color || "#7ad0ff"}
-                  strokeWidth="1.5"
+                  stroke={cat.color || "#9fb4e8"}
+                  strokeWidth="1"
                   strokeLinecap="round"
-                  strokeDasharray="3 7"
+                  strokeDasharray="2 8"
                   vectorEffect="non-scaling-stroke"
-                  style={{ animation: `itmDash 1.8s linear infinite`, opacity: 0.45 }}
+                  style={{ animation: `itmDash 2.6s linear infinite`, opacity: 0.3 }}
                 />
               );
             })}
           </svg>
 
-          {/* サテライト（各コンテンツ） */}
+          {/* サテライト */}
           {satellites.map((cat, i) => {
             const { x, y } = satXY(i, satellites.length);
             return (
@@ -308,13 +290,13 @@ export function InteropExplorer() {
                 cat={cat}
                 size={SAT_SIZE}
                 style={{ left: `${x}%`, top: `${y}%`, transform: "translate(-50%,-50%)" }}
-                delay={i * 0.4}
+                delay={i * 0.5}
                 onClick={() => setSelected(cat)}
               />
             );
           })}
 
-          {/* 中心：インフォメーション（少し大きめ） */}
+          {/* 中心：インフォメーション */}
           {primary && (
             <CategoryPod
               cat={primary}
@@ -326,57 +308,52 @@ export function InteropExplorer() {
             />
           )}
 
-          {/* 初見ユーザー向けガイド */}
+          {/* 初見ガイド */}
           <div className="pointer-events-none absolute inset-x-0 top-3 z-20 flex justify-center px-4">
             <div
-              className="flex items-center gap-2 rounded-full px-4 py-2 text-center text-[12px] font-bold text-white/80 sm:text-sm"
+              className="flex items-center gap-2 rounded-full px-4 py-2 text-center text-[12px] font-medium text-white/70 sm:text-sm"
               style={{
-                background: "rgba(10,6,38,0.75)",
-                border: "1px solid rgba(180,200,255,0.25)",
+                background: "rgba(8,11,32,0.7)",
+                border: "1px solid rgba(255,255,255,0.12)",
                 backdropFilter: "blur(6px)",
               }}
             >
-              <Hand className="h-4 w-4 shrink-0 text-cyan-300" style={{ animation: "itmBob 1.4s ease-in-out infinite" }} />
-              光るエリアをタップして、セミナー・展示・登壇情報を探検しよう
+              <Hand className="h-4 w-4 shrink-0 text-white/50" style={{ animation: "itmBob 1.6s ease-in-out infinite" }} />
+              気になるエリアをタップして、セミナー・展示・登壇情報を探そう
             </div>
           </div>
         </div>
       ) : (
-        /* ════════ レベル2：サブカテゴリ（円周配置・反時計回り） ════════ */
+        /* ════════ レベル2：サブカテゴリ（静止した星座配置） ════════ */
         <div className="absolute inset-0">
           {/* 戻る */}
           <button
             type="button"
             onClick={() => setSelected(null)}
-            className="absolute left-4 top-4 z-30 inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/8 px-3.5 py-1.5 text-xs font-bold text-white/80 shadow backdrop-blur transition-colors hover:bg-white/18 hover:text-white"
+            className="absolute left-4 top-4 z-30 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.06] px-3.5 py-1.5 text-xs font-bold text-white/75 backdrop-blur transition-colors hover:bg-white/12 hover:text-white"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> マップに戻る
           </button>
 
           {/* カテゴリナビ（下部タブ） */}
           <div
-            className="absolute inset-x-0 bottom-14 z-30 flex justify-center px-4"
+            className="absolute inset-x-0 bottom-6 z-30 flex justify-center px-4"
             style={{ animation: "itmFadeIn 0.3s ease-out both" }}
           >
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-full">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1">
               {categories.map((cat) => {
                 const CatIcon = iconFor(cat.slug);
-                const active = selected?.id === cat.id;
+                const active = selected.id === cat.id;
                 return (
                   <button
                     key={cat.id}
                     type="button"
-                    onClick={() => { setSelected(cat); setSelectedSub(null); }}
+                    onClick={() => setSelected(cat)}
                     className="shrink-0 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold text-white transition-all focus:outline-none"
                     style={{
-                      background: active
-                        ? `${cat.color || "#7ad0ff"}33`
-                        : "rgba(255,255,255,0.06)",
-                      border: active
-                        ? `1.5px solid ${cat.color || "#7ad0ff"}88`
-                        : "1px solid rgba(255,255,255,0.15)",
-                      boxShadow: active ? `0 0 10px ${cat.color || "#7ad0ff"}30` : "none",
-                      opacity: active ? 1 : 0.65,
+                      background: active ? `${cat.color || "#9fb4e8"}26` : "rgba(255,255,255,0.05)",
+                      border: active ? `1px solid ${cat.color || "#9fb4e8"}77` : "1px solid rgba(255,255,255,0.12)",
+                      opacity: active ? 1 : 0.6,
                     }}
                     aria-current={active ? "page" : undefined}
                   >
@@ -389,69 +366,58 @@ export function InteropExplorer() {
           </div>
 
           {loadingSubs ? (
-            <div className="absolute inset-0 grid place-items-center text-white/70">
+            <div className="absolute inset-0 grid place-items-center text-white/60">
               <Loader2 className="h-6 w-6 animate-spin" />
             </div>
           ) : (
             <>
-              {/* 回転リング */}
+              {/* 星座リング（静止） */}
               <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
                 <div
                   className="relative"
-                  style={{
-                    width: "min(74vmin, 560px)",
-                    height: "min(74vmin, 560px)",
-                    animation: "itmSpinCCW 60s linear infinite",
-                  }}
+                  style={{ width: "min(76vmin, 580px)", height: "min(76vmin, 580px)" }}
                 >
-                  {/* リングの軌道線 */}
+                  {/* 軌道線 */}
                   <span
-                    className="absolute inset-[6%] rounded-full"
-                    style={{
-                      border: `1px dashed ${(selected.color || "#7ad0ff")}55`,
-                    }}
+                    className="absolute inset-[8%] rounded-full"
+                    style={{ border: `1px dashed ${accent}40` }}
                   />
                   {subCategories.map((sub, i) => {
-                    const ang = (360 / subCategories.length) * i;
+                    const ang = (360 / Math.max(subCategories.length, 1)) * i;
                     const a = (ang - 90) * (Math.PI / 180);
-                    const r = 47; // % of ring
+                    const r = 46;
                     const left = 50 + r * Math.cos(a);
                     const top = 50 + r * Math.sin(a);
-                    const active = selectedSub?.id === sub.id;
                     return (
                       <button
                         key={sub.id}
                         type="button"
-                        onClick={() => setSelectedSub(active ? null : sub)}
-                        className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center focus:outline-none"
-                        style={{ left: `${left}%`, top: `${top}%` }}
+                        onClick={() => setBoardSub(sub)}
+                        className="group absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center focus:outline-none"
+                        style={{
+                          left: `${left}%`,
+                          top: `${top}%`,
+                          animation: `itmFloatY ${5 + (i % 3)}s ease-in-out ${i * 0.3}s infinite`,
+                        }}
                       >
-                        {/* ラベル本体は逆回転で正立させる */}
                         <span
-                          className="flex flex-col items-center"
-                          style={{ animation: "itmSpinCW 60s linear infinite" }}
+                          className="grid h-14 w-14 place-items-center rounded-full text-white transition-transform group-hover:scale-110 sm:h-16 sm:w-16"
+                          style={{
+                            background: `radial-gradient(circle at 40% 32%, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.03) 45%, rgba(10,14,40,0.88) 100%)`,
+                            border: `1px solid ${accent}66`,
+                            boxShadow: `0 4px 20px rgba(0,0,0,0.35)`,
+                          }}
                         >
-                          <span
-                            className="grid h-12 w-12 place-items-center rounded-full text-white transition-transform hover:scale-110 sm:h-14 sm:w-14"
-                            style={{
-                              background: `radial-gradient(circle at 40% 32%, rgba(255,255,255,0.14) 0%, ${selected.color || "#7ad0ff"}44 40%, rgba(8,4,40,0.88) 100%)`,
-                              border: active ? `2px solid ${selected.color || "#7ad0ff"}` : `1.5px solid ${(selected.color || "#7ad0ff")}66`,
-                              boxShadow: active
-                                ? `0 0 18px ${(selected.color || "#7ad0ff")}77`
-                                : `0 0 8px ${(selected.color || "#7ad0ff")}44`,
-                            }}
-                          >
-                            <Sparkles className="h-4 w-4" />
-                          </span>
-                          <span
-                            className="mt-1.5 max-w-[110px] rounded-full px-2.5 py-0.5 text-center text-[11px] font-bold leading-tight text-white shadow"
-                            style={{
-                              background: "rgba(10,6,42,0.82)",
-                              border: `1px solid ${(selected.color || "#7ad0ff")}aa`,
-                            }}
-                          >
-                            {sub.name}
-                          </span>
+                          <MessageCircle className="h-5 w-5" style={{ color: accent }} strokeWidth={1.8} />
+                        </span>
+                        <span
+                          className="mt-2 max-w-[120px] rounded-full px-2.5 py-0.5 text-center text-[11px] font-bold leading-tight text-white/90"
+                          style={{
+                            background: "rgba(8,11,32,0.78)",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                          }}
+                        >
+                          {sub.name}
                         </span>
                       </button>
                     );
@@ -459,39 +425,41 @@ export function InteropExplorer() {
                 </div>
               </div>
 
-              {/* 中心ハブ：カテゴリ or 選択中サブの詳細 */}
-              <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 w-[min(40vmin,260px)] -translate-x-1/2 -translate-y-1/2 text-center">
+              {/* 中心ハブ：カテゴリ名＋案内 */}
+              <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 w-[min(42vmin,280px)] -translate-x-1/2 -translate-y-1/2 text-center">
                 <div
                   className="rounded-3xl px-5 py-5"
                   style={{
-                    background: "rgba(8,5,28,0.82)",
-                    border: `1.5px solid ${(selected.color || "#7ad0ff")}66`,
-                    boxShadow: `0 0 20px ${(selected.color || "#7ad0ff")}33`,
+                    background: "rgba(8,11,32,0.8)",
+                    border: `1px solid ${accent}55`,
+                    boxShadow: `0 0 24px ${accent}22`,
                     backdropFilter: "blur(8px)",
                   }}
                 >
                   {(() => {
                     const Icon = iconFor(selected.slug);
-                    return <Icon className="mx-auto mb-2 h-7 w-7 text-white" />;
+                    return <Icon className="mx-auto mb-2 h-7 w-7" style={{ color: accent }} strokeWidth={1.8} />;
                   })()}
-                  <p className="text-base font-bold text-white">
-                    {selectedSub ? selectedSub.name : selected.name}
+                  <p className="text-base font-bold text-white">{selected.name}</p>
+                  <p className="mt-1.5 text-[12px] leading-relaxed text-white/55">
+                    {subCategories.length === 0
+                      ? "トピックは準備中です。"
+                      : "まわりのトピックをタップすると、掲示板が開きます。"}
                   </p>
-                  <p className="mt-1 text-[12px] leading-relaxed text-white/70">
-                    {selectedSub
-                      ? selectedSub.description || "詳細は会場・公式でご案内します。"
-                      : selected.description || "まわりのアイコンをタップ"}
-                  </p>
-                  {subCategories.length === 0 && (
-                    <p className="mt-2 text-[11px] text-white/50">
-                      サブカテゴリは準備中です。
-                    </p>
-                  )}
                 </div>
               </div>
             </>
           )}
         </div>
+      )}
+
+      {/* ════════ 掲示板パネル ════════ */}
+      {boardSub && (
+        <InteropBoardPanel
+          sub={boardSub}
+          accent={accent}
+          onClose={() => setBoardSub(null)}
+        />
       )}
     </div>
   );

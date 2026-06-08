@@ -491,8 +491,26 @@ model InteropSubCategory {
   is_active    Boolean         @default(true)
   created_at   DateTime        @default(now()) @db.Timestamptz(6)
   updated_at   DateTime        @updatedAt @db.Timestamptz(6)
+  posts        InteropPost[]
 
   @@map("interop_sub_categories")
+}
+
+/// Interop特設ページのサブカテゴリ掲示板（来場者が投稿。ログイン不要）
+model InteropPost {
+  id              String             @id @default(uuid()) @db.Uuid
+  sub_category_id String             @db.Uuid
+  subCategory     InteropSubCategory @relation(fields: [sub_category_id], references: [id], onDelete: Cascade)
+  /// 投稿者の表示名（未ログインの来場者が入力。空なら匿名）
+  author_name     String             @default("匿名")
+  /// 任意の所属・肩書き
+  author_role     String             @default("")
+  body            String
+  is_hidden       Boolean            @default(false)
+  created_at      DateTime           @default(now()) @db.Timestamptz(6)
+
+  @@index([sub_category_id, created_at])
+  @@map("interop_posts")
 }
 
 /// AI日次スキャンで選んだカテゴリ×サブカテゴリ向けコンテンツ
