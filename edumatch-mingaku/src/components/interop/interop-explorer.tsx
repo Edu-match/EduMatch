@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   Award,
@@ -152,6 +152,8 @@ export function InteropExplorer({
   guideText?: string;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const catParam = searchParams.get("cat");
   const [categories, setCategories] = useState<Category[]>([]);
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
   const [loadingCats, setLoadingCats] = useState(true);
@@ -173,10 +175,20 @@ export function InteropExplorer({
     let cancelled = false;
     fetch("/api/interop/categories")
       .then((r) => r.json())
-      .then((d) => { if (!cancelled && Array.isArray(d.categories)) setCategories(d.categories); })
+      .then((d) => {
+        if (cancelled || !Array.isArray(d.categories)) return;
+        setCategories(d.categories);
+        // ?cat=<id> が指定されていれば、その大カテゴリを開いた状態で復元する
+        if (catParam) {
+          const match = d.categories.find((c: Category) => c.id === catParam);
+          if (match) setSelected(match);
+        }
+      })
       .catch(console.error)
       .finally(() => { if (!cancelled) setLoadingCats(false); });
     return () => { cancelled = true; };
+    // catParam は初回ロード時のみ参照（依存に入れるとマップ操作中に再選択されるため除外）
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

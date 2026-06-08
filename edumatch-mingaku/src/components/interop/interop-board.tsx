@@ -31,7 +31,7 @@ export function InteropBoard({
   accent,
   themeMode = "auto",
 }: {
-  sub: { id: string; name: string; description: string; categoryName: string };
+  sub: { id: string; name: string; description: string; categoryId: string; categoryName: string };
   accent: string;
   themeMode?: InteropThemeMode;
 }) {
@@ -54,12 +54,18 @@ export function InteropBoard({
     return () => { cancelled = true; };
   }, [sub.id]);
 
+  // 名前は入力のたびに保持し、別カテゴリ／別ページでも自動入力する（リロードでも維持）
   useEffect(() => {
     try {
       const saved = localStorage.getItem("interop_author_name");
       if (saved) setName(saved);
     } catch { /* noop */ }
   }, []);
+
+  const updateName = (value: string) => {
+    setName(value);
+    try { localStorage.setItem("interop_author_name", value); } catch { /* noop */ }
+  };
 
   async function submit() {
     const trimmed = bodyText.trim();
@@ -80,7 +86,6 @@ export function InteropBoard({
       if (!res.ok) { setError(data.error || "投稿に失敗しました"); return; }
       setPosts((prev) => [data.post, ...prev]);
       setBodyText("");
-      try { localStorage.setItem("interop_author_name", name.trim()); } catch { /* noop */ }
       listTopRef.current?.scrollIntoView({ behavior: "smooth" });
     } catch {
       setError("通信エラーが発生しました");
@@ -94,13 +99,22 @@ export function InteropBoard({
       <InteropBackdrop themeMode={themeMode} />
 
       <div className="relative z-10 mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col px-4 pb-28 pt-4 sm:px-6">
-        {/* 戻る */}
-        <Link
-          href="/interop"
-          className="inline-flex w-fit items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.06] px-3.5 py-1.5 text-xs font-bold text-white/75 backdrop-blur transition-colors hover:bg-white/12 hover:text-white"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" /> マップに戻る
-        </Link>
+        {/* 戻る（大カテゴリ／マップ） */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href={`/interop?cat=${sub.categoryId}`}
+            className="inline-flex w-fit items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-bold text-white/85 backdrop-blur transition-colors hover:brightness-110"
+            style={{ background: `${accent}22`, borderColor: `${accent}66` }}
+          >
+            <ArrowLeft className="h-3.5 w-3.5" /> {sub.categoryName}に戻る
+          </Link>
+          <Link
+            href="/interop"
+            className="inline-flex w-fit items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.06] px-3.5 py-1.5 text-xs font-bold text-white/70 backdrop-blur transition-colors hover:bg-white/12 hover:text-white"
+          >
+            マップ全体
+          </Link>
+        </div>
 
         {/* ════ 画面上部：コンテンツ ════ */}
         <header
@@ -163,7 +177,7 @@ export function InteropBoard({
             <div className="flex-1 space-y-2">
               <input
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => updateName(e.target.value)}
                 placeholder="お名前（任意・空欄なら匿名）"
                 maxLength={40}
                 className="w-full rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-white/30 focus:outline-none"

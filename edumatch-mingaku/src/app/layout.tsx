@@ -85,9 +85,11 @@ export default async function RootLayout({
                   {children}
                 </MaintenanceAwareLayout>
               </TextEditProvider>
-              <div className="pointer-events-none fixed bottom-2 left-2 z-[100] rounded bg-background/80 px-2 py-1 text-[11px] text-muted-foreground shadow-sm backdrop-blur">
-                {appVersion}
-              </div>
+              {!isSpecialHost && (
+                <div className="pointer-events-none fixed bottom-2 left-2 z-[100] rounded bg-background/80 px-2 py-1 text-[11px] text-muted-foreground shadow-sm backdrop-blur">
+                  {appVersion}
+                </div>
+              )}
               <Toaster position="top-right" richColors closeButton />
             </TutorialProvider>
           </FavoritesProvider>
