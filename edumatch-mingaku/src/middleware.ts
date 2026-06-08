@@ -53,10 +53,10 @@ const authPaths = ["/login", "/auth/login"];
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
-  // 特設サブドメイン（interop.*）は常に総合案内所(/interop)を表示する。
+  // 特設サブドメイン（special.*）は常に総合案内所(/interop)を表示する。
   // 来場者向けの公開ページなので Basic認証/メンテナンスゲートはバイパスする。
   const host = request.headers.get("host") ?? "";
-  if (host.startsWith("interop.")) {
+  if (host.startsWith("special.")) {
     if (
       pathname.startsWith("/_next") ||
       pathname.startsWith("/api") ||
