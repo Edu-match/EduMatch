@@ -283,13 +283,18 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const currentPageId = getTutorialPageIdFromPathname(pathname);
+  // 特設サイト(interop / special.* サブドメイン)では本体のチュートリアルを出さない
+  const isInteropContext =
+    !!pathname?.startsWith("/interop") ||
+    (typeof window !== "undefined" && window.location.hostname.startsWith("special."));
   const currentStep =
-    tutorialState.active && currentPageId === tutorialState.pageId
+    !isInteropContext && tutorialState.active && currentPageId === tutorialState.pageId
       ? getTutorialStep(tutorialState.pageId, tutorialState.stepIndex)
       : null;
 
   // ── Auto-start when an authenticated user lands on a known page ──
   useEffect(() => {
+    if (isInteropContext) return;
     if (!isHydrated || isAuthenticated !== true) return;
     if (tutorialState.active) return;
     if (typeof window === "undefined" || readDoneFlag()) return;
@@ -299,6 +304,7 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     startTutorial(currentPageId);
   }, [
     currentPageId,
+    isInteropContext,
     isAuthenticated,
     isHydrated,
     startTutorial,
