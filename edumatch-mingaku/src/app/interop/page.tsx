@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { Bebas_Neue, Zen_Kaku_Gothic_New } from "next/font/google";
+import Image from "next/image";
+import { Zen_Kaku_Gothic_New } from "next/font/google";
 import { CalendarDays, ChevronRight } from "lucide-react";
 import { InteropExplorer } from "@/components/interop/interop-explorer";
 import { InteropGeofence } from "@/components/interop/interop-geofence";
 import { getInteropSettings } from "@/lib/interop-settings.server";
 import { ensureExternalUrl } from "@/lib/interop-settings";
 
-const bebas   = Bebas_Neue({ weight: "400", subsets: ["latin"], display: "swap" });
 const zenKaku = Zen_Kaku_Gothic_New({ weight: ["700"], subsets: ["latin"], display: "swap" });
 
 export const dynamic = "force-dynamic";
@@ -41,20 +41,15 @@ export default async function InteropPage() {
         >
           {/* 左：ロゴバッジ + タイトル */}
           <div className="flex items-center gap-3">
-            <div className="hidden items-center gap-2 rounded-lg bg-white px-3 py-1.5 shadow-lg shadow-black/30 sm:inline-flex">
-              <div className="flex items-center gap-1">
-                <div className="flex flex-col items-end leading-[1.05]">
-                  <span className="text-[7px] font-black tracking-wider text-gray-800">Education</span>
-                  <span className="text-[7px] font-black tracking-wider text-gray-800">Summit</span>
-                </div>
-                <span className={`${bebas.className} text-[1.7rem] leading-none text-gray-900`}>AI</span>
-              </div>
-              <span className="text-sm font-bold text-gray-400">×</span>
-              <div className="flex items-end gap-0.5 leading-none">
-                <span className={`${bebas.className} text-[1.05rem] tracking-wide text-[#1a3070]`}>Interop</span>
-                <span className={`${bebas.className} text-[1.5rem] leading-none text-[#1a3070]`}>26</span>
-                <span className="mb-0.5 self-end text-[7px] font-black text-[#1a3070]">Tokyo</span>
-              </div>
+            <div className="inline-flex items-center rounded-lg bg-white px-2.5 py-1.5 shadow-lg shadow-black/30">
+              <Image
+                src="/interop-logo.png"
+                alt="AI NATIVE EXPO 2026"
+                width={113}
+                height={40}
+                priority
+                className="h-7 w-auto sm:h-9"
+              />
             </div>
             <div>
               <h1
