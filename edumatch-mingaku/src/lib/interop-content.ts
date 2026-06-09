@@ -17,7 +17,17 @@ export const SOURCE_TYPE_LABEL: Record<string, string> = {
   service: "サービス",
   video: "動画",
   seminar_event: "イベント",
+  custom: "おすすめ",
 };
+
+/** 自作（アップロード）コンテンツで選べるラベル → sourceType */
+export const CUSTOM_LABEL_OPTIONS: { label: string; sourceType: string }[] = [
+  { label: "おすすめ", sourceType: "custom" },
+  { label: "記事", sourceType: "post" },
+  { label: "動画", sourceType: "video" },
+  { label: "サービス", sourceType: "service" },
+  { label: "イベント", sourceType: "seminar_event" },
+];
 
 export type InteropContentItem = {
   /** ピンならpin id、自動なら source_type:source_id の合成キー */

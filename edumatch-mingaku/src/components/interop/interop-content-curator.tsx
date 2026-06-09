@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ArrowDown, ArrowUp, Check, EyeOff, ImageIcon, Loader2, Pin, Plus, Search, Trash2, X,
+  ArrowDown, ArrowUp, Check, EyeOff, ImageIcon, Loader2, Pin, Plus, Search, Trash2, Upload, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { INTEROP_CONTENT_KINDS, type InteropContentItem } from "@/lib/interop-content";
+import { uploadImage } from "@/app/_actions/media";
+import { CUSTOM_LABEL_OPTIONS, INTEROP_CONTENT_KINDS, type InteropContentItem } from "@/lib/interop-content";
 
 type Category = { id: string; name: string; color?: string };
 type SubCategory = { id: string; categoryId: string; name: string };
@@ -290,10 +291,107 @@ export function InteropContentCurator({ onMsg }: { onMsg: (t: string, ok: boolea
                 </div>
               )}
             </div>
+
+            {/* 自作コンテンツをアップロードして追加 */}
+            <UploadContentForm subId={subId} onAdded={() => reload(subId)} onMsg={onMsg} />
           </>
         )}
       </CardContent>
     </Card>
+  );
+}
+
+/* ─────────── 自作コンテンツ（ローカル画像アップロード） ─────────── */
+function UploadContentForm({ subId, onAdded, onMsg }: { subId: string; onAdded: () => void; onMsg: (t: string, ok: boolean) => void }) {
+  const [title, setTitle] = useState("");
+  const [href, setHref] = useState("");
+  const [desc, setDesc] = useState("");
+  const [sourceType, setSourceType] = useState(CUSTOM_LABEL_OPTIONS[0].sourceType);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const onPick = async (file: File | undefined) => {
+    if (!file) return;
+    setUploading(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await uploadImage(fd);
+    setUploading(false);
+    if (res.success && res.url) { setImageUrl(res.url); onMsg("画像をアップロードしました。", true); }
+    else onMsg(res.error || "アップロードに失敗しました。", false);
+  };
+
+  const add = async () => {
+    if (!title.trim()) { onMsg("タイトルを入力してください。", false); return; }
+    if (!imageUrl && !href.trim()) { onMsg("画像かリンクのどちらかは必要です。", false); return; }
+    setSaving(true);
+    const res = await fetch("/api/interop/content/pins", {
+      method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        subCategoryId: subId,
+        sourceType,
+        sourceId: `custom-${Date.now()}`,
+        title: title.trim(),
+        description: desc.trim(),
+        thumbnailUrl: imageUrl,
+        href: href.trim() || imageUrl || "",
+      }),
+    });
+    setSaving(false);
+    if (res.ok) {
+      onMsg("追加しました。", true);
+      setTitle(""); setHref(""); setDesc(""); setImageUrl(null);
+      onAdded();
+    } else {
+      onMsg("追加に失敗しました。", false);
+    }
+  };
+
+  return (
+    <div className="rounded-md border bg-muted/20 p-3">
+      <p className="mb-2 text-sm font-semibold">自作コンテンツをアップロードして追加</p>
+      <div className="flex flex-col gap-3 sm:flex-row">
+        {/* 画像アップロード */}
+        <div className="shrink-0">
+          <label className="grid h-28 w-44 cursor-pointer place-items-center overflow-hidden rounded-lg border border-dashed bg-background text-center text-xs text-muted-foreground transition hover:border-primary/50">
+            {uploading ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <span className="flex flex-col items-center gap-1"><Upload className="h-5 w-5" />画像を選択<br />（5MBまで）</span>
+            )}
+            <input type="file" accept="image/png,image/jpeg,image/gif,image/webp" className="hidden" onChange={(e) => onPick(e.target.files?.[0])} />
+          </label>
+          {imageUrl && (
+            <button type="button" onClick={() => setImageUrl(null)} className="mt-1 text-[11px] text-muted-foreground hover:text-destructive">画像を削除</button>
+          )}
+        </div>
+
+        {/* テキスト入力 */}
+        <div className="flex-1 space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-muted-foreground">ラベル:</span>
+            {CUSTOM_LABEL_OPTIONS.map((o) => (
+              <button key={o.sourceType} type="button" onClick={() => setSourceType(o.sourceType)}
+                className={`rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${sourceType === o.sourceType ? "border-primary bg-primary/10 text-primary" : "text-muted-foreground"}`}>
+                {o.label}
+              </button>
+            ))}
+          </div>
+          <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="タイトル（必須）" className="h-8 text-sm" />
+          <Input value={href} onChange={(e) => setHref(e.target.value)} placeholder="リンクURL（任意・空なら画像を開く）" className="h-8 text-sm" />
+          <Input value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="説明（任意）" className="h-8 text-sm" />
+          <div className="flex justify-end">
+            <Button size="sm" onClick={add} disabled={saving || uploading} className="h-8 gap-1 text-xs">
+              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}コンテンツに追加
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 

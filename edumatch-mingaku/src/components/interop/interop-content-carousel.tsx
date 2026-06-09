@@ -82,7 +82,7 @@ export function InteropContentCarousel({ subId, accent }: { subId: string; accen
                   <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-white/55">{it.description}</p>
                 )}
                 <span className="mt-auto inline-flex items-center gap-1 pt-2 text-[11px] font-bold text-white/55 group-hover:text-white/80">
-                  <ExternalLink className="h-3 w-3" /> エデュマッチで見る
+                  <ExternalLink className="h-3 w-3" /> {it.href.includes("edu-match.com") ? "エデュマッチで見る" : "ひらく"}
                 </span>
               </div>
             </a>
