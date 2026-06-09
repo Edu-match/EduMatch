@@ -114,7 +114,7 @@ export async function getInteropContent(
 export async function searchInteropCandidates(
   kinds: string[],
   query: string,
-  limit = 30
+  limit = 60
 ): Promise<InteropContentItem[]> {
   try {
     const lists = await Promise.all(
