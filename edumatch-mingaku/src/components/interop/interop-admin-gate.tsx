@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Loader2, Lock, Mail, ShieldAlert } from "lucide-react";
+import { ArrowLeft, Chrome, Loader2, Lock, Mail, ShieldAlert } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/utils/supabase/client";
 
 /** 特設サイトの管理者ログイン画面。エデュマッチと同じSupabaseアカウントでログインしADMINのみ入場。 */
@@ -11,6 +11,11 @@ export function InteropAdminGate({ notAdmin = false }: { notAdmin?: boolean }) {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function loginWithGoogle() {
+    const redirectTo = typeof window !== "undefined" ? window.location.pathname : "/admin";
+    window.location.href = `/api/auth/google?redirect_to=${encodeURIComponent(redirectTo)}&userType=viewer`;
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -59,6 +64,19 @@ export function InteropAdminGate({ notAdmin = false }: { notAdmin?: boolean }) {
             このアカウントには管理者権限がありません。
           </div>
         )}
+
+        {/* Googleでログイン */}
+        <button
+          type="button"
+          onClick={loginWithGoogle}
+          className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white px-4 py-2.5 text-sm font-bold text-gray-800 transition hover:bg-white/90"
+        >
+          <Chrome className="h-4 w-4" /> Googleでログイン
+        </button>
+
+        <div className="mb-3 flex items-center gap-3 text-[11px] text-white/35">
+          <span className="h-px flex-1 bg-white/12" /> または メールで <span className="h-px flex-1 bg-white/12" />
+        </div>
 
         <form onSubmit={onSubmit} className="space-y-3">
           <label className="block">
