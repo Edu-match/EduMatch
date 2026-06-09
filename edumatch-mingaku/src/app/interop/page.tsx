@@ -5,6 +5,7 @@ import { CalendarDays, ChevronRight } from "lucide-react";
 import { InteropExplorer } from "@/components/interop/interop-explorer";
 import { InteropGeofence } from "@/components/interop/interop-geofence";
 import { getInteropSettings } from "@/lib/interop-settings.server";
+import { ensureExternalUrl } from "@/lib/interop-settings";
 
 const bebas   = Bebas_Neue({ weight: "400", subsets: ["latin"], display: "swap" });
 const zenKaku = Zen_Kaku_Gothic_New({ weight: ["700"], subsets: ["latin"], display: "swap" });
@@ -74,7 +75,7 @@ export default async function InteropPage() {
               <CalendarDays className="h-3.5 w-3.5 text-indigo-200" /> {settings.dateVenue}
             </span>
             <a
-              href={settings.registerUrl}
+              href={ensureExternalUrl(settings.registerUrl, "https://www.interop.jp/")}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-indigo-400 to-violet-500 px-3.5 py-1.5 text-[11px] font-bold text-white shadow-lg shadow-violet-500/25 transition-transform hover:scale-105 sm:text-xs"

@@ -3,6 +3,20 @@
 
 export type InteropThemeMode = "auto" | "dawn" | "day" | "dusk" | "night";
 
+/**
+ * 外部リンクを安全に正規化する。
+ * - 空なら fallback
+ * - http(s):// や mailto: はそのまま
+ * - スキームが無い（例: "edu-match.com/..."）は https:// を補う
+ *   （特設サブドメインで相対リンク化して壊れるのを防ぐ）
+ */
+export function ensureExternalUrl(url: string | undefined, fallback = ""): string {
+  const raw = (url ?? "").trim();
+  if (!raw) return fallback;
+  if (/^(https?:\/\/|mailto:|tel:)/i.test(raw)) return raw;
+  return `https://${raw.replace(/^\/+/, "")}`;
+}
+
 export type InteropSettings = {
   /** ヘッダー大見出し */
   title: string;
