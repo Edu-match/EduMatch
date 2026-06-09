@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Loader2, MessageCircle, Pin, Send } from "lucide-react";
 import { InteropBackdrop } from "@/components/interop/interop-backdrop";
+import { InteropContentCarousel } from "@/components/interop/interop-content-carousel";
 import type { InteropThemeMode } from "@/lib/interop-settings";
 
 type Post = {
@@ -137,6 +138,9 @@ export function InteropBoard({
             <p className="mt-2 text-sm leading-relaxed text-white/70">{sub.description}</p>
           )}
         </header>
+
+        {/* ════ 関連コンテンツ（本体エデュマッチ） ════ */}
+        <InteropContentCarousel subId={sub.id} accent={accent} />
 
         {/* ════ その下：投稿一覧 ════ */}
         <div ref={listTopRef} className="mt-6 flex items-center justify-between">

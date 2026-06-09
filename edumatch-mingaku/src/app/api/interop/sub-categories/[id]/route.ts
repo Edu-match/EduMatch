@@ -18,13 +18,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     description?: string;
     sortOrder?: number;
     isActive?: boolean;
+    contentKinds?: string[];
+    contentQuery?: string;
   };
 
+  const ALLOWED_KINDS = ["article", "service", "media", "events-info"];
   const data: Record<string, unknown> = {};
   if (typeof body.name === "string" && body.name.trim()) data.name = body.name.trim();
   if (typeof body.description === "string") data.description = body.description.trim();
   if (typeof body.sortOrder === "number") data.sort_order = body.sortOrder;
   if (typeof body.isActive === "boolean") data.is_active = body.isActive;
+  if (Array.isArray(body.contentKinds)) {
+    data.content_kinds = body.contentKinds.filter((k) => ALLOWED_KINDS.includes(k));
+  }
+  if (typeof body.contentQuery === "string") data.content_query = body.contentQuery.trim();
 
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: "更新内容がありません" }, { status: 400 });
@@ -41,6 +48,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         description: s.description,
         sortOrder: s.sort_order,
         isActive: s.is_active,
+        contentKinds: s.content_kinds,
+        contentQuery: s.content_query,
       },
     });
   } catch {

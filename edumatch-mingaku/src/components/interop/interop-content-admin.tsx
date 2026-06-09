@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { INTEROP_CONTENT_KINDS as CONTENT_KIND_OPTIONS } from "@/lib/interop-content";
 
 type Category = {
   id: string;
@@ -37,6 +38,8 @@ type SubCategory = {
   description: string;
   sortOrder: number;
   isActive: boolean;
+  contentKinds?: string[];
+  contentQuery?: string;
 };
 type Post = {
   id: string;
@@ -256,12 +259,15 @@ function SubRow({ sub, onChanged, onMsg }: { sub: SubCategory; onChanged: () => 
   const [showPosts, setShowPosts] = useState(false);
   const [name, setName] = useState(sub.name);
   const [desc, setDesc] = useState(sub.description);
+  const [kinds, setKinds] = useState<string[]>(sub.contentKinds ?? []);
+  const [query, setQuery] = useState(sub.contentQuery ?? "");
   const [busy, setBusy] = useState(false);
 
   const save = async () => {
     setBusy(true);
     const { ok } = await api(`/api/interop/sub-categories/${sub.id}`, {
-      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, description: desc }),
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, description: desc, contentKinds: kinds, contentQuery: query }),
     });
     setBusy(false);
     if (ok) { onMsg("サブカテゴリを更新しました。", true); setEditing(false); onChanged(); } else onMsg("更新に失敗しました。", false);
@@ -283,11 +289,31 @@ function SubRow({ sub, onChanged, onMsg }: { sub: SubCategory; onChanged: () => 
         <button type="button" onClick={remove} className="rounded p-0.5 text-muted-foreground hover:text-destructive" title="削除"><Trash2 className="h-3.5 w-3.5" /></button>
       </div>
       {editing && (
-        <div className="flex flex-wrap items-end gap-2 border-t bg-muted/30 px-3 py-2">
-          <label className="text-xs"><span className="mb-1 block text-muted-foreground">名前</span>
-            <Input value={name} onChange={(e) => setName(e.target.value)} className="h-8 w-36 text-xs" /></label>
-          <label className="text-xs"><span className="mb-1 block text-muted-foreground">説明</span>
-            <Input value={desc} onChange={(e) => setDesc(e.target.value)} className="h-8 w-56 text-xs" /></label>
+        <div className="space-y-2 border-t bg-muted/30 px-3 py-2">
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="text-xs"><span className="mb-1 block text-muted-foreground">名前</span>
+              <Input value={name} onChange={(e) => setName(e.target.value)} className="h-8 w-36 text-xs" /></label>
+            <label className="text-xs"><span className="mb-1 block text-muted-foreground">説明</span>
+              <Input value={desc} onChange={(e) => setDesc(e.target.value)} className="h-8 w-56 text-xs" /></label>
+          </div>
+          {/* 自動コンテンツ設定 */}
+          <div className="rounded border bg-background p-2">
+            <p className="mb-1.5 text-[11px] font-semibold text-muted-foreground">自動コンテンツ（本体から関連を引っ張る）</p>
+            <div className="mb-1.5 flex flex-wrap gap-1.5">
+              {CONTENT_KIND_OPTIONS.map((k) => {
+                const on = kinds.includes(k.value);
+                return (
+                  <button key={k.value} type="button"
+                    onClick={() => setKinds((prev) => on ? prev.filter((x) => x !== k.value) : [...prev, k.value])}
+                    className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${on ? "border-primary bg-primary/10 text-primary" : "text-muted-foreground"}`}>
+                    {k.label}
+                  </button>
+                );
+              })}
+            </div>
+            <label className="text-xs"><span className="mb-1 block text-muted-foreground">キーワード（空ならカテゴリ名＋サブ名）</span>
+              <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="例：探究 AI" className="h-8 w-64 text-xs" /></label>
+          </div>
           <Button size="sm" onClick={save} disabled={busy} className="h-8 gap-1 text-xs">
             {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}保存</Button>
         </div>

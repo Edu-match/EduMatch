@@ -30,6 +30,8 @@ export async function GET(req: NextRequest) {
         description: s.description,
         sortOrder: s.sort_order,
         isActive: s.is_active,
+        contentKinds: s.content_kinds,
+        contentQuery: s.content_query,
       })),
     });
   } catch (err) {

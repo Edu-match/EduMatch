@@ -489,11 +489,39 @@ model InteropSubCategory {
   description  String          @default("")
   sort_order   Int             @default(0)
   is_active    Boolean         @default(true)
+  /// 本体エデュマッチから自動抽出する種別（article/service/media/events-info）。空なら自動抽出オフ。
+  content_kinds String[]       @default([])
+  /// 自動抽出のキーワード上書き（空ならカテゴリ名＋サブカテゴリ名）
+  content_query String         @default("")
   created_at   DateTime        @default(now()) @db.Timestamptz(6)
   updated_at   DateTime        @updatedAt @db.Timestamptz(6)
   posts        InteropPost[]
+  contentPins  InteropContentPin[]
 
   @@map("interop_sub_categories")
+}
+
+/// Interop特設の手動キュレーション（本体コンテンツのピン留め／除外。スナップショット保存）
+model InteropContentPin {
+  id              String             @id @default(uuid()) @db.Uuid
+  sub_category_id String             @db.Uuid
+  subCategory     InteropSubCategory @relation(fields: [sub_category_id], references: [id], onDelete: Cascade)
+  /// 由来（post/service/video/seminar_event）
+  source_type     String
+  /// 由来コンテンツのID（重複排除・除外判定に使用）
+  source_id       String
+  title           String
+  description     String             @default("")
+  thumbnail_url   String?
+  href            String
+  meta            String?
+  /// true = 自動抽出から該当source_idを除外するマーカー（手動追加ピンはfalse）
+  is_hidden       Boolean            @default(false)
+  rank_order      Int                @default(0)
+  created_at      DateTime           @default(now()) @db.Timestamptz(6)
+
+  @@index([sub_category_id, rank_order])
+  @@map("interop_content_pins")
 }
 
 /// Interop特設ページのサブカテゴリ掲示板（来場者が投稿。ログイン不要）
