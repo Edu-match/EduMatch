@@ -120,6 +120,46 @@ export function InteropSettingsEditor() {
               </p>
             </label>
 
+            {/* ───── 会場退出演出（ジオフェンス） ───── */}
+            <div className="rounded-md border bg-muted/20 p-3">
+              <label className="flex items-center gap-2 text-sm font-bold">
+                <input type="checkbox" checked={settings.geofenceEnabled}
+                  onChange={(e) => setSettings((s) => ({ ...s, geofenceEnabled: e.target.checked }))} />
+                会場を出たときの演出を有効にする（位置情報）
+              </label>
+              <p className="mt-1 text-xs text-muted-foreground">
+                来場者が会場（中心座標＋半径）の外に出た瞬間に、バイブと「世界を出た」演出＋登録案内を表示します。
+                端末で <code>?exitpreview=1</code> を付けて開くと演出をプレビューできます。※iOSはバイブ非対応。
+              </p>
+
+              <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                <label className="text-sm"><span className="mb-1 block text-muted-foreground">中心緯度</span>
+                  <Input type="number" step="0.0001" value={settings.venueLat}
+                    onChange={(e) => setSettings((s) => ({ ...s, venueLat: Number(e.target.value) }))} /></label>
+                <label className="text-sm"><span className="mb-1 block text-muted-foreground">中心経度</span>
+                  <Input type="number" step="0.0001" value={settings.venueLng}
+                    onChange={(e) => setSettings((s) => ({ ...s, venueLng: Number(e.target.value) }))} /></label>
+                <label className="text-sm"><span className="mb-1 block text-muted-foreground">半径（m）</span>
+                  <Input type="number" step="50" value={settings.venueRadiusM}
+                    onChange={(e) => setSettings((s) => ({ ...s, venueRadiusM: Number(e.target.value) }))} /></label>
+              </div>
+
+              <div className="mt-3 space-y-2">
+                <label className="block text-sm"><span className="mb-1 block text-muted-foreground">退出メッセージ見出し</span>
+                  <Input value={settings.exitTitle} onChange={(e) => setSettings((s) => ({ ...s, exitTitle: e.target.value }))} /></label>
+                <label className="block text-sm"><span className="mb-1 block text-muted-foreground">退出メッセージ本文</span>
+                  <textarea value={settings.exitMessage} rows={3}
+                    onChange={(e) => setSettings((s) => ({ ...s, exitMessage: e.target.value }))}
+                    className="w-full resize-none rounded-md border px-3 py-2 text-sm" /></label>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="text-sm"><span className="mb-1 block text-muted-foreground">CTAの文言</span>
+                    <Input value={settings.exitCtaLabel} onChange={(e) => setSettings((s) => ({ ...s, exitCtaLabel: e.target.value }))} /></label>
+                  <label className="text-sm"><span className="mb-1 block text-muted-foreground">CTAのリンク</span>
+                    <Input value={settings.exitCtaUrl} onChange={(e) => setSettings((s) => ({ ...s, exitCtaUrl: e.target.value }))} /></label>
+                </div>
+              </div>
+            </div>
+
             <Button onClick={save} disabled={saving} className="gap-1.5">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               保存

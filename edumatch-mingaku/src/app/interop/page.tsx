@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { Bebas_Neue, Zen_Kaku_Gothic_New } from "next/font/google";
 import { CalendarDays, ChevronRight } from "lucide-react";
 import { InteropExplorer } from "@/components/interop/interop-explorer";
+import { InteropGeofence } from "@/components/interop/interop-geofence";
 import { getInteropSettings } from "@/lib/interop-settings.server";
 
 const bebas   = Bebas_Neue({ weight: "400", subsets: ["latin"], display: "swap" });
@@ -25,6 +26,9 @@ export default async function InteropPage() {
       <Suspense fallback={<div className="absolute inset-0 bg-[#070a1c]" />}>
         <InteropExplorer themeMode={settings.themeMode} guideText={settings.guideText} />
       </Suspense>
+
+      {/* 会場を出たときの演出（位置情報・任意） */}
+      <InteropGeofence settings={settings} />
 
       {/* ════════ 上部ヘッダー（マップに重ねるガラスバー） ════════ */}
       <header className="pointer-events-none absolute inset-x-0 top-0 z-40">

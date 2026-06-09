@@ -20,6 +20,24 @@ export type InteropSettings = {
   footerCredit: string;
   /** 背景テーマ（auto＝時刻で自動切替） */
   themeMode: InteropThemeMode;
+
+  /* ───── ジオフェンス（会場を出たときの演出） ───── */
+  /** 会場退出演出を有効にするか */
+  geofenceEnabled: boolean;
+  /** 会場の中心緯度 */
+  venueLat: number;
+  /** 会場の中心経度 */
+  venueLng: number;
+  /** 会場とみなす半径（メートル）。これを超えたら「退出」 */
+  venueRadiusM: number;
+  /** 退出モーダルの見出し */
+  exitTitle: string;
+  /** 退出モーダルの本文 */
+  exitMessage: string;
+  /** 退出CTAの文言 */
+  exitCtaLabel: string;
+  /** 退出CTAのリンク（エデュマッチ登録など） */
+  exitCtaUrl: string;
 };
 
 export const DEFAULT_INTEROP_SETTINGS: InteropSettings = {
@@ -31,4 +49,14 @@ export const DEFAULT_INTEROP_SETTINGS: InteropSettings = {
   guideText: "気になるエリアをタップして、セミナー・展示・登壇情報を探そう",
   footerCredit: "青楓館高等学院 / みんがく / AI検定協会 / AI部 © 2026",
   themeMode: "auto",
+
+  geofenceEnabled: true,
+  venueLat: 35.6485, // 幕張メッセ
+  venueLng: 140.0347,
+  venueRadiusM: 800,
+  exitTitle: "また会いましょう。",
+  exitMessage:
+    "教育AIサミットの世界は、ここでいったんお別れ。\nでも学びの冒険はまだ続きます。エデュマッチに登録すると、全国の教育コンテンツや、サミットの続きの体験がいつでもあなたのそばに。",
+  exitCtaLabel: "エデュマッチに無料登録",
+  exitCtaUrl: "https://edu-match.com/auth/login",
 };

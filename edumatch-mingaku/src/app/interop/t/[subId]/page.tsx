@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { InteropBoard } from "@/components/interop/interop-board";
+import { InteropGeofence } from "@/components/interop/interop-geofence";
 import { getInteropSettings } from "@/lib/interop-settings.server";
 
 export const dynamic = "force-dynamic";
@@ -43,16 +44,19 @@ export default async function InteropSubPage({
   const settings = await getInteropSettings();
 
   return (
-    <InteropBoard
-      sub={{
-        id: sub.id,
-        name: sub.name,
-        description: sub.description,
-        categoryId: sub.category.id,
-        categoryName: sub.category.name,
-      }}
-      accent={sub.category.color || "#9fb4e8"}
-      themeMode={settings.themeMode}
-    />
+    <>
+      <InteropBoard
+        sub={{
+          id: sub.id,
+          name: sub.name,
+          description: sub.description,
+          categoryId: sub.category.id,
+          categoryName: sub.category.name,
+        }}
+        accent={sub.category.color || "#9fb4e8"}
+        themeMode={settings.themeMode}
+      />
+      <InteropGeofence settings={settings} />
+    </>
   );
 }
