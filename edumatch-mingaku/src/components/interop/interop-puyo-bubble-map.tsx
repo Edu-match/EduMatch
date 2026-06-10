@@ -72,9 +72,7 @@ const GROUP_STYLE: Record<string, GroupStyleEntry> = {
 };
 
 // ── 配置：各分類を「密集した塊（ぷよの房）」として中心インタロップの周りに散らす ──
-// オフセットはバブル径基準（=1）。SX/SYで画面%へ変換（縦横比補正）。
-const SX = 4.7;
-const SY = 8.2;
+// オフセットはバブル径基準（=1）。各塊ごとに sx/sy で画面%へ変換（縦横比・形状補正）。
 
 // 六角パッキングで n 個を中心から近い順に詰めた塊（円のリングではなく中身の詰まった塊）
 function hexCluster(n: number): [number, number][] {
@@ -99,35 +97,40 @@ const SHAPE: Record<number, [number, number][]> = {
 };
 
 // 各分類のクラスター中心（中心インタロップ=50,46 を囲むように配置）
-const CLUSTER_CENTER: Record<string, { c: [number, number]; n: number }> = {
-  A: { c: [24, 29], n: 4 },  // 左上：AI・テク
-  B: { c: [76, 29], n: 4 },  // 右上：評価・学習
-  C: { c: [15, 58], n: 4 },  // 左下：権利・規律
-  D: { c: [86, 52], n: 2 },  // 右：多様性
-  E: { c: [34, 80], n: 2 },  // 下：教師・学校
-  F: { c: [61, 71], n: 12 }, // 下中央の大塊：各教科
+const CLUSTER_CENTER: Record<string, { c: [number, number]; n: number; sx: number; sy: number }> = {
+  A: { c: [24, 29], n: 4, sx: 4.7, sy: 8.2 },  // 左上：AI・テク
+  B: { c: [76, 29], n: 4, sx: 4.7, sy: 8.2 },  // 右上：評価・学習
+  C: { c: [15, 58], n: 4, sx: 4.7, sy: 8.2 },  // 左下：権利・規律
+  D: { c: [86, 52], n: 2, sx: 4.7, sy: 8.2 },  // 右：多様性
+  E: { c: [34, 80], n: 2, sx: 4.7, sy: 8.2 },  // 下：教師・学校
+  F: { c: [60, 73], n: 12, sx: 5.8, sy: 6.6 }, // 下中央の大塊：各教科（横長に展開）
 };
 
+type Placement = { pos: [number, number]; dir: [number, number] };
+
 // sortTopicsForBurst 順 = A×4, B×4, C×4, D×2, E×2, F×12 に対応
-function buildPositions(): [number, number][] {
-  const result: [number, number][] = [];
+function buildPlacements(): Placement[] {
+  const result: Placement[] = [];
   for (const g of ["A", "B", "C", "D", "E", "F"] as const) {
-    const { c, n } = CLUSTER_CENTER[g];
+    const { c, n, sx, sy } = CLUSTER_CENTER[g];
     const offs = SHAPE[n] ?? hexCluster(n);
     // 塊の重心を原点に合わせてからクラスター中心へ
     const mx = offs.reduce((s, o) => s + o[0], 0) / offs.length;
     const my = offs.reduce((s, o) => s + o[1], 0) / offs.length;
     for (const [ox, oy] of offs) {
-      result.push([
-        +(c[0] + (ox - mx) * SX).toFixed(2),
-        +(c[1] + (oy - my) * SY).toFixed(2),
-      ]);
+      const rx = ox - mx;
+      const ry = oy - my;
+      const len = Math.hypot(rx, ry) || 1;
+      result.push({
+        pos: [+(c[0] + rx * sx).toFixed(2), +(c[1] + ry * sy).toFixed(2)],
+        dir: [rx / len, ry / len], // 塊重心→バブル の向き（ラベル配置に使用）
+      });
     }
   }
   return result;
 }
 
-const POSITIONS: [number, number][] = buildPositions();
+const PLACEMENTS: Placement[] = buildPlacements();
 
 const PUYO_CSS = `
 @keyframes puyoAnim {
@@ -143,17 +146,19 @@ const PUYO_CSS = `
 }
 `;
 
-const BUBBLE_SIZE = 76;
+const BUBBLE_SIZE = 66;
 const CENTER_SIZE = 118;
 
 function PuyoBubble({
   topic,
   pos,
+  dir,
   index,
   onActivate,
 }: {
   topic: InteropPriorityTopic;
   pos: [number, number];
+  dir: [number, number];
   index: number;
   onActivate: () => void;
 }) {
@@ -161,6 +166,8 @@ function PuyoBubble({
   const { Icon } = sty;
   const dur = 7 + ((topic.no * 13 + index * 9) % 60) / 10;
   const delay = -((topic.no * 7 + index * 4) % 70) / 10;
+  // ラベルを塊の外向き（上/下）に逃がして重なりを抑える
+  const labelAbove = dir[1] < -0.25;
 
   return (
     <button
@@ -228,8 +235,8 @@ function PuyoBubble({
       <span
         className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-center"
         style={{
-          top: `calc(100% + 5px)`,
-          width: 110,
+          ...(labelAbove ? { bottom: `calc(100% + 5px)` } : { top: `calc(100% + 5px)` }),
+          width: 104,
           fontSize: "10.5px",
           fontWeight: 700,
           lineHeight: 1.35,
@@ -294,15 +301,19 @@ export function InteropPuyoBubbleMap({
     <div className="absolute inset-0 overflow-hidden">
       <style>{PUYO_CSS}</style>
 
-      {topics.map((topic, i) => (
-        <PuyoBubble
-          key={topic.no}
-          topic={topic}
-          pos={POSITIONS[i] ?? [50, 50]}
-          index={i}
-          onActivate={() => onSelectTopic(topic)}
-        />
-      ))}
+      {topics.map((topic, i) => {
+        const place = PLACEMENTS[i] ?? { pos: [50, 50] as [number, number], dir: [0, 1] as [number, number] };
+        return (
+          <PuyoBubble
+            key={topic.no}
+            topic={topic}
+            pos={place.pos}
+            dir={place.dir}
+            index={i}
+            onActivate={() => onSelectTopic(topic)}
+          />
+        );
+      })}
 
       {interopCat && (
         <button
