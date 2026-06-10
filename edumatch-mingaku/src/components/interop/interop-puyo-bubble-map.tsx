@@ -71,25 +71,56 @@ const GROUP_STYLE: Record<string, GroupStyleEntry> = {
   },
 };
 
-// 28 positions radiating from center (50%, 47%) — sortTopicsForBurst order: A×4, B×4, C×4, D×2, E×2, F×12
-// Groups are placed in clear quadrants; F fills the angular gaps between groups.
-const POSITIONS: [number, number][] = [
-  // A (blue, AI・テク): top-left quadrant (θ≈115-155°)
-  [44, 37], [32, 32], [27, 36], [13, 35],
-  // B (green, 評価・学習): top-right quadrant (θ≈20-65°)
-  [65, 42], [68, 32], [73, 36], [85, 34],
-  // C (red, 権利・規律): bottom-left quadrant (θ≈205-248°)
-  [36, 52], [30, 60], [36, 64], [35, 72],
-  // D (purple, 多様性): bottom-right (θ≈310-325°)
-  [68, 62], [83, 63],
-  // E (yellow, 教師・学校): bottom area (θ≈285-295°)
-  [57, 65], [67, 72],
-  // F (indigo, 各教科): fill angular gaps between groups
-  [57, 28], [50, 19], [41, 22],           // top gap (between A and B, θ≈70-110°)
-  [35, 44], [22, 47], [23, 53],           // left gap (between A and C, θ≈160-200°)
-  [46, 67], [49, 75],                     // bottom-left gap (between C and E, θ≈252-268°)
-  [66, 48], [78, 44], [88, 47], [87, 57], // right gap (between B and D, θ≈345-20°)
-];
+// ── 配置：中心インタロップから放射状。各分類を排他セクターに固める ──
+// 数学標準角(0°=右, 90°=上, 反時計回り)。中心(50,46)からの楕円座標。
+const CENTER_X = 50;
+const CENTER_Y = 46;
+// 内側リング = 各教科F（中心インタロップを取り囲む輪 = 学びの土台）
+const INNER = { rx: 16.5, ry: 18 };
+// 外側 = A/B/C/D/E を四隅＋下にクラスター配置
+const OUTER = { rx: 35, ry: 33 };
+
+// 外側クラスター（A=左上 B=右上 C=左下 D=右下 E=下）
+const CLUSTER: Record<string, { mid: number; half: number; n: number }> = {
+  A: { mid: 135, half: 30, n: 4 }, // 左上
+  B: { mid: 45, half: 30, n: 4 },  // 右上
+  C: { mid: 225, half: 30, n: 4 }, // 左下
+  D: { mid: 315, half: 15, n: 2 }, // 右下
+  E: { mid: 275, half: 12, n: 2 }, // 下
+};
+
+function spreadAngles(mid: number, half: number, n: number, margin = 4): number[] {
+  if (n <= 0) return [];
+  if (n === 1) return [mid];
+  const h = Math.max(0, half - margin);
+  const start = mid - h;
+  const step = (2 * h) / (n - 1);
+  return Array.from({ length: n }, (_, i) => start + step * i);
+}
+
+function toXY(angleDeg: number, ring: { rx: number; ry: number }): [number, number] {
+  const r = (angleDeg * Math.PI) / 180;
+  return [
+    +(CENTER_X + ring.rx * Math.cos(r)).toFixed(2),
+    +(CENTER_Y - ring.ry * Math.sin(r)).toFixed(2),
+  ];
+}
+
+// sortTopicsForBurst 順 = A×4, B×4, C×4, D×2, E×2, F×12 に対応
+function buildPositions(): [number, number][] {
+  const result: [number, number][] = [];
+  for (const g of ["A", "B", "C", "D", "E"] as const) {
+    const c = CLUSTER[g];
+    for (const a of spreadAngles(c.mid, c.half, c.n)) result.push(toXY(a, OUTER));
+  }
+  // F: 各教科12個 → 内側リングに等分（上から時計回り）
+  for (let i = 0; i < 12; i++) {
+    result.push(toXY(90 - i * 30, INNER));
+  }
+  return result;
+}
+
+const POSITIONS: [number, number][] = buildPositions();
 
 const PUYO_CSS = `
 @keyframes puyoAnim {
@@ -105,8 +136,8 @@ const PUYO_CSS = `
 }
 `;
 
-const BUBBLE_SIZE = 82;
-const CENTER_SIZE = 112;
+const BUBBLE_SIZE = 76;
+const CENTER_SIZE = 108;
 
 function PuyoBubble({
   topic,
@@ -273,7 +304,7 @@ export function InteropPuyoBubbleMap({
           className="group absolute focus:outline-none"
           style={{
             left: "50%",
-            top: "47%",
+            top: "46%",
             width: CENTER_SIZE,
             height: CENTER_SIZE,
             zIndex: 20,
