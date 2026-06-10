@@ -153,7 +153,6 @@ export function ForumBubbleExplorer() {
           <ForumSubOrbit
             centerLabel="井戸端会議"
             centerIcon={GraduationCap}
-            centerHint={`${categories.length}つのカテゴリ · タップして話題を探す`}
             accent={DEFAULT_ACCENT}
             items={categoryItems}
             backLabel=""
@@ -181,7 +180,6 @@ export function ForumBubbleExplorer() {
         <ForumSubOrbit
           centerLabel={view.cat.name}
           centerIcon={MessageCircle}
-          centerHint={`${roomItems.length}つの部屋 · タップして入る`}
           accent={accent}
           items={roomItems}
           backLabel="カテゴリ一覧に戻る"

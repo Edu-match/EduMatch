@@ -919,6 +919,7 @@ type PostDraft = {
   authorRole: string;
   relatedArticleUrl: string;
   displayName: string;
+  customTitle?: string;
 };
 
 const MAX_BODY = 800;
@@ -968,13 +969,15 @@ function NewPostComposer({
   const postPreviewRole = forumRolePreviewFromProfile(organizationType, organizationTypeOther);
   const [body, setBody] = useState("");
   const [isAnon, setIsAnon] = useState(false);
+  const [customNickname, setCustomNickname] = useState("");
+  const [customTitle, setCustomTitle] = useState("");
   const [relatedArticleUrl, setRelatedArticleUrl] = useState("");
   const [showUrl, setShowUrl] = useState(false);
   const [draftFromAiLoaded, setDraftFromAiLoaded] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  const displayName = isAnon ? "匿名ユーザー" : (userName || "ゲスト");
+  const displayName = isAnon ? "匿名ユーザー" : (customNickname.trim() || userName || "ゲスト");
   const remaining = MAX_BODY - body.length;
   const canSubmit = body.trim().length > 0 && body.length <= MAX_BODY && !submitting;
 
@@ -993,7 +996,7 @@ function NewPostComposer({
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
-    await onSubmit({ body, authorRole: isAnon ? "匿名" : "一般", relatedArticleUrl, displayName });
+    await onSubmit({ body, authorRole: isAnon ? "匿名" : "一般", relatedArticleUrl, displayName, customTitle: isAnon ? "" : customTitle.trim() });
     setBody("");
     setRelatedArticleUrl("");
     setShowUrl(false);
@@ -1036,25 +1039,53 @@ function NewPostComposer({
       )}
 
       {/* 投稿者バー */}
-      <div className="flex items-center gap-2 border-b bg-muted/10 px-4 py-2">
-        <UserAvatar name={displayName} avatarUrl={isAnon ? null : avatarUrl} size={26} isAnon={isAnon} />
-        <span className="text-xs font-medium">{displayName}</span>
+      <div className="border-b bg-muted/10 px-4 py-2 space-y-1.5">
+        <div className="flex items-center gap-2">
+          <UserAvatar name={displayName} avatarUrl={isAnon ? null : avatarUrl} size={26} isAnon={isAnon} />
+          <span className="text-xs font-medium">{displayName}</span>
+          {!isAnon && customTitle.trim() && (
+            <>
+              <span className="text-muted-foreground/40">·</span>
+              <span className="text-[11px] text-muted-foreground">{customTitle.trim()}</span>
+            </>
+          )}
+          {!isAnon && !customTitle.trim() && (
+            <>
+              <span className="text-muted-foreground/40">·</span>
+              <OccupationBadge storedAuthorRole={postPreviewRole} />
+              {aiKenteiPassed && <AiKenteiBadge />}
+            </>
+          )}
+          <button
+            type="button"
+            onClick={() => setIsAnon((v) => !v)}
+            className={["ml-auto rounded-full border px-2.5 py-0.5 text-[10px] font-medium transition-colors",
+              isAnon
+                ? `${ROLE_STYLES["匿名"].bg} ${ROLE_STYLES["匿名"].text} ${ROLE_STYLES["匿名"].border}`
+                : "border-transparent text-muted-foreground hover:bg-muted",
+            ].join(" ")}
+          >{ROLE_STYLES["匿名"].icon} 匿名</button>
+        </div>
         {!isAnon && (
-          <>
-            <span className="text-muted-foreground/40">·</span>
-            <OccupationBadge storedAuthorRole={postPreviewRole} />
-            {aiKenteiPassed && <AiKenteiBadge />}
-          </>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={customNickname}
+              onChange={(e) => setCustomNickname(e.target.value)}
+              placeholder={userName || "ニックネーム（任意）"}
+              maxLength={30}
+              className="h-6 flex-1 rounded border border-input bg-background px-2 text-[11px] text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+            <input
+              type="text"
+              value={customTitle}
+              onChange={(e) => setCustomTitle(e.target.value)}
+              placeholder="肩書・属性（任意）"
+              maxLength={40}
+              className="h-6 flex-1 rounded border border-input bg-background px-2 text-[11px] text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+          </div>
         )}
-        <button
-          type="button"
-          onClick={() => setIsAnon((v) => !v)}
-          className={["ml-auto rounded-full border px-2.5 py-0.5 text-[10px] font-medium transition-colors",
-            isAnon
-              ? `${ROLE_STYLES["匿名"].bg} ${ROLE_STYLES["匿名"].text} ${ROLE_STYLES["匿名"].border}`
-              : "border-transparent text-muted-foreground hover:bg-muted",
-          ].join(" ")}
-        >{ROLE_STYLES["匿名"].icon} 匿名</button>
       </div>
 
       {/* テキストエリア */}
@@ -1266,6 +1297,7 @@ export function ForumRoomClient({
     setSubmitting(true);
     const isAnon = draft.authorRole === "匿名";
     const authorName = isAnon ? "匿名ユーザー" : (draft.displayName.trim() || (auth.isLoggedIn && auth.name ? auth.name : "ゲスト"));
+    const authorRole = isAnon ? "匿名" : (draft.customTitle || "一般");
     try {
       const res = await fetch(`/api/forum/rooms/${room.id}/posts`, {
         method: "POST",
@@ -1273,7 +1305,7 @@ export function ForumRoomClient({
         credentials: "include",
         body: JSON.stringify({
           authorName,
-          authorRole: isAnon ? "匿名" : "一般",
+          authorRole,
           postBody: draft.body.trim(),
           relatedArticleUrl: draft.relatedArticleUrl.trim() || undefined,
         }),

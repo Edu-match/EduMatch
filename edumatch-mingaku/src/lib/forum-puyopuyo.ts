@@ -51,14 +51,14 @@ export function getInteropTopGraphDimensions(_nodeCount: number) {
 
 /** サブカテゴリ軌道：件数に応じたコンテナサイズ（vmin） */
 export function getOrbitContainerSize(count: number): string {
-  const vmin = Math.min(90, 68 + Math.max(count, 1) * 5);
-  return `min(${vmin}vmin, min(94vw, 820px))`;
+  const vmin = Math.min(96, 74 + Math.max(count, 1) * 5);
+  return `min(${vmin}vmin, min(98vw, 900px))`;
 }
 
 /** サブカテゴリ軌道半径（コンテナ内 %） */
 export function getOrbitRadiusPercent(count: number): number {
-  if (count <= 4) return 34;
-  return Math.min(38, 28 + Math.max(count, 1) * 2.5);
+  if (count <= 4) return 40;
+  return Math.min(46, 34 + Math.max(count, 1) * 2.5);
 }
 
 export const INTEROP_PUYO_CSS = `
