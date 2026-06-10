@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Award,
   Bot,
@@ -10,6 +10,7 @@ import {
   Info,
   Landmark,
   Loader2,
+  MessageCircle,
   Network,
   Sparkles,
   type LucideIcon,
@@ -60,15 +61,23 @@ type ActivityPayload = {
   }>;
 };
 
+/** 表示中の階層：トップマップ → インタロップのハブ（展示カテゴリ） → カテゴリ（サブカテゴリ） */
+type View =
+  | { kind: "map" }
+  | { kind: "hub" }
+  | { kind: "category"; cat: InteropCategory };
+
 const ACTIVITY_POLL_MS = 45_000;
+const EMPTY_STATS: InteropActivityStats = { postCount: 0, participantCount: 0 };
 
 export function InteropExplorer({
   themeMode = "auto",
-  guideText = "中央のインタロップをタップして展示情報へ · 周囲のエリアから直接入ることもできます",
+  guideText = "中央のインタロップをタップして展示情報へ · 周囲の◎トピックは井戸端へ直接入れます",
 }: {
   themeMode?: InteropThemeMode;
   guideText?: string;
 }) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const catParam = searchParams.get("cat");
 
@@ -76,9 +85,21 @@ export function InteropExplorer({
   const [subCategories, setSubCategories] = useState<InteropSubCategory[]>([]);
   const [loadingCats, setLoadingCats] = useState(true);
   const [loadingSubs, setLoadingSubs] = useState(false);
-  const [selected, setSelected] = useState<InteropCategory | null>(null);
+  const [view, setView] = useState<View>({ kind: "map" });
   const [activityBySub, setActivityBySub] = useState<Map<string, InteropActivityStats>>(new Map());
   const [activityByCategory, setActivityByCategory] = useState<Map<string, InteropActivityStats>>(new Map());
+
+  const interopCat = useMemo(
+    () =>
+      categories.find((c) => c.slug === "interop") ??
+      categories.find((c) => c.isPrimary) ??
+      categories[0],
+    [categories]
+  );
+  const exhibitionCats = useMemo(
+    () => categories.filter((c) => c.id !== interopCat?.id),
+    [categories, interopCat]
+  );
 
   const loadActivity = useCallback(() => {
     fetch("/api/interop/activity")
@@ -119,9 +140,10 @@ export function InteropExplorer({
       .then((d) => {
         if (cancelled || !Array.isArray(d.categories)) return;
         setCategories(d.categories);
+        // booth ページからの戻り（/?cat=xxx）で該当階層を復元
         if (catParam) {
           const match = d.categories.find((c: InteropCategory) => c.id === catParam);
-          if (match) setSelected(match);
+          if (match) setView(match.slug === "interop" ? { kind: "hub" } : { kind: "category", cat: match });
         }
       })
       .catch(console.error)
@@ -134,14 +156,16 @@ export function InteropExplorer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const activeCategoryId = view.kind === "category" ? view.cat.id : null;
+
   useEffect(() => {
-    if (!selected) {
+    if (!activeCategoryId) {
       setSubCategories([]);
       return;
     }
     let cancelled = false;
     setLoadingSubs(true);
-    fetch(`/api/interop/sub-categories?categoryId=${selected.id}`)
+    fetch(`/api/interop/sub-categories?categoryId=${activeCategoryId}`)
       .then((r) => r.json())
       .then((d) => {
         if (!cancelled && Array.isArray(d.subCategories)) setSubCategories(d.subCategories);
@@ -153,18 +177,17 @@ export function InteropExplorer({
     return () => {
       cancelled = true;
     };
-  }, [selected]);
+  }, [activeCategoryId]);
 
-  const accent = selected?.color || "#9fb4e8";
-  const showDarkBackdrop = !!selected;
+  // トップマップで選べるのは中心のインタロップのみ → ハブへ。念のため他カテゴリはカテゴリ表示にフォールバック。
+  const handleSelectFromMap = useCallback(
+    (cat: InteropCategory) => {
+      setView(cat.slug === "interop" ? { kind: "hub" } : { kind: "category", cat });
+    },
+    []
+  );
 
-  const handleSelectCategory = useCallback((cat: InteropCategory) => {
-    setSelected(cat);
-  }, []);
-
-  const handleBackToMap = useCallback(() => {
-    setSelected(null);
-  }, []);
+  const showDarkBackdrop = view.kind !== "map";
 
   return (
     <div className="absolute inset-0 overflow-hidden">
@@ -182,13 +205,13 @@ export function InteropExplorer({
         <div className="absolute inset-0 grid place-items-center px-8 text-center text-sm text-white/60">
           まだカテゴリがありません。管理画面（/admin/interop）から追加してください。
         </div>
-      ) : !selected ? (
+      ) : view.kind === "map" ? (
         <>
           <InteropTopBubbleMap
             categories={categories}
             activityByCategory={activityByCategory}
             iconFor={iconFor}
-            onSelectCategory={handleSelectCategory}
+            onSelectCategory={handleSelectFromMap}
           />
           <div className="pointer-events-none absolute inset-x-0 top-16 z-20 flex justify-center px-4 sm:top-20">
             <div
@@ -207,18 +230,40 @@ export function InteropExplorer({
             </div>
           </div>
         </>
+      ) : view.kind === "hub" ? (
+        <InteropSubOrbit
+          centerLabel={interopCat?.name ?? "インタロップ"}
+          centerIcon={iconFor(interopCat?.slug ?? "interop")}
+          centerHint={`${exhibitionCats.length}つのエリア · タップして展示・情報へ`}
+          accent={interopCat?.color || "#9fb4e8"}
+          items={exhibitionCats.map((cat) => ({
+            id: cat.id,
+            name: cat.name,
+            icon: iconFor(cat.slug),
+            stats: activityByCategory.get(cat.id) ?? EMPTY_STATS,
+            onActivate: () => setView({ kind: "category", cat }),
+          }))}
+          backLabel="トップに戻る"
+          onBack={() => setView({ kind: "map" })}
+        />
       ) : loadingSubs ? (
         <div className="absolute inset-0 grid place-items-center text-white/60">
           <Loader2 className="h-6 w-6 animate-spin" />
         </div>
       ) : (
         <InteropSubOrbit
-          selected={selected}
-          subCategories={subCategories}
-          activityBySub={activityBySub}
-          accent={accent}
-          iconFor={iconFor}
-          onBackToMap={handleBackToMap}
+          centerLabel={view.cat.name}
+          centerIcon={iconFor(view.cat.slug)}
+          accent={view.cat.color || "#9fb4e8"}
+          items={subCategories.map((sub) => ({
+            id: sub.id,
+            name: sub.name,
+            icon: MessageCircle,
+            stats: activityBySub.get(sub.id) ?? EMPTY_STATS,
+            onActivate: () => router.push(`/interop/t/${sub.id}`),
+          }))}
+          backLabel="インタロップに戻る"
+          onBack={() => setView({ kind: "hub" })}
         />
       )}
     </div>

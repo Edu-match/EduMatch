@@ -242,8 +242,10 @@ export function computeInteropTopGraphPoints(
   });
 
   const outerCount = outerIds.length;
-  const baseR = minDim * 0.23;
-  const rSpread = minDim * 0.055;
+  // 内側リングが無い（中心＝インタロップ＋外周＝◎のみ）場合は、外周を中心玉の外側へ広げて散らす
+  const noInner = innerIds.length === 0;
+  const baseR = minDim * (noInner ? 0.3 : 0.23);
+  const rSpread = minDim * (noInner ? 0.14 : 0.055);
 
   outerIds.forEach((id, i) => {
     const t = outerCount <= 1 ? 0.5 : i / outerCount;

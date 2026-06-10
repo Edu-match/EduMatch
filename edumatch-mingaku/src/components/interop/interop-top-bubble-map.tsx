@@ -18,9 +18,7 @@ import {
 import { computePuyoIntensity, getInteropTopGraphDimensions } from "@/lib/interop-puyopuyo";
 import type { InteropCategory } from "@/components/interop/interop-category-bubble-map";
 
-const FALLBACK_COLORS = ["#BDE8FB", "#FBC9D4", "#C7EFC0", "#C9D4F6", "#F6EBB0", "#E7CCF4"];
 const TOP_CENTER_DIAMETER = 228;
-const TOP_INNER_DIAMETER = 162;
 const TOP_TOPIC_DIAMETER = 118;
 
 function computeTopConnections(
@@ -47,7 +45,7 @@ function computeTopConnections(
   return edges;
 }
 
-/** 特設トップ：中心=インタロップ、内側=既存カテゴリ、外周=◎議論トピック */
+/** 特設トップ：中心=インタロップ、外周=◎議論トピック（タップで実ルーム /forum/{roomId} へ） */
 export function InteropTopBubbleMap({
   categories,
   activityByCategory,
@@ -63,20 +61,19 @@ export function InteropTopBubbleMap({
     categories.find((c) => c.slug === "interop") ??
     categories.find((c) => c.isPrimary) ??
     categories[0];
-  const innerCategories = categories.filter((c) => c.id !== interopCat?.id);
   const priorityTopics = useMemo(() => sortTopicsForBurst(INTEROP_PRIORITY_TOPICS), []);
 
-  const nodeCount = 1 + innerCategories.length + priorityTopics.length;
+  const nodeCount = 1 + priorityTopics.length;
   const fillLayout = useMemo(() => getInteropTopGraphDimensions(nodeCount), [nodeCount]);
 
   const interopTopLayout = useMemo(() => {
     if (!interopCat) return undefined;
     return {
       centerId: interopCat.id,
-      innerIds: innerCategories.map((c) => c.id),
+      innerIds: [] as string[],
       outerIds: priorityTopics.map((t) => priorityTopicId(t.no)),
     };
-  }, [interopCat, innerCategories, priorityTopics]);
+  }, [interopCat, priorityTopics]);
 
   const nodes: BubbleGraphNode[] = useMemo(() => {
     if (!interopCat || !interopTopLayout) return [];
@@ -97,7 +94,7 @@ export function InteropTopBubbleMap({
       isPrimary: true,
       isHot: isInteropHot(interopStats),
       animationSeed: interopCat.name.length,
-        puyoIntensity: computePuyoIntensity(interopStats) * 0.55,
+      puyoIntensity: computePuyoIntensity(interopStats) * 0.55,
       icon: (
         <InteropIcon
           className="opacity-90"
@@ -111,57 +108,20 @@ export function InteropTopBubbleMap({
       onActivate: () => onSelectCategory(interopCat),
     });
 
-    innerCategories.forEach((cat, i) => {
-      const stats = activityByCategory.get(cat.id) ?? { postCount: 0, participantCount: 0 };
-      const diameter = computeCategoryActivityDiameter(TOP_INNER_DIAMETER, stats);
-      const hot = isInteropHot(stats);
-      const Icon = iconFor(cat.slug);
-
-      result.push({
-        id: cat.id,
-        label: cat.name,
-        diameter,
-        backgroundColor: cat.color || FALLBACK_COLORS[i % FALLBACK_COLORS.length],
-        isHot: hot,
-        animationSeed: i * 3 + cat.name.length,
-        puyoIntensity: computePuyoIntensity(stats) * 0.5,
-        icon: (
-          <Icon
-            className="opacity-90"
-            style={{
-              width: Math.max(14, diameter * 0.14),
-              height: Math.max(14, diameter * 0.14),
-            }}
-            strokeWidth={2}
-          />
-        ),
-        onActivate: () => onSelectCategory(cat),
-      });
-    });
-
     priorityTopics.forEach((topic, i) => {
-      const topicDiameter = TOP_TOPIC_DIAMETER;
       result.push({
         id: priorityTopicId(topic.no),
         label: topic.category,
-        diameter: topicDiameter,
+        diameter: TOP_TOPIC_DIAMETER,
         backgroundColor: topic.color,
         animationSeed: topic.no * 7 + i,
         puyoIntensity: 0.06 + (i % 5) * 0.018,
-        href: "/community",
+        href: `/forum/${topic.roomId}`,
       });
     });
 
     return result;
-  }, [
-    activityByCategory,
-    iconFor,
-    innerCategories,
-    interopCat,
-    interopTopLayout,
-    onSelectCategory,
-    priorityTopics,
-  ]);
+  }, [activityByCategory, iconFor, interopCat, interopTopLayout, onSelectCategory, priorityTopics]);
 
   const connections = useMemo(() => {
     if (!interopTopLayout) return [];

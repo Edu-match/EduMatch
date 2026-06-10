@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo } from "react";
-import { useRouter } from "next/navigation";
 import { ArrowLeft, MessageCircle, type LucideIcon } from "lucide-react";
 import { ForumHotFlame } from "@/components/community/forum-hot-flame";
 import {
@@ -17,7 +16,6 @@ import {
   INTEROP_PUYO_CSS,
   puyoAnimationStyle,
 } from "@/lib/interop-puyopuyo";
-import type { InteropCategory } from "@/components/interop/interop-category-bubble-map";
 
 export type InteropSubCategory = {
   id: string;
@@ -25,6 +23,16 @@ export type InteropSubCategory = {
   name: string;
   slug: string;
   description: string;
+};
+
+/** 軌道に並べる汎用アイテム（ハブ＝展示カテゴリ／カテゴリ＝サブカテゴリ で共用） */
+export type InteropOrbitItem = {
+  id: string;
+  name: string;
+  /** 玉の中央アイコン（既定: MessageCircle） */
+  icon?: LucideIcon;
+  stats: InteropActivityStats;
+  onActivate: () => void;
 };
 
 const FX_CSS = `
@@ -48,40 +56,38 @@ function orbitPosition(index: number, total: number, radiusPercent: number) {
 }
 
 function SubTopicOrb({
-  sub,
+  item,
   index,
   total,
   orbitRadius,
   accent,
-  stats,
-  onNavigate,
 }: {
-  sub: InteropSubCategory;
+  item: InteropOrbitItem;
   index: number;
   total: number;
   orbitRadius: number;
   accent: string;
-  stats: InteropActivityStats;
-  onNavigate: (id: string) => void;
 }) {
   const pos = orbitPosition(index, total, orbitRadius);
+  const stats = item.stats;
   const baseSize = computeSubOrbDiameter(stats);
   const hot = isInteropHot(stats);
   const hint = formatActivityHint(stats);
   const intensity = computePuyoIntensity(stats);
   const iconSize = Math.max(20, baseSize * 0.32);
+  const Icon = item.icon ?? MessageCircle;
   const puyoStyle =
     intensity > 0.08 || hot
-      ? puyoAnimationStyle(index * 5 + sub.name.length, intensity * 0.65, hot)
+      ? puyoAnimationStyle(index * 5 + item.name.length, intensity * 0.65, hot)
       : undefined;
 
   return (
     <button
       type="button"
-      onClick={() => onNavigate(sub.id)}
+      onClick={item.onActivate}
       className="group absolute z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center focus:outline-none"
       style={{ left: `${pos.left}%`, top: `${pos.top}%` }}
-      aria-label={`${sub.name} を開く`}
+      aria-label={`${item.name} を開く`}
     >
       <span className="relative flex flex-col items-center">
         {hot && (
@@ -111,7 +117,7 @@ function SubTopicOrb({
             ...puyoStyle,
           }}
         >
-          <MessageCircle
+          <Icon
             style={{ color: hot ? "#ffb870" : "rgba(255,255,255,0.92)", width: iconSize, height: iconSize }}
             strokeWidth={1.6}
           />
@@ -141,36 +147,39 @@ function SubTopicOrb({
             boxShadow: "0 4px 16px rgba(0,0,0,0.22)",
           }}
         >
-          {sub.name}
+          {item.name}
         </span>
       </span>
     </button>
   );
 }
 
-/** 大カテゴリ選択後：中央ハブ＋軌道サブトピック（添付デザイン準拠） */
+/** 中央ハブ＋軌道アイテム。中央ボタン＝1つ上の階層へ戻る。 */
 export function InteropSubOrbit({
-  selected,
-  subCategories,
-  activityBySub,
+  centerLabel,
+  centerIcon: CenterIcon,
+  centerHint,
   accent,
-  iconFor,
-  onBackToMap,
+  items,
+  backLabel,
+  onBack,
 }: {
-  selected: InteropCategory;
-  subCategories: InteropSubCategory[];
-  activityBySub: Map<string, InteropActivityStats>;
+  centerLabel: string;
+  centerIcon: LucideIcon;
+  centerHint?: string;
   accent: string;
-  iconFor: (slug: string) => LucideIcon;
-  onBackToMap: () => void;
+  items: InteropOrbitItem[];
+  backLabel: string;
+  onBack: () => void;
 }) {
-  const router = useRouter();
-  const Icon = iconFor(selected.slug);
-  const emptyStats: InteropActivityStats = { postCount: 0, participantCount: 0 };
-  const count = subCategories.length;
-
+  const count = items.length;
   const containerSize = useMemo(() => getOrbitContainerSize(count), [count]);
   const orbitRadius = useMemo(() => getOrbitRadiusPercent(count), [count]);
+  const hint =
+    centerHint ??
+    (count === 0
+      ? "準備中です。"
+      : `${count}つのトピック · 盛り上がるほどぷよぷよ大きく`);
 
   return (
     <div
@@ -201,7 +210,7 @@ export function InteropSubOrbit({
         <div className="absolute left-1/2 top-1/2 z-20 w-[min(46%,280px)] min-w-[200px] -translate-x-1/2 -translate-y-1/2">
           <button
             type="button"
-            onClick={onBackToMap}
+            onClick={onBack}
             className="group w-full rounded-3xl px-5 py-5 text-center transition-shadow duration-300 hover:shadow-[0_0_40px_rgba(100,150,255,0.18)] focus:outline-none"
             style={{
               background: "rgba(8,11,32,0.84)",
@@ -209,31 +218,25 @@ export function InteropSubOrbit({
               boxShadow: `0 0 28px ${accent}22, inset 0 1px 0 rgba(255,255,255,0.08)`,
               backdropFilter: "blur(12px)",
             }}
-            aria-label="大カテゴリマップに戻る"
+            aria-label={backLabel}
           >
-            <Icon className="mx-auto mb-2 h-8 w-8" style={{ color: accent }} strokeWidth={1.8} />
-            <p className="text-lg font-bold text-white">{selected.name}</p>
-            <p className="mt-1.5 text-[12px] leading-relaxed text-white/55">
-              {count === 0
-                ? "トピックは準備中です。"
-                : `${count}つのトピック · 盛り上がるほどぷよぷよ大きく`}
-            </p>
+            <CenterIcon className="mx-auto mb-2 h-8 w-8" style={{ color: accent }} strokeWidth={1.8} />
+            <p className="text-lg font-bold text-white">{centerLabel}</p>
+            <p className="mt-1.5 text-[12px] leading-relaxed text-white/55">{hint}</p>
             <span className="mt-3 inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/[0.06] px-3 py-1 text-[11px] font-bold text-white/70 transition group-hover:bg-white/15 group-hover:text-white">
-              <ArrowLeft className="h-3 w-3" /> 大カテゴリマップに戻る
+              <ArrowLeft className="h-3 w-3" /> {backLabel}
             </span>
           </button>
         </div>
 
-        {subCategories.map((sub, i) => (
+        {items.map((item, i) => (
           <SubTopicOrb
-            key={sub.id}
-            sub={sub}
+            key={item.id}
+            item={item}
             index={i}
             total={count}
             orbitRadius={orbitRadius}
             accent={accent}
-            stats={activityBySub.get(sub.id) ?? emptyStats}
-            onNavigate={(id) => router.push(`/t/${id}`)}
           />
         ))}
       </div>

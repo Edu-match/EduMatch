@@ -61,6 +61,7 @@ export async function middleware(request: NextRequest) {
       pathname.startsWith("/_next") ||
       pathname.startsWith("/api") ||
       pathname.startsWith("/interop") ||
+      pathname.startsWith("/forum") || // ◎トピック→実ルーム。/interopへrewriteせず本物のフォーラムルームを表示
       /\.[a-zA-Z0-9]+$/.test(pathname)
     ) {
       return NextResponse.next();
