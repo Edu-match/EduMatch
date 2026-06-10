@@ -33,4 +33,8 @@ export type BubbleGraphNode = {
   /** 議論が活発（炎エフェクト表示） */
   isHot?: boolean;
   icon?: ReactNode;
+  /** ぷよぷよアニメの位相ずらし */
+  animationSeed?: number;
+  /** ぷよぷよの振幅 0〜1 */
+  puyoIntensity?: number;
 };

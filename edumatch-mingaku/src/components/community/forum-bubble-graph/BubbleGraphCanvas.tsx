@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Minus, Plus, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { INTEROP_PUYO_CSS, puyoAnimationStyle } from "@/lib/interop-puyopuyo";
 import { GraphEdges } from "./GraphEdges";
 import { ForumHotFlame } from "@/components/community/forum-hot-flame";
 import type { BubbleConnection, BubbleGraphNode } from "./types";
@@ -12,19 +14,31 @@ function BubbleNode({
   node,
   x,
   y,
+  puyopuyo,
   onHover,
   onLeave,
 }: {
   node: BubbleGraphNode;
   x: number;
   y: number;
+  puyopuyo?: boolean;
   onHover: () => void;
   onLeave: () => void;
 }) {
+  const puyoStyle =
+    puyopuyo
+      ? puyoAnimationStyle(
+          node.animationSeed ?? node.label.length,
+          node.puyoIntensity ?? 0,
+          node.isHot
+        )
+      : undefined;
+
   const inner = (
     <div
       className={cn(
-        "relative flex h-full w-full flex-col items-center justify-center rounded-full text-center shadow-[0_12px_30px_-8px_rgba(0,0,0,0.25)] transition-transform hover:scale-[1.03]",
+        "relative flex h-full w-full flex-col items-center justify-center rounded-full text-center shadow-[0_12px_30px_-8px_rgba(0,0,0,0.25)]",
+        puyopuyo ? "interop-puyo" : "transition-transform hover:scale-[1.03]",
         node.isPrimary && "ring-2 ring-primary/50 ring-offset-2 ring-offset-transparent",
         node.isHot && "ring-2 ring-orange-400/70 ring-offset-2 ring-offset-transparent"
       )}
@@ -33,6 +47,7 @@ function BubbleNode({
         boxShadow: node.isHot
           ? "0 0 0 1.5px rgba(255,190,130,0.6), 0 0 40px rgba(255,130,50,0.5), inset 0 2px 14px rgba(255,255,255,0.55)"
           : "0 0 0 1.5px rgba(255,255,255,0.4), 0 0 26px rgba(150,190,255,0.45), 0 12px 30px -8px rgba(20,40,110,0.30), inset 0 2px 14px rgba(255,255,255,0.55)",
+        ...puyoStyle,
       }}
     >
       {node.isHot && (
@@ -98,14 +113,27 @@ export function BubbleGraphCanvas({
   layoutMode,
   className,
   canvasBackgroundColor,
+  edgeTheme = "dark",
+  hideZoomControls = false,
+  puyopuyo = false,
+  fillViewport = false,
+  circularLayout,
+  graphSize,
 }: {
   nodes: BubbleGraphNode[];
   connections: BubbleConnection[];
   layoutMode: "category" | "subcategory";
   className?: string;
   canvasBackgroundColor?: string;
+  edgeTheme?: "dark" | "light";
+  hideZoomControls?: boolean;
+  puyopuyo?: boolean;
+  fillViewport?: boolean;
+  circularLayout?: { spreadFactor: number; radiusRatio: number };
+  graphSize?: { width: number; height: number };
 }) {
   const router = useRouter();
+  const containerRef = useRef<HTMLDivElement>(null);
   const isSubcategory = layoutMode === "subcategory";
 
   const graph = useBubbleGraph({
@@ -114,7 +142,24 @@ export function BubbleGraphCanvas({
     spokeFromPrimary: isSubcategory,
     onBubbleNavigate: (href) => router.push(href),
     panEnabled: !isSubcategory,
+    fillViewport,
+    circularLayout,
+    graphSize,
   });
+
+  useEffect(() => {
+    if (!fillViewport || !containerRef.current) return;
+    const el = containerRef.current;
+    const { computeFitScale, setScale } = graph;
+    const update = () => {
+      const { width, height } = el.getBoundingClientRect();
+      setScale(computeFitScale(width, height));
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [fillViewport, graph, nodes]);
 
   const allConnections = [...connections, ...graph.spokeConnections];
 
@@ -128,6 +173,7 @@ export function BubbleGraphCanvas({
 
   return (
     <div
+      ref={containerRef}
       className={cn(
         "relative h-full w-full overflow-hidden touch-none",
         !isSubcategory && (graph.isPanning ? "cursor-grabbing" : "cursor-grab"),
@@ -139,7 +185,8 @@ export function BubbleGraphCanvas({
       onPointerUp={graph.handleViewportPanEnd}
       onPointerCancel={graph.handleViewportPanEnd}
     >
-      {!isSubcategory && (
+      {puyopuyo && <style>{INTEROP_PUYO_CSS}</style>}
+      {!isSubcategory && !hideZoomControls && (
       <div
         className="pointer-events-auto absolute bottom-4 right-4 z-40 flex items-center gap-1.5 rounded-2xl border-2 border-foreground/10 bg-background px-2 py-2 shadow-lg"
         onPointerDown={(e) => e.stopPropagation()}
@@ -190,6 +237,7 @@ export function BubbleGraphCanvas({
           hoveredId={graph.hoveredId}
           graphWidth={graph.graphDimensions.width}
           graphHeight={graph.graphDimensions.height}
+          edgeTheme={edgeTheme}
         />
 
         {nodes.map((node) => {
@@ -205,6 +253,7 @@ export function BubbleGraphCanvas({
               node={node}
               x={x}
               y={y}
+              puyopuyo={puyopuyo}
               onHover={() => graph.setHoveredId(node.id)}
               onLeave={() => graph.setHoveredId(null)}
             />

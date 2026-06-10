@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import type { ForumRoom } from "@/lib/mock-forum";
 import { ForumRoomIcon } from "@/components/community/forum-room-icon";
+import { ForumHotFlame } from "@/components/community/forum-hot-flame";
 import {
   BUBBLE_CONNECTIONS,
   isRoomActive,
@@ -345,13 +346,31 @@ function computeGraphPoints(
   return points;
 }
 
+/**
+ * コメント数・参加者数からバブルの直径を計算（overview モード専用）。
+ * sqrt スケーリング: 0件=32px, 4件=42px, 9件=47px, 25件=57px, 64件=72px
+ */
+function computeActivityDiameter(room: ForumRoom): number {
+  const activity = room.postCount + room.participantCount;
+  return Math.min(72, 32 + Math.round(Math.sqrt(Math.max(0, activity)) * 5));
+}
+
+/**
+ * 投稿数が一定以上かつ直近24h以内に投稿があるルームを「盛り上がり中」と判定。
+ */
+function isRoomHot(room: ForumRoom): boolean {
+  return room.postCount + room.participantCount >= 5 && isRoomActive(room.lastPostedAt);
+}
+
 function estimateNodeSize(room: ForumRoom, detailLevel: ZoomDetailLevel): { width: number; height: number } {
   const visibleNameLength = Math.min(room.name.length, 18);
   const topicLength = (room.description || room.name).length;
 
   switch (detailLevel) {
-    case "overview":
-      return { width: 40, height: 40 };
+    case "overview": {
+      const d = computeActivityDiameter(room);
+      return { width: d, height: d };
+    }
     case "compact":
       return { width: clampNumber(88 + visibleNameLength * 7, 108, 168), height: 34 };
     case "detail":
@@ -554,9 +573,13 @@ function GraphNode({
   onOpenAttempt: (event: ReactMouseEvent<HTMLAnchorElement>) => void;
 }) {
   const active = isRoomActive(room.lastPostedAt);
+  const hot = isRoomHot(room);
   const isOverview = allowOverview && detailLevel === "overview";
   const isCompact = detailLevel === "compact";
-  const iconSize = isOverview ? 13 : isCompact ? 14 : 15;
+  const activityDiameter = isOverview ? computeActivityDiameter(room) : 0;
+  const iconSize = isOverview
+    ? Math.max(10, Math.round(activityDiameter * 0.4))
+    : isCompact ? 14 : 15;
 
   return (
     <Link
@@ -578,7 +601,9 @@ function GraphNode({
         "focus-visible:ring-2 focus-visible:ring-slate-900/20",
         isOverview
           ? "inline-flex items-center justify-center"
-          : "inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-white/82 text-left shadow-[0_10px_28px_rgba(15,23,42,0.08)] backdrop-blur-xl hover:border-white hover:bg-white hover:shadow-[0_18px_44px_rgba(15,23,42,0.14)]",
+          : hot
+            ? "inline-flex items-center gap-2 rounded-full border border-orange-200/80 bg-orange-50/80 text-left shadow-[0_10px_28px_rgba(251,146,60,0.18)] backdrop-blur-xl hover:border-orange-200 hover:bg-orange-50 hover:shadow-[0_18px_44px_rgba(251,146,60,0.28)]"
+            : "inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-white/82 text-left shadow-[0_10px_28px_rgba(15,23,42,0.08)] backdrop-blur-xl hover:border-white hover:bg-white hover:shadow-[0_18px_44px_rgba(15,23,42,0.14)]",
         !isOverview && (isCompact ? "px-2 py-1" : "px-2.5 py-1.5"),
         isDimmed ? "opacity-35 blur-[0.2px]" : "opacity-100",
         !isOverview && (isLinked || isDragging) ? "border-white bg-white shadow-[0_20px_52px_rgba(15,23,42,0.16)]" : "",
@@ -608,16 +633,33 @@ function GraphNode({
       <span
         className={[
           "relative grid shrink-0 place-items-center rounded-full border shadow-sm transition-all duration-300",
-          isOverview ? "h-8 w-8" : isCompact ? "h-6 w-6" : "h-7 w-7",
-          active ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-slate-50 text-slate-700",
+          // overview は inline style でサイズ上書き、非 overview は固定クラス
+          !isOverview && (isCompact ? "h-6 w-6" : "h-7 w-7"),
+          hot
+            ? "border-orange-200 bg-orange-50 text-orange-700"
+            : active
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+              : "border-slate-200 bg-slate-50 text-slate-700",
           isLinked || isDragging || isOverview
-            ? "shadow-[0_0_0_5px_rgba(15,23,42,0.06)]"
-            : "group-hover:shadow-[0_0_0_5px_rgba(15,23,42,0.05)]",
-        ].join(" ")}
+            ? hot
+              ? "shadow-[0_0_0_6px_rgba(251,146,60,0.18),0_0_16px_rgba(251,146,60,0.30)]"
+              : "shadow-[0_0_0_5px_rgba(15,23,42,0.06)]"
+            : hot
+              ? "group-hover:shadow-[0_0_0_6px_rgba(251,146,60,0.22)]"
+              : "group-hover:shadow-[0_0_0_5px_rgba(15,23,42,0.05)]",
+        ].filter(Boolean).join(" ")}
+        style={isOverview ? { width: activityDiameter, height: activityDiameter } : undefined}
       >
         <ForumRoomIcon roomId={room.id} emoji={room.emoji} size={iconSize} />
-        {active && (
+        {/* 通常のアクティブ表示（hot でない場合のみ） */}
+        {active && !hot && (
           <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border border-white bg-emerald-500" />
+        )}
+        {/* 盛り上がり中は炎アイコン */}
+        {hot && (
+          <span className="absolute -right-1 -top-1 z-10">
+            <ForumHotFlame size="sm" />
+          </span>
         )}
       </span>
 

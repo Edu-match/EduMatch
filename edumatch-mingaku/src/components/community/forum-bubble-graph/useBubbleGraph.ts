@@ -95,13 +95,29 @@ export function useBubbleGraph(options: {
   onBubbleNavigate?: (href: string) => void;
   /** false にするとパン操作を無効化 */
   panEnabled?: boolean;
+  /** コンテナに合わせて自動ズーム（Interop特設向け） */
+  fillViewport?: boolean;
+  /** 円形配置の拡大（spreadFactor / radiusRatio） */
+  circularLayout?: { spreadFactor: number; radiusRatio: number };
+  /** グラフキャンバスサイズ上書き */
+  graphSize?: { width: number; height: number };
 }) {
-  const { nodes, layoutMode, spokeFromPrimary, onBubbleNavigate, panEnabled = true } = options;
+  const {
+    nodes,
+    layoutMode,
+    spokeFromPrimary,
+    onBubbleNavigate,
+    panEnabled = true,
+    fillViewport = false,
+    circularLayout,
+    graphSize,
+  } = options;
   const nodeIds = useMemo(() => nodes.map((n) => n.id).join(","), [nodes]);
 
   const graphDimensions = useMemo(
-    () => getGraphDimensions(nodes.length),
-    [nodes.length]
+    () =>
+      graphSize ?? getGraphDimensions(nodes.length),
+    [graphSize, nodes.length]
   );
 
   const basePoints = useMemo(() => {
@@ -109,7 +125,13 @@ export function useBubbleGraph(options: {
     const initial =
       layoutMode === "subcategory"
         ? computeSubCategoryGraphPoints(nodes, graphDimensions.width, graphDimensions.height)
-        : computeCircularGraphPoints(ids, graphDimensions.width, graphDimensions.height);
+        : computeCircularGraphPoints(
+            ids,
+            graphDimensions.width,
+            graphDimensions.height,
+            circularLayout?.spreadFactor ?? 1.05,
+            circularLayout?.radiusRatio ?? 0.34
+          );
     return resolveGraphCollisions(
       initial,
       nodes,
@@ -117,9 +139,18 @@ export function useBubbleGraph(options: {
       graphDimensions.width,
       graphDimensions.height
     );
-  }, [nodeIds, layoutMode, nodes, graphDimensions.height, graphDimensions.width]);
+  }, [
+    nodeIds,
+    layoutMode,
+    nodes,
+    graphDimensions.height,
+    graphDimensions.width,
+    circularLayout?.spreadFactor,
+    circularLayout?.radiusRatio,
+  ]);
 
-  const [scale, setScale] = useState(() => (nodes.length >= 10 ? 0.65 : 0.72));
+  const defaultScale = fillViewport ? 1 : nodes.length >= 10 ? 0.65 : 0.72;
+  const [scale, setScale] = useState(() => defaultScale);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [isPanning, setIsPanning] = useState(false);
@@ -290,11 +321,23 @@ export function useBubbleGraph(options: {
 
   const resetLayout = useCallback(() => {
     setPan({ x: 0, y: 0 });
-    setScale(nodes.length >= 10 ? 0.65 : 0.72);
+    setScale(defaultScale);
     driftRef.current = {};
     lastFrameTimeRef.current = null;
     setFloatOffsets({});
-  }, [nodes.length]);
+  }, [defaultScale]);
+  const computeFitScale = useCallback(
+    (containerW: number, containerH: number) => {
+      if (containerW <= 0 || containerH <= 0) return defaultScale;
+      const margin = 0.06;
+      const maxNodeD = Math.max(...nodes.map((n) => n.diameter), 80);
+      const pad = maxNodeD * 0.6;
+      const scaleX = (containerW * (1 - margin * 2)) / (graphDimensions.width + pad);
+      const scaleY = (containerH * (1 - margin * 2)) / (graphDimensions.height + pad);
+      return Math.min(MAP_ZOOM_MAX, Math.max(MAP_ZOOM_MIN, Math.min(scaleX, scaleY)));
+    },
+    [defaultScale, graphDimensions.height, graphDimensions.width, nodes]
+  );
 
   const getFloatOffset = useCallback(
     (nodeId: string): DragOffset => floatOffsets[nodeId] ?? { x: 0, y: 0 },
@@ -332,5 +375,8 @@ export function useBubbleGraph(options: {
     MAP_ZOOM_MIN,
     MAP_ZOOM_MAX,
     MAP_ZOOM_STEP,
+    fillViewport,
+    computeFitScale,
+    setScale,
   };
 }

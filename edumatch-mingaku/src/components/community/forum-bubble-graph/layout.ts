@@ -39,12 +39,13 @@ export function computeCircularGraphPoints(
   nodeIds: string[],
   graphWidth: number,
   graphHeight: number,
-  spreadFactor = 1.05
+  spreadFactor = 1.05,
+  radiusRatio = 0.34
 ): Record<string, GraphPoint> {
   const points: Record<string, GraphPoint> = {};
   const centerX = graphWidth / 2;
   const centerY = graphHeight / 2;
-  const radius = Math.min(graphWidth, graphHeight) * 0.34 * spreadFactor;
+  const radius = Math.min(graphWidth, graphHeight) * radiusRatio * spreadFactor;
   const innerOffset = Math.min(graphWidth, graphHeight) * 0.06;
 
   nodeIds.forEach((id, index) => {

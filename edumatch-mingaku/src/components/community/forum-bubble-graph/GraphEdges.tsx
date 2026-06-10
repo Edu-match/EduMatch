@@ -9,6 +9,7 @@ export function GraphEdges({
   hoveredId,
   graphWidth,
   graphHeight,
+  edgeTheme = "dark",
 }: {
   points: Record<string, GraphPoint>;
   floatOffsets: Record<string, DragOffset>;
@@ -16,7 +17,10 @@ export function GraphEdges({
   hoveredId: string | null;
   graphWidth: number;
   graphHeight: number;
+  /** light = 青グラデ背景向けの白線 */
+  edgeTheme?: "dark" | "light";
 }) {
+  const stroke = edgeTheme === "light" ? "rgb(255 255 255)" : "rgb(15 23 42)";
   return (
     <svg
       className="pointer-events-none absolute inset-0 h-full w-full"
@@ -38,7 +42,18 @@ export function GraphEdges({
         const y2 = toPoint.y + toO.y;
         const highlighted = hoveredId === from || hoveredId === to;
         const strokeWidth = weight >= 3 ? 2.2 : weight >= 2 ? 1.6 : 1.1;
-        const opacity = highlighted ? 0.55 : weight >= 2 ? 0.38 : 0.26;
+        const opacity =
+          edgeTheme === "light"
+            ? highlighted
+              ? 0.72
+              : weight >= 2
+                ? 0.48
+                : 0.32
+            : highlighted
+              ? 0.55
+              : weight >= 2
+                ? 0.38
+                : 0.26;
 
         return (
           <line
@@ -47,7 +62,7 @@ export function GraphEdges({
             y1={y1}
             x2={x2}
             y2={y2}
-            stroke="rgb(15 23 42)"
+            stroke={stroke}
             strokeWidth={strokeWidth}
             strokeOpacity={opacity}
             strokeLinecap="round"
