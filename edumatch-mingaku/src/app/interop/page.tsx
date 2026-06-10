@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Image from "next/image";
 import { Zen_Kaku_Gothic_New } from "next/font/google";
-import { CalendarDays, ChevronRight } from "lucide-react";
+import { CalendarDays, ChevronRight, GraduationCap } from "lucide-react";
 import { InteropExplorer } from "@/components/interop/interop-explorer";
 import { InteropGeofence } from "@/components/interop/interop-geofence";
 import { getInteropSettings } from "@/lib/interop-settings.server";
@@ -39,17 +39,29 @@ export default async function InteropPage() {
             background: "linear-gradient(180deg, rgba(7,2,31,0.92) 0%, rgba(7,2,31,0.55) 70%, transparent 100%)",
           }}
         >
-          {/* 左：ロゴバッジ + タイトル */}
+          {/* 左：ロゴバッジ + エデュマッチ導線 + タイトル */}
           <div className="flex items-center gap-3">
-            <div className="inline-flex items-center rounded-lg bg-white px-2.5 py-1.5 shadow-lg shadow-black/30">
-              <Image
-                src="/interop-logo.png"
-                alt="AI NATIVE EXPO 2026"
-                width={113}
-                height={40}
-                priority
-                className="h-7 w-auto sm:h-9"
-              />
+            <div className="flex shrink-0 flex-col items-start gap-1.5">
+              <div className="inline-flex items-center rounded-lg bg-white px-2.5 py-1.5 shadow-lg shadow-black/30">
+                <Image
+                  src="/interop-logo.png"
+                  alt="AI NATIVE EXPO 2026"
+                  width={113}
+                  height={40}
+                  priority
+                  className="h-7 w-auto sm:h-9"
+                />
+              </div>
+              <a
+                href="https://preview.edu-match.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 rounded-full border border-white/25 bg-white/10 px-2.5 py-1 text-[10px] font-bold text-white/90 shadow-sm backdrop-blur transition-colors hover:bg-white/18 hover:text-white sm:px-3 sm:text-[11px]"
+              >
+                <GraduationCap className="h-3 w-3 shrink-0 text-indigo-200" />
+                エデュマッチ
+                <ChevronRight className="h-3 w-3 shrink-0 opacity-70" />
+              </a>
             </div>
             <div>
               <h1
