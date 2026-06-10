@@ -944,6 +944,13 @@ function consumeForumDraft(roomId: string): { body: string; source: "ai-chat" | 
   }
 }
 
+const AVATAR_COLORS = [
+  { bg: "#3a90f0", label: "青" },
+  { bg: "#38c038", label: "緑" },
+  { bg: "#e83030", label: "赤" },
+  { bg: "#e0a010", label: "黄" },
+] as const;
+
 function NewPostComposer({
   onSubmit,
   roomId,
@@ -955,6 +962,7 @@ function NewPostComposer({
   organizationType,
   organizationTypeOther,
   aiKenteiPassed,
+  fromInterop = false,
 }: {
   onSubmit: (draft: PostDraft) => Promise<void>;
   roomId: string;
@@ -966,10 +974,12 @@ function NewPostComposer({
   organizationType?: string | null;
   organizationTypeOther?: string | null;
   aiKenteiPassed?: boolean;
+  fromInterop?: boolean;
 }) {
   const postPreviewRole = forumRolePreviewFromProfile(organizationType, organizationTypeOther);
   const [body, setBody] = useState("");
   const [isAnon, setIsAnon] = useState(false);
+  const [avatarColorIdx, setAvatarColorIdx] = useState(0);
   const [customTitle, setCustomTitle] = useState("");
   const [customNickname, setCustomNickname] = useState("");
   const [relatedArticleUrl, setRelatedArticleUrl] = useState("");
@@ -1020,12 +1030,17 @@ function NewPostComposer({
   }
 
   return (
-    <div id="new-post" ref={rootRef} className="overflow-hidden rounded-2xl border bg-card shadow-xs">
+    <div
+      id="new-post"
+      ref={rootRef}
+      className={`overflow-hidden rounded-2xl border shadow-xs ${fromInterop ? "border-white/15 bg-[#0d1225]/88" : "bg-card"}`}
+      style={fromInterop ? { backdropFilter: "blur(14px)" } : undefined}
+    >
       {/* ヘッダー */}
-      <div className="border-b bg-muted/20 px-4 py-3">
-        <p className="text-sm font-semibold">投稿する</p>
+      <div className={`border-b px-4 py-3 ${fromInterop ? "border-white/12 bg-white/5" : "bg-muted/20"}`}>
+        <p className={`text-sm font-semibold ${fromInterop ? "text-white" : ""}`}>投稿する</p>
         {roomLabel ? (
-          <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">{roomLabel}</p>
+          <p className={`mt-0.5 text-xs line-clamp-1 ${fromInterop ? "text-white/55" : "text-muted-foreground"}`}>{roomLabel}</p>
         ) : null}
       </div>
 
@@ -1040,14 +1055,41 @@ function NewPostComposer({
       )}
 
       {/* 投稿者バー */}
-      <div className="border-b bg-muted/10 px-4 py-2 space-y-1.5">
+      <div className={`border-b px-4 py-2 space-y-1.5 ${fromInterop ? "border-white/12 bg-white/[0.03]" : "bg-muted/10"}`}>
         <div className="flex items-center gap-2">
-          <UserAvatar name={displayName} avatarUrl={isAnon ? null : avatarUrl} size={26} isAnon={isAnon} />
-          <span className="text-xs font-medium">{displayName}</span>
-          {!isAnon && (
+          {fromInterop && !isAnon ? (
+            <span className="flex items-center gap-1">
+              {AVATAR_COLORS.map((c, ci) => (
+                <button
+                  key={ci}
+                  type="button"
+                  onClick={() => setAvatarColorIdx(ci)}
+                  className="rounded-full transition-transform hover:scale-110 focus:outline-none"
+                  style={{
+                    width: 22, height: 22,
+                    background: c.bg,
+                    boxShadow: avatarColorIdx === ci
+                      ? `0 0 0 2px #fff, 0 0 0 4px ${c.bg}88`
+                      : "0 1px 3px rgba(0,0,0,0.3)",
+                  }}
+                  aria-label={c.label}
+                />
+              ))}
+            </span>
+          ) : (
+            <UserAvatar name={displayName} avatarUrl={isAnon ? null : avatarUrl} size={26} isAnon={isAnon} />
+          )}
+          <span className={`text-xs font-medium ${fromInterop ? "text-white/80" : ""}`}>{displayName}</span>
+          {!isAnon && customTitle.trim() && (
+            <>
+              <span className={fromInterop ? "text-white/30" : "text-muted-foreground/40"}>·</span>
+              <span className={`text-[11px] ${fromInterop ? "text-white/55" : "text-muted-foreground"}`}>{customTitle.trim()}</span>
+            </>
+          )}
+          {!isAnon && !customTitle.trim() && !fromInterop && (
             <>
               <span className="text-muted-foreground/40">·</span>
-              <OccupationBadge storedAuthorRole={customTitle.trim() || postPreviewRole} />
+              <OccupationBadge storedAuthorRole={postPreviewRole} />
               {aiKenteiPassed && <AiKenteiBadge />}
             </>
           )}
@@ -1057,7 +1099,9 @@ function NewPostComposer({
             className={["ml-auto rounded-full border px-2.5 py-0.5 text-[10px] font-medium transition-colors",
               isAnon
                 ? `${ROLE_STYLES["匿名"].bg} ${ROLE_STYLES["匿名"].text} ${ROLE_STYLES["匿名"].border}`
-                : "border-transparent text-muted-foreground hover:bg-muted",
+                : fromInterop
+                  ? "border-white/20 text-white/50 hover:bg-white/10"
+                  : "border-transparent text-muted-foreground hover:bg-muted",
             ].join(" ")}
           >{ROLE_STYLES["匿名"].icon} 匿名</button>
         </div>
@@ -1069,7 +1113,7 @@ function NewPostComposer({
               onChange={(e) => setCustomNickname(e.target.value)}
               placeholder={userName || "ニックネーム（任意）"}
               maxLength={30}
-              className="h-6 flex-1 rounded border border-border/60 bg-background/60 px-2 text-[11px] placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/30"
+              className={`h-6 flex-1 rounded border px-2 text-[11px] focus:outline-none focus:ring-1 ${fromInterop ? "border-white/20 bg-white/[0.08] text-white placeholder:text-white/35 focus:ring-white/30" : "border-border/60 bg-background/60 text-foreground placeholder:text-muted-foreground/50 focus:ring-primary/30"}`}
             />
             <input
               type="text"
@@ -1077,7 +1121,7 @@ function NewPostComposer({
               onChange={(e) => setCustomTitle(e.target.value)}
               placeholder="肩書・属性（任意）"
               maxLength={40}
-              className="h-6 flex-1 rounded border border-border/60 bg-background/60 px-2 text-[11px] placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/30"
+              className={`h-6 flex-1 rounded border px-2 text-[11px] focus:outline-none focus:ring-1 ${fromInterop ? "border-white/20 bg-white/[0.08] text-white placeholder:text-white/35 focus:ring-white/30" : "border-border/60 bg-background/60 text-foreground placeholder:text-muted-foreground/50 focus:ring-primary/30"}`}
             />
           </div>
         )}
@@ -1092,9 +1136,9 @@ function NewPostComposer({
           placeholder="あなたの意見や経験を書いてください…"
           rows={6}
           maxLength={MAX_BODY + 50}
-          className="w-full resize-none bg-transparent text-sm leading-7 outline-none placeholder:text-muted-foreground/60"
+          className={`w-full resize-none bg-transparent text-sm leading-7 outline-none ${fromInterop ? "text-white placeholder:text-white/40" : "text-foreground placeholder:text-muted-foreground/60"}`}
         />
-        {showUrl && (
+        {!fromInterop && showUrl && (
           <div className="mb-3 flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
             <Link2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             <Input
@@ -1109,25 +1153,33 @@ function NewPostComposer({
       </div>
 
       {/* フォーマットツールバー */}
-      <FormatToolbar textareaRef={textareaRef} body={body} setBody={setBody} />
+      {!fromInterop && <FormatToolbar textareaRef={textareaRef} body={body} setBody={setBody} />}
 
       {/* 送信フッター */}
-      <div className="flex items-center justify-between gap-3 border-t bg-muted/10 px-4 py-2.5">
-        <button
-          type="button"
-          title="関連記事URLを追加"
-          onClick={() => setShowUrl((v) => !v)}
-          className={["rounded-full border p-1.5 transition-colors",
-            showUrl ? "border-primary/40 bg-primary/5 text-primary" : "border-transparent text-muted-foreground hover:bg-muted",
-          ].join(" ")}
-        >
-          <Link2 className="h-3 w-3" />
-        </button>
-        <div className="flex items-center gap-3">
-          <span className={`text-[11px] tabular-nums ${remaining < 0 ? "text-destructive font-semibold" : remaining < 50 ? "text-amber-500" : "text-muted-foreground/60"}`}>
+      <div className={`flex items-center justify-between gap-3 border-t px-4 py-2.5 ${fromInterop ? "border-white/12 bg-white/[0.03]" : "bg-muted/10"}`}>
+        {!fromInterop && (
+          <button
+            type="button"
+            title="関連記事URLを追加"
+            onClick={() => setShowUrl((v) => !v)}
+            className={["rounded-full border p-1.5 transition-colors",
+              showUrl ? "border-primary/40 bg-primary/5 text-primary" : "border-transparent text-muted-foreground hover:bg-muted",
+            ].join(" ")}
+          >
+            <Link2 className="h-3 w-3" />
+          </button>
+        )}
+        <div className="flex items-center gap-3 ml-auto">
+          <span className={`text-[11px] tabular-nums ${remaining < 0 ? "text-destructive font-semibold" : remaining < 50 ? "text-amber-500" : fromInterop ? "text-white/40" : "text-muted-foreground/60"}`}>
             {remaining}
           </span>
-          <Button onClick={handleSubmit} disabled={!canSubmit} size="sm" className="gap-1.5 rounded-full px-5">
+          <Button
+            onClick={handleSubmit}
+            disabled={!canSubmit}
+            size="sm"
+            className={`gap-1.5 rounded-full px-5 ${fromInterop ? "bg-white/15 text-white border border-white/25 hover:bg-white/25" : ""}`}
+            variant={fromInterop ? "ghost" : "default"}
+          >
             {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PenSquare className="h-3.5 w-3.5" />}
             投稿する
           </Button>
@@ -1432,8 +1484,9 @@ export function ForumRoomClient({
               organizationType={auth.organizationType}
               organizationTypeOther={auth.organizationTypeOther}
               aiKenteiPassed={auth.aiKenteiPassed}
+              fromInterop={fromInterop}
             />
-            <AiHelperSidebar roomTheme={roomDiscussionContext} body={composerBody} />
+            {!fromInterop && <AiHelperSidebar roomTheme={roomDiscussionContext} body={composerBody} />}
           </div>
 
           {/* 投稿一覧 */}

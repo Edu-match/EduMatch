@@ -16,7 +16,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { InteropBackdrop } from "@/components/interop/interop-backdrop";
-import { InteropTopBubbleMap } from "@/components/interop/interop-top-bubble-map";
+import { InteropPuyoBubbleMap } from "@/components/interop/interop-puyo-bubble-map";
 import type { InteropCategory } from "@/components/interop/interop-category-bubble-map";
 import {
   InteropSubOrbit,
@@ -221,9 +221,8 @@ export function InteropExplorer({
         </div>
       ) : view.kind === "map" ? (
         <>
-          <InteropTopBubbleMap
-            categories={categories}
-            activityByCategory={activityByCategory}
+          <InteropPuyoBubbleMap
+            interopCat={interopCat}
             iconFor={iconFor}
             onSelectCategory={handleSelectFromMap}
             onSelectTopic={handleSelectTopic}
