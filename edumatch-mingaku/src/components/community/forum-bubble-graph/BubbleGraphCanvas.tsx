@@ -15,6 +15,7 @@ function BubbleNode({
   x,
   y,
   puyopuyo,
+  hideSublabel,
   onHover,
   onLeave,
 }: {
@@ -22,6 +23,7 @@ function BubbleNode({
   x: number;
   y: number;
   puyopuyo?: boolean;
+  hideSublabel?: boolean;
   onHover: () => void;
   onLeave: () => void;
 }) {
@@ -67,7 +69,7 @@ function BubbleNode({
       >
         {node.label}
       </span>
-      {node.sublabel ? (
+      {node.sublabel && !hideSublabel ? (
         <span
           className="mt-0.5 line-clamp-2 px-2 leading-tight text-foreground/55"
           style={{ fontSize: Math.max(8, node.diameter * 0.065) }}
@@ -120,6 +122,9 @@ export function BubbleGraphCanvas({
   circularLayout,
   graphSize,
   interopTopLayout,
+  layoutCenterOffset,
+  hideSublabel = false,
+  fitMargin,
 }: {
   nodes: BubbleGraphNode[];
   connections: BubbleConnection[];
@@ -133,10 +138,18 @@ export function BubbleGraphCanvas({
   circularLayout?: { spreadFactor: number; radiusRatio: number };
   graphSize?: { width: number; height: number };
   interopTopLayout?: { centerId: string; innerIds: string[]; outerIds: string[] };
+  /** ヘッダー等を考慮した視覚的中心オフセット（px） */
+  layoutCenterOffset?: { x?: number; y?: number };
+  /** タイトル下のサブタイトル行を非表示 */
+  hideSublabel?: boolean;
+  /** fillViewport 時の余白比率 */
+  fitMargin?: number;
 }) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
   const isSubcategory = layoutMode === "subcategory";
+  const offsetX = layoutCenterOffset?.x ?? 0;
+  const offsetY = layoutCenterOffset?.y ?? 0;
 
   const graph = useBubbleGraph({
     nodes,
@@ -148,6 +161,7 @@ export function BubbleGraphCanvas({
     circularLayout,
     graphSize,
     interopTopLayout,
+    fitMargin,
   });
 
   useEffect(() => {
@@ -228,7 +242,7 @@ export function BubbleGraphCanvas({
         style={{
           width: graph.graphDimensions.width,
           height: graph.graphDimensions.height,
-          transform: `translate(calc(-50% + ${graph.pan.x}px), calc(-50% + ${graph.pan.y}px)) scale(${graph.scale})`,
+          transform: `translate(calc(-50% + ${graph.pan.x + offsetX}px), calc(-50% + ${graph.pan.y + offsetY}px)) scale(${graph.scale})`,
           transformOrigin: "center center",
           transition: graph.isPanning ? "none" : "transform 380ms cubic-bezier(.2,.8,.2,1)",
         }}
@@ -257,6 +271,7 @@ export function BubbleGraphCanvas({
               x={x}
               y={y}
               puyopuyo={puyopuyo}
+              hideSublabel={hideSublabel}
               onHover={() => graph.setHoveredId(node.id)}
               onLeave={() => graph.setHoveredId(null)}
             />

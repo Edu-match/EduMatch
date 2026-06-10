@@ -106,6 +106,8 @@ export function useBubbleGraph(options: {
   interopTopLayout?: { centerId: string; innerIds: string[]; outerIds: string[] };
   /** バブルの漂いアニメ（Interop特設ではオフ推奨） */
   driftEnabled?: boolean;
+  /** fillViewport 時の余白比率（小さいほど拡大） */
+  fitMargin?: number;
 }) {
   const {
     nodes,
@@ -118,6 +120,7 @@ export function useBubbleGraph(options: {
     graphSize,
     interopTopLayout,
     driftEnabled = layoutMode !== "interop-top",
+    fitMargin = 0.06,
   } = options;
   const nodeIds = useMemo(() => nodes.map((n) => n.id).join(","), [nodes]);
 
@@ -154,7 +157,15 @@ export function useBubbleGraph(options: {
       nodes,
       layoutMode === "interop-top" ? "compact" : "standard",
       graphDimensions.width,
-      graphDimensions.height
+      graphDimensions.height,
+      layoutMode === "interop-top"
+        ? {
+            spread: 1,
+            iterations: 48,
+            padding: 12,
+            pinnedIds: interopTopLayout ? [interopTopLayout.centerId] : undefined,
+          }
+        : undefined
     );
   }, [
     nodeIds,
@@ -350,14 +361,14 @@ export function useBubbleGraph(options: {
   const computeFitScale = useCallback(
     (containerW: number, containerH: number) => {
       if (containerW <= 0 || containerH <= 0) return defaultScale;
-      const margin = 0.06;
+      const margin = fitMargin;
       const maxNodeD = Math.max(...nodes.map((n) => n.diameter), 80);
       const pad = maxNodeD * 0.6;
       const scaleX = (containerW * (1 - margin * 2)) / (graphDimensions.width + pad);
       const scaleY = (containerH * (1 - margin * 2)) / (graphDimensions.height + pad);
       return Math.min(MAP_ZOOM_MAX, Math.max(MAP_ZOOM_MIN, Math.min(scaleX, scaleY)));
     },
-    [defaultScale, graphDimensions.height, graphDimensions.width, nodes]
+    [defaultScale, graphDimensions.height, graphDimensions.width, nodes, fitMargin]
   );
 
   const getFloatOffset = useCallback(

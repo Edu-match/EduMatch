@@ -27,7 +27,7 @@ export function computeCategoryActivityDiameter(base: number, stats: ForumActivi
 /** サブカテゴリ軌道玉の直径（px） */
 export function computeSubOrbDiameter(stats: ForumActivityStats): number {
   const activity = stats.postCount + (stats.participantCount ?? 0) * 0.6;
-  return Math.min(120, Math.max(52, 52 + Math.round(Math.sqrt(Math.max(0, activity)) * 11)));
+  return Math.min(168, Math.max(112, 112 + Math.round(Math.sqrt(Math.max(0, activity)) * 10)));
 }
 
 export function formatActivityHint(stats: ForumActivityStats): string | undefined {

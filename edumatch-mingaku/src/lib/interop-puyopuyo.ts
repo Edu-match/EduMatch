@@ -40,26 +40,25 @@ export function getFillGraphDimensions(nodeCount: number) {
 }
 
 /** Interopトップ（中心＋内側カテゴリ＋外周トピック）向けキャンバス */
-export function getInteropTopGraphDimensions(nodeCount: number) {
-  const countScale = 1 + Math.min(0.95, Math.max(0, nodeCount - 8) * 0.028);
+export function getInteropTopGraphDimensions(_nodeCount: number) {
   return {
-    width: Math.round(1180 * countScale),
-    height: Math.round(720 * countScale),
-    spreadFactor: 1.12,
-    radiusRatio: 0.4,
+    width: 880,
+    height: 540,
+    spreadFactor: 1,
+    radiusRatio: 0.34,
   };
 }
 
 /** サブカテゴリ軌道：件数に応じたコンテナサイズ（vmin） */
 export function getOrbitContainerSize(count: number): string {
-  const vmin = Math.min(82, 58 + Math.max(count, 1) * 6);
-  return `min(${vmin}vmin, min(88vw, 680px))`;
+  const vmin = Math.min(90, 68 + Math.max(count, 1) * 5);
+  return `min(${vmin}vmin, min(94vw, 820px))`;
 }
 
 /** サブカテゴリ軌道半径（コンテナ内 %） */
 export function getOrbitRadiusPercent(count: number): number {
-  if (count <= 4) return 40;
-  return Math.min(44, 32 + Math.max(count, 1) * 3.2);
+  if (count <= 4) return 34;
+  return Math.min(38, 28 + Math.max(count, 1) * 2.5);
 }
 
 export const INTEROP_PUYO_CSS = `

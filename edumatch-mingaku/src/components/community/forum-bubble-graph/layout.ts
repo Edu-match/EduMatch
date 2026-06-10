@@ -128,19 +128,32 @@ export function resolveGraphCollisions(
   nodes: BubbleGraphNode[],
   detailLevel: ZoomDetailLevel,
   graphWidth: number,
-  graphHeight: number
+  graphHeight: number,
+  options?: { spread?: number; iterations?: number; padding?: number; pinnedIds?: string[] }
 ): Record<string, GraphPoint> {
   const points = Object.fromEntries(
     Object.entries(initialPoints).map(([id, p]) => [id, { ...p }])
   ) as Record<string, GraphPoint>;
   const nodeById = new Map(nodes.map((n) => [n.id, n]));
   const ids = Object.keys(points);
-  const padding = collisionPadding(detailLevel);
-  const iterations = detailLevel === "detail" ? 140 : 100;
+  const padding = options?.padding ?? collisionPadding(detailLevel);
+  const iterations = options?.iterations ?? (detailLevel === "detail" ? 140 : 100);
+  const pinned = new Set(
+    options?.pinnedIds ??
+      nodes.filter((n) => n.isPrimary).map((n) => n.id)
+  );
+  const pinnedPositions = new Map<string, GraphPoint>();
+  for (const id of pinned) {
+    if (points[id]) pinnedPositions.set(id, { ...points[id] });
+  }
+
+  const isPinned = (id: string) => pinned.has(id);
 
   const spread =
-    detailLevel === "detail" ? 1.15 : detailLevel === "standard" ? 1.1 : 1.05;
+    options?.spread ??
+    (detailLevel === "detail" ? 1.15 : detailLevel === "standard" ? 1.1 : 1.05);
   spreadFromCenter(points, spread, graphWidth / 2, graphHeight / 2);
+  for (const [id, p] of pinnedPositions) points[id] = { ...p };
 
   for (let iter = 0; iter < iterations; iter += 1) {
     for (let i = 0; i < ids.length; i += 1) {
@@ -160,20 +173,33 @@ export function resolveGraphCollisions(
         const push = (minDist - dist) / 2 + 1;
         const nx = dx / dist;
         const ny = dy / dist;
-        a.x -= nx * push;
-        a.y -= ny * push;
-        b.x += nx * push;
-        b.y += ny * push;
+        const aPinned = isPinned(a.id);
+        const bPinned = isPinned(b.id);
+        if (aPinned && bPinned) continue;
+        if (aPinned) {
+          b.x += nx * push * 2;
+          b.y += ny * push * 2;
+        } else if (bPinned) {
+          a.x -= nx * push * 2;
+          a.y -= ny * push * 2;
+        } else {
+          a.x -= nx * push;
+          a.y -= ny * push;
+          b.x += nx * push;
+          b.y += ny * push;
+        }
       }
     }
 
     for (const id of ids) {
+      if (isPinned(id)) continue;
       const node = nodeById.get(id);
       if (!node) continue;
       const margin = node.diameter / 2 + padding * 0.4;
       points[id].x = clampNumber(points[id].x, margin, graphWidth - margin);
       points[id].y = clampNumber(points[id].y, margin, graphHeight - margin);
     }
+    for (const [id, p] of pinnedPositions) points[id] = { ...p };
   }
 
   return points;
@@ -204,10 +230,10 @@ export function computeInteropTopGraphPoints(
 
   points[centerId] = { id: centerId, x: cx, y: cy };
 
-  const innerR = minDim * (innerIds.length <= 5 ? 0.19 : 0.22);
+  const innerR = minDim * 0.21;
   innerIds.forEach((id, i) => {
     const angle = -Math.PI / 2 + (Math.PI * 2 * i) / Math.max(1, innerIds.length);
-    const wobble = Math.sin(i * 1.9) * minDim * 0.012;
+    const wobble = Math.sin(i * 1.9) * minDim * 0.006;
     points[id] = {
       id,
       x: cx + Math.cos(angle) * (innerR + wobble),
@@ -216,15 +242,15 @@ export function computeInteropTopGraphPoints(
   });
 
   const outerCount = outerIds.length;
-  const baseR = minDim * 0.34;
-  const rSpread = minDim * 0.16;
+  const baseR = minDim * 0.23;
+  const rSpread = minDim * 0.055;
 
   outerIds.forEach((id, i) => {
     const t = outerCount <= 1 ? 0.5 : i / outerCount;
-    const wave = Math.sin(i * 2.17) * 0.11 + Math.cos(i * 0.83) * 0.06;
+    const wave = Math.sin(i * 2.17) * 0.045 + Math.cos(i * 0.83) * 0.028;
     const angle = -Math.PI / 2 + Math.PI * 2 * t + wave;
-    const layer = (i % 4) * 0.035 + Math.sin(i * 0.62) * 0.025;
-    const r = baseR + rSpread * (0.28 + t * 0.72 + layer);
+    const layer = (i % 4) * 0.016 + Math.sin(i * 0.62) * 0.012;
+    const r = baseR + rSpread * (0.32 + t * 0.52 + layer);
     points[id] = {
       id,
       x: cx + Math.cos(angle) * r,

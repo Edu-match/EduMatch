@@ -4,11 +4,9 @@ import { useMemo } from "react";
 import { Move } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { BubbleGraphCanvas } from "@/components/community/forum-bubble-graph/BubbleGraphCanvas";
-import { computeBubbleDiameter } from "@/components/community/forum-bubble-graph/layout";
 import type { BubbleConnection, BubbleGraphNode } from "@/components/community/forum-bubble-graph/types";
 import {
   computeCategoryActivityDiameter,
-  formatActivityHint,
   isInteropHot,
   type InteropActivityStats,
 } from "@/lib/interop-activity";
@@ -21,6 +19,9 @@ import { computePuyoIntensity, getInteropTopGraphDimensions } from "@/lib/intero
 import type { InteropCategory } from "@/components/interop/interop-category-bubble-map";
 
 const FALLBACK_COLORS = ["#BDE8FB", "#FBC9D4", "#C7EFC0", "#C9D4F6", "#F6EBB0", "#E7CCF4"];
+const TOP_CENTER_DIAMETER = 228;
+const TOP_INNER_DIAMETER = 162;
+const TOP_TOPIC_DIAMETER = 118;
 
 function computeTopConnections(
   centerId: string,
@@ -67,15 +68,6 @@ export function InteropTopBubbleMap({
 
   const nodeCount = 1 + innerCategories.length + priorityTopics.length;
   const fillLayout = useMemo(() => getInteropTopGraphDimensions(nodeCount), [nodeCount]);
-  const diameters = useMemo(
-    () =>
-      computeBubbleDiameter(nodeCount, {
-        max: 168,
-        min: 58,
-        primaryMultiplier: 1.35,
-      }),
-    [nodeCount]
-  );
 
   const interopTopLayout = useMemo(() => {
     if (!interopCat) return undefined;
@@ -94,16 +86,12 @@ export function InteropTopBubbleMap({
       postCount: 0,
       participantCount: 0,
     };
-    const interopDiameter = computeCategoryActivityDiameter(
-      diameters.primary,
-      interopStats
-    );
+    const interopDiameter = computeCategoryActivityDiameter(TOP_CENTER_DIAMETER, interopStats);
     const InteropIcon = iconFor(interopCat.slug);
 
     result.push({
       id: interopCat.id,
       label: interopCat.name,
-      sublabel: interopCat.description || "Interop Tokyo 2026",
       diameter: interopDiameter,
       backgroundColor: interopCat.color || "#C9D4F6",
       isPrimary: true,
@@ -125,15 +113,13 @@ export function InteropTopBubbleMap({
 
     innerCategories.forEach((cat, i) => {
       const stats = activityByCategory.get(cat.id) ?? { postCount: 0, participantCount: 0 };
-      const diameter = computeCategoryActivityDiameter(diameters.default * 0.92, stats);
+      const diameter = computeCategoryActivityDiameter(TOP_INNER_DIAMETER, stats);
       const hot = isInteropHot(stats);
       const Icon = iconFor(cat.slug);
-      const activityHint = formatActivityHint(stats);
 
       result.push({
         id: cat.id,
         label: cat.name,
-        sublabel: activityHint ?? (cat.description || undefined),
         diameter,
         backgroundColor: cat.color || FALLBACK_COLORS[i % FALLBACK_COLORS.length],
         isHot: hot,
@@ -154,11 +140,10 @@ export function InteropTopBubbleMap({
     });
 
     priorityTopics.forEach((topic, i) => {
-      const topicDiameter = Math.max(52, diameters.default * 0.62);
+      const topicDiameter = TOP_TOPIC_DIAMETER;
       result.push({
         id: priorityTopicId(topic.no),
         label: topic.category,
-        sublabel: topic.majorLabel,
         diameter: topicDiameter,
         backgroundColor: topic.color,
         animationSeed: topic.no * 7 + i,
@@ -170,8 +155,6 @@ export function InteropTopBubbleMap({
     return result;
   }, [
     activityByCategory,
-    diameters.default,
-    diameters.primary,
     iconFor,
     innerCategories,
     interopCat,
@@ -230,6 +213,8 @@ export function InteropTopBubbleMap({
         className="h-full"
         edgeTheme="light"
         puyopuyo
+        hideSublabel
+        fitMargin={0.035}
         fillViewport
         graphSize={{ width: fillLayout.width, height: fillLayout.height }}
         interopTopLayout={interopTopLayout}
