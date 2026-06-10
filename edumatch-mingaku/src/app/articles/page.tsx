@@ -1,8 +1,11 @@
 import { unstable_noStore } from "next/cache";
+import { getLocale } from "next-intl/server";
 import { getLatestPosts, getArticleCategoryCounts } from "@/app/_actions";
 import { ArticlesClient } from "./articles-client";
 import { ARTICLE_CATEGORIES } from "@/lib/categories";
 import { excerptFromHtml } from "@/lib/html";
+import { translateBatch } from "@/lib/translate";
+import type { Locale } from "@/i18n/config";
 
 export const dynamic = "force-dynamic";
 
@@ -26,11 +29,19 @@ export default async function ArticlesPage() {
 
   const now = new Date();
   const oneDayAgo = now.getTime() - 24 * 60 * 60 * 1000;
+  const locale = (await getLocale()) as Locale;
 
-  const articles: ArticleForList[] = posts.map((post) => ({
+  const excerpts = posts.map((post) => excerptFromHtml(post.content, 150));
+  // DB 由来テキスト（タイトル・抜粋）を表示言語へ機械翻訳（ja のときは原文のまま）
+  const [translatedTitles, translatedExcerpts] = await Promise.all([
+    translateBatch(posts.map((p) => p.title), locale),
+    translateBatch(excerpts, locale),
+  ]);
+
+  const articles: ArticleForList[] = posts.map((post, i) => ({
     id: post.id,
-    title: post.title,
-    excerpt: excerptFromHtml(post.content, 150),
+    title: translatedTitles[i],
+    excerpt: translatedExcerpts[i],
     image: post.thumbnail_url || "https://placehold.co/400x250/e0f2fe/0369a1?text=Article",
     category: post.category || "未分類",
     tags: post.tags ?? [],

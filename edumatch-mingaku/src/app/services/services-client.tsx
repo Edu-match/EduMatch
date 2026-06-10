@@ -2,7 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useTranslations, useLocale } from "next-intl";
 import { Input } from "@/components/ui/input";
+import { localizeServiceCategory } from "@/lib/category-i18n";
+import type { Locale } from "@/i18n/config";
 import { ThumbnailOrTitle } from "@/components/ui/thumbnail-or-title";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +28,8 @@ export function ServicesClient({
   categoriesWithCount: string[];
   displayOrderIds: string[];
 }) {
+  const t = useTranslations("servicesList");
+  const locale = useLocale() as Locale;
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
@@ -74,10 +79,10 @@ export function ServicesClient({
         <div className="container py-6 md:py-12">
           <div className="max-w-3xl">
             <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold mb-2 md:mb-4 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-              サービス一覧
+              {t("title")}
             </h1>
             <p className="text-base md:text-lg text-muted-foreground">
-              {services.length}件のサービスから、あなたに最適なサービスを見つけましょう
+              {t("subtitle", { count: services.length })}
             </p>
           </div>
         </div>
@@ -92,7 +97,7 @@ export function ServicesClient({
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
-                  placeholder="サービス名、機能、キーワードで検索..."
+                  placeholder={t("searchPlaceholder")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-12 h-12 text-base border-2 focus:border-primary transition-all"
@@ -102,7 +107,7 @@ export function ServicesClient({
               {/* カテゴリフィルター */}
               <div className="flex items-center gap-2 pb-2 overflow-x-auto scrollbar-hide" style={{ WebkitOverflowScrolling: "touch" }}>
                 <span className="text-sm font-medium text-muted-foreground whitespace-nowrap flex-shrink-0">
-                  カテゴリ:
+                  {t("categoryLabel")}
                 </span>
                 <Button
                   variant={selectedCategory === "all" ? "default" : "outline"}
@@ -110,7 +115,7 @@ export function ServicesClient({
                   onClick={() => setSelectedCategory("all")}
                   className="transition-all hover:scale-105 whitespace-nowrap flex-shrink-0"
                 >
-                  すべて
+                  {t("all")}
                 </Button>
                 {categoriesWithCount.map((category) => (
                   <Button
@@ -120,7 +125,7 @@ export function ServicesClient({
                     onClick={() => setSelectedCategory(category)}
                     className="transition-all hover:scale-105 whitespace-nowrap flex-shrink-0"
                   >
-                    {category}
+                    {localizeServiceCategory(category, locale)}
                   </Button>
                 ))}
               </div>
@@ -129,7 +134,7 @@ export function ServicesClient({
               <div className="flex items-center justify-between text-sm pt-2 border-t">
                 <span className="text-muted-foreground">
                   <span className="font-bold text-primary text-lg">{filteredServices.length}</span>
-                  <span className="ml-1">件のサービスが見つかりました</span>
+                  <span className="ml-1">{t("foundCount")}</span>
                 </span>
                 {searchQuery && (
                   <Button
@@ -138,7 +143,7 @@ export function ServicesClient({
                     onClick={() => setSearchQuery("")}
                     className="text-xs"
                   >
-                    検索をクリア
+                    {t("clearSearch")}
                   </Button>
                 )}
               </div>
@@ -196,7 +201,7 @@ export function ServicesClient({
                   {/* カテゴリバッジ（画像上） */}
                   <div className="absolute top-3 right-3">
                     <Badge className="bg-white/95 text-foreground border shadow-lg">
-                      {service.category}
+                      {localizeServiceCategory(service.category, locale)}
                     </Badge>
                   </div>
 
@@ -222,7 +227,7 @@ export function ServicesClient({
                   {/* 価格とアクション */}
                   <div className="flex items-center justify-between pt-3 border-t">
                     <div className="flex flex-col">
-                      <span className="text-xs text-muted-foreground mb-0.5">料金</span>
+                      <span className="text-xs text-muted-foreground mb-0.5">{t("price")}</span>
                       <span className="font-bold text-primary text-base">
                         {service.price}
                       </span>
@@ -232,7 +237,7 @@ export function ServicesClient({
                       className="group-hover:bg-primary group-hover:text-primary-foreground transition-all"
                       variant="ghost"
                     >
-                      詳細を見る
+                      {t("viewDetail")}
                       <ExternalLink className="h-3 w-3 ml-1" />
                     </Button>
                   </div>
@@ -250,16 +255,16 @@ export function ServicesClient({
                 <Search className="h-10 w-10 text-muted-foreground" />
               </div>
               <h3 className="text-xl font-semibold mb-2">
-                条件に一致するサービスが見つかりませんでした
+                {t("noResultsTitle")}
               </h3>
               <p className="text-muted-foreground mb-6">
-                検索条件を変更するか、別のキーワードでお試しください
+                {t("noResultsBody")}
               </p>
               <Button onClick={() => {
                 setSearchQuery("");
                 setSelectedCategory("all");
               }}>
-                検索をリセット
+                {t("resetSearch")}
               </Button>
             </CardContent>
           </Card>

@@ -9,26 +9,29 @@ import {
   Sparkles,
   BookOpen,
 } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 
-const nextSteps = [
-  {
-    icon: Mail,
-    title: "メールを確認",
-    description: "確認メールを送信しました。メール内のリンクをクリックして認証を完了してください。",
-  },
-  {
-    icon: User,
-    title: "プロフィールを設定（名前・連絡先など）",
-    description: "お名前・電話番号・連絡先などを登録すると、資料請求がスムーズになります。関心カテゴリも設定できます。",
-  },
-  {
-    icon: Sparkles,
-    title: "コンテンツを探索",
-    description: "会員限定記事やサービス情報など、さまざまなコンテンツをお楽しみください。",
-  },
-];
+export default async function RegisterCompletePage() {
+  const t = await getTranslations("authRegisterComplete");
 
-export default function RegisterCompletePage() {
+  const nextSteps = [
+    {
+      icon: Mail,
+      title: t("step1Title"),
+      description: t("step1Desc"),
+    },
+    {
+      icon: User,
+      title: t("step2Title"),
+      description: t("step2Desc"),
+    },
+    {
+      icon: Sparkles,
+      title: t("step3Title"),
+      description: t("step3Desc"),
+    },
+  ];
+
   return (
     <div className="container py-8">
       <div className="max-w-2xl mx-auto">
@@ -38,35 +41,27 @@ export default function RegisterCompletePage() {
               <CheckCircle2 className="h-10 w-10 text-green-600" />
             </div>
 
-            <h1 className="text-3xl font-bold mb-4">会員登録が完了しました</h1>
+            <h1 className="text-3xl font-bold mb-4">{t("title")}</h1>
 
-            <p className="text-lg text-muted-foreground mb-2">
-              エデュマッチへようこそ！
-            </p>
-            <p className="text-muted-foreground mb-8">
-              ご登録いただいたメールアドレスに確認メールを送信しました。
-              <br />
-              メール内のリンクをクリックして、認証を完了してください。
-            </p>
+            <p className="text-lg text-muted-foreground mb-2">{t("welcome")}</p>
+            <p className="text-muted-foreground mb-8">{t("emailSent")}</p>
 
             <div className="p-4 rounded-lg bg-amber-50 border border-amber-200 mb-8">
               <div className="flex items-center justify-center gap-2 text-amber-700">
                 <Mail className="h-5 w-5" />
-                <span className="font-medium">
-                  確認メールが届かない場合
-                </span>
+                <span className="font-medium">{t("noEmailTitle")}</span>
               </div>
               <p className="text-sm text-amber-600 mt-2">
-                迷惑メールフォルダをご確認ください。数分経っても届かない場合は、
+                {t("noEmailBody")}
                 <Link href="/contact" className="underline">
-                  お問い合わせ
+                  {t("contact")}
                 </Link>
-                ください。
+                {t("noEmailSuffix")}
               </p>
             </div>
 
             <div className="border-t pt-8 mb-8">
-              <h2 className="text-xl font-bold mb-6">次のステップ</h2>
+              <h2 className="text-xl font-bold mb-6">{t("nextStepsTitle")}</h2>
               <div className="space-y-4">
                 {nextSteps.map((step, index) => {
                   const Icon = step.icon;
@@ -96,14 +91,14 @@ export default function RegisterCompletePage() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button asChild size="lg" className="gap-2">
                 <Link href="/profile/register">
-                  プロフィールを設定する（名前・連絡先など）
+                  {t("setupProfile")}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
               <Button asChild variant="outline" size="lg" className="gap-2">
                 <Link href="/">
                   <BookOpen className="h-4 w-4" />
-                  トップページへ
+                  {t("goHome")}
                 </Link>
               </Button>
             </div>

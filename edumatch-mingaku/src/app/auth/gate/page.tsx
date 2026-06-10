@@ -11,31 +11,34 @@ import {
   Sparkles,
   Shield,
 } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 
-const benefits = [
-  {
-    icon: BookOpen,
-    title: "全記事が読み放題",
-    description: "会員限定コンテンツを含む、すべての記事にアクセスできます。",
-  },
-  {
-    icon: Star,
-    title: "お気に入り機能",
-    description: "気になる記事やサービスを保存して、いつでも確認できます。",
-  },
-  {
-    icon: Bell,
-    title: "新着通知",
-    description: "関心のあるカテゴリの新着情報をメールでお届けします。",
-  },
-  {
-    icon: Sparkles,
-    title: "パーソナライズ",
-    description: "AIがあなたに最適なコンテンツをおすすめします。",
-  },
-];
+export default async function AuthGatePage() {
+  const t = await getTranslations("authGate");
 
-export default function AuthGatePage() {
+  const benefits = [
+    {
+      icon: BookOpen,
+      title: t("benefit1Title"),
+      description: t("benefit1Desc"),
+    },
+    {
+      icon: Star,
+      title: t("benefit2Title"),
+      description: t("benefit2Desc"),
+    },
+    {
+      icon: Bell,
+      title: t("benefit3Title"),
+      description: t("benefit3Desc"),
+    },
+    {
+      icon: Sparkles,
+      title: t("benefit4Title"),
+      description: t("benefit4Desc"),
+    },
+  ];
+
   return (
     <div className="container py-8">
       <div className="max-w-2xl mx-auto">
@@ -45,33 +48,27 @@ export default function AuthGatePage() {
               <Lock className="h-10 w-10 text-primary" />
             </div>
 
-            <h1 className="text-3xl font-bold mb-4">
-              会員限定コンテンツです
-            </h1>
+            <h1 className="text-3xl font-bold mb-4">{t("title")}</h1>
 
-            <p className="text-lg text-muted-foreground mb-8">
-              このコンテンツを閲覧するには、会員登録（無料）が必要です。
-              <br />
-              登録は1分で完了します。
-            </p>
+            <p className="text-lg text-muted-foreground mb-8">{t("subtitle")}</p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
               <Button asChild size="lg" className="gap-2">
                 <Link href="/auth/login">
                   <UserPlus className="h-5 w-5" />
-                  無料会員登録
+                  {t("signupFree")}
                 </Link>
               </Button>
               <Button asChild variant="outline" size="lg" className="gap-2">
                 <Link href="/auth/login">
                   <LogIn className="h-5 w-5" />
-                  ログイン
+                  {t("login")}
                 </Link>
               </Button>
             </div>
 
             <div className="border-t pt-8">
-              <h2 className="text-xl font-bold mb-6">会員登録のメリット</h2>
+              <h2 className="text-xl font-bold mb-6">{t("benefitsTitle")}</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {benefits.map((benefit) => {
                   const Icon = benefit.icon;
@@ -96,11 +93,9 @@ export default function AuthGatePage() {
             <div className="mt-8 p-4 rounded-lg bg-green-50 border border-green-200">
               <div className="flex items-center justify-center gap-2 text-green-700">
                 <Shield className="h-5 w-5" />
-                <span className="font-medium">安心してご利用いただけます</span>
+                <span className="font-medium">{t("securityTitle")}</span>
               </div>
-              <p className="text-sm text-green-600 mt-2">
-                個人情報は厳重に管理され、第三者に提供されることはありません。
-              </p>
+              <p className="text-sm text-green-600 mt-2">{t("securityBody")}</p>
             </div>
           </CardContent>
         </Card>

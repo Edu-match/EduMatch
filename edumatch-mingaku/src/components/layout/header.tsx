@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import Image from "next/image";
+import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { 
   Menu, LogOut, User, LayoutDashboard, Settings, 
   ChevronDown, UserPlus, LogIn, FileText, Bell,
@@ -37,6 +39,9 @@ import {
 import { useTutorial } from "@/components/tutorial/use-tutorial";
 
 export function Header() {
+  const t = useTranslations("header");
+  const tn = useTranslations("nav");
+  const tc = useTranslations("common");
   const router = useRouter();
   const pathname = usePathname();
   const { count: requestListCount } = useRequestList();
@@ -125,14 +130,14 @@ export function Header() {
   };
 
   const navLinks = [
-    { href: "/services", label: "サービス一覧" },
-    { href: "/articles", label: "記事一覧" },
-    { href: "/forum", label: "井戸端会議" },
-    { href: "/events", label: "セミナー・イベント情報" },
-    { href: "/companies", label: "掲載企業" },
+    { href: "/services", label: tn("services") },
+    { href: "/articles", label: tn("articles") },
+    { href: "/forum", label: tn("forum") },
+    { href: "/events", label: tn("events") },
+    { href: "/companies", label: tn("companies") },
   ];
 
-  const displayName = userName || (userEmail ? userEmail.split("@")[0] : "ユーザー");
+  const displayName = userName || (userEmail ? userEmail.split("@")[0] : tc("user"));
 
   const handleStartTutorial = () => {
     const pageId = getTutorialPageIdFromPathname(pathname) ?? "home";
@@ -153,12 +158,12 @@ export function Header() {
       size="sm"
       className="shrink-0 gap-1.5 px-2 text-foreground/70 hover:text-foreground"
       onClick={handleStartTutorial}
-      title="チュートリアルを見る"
-      aria-label="チュートリアルを見る"
+      title={t("tutorialTitle")}
+      aria-label={t("tutorialTitle")}
       data-tutorial="header-tutorial"
     >
       <CircleHelp className="h-4 w-4 shrink-0" />
-      <span className="hidden xl:inline text-sm font-medium">チュートリアル</span>
+      <span className="hidden xl:inline text-sm font-medium">{t("tutorial")}</span>
     </Button>
   );
 
@@ -169,7 +174,7 @@ export function Header() {
         <Link href="/" className="flex shrink-0 items-center hover:opacity-80 transition-opacity">
           <Image
             src="/logo.png"
-            alt="エデュマッチ"
+            alt={tc("siteName")}
             width={180}
             height={44}
             className="h-9 w-auto object-contain"
@@ -198,8 +203,8 @@ export function Header() {
             className="relative flex shrink-0 items-center gap-1 whitespace-nowrap text-sm font-medium text-foreground/60 transition-colors hover:text-foreground"
           >
             <FileText className="h-4 w-4 shrink-0" />
-            <span className="hidden lg:inline">サービスのお気に入り</span>
-            <span className="lg:hidden">お気に入り</span>
+            <span className="hidden lg:inline">{t("favoritesFull")}</span>
+            <span className="lg:hidden">{t("favoritesShort")}</span>
             {requestListCount > 0 && (
               <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold px-1">
                 {requestListCount > 99 ? "99+" : requestListCount}
@@ -209,6 +214,8 @@ export function Header() {
           </div>
 
           {tutorialButton}
+
+          <LanguageSwitcher />
 
           {/* 通知ベル（全ログインユーザー・汎用） */}
           {isAuthenticated && (
@@ -227,7 +234,7 @@ export function Header() {
               }}
             >
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative shrink-0" aria-label="通知">
+                <Button variant="ghost" size="icon" className="relative shrink-0" aria-label={t("notifications")}>
                   <Bell className="h-5 w-5 text-foreground/70" />
                   {notifications.unreadCount > 0 && (
                     <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
@@ -239,14 +246,14 @@ export function Header() {
               <DropdownMenuContent align="end" className="w-[360px] p-0 overflow-hidden">
                 <div className="border-b px-4 py-3">
                   <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-sm">通知</h3>
+                    <h3 className="font-semibold text-sm">{t("notifications")}</h3>
                     {notifications.list.length > 0 && (
                       <Link
                         href="/notifications"
                         className="text-xs text-primary hover:underline"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        すべて見る
+                        {t("viewAll")}
                       </Link>
                     )}
                   </div>
@@ -255,7 +262,7 @@ export function Header() {
                   {notifications.list.length === 0 ? (
                     <div className="py-12 text-center">
                       <Bell className="h-10 w-10 mx-auto text-muted-foreground/50 mb-2" />
-                      <p className="text-sm text-muted-foreground">通知はありません</p>
+                      <p className="text-sm text-muted-foreground">{t("noNotifications")}</p>
                     </div>
                   ) : (
                     <ul className="divide-y">
@@ -360,7 +367,7 @@ export function Header() {
                   onSelect={() => router.push("/mypage")}
                 >
                   <User className="mr-2 h-4 w-4" />
-                  マイページ
+                  {t("mypage")}
                 </DropdownMenuItem>
                 {userRole === "ADMIN" && (
                   <DropdownMenuItem
@@ -368,7 +375,7 @@ export function Header() {
                     onSelect={() => router.push("/provider-dashboard")}
                   >
                     <LayoutDashboard className="mr-2 h-4 w-4" />
-                    管理者ダッシュボード
+                    {t("adminDashboard")}
                   </DropdownMenuItem>
                 )}
                 {userRole === "ADMIN" && (
@@ -377,77 +384,77 @@ export function Header() {
                     onSelect={() => setEditMode(!editMode)}
                   >
                     <Pencil className="mr-2 h-4 w-4 text-orange-600" />
-                    {editMode ? "テキスト編集モードを終了" : "テキスト編集モード"}
+                    {editMode ? t("editModeOff") : t("editModeOn")}
                   </DropdownMenuItem>
                 )}
                 {userRole === "ADMIN" && (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-2 py-1">
-                      管理メニュー
+                      {t("adminMenu")}
                     </DropdownMenuLabel>
                     <DropdownMenuItem
                       className="cursor-pointer"
                       onSelect={() => router.push("/admin/approvals")}
                     >
                       <CheckCircle className="mr-2 h-4 w-4 text-amber-600" />
-                      承認キュー
+                      {t("approvals")}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="cursor-pointer"
                       onSelect={() => router.push("/admin/events")}
                     >
                       <Calendar className="mr-2 h-4 w-4 text-emerald-600" />
-                      イベント管理
+                      {t("eventsAdmin")}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="cursor-pointer"
                       onSelect={() => router.push("/admin/forum")}
                     >
                       <MessageSquare className="mr-2 h-4 w-4 text-blue-600" />
-                      井戸端会議管理
+                      {t("forumAdmin")}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="cursor-pointer"
                       onSelect={() => router.push("/admin/site-updates")}
                     >
                       <Newspaper className="mr-2 h-4 w-4 text-slate-600" />
-                      運営記事管理
+                      {t("siteUpdatesAdmin")}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="cursor-pointer"
                       onSelect={() => router.push("/dashboard/admin/knowledge")}
                     >
                       <BookOpen className="mr-2 h-4 w-4 text-indigo-600" />
-                      ナレッジ文書管理
+                      {t("knowledgeAdmin")}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="cursor-pointer"
                       onSelect={() => router.push("/admin/ai-chat")}
                     >
                       <Bot className="mr-2 h-4 w-4 text-violet-600" />
-                      AIチャット管理
+                      {t("aiChatAdmin")}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="cursor-pointer"
                       onSelect={() => router.push("/admin/services/display-order")}
                     >
                       <ArrowUpDown className="mr-2 h-4 w-4 text-cyan-600" />
-                      サービス表示順管理
+                      {t("serviceOrderAdmin")}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="cursor-pointer"
                       onSelect={() => router.push("/admin/activity-log")}
                     >
                       <Activity className="mr-2 h-4 w-4 text-orange-600" />
-                      操作ログ
+                      {t("activityLog")}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="cursor-pointer"
                       onSelect={() => router.push("/admin/user-reports")}
                     >
                       <Flag className="mr-2 h-4 w-4 text-rose-600" />
-                      ユーザー報告
+                      {t("userReports")}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                   </>
@@ -457,14 +464,14 @@ export function Header() {
                   onSelect={() => router.push("/profile/register")}
                 >
                   <Settings className="mr-2 h-4 w-4" />
-                  アカウント設定
+                  {t("accountSettings")}
                 </DropdownMenuItem>
                 <DropdownMenuItem 
                   onClick={handleLogout}
                   className="cursor-pointer text-red-600 focus:text-red-600"
                 >
                   <LogOut className="mr-2 h-4 w-4" />
-                  ログアウト
+                  {t("logout")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -474,13 +481,13 @@ export function Header() {
               <Button asChild variant="ghost" size="sm">
                 <Link href="/login">
                   <LogIn className="h-4 w-4 mr-2" />
-                  ログイン
+                  {t("login")}
                 </Link>
               </Button>
               <Button asChild size="sm">
                 <Link href="/login">
                   <UserPlus className="h-4 w-4 mr-2" />
-                  新規登録
+                  {t("register")}
                 </Link>
               </Button>
             </div>
@@ -491,6 +498,7 @@ export function Header() {
         {/* Mobile Navigation */}
         <div className="flex shrink-0 items-center gap-1 md:hidden">
           {tutorialButton}
+          <LanguageSwitcher />
         <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
           <SheetTrigger asChild className="md:hidden">
             <Button
@@ -499,12 +507,12 @@ export function Header() {
               data-tutorial="header-mobile-menu-trigger"
             >
               <Menu className="h-5 w-5" />
-              <span className="sr-only">メニューを開く</span>
+              <span className="sr-only">{t("openMenu")}</span>
             </Button>
           </SheetTrigger>
           <SheetContent side="right" className="w-[85vw] sm:w-[350px] overflow-y-auto p-0">
             <SheetHeader className="px-4 py-4 border-b">
-              <SheetTitle>メニュー</SheetTitle>
+              <SheetTitle>{t("menu")}</SheetTitle>
             </SheetHeader>
             <nav className="flex flex-col px-4 pb-6">
               {navLinks.map((link) => (
@@ -523,7 +531,7 @@ export function Header() {
                 className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b"
               >
                 <FileText className="h-4 w-4 flex-shrink-0" />
-                サービスのお気に入り
+                {t("favoritesFull")}
                 {requestListCount > 0 && (
                   <span className="rounded-full bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5">
                     {requestListCount}
@@ -536,7 +544,7 @@ export function Header() {
                 className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b"
               >
                 <Bell className="h-4 w-4 flex-shrink-0" />
-                通知
+                {t("notifications")}
                 {notifications.unreadCount > 0 && (
                   <span className="rounded-full bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5">
                     {notifications.unreadCount}
@@ -546,7 +554,7 @@ export function Header() {
 
               <div className="border-t pt-4 mt-4">
                 {isLoading ? (
-                  <div className="text-sm text-muted-foreground">読み込み中...</div>
+                  <div className="text-sm text-muted-foreground">{tc("loading")}</div>
                 ) : isAuthenticated ? (
                   <div>
                     <div className="flex items-center gap-3 p-2 bg-muted/50 rounded-lg mb-3">
@@ -568,7 +576,7 @@ export function Header() {
                       className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b"
                     >
                       <User className="h-4 w-4 flex-shrink-0" />
-                      マイページ
+                      {t("mypage")}
                     </Link>
                     {userRole === "ADMIN" && (
                       <Link
@@ -577,7 +585,7 @@ export function Header() {
                         className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b"
                       >
                         <LayoutDashboard className="h-4 w-4 flex-shrink-0" />
-                        管理者ダッシュボード
+                        {t("adminDashboard")}
                       </Link>
                     )}
                     {userRole === "ADMIN" && (
@@ -590,38 +598,38 @@ export function Header() {
                         className="flex w-full items-center gap-2 py-3 text-left text-sm font-medium text-foreground/60 hover:text-foreground border-b"
                       >
                         <Pencil className="h-4 w-4 flex-shrink-0 text-orange-600" />
-                        {editMode ? "テキスト編集モードを終了" : "テキスト編集モード"}
+                        {editMode ? t("editModeOff") : t("editModeOn")}
                       </button>
                     )}
                     {userRole === "ADMIN" && (
                       <div className="border-t pt-3 mt-2">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground pb-1">管理メニュー</p>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground pb-1">{t("adminMenu")}</p>
                         <Link href="/admin/approvals" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
-                          <CheckCircle className="h-4 w-4 text-amber-600 flex-shrink-0" />承認キュー
+                          <CheckCircle className="h-4 w-4 text-amber-600 flex-shrink-0" />{t("approvals")}
                         </Link>
                         <Link href="/admin/events" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
-                          <Calendar className="h-4 w-4 text-emerald-600 flex-shrink-0" />イベント管理
+                          <Calendar className="h-4 w-4 text-emerald-600 flex-shrink-0" />{t("eventsAdmin")}
                         </Link>
                         <Link href="/admin/forum" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
-                          <MessageSquare className="h-4 w-4 text-blue-600 flex-shrink-0" />井戸端会議管理
+                          <MessageSquare className="h-4 w-4 text-blue-600 flex-shrink-0" />{t("forumAdmin")}
                         </Link>
                         <Link href="/admin/site-updates" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
-                          <Newspaper className="h-4 w-4 text-slate-600 flex-shrink-0" />運営記事管理
+                          <Newspaper className="h-4 w-4 text-slate-600 flex-shrink-0" />{t("siteUpdatesAdmin")}
                         </Link>
                         <Link href="/dashboard/admin/knowledge" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
-                          <BookOpen className="h-4 w-4 text-indigo-600 flex-shrink-0" />ナレッジ文書管理
+                          <BookOpen className="h-4 w-4 text-indigo-600 flex-shrink-0" />{t("knowledgeAdmin")}
                         </Link>
                         <Link href="/admin/ai-chat" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
-                          <Bot className="h-4 w-4 text-violet-600 flex-shrink-0" />AIチャット管理
+                          <Bot className="h-4 w-4 text-violet-600 flex-shrink-0" />{t("aiChatAdmin")}
                         </Link>
                         <Link href="/admin/services/display-order" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
-                          <ArrowUpDown className="h-4 w-4 text-cyan-600 flex-shrink-0" />サービス表示順管理
+                          <ArrowUpDown className="h-4 w-4 text-cyan-600 flex-shrink-0" />{t("serviceOrderAdmin")}
                         </Link>
                         <Link href="/admin/activity-log" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
-                          <Activity className="h-4 w-4 text-orange-600 flex-shrink-0" />操作ログ
+                          <Activity className="h-4 w-4 text-orange-600 flex-shrink-0" />{t("activityLog")}
                         </Link>
                         <Link href="/admin/user-reports" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
-                          <Flag className="h-4 w-4 text-rose-600 flex-shrink-0" />ユーザー報告
+                          <Flag className="h-4 w-4 text-rose-600 flex-shrink-0" />{t("userReports")}
                         </Link>
                       </div>
                     )}
@@ -631,7 +639,7 @@ export function Header() {
                       className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b"
                     >
                       <Settings className="h-4 w-4 flex-shrink-0" />
-                      アカウント設定
+                      {t("accountSettings")}
                     </Link>
                     <Button
                       variant="outline"
@@ -639,7 +647,7 @@ export function Header() {
                       onClick={() => { setMobileMenuOpen(false); void handleLogout(); }}
                     >
                       <LogOut className="h-4 w-4 mr-2" />
-                      ログアウト
+                      {t("logout")}
                     </Button>
                   </div>
                 ) : (
@@ -647,13 +655,13 @@ export function Header() {
                     <Button asChild variant="outline" className="w-full">
                       <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
                         <LogIn className="h-4 w-4 mr-2" />
-                        ログイン
+                        {t("login")}
                       </Link>
                     </Button>
                     <Button asChild className="w-full">
                       <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
                         <UserPlus className="h-4 w-4 mr-2" />
-                        新規登録
+                        {t("register")}
                       </Link>
                     </Button>
                   </div>

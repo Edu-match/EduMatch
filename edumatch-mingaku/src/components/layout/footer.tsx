@@ -1,23 +1,25 @@
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { OPERATOR_INFO } from "@/lib/operator-info";
 
 export function Footer() {
+  const t = useTranslations();
   const currentYear = new Date().getFullYear();
 
   const footerLinks = {
     product: [
-      { href: "/articles", label: "記事一覧" },
-      { href: "/services", label: "サービス一覧" },
-      { href: "/events", label: "セミナー・イベント情報" },
-      { href: "/forum", label: "井戸端会議" },
+      { href: "/articles", label: t("nav.articles") },
+      { href: "/services", label: t("nav.services") },
+      { href: "/events", label: t("nav.events") },
+      { href: "/forum", label: t("nav.forum") },
     ],
     company: [
-      { href: "/about", label: "運営について" },
-      { href: "/contact", label: "お問い合わせ" },
+      { href: "/about", label: t("nav.about") },
+      { href: "/contact", label: t("nav.contact") },
     ],
     legal: [
-      { href: "/terms", label: "利用規約" },
-      { href: "/privacy", label: "プライバシーポリシー" },
+      { href: "/terms", label: t("nav.terms") },
+      { href: "/privacy", label: t("nav.privacy") },
     ],
   };
 
@@ -28,16 +30,16 @@ export function Footer() {
           {/* Logo & Description */}
           <div className="col-span-2 md:col-span-1 space-y-3">
             <Link href="/" className="flex items-center space-x-2">
-              <span className="text-xl font-bold text-primary">エデュマッチ</span>
+              <span className="text-xl font-bold text-primary">{t("common.siteName")}</span>
             </Link>
             <p className="text-sm text-muted-foreground">
-              教育の未来を見つける、つながる
+              {t("common.tagline")}
             </p>
           </div>
 
           {/* Product Links */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold">プロダクト</h3>
+            <h3 className="text-sm font-semibold">{t("footer.product")}</h3>
             <ul className="space-y-2">
               {footerLinks.product.map((link) => (
                 <li key={link.href}>
@@ -54,7 +56,7 @@ export function Footer() {
 
           {/* Company Links */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold">会社情報</h3>
+            <h3 className="text-sm font-semibold">{t("footer.company")}</h3>
             <ul className="space-y-2">
               {footerLinks.company.map((link) => (
                 <li key={link.href}>
@@ -71,7 +73,7 @@ export function Footer() {
 
           {/* Legal Links */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold">法的情報</h3>
+            <h3 className="text-sm font-semibold">{t("footer.legal")}</h3>
             <ul className="space-y-2">
               {footerLinks.legal.map((link) => (
                 <li key={link.href}>
@@ -90,7 +92,11 @@ export function Footer() {
         {/* Copyright */}
         <div className="mt-8 md:mt-12 border-t pt-6 md:pt-8">
           <p className="text-center text-xs sm:text-sm text-muted-foreground">
-            © {currentYear} エデュマッチ（運営：{OPERATOR_INFO.operator}／協力：{OPERATOR_INFO.organizer}）. All rights reserved.
+            {t("footer.copyright", {
+              year: currentYear,
+              operator: OPERATOR_INFO.operator,
+              organizer: OPERATOR_INFO.organizer,
+            })}
           </p>
         </div>
       </div>

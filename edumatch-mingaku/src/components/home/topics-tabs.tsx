@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import { Pin } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +10,7 @@ import { ThumbnailOrTitle } from "@/components/ui/thumbnail-or-title";
 import type { ArticleItem, PinnedSiteUpdateItem, ServiceItem, VideoItem } from "./topics-section";
 
 function PinnedSiteUpdateListItem({ item }: { item: PinnedSiteUpdateItem }) {
+  const t = useTranslations("home");
   return (
     <Link
       href={item.href}
@@ -30,7 +32,7 @@ function PinnedSiteUpdateListItem({ item }: { item: PinnedSiteUpdateItem }) {
         <div className="flex items-center gap-1.5 mb-1">
           <Pin className="h-3.5 w-3.5 shrink-0 fill-amber-500 text-amber-600" aria-hidden />
           <span className="text-[10px] font-semibold text-amber-800 uppercase tracking-wide">
-            固定
+            {t("pinned")}
           </span>
           {item.isNew && (
             <Badge className="bg-[#ef4444] hover:bg-[#dc2626] text-white text-xs px-1.5 py-0 shrink-0">
@@ -43,7 +45,7 @@ function PinnedSiteUpdateListItem({ item }: { item: PinnedSiteUpdateItem }) {
         </h3>
         <div className="flex items-center gap-2 text-xs text-amber-900/70 mt-0.5">
           <span>{item.date}</span>
-          <span>運営記事</span>
+          <span>{t("siteUpdate")}</span>
         </div>
       </div>
     </Link>
@@ -157,6 +159,7 @@ type Props = {
 const ALL_TAB_MAX = 10;
 
 export function TopicsTabs({ articles, pinnedSiteUpdates, services, videos }: Props) {
+  const t = useTranslations("home");
   const pinnedCount = pinnedSiteUpdates.length;
   const regularAllCount = Math.max(0, ALL_TAB_MAX - pinnedCount);
   const allArticles = articles.slice(0, regularAllCount);
@@ -170,9 +173,9 @@ export function TopicsTabs({ articles, pinnedSiteUpdates, services, videos }: Pr
     <Tabs defaultValue="all" className="w-full">
       <div className="border-b overflow-x-auto">
         <TabsList className="w-max min-w-full justify-start rounded-none h-auto bg-transparent p-0 flex">
-          <TabsTrigger value="all" className={triggerClass}>すべて</TabsTrigger>
-          <TabsTrigger value="domestic" className={triggerClass}>国内のニュース</TabsTrigger>
-          <TabsTrigger value="international" className={triggerClass}>世界のニュース</TabsTrigger>
+          <TabsTrigger value="all" className={triggerClass}>{t("tabAll")}</TabsTrigger>
+          <TabsTrigger value="domestic" className={triggerClass}>{t("tabDomestic")}</TabsTrigger>
+          <TabsTrigger value="international" className={triggerClass}>{t("tabInternational")}</TabsTrigger>
         </TabsList>
       </div>
       <div className="p-3">
@@ -187,7 +190,7 @@ export function TopicsTabs({ articles, pinnedSiteUpdates, services, videos }: Pr
               ))}
             </>
           ) : (
-            <p className="text-center text-muted-foreground py-4">記事がありません</p>
+            <p className="text-center text-muted-foreground py-4">{t("noArticles")}</p>
           )}
         </TabsContent>
 
@@ -195,7 +198,7 @@ export function TopicsTabs({ articles, pinnedSiteUpdates, services, videos }: Pr
           {domesticArticles.length > 0 ? (
             domesticArticles.map((a) => <ArticleListItem key={a.id} article={a} />)
           ) : (
-            <p className="text-center text-muted-foreground py-4">国内のニュースがありません</p>
+            <p className="text-center text-muted-foreground py-4">{t("noDomestic")}</p>
           )}
         </TabsContent>
 
@@ -203,7 +206,7 @@ export function TopicsTabs({ articles, pinnedSiteUpdates, services, videos }: Pr
           {internationalArticles.length > 0 ? (
             internationalArticles.map((a) => <ArticleListItem key={a.id} article={a} />)
           ) : (
-            <p className="text-center text-muted-foreground py-4">世界のニュースがありません</p>
+            <p className="text-center text-muted-foreground py-4">{t("noInternational")}</p>
           )}
         </TabsContent>
       </div>

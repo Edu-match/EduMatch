@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { SideMenu } from "@/components/layout/side-menu";
@@ -12,6 +13,7 @@ import { Bot, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function AiPanelLayout({ children }: { children: React.ReactNode }) {
+  const t = useTranslations("header");
   const { open, setOpen, mobileOpen, setMobileOpen } = useAiPanel();
   const examBlocksChat = useAiKenteiExamBlocksChat();
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -67,7 +69,7 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
                 type="button"
                 onClick={() => setSidebarOpen(false)}
                 className="mb-2 flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                aria-label="サイドメニューを閉じる"
+                aria-label={t("closeSideMenu")}
               >
                 <Menu className="h-5 w-5" />
               </button>
@@ -76,7 +78,7 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
                 type="button"
                 onClick={() => setSidebarOpen(true)}
                 className="mb-2 flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                aria-label="サイドメニューを開く"
+                aria-label={t("openSideMenu")}
               >
                 <Menu className="h-5 w-5" />
               </button>
@@ -119,7 +121,7 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
                     className="absolute -left-1 top-0 h-full w-2 cursor-col-resize z-20"
                     onMouseDown={() => setResizing(true)}
                     role="separator"
-                    aria-label="AIパネル幅を変更"
+                    aria-label={t("resizeAiPanel")}
                   />
                   <ChatbotWidget />
                 </div>
@@ -128,7 +130,7 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
                   type="button"
                   onClick={() => setOpen(true)}
                   className="fixed right-0 top-16 bottom-0 z-30 w-20 flex flex-col items-center justify-center gap-4 border-l bg-orange-500 hover:bg-orange-400 text-white transition-all group"
-                  aria-label="AIパネルを開く"
+                  aria-label={t("openAiPanel")}
                   data-tutorial="ai-navigator-open"
                 >
                   <Bot className="h-8 w-8 group-hover:scale-110 transition-transform" />
@@ -136,7 +138,7 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
                     className="text-sm font-bold select-none tracking-widest"
                     style={{ writingMode: "vertical-rl", textOrientation: "upright" }}
                   >
-                    AIナビゲーター
+                    {t("aiNavigator")}
                   </span>
                 </button>
               )}
@@ -156,7 +158,7 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
             "lg:hidden fixed bottom-5 right-5 z-40 h-14 w-14 rounded-full bg-orange-500 hover:bg-orange-400 shadow-xl hover:shadow-2xl transition-all flex items-center justify-center",
             mobileOpen && "hidden"
           )}
-          aria-label="AIナビゲーターを開く"
+          aria-label={t("openAiNavigator")}
           data-tutorial="ai-navigator-open"
         >
           <Bot className="h-6 w-6 text-white" strokeWidth={2} />
@@ -197,13 +199,25 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
 
 export function MaintenanceAwareLayout({
   children,
+  forceBare = false,
 }: {
   children: React.ReactNode;
+  /** サーバー側で host から判定した特設サブドメイン(special.*)フラグ。
+   *  SSR時点で bare を確定させ、ヘッダー等の一瞬の表示（フラッシュ）を防ぐ。 */
+  forceBare?: boolean;
 }) {
   const pathname = usePathname();
-  const isMaintenance = pathname === "/maintenance";
+  // メンテナンス画面と特設LP(/interop)は共通ヘッダー等を出さず全画面で表示する。
+  // 特設サブドメイン(special.*)はmiddlewareで /interop にリライトされるが、
+  // ブラウザURLは "/" のままで usePathname() が "/" を返すため、サーバーで host 判定した
+  // forceBare とクライアントの window.location.hostname の両方で判定する。
+  const isSpecialHost =
+    forceBare ||
+    (typeof window !== "undefined" && window.location.hostname.startsWith("special."));
+  const isBareLayout =
+    pathname === "/maintenance" || !!pathname?.startsWith("/interop") || isSpecialHost;
 
-  if (isMaintenance) {
+  if (isBareLayout) {
     return <div className="min-h-screen flex flex-col">{children}</div>;
   }
 

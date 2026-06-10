@@ -13,6 +13,7 @@ import { signupSchema, type SignupInput } from "@/lib/validations/auth";
 import { toast } from "sonner";
 import { createSupabaseBrowserClient } from "@/utils/supabase/client";
 import { FEATURES } from "@/lib/features";
+import { useTranslations } from "next-intl";
 
 type Props = {
   onSuccess?: () => void;
@@ -21,6 +22,7 @@ type Props = {
 
 /** 新規登録時にユーザータイプを選択可能にする */
 export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
+  const t = useTranslations("auth");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [userType, setUserType] = useState<"viewer" | "provider">("viewer");
@@ -55,7 +57,7 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
       const result = await response.json();
 
       if (!response.ok) {
-        setGlobalError(result.error || "会員登録に失敗しました");
+        setGlobalError(result.error || t("signupFailed"));
         setIsSubmitting(false);
         return;
       }
@@ -70,7 +72,7 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
         
         if (sessionError) {
           console.error("Session set error:", sessionError);
-          setGlobalError("ログインセッションの設定に失敗しました。もう一度ログインしてください。");
+          setGlobalError(t("sessionFailed"));
           setIsSubmitting(false);
           return;
         }
@@ -81,15 +83,15 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
 
       toast.success(
         effectiveUserType === "provider"
-          ? "事業者として登録しました。続けて事業者プロフィールを入力してください。"
-          : "一般利用として登録しました。続けてプロフィールを入力してください。"
+          ? t("toastProvider")
+          : t("toastViewer")
       );
       
       // クライアントサイドでリダイレクト（セッションCookieが確実に設定されるように）
       const profileUrl = "/profile/register?first=1";
       window.location.href = profileUrl;
     } catch {
-      setGlobalError("会員登録に失敗しました。もう一度お試しください。");
+      setGlobalError(t("signupFailedRetry"));
       setIsSubmitting(false);
     }
   };
@@ -104,12 +106,12 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
     <div className="space-y-6">
       <div className="space-y-3">
         <div>
-          <p className="text-sm font-semibold text-foreground">登録の種類を選んでください</p>
+          <p className="text-sm font-semibold text-foreground">{t("selectSignupType")}</p>
         </div>
         <div
           className="grid gap-3 sm:grid-cols-2"
           role="radiogroup"
-          aria-label="新規登録の種類"
+          aria-label={t("signupTypeAria")}
         >
           <button
             type="button"
@@ -140,9 +142,9 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
                 effectiveUserType === "viewer" ? "text-primary" : "text-muted-foreground"
               )}
             />
-            <span className="block text-sm font-semibold text-foreground">一般利用</span>
+            <span className="block text-sm font-semibold text-foreground">{t("accountTypeViewer")}</span>
             <span className="mt-1 block text-xs text-muted-foreground leading-relaxed">
-              個人・保護者・学生など。サービスの検索・比較・資料請求に利用します。
+              {t("viewerDesc")}
             </span>
           </button>
           {allowProvider ? (
@@ -175,34 +177,34 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
                   userType === "provider" ? "text-primary" : "text-muted-foreground"
                 )}
               />
-              <span className="block text-sm font-semibold text-foreground">事業者・団体</span>
+              <span className="block text-sm font-semibold text-foreground">{t("accountTypeProvider")}</span>
               <span className="mt-1 block text-xs text-muted-foreground leading-relaxed">
-                EdTech事業者や教育関連団体。現在ご利用いただける機能は一般利用と同じです。
+                {t("providerSignupDesc")}
               </span>
             </button>
           ) : (
             <div
               className="relative text-left rounded-xl border border-dashed border-muted-foreground/30 bg-muted/20 p-4 opacity-80"
               aria-disabled
-              title="現在、事業者向けの新規登録は受け付けていません"
+              title={t("providerSignupDisabledTitle")}
             >
               <Building2 className="h-8 w-8 mb-2 text-muted-foreground" />
-              <span className="block text-sm font-semibold text-muted-foreground">事業者・団体</span>
+              <span className="block text-sm font-semibold text-muted-foreground">{t("accountTypeProvider")}</span>
               <span className="mt-1 block text-xs text-muted-foreground leading-relaxed">
-                EdTech事業者や教育関連団体向け（現在は新規受付を停止しています）。
+                {t("providerSignupDisabledDesc")}
               </span>
               <span className="mt-2 inline-block rounded-md bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                受付停止中
+                {t("acceptingClosed")}
               </span>
             </div>
           )}
         </div>
         <p className="text-xs text-muted-foreground text-center sm:text-left">
-          選択中:{" "}
+          {t("selectedLabel")}{" "}
           <span className="font-medium text-foreground">
             {effectiveUserType === "provider"
-              ? "事業者・団体（企業向けプロフィール）"
-              : "一般利用（閲覧者・VIEWER）"}
+              ? t("selectedProvider")
+              : t("selectedViewer")}
           </span>
         </p>
       </div>
@@ -217,12 +219,12 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
           disabled={isSubmitting}
         >
           <Chrome className="h-4 w-4 mr-2" />
-          Googleで登録
+          {t("googleSignup")}
         </Button>
         <div className="relative my-5">
           <Separator />
           <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-3 text-xs font-medium text-muted-foreground">
-            またはメールで登録
+            {t("orEmailSignup")}
           </span>
         </div>
       </div>
@@ -231,7 +233,7 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="signup-email" className="text-sm font-medium text-foreground">
-                メールアドレス <span className="text-destructive">*</span>
+                {t("email")} <span className="text-destructive">*</span>
               </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -255,7 +257,7 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
 
             <div className="space-y-2">
               <label htmlFor="signup-password" className="text-sm font-medium text-foreground">
-                パスワード <span className="text-destructive">*</span>
+                {t("password")} <span className="text-destructive">*</span>
               </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -263,7 +265,7 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
                   id="signup-password"
                   {...register("password")}
                   type="password"
-                  placeholder="8文字以上、大文字・小文字・数字を含む"
+                  placeholder={t("signupPasswordPlaceholder")}
                   autoComplete="new-password"
                   className="pl-10 h-11 rounded-lg"
                   disabled={isSubmitting}
@@ -277,7 +279,7 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
               )}
               {watch("password") && !errors.password && (
                 <div className="rounded-lg border border-green-200 bg-green-50 dark:bg-green-950/30 dark:border-green-800 px-3 py-2 text-sm text-green-700 dark:text-green-400">
-                  <p className="font-medium">✓ パスワードの条件を満たしています</p>
+                  <p className="font-medium">{t("passwordOk")}</p>
                 </div>
               )}
             </div>
@@ -292,20 +294,21 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
                   aria-invalid={!!errors.agreedToTerms}
                 />
                 <span className="text-muted-foreground leading-relaxed">
+                  {t("agreePrefix")}
                   <Link
                     href="/terms"
                     className="text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
                   >
-                    利用規約
+                    {t("terms")}
                   </Link>
-                  および
+                  {t("and")}
                   <Link
                     href="/privacy"
                     className="text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
                   >
-                    プライバシーポリシー
+                    {t("privacy")}
                   </Link>
-                  に同意します
+                  {t("agreeSuffix")}
                 </span>
               </label>
               {errors.agreedToTerms && (
@@ -334,10 +337,10 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  登録中...
+                  {t("registering")}
                 </>
               ) : (
-                "無料会員登録"
+                t("submitSignup")
               )}
             </Button>
           </form>

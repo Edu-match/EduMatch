@@ -21,6 +21,7 @@ import {
   MessageCircle,
   LucideIcon,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 const ICON_MAP: Record<string, LucideIcon> = {
   HelpCircle,
@@ -43,6 +44,7 @@ type Props = {
 };
 
 export function FAQPageClient({ categories: initialCategories }: Props) {
+  const t = useTranslations("faq");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
@@ -63,10 +65,8 @@ export function FAQPageClient({ categories: initialCategories }: Props) {
   return (
     <div className="container py-8">
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold mb-2">よくある質問</h1>
-        <p className="text-muted-foreground">
-          お問い合わせの前に、こちらをご確認ください
-        </p>
+        <h1 className="text-3xl font-bold mb-2">{t("title")}</h1>
+        <p className="text-muted-foreground">{t("subtitle")}</p>
       </div>
 
       {/* 検索 */}
@@ -74,7 +74,7 @@ export function FAQPageClient({ categories: initialCategories }: Props) {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
           <Input
-            placeholder="質問を検索..."
+            placeholder={t("searchPlaceholder")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10 h-12 text-lg"
@@ -89,7 +89,7 @@ export function FAQPageClient({ categories: initialCategories }: Props) {
           size="sm"
           onClick={() => setSelectedCategory(null)}
         >
-          すべて
+          {t("all")}
         </Button>
         {initialCategories.map((category) => {
           const Icon = ICON_MAP[category.icon] ?? HelpCircle;
@@ -143,9 +143,7 @@ export function FAQPageClient({ categories: initialCategories }: Props) {
       filteredCategories.every((c) => c.faqs.length === 0) ? (
         <div className="text-center py-12">
           <HelpCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <p className="text-muted-foreground">
-            該当する質問が見つかりませんでした
-          </p>
+          <p className="text-muted-foreground">{t("noResults")}</p>
         </div>
       ) : null}
 
@@ -153,12 +151,10 @@ export function FAQPageClient({ categories: initialCategories }: Props) {
       <Card className="max-w-3xl mx-auto mt-12 bg-primary/5 border-primary/20">
         <CardContent className="p-6 text-center">
           <MessageCircle className="h-10 w-10 text-primary mx-auto mb-4" />
-          <h2 className="text-xl font-bold mb-2">解決しない場合は</h2>
-          <p className="text-muted-foreground mb-4">
-            よくある質問で解決しない場合は、お気軽にお問い合わせください。
-          </p>
+          <h2 className="text-xl font-bold mb-2">{t("ctaTitle")}</h2>
+          <p className="text-muted-foreground mb-4">{t("ctaBody")}</p>
           <Button asChild>
-            <Link href="/contact">お問い合わせする</Link>
+            <Link href="/contact">{t("ctaButton")}</Link>
           </Button>
         </CardContent>
       </Card>

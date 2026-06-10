@@ -8,8 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Lock, Eye, EyeOff, Check } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/utils/supabase/client";
+import { useTranslations } from "next-intl";
 
 export default function PasswordResetNewPage() {
+  const t = useTranslations("authPassword");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -19,11 +21,11 @@ export default function PasswordResetNewPage() {
   const router = useRouter();
 
   const requirements = [
-    { label: "8文字以上", met: password.length >= 8 },
-    { label: "英字を含む", met: /[a-zA-Z]/.test(password) },
-    { label: "数字を含む", met: /[0-9]/.test(password) },
+    { label: t("reqMinLength"), met: password.length >= 8 },
+    { label: t("reqLetter"), met: /[a-zA-Z]/.test(password) },
+    { label: t("reqNumber"), met: /[0-9]/.test(password) },
     {
-      label: "パスワードが一致",
+      label: t("reqMatch"),
       met: password === confirmPassword && password.length > 0,
     },
   ];
@@ -45,7 +47,7 @@ export default function PasswordResetNewPage() {
 
       if (updateError) {
         console.error("Password update error:", updateError);
-        setError("パスワードの変更に失敗しました。リンクの有効期限が切れている可能性があります。もう一度お試しください。");
+        setError(t("errUpdateFailed"));
         setIsSubmitting(false);
         return;
       }
@@ -53,7 +55,7 @@ export default function PasswordResetNewPage() {
       router.push("/auth/password-changed");
     } catch (err) {
       console.error("Password update unexpected error:", err);
-      setError("パスワードの変更に失敗しました。時間をおいて再度お試しください。");
+      setError(t("errUpdateRetry"));
       setIsSubmitting(false);
     }
   };
@@ -63,10 +65,8 @@ export default function PasswordResetNewPage() {
       <div className="max-w-md mx-auto">
         <Card>
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl">新しいパスワードを設定</CardTitle>
-            <p className="text-muted-foreground">
-              安全なパスワードを設定してください
-            </p>
+            <CardTitle className="text-2xl">{t("newPasswordTitle")}</CardTitle>
+            <p className="text-muted-foreground">{t("newPasswordSubtitle")}</p>
           </CardHeader>
           <CardContent className="space-y-4">
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -74,7 +74,7 @@ export default function PasswordResetNewPage() {
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   type={showPassword ? "text" : "password"}
-                  placeholder="新しいパスワード"
+                  placeholder={t("newPasswordPlaceholder")}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10 pr-10"
@@ -98,7 +98,7 @@ export default function PasswordResetNewPage() {
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   type={showConfirmPassword ? "text" : "password"}
-                  placeholder="パスワード（確認）"
+                  placeholder={t("confirmPasswordPlaceholder")}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className="pl-10 pr-10"
@@ -119,7 +119,7 @@ export default function PasswordResetNewPage() {
               </div>
 
               <div className="p-4 rounded-lg bg-muted/50">
-                <p className="text-sm font-medium mb-2">パスワードの要件:</p>
+                <p className="text-sm font-medium mb-2">{t("requirementsTitle")}</p>
                 <ul className="space-y-1">
                   {requirements.map((req) => (
                     <li
@@ -152,21 +152,21 @@ export default function PasswordResetNewPage() {
                 type="submit"
                 disabled={!allRequirementsMet || isSubmitting}
               >
-                {isSubmitting ? "変更中..." : "パスワードを変更"}
+                {isSubmitting ? t("changing") : t("changePassword")}
               </Button>
             </form>
 
             <div className="text-center text-sm text-muted-foreground">
               <p>
-                リンクが無効な場合は、
+                {t("invalidLinkPrefix")}
                 <Link href="/auth/password-reset" className="text-primary hover:underline">
-                  もう一度パスワードリセットをやり直す
+                  {t("retryReset")}
                 </Link>
-                か、{" "}
+                {t("invalidLinkMiddle")}
                 <Link href="/contact" className="text-primary hover:underline">
-                  お問い合わせ
+                  {t("contact")}
                 </Link>
-                ください。
+                {t("invalidLinkSuffix")}
               </p>
             </div>
           </CardContent>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { getLatestArticlesForTopics } from "@/app/_actions/popularity";
 import { getAllServices } from "@/app/_actions/services";
 import { getPinnedSiteUpdatesForTopics } from "@/app/_actions/site-updates";
@@ -98,6 +99,7 @@ function siteUpdateHref(id: string, link: string | null): string {
 }
 
 export async function TopicsSection() {
+  const t = await getTranslations("home");
   const [posts, services, videos, pinnedSiteUpdates] = await Promise.all([
     // タブ振り分け用に少し多めに取得してから、表示側で各タブ件数を制御する
     getLatestArticlesForTopics(80),
@@ -140,7 +142,7 @@ export async function TopicsSection() {
   return (
     <div className="border rounded-lg bg-card">
       <div className="p-4 border-b">
-        <h2 className="text-xl font-bold">トピックス</h2>
+        <h2 className="text-xl font-bold">{t("topics")}</h2>
       </div>
       <TopicsTabs
         articles={articles}
@@ -150,7 +152,7 @@ export async function TopicsSection() {
       />
       <div className="border-t p-3 text-center">
         <Link href="/articles" className="text-sm text-[#1d4ed8] hover:underline font-medium">
-          記事一覧を見る
+          {t("viewArticles")}
         </Link>
       </div>
     </div>

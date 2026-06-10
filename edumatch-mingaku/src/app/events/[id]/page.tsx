@@ -6,15 +6,18 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar, MapPin, Building2, ArrowLeft, ExternalLink, Pencil } from "lucide-react";
 import { getEventById } from "@/app/_actions/events";
 import { getCurrentUserRole } from "@/app/_actions/user";
+import { getTranslations, getLocale } from "next-intl/server";
+import { translateText } from "@/lib/translate";
+import type { Locale } from "@/i18n/config";
 
 type PageProps = {
   params: Promise<{ id: string }>;
 };
 
-function formatEventDate(dateStr: string | null): string {
-  if (!dateStr) return "日程未定";
+function formatEventDate(dateStr: string | null, locale: string, tbd: string): string {
+  if (!dateStr) return tbd;
   try {
-    return new Date(dateStr + "T00:00:00").toLocaleDateString("ja-JP", {
+    return new Date(dateStr + "T00:00:00").toLocaleDateString(locale === "en" ? "en-US" : "ja-JP", {
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -37,6 +40,17 @@ export default async function EventDetailPage({ params }: PageProps) {
     redirect(event.external_url);
   }
 
+  const t = await getTranslations("events");
+  const locale = (await getLocale()) as Locale;
+
+  // DB 由来テキストを表示言語へ機械翻訳
+  const [eventTitle, eventDescription, eventVenue, eventCompany] = await Promise.all([
+    translateText(event.title, locale),
+    translateText(event.description ?? "", locale),
+    translateText(event.venue ?? "", locale),
+    translateText(event.company ?? "", locale),
+  ]);
+
   const isUpcoming = event.event_date
     ? new Date(event.event_date) >= new Date()
     : false;
@@ -47,14 +61,14 @@ export default async function EventDetailPage({ params }: PageProps) {
         <Button variant="ghost" asChild className="-ml-2">
           <Link href="/events" className="flex items-center gap-2">
             <ArrowLeft className="h-4 w-4" />
-            セミナー・イベント一覧に戻る
+            {t("backToList")}
           </Link>
         </Button>
         {isAdmin && (
           <Button variant="outline" size="sm" asChild>
             <Link href={`/admin/events/${id}/edit`}>
               <Pencil className="h-4 w-4 mr-1" />
-              編集
+              {t("edit")}
             </Link>
           </Button>
         )}
@@ -64,45 +78,45 @@ export default async function EventDetailPage({ params }: PageProps) {
         <CardContent className="p-6 sm:p-8">
           <div className="flex flex-wrap gap-2 mb-4">
             {isUpcoming ? (
-              <Badge className="bg-green-500 hover:bg-green-600 text-white">開催予定</Badge>
+              <Badge className="bg-green-500 hover:bg-green-600 text-white">{t("upcoming")}</Badge>
             ) : event.event_date ? (
-              <Badge variant="secondary">終了</Badge>
+              <Badge variant="secondary">{t("ended")}</Badge>
             ) : (
-              <Badge variant="outline">日程未定</Badge>
+              <Badge variant="outline">{t("tbd")}</Badge>
             )}
           </div>
 
-          <h1 className="text-2xl font-bold mb-6 leading-snug">{event.title}</h1>
+          <h1 className="text-2xl font-bold mb-6 leading-snug">{eventTitle}</h1>
 
           <div className="space-y-3 mb-6 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 flex-shrink-0" />
-              {formatEventDate(event.event_date)}
+              {formatEventDate(event.event_date, locale, t("tbd"))}
             </div>
-            {event.venue && (
+            {eventVenue && (
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 flex-shrink-0" />
-                {event.venue}
+                {eventVenue}
               </div>
             )}
-            {event.company && (
+            {eventCompany && (
               <div className="flex items-center gap-2">
                 <Building2 className="h-4 w-4 flex-shrink-0" />
-                {event.company}
+                {eventCompany}
               </div>
             )}
           </div>
 
-          {event.description && (
+          {eventDescription && (
             <p className="text-muted-foreground leading-relaxed mb-6 whitespace-pre-line">
-              {event.description}
+              {eventDescription}
             </p>
           )}
 
           <div className="pt-4 border-t">
             <Button asChild>
               <Link href="/contact?subject=イベント問い合わせ" className="inline-flex items-center gap-2">
-                お問い合わせで申し込む
+                {t("applyViaContact")}
               </Link>
             </Button>
           </div>

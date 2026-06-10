@@ -2,8 +2,11 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, LogIn } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 
-export default function PasswordChangedPage() {
+export default async function PasswordChangedPage() {
+  const t = await getTranslations("authPassword");
+
   return (
     <div className="container py-8">
       <div className="max-w-md mx-auto">
@@ -13,28 +16,19 @@ export default function PasswordChangedPage() {
               <CheckCircle2 className="h-10 w-10 text-green-600" />
             </div>
 
-            <h1 className="text-2xl font-bold mb-4">
-              パスワードを変更しました
-            </h1>
+            <h1 className="text-2xl font-bold mb-4">{t("changedTitle")}</h1>
 
-            <p className="text-muted-foreground mb-8">
-              パスワードが正常に変更されました。
-              <br />
-              新しいパスワードでログインしてください。
-            </p>
+            <p className="text-muted-foreground mb-8">{t("changedBody")}</p>
 
             <Button asChild size="lg" className="w-full gap-2">
               <Link href="/auth/login">
                 <LogIn className="h-5 w-5" />
-                ログインする
+                {t("loginButton")}
               </Link>
             </Button>
 
             <div className="mt-6 p-4 rounded-lg bg-muted/50">
-              <p className="text-sm text-muted-foreground">
-                セキュリティのため、他のデバイスでのログインセッションは
-                すべてログアウトされました。
-              </p>
+              <p className="text-sm text-muted-foreground">{t("sessionNote")}</p>
             </div>
           </CardContent>
         </Card>

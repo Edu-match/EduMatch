@@ -3,7 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useTranslations, useLocale } from "next-intl";
 import { Input } from "@/components/ui/input";
+import { localizeArticleCategory } from "@/lib/category-i18n";
+import type { Locale } from "@/i18n/config";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,6 +25,8 @@ export function ArticlesClient({
   articles: ArticleForList[];
   categoriesWithCount: string[];
 }) {
+  const t = useTranslations("articlesList");
+  const locale = useLocale() as Locale;
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
@@ -64,10 +69,10 @@ export function ArticlesClient({
         <div className="container py-6 md:py-12">
           <div className="max-w-3xl">
             <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold mb-2 md:mb-4 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-              教育記事一覧
+              {t("title")}
             </h1>
             <p className="text-base md:text-lg text-muted-foreground">
-              {articles.length}件の記事から、教育現場の最新情報や実践事例をお届けします
+              {t("subtitle", { count: articles.length })}
             </p>
           </div>
         </div>
@@ -82,7 +87,7 @@ export function ArticlesClient({
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
-                  placeholder="記事タイトル、キーワードで検索..."
+                  placeholder={t("searchPlaceholder")}
                   value={searchQuery}
                   onChange={(e) => handleSearchChange(e.target.value)}
                   data-tutorial="articles-search"
@@ -97,7 +102,7 @@ export function ArticlesClient({
                 data-tutorial="articles-category-filter"
               >
                 <span className="text-sm font-medium text-muted-foreground whitespace-nowrap flex-shrink-0">
-                  カテゴリ:
+                  {t("categoryLabel")}
                 </span>
                 <Button
                   variant={selectedCategory === "all" ? "default" : "outline"}
@@ -105,7 +110,7 @@ export function ArticlesClient({
                   onClick={() => handleCategoryChange("all")}
                   className="transition-all hover:scale-105 whitespace-nowrap flex-shrink-0"
                 >
-                  すべて
+                  {t("all")}
                 </Button>
                 {categoriesWithCount.map((category) => (
                   <Button
@@ -115,7 +120,7 @@ export function ArticlesClient({
                     onClick={() => handleCategoryChange(category)}
                     className="transition-all hover:scale-105 whitespace-nowrap flex-shrink-0"
                   >
-                    {category}
+                    {localizeArticleCategory(category, locale)}
                   </Button>
                 ))}
               </div>
@@ -124,7 +129,7 @@ export function ArticlesClient({
               <div className="flex items-center justify-between text-sm pt-2 border-t">
                 <span className="text-muted-foreground">
                   <span className="font-bold text-primary text-lg">{filteredArticles.length}</span>
-                  <span className="ml-1">件の記事が見つかりました</span>
+                  <span className="ml-1">{t("foundCount")}</span>
                 </span>
                 {searchQuery && (
                   <Button
@@ -133,7 +138,7 @@ export function ArticlesClient({
                     onClick={() => handleSearchChange("")}
                     className="text-xs"
                   >
-                    検索をクリア
+                    {t("clearSearch")}
                   </Button>
                 )}
               </div>
@@ -199,7 +204,7 @@ export function ArticlesClient({
                   {/* カテゴリバッジ（画像上） */}
                   <div className="absolute top-3 right-3">
                     <Badge className="bg-white/95 text-foreground border shadow-lg">
-                      {article.category}
+                      {localizeArticleCategory(article.category, locale)}
                     </Badge>
                   </div>
 
@@ -226,14 +231,14 @@ export function ArticlesClient({
                   <div className="flex items-center justify-between pt-3 border-t">
                     <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                       <Calendar className="h-4 w-4" />
-                      <span>{new Date(article.date).toLocaleDateString("ja-JP")}</span>
+                      <span>{new Date(article.date).toLocaleDateString(locale === "en" ? "en-US" : "ja-JP")}</span>
                     </div>
                     <Button
                       size="sm"
                       className="group-hover:bg-primary group-hover:text-primary-foreground transition-all"
                       variant="ghost"
                     >
-                      記事を読む
+                      {t("readArticle")}
                       <ExternalLink className="h-3 w-3 ml-1" />
                     </Button>
                   </div>
@@ -251,16 +256,16 @@ export function ArticlesClient({
                 <Search className="h-10 w-10 text-muted-foreground" />
               </div>
               <h3 className="text-xl font-semibold mb-2">
-                条件に一致する記事が見つかりませんでした
+                {t("noResultsTitle")}
               </h3>
               <p className="text-muted-foreground mb-6">
-                検索条件を変更するか、別のキーワードでお試しください
+                {t("noResultsBody")}
               </p>
               <Button onClick={() => {
                 handleSearchChange("");
                 handleCategoryChange("all");
               }}>
-                検索をリセット
+                {t("resetSearch")}
               </Button>
             </CardContent>
           </Card>
