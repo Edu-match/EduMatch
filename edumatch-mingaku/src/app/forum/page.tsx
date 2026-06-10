@@ -1,5 +1,6 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
-import { ForumListClientDynamic } from "@/components/community/forum-list-client-dynamic";
+import { ForumBubbleExplorerDynamic } from "@/components/forum-map/forum-bubble-explorer-dynamic";
 
 export const metadata: Metadata = {
   title: "AIUEO 井戸端会議 | エデュマッチ",
@@ -8,5 +9,11 @@ export const metadata: Metadata = {
 };
 
 export default function ForumPage() {
-  return <ForumListClientDynamic />;
+  return (
+    <main className="relative h-[100dvh] w-full overflow-hidden bg-[#070a1c] text-white">
+      <Suspense>
+        <ForumBubbleExplorerDynamic />
+      </Suspense>
+    </main>
+  );
 }

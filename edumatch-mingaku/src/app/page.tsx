@@ -21,9 +21,9 @@ export default async function HomePage() {
         {/* 左：スライダー＋トピックス / 右：ランキング（ヘッダー直下から固定） */}
         <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-12 lg:items-start lg:gap-8">
           <main className="lg:col-span-8 order-1 space-y-4 sm:space-y-6 lg:space-y-8 min-w-0">
+            <TopicsSection />
             {/* スライダー：運営お知らせ → ADMIN選択記事 */}
             <HeroSlider items={sliderItems} isAdmin={isAdmin} />
-            <TopicsSection />
           </main>
           <aside className="lg:col-span-4 order-2 w-full">
             <RightRankingSidebar />
