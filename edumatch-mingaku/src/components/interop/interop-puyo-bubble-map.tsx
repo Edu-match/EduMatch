@@ -59,26 +59,25 @@ const GROUP_STYLE: Record<string, {
 };
 
 // Radial positions from center (50%, 47%) — sortTopicsForBurst order: A×4, B×4, C×4, D×2, E×2, F×12
-// Computed by polar coords: inner r≈22/15%, mid r≈34/23%, outer r≈43/29%  (rx/ry %)
+// Groups are clustered by color and radiate outward from center.
 const POSITIONS: [number, number][] = [
-  // A: top-left sector
-  [32, 37], [33, 27], [19, 37], [20, 27],
-  // B: top-right sector
-  [62, 33], [76, 32], [59, 25], [75, 23],
-  // C: bottom-left sector
-  [30, 56], [18, 55], [31, 66], [17, 66],
-  // D: right sector
-  [78, 60], [90, 57],
-  // E: bottom sector
-  [47, 70], [56, 76],
-  // F: scattered across remaining (inner/mid/outer)
-  [73, 42], [26, 46],  // right-inner, left-inner
-  [84, 45], [17, 43],  // right-mid, left-mid
-  [50, 24],             // top-mid
-  [92, 42], [7, 47],   // right-outer, left-outer
-  [39, 19], [92, 52],  // top-left-outer, right-outer2
-  [68, 73], [10, 37],  // bottom-right-outer, left-outer2
-  [58, 62],             // bottom-right-inner
+  // A (blue, AI・テク): upper-left cluster
+  [28, 38], [20, 30], [36, 29], [14, 44],
+  // B (green, 評価・学習): upper-right cluster
+  [65, 32], [74, 24], [60, 21], [80, 37],
+  // C (red, 権利・規律): lower-left cluster
+  [21, 60], [10, 53], [27, 68], [13, 72],
+  // D (purple, 多様性): right cluster
+  [84, 53], [88, 63],
+  // E (yellow, 教師・学校): bottom cluster
+  [44, 75], [56, 79],
+  // F (indigo, 各教科): fill remaining areas around the perimeter
+  [48, 14], [59, 18],   // top center
+  [80, 18], [90, 30],   // top-right far
+  [77, 44], [85, 56],   // right mid (between B and D)
+  [63, 68], [52, 67],   // lower right (between D and E)
+  [36, 75], [27, 71],   // lower left (between E and C)
+  [7, 36], [6, 50],     // far left (above C cluster)
 ];
 
 const PUYO_CSS = `

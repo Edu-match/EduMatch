@@ -945,10 +945,10 @@ function consumeForumDraft(roomId: string): { body: string; source: "ai-chat" | 
 }
 
 const AVATAR_COLORS = [
-  { bg: "#3a90f0", label: "青" },
-  { bg: "#38c038", label: "緑" },
-  { bg: "#e83030", label: "赤" },
-  { bg: "#e0a010", label: "黄" },
+  { bg: "linear-gradient(135deg, #90c8ff 0%, #1a60e8 100%)", label: "青" },
+  { bg: "linear-gradient(135deg, #90e890 0%, #188018 100%)", label: "緑" },
+  { bg: "linear-gradient(135deg, #ff9080 0%, #c01010 100%)", label: "赤" },
+  { bg: "linear-gradient(135deg, #ffe880 0%, #c07000 100%)", label: "黄" },
 ] as const;
 
 function NewPostComposer({
@@ -988,7 +988,7 @@ function NewPostComposer({
   const rootRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  const displayName = isAnon ? "匿名ユーザー" : (customNickname.trim() || userName || "ゲスト");
+  const displayName = isAnon ? "匿名ユーザー" : (fromInterop ? (customNickname.trim() || "ゲスト") : (customNickname.trim() || userName || "ゲスト"));
   const remaining = MAX_BODY - body.length;
   const canSubmit = body.trim().length > 0 && body.length <= MAX_BODY && !submitting;
 
@@ -1425,7 +1425,7 @@ export function ForumRoomClient({
                 </div>
               </div>
             </div>
-            {auth.role === "ADMIN" && (
+            {auth.role === "ADMIN" && !fromInterop && (
               <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-[220px] sm:items-end">
                 {highlightFromNotify && (
                   <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
