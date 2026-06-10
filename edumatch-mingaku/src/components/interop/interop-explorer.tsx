@@ -23,6 +23,7 @@ import {
   type InteropSubCategory,
 } from "@/components/interop/interop-sub-orbit";
 import type { InteropActivityStats } from "@/lib/interop-activity";
+import { priorityTopicId, type InteropPriorityTopic } from "@/lib/interop-priority-topics";
 import type { InteropThemeMode } from "@/lib/interop-settings";
 
 const ICONS: Record<string, LucideIcon> = {
@@ -61,18 +62,25 @@ type ActivityPayload = {
   }>;
 };
 
-/** 表示中の階層：トップマップ → インタロップのハブ（展示カテゴリ） → カテゴリ（サブカテゴリ） */
+/**
+ * 表示中の階層：
+ * - map: トップ（中心インタロップ＋◎28）
+ * - hub: インタロップの中（展示カテゴリ5件）
+ * - category: 展示カテゴリの中（サブカテゴリ）→ /interop/t/{subId}
+ * - topic: ◎の中（CSVトピック1〜3）→ /forum/{roomId}
+ */
 type View =
   | { kind: "map" }
   | { kind: "hub" }
-  | { kind: "category"; cat: InteropCategory };
+  | { kind: "category"; cat: InteropCategory }
+  | { kind: "topic"; topic: InteropPriorityTopic };
 
 const ACTIVITY_POLL_MS = 45_000;
 const EMPTY_STATS: InteropActivityStats = { postCount: 0, participantCount: 0 };
 
 export function InteropExplorer({
   themeMode = "auto",
-  guideText = "中央のインタロップをタップして展示情報へ · 周囲の◎トピックは井戸端へ直接入れます",
+  guideText = "中央のインタロップをタップして展示情報へ · 周囲の◎トピックをタップして論点・井戸端へ",
 }: {
   themeMode?: InteropThemeMode;
   guideText?: string;
@@ -187,13 +195,19 @@ export function InteropExplorer({
     []
   );
 
-  const showDarkBackdrop = view.kind !== "map";
+  const handleSelectTopic = useCallback(
+    (topic: InteropPriorityTopic) => {
+      setView({ kind: "topic", topic });
+    },
+    []
+  );
 
   return (
     <div className="absolute inset-0 overflow-hidden">
       <style>{FX_CSS}</style>
 
-      {showDarkBackdrop && <InteropBackdrop themeMode={themeMode} />}
+      {/* 常に時刻連動の背景を表示（mapビューでも有効） */}
+      <InteropBackdrop themeMode={themeMode} />
 
       {loadingCats ? (
         <div className="absolute inset-0 grid place-items-center text-white/60">
@@ -212,6 +226,7 @@ export function InteropExplorer({
             activityByCategory={activityByCategory}
             iconFor={iconFor}
             onSelectCategory={handleSelectFromMap}
+            onSelectTopic={handleSelectTopic}
           />
           <div className="pointer-events-none absolute inset-x-0 top-16 z-20 flex justify-center px-4 sm:top-20">
             <div
@@ -242,6 +257,22 @@ export function InteropExplorer({
             icon: iconFor(cat.slug),
             stats: activityByCategory.get(cat.id) ?? EMPTY_STATS,
             onActivate: () => setView({ kind: "category", cat }),
+          }))}
+          backLabel="トップに戻る"
+          onBack={() => setView({ kind: "map" })}
+        />
+      ) : view.kind === "topic" ? (
+        <InteropSubOrbit
+          centerLabel={view.topic.category}
+          centerIcon={MessageCircle}
+          centerHint={`${view.topic.topics.length}つの論点 · タップで井戸端へ`}
+          accent={view.topic.color}
+          items={view.topic.topics.map((t, idx) => ({
+            id: `${priorityTopicId(view.topic.no)}-t${idx + 1}`,
+            name: t,
+            icon: MessageCircle,
+            stats: EMPTY_STATS,
+            onActivate: () => router.push(`/forum/${view.topic.roomId}?from=interop`),
           }))}
           backLabel="トップに戻る"
           onBack={() => setView({ kind: "map" })}

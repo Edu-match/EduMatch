@@ -14,6 +14,7 @@ import {
   INTEROP_PRIORITY_TOPICS,
   priorityTopicId,
   sortTopicsForBurst,
+  type InteropPriorityTopic,
 } from "@/lib/interop-priority-topics";
 import { computePuyoIntensity, getInteropTopGraphDimensions } from "@/lib/interop-puyopuyo";
 import type { InteropCategory } from "@/components/interop/interop-category-bubble-map";
@@ -45,17 +46,19 @@ function computeTopConnections(
   return edges;
 }
 
-/** 特設トップ：中心=インタロップ、外周=◎議論トピック（タップで実ルーム /forum/{roomId} へ） */
+/** 特設トップ：中心=インタロップ、外周=◎議論トピック（タップでトピック選択軌道へ） */
 export function InteropTopBubbleMap({
   categories,
   activityByCategory,
   iconFor,
   onSelectCategory,
+  onSelectTopic,
 }: {
   categories: InteropCategory[];
   activityByCategory: Map<string, InteropActivityStats>;
   iconFor: (slug: string) => LucideIcon;
   onSelectCategory: (cat: InteropCategory) => void;
+  onSelectTopic: (topic: InteropPriorityTopic) => void;
 }) {
   const interopCat =
     categories.find((c) => c.slug === "interop") ??
@@ -116,12 +119,12 @@ export function InteropTopBubbleMap({
         backgroundColor: topic.color,
         animationSeed: topic.no * 7 + i,
         puyoIntensity: 0.06 + (i % 5) * 0.018,
-        href: `/forum/${topic.roomId}`,
+        onActivate: () => onSelectTopic(topic),
       });
     });
 
     return result;
-  }, [activityByCategory, iconFor, interopCat, interopTopLayout, onSelectCategory, priorityTopics]);
+  }, [activityByCategory, iconFor, interopCat, interopTopLayout, onSelectCategory, onSelectTopic, priorityTopics]);
 
   const connections = useMemo(() => {
     if (!interopTopLayout) return [];
@@ -137,9 +140,6 @@ export function InteropTopBubbleMap({
   return (
     <div
       className="absolute inset-0 overflow-hidden"
-      style={{
-        background: "linear-gradient(135deg, #33529e 0%, #4a78d8 52%, #7aa3f0 100%)",
-      }}
     >
       <div
         className="pointer-events-none absolute inset-0"

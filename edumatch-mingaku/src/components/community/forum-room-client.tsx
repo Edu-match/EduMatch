@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   Bold,
@@ -1226,6 +1226,8 @@ export function ForumRoomClient({
   categoryContext?: ForumCategoryContext;
 }) {
   const auth = useAuthUser();
+  const searchParams = useSearchParams();
+  const fromInterop = searchParams.get("from") === "interop";
   const [sort, setSort] = useState<SortKey>("newest");
   const [posts, setPosts] = useState<ForumPost[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1307,14 +1309,20 @@ export function ForumRoomClient({
         <div className="container py-8 md:py-10">
           <Link
             href={
-              categoryContext
-                ? `/forum?cat=${encodeURIComponent(categoryContext.categorySlug)}`
-                : "/forum"
+              fromInterop
+                ? "/interop"
+                : categoryContext
+                  ? `/forum?cat=${encodeURIComponent(categoryContext.categorySlug)}`
+                  : "/forum"
             }
             className="mb-5 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
-            {categoryContext ? "サブカテゴリの選択に戻る" : "AIUEO 井戸端会議"}
+            {fromInterop
+              ? "インタロップに戻る"
+              : categoryContext
+                ? "サブカテゴリの選択に戻る"
+                : "AIUEO 井戸端会議"}
           </Link>
 
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
