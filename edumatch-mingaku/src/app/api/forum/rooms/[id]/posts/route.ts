@@ -168,12 +168,16 @@ export async function POST(
     let resolvedAuthorRole = "一般";
     if (isAnon) {
       resolvedAuthorRole = "匿名";
-    } else if (profile?.id) {
-      resolvedAuthorRole = await getForumAuthorRoleForUser(profile.id);
     } else {
-      const guest = authorRole?.trim();
-      resolvedAuthorRole =
-        guest && guest.length <= 120 && guest !== "匿名" ? guest : "一般";
+      const customRole = authorRole?.trim();
+      const hasCustomRole = customRole && customRole.length <= 120 && customRole !== "一般" && customRole !== "匿名";
+      if (hasCustomRole) {
+        resolvedAuthorRole = customRole;
+      } else if (profile?.id) {
+        resolvedAuthorRole = await getForumAuthorRoleForUser(profile.id);
+      } else {
+        resolvedAuthorRole = customRole || "一般";
+      }
     }
 
     let resolvedTopicId: string | null = topicId?.trim() || null;

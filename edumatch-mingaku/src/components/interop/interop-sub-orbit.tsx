@@ -207,24 +207,23 @@ export function InteropSubOrbit({
           }}
         />
 
-        <div className="absolute left-1/2 top-1/2 z-20 w-[min(46%,280px)] min-w-[200px] -translate-x-1/2 -translate-y-1/2">
+        <div className="absolute left-1/2 top-1/2 z-20 w-[min(32%,200px)] min-w-[120px] -translate-x-1/2 -translate-y-1/2">
           <button
             type="button"
             onClick={onBack}
-            className="group w-full rounded-3xl px-5 py-5 text-center transition-shadow duration-300 hover:shadow-[0_0_40px_rgba(100,150,255,0.18)] focus:outline-none"
+            className="group w-full rounded-full px-3 py-3 text-center transition-shadow duration-300 hover:shadow-[0_0_28px_rgba(100,150,255,0.20)] focus:outline-none"
             style={{
-              background: "rgba(8,11,32,0.84)",
-              border: `1px solid ${accent}55`,
-              boxShadow: `0 0 28px ${accent}22, inset 0 1px 0 rgba(255,255,255,0.08)`,
+              background: "rgba(8,11,32,0.72)",
+              border: `1px solid ${accent}44`,
+              boxShadow: `0 0 18px ${accent}18, inset 0 1px 0 rgba(255,255,255,0.06)`,
               backdropFilter: "blur(12px)",
             }}
             aria-label={backLabel}
           >
-            <CenterIcon className="mx-auto mb-2 h-8 w-8" style={{ color: accent }} strokeWidth={1.8} />
-            <p className="text-lg font-bold text-white">{centerLabel}</p>
-            <p className="mt-1.5 text-[12px] leading-relaxed text-white/55">{hint}</p>
-            <span className="mt-3 inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/[0.06] px-3 py-1 text-[11px] font-bold text-white/70 transition group-hover:bg-white/15 group-hover:text-white">
-              <ArrowLeft className="h-3 w-3" /> {backLabel}
+            <CenterIcon className="mx-auto mb-1 h-5 w-5" style={{ color: accent }} strokeWidth={1.6} />
+            <p className="text-[11px] font-semibold text-white/80">{centerLabel}</p>
+            <span className="mt-2 inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/[0.05] px-2.5 py-0.5 text-[10px] font-medium text-white/55 transition group-hover:bg-white/12 group-hover:text-white/80">
+              <ArrowLeft className="h-2.5 w-2.5" /> {backLabel}
             </span>
           </button>
         </div>

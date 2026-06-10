@@ -19,8 +19,8 @@ import {
 import { computePuyoIntensity, getInteropTopGraphDimensions } from "@/lib/interop-puyopuyo";
 import type { InteropCategory } from "@/components/interop/interop-category-bubble-map";
 
-const TOP_CENTER_DIAMETER = 228;
-const TOP_TOPIC_DIAMETER = 118;
+const TOP_CENTER_DIAMETER = 160;
+const TOP_TOPIC_DIAMETER = 112;
 
 function computeTopConnections(
   centerId: string,
