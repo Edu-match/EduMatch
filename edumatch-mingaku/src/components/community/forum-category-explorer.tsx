@@ -38,10 +38,48 @@ export type ForumSubCategory = {
 
 type RoomActivity = {
   id: string;
+  name: string;
+  description?: string | null;
   postCount: number;
   participantCount: number;
   lastPostedAt: string;
 };
+
+/** CSV ◎ テーマルーム（room-{大カテゴリ}--community--{テーマ}） */
+const COMMUNITY_THEME_ROOM_RE = /^room-.+--community--/;
+
+const IDOBATA_MAJOR_SLUG_ORDER = [
+  "ai-technology",
+  "evaluation-curriculum",
+  "children-rights-discipline",
+  "diversity-inclusion",
+  "teacher-school-system",
+  "subject-teaching",
+] as const;
+
+function isCommunityThemeRoomId(roomId: string): boolean {
+  return COMMUNITY_THEME_ROOM_RE.test(roomId);
+}
+
+function majorSlugFromCommunityRoomId(roomId: string): string {
+  const m = roomId.match(/^room-(.+?)--community--/);
+  return m?.[1] ?? "";
+}
+
+function sortCommunityThemeRooms(rooms: RoomActivity[]): RoomActivity[] {
+  return [...rooms].sort((a, b) => {
+    const ma = IDOBATA_MAJOR_SLUG_ORDER.indexOf(
+      majorSlugFromCommunityRoomId(a.id) as (typeof IDOBATA_MAJOR_SLUG_ORDER)[number]
+    );
+    const mb = IDOBATA_MAJOR_SLUG_ORDER.indexOf(
+      majorSlugFromCommunityRoomId(b.id) as (typeof IDOBATA_MAJOR_SLUG_ORDER)[number]
+    );
+    const ai = ma === -1 ? IDOBATA_MAJOR_SLUG_ORDER.length : ma;
+    const bi = mb === -1 ? IDOBATA_MAJOR_SLUG_ORDER.length : mb;
+    if (ai !== bi) return ai - bi;
+    return a.name.localeCompare(b.name, "ja");
+  });
+}
 
 function roomBelongsToCategory(roomId: string, categorySlug: string): boolean {
   return (
@@ -77,13 +115,21 @@ export function ForumCategoryExplorer({
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([
-      fetch("/api/forum/categories").then((r) => r.json()),
-      fetch("/api/forum/sub-categories").then((r) => r.json()),
-      fetch("/api/forum/rooms", { credentials: "include" }).then((r) => r.json()),
-    ])
-      .then(([cat, sub, rooms]) => {
+
+    async function load() {
+      try {
+        const [catRes, subRes, themeRes] = await Promise.all([
+          fetch("/api/forum/categories"),
+          fetch("/api/forum/sub-categories"),
+          fetch("/api/forum/rooms?communityThemes=true", { credentials: "include" }),
+        ]);
+        const [cat, sub, themeRooms] = await Promise.all([
+          catRes.json(),
+          subRes.json(),
+          themeRes.json(),
+        ]);
         if (cancelled) return;
+
         if (Array.isArray(cat.categories)) {
           setCategories(
             cat.categories.map((c: ForumCategory) => ({
@@ -93,19 +139,48 @@ export function ForumCategoryExplorer({
           );
         }
         if (Array.isArray(sub.subCategories)) setSubCategories(sub.subCategories);
-        if (Array.isArray(rooms.rooms)) setRoomActivity(rooms.rooms);
-      })
-      .catch(console.error)
-      .finally(() => {
+
+        const themes = Array.isArray(themeRooms.rooms) ? themeRooms.rooms : [];
+        if (themes.length > 0) {
+          setRoomActivity(themes);
+          return;
+        }
+
+        const allRes = await fetch("/api/forum/rooms", { credentials: "include" });
+        const allRooms = await allRes.json();
+        if (cancelled) return;
+        if (Array.isArray(allRooms.rooms)) setRoomActivity(allRooms.rooms);
+      } catch (err) {
+        console.error(err);
+      } finally {
         if (!cancelled) setLoading(false);
-      });
+      }
+    }
+
+    void load();
     return () => {
       cancelled = true;
     };
   }, []);
 
+  const communityThemeRooms = useMemo(
+    () => sortCommunityThemeRooms(roomActivity.filter((r) => isCommunityThemeRoomId(r.id))),
+    [roomActivity]
+  );
+
+  const themeMapMode = communityThemeRooms.length > 0;
+
+  const categoryColorBySlug = useMemo(
+    () => Object.fromEntries(categories.map((c) => [c.slug, c.color])),
+    [categories]
+  );
+
   useEffect(() => {
-    if (categories.length === 0) return;
+    if (!themeMapMode && categories.length === 0) return;
+    if (themeMapMode) {
+      setSelected(null);
+      return;
+    }
     const querySlug = searchParams.get("cat") ?? undefined;
     const savedSlug =
       typeof window !== "undefined"
@@ -115,7 +190,7 @@ export function ForumCategoryExplorer({
     if (!targetSlug) return;
     const cat = categories.find((c) => c.slug === targetSlug);
     if (cat) setSelected(cat);
-  }, [initialCategorySlug, categories, searchParams]);
+  }, [initialCategorySlug, categories, searchParams, themeMapMode]);
 
   const handleSelectCategory = useCallback(
     (cat: ForumCategory) => {
@@ -141,6 +216,13 @@ export function ForumCategoryExplorer({
     }
   }, [router, embedded]);
 
+  const handleOpenThemeRoom = useCallback(
+    (roomId: string) => {
+      router.push(`/forum/${roomId}`);
+    },
+    [router]
+  );
+
   const categoryConnections = useMemo(
     () =>
       computeCategoryConnectionsFromTags(
@@ -157,10 +239,29 @@ export function ForumCategoryExplorer({
     [categories]
   );
 
+  const mapNodeCount = themeMapMode ? communityThemeRooms.length : categories.length;
+
   const categoryDiameter = useMemo(
-    () => computeBubbleDiameter(categories.length),
-    [categories.length]
+    () => computeBubbleDiameter(mapNodeCount),
+    [mapNodeCount]
   );
+
+  const themeRoomConnections = useMemo(() => {
+    const byMajor = new Map<string, string[]>();
+    for (const room of communityThemeRooms) {
+      const slug = majorSlugFromCommunityRoomId(room.id);
+      const list = byMajor.get(slug) ?? [];
+      list.push(room.id);
+      byMajor.set(slug, list);
+    }
+    const edges: { from: string; to: string; weight: number }[] = [];
+    for (const ids of byMajor.values()) {
+      for (let i = 0; i < ids.length - 1; i++) {
+        edges.push({ from: ids[i], to: ids[i + 1], weight: 1 });
+      }
+    }
+    return edges;
+  }, [communityThemeRooms]);
 
   const hotCategoryIds = useMemo(() => {
     const hot = new Set<string>();
@@ -179,7 +280,7 @@ export function ForumCategoryExplorer({
     return hot;
   }, [categories, roomActivity]);
 
-  const categoryNodes: BubbleGraphNode[] = useMemo(
+  const legacyCategoryNodes: BubbleGraphNode[] = useMemo(
     () =>
       categories.map((cat, i) => ({
         id: cat.id,
@@ -192,6 +293,34 @@ export function ForumCategoryExplorer({
       })),
     [categories, categoryDiameter.default, handleSelectCategory, hotCategoryIds]
   );
+
+  const themeRoomNodes: BubbleGraphNode[] = useMemo(
+    () =>
+      communityThemeRooms.map((room, i) => {
+        const majorSlug = majorSlugFromCommunityRoomId(room.id);
+        const majorCat = categories.find((c) => c.slug === majorSlug);
+        return {
+          id: room.id,
+          label: room.name,
+          sublabel: majorCat?.name || undefined,
+          diameter: categoryDiameter.default,
+          backgroundColor:
+            categoryColorBySlug[majorSlug] || FALLBACK_COLORS[i % FALLBACK_COLORS.length],
+          isHot: true,
+          onActivate: () => handleOpenThemeRoom(room.id),
+        };
+      }),
+    [
+      communityThemeRooms,
+      categories,
+      categoryColorBySlug,
+      categoryDiameter.default,
+      handleOpenThemeRoom,
+    ]
+  );
+
+  const mapNodes = themeMapMode ? themeRoomNodes : legacyCategoryNodes;
+  const mapConnections = themeMapMode ? themeRoomConnections : categoryConnections;
 
   const selectedIsHot = selected ? hotCategoryIds.has(selected.id) : false;
 
@@ -210,8 +339,15 @@ export function ForumCategoryExplorer({
             Room Map
           </p>
           <h2 className="mt-1 text-2xl font-bold tracking-tight md:text-3xl">
-            話題のつながりを、マップで探索する
+            {themeMapMode
+              ? "議論したいテーマを、マップから選ぶ"
+              : "話題のつながりを、マップで探索する"}
           </h2>
+          {themeMapMode ? (
+            <p className="mt-1 text-sm text-muted-foreground">
+              {communityThemeRooms.length} テーマ
+            </p>
+          ) : null}
         </div>
       )}
 
@@ -221,7 +357,7 @@ export function ForumCategoryExplorer({
           className="relative overflow-hidden rounded-3xl border border-white/15 shadow-sm"
           style={{
             background: "linear-gradient(135deg, #33529e 0%, #4a78d8 52%, #7aa3f0 100%)",
-            minHeight: embedded ? 420 : 520,
+            minHeight: themeMapMode ? (embedded ? 480 : 580) : embedded ? 420 : 520,
           }}
         >
           {/* 中央の発光（サブカテゴリ地図と統一） */}
@@ -251,19 +387,27 @@ export function ForumCategoryExplorer({
                 "radial-gradient(ellipse at 50% 50%, transparent 60%, rgba(28,48,120,0.30) 100%)",
             }}
           />
-          <div className={embedded ? "relative aspect-[16/10] w-full" : "relative aspect-[16/9] w-full"}>
+          <div
+            className={
+              embedded
+                ? "relative aspect-[16/10] w-full"
+                : themeMapMode
+                  ? "relative aspect-[4/3] w-full"
+                  : "relative aspect-[16/9] w-full"
+            }
+          >
             {loading ? (
               <div className="flex h-full items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
-            ) : categories.length === 0 ? (
+            ) : mapNodes.length === 0 ? (
               <div className="flex h-full items-center justify-center px-6 text-center text-sm text-muted-foreground">
                 まだ大カテゴリが登録されていません。管理画面から追加してください。
               </div>
             ) : (
               <BubbleGraphCanvas
-                nodes={categoryNodes}
-                connections={categoryConnections}
+                nodes={mapNodes}
+                connections={mapConnections}
                 layoutMode="category"
                 className="h-full"
               />
@@ -272,13 +416,15 @@ export function ForumCategoryExplorer({
 
           <div className="pointer-events-none absolute bottom-4 left-4 z-20 flex items-center gap-1.5 rounded-full border bg-background/85 px-3 py-1.5 text-[11px] text-muted-foreground shadow-sm backdrop-blur">
             <Move className="h-3.5 w-3.5" />
-            ドラッグでマップを移動。タップで大カテゴリを選択。右下のボタンで拡大・縮小
+            {themeMapMode
+              ? "ドラッグでマップを移動。タップで議論ルームへ。右下のボタンで拡大・縮小"
+              : "ドラッグでマップを移動。タップで大カテゴリを選択。右下のボタンで拡大・縮小"}
           </div>
         </div>
       )}
 
-      {/* ===== サブカテゴリエリアビュー ===== */}
-      {selected && (
+      {/* ===== サブカテゴリエリアビュー（テーママップモードでは未使用） ===== */}
+      {selected && !themeMapMode && (
         <div className="overflow-hidden rounded-3xl border bg-gradient-to-b from-muted/20 to-background shadow-sm">
           {/* ヘッダー */}
           <div

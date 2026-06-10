@@ -20,6 +20,8 @@ export async function GET(req: NextRequest) {
     const categoryId = url.searchParams.get("categoryId") ?? undefined;
     const categorySlug = url.searchParams.get("categorySlug") ?? undefined;
     const subSlug = url.searchParams.get("subSlug") ?? undefined;
+    /** 井戸端 ◎ テーマルームのみ（マップ用・軽量） */
+    const communityThemesOnly = url.searchParams.get("communityThemes") === "true";
     let isAdmin = false;
     if (includeHidden) {
       const profile = await getCurrentProfile();
@@ -68,6 +70,9 @@ export async function GET(req: NextRequest) {
       }
     } else {
       roomsWithCounts = await prisma.forumRoom.findMany({
+        where: communityThemesOnly
+          ? { id: { contains: "--community--" } }
+          : undefined,
         orderBy: { created_at: "asc" },
         include: {
           _count: { select: { posts: { where: { is_hidden: false } } } },
