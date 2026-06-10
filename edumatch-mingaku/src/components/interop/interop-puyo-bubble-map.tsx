@@ -73,8 +73,8 @@ const GROUP_STYLE: Record<string, GroupStyleEntry> = {
 
 // ── 配置：各分類を「密集した塊（ぷよの房）」として中心インタロップの周りに散らす ──
 // オフセットはバブル径基準（=1）。SX/SYで画面%へ変換（縦横比補正）。
-const SX = 3.6;
-const SY = 6.4;
+const SX = 4.7;
+const SY = 8.2;
 
 // 六角パッキングで n 個を中心から近い順に詰めた塊（円のリングではなく中身の詰まった塊）
 function hexCluster(n: number): [number, number][] {
@@ -100,12 +100,12 @@ const SHAPE: Record<number, [number, number][]> = {
 
 // 各分類のクラスター中心（中心インタロップ=50,46 を囲むように配置）
 const CLUSTER_CENTER: Record<string, { c: [number, number]; n: number }> = {
-  A: { c: [25, 27], n: 4 },  // 左上：AI・テク
-  B: { c: [75, 27], n: 4 },  // 右上：評価・学習
-  C: { c: [16, 57], n: 4 },  // 左下：権利・規律
-  D: { c: [85, 53], n: 2 },  // 右：多様性
-  E: { c: [32, 80], n: 2 },  // 下：教師・学校
-  F: { c: [63, 73], n: 12 }, // 右下の大塊：各教科
+  A: { c: [24, 29], n: 4 },  // 左上：AI・テク
+  B: { c: [76, 29], n: 4 },  // 右上：評価・学習
+  C: { c: [15, 58], n: 4 },  // 左下：権利・規律
+  D: { c: [86, 52], n: 2 },  // 右：多様性
+  E: { c: [34, 80], n: 2 },  // 下：教師・学校
+  F: { c: [61, 71], n: 12 }, // 下中央の大塊：各教科
 };
 
 // sortTopicsForBurst 順 = A×4, B×4, C×4, D×2, E×2, F×12 に対応
@@ -144,7 +144,7 @@ const PUYO_CSS = `
 `;
 
 const BUBBLE_SIZE = 76;
-const CENTER_SIZE = 108;
+const CENTER_SIZE = 118;
 
 function PuyoBubble({
   topic,
