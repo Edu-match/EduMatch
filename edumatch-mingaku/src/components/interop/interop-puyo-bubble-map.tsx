@@ -71,51 +71,58 @@ const GROUP_STYLE: Record<string, GroupStyleEntry> = {
   },
 };
 
-// ── 配置：中心インタロップから放射状。各分類を排他セクターに固める ──
-// 数学標準角(0°=右, 90°=上, 反時計回り)。中心(50,46)からの楕円座標。
-const CENTER_X = 50;
-const CENTER_Y = 46;
-// 内側リング = 各教科F（中心インタロップを取り囲む輪 = 学びの土台）
-const INNER = { rx: 16.5, ry: 18 };
-// 外側 = A/B/C/D/E を四隅＋下にクラスター配置
-const OUTER = { rx: 35, ry: 33 };
+// ── 配置：各分類を「密集した塊（ぷよの房）」として中心インタロップの周りに散らす ──
+// オフセットはバブル径基準（=1）。SX/SYで画面%へ変換（縦横比補正）。
+const SX = 3.6;
+const SY = 6.4;
 
-// 外側クラスター（A=左上 B=右上 C=左下 D=右下 E=下）
-const CLUSTER: Record<string, { mid: number; half: number; n: number }> = {
-  A: { mid: 135, half: 30, n: 4 }, // 左上
-  B: { mid: 45, half: 30, n: 4 },  // 右上
-  C: { mid: 225, half: 30, n: 4 }, // 左下
-  D: { mid: 315, half: 15, n: 2 }, // 右下
-  E: { mid: 275, half: 12, n: 2 }, // 下
+// 六角パッキングで n 個を中心から近い順に詰めた塊（円のリングではなく中身の詰まった塊）
+function hexCluster(n: number): [number, number][] {
+  const raw: { x: number; y: number; d: number }[] = [];
+  const R = 4;
+  for (let q = -R; q <= R; q++) {
+    for (let r = -R; r <= R; r++) {
+      const x = q + r / 2;
+      const y = r * (Math.sqrt(3) / 2);
+      raw.push({ x, y, d: Math.hypot(x, y) });
+    }
+  }
+  raw.sort((a, b) => a.d - b.d);
+  return raw.slice(0, n).map((p) => [p.x, p.y] as [number, number]);
+}
+
+// 少数個は列にならないよう手動で塊の形を指定
+const SHAPE: Record<number, [number, number][]> = {
+  2: [[-0.42, -0.32], [0.42, 0.32]],                              // 斜め2個
+  4: [[0, -0.62], [-0.56, 0.24], [0.56, 0.24], [0, 0.92]],        // ひし形の4連塊
+  12: hexCluster(12),                                             // 六角の大塊
 };
 
-function spreadAngles(mid: number, half: number, n: number, margin = 4): number[] {
-  if (n <= 0) return [];
-  if (n === 1) return [mid];
-  const h = Math.max(0, half - margin);
-  const start = mid - h;
-  const step = (2 * h) / (n - 1);
-  return Array.from({ length: n }, (_, i) => start + step * i);
-}
-
-function toXY(angleDeg: number, ring: { rx: number; ry: number }): [number, number] {
-  const r = (angleDeg * Math.PI) / 180;
-  return [
-    +(CENTER_X + ring.rx * Math.cos(r)).toFixed(2),
-    +(CENTER_Y - ring.ry * Math.sin(r)).toFixed(2),
-  ];
-}
+// 各分類のクラスター中心（中心インタロップ=50,46 を囲むように配置）
+const CLUSTER_CENTER: Record<string, { c: [number, number]; n: number }> = {
+  A: { c: [25, 27], n: 4 },  // 左上：AI・テク
+  B: { c: [75, 27], n: 4 },  // 右上：評価・学習
+  C: { c: [16, 57], n: 4 },  // 左下：権利・規律
+  D: { c: [85, 53], n: 2 },  // 右：多様性
+  E: { c: [32, 80], n: 2 },  // 下：教師・学校
+  F: { c: [63, 73], n: 12 }, // 右下の大塊：各教科
+};
 
 // sortTopicsForBurst 順 = A×4, B×4, C×4, D×2, E×2, F×12 に対応
 function buildPositions(): [number, number][] {
   const result: [number, number][] = [];
-  for (const g of ["A", "B", "C", "D", "E"] as const) {
-    const c = CLUSTER[g];
-    for (const a of spreadAngles(c.mid, c.half, c.n)) result.push(toXY(a, OUTER));
-  }
-  // F: 各教科12個 → 内側リングに等分（上から時計回り）
-  for (let i = 0; i < 12; i++) {
-    result.push(toXY(90 - i * 30, INNER));
+  for (const g of ["A", "B", "C", "D", "E", "F"] as const) {
+    const { c, n } = CLUSTER_CENTER[g];
+    const offs = SHAPE[n] ?? hexCluster(n);
+    // 塊の重心を原点に合わせてからクラスター中心へ
+    const mx = offs.reduce((s, o) => s + o[0], 0) / offs.length;
+    const my = offs.reduce((s, o) => s + o[1], 0) / offs.length;
+    for (const [ox, oy] of offs) {
+      result.push([
+        +(c[0] + (ox - mx) * SX).toFixed(2),
+        +(c[1] + (oy - my) * SY).toFixed(2),
+      ]);
+    }
   }
   return result;
 }
