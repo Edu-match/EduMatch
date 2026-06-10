@@ -92,9 +92,9 @@ npm run dev
 `.env.local` に以下が設定されていることを確認:
 
 ```env
-RESEND_API_KEY=re_6CbdrJFn_9zbYN5s66CXJq8euLbnUetET
+RESEND_API_KEY=[YOUR_RESEND_API_KEY]
 RESEND_FROM_EMAIL=onboarding@resend.dev
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_SERVICE_ROLE_KEY=[YOUR_SUPABASE_SERVICE_ROLE_KEY]
 ```
 
 ---

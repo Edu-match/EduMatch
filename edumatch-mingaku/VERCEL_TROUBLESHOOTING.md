@@ -28,17 +28,17 @@
 **設定する値：**
 
 ```bash
-# データベース接続（Supabase）
-DATABASE_URL="postgresql://postgres.lyoesgwecpcoaylsyiys:EduMatchpj1234@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1&sslmode=require"
+# データベース接続（Supabase）※実際の値は Vercel 環境変数 / .env.local で管理（リポジトリには絶対に置かない）
+DATABASE_URL="postgresql://postgres.[PROJECT_ID]:[PASSWORD]@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1&sslmode=require"
 
-DIRECT_URL="postgresql://postgres.lyoesgwecpcoaylsyiys:EduMatchpj1234@aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres?sslmode=require"
+DIRECT_URL="postgresql://postgres.[PROJECT_ID]:[PASSWORD]@aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres?sslmode=require"
 
 # Supabase認証
-NEXT_PUBLIC_SUPABASE_URL="https://lyoesgwecpcoaylsyiys.supabase.co"
+NEXT_PUBLIC_SUPABASE_URL="https://[PROJECT_ID].supabase.co"
 
-NEXT_PUBLIC_SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5b2VzZ3dlY3Bjb2F5bHN5aXlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3OTM1NTAsImV4cCI6MjA4NDM2OTU1MH0.aLr2t6wxmNrqGQ2tD_gb3a-L7vDtDmvKQuy7mSBDaP8"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="[YOUR_SUPABASE_ANON_KEY]"
 
-SUPABASE_SERVICE_ROLE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5b2VzZ3dlY3Bjb2F5bHN5aXlzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2ODc5MzU1MCwiZXhwIjoyMDg0MzY5NTUwfQ.jfkaNH1lPOianfCIkqDDxTX72JUamZyEkD0t5Hc7Z78"
+SUPABASE_SERVICE_ROLE_KEY="[YOUR_SUPABASE_SERVICE_ROLE_KEY]"
 ```
 
 ### 3. 環境変数設定後の再デプロイ

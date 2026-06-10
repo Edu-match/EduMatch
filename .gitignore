@@ -1,0 +1,6 @@
+# OS
+.DS_Store
+
+# Playwright MCP のスクラッチ出力（コンソールログ・スクショ等。機密が混入しうるため追跡しない）
+.playwright-mcp/
+*.log
