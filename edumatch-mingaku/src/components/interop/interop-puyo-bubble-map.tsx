@@ -1,98 +1,102 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
-import { Network, MessageCircle } from "lucide-react";
-import { ForumHotFlame } from "@/components/community/forum-hot-flame";
+import { Network } from "lucide-react";
 import {
   INTEROP_PRIORITY_TOPICS,
   sortTopicsForBurst,
   type InteropPriorityTopic,
 } from "@/lib/interop-priority-topics";
 import type { InteropCategory } from "@/components/interop/interop-category-bubble-map";
-import type { InteropActivityStats } from "@/lib/interop-activity";
-import { isInteropHot } from "@/lib/interop-activity";
 import { useMemo } from "react";
 
-// Vivid puyo colors by major group
+// Glass-vivid colors per major group
 const GROUP_STYLE: Record<string, {
   bg: string; glow: string; border: string; shine: string; label: string;
 }> = {
   A: {
-    bg: "radial-gradient(circle at 32% 28%, #9de0ff 0%, #3a90f0 46%, #1850b8 100%)",
+    bg: "radial-gradient(circle at 34% 26%, rgba(210,240,255,0.94) 0%, rgba(58,144,240,0.65) 42%, rgba(18,72,196,0.76) 100%)",
     glow: "#3a90f0",
-    border: "#6ab5ff",
-    shine: "rgba(190,235,255,0.82)",
+    border: "rgba(130,195,255,0.70)",
+    shine: "rgba(210,240,255,0.88)",
     label: "AI・テク",
   },
   B: {
-    bg: "radial-gradient(circle at 32% 28%, #9ef09e 0%, #38c038 46%, #107810 100%)",
+    bg: "radial-gradient(circle at 34% 26%, rgba(200,255,200,0.94) 0%, rgba(50,192,56,0.62) 42%, rgba(10,120,20,0.76) 100%)",
     glow: "#38c038",
-    border: "#70d870",
-    shine: "rgba(190,255,190,0.82)",
+    border: "rgba(120,220,120,0.70)",
+    shine: "rgba(200,255,200,0.88)",
     label: "評価・学習",
   },
   C: {
-    bg: "radial-gradient(circle at 32% 28%, #ffb0a0 0%, #e83030 46%, #a01010 100%)",
+    bg: "radial-gradient(circle at 34% 26%, rgba(255,210,200,0.94) 0%, rgba(232,60,50,0.62) 42%, rgba(160,16,12,0.76) 100%)",
     glow: "#e83030",
-    border: "#ff8070",
-    shine: "rgba(255,200,180,0.82)",
+    border: "rgba(255,130,120,0.70)",
+    shine: "rgba(255,210,200,0.88)",
     label: "権利・規律",
   },
   D: {
-    bg: "radial-gradient(circle at 32% 28%, #d898f8 0%, #9030e0 46%, #5810a8 100%)",
+    bg: "radial-gradient(circle at 34% 26%, rgba(230,200,255,0.94) 0%, rgba(152,48,224,0.62) 42%, rgba(88,16,168,0.76) 100%)",
     glow: "#9030e0",
-    border: "#c060f8",
-    shine: "rgba(220,180,255,0.82)",
+    border: "rgba(200,110,255,0.70)",
+    shine: "rgba(230,200,255,0.88)",
     label: "多様性",
   },
   E: {
-    bg: "radial-gradient(circle at 32% 28%, #ffe880 0%, #e0a010 46%, #907000 100%)",
+    bg: "radial-gradient(circle at 34% 26%, rgba(255,248,180,0.94) 0%, rgba(224,160,16,0.62) 42%, rgba(144,112,0,0.76) 100%)",
     glow: "#e0a010",
-    border: "#f0d040",
-    shine: "rgba(255,245,160,0.82)",
+    border: "rgba(240,208,64,0.70)",
+    shine: "rgba(255,248,180,0.88)",
     label: "教師・学校",
   },
   F: {
-    bg: "radial-gradient(circle at 32% 28%, #a8b8f8 0%, #4860d8 46%, #1828a0 100%)",
+    bg: "radial-gradient(circle at 34% 26%, rgba(198,210,255,0.94) 0%, rgba(72,96,216,0.62) 42%, rgba(24,40,160,0.76) 100%)",
     glow: "#4860d8",
-    border: "#8098f0",
-    shine: "rgba(180,195,255,0.82)",
+    border: "rgba(144,168,240,0.70)",
+    shine: "rgba(198,210,255,0.88)",
     label: "各教科",
   },
 };
 
-// Pre-defined positions [left%, top%] for each topic in sortTopicsForBurst order
-// A(4) → B(4) → C(4) → D(2) → E(2) → F(12)
+// Radial positions from center (50%, 47%) — sortTopicsForBurst order: A×4, B×4, C×4, D×2, E×2, F×12
+// Computed by polar coords: inner r≈22/15%, mid r≈34/23%, outer r≈43/29%  (rx/ry %)
 const POSITIONS: [number, number][] = [
-  // A: top-left cluster
-  [7, 7], [26, 5], [7, 21], [26, 21],
-  // B: top-right cluster
-  [58, 7], [76, 5], [58, 21], [76, 21],
-  // C: left-center cluster
-  [6, 36], [23, 34], [5, 51], [22, 51],
-  // D: right cluster
-  [91, 36], [91, 51],
-  // E: bottom-center
-  [40, 77], [59, 78],
-  // F: scattered center/right
-  [41, 6], [43, 21], [25, 51], [59, 36],
-  [77, 36], [93, 22], [77, 51], [59, 64],
-  [41, 64], [7, 64], [93, 65], [41, 88],
+  // A: top-left sector
+  [32, 37], [33, 27], [19, 37], [20, 27],
+  // B: top-right sector
+  [62, 33], [76, 32], [59, 25], [75, 23],
+  // C: bottom-left sector
+  [30, 56], [18, 55], [31, 66], [17, 66],
+  // D: right sector
+  [78, 60], [90, 57],
+  // E: bottom sector
+  [47, 70], [56, 76],
+  // F: scattered across remaining (inner/mid/outer)
+  [73, 42], [26, 46],  // right-inner, left-inner
+  [84, 45], [17, 43],  // right-mid, left-mid
+  [50, 24],             // top-mid
+  [92, 42], [7, 47],   // right-outer, left-outer
+  [39, 19], [92, 52],  // top-left-outer, right-outer2
+  [68, 73], [10, 37],  // bottom-right-outer, left-outer2
+  [58, 62],             // bottom-right-inner
 ];
 
 const PUYO_CSS = `
-@keyframes puyoFloat {
-  0%, 100% { transform: translate(-50%, -50%) scaleX(1) scaleY(1); }
-  25%       { transform: translate(-50%, calc(-50% - 5px)) scaleX(1.04) scaleY(0.97); }
-  50%       { transform: translate(-50%, calc(-50% - 6px)) scaleX(1.00) scaleY(1.00); }
-  75%       { transform: translate(-50%, calc(-50% - 3px)) scaleX(0.97) scaleY(1.03); }
+@keyframes puyoAnim {
+  0%   { transform: translate(-50%, calc(-50% + 0px)) scale(0.95); }
+  30%  { transform: translate(-50%, calc(-50% - 7px)) scale(1.02); }
+  60%  { transform: translate(-50%, calc(-50% - 10px)) scale(1.05); }
+  80%  { transform: translate(-50%, calc(-50% - 4px)) scale(1.01); }
+  100% { transform: translate(-50%, calc(-50% + 0px)) scale(0.95); }
 }
-@keyframes puyoLand {
-  0%, 100% { transform: translate(-50%, -50%) scaleX(1.00) scaleY(1.00); }
-  40%      { transform: translate(-50%, -50%) scaleX(1.14) scaleY(0.86); }
-  70%      { transform: translate(-50%, -50%) scaleX(0.94) scaleY(1.06); }
+@keyframes centerPulse {
+  0%,100% { transform: translate(-50%,-50%) scale(1.0); }
+  50%     { transform: translate(-50%,-50%) scale(1.06); }
 }
 `;
+
+const BUBBLE_SIZE = 82;  // px — larger than before
+const CENTER_SIZE = 112; // px
 
 function PuyoBubble({
   topic,
@@ -106,10 +110,9 @@ function PuyoBubble({
   onActivate: () => void;
 }) {
   const sty = GROUP_STYLE[topic.major] ?? GROUP_STYLE.F;
-  const size = 66;
-  const dur = 3.4 + ((topic.no * 17 + index * 11) % 34) / 10;
-  const delay = ((topic.no * 7 + index * 3) % 22) / 10;
-  const isLand = index % 7 === 0;
+  // Slow animation: 7–13s per cycle, staggered delay
+  const dur = 7 + ((topic.no * 13 + index * 9) % 60) / 10;
+  const delay = -((topic.no * 7 + index * 4) % 70) / 10; // negative = pre-start, avoids initial pop
 
   return (
     <button
@@ -119,62 +122,81 @@ function PuyoBubble({
       style={{
         left: `${pos[0]}%`,
         top: `${pos[1]}%`,
-        width: size,
-        height: size,
+        width: BUBBLE_SIZE,
+        height: BUBBLE_SIZE,
         zIndex: 10,
-        animation: `${isLand ? "puyoLand" : "puyoFloat"} ${dur}s ease-in-out ${delay}s infinite`,
+        animation: `puyoAnim ${dur}s ease-in-out ${delay}s infinite`,
       }}
       aria-label={topic.category}
     >
-      {/* Glow aura */}
+      {/* Glow halo (always visible, brighter on hover) */}
       <span
-        className="pointer-events-none absolute opacity-0 rounded-full transition-opacity duration-200 group-hover:opacity-100"
+        className="pointer-events-none absolute rounded-full transition-opacity duration-300"
         style={{
-          inset: -10,
-          background: `radial-gradient(circle, ${sty.glow}55 0%, transparent 68%)`,
+          inset: -14,
+          background: `radial-gradient(circle, ${sty.glow}30 0%, transparent 65%)`,
+          opacity: 0.7,
+        }}
+      />
+      <span
+        className="pointer-events-none absolute rounded-full opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+        style={{
+          inset: -14,
+          background: `radial-gradient(circle, ${sty.glow}60 0%, transparent 65%)`,
         }}
       />
 
-      {/* Bubble body */}
+      {/* Bubble body — glass morphism */}
       <span
-        className="relative flex h-full w-full items-center justify-center rounded-full transition-transform duration-150 group-hover:scale-[1.06] group-active:scale-95"
+        className="relative flex h-full w-full items-center justify-center rounded-full transition-transform duration-200 group-hover:scale-[1.08] group-active:scale-[0.93]"
         style={{
           background: sty.bg,
-          border: `2px solid ${sty.border}`,
-          boxShadow: `0 0 16px ${sty.glow}45, 0 4px 14px rgba(0,0,0,0.38), inset 0 2px 6px rgba(255,255,255,0.12)`,
+          border: `1.5px solid ${sty.border}`,
+          boxShadow: `0 0 22px ${sty.glow}38, 0 6px 18px rgba(0,0,0,0.28), inset 0 1px 1px rgba(255,255,255,0.55)`,
+          backdropFilter: "blur(10px)",
+          WebkitBackdropFilter: "blur(10px)",
         }}
       >
-        {/* Highlight shine */}
+        {/* Top-left highlight blob */}
         <span
           className="pointer-events-none absolute rounded-full"
-          style={{ top: "13%", left: "17%", width: "37%", height: "30%", background: sty.shine, filter: "blur(2px)", opacity: 0.72 }}
+          style={{
+            top: "11%", left: "14%",
+            width: "42%", height: "34%",
+            background: sty.shine,
+            filter: "blur(3px)",
+            opacity: 0.68,
+          }}
         />
-        {/* Eyes */}
-        <span className="pointer-events-none absolute" style={{ top: "33%", left: "24%", width: "16%", height: "20%", background: "#fff", borderRadius: "50%", boxShadow: "0 1px 2px rgba(0,0,0,0.45)" }} />
-        <span className="pointer-events-none absolute" style={{ top: "33%", right: "24%", width: "16%", height: "20%", background: "#fff", borderRadius: "50%", boxShadow: "0 1px 2px rgba(0,0,0,0.45)" }} />
-        <span className="pointer-events-none absolute" style={{ top: "37%", left: "28%", width: "9%", height: "12%", background: "#0e133a", borderRadius: "50%" }} />
-        <span className="pointer-events-none absolute" style={{ top: "37%", right: "28%", width: "9%", height: "12%", background: "#0e133a", borderRadius: "50%" }} />
+        {/* Bottom-right subtle dark shadow for depth */}
+        <span
+          className="pointer-events-none absolute rounded-full"
+          style={{
+            bottom: "8%", right: "8%",
+            width: "38%", height: "30%",
+            background: "rgba(0,0,0,0.14)",
+            filter: "blur(5px)",
+          }}
+        />
       </span>
-
-      {/* Hot flame */}
-      {/* (hot detection requires stats which aren't passed here; kept as placeholder) */}
 
       {/* Label */}
       <span
         className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-center"
         style={{
-          top: "calc(100% + 4px)",
-          maxWidth: 84,
-          fontSize: "8.5px",
+          top: `calc(100% + 5px)`,
+          maxWidth: 100,
+          fontSize: "10.5px",
           fontWeight: 700,
-          lineHeight: 1.25,
-          color: "rgba(255,255,255,0.92)",
-          background: "rgba(5,7,22,0.72)",
-          border: `1px solid ${sty.border}55`,
+          lineHeight: 1.3,
+          color: "rgba(255,255,255,0.95)",
+          background: "rgba(4,6,20,0.68)",
+          border: `1px solid ${sty.border}`,
           borderRadius: 9999,
-          padding: "1px 6px",
-          backdropFilter: "blur(5px)",
-          boxShadow: "0 2px 6px rgba(0,0,0,0.28)",
+          padding: "2px 8px",
+          backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.32)",
           whiteSpace: "normal",
           wordBreak: "break-all",
           display: "block",
@@ -187,23 +209,27 @@ function PuyoBubble({
 }
 
 // Legend chip
-function GroupChip({ major, label, sty }: { major: string; label: string; sty: typeof GROUP_STYLE.A }) {
+function GroupChip({ label, sty }: { label: string; sty: typeof GROUP_STYLE.A }) {
   return (
     <span
-      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-semibold text-white/90"
+      className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10.5px] font-semibold text-white/90"
       style={{
-        background: `${sty.glow}30`,
-        border: `1px solid ${sty.border}66`,
-        backdropFilter: "blur(4px)",
+        background: `${sty.glow}28`,
+        border: `1px solid ${sty.border}`,
+        backdropFilter: "blur(6px)",
+        WebkitBackdropFilter: "blur(6px)",
       }}
     >
-      <span className="inline-block h-2 w-2 rounded-full" style={{ background: sty.glow, boxShadow: `0 0 4px ${sty.glow}` }} />
+      <span
+        className="inline-block h-2.5 w-2.5 rounded-full"
+        style={{ background: sty.glow, boxShadow: `0 0 5px ${sty.glow}` }}
+      />
       {label}
     </span>
   );
 }
 
-/** トップ：28ぷよぷよ玉（大カテゴリ）＋中心インタロップ */
+/** トップ：28ぷよぷよ玉 + 中心インタロップ（中心から放射状配置） */
 export function InteropPuyoBubbleMap({
   interopCat,
   onSelectCategory,
@@ -222,13 +248,6 @@ export function InteropPuyoBubbleMap({
     <div className="absolute inset-0 overflow-hidden">
       <style>{PUYO_CSS}</style>
 
-      {/* Group legend */}
-      <div className="pointer-events-none absolute bottom-20 left-4 right-4 z-30 flex flex-wrap gap-1.5 md:bottom-6">
-        {Object.entries(GROUP_STYLE).map(([major, sty]) => (
-          <GroupChip key={major} major={major} label={sty.label} sty={sty} />
-        ))}
-      </div>
-
       {/* Topic bubbles */}
       {topics.map((topic, i) => (
         <PuyoBubble
@@ -240,37 +259,66 @@ export function InteropPuyoBubbleMap({
         />
       ))}
 
-      {/* Center: インタロップ hub button */}
+      {/* Center: インタロップ */}
       {interopCat && (
         <button
           type="button"
           onClick={() => onSelectCategory(interopCat)}
           className="group absolute focus:outline-none"
-          style={{ left: "49%", top: "44%", width: 84, height: 84, zIndex: 20 }}
+          style={{
+            left: "50%",
+            top: "47%",
+            width: CENTER_SIZE,
+            height: CENTER_SIZE,
+            zIndex: 20,
+            animation: `centerPulse 8s ease-in-out infinite`,
+          }}
           aria-label="インタロップ"
         >
+          {/* Outer ring glow */}
           <span
-            className="relative flex h-full w-full flex-col items-center justify-center rounded-full transition-all duration-200 group-hover:scale-[1.07] group-active:scale-95"
+            className="pointer-events-none absolute rounded-full"
             style={{
-              background: "radial-gradient(circle at 35% 28%, rgba(255,255,255,0.95) 0%, rgba(220,228,255,0.90) 38%, rgba(160,180,255,0.82) 100%)",
-              border: "2px solid rgba(180,200,255,0.80)",
-              boxShadow: "0 0 28px rgba(140,170,255,0.55), 0 6px 20px rgba(0,0,0,0.30), inset 0 2px 10px rgba(255,255,255,0.50)",
-              backdropFilter: "blur(4px)",
+              inset: -18,
+              background: "radial-gradient(circle, rgba(160,190,255,0.22) 0%, transparent 68%)",
+            }}
+          />
+          <span
+            className="pointer-events-none absolute rounded-full opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+            style={{
+              inset: -18,
+              background: "radial-gradient(circle, rgba(160,190,255,0.45) 0%, transparent 68%)",
+            }}
+          />
+
+          {/* Button body */}
+          <span
+            className="relative flex h-full w-full flex-col items-center justify-center rounded-full transition-transform duration-200 group-hover:scale-[1.06] group-active:scale-95"
+            style={{
+              background: "radial-gradient(circle at 36% 26%, rgba(255,255,255,0.96) 0%, rgba(218,228,255,0.88) 38%, rgba(150,172,255,0.82) 100%)",
+              border: "2px solid rgba(200,218,255,0.80)",
+              boxShadow: "0 0 36px rgba(130,160,255,0.50), 0 8px 24px rgba(0,0,0,0.28), inset 0 2px 12px rgba(255,255,255,0.55)",
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
             }}
           >
+            {/* Shine */}
             <span
               className="pointer-events-none absolute rounded-full"
-              style={{ top: "12%", left: "16%", width: "40%", height: "32%", background: "rgba(255,255,255,0.88)", filter: "blur(3px)" }}
+              style={{ top: "10%", left: "14%", width: "44%", height: "34%", background: "rgba(255,255,255,0.90)", filter: "blur(4px)" }}
             />
-            <InteropIcon className="relative z-10 h-5 w-5 text-[#1a3a8a]" strokeWidth={1.8} />
-            <span className="relative z-10 mt-0.5 text-[9px] font-bold leading-none text-[#1a3a8a]">インタロップ</span>
+            <InteropIcon className="relative z-10 h-6 w-6 text-[#1a3a8a]" strokeWidth={1.8} />
+            <span className="relative z-10 mt-1 text-[11px] font-bold leading-tight text-[#1a3a8a]">インタロップ</span>
           </span>
-          <span
-            className="pointer-events-none absolute inset-[-6px] animate-ping rounded-full opacity-0 group-hover:opacity-30"
-            style={{ background: "rgba(100,130,255,0.35)" }}
-          />
         </button>
       )}
+
+      {/* Group legend */}
+      <div className="pointer-events-none absolute bottom-20 left-4 right-4 z-30 flex flex-wrap gap-1.5 md:bottom-6">
+        {Object.entries(GROUP_STYLE).map(([major, sty]) => (
+          <GroupChip key={major} label={sty.label} sty={sty} />
+        ))}
+      </div>
     </div>
   );
 }
