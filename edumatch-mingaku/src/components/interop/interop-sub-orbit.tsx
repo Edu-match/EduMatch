@@ -2,12 +2,7 @@
 
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
-import {
-  ArrowLeft,
-  LayoutGrid,
-  MessageCircle,
-  type LucideIcon,
-} from "lucide-react";
+import { ArrowLeft, MessageCircle, type LucideIcon } from "lucide-react";
 import { ForumHotFlame } from "@/components/community/forum-hot-flame";
 import {
   computeSubOrbDiameter,
@@ -21,7 +16,6 @@ import {
   getOrbitRadiusPercent,
   INTEROP_PUYO_CSS,
   puyoAnimationStyle,
-  puyoScaleVars,
 } from "@/lib/interop-puyopuyo";
 import type { InteropCategory } from "@/components/interop/interop-category-bubble-map";
 
@@ -35,18 +29,23 @@ export type InteropSubCategory = {
 
 const FX_CSS = `
   @keyframes itmOrbitPulse {
-    0%,100% { opacity: 0.35; transform: translate(-50%, -50%) scale(1); }
-    50%      { opacity: 0.65; transform: translate(-50%, -50%) scale(1.06); }
-  }
-  @keyframes itmHotGlow {
-    0%,100% { box-shadow: 0 0 20px var(--orb-glow), 0 4px 24px rgba(0,0,0,0.35); }
-    50%      { box-shadow: 0 0 36px var(--orb-glow-hot), 0 4px 28px rgba(255,120,40,0.25); }
+    0%,100% { opacity: 0.28; transform: translate(-50%, -50%) scale(1); }
+    50%      { opacity: 0.5; transform: translate(-50%, -50%) scale(1.04); }
   }
   @keyframes itmFadeIn {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
+    from { opacity: 0; transform: scale(0.98); }
+    to { opacity: 1; transform: scale(1); }
   }
 `;
+
+function orbitPosition(index: number, total: number, radiusPercent: number) {
+  const angleDeg = (360 / Math.max(total, 1)) * index - 90;
+  const angle = (angleDeg * Math.PI) / 180;
+  return {
+    left: 50 + radiusPercent * Math.cos(angle),
+    top: 50 + radiusPercent * Math.sin(angle),
+  };
+}
 
 function SubTopicOrb({
   sub,
@@ -65,26 +64,23 @@ function SubTopicOrb({
   stats: InteropActivityStats;
   onNavigate: (id: string) => void;
 }) {
-  const ang = (360 / Math.max(total, 1)) * index;
-  const a = (ang - 90) * (Math.PI / 180);
-  const left = 50 + orbitRadius * Math.cos(a);
-  const top = 50 + orbitRadius * Math.sin(a) * 0.92;
+  const pos = orbitPosition(index, total, orbitRadius);
   const baseSize = computeSubOrbDiameter(stats);
   const hot = isInteropHot(stats);
   const hint = formatActivityHint(stats);
   const intensity = computePuyoIntensity(stats);
-  const iconSize = Math.max(18, baseSize * 0.28);
-  const puyoStyle = puyoAnimationStyle(index * 5 + sub.name.length, intensity, hot);
-  const puyoAnim = hot
-    ? `${puyoStyle.animation}, itmHotGlow 2.8s ease-in-out infinite`
-    : puyoStyle.animation;
+  const iconSize = Math.max(20, baseSize * 0.32);
+  const puyoStyle =
+    intensity > 0.08 || hot
+      ? puyoAnimationStyle(index * 5 + sub.name.length, intensity * 0.65, hot)
+      : undefined;
 
   return (
     <button
       type="button"
       onClick={() => onNavigate(sub.id)}
-      className="group absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center focus:outline-none"
-      style={{ left: `${left}%`, top: `${top}%` }}
+      className="group absolute z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center focus:outline-none"
+      style={{ left: `${pos.left}%`, top: `${pos.top}%` }}
       aria-label={`${sub.name} を開く`}
     >
       <span className="relative flex flex-col items-center">
@@ -92,33 +88,32 @@ function SubTopicOrb({
           <span
             className="pointer-events-none absolute left-1/2 top-1/2 rounded-full"
             style={{
-              width: baseSize + 32,
-              height: baseSize + 32,
+              width: baseSize + 28,
+              height: baseSize + 28,
               transform: "translate(-50%, -50%)",
-              border: `1px dashed ${accent}88`,
-              animation: `itmOrbitPulse ${2.4 + index * 0.2}s ease-in-out infinite`,
+              border: `1px dashed ${accent}66`,
+              animation: `itmOrbitPulse ${4.2 + index * 0.35}s ease-in-out infinite`,
             }}
           />
         )}
 
         <span
-          className="interop-puyo relative grid place-items-center rounded-full text-white group-hover:brightness-110 group-active:brightness-95"
+          className={puyoStyle ? "interop-puyo relative grid place-items-center rounded-full" : "relative grid place-items-center rounded-full transition-transform duration-300 group-hover:scale-[1.04]"}
           style={{
             width: baseSize,
             height: baseSize,
-            ["--orb-glow" as string]: `${accent}44`,
-            ["--orb-glow-hot" as string]: "rgba(255,130,50,0.55)",
-            background: hot
-              ? `radial-gradient(circle at 38% 28%, rgba(255,220,180,0.28) 0%, rgba(255,255,255,0.08) 38%, rgba(10,14,40,0.9) 100%)`
-              : `radial-gradient(circle at 38% 28%, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.04) 42%, rgba(10,14,40,0.88) 100%)`,
-            border: hot ? "1px solid rgba(255,170,90,0.75)" : `1px solid ${accent}77`,
-            animation: puyoAnim,
-            ...puyoScaleVars(intensity, hot),
+            background:
+              "radial-gradient(circle at 34% 28%, rgba(255,255,255,0.55) 0%, rgba(160,205,255,0.42) 38%, rgba(70,130,230,0.62) 100%)",
+            border: hot ? "1.5px solid rgba(255,190,120,0.75)" : "1.5px solid rgba(255,255,255,0.42)",
+            boxShadow: hot
+              ? "0 0 24px rgba(255,140,60,0.35), 0 10px 28px rgba(30,60,140,0.28), inset 0 2px 14px rgba(255,255,255,0.45)"
+              : "0 0 20px rgba(100,160,255,0.28), 0 10px 28px rgba(30,60,140,0.22), inset 0 2px 14px rgba(255,255,255,0.42)",
+            ...puyoStyle,
           }}
         >
           <MessageCircle
-            style={{ color: hot ? "#ffb366" : accent, width: iconSize, height: iconSize }}
-            strokeWidth={1.8}
+            style={{ color: hot ? "#ffb870" : "rgba(255,255,255,0.92)", width: iconSize, height: iconSize }}
+            strokeWidth={1.6}
           />
           {hot && (
             <span className="absolute -right-1 -top-1 z-10">
@@ -139,10 +134,11 @@ function SubTopicOrb({
         </span>
 
         <span
-          className="mt-2 max-w-[min(32vw,140px)] rounded-full px-2.5 py-0.5 text-center text-[11px] font-bold leading-tight text-white/90 backdrop-blur-sm"
+          className="mt-2.5 max-w-[min(34vw,148px)] rounded-full px-3 py-1 text-center text-[11px] font-bold leading-snug text-white/95"
           style={{
-            background: "rgba(8,11,32,0.78)",
-            border: hot ? "1px solid rgba(255,170,90,0.45)" : "1px solid rgba(255,255,255,0.1)",
+            background: "rgba(8,11,32,0.82)",
+            border: hot ? "1px solid rgba(255,170,90,0.4)" : "1px solid rgba(255,255,255,0.12)",
+            boxShadow: "0 4px 16px rgba(0,0,0,0.22)",
           }}
         >
           {sub.name}
@@ -152,24 +148,20 @@ function SubTopicOrb({
   );
 }
 
-/** 大カテゴリ選択後のサブカテゴリ・軌道UI */
+/** 大カテゴリ選択後：中央ハブ＋軌道サブトピック（添付デザイン準拠） */
 export function InteropSubOrbit({
   selected,
-  categories,
   subCategories,
   activityBySub,
   accent,
   iconFor,
-  onSelectCategory,
   onBackToMap,
 }: {
   selected: InteropCategory;
-  categories: InteropCategory[];
   subCategories: InteropSubCategory[];
   activityBySub: Map<string, InteropActivityStats>;
   accent: string;
   iconFor: (slug: string) => LucideIcon;
-  onSelectCategory: (cat: InteropCategory) => void;
   onBackToMap: () => void;
 }) {
   const router = useRouter();
@@ -179,107 +171,71 @@ export function InteropSubOrbit({
 
   const containerSize = useMemo(() => getOrbitContainerSize(count), [count]);
   const orbitRadius = useMemo(() => getOrbitRadiusPercent(count), [count]);
-  const hubPuyo = puyoAnimationStyle(selected.name.length, 0.15, false);
 
   return (
-    <div className="absolute inset-0" style={{ animation: "itmFadeIn 0.35s ease-out both" }}>
+    <div
+      className="absolute inset-0 flex items-center justify-center px-3 pb-8 pt-16 sm:pt-20"
+      style={{ animation: "itmFadeIn 0.4s ease-out both" }}
+    >
       <style>{FX_CSS}</style>
       <style>{INTEROP_PUYO_CSS}</style>
 
-      <div className="absolute inset-x-0 bottom-6 z-30 flex justify-center px-4">
-        <div className="flex max-w-full items-center gap-2 overflow-x-auto pb-1">
+      <div
+        className="relative aspect-square w-full shrink-0"
+        style={{ width: containerSize, height: containerSize, maxHeight: "min(76vh, 680px)" }}
+      >
+        <span
+          className="pointer-events-none absolute inset-[6%] rounded-full"
+          style={{
+            border: "1px dashed rgba(255,255,255,0.28)",
+            boxShadow: `inset 0 0 40px ${accent}18`,
+          }}
+        />
+        <span
+          className="pointer-events-none absolute inset-[6%] rounded-full"
+          style={{
+            background: `radial-gradient(circle, ${accent}14 0%, transparent 68%)`,
+          }}
+        />
+
+        <div className="absolute left-1/2 top-1/2 z-20 w-[min(46%,280px)] min-w-[200px] -translate-x-1/2 -translate-y-1/2">
           <button
             type="button"
             onClick={onBackToMap}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/20 bg-white/[0.08] px-3 py-1.5 text-[11px] font-bold text-white/80 backdrop-blur transition-all hover:bg-white/15 focus:outline-none"
+            className="group w-full rounded-3xl px-5 py-5 text-center transition-shadow duration-300 hover:shadow-[0_0_40px_rgba(100,150,255,0.18)] focus:outline-none"
+            style={{
+              background: "rgba(8,11,32,0.84)",
+              border: `1px solid ${accent}55`,
+              boxShadow: `0 0 28px ${accent}22, inset 0 1px 0 rgba(255,255,255,0.08)`,
+              backdropFilter: "blur(12px)",
+            }}
             aria-label="大カテゴリマップに戻る"
           >
-            <LayoutGrid className="h-3 w-3 shrink-0" />
-            全体
+            <Icon className="mx-auto mb-2 h-8 w-8" style={{ color: accent }} strokeWidth={1.8} />
+            <p className="text-lg font-bold text-white">{selected.name}</p>
+            <p className="mt-1.5 text-[12px] leading-relaxed text-white/55">
+              {count === 0
+                ? "トピックは準備中です。"
+                : `${count}つのトピック · 盛り上がるほどぷよぷよ大きく`}
+            </p>
+            <span className="mt-3 inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/[0.06] px-3 py-1 text-[11px] font-bold text-white/70 transition group-hover:bg-white/15 group-hover:text-white">
+              <ArrowLeft className="h-3 w-3" /> 大カテゴリマップに戻る
+            </span>
           </button>
-          {categories.map((cat) => {
-            const CatIcon = iconFor(cat.slug);
-            const active = selected.id === cat.id;
-            return (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => onSelectCategory(cat)}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold text-white transition-all focus:outline-none"
-                style={{
-                  background: active ? `${cat.color || accent}33` : "rgba(255,255,255,0.05)",
-                  border: active ? `1px solid ${cat.color || accent}88` : "1px solid rgba(255,255,255,0.12)",
-                  opacity: active ? 1 : 0.65,
-                }}
-                aria-current={active ? "page" : undefined}
-              >
-                <CatIcon className="h-3 w-3 shrink-0" />
-                {cat.name}
-              </button>
-            );
-          })}
         </div>
-      </div>
 
-      <div className="absolute inset-x-0 top-[38%] flex -translate-y-1/2 justify-center px-2 sm:top-[42%]">
-        <div
-          className="relative aspect-square w-full"
-          style={{ width: containerSize, height: containerSize, maxHeight: "min(72vh, 880px)" }}
-        >
-          <span
-            className="absolute inset-[4%] rounded-full"
-            style={{
-              border: `1px dashed ${accent}55`,
-              boxShadow: `inset 0 0 48px ${accent}14`,
-            }}
+        {subCategories.map((sub, i) => (
+          <SubTopicOrb
+            key={sub.id}
+            sub={sub}
+            index={i}
+            total={count}
+            orbitRadius={orbitRadius}
+            accent={accent}
+            stats={activityBySub.get(sub.id) ?? emptyStats}
+            onNavigate={(id) => router.push(`/t/${id}`)}
           />
-          <span
-            className="pointer-events-none absolute inset-[4%] rounded-full opacity-50"
-            style={{
-              background: `radial-gradient(circle, ${accent}22 0%, transparent 70%)`,
-            }}
-          />
-
-          {subCategories.map((sub, i) => (
-            <SubTopicOrb
-              key={sub.id}
-              sub={sub}
-              index={i}
-              total={count}
-              orbitRadius={orbitRadius}
-              accent={accent}
-              stats={activityBySub.get(sub.id) ?? emptyStats}
-              onNavigate={(id) => router.push(`/t/${id}`)}
-            />
-          ))}
-        </div>
-      </div>
-
-      <div className="absolute left-1/2 top-[38%] z-20 w-[min(48vmin,320px)] -translate-x-1/2 -translate-y-1/2 text-center sm:top-[42%]">
-        <button
-          type="button"
-          onClick={onBackToMap}
-          className="interop-puyo group w-full rounded-3xl px-5 py-5 text-center focus:outline-none"
-          style={{
-            background: "rgba(8,11,32,0.82)",
-            border: `1px solid ${accent}66`,
-            boxShadow: `0 0 32px ${accent}28, inset 0 1px 0 rgba(255,255,255,0.08)`,
-            backdropFilter: "blur(10px)",
-            ...hubPuyo,
-          }}
-          aria-label="大カテゴリマップに戻る"
-        >
-          <Icon className="mx-auto mb-2 h-8 w-8" style={{ color: accent }} strokeWidth={1.8} />
-          <p className="text-lg font-bold text-white">{selected.name}</p>
-          <p className="mt-1.5 text-[12px] leading-relaxed text-white/55">
-            {count === 0
-              ? "トピックは準備中です。"
-              : `${count}つのトピック · 盛り上がるほどぷよぷよ大きく`}
-          </p>
-          <span className="mt-3 inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/[0.06] px-3 py-1 text-[11px] font-bold text-white/70 transition group-hover:bg-white/15 group-hover:text-white">
-            <ArrowLeft className="h-3 w-3" /> 大カテゴリマップに戻る
-          </span>
-        </button>
+        ))}
       </div>
     </div>
   );

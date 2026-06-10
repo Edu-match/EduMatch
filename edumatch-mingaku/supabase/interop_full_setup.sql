@@ -80,13 +80,17 @@ create index if not exists interop_content_pins_sub_rank_idx
 -- 初期データ（カテゴリ6＋サブカテゴリ24）。管理画面から編集可能。
 -- ============================================================
 insert into interop_categories (name, slug, description, color, is_primary, sort_order) values
-  ('インフォメーション', 'information', '総合案内・タイムテーブル',  '#BDE8FB', true,  0),
+  ('インフォメーション', 'information', '総合案内・タイムテーブル',  '#BDE8FB', false, 0),
   ('議員会館',          'giin-kaikan', '議員会館での取り組み・連携', '#FBC9D4', false, 1),
   ('AI検定',            'ai-kentei',   'AI活用スキルの検定',         '#C7EFC0', false, 2),
-  ('インタロップ',      'interop',     'Interop Tokyo 2026',         '#C9D4F6', false, 3),
+  ('インタロップ',      'interop',     'Interop Tokyo 2026',         '#C9D4F6', true,  3),
   ('エデュマッチ',      'edumatch',    '教育×AIのプラットフォーム',  '#F6EBB0', false, 4),
   ('AI部',              'ai-bu',       'AI部の活動',                 '#E7CCF4', false, 5)
 on conflict (slug) do nothing;
+
+-- 既存DB：インタロップを中心ハブに
+update interop_categories set is_primary = false where slug <> 'interop';
+update interop_categories set is_primary = true where slug = 'interop';
 
 insert into interop_sub_categories (category_id, name, slug, description, sort_order)
 select c.id, s.name, s.slug, s.description, s.sort_order

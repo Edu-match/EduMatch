@@ -9,9 +9,9 @@ export function computePuyoIntensity(stats: ForumActivityStats): number {
 
 /** ぷよぷよ CSS 変数（--puyo-min / --puyo-max） */
 export function puyoScaleVars(intensity: number, hot = false): Record<string, string> {
-  const boost = hot ? 0.06 : 0;
-  const min = 0.88 - intensity * 0.06;
-  const max = 1.06 + intensity * 0.14 + boost;
+  const boost = hot ? 0.025 : 0;
+  const min = 0.965 - intensity * 0.025;
+  const max = 1.025 + intensity * 0.045 + boost;
   return {
     "--puyo-min": String(min.toFixed(3)),
     "--puyo-max": String(max.toFixed(3)),
@@ -19,10 +19,10 @@ export function puyoScaleVars(intensity: number, hot = false): Record<string, st
 }
 
 export function puyoAnimationStyle(seed: number, intensity: number, hot = false): CSSProperties {
-  const duration = Math.max(2.1, 3.6 - intensity * 1.3 - (hot ? 0.4 : 0));
-  const delay = (seed % 11) * 0.31;
+  const duration = Math.max(5.2, 8 - intensity * 1.8 - (hot ? 0.6 : 0));
+  const delay = (seed % 13) * 0.52;
   return {
-    animation: `interopPuyopuyo ${duration}s cubic-bezier(0.34, 1.45, 0.64, 1) ${delay}s infinite`,
+    animation: `interopPuyopuyo ${duration}s ease-in-out ${delay}s infinite`,
     ...puyoScaleVars(intensity, hot),
   };
 }
@@ -39,30 +39,36 @@ export function getFillGraphDimensions(nodeCount: number) {
   };
 }
 
+/** Interopトップ（中心＋内側カテゴリ＋外周トピック）向けキャンバス */
+export function getInteropTopGraphDimensions(nodeCount: number) {
+  const countScale = 1 + Math.min(0.95, Math.max(0, nodeCount - 8) * 0.028);
+  return {
+    width: Math.round(1180 * countScale),
+    height: Math.round(720 * countScale),
+    spreadFactor: 1.12,
+    radiusRatio: 0.4,
+  };
+}
+
 /** サブカテゴリ軌道：件数に応じたコンテナサイズ（vmin） */
 export function getOrbitContainerSize(count: number): string {
-  const vmin = Math.min(94, 50 + Math.max(count, 1) * 10);
-  return `min(${vmin}vmin, min(94vw, 880px))`;
+  const vmin = Math.min(82, 58 + Math.max(count, 1) * 6);
+  return `min(${vmin}vmin, min(88vw, 680px))`;
 }
 
 /** サブカテゴリ軌道半径（コンテナ内 %） */
 export function getOrbitRadiusPercent(count: number): number {
-  return Math.min(49, 28 + Math.max(count, 1) * 5.2);
+  if (count <= 4) return 40;
+  return Math.min(44, 32 + Math.max(count, 1) * 3.2);
 }
 
 export const INTEROP_PUYO_CSS = `
   @keyframes interopPuyopuyo {
     0%, 100% {
-      transform: scale(var(--puyo-min, 0.9)) scaleX(1) scaleY(1);
+      transform: scale(var(--puyo-min, 0.97)) scaleX(1) scaleY(1);
     }
-    20% {
-      transform: scale(calc(var(--puyo-max, 1.1) * 1.02)) scaleX(1.1) scaleY(0.9);
-    }
-    45% {
-      transform: scale(calc(var(--puyo-min, 0.9) * 0.96)) scaleX(0.92) scaleY(1.08);
-    }
-    70% {
-      transform: scale(var(--puyo-max, 1.1)) scaleX(0.96) scaleY(1.06);
+    50% {
+      transform: scale(var(--puyo-max, 1.02)) scaleX(1.015) scaleY(0.985);
     }
   }
   @media (prefers-reduced-motion: reduce) {

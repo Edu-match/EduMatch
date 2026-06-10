@@ -119,10 +119,11 @@ export function BubbleGraphCanvas({
   fillViewport = false,
   circularLayout,
   graphSize,
+  interopTopLayout,
 }: {
   nodes: BubbleGraphNode[];
   connections: BubbleConnection[];
-  layoutMode: "category" | "subcategory";
+  layoutMode: "category" | "subcategory" | "interop-top";
   className?: string;
   canvasBackgroundColor?: string;
   edgeTheme?: "dark" | "light";
@@ -131,6 +132,7 @@ export function BubbleGraphCanvas({
   fillViewport?: boolean;
   circularLayout?: { spreadFactor: number; radiusRatio: number };
   graphSize?: { width: number; height: number };
+  interopTopLayout?: { centerId: string; innerIds: string[]; outerIds: string[] };
 }) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -145,6 +147,7 @@ export function BubbleGraphCanvas({
     fillViewport,
     circularLayout,
     graphSize,
+    interopTopLayout,
   });
 
   useEffect(() => {

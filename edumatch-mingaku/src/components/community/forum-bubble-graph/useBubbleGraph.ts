@@ -11,6 +11,7 @@ import {
 import type { BubbleGraphNode, DragOffset, GraphPoint } from "./types";
 import {
   computeCircularGraphPoints,
+  computeInteropTopGraphPoints,
   computeSubCategoryGraphPoints,
   getGraphDimensions,
   resolveFloatOffsetsCollisions,
@@ -55,11 +56,11 @@ function hashSeed(id: string, index: number): number {
 function initDriftParticle(id: string, index: number): DriftParticle {
   const seed = hashSeed(id, index);
   const angle = ((seed % 360) * Math.PI) / 180;
-  const speed = 6 + (seed % 12);
-  const radius = 48 + (seed % 32);
+  const speed = 1.2 + (seed % 4) * 0.35;
+  const radius = 10 + (seed % 14);
   return {
-    x: ((seed % 100) / 100 - 0.5) * radius * 0.3,
-    y: (((seed >> 8) % 100) / 100 - 0.5) * radius * 0.3,
+    x: ((seed % 100) / 100 - 0.5) * radius * 0.25,
+    y: (((seed >> 8) % 100) / 100 - 0.5) * radius * 0.25,
     vx: Math.cos(angle) * speed,
     vy: Math.sin(angle) * speed,
     radius,
@@ -89,7 +90,7 @@ function stepDrift(p: DriftParticle, dt: number): DriftParticle {
 
 export function useBubbleGraph(options: {
   nodes: BubbleGraphNode[];
-  layoutMode: "category" | "subcategory";
+  layoutMode: "category" | "subcategory" | "interop-top";
   /** コミュニティから他サブへのスポーク（視覚用） */
   spokeFromPrimary?: boolean;
   onBubbleNavigate?: (href: string) => void;
@@ -101,6 +102,10 @@ export function useBubbleGraph(options: {
   circularLayout?: { spreadFactor: number; radiusRatio: number };
   /** グラフキャンバスサイズ上書き */
   graphSize?: { width: number; height: number };
+  /** interop-top 用：中心・内側・外側ノード ID */
+  interopTopLayout?: { centerId: string; innerIds: string[]; outerIds: string[] };
+  /** バブルの漂いアニメ（Interop特設ではオフ推奨） */
+  driftEnabled?: boolean;
 }) {
   const {
     nodes,
@@ -111,6 +116,8 @@ export function useBubbleGraph(options: {
     fillViewport = false,
     circularLayout,
     graphSize,
+    interopTopLayout,
+    driftEnabled = layoutMode !== "interop-top",
   } = options;
   const nodeIds = useMemo(() => nodes.map((n) => n.id).join(","), [nodes]);
 
@@ -122,20 +129,30 @@ export function useBubbleGraph(options: {
 
   const basePoints = useMemo(() => {
     const ids = nodes.map((n) => n.id);
-    const initial =
-      layoutMode === "subcategory"
-        ? computeSubCategoryGraphPoints(nodes, graphDimensions.width, graphDimensions.height)
-        : computeCircularGraphPoints(
-            ids,
-            graphDimensions.width,
-            graphDimensions.height,
-            circularLayout?.spreadFactor ?? 1.05,
-            circularLayout?.radiusRatio ?? 0.34
-          );
+    let initial: Record<string, GraphPoint>;
+    if (layoutMode === "subcategory") {
+      initial = computeSubCategoryGraphPoints(nodes, graphDimensions.width, graphDimensions.height);
+    } else if (layoutMode === "interop-top" && interopTopLayout) {
+      initial = computeInteropTopGraphPoints(
+        interopTopLayout.centerId,
+        interopTopLayout.innerIds,
+        interopTopLayout.outerIds,
+        graphDimensions.width,
+        graphDimensions.height
+      );
+    } else {
+      initial = computeCircularGraphPoints(
+        ids,
+        graphDimensions.width,
+        graphDimensions.height,
+        circularLayout?.spreadFactor ?? 1.05,
+        circularLayout?.radiusRatio ?? 0.34
+      );
+    }
     return resolveGraphCollisions(
       initial,
       nodes,
-      "standard",
+      layoutMode === "interop-top" ? "compact" : "standard",
       graphDimensions.width,
       graphDimensions.height
     );
@@ -147,6 +164,9 @@ export function useBubbleGraph(options: {
     graphDimensions.width,
     circularLayout?.spreadFactor,
     circularLayout?.radiusRatio,
+    interopTopLayout?.centerId,
+    interopTopLayout?.innerIds.join(","),
+    interopTopLayout?.outerIds.join(","),
   ]);
 
   const defaultScale = fillViewport ? 1 : nodes.length >= 10 ? 0.65 : 0.72;
@@ -177,7 +197,7 @@ export function useBubbleGraph(options: {
   }, [nodeIds]);
 
   useEffect(() => {
-    if (reduceMotion || isPanning || nodes.length === 0) {
+    if (!driftEnabled || reduceMotion || isPanning || nodes.length === 0) {
       setFloatOffsets({});
       return;
     }
@@ -223,6 +243,7 @@ export function useBubbleGraph(options: {
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [
+    driftEnabled,
     reduceMotion,
     isPanning,
     nodes,

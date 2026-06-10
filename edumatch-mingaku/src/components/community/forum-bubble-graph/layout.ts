@@ -187,6 +187,54 @@ export function getGraphDimensions(nodeCount: number) {
   };
 }
 
+/**
+ * Interop特設トップ：中心ハブ → 内側カテゴリ → 外周優先トピックの放射配置
+ */
+export function computeInteropTopGraphPoints(
+  centerId: string,
+  innerIds: string[],
+  outerIds: string[],
+  graphWidth: number,
+  graphHeight: number
+): Record<string, GraphPoint> {
+  const points: Record<string, GraphPoint> = {};
+  const cx = graphWidth / 2;
+  const cy = graphHeight / 2;
+  const minDim = Math.min(graphWidth, graphHeight);
+
+  points[centerId] = { id: centerId, x: cx, y: cy };
+
+  const innerR = minDim * (innerIds.length <= 5 ? 0.19 : 0.22);
+  innerIds.forEach((id, i) => {
+    const angle = -Math.PI / 2 + (Math.PI * 2 * i) / Math.max(1, innerIds.length);
+    const wobble = Math.sin(i * 1.9) * minDim * 0.012;
+    points[id] = {
+      id,
+      x: cx + Math.cos(angle) * (innerR + wobble),
+      y: cy + Math.sin(angle) * (innerR + wobble),
+    };
+  });
+
+  const outerCount = outerIds.length;
+  const baseR = minDim * 0.34;
+  const rSpread = minDim * 0.16;
+
+  outerIds.forEach((id, i) => {
+    const t = outerCount <= 1 ? 0.5 : i / outerCount;
+    const wave = Math.sin(i * 2.17) * 0.11 + Math.cos(i * 0.83) * 0.06;
+    const angle = -Math.PI / 2 + Math.PI * 2 * t + wave;
+    const layer = (i % 4) * 0.035 + Math.sin(i * 0.62) * 0.025;
+    const r = baseR + rSpread * (0.28 + t * 0.72 + layer);
+    points[id] = {
+      id,
+      x: cx + Math.cos(angle) * r,
+      y: cy + Math.sin(angle) * r,
+    };
+  });
+
+  return points;
+}
+
 /** 浮遊オフセット適用後のバブル同士が重ならないよう調整 */
 export function resolveFloatOffsetsCollisions(
   basePoints: Record<string, GraphPoint>,

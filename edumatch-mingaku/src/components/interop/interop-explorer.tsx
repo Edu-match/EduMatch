@@ -15,10 +15,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { InteropBackdrop } from "@/components/interop/interop-backdrop";
-import {
-  InteropCategoryBubbleMap,
-  type InteropCategory,
-} from "@/components/interop/interop-category-bubble-map";
+import { InteropTopBubbleMap } from "@/components/interop/interop-top-bubble-map";
+import type { InteropCategory } from "@/components/interop/interop-category-bubble-map";
 import {
   InteropSubOrbit,
   type InteropSubCategory,
@@ -66,7 +64,7 @@ const ACTIVITY_POLL_MS = 45_000;
 
 export function InteropExplorer({
   themeMode = "auto",
-  guideText = "気になるエリアをタップして、セミナー・展示・登壇情報を探そう",
+  guideText = "中央のインタロップをタップして展示情報へ · 周囲のエリアから直接入ることもできます",
 }: {
   themeMode?: InteropThemeMode;
   guideText?: string;
@@ -186,11 +184,11 @@ export function InteropExplorer({
         </div>
       ) : !selected ? (
         <>
-          <InteropCategoryBubbleMap
+          <InteropTopBubbleMap
             categories={categories}
             activityByCategory={activityByCategory}
             iconFor={iconFor}
-            onSelect={handleSelectCategory}
+            onSelectCategory={handleSelectCategory}
           />
           <div className="pointer-events-none absolute inset-x-0 top-16 z-20 flex justify-center px-4 sm:top-20">
             <div
@@ -216,12 +214,10 @@ export function InteropExplorer({
       ) : (
         <InteropSubOrbit
           selected={selected}
-          categories={categories}
           subCategories={subCategories}
           activityBySub={activityBySub}
           accent={accent}
           iconFor={iconFor}
-          onSelectCategory={handleSelectCategory}
           onBackToMap={handleBackToMap}
         />
       )}
