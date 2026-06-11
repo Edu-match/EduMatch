@@ -89,19 +89,23 @@ export function InteropChatWidget() {
 
   return (
     <>
-      {/* 起動ボタン：スマホ＝右下／PC＝右上 */}
+      {/* 起動ボタン：スマホ＝右下の丸ピル／PC＝画面右端に貼り付く縦長タブ */}
       {!open && (
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="absolute right-4 bottom-5 z-50 flex items-center gap-2 rounded-full px-4 py-3 text-sm font-bold text-white shadow-lg transition hover:scale-105 sm:bottom-auto sm:right-3 sm:top-[5.25rem] sm:py-2.5"
+          className="absolute right-4 bottom-5 z-50 rounded-full px-4 py-3 text-sm font-bold text-white shadow-lg transition hover:scale-105 sm:bottom-auto sm:right-0 sm:top-1/2 sm:-translate-y-1/2 sm:rounded-l-2xl sm:rounded-r-none sm:px-2 sm:py-5"
           style={{
             background: ORANGE_GRAD,
             border: "1px solid rgba(255,205,150,0.6)",
             boxShadow: "0 6px 22px rgba(235,120,30,0.5)",
           }}
+          aria-label="AIに質問"
         >
-          <Sparkles className="h-4 w-4" /> AIに質問
+          <span className="flex items-center gap-2 sm:flex-col sm:gap-2">
+            <Sparkles className="h-4 w-4 shrink-0" />
+            <span className="sm:[writing-mode:vertical-rl] sm:tracking-[0.18em]">AIに質問</span>
+          </span>
         </button>
       )}
 
