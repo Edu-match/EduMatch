@@ -125,6 +125,19 @@ export async function POST(req: NextRequest) {
 
   // ── 公的文書RAG（knowledge のみ。エデュマッチの記事・サービスは検索しない）──
   const knowledgeHits: ChatContextItem[] = await searchKnowledgeChunks(lastUserContent, 6).catch(() => []);
+  // 参照した文書（出典）を UI に返すための一覧（重複タイトル除去）
+  const ragDocRefs = (() => {
+    const seen = new Set<string>();
+    const refs: { title: string; url: string | null }[] = [];
+    for (const k of knowledgeHits) {
+      const title = k.title.trim();
+      if (!title || seen.has(title)) continue;
+      seen.add(title);
+      const url = k.sourceUrl ?? (k.content.match(/https?:\/\/[^\s)]+/)?.[0] ?? null);
+      refs.push({ title, url });
+    }
+    return refs.slice(0, 8);
+  })();
 
   let systemPrompt = SYSTEM_PROMPT;
   if (knowledgeHits.length > 0) {
@@ -186,6 +199,7 @@ export async function POST(req: NextRequest) {
         "Cache-Control": "no-cache",
         "X-Content-Type-Options": "nosniff",
         "X-RAG-Knowledge-Hits": String(knowledgeHits.length),
+        "X-RAG-Doc-Refs": encodeURIComponent(JSON.stringify(ragDocRefs)),
         "X-Usage-Used": String(updatedEvents.length),
         "X-Usage-Limit": String(USAGE_LIMIT),
         "Set-Cookie": usageCookie,

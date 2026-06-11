@@ -1,12 +1,38 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Bot, Loader2, Send, X } from "lucide-react";
+import { Bot, FileText, Loader2, Search, Send, X } from "lucide-react";
 
-type ChatMsg = { id: string; role: "user" | "assistant"; content: string };
+type DocRef = { title: string; url: string | null };
+type ChatMsg = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  ragHits?: number;
+  ragDocRefs?: DocRef[];
+};
 
 // エデュマッチ本サイトに合わせたオレンジ配色
 const ORANGE_GRAD = "linear-gradient(135deg, rgba(255,150,56,0.97) 0%, rgba(236,104,26,0.97) 100%)";
+
+// 思考プロセスの段階表示（リアルタイム検索→考え→回答）
+const THINK_STEPS = [
+  "質問を読み取っています…",
+  "関連する公的資料をリアルタイム検索中…",
+  "資料を読み込んで考えています…",
+  "回答を作成しています…",
+];
+
+function parseDocRefs(raw: string | null): DocRef[] {
+  if (!raw) return [];
+  try {
+    const arr = JSON.parse(decodeURIComponent(raw));
+    if (!Array.isArray(arr)) return [];
+    return arr.filter((r) => r && typeof r.title === "string");
+  } catch {
+    return [];
+  }
+}
 
 const SUGGESTIONS = [
   "教育現場でのAI活用、どこから始めればいい？",
@@ -22,10 +48,20 @@ export function InteropChatWidget({ mobileRaise = false }: { mobileRaise?: boole
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
+  // 思考プロセス（回答の最初の文字が来るまでの「検索中／考え中」表示）
+  const [thinking, setThinking] = useState(false);
+  const [thinkStep, setThinkStep] = useState(0);
   const [usage, setUsage] = useState<{ used: number; limit: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (!thinking) return;
+    setThinkStep(0);
+    const t = setInterval(() => setThinkStep((s) => Math.min(s + 1, THINK_STEPS.length - 1)), 1100);
+    return () => clearInterval(t);
+  }, [thinking]);
 
   useEffect(() => {
     if (!open) return;
@@ -50,6 +86,7 @@ export function InteropChatWidget({ mobileRaise = false }: { mobileRaise?: boole
     setMessages([...history, { id: aiId, role: "assistant", content: "" }]);
     setInput("");
     setStreaming(true);
+    setThinking(true);
 
     try {
       const res = await fetch("/api/interop/chat", {
@@ -63,12 +100,20 @@ export function InteropChatWidget({ mobileRaise = false }: { mobileRaise?: boole
         setError(d?.error || "送信に失敗しました。");
         setMessages((prev) => prev.filter((m) => m.id !== aiId));
         setStreaming(false);
+        setThinking(false);
         return;
       }
 
       const used = res.headers.get("X-Usage-Used");
       const limit = res.headers.get("X-Usage-Limit");
       if (used && limit) setUsage({ used: Number(used), limit: Number(limit) });
+
+      // リアルタイム検索の結果（参照した公的文書）をメッセージに付与
+      const ragHits = parseInt(res.headers.get("X-RAG-Knowledge-Hits") ?? "0", 10);
+      const ragDocRefs = parseDocRefs(res.headers.get("X-RAG-Doc-Refs"));
+      if (ragHits > 0) {
+        setMessages((prev) => prev.map((m) => (m.id === aiId ? { ...m, ragHits, ragDocRefs } : m)));
+      }
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -77,6 +122,7 @@ export function InteropChatWidget({ mobileRaise = false }: { mobileRaise?: boole
         const { done, value } = await reader.read();
         if (done) break;
         acc += decoder.decode(value, { stream: true });
+        if (acc) setThinking(false); // 最初の文字が来たら思考表示を終了
         setMessages((prev) => prev.map((m) => (m.id === aiId ? { ...m, content: acc } : m)));
       }
     } catch {
@@ -84,6 +130,7 @@ export function InteropChatWidget({ mobileRaise = false }: { mobileRaise?: boole
       setMessages((prev) => prev.filter((m) => m.id !== aiId));
     } finally {
       setStreaming(false);
+      setThinking(false);
     }
   };
 
@@ -170,22 +217,72 @@ export function InteropChatWidget({ mobileRaise = false }: { mobileRaise?: boole
                 </div>
               </div>
             ) : (
-              messages.map((m) => (
-                <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                  <div
-                    className={`max-w-[85%] whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed ${
-                      m.role === "user" ? "text-white" : "text-white/90"
-                    }`}
-                    style={
-                      m.role === "user"
-                        ? { background: ORANGE_GRAD }
-                        : { background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }
-                    }
-                  >
-                    {m.content || (streaming && <Loader2 className="h-3.5 w-3.5 animate-spin text-white/50" />)}
+              messages.map((m, idx) => {
+                const isLast = idx === messages.length - 1;
+                const showThinking = m.role === "assistant" && !m.content && thinking && isLast;
+                return (
+                  <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                    <div
+                      className={`max-w-[85%] break-words rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed ${
+                        m.role === "user" ? "whitespace-pre-wrap text-white" : "text-white/90"
+                      }`}
+                      style={
+                        m.role === "user"
+                          ? { background: ORANGE_GRAD }
+                          : { background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }
+                      }
+                    >
+                      {showThinking ? (
+                        /* 思考プロセス（リアルタイム検索→考え→回答） */
+                        <div className="flex flex-col gap-1.5 py-0.5">
+                          <span className="flex items-center gap-1.5 text-[12px] font-medium text-amber-200/90">
+                            <Search className="h-3.5 w-3.5 animate-pulse" />
+                            {THINK_STEPS[thinkStep]}
+                          </span>
+                          <span className="flex items-center gap-1 pl-0.5">
+                            <span className="h-1.5 w-1.5 rounded-full bg-white/40 animate-bounce [animation-delay:0ms]" />
+                            <span className="h-1.5 w-1.5 rounded-full bg-white/40 animate-bounce [animation-delay:150ms]" />
+                            <span className="h-1.5 w-1.5 rounded-full bg-white/40 animate-bounce [animation-delay:300ms]" />
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="whitespace-pre-wrap">
+                          {m.content || (streaming && isLast && <Loader2 className="h-3.5 w-3.5 animate-spin text-white/50" />)}
+                        </span>
+                      )}
+
+                      {/* リアルタイム検索で参照した公的文書（出典） */}
+                      {m.role === "assistant" && (m.ragHits ?? 0) > 0 && (
+                        <div className="mt-2 rounded-xl border border-amber-300/25 bg-amber-300/[0.07] px-2.5 py-2">
+                          <p className="flex items-center gap-1.5 text-[11px] font-bold text-amber-200/90">
+                            <FileText className="h-3 w-3" /> 公的文書を参照して回答（{m.ragHits}件）
+                          </p>
+                          {(m.ragDocRefs ?? []).length > 0 && (
+                            <ul className="mt-1.5 space-y-1">
+                              {(m.ragDocRefs ?? []).map((ref, i) =>
+                                ref.url ? (
+                                  <li key={i}>
+                                    <a
+                                      href={ref.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="line-clamp-1 text-[11.5px] text-amber-100/80 underline-offset-2 hover:text-amber-100 hover:underline"
+                                    >
+                                      ・{ref.title}
+                                    </a>
+                                  </li>
+                                ) : (
+                                  <li key={i} className="line-clamp-1 text-[11.5px] text-amber-100/70">・{ref.title}</li>
+                                )
+                              )}
+                            </ul>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
 
