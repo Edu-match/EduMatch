@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Bot, Loader2, Send, Sparkles, X } from "lucide-react";
+import { Bot, Loader2, Send, X } from "lucide-react";
 
 type ChatMsg = { id: string; role: "user" | "assistant"; content: string };
 
@@ -89,12 +89,12 @@ export function InteropChatWidget() {
 
   return (
     <>
-      {/* 起動ボタン：スマホ＝右下の丸ピル／PC＝画面右端に貼り付く縦長タブ */}
+      {/* 起動ボタン：スマホ＝右下の丸ピル／PC＝画面右端に貼り付く縦長オレンジバー（本サイトのAIナビゲーター風） */}
       {!open && (
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="absolute right-4 bottom-5 z-50 rounded-full px-4 py-3 text-sm font-bold text-white shadow-lg transition hover:scale-105 sm:bottom-auto sm:right-0 sm:top-1/2 sm:-translate-y-1/2 sm:rounded-l-2xl sm:rounded-r-none sm:px-2 sm:py-5"
+          className="group absolute right-4 bottom-5 z-50 rounded-full px-4 py-3 text-sm font-bold text-white shadow-lg transition hover:scale-105 sm:bottom-auto sm:right-0 sm:top-1/2 sm:-translate-y-1/2 sm:rounded-l-2xl sm:rounded-r-none sm:px-2.5 sm:py-7 sm:hover:scale-100 sm:hover:pr-3.5"
           style={{
             background: ORANGE_GRAD,
             border: "1px solid rgba(255,205,150,0.6)",
@@ -102,9 +102,11 @@ export function InteropChatWidget() {
           }}
           aria-label="AIに質問"
         >
-          <span className="flex items-center gap-2 sm:flex-col sm:gap-2">
-            <Sparkles className="h-4 w-4 shrink-0" />
-            <span className="sm:[writing-mode:vertical-rl] sm:tracking-[0.18em]">AIに質問</span>
+          <span className="flex items-center gap-2 sm:flex-col sm:gap-3">
+            <Bot className="h-5 w-5 shrink-0 sm:h-6 sm:w-6" />
+            <span className="sm:[writing-mode:vertical-rl] sm:[text-orientation:upright] sm:text-[15px] sm:tracking-[0.12em]">
+              AIに質問
+            </span>
           </span>
         </button>
       )}

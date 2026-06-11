@@ -1056,11 +1056,15 @@ export function InteropPuyoBubbleMap({
         </button>
       </div>
 
-      {/* 凡例：パンしても固定表示。スマホ＝横スクロール1行／PC＝折返し */}
-      <div className="pointer-events-auto absolute bottom-2 left-2 right-16 z-30 flex flex-nowrap gap-1.5 overflow-x-auto [scrollbar-width:none] md:pointer-events-none md:bottom-6 md:left-4 md:right-16 md:flex-wrap md:overflow-visible">
-        {Object.entries(GROUP_STYLE).map(([major, sty]) => (
-          <GroupChip key={major} label={sty.label} sty={sty} />
-        ))}
+      {/* 凡例：1つのまとまったガラスバーに収めて下部のごちゃつきを解消。
+          スマホ＝横スクロール1行／PC＝折返し */}
+      <div className="pointer-events-none absolute bottom-3 left-3 right-16 z-30 md:bottom-5 md:left-5 md:right-20">
+        <div className="pointer-events-auto inline-flex max-w-full flex-nowrap items-center gap-1.5 overflow-x-auto rounded-2xl border border-white/10 px-2.5 py-1.5 [scrollbar-width:none] md:pointer-events-none md:flex-wrap md:overflow-visible"
+          style={{ background: "rgba(6,9,24,0.72)" }}>
+          {Object.entries(GROUP_STYLE).map(([major, sty]) => (
+            <GroupChip key={major} label={sty.label} sty={sty} />
+          ))}
+        </div>
       </div>
     </div>
   );
