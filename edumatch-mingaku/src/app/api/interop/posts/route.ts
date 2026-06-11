@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
+import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, getCurrentProfile } from "@/lib/auth";
 import { moderateAndNotify } from "@/lib/post-moderation";
+import { generateInteropAiReplyText, INTEROP_AI_FACILITATOR_NAME } from "@/lib/forum-ai-comment";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 30;
 const MAX_BODY = 1000;
+/** 新規投稿にAI返信を付ける確率（全体の約8割に返信が付くように） */
+const AI_REPLY_PROBABILITY = 0.8;
 
 /** サブカテゴリ掲示板の投稿一覧（公開）
  *  ?subCategoryId=xxx 必須。
@@ -89,7 +93,7 @@ export async function POST(req: NextRequest) {
 
     const sub = await prisma.interopSubCategory.findUnique({
       where: { id: body.subCategoryId },
-      select: { id: true },
+      select: { id: true, name: true, category: { select: { name: true } } },
     });
     if (!sub) {
       return NextResponse.json({ error: "サブカテゴリが見つかりません" }, { status: 404 });
@@ -159,6 +163,51 @@ export async function POST(req: NextRequest) {
         },
         { status: 202 }
       );
+    }
+
+    // AIファシリテーター返信：運営の固定投稿以外に、約8割の確率で生成する。
+    // レスポンスはブロックせず after() で送信後に実行（Vercel Fluid Compute で確実に走る）。
+    if (!isPinned && !autoHidden && Math.random() < AI_REPLY_PROBABILITY) {
+      const createdPostId = post.id;
+      const subCategoryId = sub.id;
+      const subName = sub.name;
+      const catName = sub.category.name;
+      const postBody = text;
+      after(async () => {
+        try {
+          const recent = await prisma.interopPost.findMany({
+            where: {
+              sub_category_id: subCategoryId,
+              is_hidden: false,
+              is_ai_reply: false,
+              parent_post_id: null,
+              id: { not: createdPostId },
+            },
+            orderBy: { created_at: "desc" },
+            take: 3,
+            select: { author_name: true, body: true },
+          });
+          const replyText = await generateInteropAiReplyText({
+            postBody,
+            subCategoryName: subName,
+            categoryName: catName,
+            recentPosts: recent.map((r) => ({ authorName: r.author_name, body: r.body })),
+          });
+          if (!replyText) return;
+          await prisma.interopPost.create({
+            data: {
+              sub_category_id: subCategoryId,
+              parent_post_id: createdPostId,
+              is_ai_reply: true,
+              author_name: INTEROP_AI_FACILITATOR_NAME,
+              author_role: "AIファシリテーター",
+              body: replyText,
+            },
+          });
+        } catch (e) {
+          console.error("[interop/posts] AI reply generation failed", e);
+        }
+      });
     }
 
     return NextResponse.json(

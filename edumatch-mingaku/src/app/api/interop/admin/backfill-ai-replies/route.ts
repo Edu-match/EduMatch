@@ -8,8 +8,8 @@ export const maxDuration = 300;
 
 /**
  * 管理者専用：既存投稿へのAI返信バックフィル。
- * 全ての既存投稿（AI返信なし・トップレベル）に対してAI返信を生成する。
- * 投稿時刻は 2026-06-11T10:00:00+09:00 として計算（遅延はもう経過済み）。
+ * 「全体の約8割」に返信が付くよう、未返信の投稿からランダムに選んで生成する
+ * （既に返信が付いている投稿はカウントに含める）。
  */
 export async function POST(req: NextRequest) {
   const profile = await getCurrentProfile().catch(() => null);
@@ -17,13 +17,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const posts = await prisma.interopPost.findMany({
+  const TARGET_RATIO = 0.8;
+
+  // トップレベルの全投稿（返信の有無も把握）
+  const allPosts = await prisma.interopPost.findMany({
     where: {
       is_hidden: false,
       is_ai_reply: false,
       parent_post_id: null,
       author_name: { not: INTEROP_AI_FACILITATOR_NAME },
-      replies: { none: {} },
     },
     select: {
       id: true,
@@ -35,9 +37,23 @@ export async function POST(req: NextRequest) {
           category: { select: { name: true } },
         },
       },
+      _count: { select: { replies: true } },
     },
     orderBy: { created_at: "asc" },
   });
+
+  const total = allPosts.length;
+  const alreadyReplied = allPosts.filter((p) => p._count.replies > 0).length;
+  const target = Math.ceil(total * TARGET_RATIO);
+  const need = Math.max(0, target - alreadyReplied);
+
+  // 未返信の投稿をシャッフルし、必要数だけ選ぶ（＝ランダムで約8割に返信が付く）
+  const replyless = allPosts.filter((p) => p._count.replies === 0);
+  for (let i = replyless.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [replyless[i], replyless[j]] = [replyless[j], replyless[i]];
+  }
+  const posts = replyless.slice(0, need);
 
   let created = 0;
   let skipped = 0;
@@ -83,5 +99,16 @@ export async function POST(req: NextRequest) {
     created++;
   }
 
-  return NextResponse.json({ ok: true, total: posts.length, created, skipped, errors });
+  return NextResponse.json({
+    ok: true,
+    totalPosts: total,
+    alreadyReplied,
+    target,
+    selected: posts.length,
+    created,
+    skipped,
+    // 目安：返信が付いた投稿の割合
+    coverage: total > 0 ? Math.round(((alreadyReplied + created) / total) * 100) : 0,
+    errors,
+  });
 }
