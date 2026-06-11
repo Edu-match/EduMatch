@@ -114,12 +114,12 @@ type Clusters = Record<string, { c: [number, number]; n: number; sx: number; sy:
 
 // PC：中心インタロップ(50,46)を囲む四隅＋下＋下中央の大塊
 const DESKTOP_CLUSTERS: Clusters = {
-  A: { c: [21, 29], n: 4, sx: 6.0, sy: 10.2 },  // 左上：AI・テク
-  B: { c: [79, 29], n: 4, sx: 6.0, sy: 10.2 },  // 右上：評価・学習
-  C: { c: [13, 58], n: 4, sx: 6.0, sy: 10.2 },  // 左下：権利・規律
-  D: { c: [89, 52], n: 2, sx: 6.0, sy: 10.2 },  // 右：多様性
-  E: { c: [32, 83], n: 2, sx: 6.0, sy: 10.2 },  // 下：教師・学校
-  F: { c: [58, 72], n: 12, sx: 7.8, sy: 9.0 },  // 下中央の大塊：各教科
+  A: { c: [20, 28], n: 4, sx: 6.8, sy: 11.6 },  // 左上：AI・テク
+  B: { c: [80, 28], n: 4, sx: 6.8, sy: 11.6 },  // 右上：評価・学習
+  C: { c: [12, 59], n: 4, sx: 6.8, sy: 11.6 },  // 左下：権利・規律
+  D: { c: [90, 52], n: 2, sx: 6.8, sy: 11.6 },  // 右：多様性
+  E: { c: [31, 84], n: 2, sx: 6.8, sy: 11.6 },  // 下：教師・学校
+  F: { c: [58, 72], n: 12, sx: 8.6, sy: 10.0 }, // 下中央の大塊：各教科
 };
 type Placement = { pos: [number, number]; dir: [number, number] };
 
@@ -199,12 +199,14 @@ function PuyoBubble({
   onActivate: () => void;
 }) {
   const hot = isInteropHot(stats);
-  const size = computeThemeRoomBubbleDiameter(bubbleSize, stats);
+  // サイズは固定（拡大すると固定配置で隣の玉・ラベルに被るため）。盛り上がりは色/グロー/🔥/炎で表現。
+  const size = bubbleSize;
   const hint = formatActivityHint(stats);
   const intensity = computePuyoIntensity(stats);
+  // 揺れは控えめに（やかましさ・被り回避）。hot でも大きくは揺らさない。
   const puyoStyle =
-    intensity > 0.06 || hot
-      ? puyoAnimationStyle(topic.no * 7 + index, intensity * 0.7, hot)
+    intensity > 0.2
+      ? puyoAnimationStyle(topic.no * 7 + index, intensity * 0.3, false)
       : undefined;
   const iconSize = Math.round(size * 0.42);
   const labelFont = size < 56 ? 9.5 : 11;
@@ -242,11 +244,11 @@ function PuyoBubble({
       <span
         className="pointer-events-none absolute rounded-full transition-opacity duration-300"
         style={{
-          inset: hot ? -30 : -22,
+          inset: hot ? -18 : -16,
           background: hot
-            ? "radial-gradient(circle, rgba(255,150,60,0.45) 0%, rgba(255,100,30,0.18) 45%, transparent 68%)"
+            ? "radial-gradient(circle, rgba(255,150,60,0.42) 0%, rgba(255,100,30,0.16) 45%, transparent 68%)"
             : `radial-gradient(circle, ${sty.glow}3d 0%, ${sty.glow}14 45%, transparent 68%)`,
-          opacity: hot ? 1 : 0.95,
+          opacity: hot ? 1 : 0.9,
         }}
       />
       <span
