@@ -59,10 +59,11 @@ async function api(url: string, opts?: RequestInit) {
 }
 
 export function InteropContentAdmin() {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [subsByCat, setSubsByCat] = useState<Record<string, SubCategory[]>>({});
+  // 中心インタロップ直下のサテライト（サブカテゴリ）と、その掲示板投稿だけを管理する。
+  // 展示カテゴリ（ブース）構成の管理はUIから外している。
+  const [interopCatId, setInteropCatId] = useState<string | null>(null);
+  const [sats, setSats] = useState<SubCategory[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
 
   const flash = (text: string, ok: boolean) => {
@@ -74,48 +75,44 @@ export function InteropContentAdmin() {
     setLoading(true);
     const { data } = await api("/api/interop/categories?all=true");
     const cats: Category[] = data.categories ?? [];
-    setCategories(cats);
-    const entries = await Promise.all(
-      cats.map(async (c) => {
-        const { data: d } = await api(`/api/interop/sub-categories?all=true&categoryId=${c.id}`);
-        return [c.id, (d.subCategories ?? []) as SubCategory[]] as const;
-      })
-    );
-    setSubsByCat(Object.fromEntries(entries));
+    const interop = cats.find((c) => c.slug === "interop") ?? null;
+    setInteropCatId(interop?.id ?? null);
+    if (interop) {
+      const { data: d } = await api(`/api/interop/sub-categories?all=true&categoryId=${interop.id}`);
+      setSats((d.subCategories ?? []) as SubCategory[]);
+    } else {
+      setSats([]);
+    }
     setLoading(false);
   }, []);
 
   useEffect(() => { load(); }, [load]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {msg && (
         <p className={`sticky top-2 z-10 rounded-xl border px-4 py-2 text-sm font-medium ${msg.ok ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200" : "border-red-400/30 bg-red-400/10 text-red-200"}`}>
           {msg.text}
         </p>
       )}
 
-      <AddCategoryForm count={categories.length} onAdded={load} onMsg={flash} />
-
       <div>
-        <h2 className="mb-3 text-sm font-semibold text-white/80">カテゴリ・コンテンツ管理</h2>
+        <h2 className="text-sm font-semibold text-white/80">サテライト・掲示板投稿の管理</h2>
+        <p className="mb-3 mt-0.5 text-xs text-white/45">
+          中心インタロップ直下のサテライト（最新ニュース／登壇者への質問／ご意見BOX 等）と、その掲示板の投稿を管理します。
+        </p>
         {loading ? (
           <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-white/50" /></div>
-        ) : categories.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-white/15 px-4 py-8 text-center text-xs text-white/40">まだありません。</p>
+        ) : !interopCatId ? (
+          <p className="rounded-xl border border-dashed border-white/15 px-4 py-8 text-center text-xs text-white/40">
+            「interop」カテゴリが見つかりません。SQLマイグレーション／シードを実行してください。
+          </p>
         ) : (
           <div className="space-y-2">
-            {categories.map((c) => (
-              <CategoryRow
-                key={c.id}
-                cat={c}
-                subs={subsByCat[c.id] ?? []}
-                open={!!expanded[c.id]}
-                onToggle={() => setExpanded((p) => ({ ...p, [c.id]: !p[c.id] }))}
-                onChanged={load}
-                onMsg={flash}
-              />
+            {sats.map((s) => (
+              <SubRow key={s.id} sub={s} onChanged={load} onMsg={flash} />
             ))}
+            <AddSubForm categoryId={interopCatId} count={sats.length} onAdded={load} onMsg={flash} />
           </div>
         )}
       </div>

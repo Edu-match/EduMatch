@@ -11,8 +11,8 @@ import { InteropTopicAdmin } from "@/components/interop/interop-topic-admin";
 type Tab = "settings" | "map" | "topics" | "content" | "moderation";
 
 const TABS: { key: Tab; label: string; icon: typeof Settings }[] = [
-  { key: "map", label: "マップ構成・投稿", icon: LayoutGrid },
   { key: "topics", label: "話題玉", icon: CircleDot },
+  { key: "map", label: "投稿・サテライト", icon: LayoutGrid },
   { key: "content", label: "コンテンツ", icon: Sparkles },
   { key: "moderation", label: "モデレーション", icon: ShieldAlert },
   { key: "settings", label: "サイト設定", icon: Settings },
