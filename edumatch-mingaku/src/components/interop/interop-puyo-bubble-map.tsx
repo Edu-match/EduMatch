@@ -98,12 +98,12 @@ const SHAPE: Record<number, [number, number][]> = {
 
 // 各分類のクラスター中心（中心インタロップ=50,46 を囲むように配置）
 const CLUSTER_CENTER: Record<string, { c: [number, number]; n: number; sx: number; sy: number }> = {
-  A: { c: [24, 29], n: 4, sx: 4.7, sy: 8.2 },  // 左上：AI・テク
-  B: { c: [76, 29], n: 4, sx: 4.7, sy: 8.2 },  // 右上：評価・学習
-  C: { c: [15, 58], n: 4, sx: 4.7, sy: 8.2 },  // 左下：権利・規律
-  D: { c: [86, 52], n: 2, sx: 4.7, sy: 8.2 },  // 右：多様性
-  E: { c: [34, 80], n: 2, sx: 4.7, sy: 8.2 },  // 下：教師・学校
-  F: { c: [60, 73], n: 12, sx: 5.8, sy: 6.6 }, // 下中央の大塊：各教科（横長に展開）
+  A: { c: [22, 29], n: 4, sx: 5.6, sy: 9.6 },  // 左上：AI・テク
+  B: { c: [78, 29], n: 4, sx: 5.6, sy: 9.6 },  // 右上：評価・学習
+  C: { c: [14, 58], n: 4, sx: 5.6, sy: 9.6 },  // 左下：権利・規律
+  D: { c: [88, 52], n: 2, sx: 5.6, sy: 9.6 },  // 右：多様性
+  E: { c: [33, 82], n: 2, sx: 5.6, sy: 9.6 },  // 下：教師・学校
+  F: { c: [60, 74], n: 12, sx: 7.0, sy: 7.8 }, // 下中央の大塊：各教科（横長に展開）
 };
 
 type Placement = { pos: [number, number]; dir: [number, number] };
@@ -155,7 +155,7 @@ const PUYO_CSS = `
 }
 `;
 
-const BUBBLE_SIZE = 66;
+const BUBBLE_SIZE = 60;
 const CENTER_SIZE = 118;
 
 function PuyoBubble({
