@@ -1,7 +1,7 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
-import { Bot, BookMarked, BookOpen, GraduationCap, Maximize2, Minus, Network, Plus, Shield, Users } from "lucide-react";
+import { Bot, BookMarked, BookOpen, GraduationCap, Maximize2, Minus, Network, Plus, Shield, Sparkles, Users } from "lucide-react";
 import {
   INTEROP_PRIORITY_TOPICS,
   sortTopicsForBurst,
@@ -116,8 +116,11 @@ function detectSentimentColor(body: string): string {
 function computeAxisPlacements(
   topics: InteropPriorityTopic[],
   axisMap: Record<number, AxisPoint>,
-  obstacles: Obstacle[] = []
+  obstacles: Obstacle[] = [],
+  /** 各玉の「占有半径(%)」。サイズ可変なので玉ごとに必要な空きが違う。 */
+  radii: number[] = []
 ): Placement[] {
+  const rOf = (i: number) => radii[i] ?? 6;
   const pts = topics.map((t, i) => {
     const a = axisMap[t.no] ?? { x: 0, y: 0 };
     // 決定論的微小ジッター（全く同じ初期座標の重なり解消、Math.random非依存）
@@ -125,13 +128,14 @@ function computeAxisPlacements(
     const jy = ((i * 7654321 + t.no * 1234567) % 200 - 100) * 0.004;
     return { x: AXIS_CX + a.x * AXIS_RX + jx, y: AXIS_CY - a.y * AXIS_RY + jy };
   });
-  // 反発で被り回避（y方向は%が大きいので圧縮して等方近似）。ラベル分も見込んで広めに。
-  const minDist = 10.2;
+  // 反発で被り回避（y方向は%が大きいので圧縮して等方近似）。
+  // 必要間隔は2玉の占有半径の和（大きい玉ほど広く確保）。
   const ys = 0.60;
-  for (let k = 0; k < 160; k++) {
+  for (let k = 0; k < 220; k++) {
     // 玉どうしの反発
     for (let i = 0; i < pts.length; i++) {
       for (let j = i + 1; j < pts.length; j++) {
+        const minDist = rOf(i) + rOf(j);
         const dx = pts[j].x - pts[i].x;
         const dy = (pts[j].y - pts[i].y) * ys;
         const d = Math.hypot(dx, dy) || 0.01;
@@ -146,14 +150,15 @@ function computeAxisPlacements(
         }
       }
     }
-    // 中心ハブ・サテライトの占有ゾーンから玉を押し出す（被り回避の核心）
+    // 中心ハブ・サテライトの占有ゾーンから玉を押し出す（玉サイズ分も上乗せ）
     for (let i = 0; i < pts.length; i++) {
       for (const o of obstacles) {
+        const clearance = o.r + rOf(i) * 0.6;
         const dx = pts[i].x - o.x;
         const dy = (pts[i].y - o.y) * ys;
         const d = Math.hypot(dx, dy) || 0.01;
-        if (d < o.r) {
-          const push = o.r - d;
+        if (d < clearance) {
+          const push = clearance - d;
           pts[i].x += (dx / d) * push;
           pts[i].y += ((dy / d) * push) / ys;
         }
@@ -218,9 +223,28 @@ const PUYO_CSS = `
   80%  { opacity: 1; transform: translate(-50%, 16px) scale(1.00); }
   100% { opacity: 0; transform: translate(-50%, 26px) scale(0.98); }
 }
+@keyframes satRing {
+  0%   { transform: translate(-50%,-50%) scale(0.92); opacity: 0.6; }
+  70%  { opacity: 0; }
+  100% { transform: translate(-50%,-50%) scale(1.75); opacity: 0; }
+}
+@keyframes satFloat {
+  0%,100% { transform: translateY(0); }
+  50%     { transform: translateY(-5px); }
+}
 `;
 
-const BUBBLE_SIZE_DESKTOP = 64;
+// ── 玉サイズ：投稿数に応じて連続的に拡大（デフォルト小さめ／上限あり）──
+const BUBBLE_BASE = 40;   // 投稿0件のデフォルト直径(px)。以前(64)よりかなり小さい。
+const BUBBLE_MAX = 150;   // 上限直径(px)＝デフォルトの約3.75個分。中心ハブは超えない範囲。
+// 直径 +6%/件 ≒ +18%/3件（「3件ごとにちょっと大きく」）。約32件で上限に到達。
+const BUBBLE_GROWTH_PER_POST = 0.06;
+function bubbleSizeFor(postCount: number): number {
+  const factor = 1 + Math.max(0, postCount) * BUBBLE_GROWTH_PER_POST;
+  return Math.min(BUBBLE_MAX, Math.round(BUBBLE_BASE * factor));
+}
+// 配置計算でpx半径→画面%へ近似変換する基準幅。
+const PLACE_REF_W = 1300;
 const CENTER_SIZE_DESKTOP = 132;
 
 
@@ -229,27 +253,23 @@ function PuyoBubble({
   pos,
   dir,
   index,
-  bubbleSize,
+  size,
   stats,
   isHot,
-  isBig,
   onActivate,
 }: {
   topic: InteropPriorityTopic;
   pos: [number, number];
   dir: [number, number];
   index: number;
-  bubbleSize: number;
+  /** 投稿数に応じて算出済みの直径(px) */
+  size: number;
   stats: InteropActivityStats;
   /** 炎・盛り上がり配色（全体平均より投稿が多い） */
   isHot: boolean;
-  /** 拡大対象（投稿数 上位5） */
-  isBig: boolean;
   onActivate: () => void;
 }) {
   const hot = isHot;
-  // 拡大は上位5のみ・控えめ（1.15倍）。間隔に余裕があるので被らない。
-  const size = isBig ? Math.round(bubbleSize * 1.15) : bubbleSize;
   // 件数表示（炎マークは付けない）。直近24hに新着があれば「！」を出す。
   const hint = stats.postCount > 0 ? `${stats.postCount}件` : undefined;
   const isRecent = stats.lastPostedAt
@@ -289,6 +309,8 @@ function PuyoBubble({
         top: `${pos[1]}%`,
         width: size,
         height: size,
+        // 投稿増加でサイズ・位置が変わる際になめらかに（ガタつき防止）
+        transition: "width 0.5s ease-out, height 0.5s ease-out, left 0.7s ease-out, top 0.7s ease-out",
         animation: `puyoAnim ${dur}s ease-in-out ${delay}s infinite`,
       }}
       aria-label={topic.category}
@@ -520,6 +542,9 @@ export function InteropPuyoBubbleMap({
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     if (pointersRef.current.size === 1) {
       dragRef.current = { active: true, lastX: e.clientX, lastY: e.clientY, moved: 0 };
+      // 新しいジェスチャ開始ごとにドラッグ判定をリセット（前回のドラッグ後にクリックが
+      // 発火せず flag が立ちっぱなしになって、次のタップが死ぬ不具合を防ぐ）
+      wasDragRef.current = false;
       setGrabbing(true);
     } else if (pointersRef.current.size === 2) {
       // ピンチ開始
@@ -565,14 +590,17 @@ export function InteropPuyoBubbleMap({
     pointersRef.current.delete(e.pointerId);
     if (pointersRef.current.size < 2) pinchRef.current = null;
     if (pointersRef.current.size === 0) {
-      wasDragRef.current = wasDragRef.current || dragRef.current.moved > 8;
+      // このジェスチャで実際に動いた距離だけで判定（前回値を引きずらない）
+      if (dragRef.current.moved > 8) wasDragRef.current = true;
       dragRef.current.active = false;
       setGrabbing(false);
     }
   };
-  // ドラッグ/ピンチ後のクリックを抑制（バブルが意図せず開くのを防ぐ）
+  // ドラッグ/ピンチ後のクリックを抑制（バブルが意図せず開くのを防ぐ）。
+  // どんな場合でも最後に flag を倒し、次のタップに持ち越さない。
   const onClickCapture = (e: React.MouseEvent) => {
-    if (wasDragRef.current) { e.stopPropagation(); wasDragRef.current = false; }
+    if (wasDragRef.current) e.stopPropagation();
+    wasDragRef.current = false;
   };
   // 中心ハブ＋実在するサテライトを「占有ゾーン」として反発に渡す（玉が下に潜らない）
   const obstacles = useMemo<Obstacle[]>(() => {
@@ -580,13 +608,28 @@ export function InteropPuyoBubbleMap({
     for (const s of satellites) {
       const p = SATELLITE_POS[s.place];
       // 下サテラはラベルが下に伸びるぶん少し広めに確保
-      list.push({ x: p.x, y: p.y, r: s.place === "bottom" ? 13.5 : 12 });
+      list.push({ x: p.x, y: p.y, r: s.place === "bottom" ? 14.5 : 13 });
     }
     return list;
   }, [satellites]);
+  // 各玉の直径(px)＝投稿数で連続拡大。位置計算は3件刻みにバケット化して
+  // ポーリング毎の細かな再配置（ガタつき）を抑える。
+  const sizes = useMemo(
+    () => topics.map((t) => bubbleSizeFor(activityByRoom.get(t.roomId)?.postCount ?? 0)),
+    [topics, activityByRoom]
+  );
+  const placeRadii = useMemo(
+    () =>
+      topics.map((t) => {
+        const bucketed = bubbleSizeFor(Math.floor((activityByRoom.get(t.roomId)?.postCount ?? 0) / 3) * 3);
+        // px半径→%換算 ＋ ラベル/余白マージン
+        return (bucketed / 2 / PLACE_REF_W) * 100 + 4.2;
+      }),
+    [topics, activityByRoom]
+  );
   const placements = useMemo(
-    () => computeAxisPlacements(topics, topicPositions ?? DEFAULT_TOPIC_AXIS, obstacles),
-    [topics, topicPositions, obstacles]
+    () => computeAxisPlacements(topics, topicPositions ?? DEFAULT_TOPIC_AXIS, obstacles, placeRadii),
+    [topics, topicPositions, obstacles, placeRadii]
   );
   // 関連カテゴリのノード接続線（座標が近いトピック同士を結ぶ）
   const connections = useMemo(() => {
@@ -619,7 +662,7 @@ export function InteropPuyoBubbleMap({
       cancelled = true;
     };
   }, []);
-  const [popups, setPopups] = useState<Array<{ id: string; body: string; author: string; pos: [number, number]; xExtra: number; dir: "above" | "below"; sentimentColor: string; live?: boolean }>>([]);
+  const [popups, setPopups] = useState<Array<{ id: string; body: string; author: string; pos: [number, number]; size: number; xExtra: number; dir: "above" | "below"; sentimentColor: string; live?: boolean }>>([]);
   useEffect(() => {
     if (comments.length === 0) return;
     const tick = () => {
@@ -627,17 +670,18 @@ export function InteropPuyoBubbleMap({
       const idx = topics.findIndex((t) => t.roomId === c.roomId);
       const pos = idx >= 0 ? placements[idx]?.pos : undefined;
       if (!pos) return;
+      const size = sizes[idx] ?? BUBBLE_BASE;
       const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
       const dir: "above" | "below" = pos[1] < 32 ? "below" : "above";
       const sentimentColor = detectSentimentColor(c.body);
       const xExtra = popupXExtra(pos[0]);
       // 吹き出しは常に1件のみ（被り・ごちゃつき防止）。新しい1件で置き換える。
-      setPopups([{ id, body: c.body, author: c.authorName, pos, xExtra, dir, sentimentColor }]);
+      setPopups([{ id, body: c.body, author: c.authorName, pos, size, xExtra, dir, sentimentColor }]);
       window.setTimeout(() => setPopups((prev) => prev.filter((p) => p.id !== id)), 5200);
     };
     const interval = window.setInterval(tick, 5200);
     return () => window.clearInterval(interval);
-  }, [comments, topics, placements]);
+  }, [comments, topics, placements, sizes]);
 
   // リアルタイム投稿（実データ）：オレンジ枠の吹き出しでマップ全体に浮かべる
   const liveIdxRef = useRef(0);
@@ -647,20 +691,21 @@ export function InteropPuyoBubbleMap({
       const c = livePosts[liveIdxRef.current % livePosts.length];
       liveIdxRef.current += 1;
       // マップ上のランダムな玉位置に出す（実投稿は分類に紐づかないため拡散配置）
-      const place = placements[Math.floor(Math.random() * Math.max(1, placements.length))];
+      const ridx = Math.floor(Math.random() * Math.max(1, placements.length));
+      const place = placements[ridx];
       const pos: [number, number] = place?.pos ?? [50, 40];
+      const size = sizes[ridx] ?? BUBBLE_BASE;
       const id = `live-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
       const dir: "above" | "below" = pos[1] < 32 ? "below" : "above";
       const xExtra = popupXExtra(pos[0]);
       // LIVE吹き出しも常に1件のみ（置き換え）
-      setPopups([{ id, body: c.body, author: c.authorName, pos, xExtra, dir, sentimentColor: "#ffd9a8", live: true }]);
+      setPopups([{ id, body: c.body, author: c.authorName, pos, size, xExtra, dir, sentimentColor: "#ffd9a8", live: true }]);
       window.setTimeout(() => setPopups((prev) => prev.filter((p) => p.id !== id)), 6000);
     };
     const interval = window.setInterval(tick, 6500);
     return () => window.clearInterval(interval);
-  }, [livePosts, placements]);
+  }, [livePosts, placements, sizes]);
 
-  const bubbleSize = BUBBLE_SIZE_DESKTOP;
   const centerSize = CENTER_SIZE_DESKTOP;
 
   return (
@@ -725,18 +770,16 @@ export function InteropPuyoBubbleMap({
         const place = placements[i] ?? { pos: [50, 50] as [number, number], dir: [0, 1] as [number, number] };
         const stats = activityByRoom.get(topic.roomId) ?? { postCount: 0, participantCount: 0 };
         const isHot = stats.postCount > 0 && stats.postCount > ranking.avg;
-        const isBig = ranking.big.has(topic.roomId);
         return (
           <PuyoBubble
             key={topic.no}
             topic={topic}
             stats={stats}
             isHot={isHot}
-            isBig={isBig}
             pos={place.pos}
             dir={place.dir}
             index={i}
-            bubbleSize={bubbleSize}
+            size={sizes[i] ?? BUBBLE_BASE}
             onActivate={() => onSelectTopic(topic)}
           />
         );
@@ -753,10 +796,10 @@ export function InteropPuyoBubbleMap({
             className="pointer-events-none absolute z-[46] w-[158px]"
             style={{
               left: `calc(${p.pos[0]}% + ${p.xExtra}px)`,
-              // 玉本体＋件数バッジ＋ラベルを十分に避ける縦クリアランス
+              // 玉本体（サイズ可変）＋件数バッジ＋ラベルを十分に避ける縦クリアランス
               top: isAbove
-                ? `calc(${p.pos[1]}% - ${bubbleSize / 2 + 18}px)`
-                : `calc(${p.pos[1]}% + ${bubbleSize / 2 + 18}px)`,
+                ? `calc(${p.pos[1]}% - ${p.size / 2 + 18}px)`
+                : `calc(${p.pos[1]}% + ${p.size / 2 + 18}px)`,
               animation: isAbove
                 ? "commentPopCloudAbove 5.0s ease-in-out forwards"
                 : "commentPopCloudBelow 5.0s ease-in-out forwards",
@@ -871,48 +914,70 @@ export function InteropPuyoBubbleMap({
       )}
 
       {/* 中心インタロップ直行の3カテゴリ玉（左上＝最新ニュース／右上＝登壇者への質問／真下＝ご意見BOX）。投稿ページへ直結 */}
-      {satellites.map((s) => {
+      {satellites.map((s, si) => {
         const SIcon = s.icon;
         // 中心ハブを基準にした固定座標（反発の占有ゾーンと一致させて被りを防ぐ）
         const sp = SATELLITE_POS[s.place];
         const placePos = { left: `${sp.x}%`, top: `${sp.y}%` };
+        const ORB = 84;
         return (
           <button
             key={s.key}
             type="button"
             onClick={s.onActivate}
-            className="group absolute z-[22] flex -translate-x-1/2 -translate-y-1/2 flex-col items-center focus:outline-none"
+            className="group absolute z-[24] flex -translate-x-1/2 -translate-y-1/2 flex-col items-center focus:outline-none"
             style={{ left: placePos.left, top: placePos.top }}
             aria-label={s.label}
           >
+            {/* 脈動リング2本（特別な「直行ポータル」だと一目で分かる目印）。
+                keyframe側で translate(-50%,-50%) するので基準点だけ orb 中心に置く */}
             <span
-              className="pointer-events-none absolute rounded-full opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-              style={{ inset: -18, background: `radial-gradient(circle, ${s.color}55 0%, transparent 65%)` }}
+              className="pointer-events-none absolute"
+              style={{ left: "50%", top: ORB / 2, width: ORB, height: ORB,
+                borderRadius: "9999px", border: `2px solid ${s.color}`,
+                animation: `satRing 3.2s ease-out ${si * 0.5}s infinite` }}
             />
             <span
-              className="relative grid h-[78px] w-[78px] place-items-center rounded-full transition-transform duration-200 group-hover:scale-[1.09] group-active:scale-95"
+              className="pointer-events-none absolute"
+              style={{ left: "50%", top: ORB / 2, width: ORB, height: ORB,
+                borderRadius: "9999px", border: `2px solid ${s.color}`,
+                animation: `satRing 3.2s ease-out ${si * 0.5 + 1.6}s infinite` }}
+            />
+            {/* 常時グロー（強め）＋ホバーで増幅 */}
+            <span
+              className="pointer-events-none absolute rounded-full transition-opacity duration-300 group-hover:opacity-100"
+              style={{ top: ORB / 2, left: "50%", width: ORB + 44, height: ORB + 44, transform: "translate(-50%,-50%)",
+                background: `radial-gradient(circle, ${s.color}55 0%, ${s.color}1f 45%, transparent 70%)`, opacity: 0.85 }}
+            />
+            <span
+              className="relative grid place-items-center rounded-full transition-transform duration-200 group-hover:scale-[1.08] group-active:scale-95"
               style={{
-                background: `radial-gradient(circle at 34% 26%, rgba(255,255,255,0.92) 0%, ${s.color}66 44%, ${s.color}cc 100%)`,
-                border: `2px solid ${s.color}`,
-                boxShadow: `0 0 26px ${s.color}55, 0 6px 18px rgba(0,0,0,0.28), inset 0 2px 12px rgba(255,255,255,0.55)`,
+                width: ORB, height: ORB,
+                // トピック玉（半透明ガラス）と差別化：ビビッドで濃い発光球にする
+                background: `radial-gradient(circle at 36% 26%, #ffffff 0%, ${s.color} 46%, ${s.color} 100%)`,
+                border: `3px solid #ffffff`,
+                boxShadow: `0 0 30px ${s.color}aa, 0 0 12px ${s.color}, 0 8px 22px rgba(0,0,0,0.34), inset 0 2px 14px rgba(255,255,255,0.65)`,
+                animation: `satFloat ${4.5 + si * 0.6}s ease-in-out ${si * 0.4}s infinite`,
               }}
             >
-              <span className="pointer-events-none absolute rounded-full" style={{ top: "11%", left: "15%", width: "40%", height: "30%", background: "rgba(255,255,255,0.75)", filter: "blur(3px)" }} />
-              <SIcon className="relative z-10 h-7 w-7" style={{ color: "#15224e" }} strokeWidth={1.9} />
+              <span className="pointer-events-none absolute rounded-full" style={{ top: "12%", left: "16%", width: "40%", height: "30%", background: "rgba(255,255,255,0.9)", filter: "blur(3px)" }} />
+              <SIcon className="relative z-10 h-8 w-8" style={{ color: "#15224e" }} strokeWidth={2.1} />
               {typeof s.postCount === "number" && s.postCount > 0 && (
-                <span className="absolute -bottom-1 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-full px-1.5 py-0.5 text-[8px] font-bold text-white shadow" style={{ background: `${s.color}ee` }}>
+                <span className="absolute -bottom-1.5 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-full px-1.5 py-0.5 text-[8px] font-black text-white shadow" style={{ background: "#0b1330", border: `1px solid ${s.color}` }}>
                   {s.postCount}件
                 </span>
               )}
             </span>
+            {/* ラベル：トピックの暗ラベルと差別化し、ビビッド地＋濃色文字の「タグ」に */}
             <span
-              className="mt-2 whitespace-nowrap rounded-lg px-2.5 py-1 text-center text-[11.5px] font-bold leading-tight text-white"
+              className="mt-3 inline-flex items-center gap-1 whitespace-nowrap rounded-full px-3 py-1 text-center text-[12px] font-black leading-tight"
               style={{
-                background: `linear-gradient(135deg, rgba(8,11,32,0.92) 0%, ${s.color}33 100%)`,
-                border: `1px solid ${s.color}66`,
-                boxShadow: `0 2px 12px rgba(0,0,0,0.40), 0 0 10px ${s.color}33`,
+                background: s.color,
+                color: "#0b1330",
+                boxShadow: `0 2px 14px ${s.color}66, 0 0 0 1.5px rgba(255,255,255,0.5) inset`,
               }}
             >
+              <Sparkles className="h-3 w-3" strokeWidth={2.4} />
               {s.label}
             </span>
           </button>
