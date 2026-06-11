@@ -1488,14 +1488,27 @@ function useAiComment() {
 
 type SortKey = "newest" | "popular";
 
+/** 参考URL → サムネ画像/ドメインを推定（YouTube・画像URLは画像、その他はリンクカード） */
+function interopLinkPreview(url: string): { img: string | null; domain: string } {
+  let domain = url;
+  try { domain = new URL(url).hostname.replace(/^www\./, ""); } catch { /* noop */ }
+  const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{11})/);
+  if (yt) return { img: `https://img.youtube.com/vi/${yt[1]}/hqdefault.jpg`, domain };
+  if (/\.(png|jpe?g|webp|gif|avif)(\?|#|$)/i.test(url)) return { img: url, domain };
+  return { img: null, domain };
+}
+
 export function ForumRoomClient({
   room,
   highlightFromNotify = false,
   categoryContext,
+  interopTopicUrl,
 }: {
   room: ForumRoom;
   highlightFromNotify?: boolean;
   categoryContext?: ForumCategoryContext;
+  /** 特設の話題玉に設定された参考URL。概要下にサムネ表示する。 */
+  interopTopicUrl?: string;
 }) {
   const auth = useAuthUser();
   const searchParams = useSearchParams();
@@ -1672,6 +1685,40 @@ export function ForumRoomClient({
         </div>
         <div className="pointer-events-none absolute -top-20 -right-20 h-80 w-80 rounded-full bg-primary/5 blur-3xl" />
       </section>
+
+      {/* ─── 概要下の参考リンク（特設の話題玉にURLがある場合のサムネ） ─── */}
+      {fromInterop && interopTopicUrl && (() => {
+        const { img, domain } = interopLinkPreview(interopTopicUrl);
+        return (
+          <section className="container pt-4">
+            <div className="mx-auto max-w-5xl">
+              <a
+                href={interopTopicUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group block max-w-md overflow-hidden rounded-2xl border border-white/12 bg-white/[0.04] transition hover:border-white/25"
+              >
+                <div className="relative aspect-[16/9] w-full overflow-hidden bg-[#0d1130]">
+                  {img ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={img} alt="" loading="lazy" className="h-full w-full object-cover transition group-hover:scale-105" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-white/25">
+                      <Link2 className="h-10 w-10" />
+                    </div>
+                  )}
+                  <span className="absolute left-2 top-2 rounded-full bg-amber-400/90 px-2 py-0.5 text-[10px] font-bold text-amber-950">参考リンク</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-3.5 py-2.5 text-sm text-white/80">
+                  <Link2 className="h-3.5 w-3.5 shrink-0 text-white/45" />
+                  <span className="truncate">{domain}</span>
+                  <span className="ml-auto shrink-0 text-xs font-bold text-amber-200/90 group-hover:text-amber-200">開く →</span>
+                </div>
+              </a>
+            </div>
+          </section>
+        );
+      })()}
 
       {/* ─── カテゴリ別の関連コンテンツ ─── */}
       {categoryContext && categoryContext.contentKind !== "community" && (

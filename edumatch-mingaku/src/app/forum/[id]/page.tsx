@@ -96,10 +96,23 @@ export default async function ForumRoomPage({
   const room = await getRoomFromDb(id);
   if (!room) notFound();
 
+  // この論点(玉)に参考URLが設定されていれば、概要下にサムネ表示する
+  let interopTopicUrl = "";
+  try {
+    const topic = await prisma.interopTopic.findFirst({
+      where: { room_id: id },
+      select: { url: true },
+    });
+    interopTopicUrl = topic?.url?.trim() ?? "";
+  } catch {
+    interopTopicUrl = "";
+  }
+
   return (
     <ForumRoomClientDynamic
       room={room}
       highlightFromNotify={sp.fromNotify === "1"}
+      interopTopicUrl={interopTopicUrl || undefined}
     />
   );
 }

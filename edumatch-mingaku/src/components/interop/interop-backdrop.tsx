@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactElement } from "react";
 import type { InteropThemeMode } from "@/lib/interop-settings";
 
 type Period = "dawn" | "day" | "dusk" | "night";
@@ -87,15 +87,14 @@ function CityscapeLayer({ period }: { period: Period }) {
         </filter>
       </defs>
 
-      {/* グロー層 */}
+      {/* グロー層（SVGガウシアンブラーは描画が重いので不使用。現在時刻のバーのみ強調） */}
       {bars.map(({ x, h, isCurrent }, i) => (
         <rect
           key={`g${i}`}
           x={x - 0.4} y={33 - h * 0.5}
           width={BAR_W + 0.8} height={h * 0.5}
           fill={isCurrent ? bp.accent : bp.glow}
-          filter="url(#bldGlow)"
-          opacity={isCurrent ? 0.7 : 0.5}
+          opacity={isCurrent ? 0.55 : 0.35}
         />
       ))}
 
@@ -143,27 +142,29 @@ function CityscapeLayer({ period }: { period: Period }) {
       {/* 「直近24h」ラベル */}
       <text x={1} y={midY - 0.8} fontSize={1.5} fill={bp.accent} opacity={0.55} fontFamily="sans-serif">投稿数 / 24h</text>
 
-      {/* 窓（点灯パターン） */}
+      {/* 窓（点灯パターン）。矩形数を抑えて描画を軽量化（点灯した窓のみ描画） */}
       {bars.map(({ x, h }, bi) => {
-        const cols = Math.max(1, Math.floor(BAR_W / 1.5));
-        const rows = Math.max(1, Math.floor(h / 5));
+        const cols = Math.max(1, Math.floor(BAR_W / 1.9));
+        const rows = Math.max(1, Math.floor(h / 8));
         const wx = BAR_W / (cols + 1);
         const wy = h / (rows + 1);
-        return Array.from({ length: rows }, (_, r) =>
-          Array.from({ length: cols }, (_, c) => {
-            const lit = (bi * 7 + r * 3 + c * 5) % 9 !== 0;
-            return (
+        const cells: ReactElement[] = [];
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            if ((bi * 7 + r * 3 + c * 5) % 9 === 0) continue; // 消灯はそもそも描画しない
+            cells.push(
               <rect
                 key={`w${bi}-${r}-${c}`}
                 x={x + wx * (c + 0.65)}
                 y={33 - h + wy * (r + 0.7)}
                 width={0.32} height={0.52}
                 fill={BUILD_PALETTES[period].window}
-                opacity={lit ? 0.58 : 0.06}
+                opacity={0.55}
               />
             );
-          })
-        );
+          }
+        }
+        return cells;
       })}
     </svg>
   );
@@ -246,10 +247,10 @@ export function InteropBackdrop({ themeMode = "auto" }: { themeMode?: InteropThe
 
   const stars = useMemo(
     () =>
-      Array.from({ length: 56 }, () => ({
+      Array.from({ length: 40 }, () => ({
         left: Math.random() * 100,
         top: Math.random() * 72,
-        d: 0.7 + Math.random() * 1.8,
+        d: 0.8 + Math.random() * 1.7,
         delay: Math.random() * 6,
         dur: 3 + Math.random() * 4,
       })),
@@ -276,7 +277,6 @@ export function InteropBackdrop({ themeMode = "auto" }: { themeMode?: InteropThe
               height: s.d,
               opacity: pal.star,
               animation: `itmTwinkle ${s.dur}s ease-in-out ${s.delay}s infinite`,
-              boxShadow: "0 0 4px rgba(255,255,255,0.8)",
             }}
           />
         ))}

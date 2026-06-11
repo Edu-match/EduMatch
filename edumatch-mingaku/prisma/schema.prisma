@@ -574,6 +574,7 @@ model InteropTopic {
   topic1     String   @default("")
   topic2     String   @default("")
   topic3     String   @default("")
+  url        String   @default("") // 概要下にサムネ表示する参考URL（任意）
   axis_x     Float    @default(0) // -1..1（人間↔技術）
   axis_y     Float    @default(0) // -1..1（現場↔制度）
   sort_order Int      @default(0)

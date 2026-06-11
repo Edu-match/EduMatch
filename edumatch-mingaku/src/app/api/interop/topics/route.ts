@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
     // 管理画面用の生データも返す（編集に使う）
     const rawTopics = rows.map((r) => ({
       id: r.id, no: r.no, major: r.major, name: r.name, roomId: r.room_id,
-      topic1: r.topic1, topic2: r.topic2, topic3: r.topic3,
+      topic1: r.topic1, topic2: r.topic2, topic3: r.topic3, url: r.url,
       axisX: r.axis_x, axisY: r.axis_y, sortOrder: r.sort_order, isActive: r.is_active,
     }));
     return NextResponse.json({ topics, positions, rawTopics });
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
   }
   const b = (await req.json()) as {
     no?: number; major?: string; name?: string; roomId?: string;
-    topic1?: string; topic2?: string; topic3?: string;
+    topic1?: string; topic2?: string; topic3?: string; url?: string;
     axisX?: number; axisY?: number; sortOrder?: number; isActive?: boolean;
   };
   if (!b.name?.trim()) {
@@ -74,6 +74,7 @@ export async function POST(req: NextRequest) {
       topic1: b.topic1?.trim() ?? "",
       topic2: b.topic2?.trim() ?? "",
       topic3: b.topic3?.trim() ?? "",
+      url: b.url?.trim() ?? "",
       axis_x: clampAxis(b.axisX),
       axis_y: clampAxis(b.axisY),
       sort_order: b.sortOrder ?? no,

@@ -23,16 +23,19 @@ export function ForumRoomClientDynamic({
   room,
   highlightFromNotify = false,
   categoryContext,
+  interopTopicUrl,
 }: {
   room: ForumRoom;
   highlightFromNotify?: boolean;
   categoryContext?: ForumCategoryContext;
+  interopTopicUrl?: string;
 }) {
   return (
     <ForumRoomClient
       room={room}
       highlightFromNotify={highlightFromNotify}
       categoryContext={categoryContext}
+      interopTopicUrl={interopTopicUrl}
     />
   )
 }

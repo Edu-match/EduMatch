@@ -25,6 +25,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (typeof b.topic1 === "string") data.topic1 = b.topic1.trim();
   if (typeof b.topic2 === "string") data.topic2 = b.topic2.trim();
   if (typeof b.topic3 === "string") data.topic3 = b.topic3.trim();
+  if (typeof b.url === "string") data.url = b.url.trim();
   const ax = clampAxis(b.axisX as number | undefined);
   if (ax !== undefined) data.axis_x = ax;
   const ay = clampAxis(b.axisY as number | undefined);
