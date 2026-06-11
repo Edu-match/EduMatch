@@ -1,0 +1,190 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e35]:
+        - generic [ref=e36]:
+          - generic [ref=e37]:
+            - button "表示をリセット" [ref=e38]:
+              - img [ref=e39]
+            - button "縮小" [ref=e42]:
+              - img [ref=e43]
+            - button "拡大" [ref=e44]:
+              - img [ref=e45]
+          - generic:
+            - img
+            - button "インタロップ" [ref=e46] [cursor=pointer]:
+              - generic [ref=e47]:
+                - generic [ref=e48]:
+                  - generic:
+                    - img
+                - generic [ref=e49]: メイン
+                - img [ref=e51]
+                - generic [ref=e56]: インタロップ
+                - generic [ref=e57]: Interop Tokyo 2026
+            - button "インフォメーション" [ref=e58] [cursor=pointer]:
+              - generic [ref=e59]:
+                - img [ref=e61]
+                - generic [ref=e63]: インフォメーション
+                - generic [ref=e64]: 総合案内・タイムテーブル
+            - button "議員会館" [ref=e65] [cursor=pointer]:
+              - generic [ref=e66]:
+                - img [ref=e68]
+                - generic [ref=e70]: 議員会館
+                - generic [ref=e71]: 議員会館での取り組み・連携
+            - button "AI検定" [ref=e72] [cursor=pointer]:
+              - generic [ref=e73]:
+                - img [ref=e75]
+                - generic [ref=e78]: AI検定
+                - generic [ref=e79]: AI活用スキルの検定
+            - button "エデュマッチ" [ref=e80] [cursor=pointer]:
+              - generic [ref=e81]:
+                - img [ref=e83]
+                - generic [ref=e86]: エデュマッチ
+                - generic [ref=e87]: 教育×AIのプラットフォーム
+            - button "AI部" [ref=e88] [cursor=pointer]:
+              - generic [ref=e89]:
+                - img [ref=e91]
+                - generic [ref=e94]: AI部
+                - generic [ref=e95]: AI部の活動
+            - button "デジタル教科書" [ref=e96] [cursor=pointer]:
+              - generic [ref=e97]:
+                - generic [ref=e98]: デジタル教科書
+                - generic [ref=e99]: AI・テクノロジー活用
+            - button "EdTech・教育サービス導入" [ref=e100] [cursor=pointer]:
+              - generic [ref=e101]:
+                - generic [ref=e102]: EdTech・教育サービス導入
+                - generic [ref=e103]: AI・テクノロジー活用
+            - button "AIリテラシー・情報モラル教育" [ref=e104] [cursor=pointer]:
+              - generic [ref=e105]:
+                - generic [ref=e106]: AIリテラシー・情報モラル教育
+                - generic [ref=e107]: AI・テクノロジー活用
+            - button "個別最適化学習" [ref=e108] [cursor=pointer]:
+              - generic [ref=e109]:
+                - generic [ref=e110]: 個別最適化学習
+                - generic [ref=e111]: AI・テクノロジー活用
+            - button "探究学習・PBL" [ref=e112] [cursor=pointer]:
+              - generic [ref=e113]:
+                - generic [ref=e114]: 探究学習・PBL
+                - generic [ref=e115]: 評価・学力・カリキュラム
+            - button "宿題・家庭学習" [ref=e116] [cursor=pointer]:
+              - generic [ref=e117]:
+                - generic [ref=e118]: 宿題・家庭学習
+                - generic [ref=e119]: 評価・学力・カリキュラム
+            - button "学習指導要領の改訂" [ref=e120] [cursor=pointer]:
+              - generic [ref=e121]:
+                - generic [ref=e122]: 学習指導要領の改訂
+                - generic [ref=e123]: 評価・学力・カリキュラム
+            - button "非認知能力の育成" [ref=e124] [cursor=pointer]:
+              - generic [ref=e125]:
+                - generic [ref=e126]: 非認知能力の育成
+                - generic [ref=e127]: 評価・学力・カリキュラム
+            - button "校則・生徒指導" [ref=e128] [cursor=pointer]:
+              - generic [ref=e129]:
+                - generic [ref=e130]: 校則・生徒指導
+                - generic [ref=e131]: 子どもの権利・生活・規律
+            - button "いじめ対策" [ref=e132] [cursor=pointer]:
+              - generic [ref=e133]:
+                - generic [ref=e134]: いじめ対策
+                - generic [ref=e135]: 子どもの権利・生活・規律
+            - button "不登校支援" [ref=e136] [cursor=pointer]:
+              - generic [ref=e137]:
+                - generic [ref=e138]: 不登校支援
+                - generic [ref=e139]: 子どもの権利・生活・規律
+            - button "スマホ・SNSとの付き合い方" [ref=e140] [cursor=pointer]:
+              - generic [ref=e141]:
+                - generic [ref=e142]: スマホ・SNSとの付き合い方
+                - generic [ref=e143]: 子どもの権利・生活・規律
+            - button "インクルーシブ教育・特別支援" [ref=e144] [cursor=pointer]:
+              - generic [ref=e145]:
+                - generic [ref=e146]: インクルーシブ教育・特別支援
+                - generic [ref=e147]: 多様性・包摂・公正
+            - button "外国にルーツのある子どもの教育" [ref=e148] [cursor=pointer]:
+              - generic [ref=e149]:
+                - generic [ref=e150]: 外国にルーツのある子どもの教育
+                - generic [ref=e151]: 多様性・包摂・公正
+            - button "教員の働き方改革" [ref=e152] [cursor=pointer]:
+              - generic [ref=e153]:
+                - generic [ref=e154]: 教員の働き方改革
+                - generic [ref=e155]: 教師・学校経営・制度
+            - button "学校統廃合・小規模校" [ref=e156] [cursor=pointer]:
+              - generic [ref=e157]:
+                - generic [ref=e158]: 学校統廃合・小規模校
+                - generic [ref=e159]: 教師・学校経営・制度
+            - button "国語" [ref=e160] [cursor=pointer]:
+              - generic [ref=e161]:
+                - generic [ref=e162]: 国語
+                - generic [ref=e163]: 教科の指導
+            - button "算数・数学" [ref=e164] [cursor=pointer]:
+              - generic [ref=e165]:
+                - generic [ref=e166]: 算数・数学
+                - generic [ref=e167]: 教科の指導
+            - button "理科" [ref=e168] [cursor=pointer]:
+              - generic [ref=e169]:
+                - generic [ref=e170]: 理科
+                - generic [ref=e171]: 教科の指導
+            - button "社会" [ref=e172] [cursor=pointer]:
+              - generic [ref=e173]:
+                - generic [ref=e174]: 社会
+                - generic [ref=e175]: 教科の指導
+            - button "英語・外国語" [ref=e176] [cursor=pointer]:
+              - generic [ref=e177]:
+                - generic [ref=e178]: 英語・外国語
+                - generic [ref=e179]: 教科の指導
+            - button "道徳" [ref=e180] [cursor=pointer]:
+              - generic [ref=e181]:
+                - generic [ref=e182]: 道徳
+                - generic [ref=e183]: 教科の指導
+            - button "体育・保健" [ref=e184] [cursor=pointer]:
+              - generic [ref=e185]:
+                - generic [ref=e186]: 体育・保健
+                - generic [ref=e187]: 教科の指導
+            - button "音楽・美術" [ref=e188] [cursor=pointer]:
+              - generic [ref=e189]:
+                - generic [ref=e190]: 音楽・美術
+                - generic [ref=e191]: 教科の指導
+            - button "家庭科・技術" [ref=e192] [cursor=pointer]:
+              - generic [ref=e193]:
+                - generic [ref=e194]: 家庭科・技術
+                - generic [ref=e195]: 教科の指導
+            - button "総合的な学習" [ref=e196] [cursor=pointer]:
+              - generic [ref=e197]:
+                - generic [ref=e198]: 総合的な学習
+                - generic [ref=e199]: 教科の指導
+            - button "情報" [ref=e200] [cursor=pointer]:
+              - generic [ref=e201]:
+                - generic [ref=e202]: 情報
+                - generic [ref=e203]: 教科の指導
+            - button "キャリア教育" [ref=e204] [cursor=pointer]:
+              - generic [ref=e205]:
+                - generic [ref=e206]: キャリア教育
+                - generic [ref=e207]: 教科の指導
+        - generic:
+          - img
+          - text: 中央のインタロップから展示情報へ · 外周の◎トピックは井戸端へ
+      - generic:
+        - generic:
+          - img
+          - text: 気になるエリアをタップして、セミナー・展示・登壇情報を探そう
+    - generic [ref=e9]:
+      - generic [ref=e10]:
+        - img "AI NATIVE EXPO 2026" [ref=e12]
+        - generic [ref=e13]:
+          - heading "教育AIサミット" [level=1] [ref=e14]
+          - paragraph [ref=e15]: in Interop Tokyo 2026
+      - generic [ref=e16]:
+        - generic [ref=e17]:
+          - img [ref=e18]
+          - text: 6/10–12 幕張メッセ
+        - link "来場登録（無料）" [ref=e20] [cursor=pointer]:
+          - /url: https://www.interop.jp/
+          - text: 来場登録（無料）
+          - img [ref=e21]
+    - generic [ref=e23]:
+      - generic [ref=e24]: 青楓館高等学院 / みんがく / AI検定協会 / AI部 © 2026
+      - link "お問い合わせ" [ref=e25] [cursor=pointer]:
+        - /url: mailto:info@edu-match.com
+  - generic: Ver1.370
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e31] [cursor=pointer]:
+    - img [ref=e32]
+  - alert [ref=e208]

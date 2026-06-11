@@ -1,0 +1,49 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e210]:
+      - button "大カテゴリマップに戻る" [ref=e212]:
+        - img [ref=e213]
+        - paragraph [ref=e216]: AI部
+        - paragraph [ref=e217]: 4つのトピック · 盛り上がるほどぷよぷよ大きく
+        - generic [ref=e218]:
+          - img [ref=e219]
+          - text: 大カテゴリマップに戻る
+      - button "AI部の活動紹介 を開く" [ref=e221]:
+        - generic [ref=e222]:
+          - img [ref=e224]
+          - generic [ref=e226]: AI部の活動紹介
+      - button "展示・発表内容 を開く" [ref=e227]:
+        - generic [ref=e228]:
+          - img [ref=e230]
+          - generic [ref=e232]: 展示・発表内容
+      - button "青楓館高等学院とは を開く" [ref=e233]:
+        - generic [ref=e234]:
+          - img [ref=e236]
+          - generic [ref=e238]: 青楓館高等学院とは
+      - button "体験・見学のご案内 を開く" [ref=e239]:
+        - generic [ref=e240]:
+          - img [ref=e242]
+          - generic [ref=e244]: 体験・見学のご案内
+    - generic [ref=e9]:
+      - generic [ref=e10]:
+        - img "AI NATIVE EXPO 2026" [ref=e12]
+        - generic [ref=e13]:
+          - heading "教育AIサミット" [level=1] [ref=e14]
+          - paragraph [ref=e15]: in Interop Tokyo 2026
+      - generic [ref=e16]:
+        - generic [ref=e17]:
+          - img [ref=e18]
+          - text: 6/10–12 幕張メッセ
+        - link "来場登録（無料）" [ref=e20] [cursor=pointer]:
+          - /url: https://www.interop.jp/
+          - text: 来場登録（無料）
+          - img [ref=e21]
+    - generic [ref=e23]:
+      - generic [ref=e24]: 青楓館高等学院 / みんがく / AI検定協会 / AI部 © 2026
+      - link "お問い合わせ" [ref=e25] [cursor=pointer]:
+        - /url: mailto:info@edu-match.com
+  - generic: Ver1.370
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e31] [cursor=pointer]:
+    - img [ref=e32]
+  - alert [ref=e35]

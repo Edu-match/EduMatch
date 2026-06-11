@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Loader2, MessageCircle, Pin, Send } from "lucide-react";
+import { ArrowLeft, Bot, Loader2, MessageCircle, Pin, Send } from "lucide-react";
 import { InteropBackdrop } from "@/components/interop/interop-backdrop";
 import { InteropContentCarousel } from "@/components/interop/interop-content-carousel";
 import type { InteropThemeMode } from "@/lib/interop-settings";
+
+type AiReply = { body: string; postedAt: string };
 
 type Post = {
   id: string;
@@ -14,7 +16,17 @@ type Post = {
   body: string;
   isPinned?: boolean;
   postedAt: string;
+  aiReply?: AiReply | null;
 };
+
+function detectSentimentColor(body: string): string {
+  if (/課題|問題|困って|難し|大変|壁|不満|不安|できな|なんで|なぜ/.test(body)) return "#9bc4ff";
+  if (/提言|すべき|べきで|提案|改善|必要|変えるべき|実現|目指す|したい|増やし|減らし/.test(body)) return "#7de8a0";
+  if (/[?？]|どうすれ|どこが|でしょうか|ますか|どんな/.test(body)) return "#f0d888";
+  if (/[!！]{2}|絶対|強く思|情熱|使命|変えたい|変えなければ/.test(body)) return "#d4b0ff";
+  if (/素晴らし|いいと思|好き|最高|よかった|嬉しい|ありがとう|楽しみ/.test(body)) return "#c0f0d8";
+  return "rgba(255,255,255,0.88)";
+}
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -170,34 +182,56 @@ export function InteropBoard({
             </div>
           ) : (
             <ul className="space-y-3">
-              {posts.map((p) => (
-                <li
-                  key={p.id}
-                  className="rounded-2xl border px-4 py-3"
-                  style={
+              {posts.map((p) => {
+                const sentimentColor = detectSentimentColor(p.body);
+                return (
+                  <li key={p.id} className="rounded-2xl border" style={
                     p.isPinned
                       ? { borderColor: `${accent}66`, background: `${accent}14` }
                       : { borderColor: "rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)" }
-                  }
-                >
-                  <div className="flex items-center gap-2 text-xs text-white/55">
-                    {p.isPinned && (
-                      <span
-                        className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold"
-                        style={{ background: `${accent}33`, color: "#fff" }}
+                  }>
+                    <div className="px-4 py-3">
+                      <div className="flex items-center gap-2 text-xs text-white/55">
+                        {p.isPinned && (
+                          <span
+                            className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold"
+                            style={{ background: `${accent}33`, color: "#fff" }}
+                          >
+                            <Pin className="h-2.5 w-2.5" /> お知らせ
+                          </span>
+                        )}
+                        <span className="font-bold text-white/85">{p.authorName}</span>
+                        {p.authorRole && <span className="text-white/40">· {p.authorRole}</span>}
+                        <span className="ml-auto shrink-0">{timeAgo(p.postedAt)}</span>
+                      </div>
+                      <p
+                        className="mt-1.5 whitespace-pre-wrap break-words text-sm leading-relaxed"
+                        style={{ color: sentimentColor }}
                       >
-                        <Pin className="h-2.5 w-2.5" /> お知らせ
-                      </span>
+                        {p.body}
+                      </p>
+                    </div>
+
+                    {p.aiReply && (
+                      <div
+                        className="mx-3 mb-3 rounded-xl px-3.5 py-2.5"
+                        style={{
+                          background: "rgba(100,140,255,0.09)",
+                          borderTop: "1px solid rgba(120,160,255,0.18)",
+                        }}
+                      >
+                        <div className="mb-1 flex items-center gap-1.5 text-[10.5px] font-bold text-indigo-300/80">
+                          <Bot className="h-3 w-3" /> AIファシリテーター
+                          <span className="ml-auto text-white/30 font-normal">{timeAgo(p.aiReply.postedAt)}</span>
+                        </div>
+                        <p className="whitespace-pre-wrap break-words text-xs leading-relaxed text-white/75">
+                          {p.aiReply.body}
+                        </p>
+                      </div>
                     )}
-                    <span className="font-bold text-white/85">{p.authorName}</span>
-                    {p.authorRole && <span className="text-white/40">· {p.authorRole}</span>}
-                    <span className="ml-auto shrink-0">{timeAgo(p.postedAt)}</span>
-                  </div>
-                  <p className="mt-1.5 whitespace-pre-wrap break-words text-sm leading-relaxed text-white/90">
-                    {p.body}
-                  </p>
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>

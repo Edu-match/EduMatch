@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/forum-ai-delayed-replies",
       "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/interop-ai-replies",
+      "schedule": "*/30 * * * *"
     }
   ]
 }

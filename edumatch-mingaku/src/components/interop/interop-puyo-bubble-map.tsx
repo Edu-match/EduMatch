@@ -105,16 +105,16 @@ function computeAxisPlacements(
     return { x: AXIS_CX + a.x * AXIS_RX + jx, y: AXIS_CY - a.y * AXIS_RY + jy };
   });
   // 反発で被り回避（y方向は%が大きいので圧縮して等方近似）
-  const minDist = 13.5;
+  const minDist = 9.0;
   const ys = 0.60;
-  for (let k = 0; k < 480; k++) {
+  for (let k = 0; k < 120; k++) {
     for (let i = 0; i < pts.length; i++) {
       for (let j = i + 1; j < pts.length; j++) {
         const dx = pts[j].x - pts[i].x;
         const dy = (pts[j].y - pts[i].y) * ys;
         const d = Math.hypot(dx, dy) || 0.01;
         if (d < minDist) {
-          const push = (minDist - d) / 2 * 1.4;
+          const push = (minDist - d) / 2;
           const ux = dx / d;
           const uy = dy / d;
           pts[i].x -= ux * push;
@@ -123,18 +123,6 @@ function computeAxisPlacements(
           pts[j].y += (uy * push) / ys;
         }
       }
-      // 中心付近（インタロップボタン）を避ける
-      const cdx = pts[i].x - AXIS_CX;
-      const cdy = (pts[i].y - AXIS_CY) * ys;
-      const cd = Math.hypot(cdx, cdy) || 0.01;
-      if (cd < 16) {
-        const push = (16 - cd) / 2;
-        pts[i].x += (cdx / cd) * push;
-        pts[i].y += ((cdy / cd) * push) / ys;
-      }
-      // 境界クランプ
-      pts[i].x = Math.max(7, Math.min(93, pts[i].x));
-      pts[i].y = Math.max(10, Math.min(89, pts[i].y));
     }
   }
   return pts.map((p) => {

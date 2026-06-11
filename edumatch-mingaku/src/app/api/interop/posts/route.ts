@@ -29,7 +29,16 @@ export async function GET(req: NextRequest) {
     const posts = await prisma.interopPost.findMany({
       where: {
         sub_category_id: subCategoryId,
+        is_ai_reply: false,
+        parent_post_id: null,
         ...(includeHidden ? {} : { is_hidden: false }),
+      },
+      include: {
+        replies: {
+          where: { is_ai_reply: true },
+          take: 1,
+          orderBy: { created_at: "asc" },
+        },
       },
       orderBy: [{ is_pinned: "desc" }, { created_at: "desc" }],
       take: PAGE_SIZE,
@@ -44,6 +53,9 @@ export async function GET(req: NextRequest) {
         isPinned: p.is_pinned,
         isHidden: p.is_hidden,
         postedAt: p.created_at.toISOString(),
+        aiReply: p.replies[0]
+          ? { body: p.replies[0].body, postedAt: p.replies[0].created_at.toISOString() }
+          : null,
       })),
     });
   } catch (err) {

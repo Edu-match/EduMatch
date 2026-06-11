@@ -1,0 +1,28 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e6]:
+      - img [ref=e7]
+      - text: マップを起動中…
+    - generic [ref=e9]:
+      - generic [ref=e10]:
+        - img "AI NATIVE EXPO 2026" [ref=e12]
+        - generic [ref=e13]:
+          - heading "教育AIサミット" [level=1] [ref=e14]
+          - paragraph [ref=e15]: in Interop Tokyo 2026
+      - generic [ref=e16]:
+        - generic [ref=e17]:
+          - img [ref=e18]
+          - text: 6/10–12 幕張メッセ
+        - link "来場登録（無料）" [ref=e20] [cursor=pointer]:
+          - /url: https://www.interop.jp/
+          - text: 来場登録（無料）
+          - img [ref=e21]
+    - generic [ref=e23]:
+      - generic [ref=e24]: 青楓館高等学院 / みんがく / AI検定協会 / AI部 © 2026
+      - link "お問い合わせ" [ref=e25] [cursor=pointer]:
+        - /url: mailto:info@edu-match.com
+  - generic: Ver1.370
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e31] [cursor=pointer]:
+    - img [ref=e32]
+  - alert [ref=e35]
