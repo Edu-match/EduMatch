@@ -11,8 +11,9 @@ export const dynamic = "force-dynamic";
 const USAGE_LIMIT = 15;
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 const USAGE_COOKIE = "interop_chat_usage";
-/** 既定モデル（環境変数で上書き可。例: gpt-5.4-mini） */
-const INTEROP_CHAT_MODEL = process.env.INTEROP_CHAT_MODEL?.trim() || "gpt-4o-mini";
+/** 既定モデル（環境変数 INTEROP_CHAT_MODEL で上書き可。
+ *  もしこのモデルIDがOpenAI側に無くエラーになる場合は、環境変数で gpt-4o-mini 等に切替可能） */
+const INTEROP_CHAT_MODEL = process.env.INTEROP_CHAT_MODEL?.trim() || "gpt-5.4-mini";
 const MAX_INPUT_CHARS = 1500;
 
 type MessageRole = "user" | "assistant";
