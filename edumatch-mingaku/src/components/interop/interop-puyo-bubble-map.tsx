@@ -12,7 +12,7 @@ import { ForumHotFlame } from "@/components/community/forum-hot-flame";
 import type { InteropActivityStats } from "@/lib/interop-activity";
 import { computePuyoIntensity, INTEROP_PUYO_CSS, puyoAnimationStyle } from "@/lib/interop-puyopuyo";
 import { DEFAULT_AXIS_CONFIG, DEFAULT_TOPIC_AXIS, type AxisConfig, type AxisPoint } from "@/lib/interop-topic-axis";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type GroupStyleEntry = {
   bg: string;
@@ -188,17 +188,6 @@ const PUYO_CSS = `
 const BUBBLE_SIZE_DESKTOP = 64;
 const CENTER_SIZE_DESKTOP = 132;
 
-function useIsMobile(): boolean {
-  const [mobile, setMobile] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 640px)");
-    const update = () => setMobile(mq.matches);
-    update();
-    mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
-  }, []);
-  return mobile;
-}
 
 function PuyoBubble({
   topic,
@@ -591,8 +580,50 @@ export function InteropPuyoBubbleMap({
 }) {
   const topics = useMemo(() => sortTopicsForBurst(INTEROP_PRIORITY_TOPICS), []);
   const InteropIcon = interopCat ? iconFor(interopCat.slug) : Network;
-  const isMobile = useIsMobile();
   const ranking = useMemo(() => computeBubbleRanking(topics, activityByRoom), [topics, activityByRoom]);
+
+  // ── ドラッグでパン ──
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [grabbing, setGrabbing] = useState(false);
+  const dragRef = useRef({ active: false, lastX: 0, lastY: 0, moved: 0 });
+  const wasDragRef = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    // passive:false でタッチスクロールを抑制
+    const prevent = (e: TouchEvent) => { if (dragRef.current.active) e.preventDefault(); };
+    el.addEventListener("touchmove", prevent, { passive: false });
+    return () => el.removeEventListener("touchmove", prevent);
+  }, []);
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    dragRef.current = { active: true, lastX: e.clientX, lastY: e.clientY, moved: 0 };
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    setGrabbing(true);
+  };
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!dragRef.current.active) return;
+    const dx = e.clientX - dragRef.current.lastX;
+    const dy = e.clientY - dragRef.current.lastY;
+    dragRef.current.moved += Math.hypot(dx, dy);
+    dragRef.current.lastX = e.clientX;
+    dragRef.current.lastY = e.clientY;
+    setPan((p) => ({
+      x: Math.max(-540, Math.min(540, p.x + dx)),
+      y: Math.max(-400, Math.min(400, p.y + dy)),
+    }));
+  };
+  const onPointerUp = () => {
+    wasDragRef.current = dragRef.current.moved > 8;
+    dragRef.current.active = false;
+    setGrabbing(false);
+  };
+  // ドラッグ後のクリックを抑制（バブルが意図せず開くのを防ぐ）
+  const onClickCapture = (e: React.MouseEvent) => {
+    if (wasDragRef.current) { e.stopPropagation(); wasDragRef.current = false; }
+  };
   const placements = useMemo(
     () => computeAxisPlacements(topics, topicPositions ?? DEFAULT_TOPIC_AXIS),
     [topics, topicPositions]
@@ -630,7 +661,7 @@ export function InteropPuyoBubbleMap({
   }, []);
   const [popups, setPopups] = useState<Array<{ id: string; body: string; author: string; pos: [number, number]; xExtra: number; dir: "above" | "below"; sentimentColor: string }>>([]);
   useEffect(() => {
-    if (isMobile || comments.length === 0) return;
+    if (comments.length === 0) return;
     const tick = () => {
       const c = comments[Math.floor(Math.random() * comments.length)];
       const idx = topics.findIndex((t) => t.roomId === c.roomId);
@@ -650,28 +681,24 @@ export function InteropPuyoBubbleMap({
     };
     const interval = window.setInterval(tick, 3200);
     return () => window.clearInterval(interval);
-  }, [comments, isMobile, topics, placements]);
-
-  // モバイルは専用UI（縦スクロールの分類セクション）
-  if (isMobile) {
-    return (
-      <MobileBubbleMap
-        interopCat={interopCat}
-        activityByRoom={activityByRoom}
-        ranking={ranking}
-        onSelectCategory={onSelectCategory}
-        onSelectTopic={onSelectTopic}
-        iconFor={iconFor}
-      />
-    );
-  }
+  }, [comments, topics, placements]);
 
   const bubbleSize = BUBBLE_SIZE_DESKTOP;
   const centerSize = CENTER_SIZE_DESKTOP;
 
   return (
-    <div className="absolute inset-0 overflow-hidden">
+    <div
+      ref={containerRef}
+      className={`absolute inset-0 overflow-hidden select-none touch-none ${grabbing ? "cursor-grabbing" : "cursor-grab"}`}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+      onClickCapture={onClickCapture}
+    >
       <style>{PUYO_CSS}{INTEROP_PUYO_CSS}</style>
+      {/* パン可能なキャンバス */}
+      <div className="absolute inset-0" style={{ transform: `translate(${pan.x}px, ${pan.y}px)` }}>
 
       {/* 2軸の線とラベル（現場↔制度 × 人間↔技術） */}
       <div
@@ -790,7 +817,7 @@ export function InteropPuyoBubbleMap({
           className="group absolute focus:outline-none"
           style={{
             left: "50%",
-            top: isMobile ? "30%" : "46%",
+            top: "46%",
             width: centerSize,
             height: centerSize,
             zIndex: 20,
@@ -851,6 +878,9 @@ export function InteropPuyoBubbleMap({
         </button>
       )}
 
+      </div>{/* /パン可能キャンバス */}
+
+      {/* 凡例：パンしても固定表示 */}
       <div className="pointer-events-none absolute bottom-20 left-4 right-4 z-30 flex flex-wrap gap-1.5 md:bottom-6">
         {Object.entries(GROUP_STYLE).map(([major, sty]) => (
           <GroupChip key={major} label={sty.label} sty={sty} />
