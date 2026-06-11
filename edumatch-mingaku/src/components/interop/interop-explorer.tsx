@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { InteropBackdrop } from "@/components/interop/interop-backdrop";
 import { InteropPuyoBubbleMap } from "@/components/interop/interop-puyo-bubble-map";
+import { InteropFeedbackButton } from "@/components/interop/interop-feedback-button";
 import type { InteropCategory } from "@/components/interop/interop-category-bubble-map";
 import {
   InteropSubOrbit,
@@ -279,6 +280,7 @@ export function InteropExplorer({
               {guideText}
             </div>
           </div>
+          <InteropFeedbackButton />
         </>
       ) : view.kind === "hub" ? (
         <InteropSubOrbit
