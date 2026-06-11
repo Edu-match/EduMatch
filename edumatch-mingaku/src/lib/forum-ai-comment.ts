@@ -93,6 +93,9 @@ export async function generateForumAiReplyText(
 // ─────────────────────────────────────────────────────────────────
 
 export const INTEROP_AI_FACILITATOR_NAME = "AIファシリテーター";
+/** インタロップ特設のAIファシリテーター返信モデル（軽量・低コスト）。
+ *  環境変数 INTEROP_AI_REPLY_MODEL で上書き可。無効IDなら gpt-4o-mini 等に切替を。 */
+export const INTEROP_AI_REPLY_MODEL = process.env.INTEROP_AI_REPLY_MODEL?.trim() || "gpt-5.4-mini";
 
 const INTEROP_AI_SYSTEM_PROMPT = `あなたは「インタロップ東京2026 教育AIサミット」の特設ページに配置されたAIファシリテーターです。
 教育現場のAI活用・EdTech・学びのデザインについて、来場者（教育者・研究者・企業・保護者・学生）の声を受け止め、対話を豊かにするサポートをしています。
@@ -147,7 +150,7 @@ ${negativeHint}
   const openai = new OpenAI({ apiKey });
   try {
     const completion = await openai.chat.completions.create({
-      model: FORUM_AI_REPLY_MODEL,
+      model: INTEROP_AI_REPLY_MODEL,
       max_tokens: 350,
       temperature: 0.88,
       messages: [
