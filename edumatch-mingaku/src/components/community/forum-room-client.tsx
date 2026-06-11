@@ -1067,7 +1067,8 @@ function NewPostComposer({
     setShowUrl(false);
   };
 
-  if (!isLoggedIn) {
+  // 特設(fromInterop)はログイン不要で投稿可。通常の井戸端は従来どおり会員限定。
+  if (!isLoggedIn && !fromInterop) {
     return (
       <div className="rounded-2xl border border-dashed bg-muted/20 p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
