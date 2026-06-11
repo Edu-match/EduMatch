@@ -1,0 +1,12 @@
+{
+  "framework": "nextjs",
+  "regions": ["hnd1"],
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "crons": [
+    {
+      "path": "/api/cron/forum-category-content-sync",
+      "schedule": "10 15 * * *"
+    }
+  ]
+}

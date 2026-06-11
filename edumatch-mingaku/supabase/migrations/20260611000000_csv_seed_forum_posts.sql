@@ -1,6 +1,47 @@
 -- CSV由来の初期投稿シード（219件）
 -- 同一マイグレーションを再実行しても重複しないよう room_id+body のハッシュ的な一意性は担保しない。
 -- 重複実行を防ぐため、まず既存のシード投稿を削除してから再挿入する。
+
+-- author_id NULL の匿名シード投稿を許可（RLS 経由の insert は auth.uid() 必須のため安全）
+CREATE OR REPLACE FUNCTION app_private.apply_forum_post_author_defaults()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  actor_id UUID;
+  profile_name TEXT;
+  profile_ai_kentei_passed BOOLEAN;
+BEGIN
+  actor_id := COALESCE(auth.uid(), NEW.author_id);
+
+  IF actor_id IS NULL THEN
+    IF NEW.author_name IS NULL OR btrim(NEW.author_name) = '' THEN
+      RAISE EXCEPTION 'author_name required for anonymous forum post';
+    END IF;
+    NEW.author_id := NULL;
+    RETURN NEW;
+  END IF;
+
+  SELECT name, ai_kentei_passed
+  INTO profile_name, profile_ai_kentei_passed
+  FROM public."Profile"
+  WHERE id = actor_id;
+
+  IF profile_name IS NULL THEN
+    RAISE EXCEPTION 'profile not found for forum post author';
+  END IF;
+
+  NEW.author_id := actor_id;
+  NEW.author_name := profile_name;
+  NEW.author_role := app_private.forum_author_role_for_profile(actor_id);
+  NEW.ai_kentei_passed := COALESCE(profile_ai_kentei_passed, FALSE);
+
+  RETURN NEW;
+END;
+$$;
+
 DELETE FROM public.forum_posts
 WHERE author_id IS NULL
   AND room_id LIKE 'room-%--community--%'
