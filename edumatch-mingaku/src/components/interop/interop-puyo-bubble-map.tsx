@@ -132,6 +132,15 @@ function buildPlacements(): Placement[] {
 
 const PLACEMENTS: Placement[] = buildPlacements();
 
+// 各塊の上端 y(%)（グループ名ラベルを塊の上に常時表示するため）
+function clusterTopPct(g: string): number {
+  const { c, n, sy } = CLUSTER_CENTER[g];
+  const offs = SHAPE[n] ?? hexCluster(n);
+  const my = offs.reduce((s, o) => s + o[1], 0) / offs.length;
+  const minRy = Math.min(...offs.map((o) => o[1] - my));
+  return c[1] + minRy * sy;
+}
+
 const PUYO_CSS = `
 @keyframes puyoAnim {
   0%   { transform: translate(-50%, calc(-50% + 0px)) scale(0.96); }
@@ -173,13 +182,12 @@ function PuyoBubble({
     <button
       type="button"
       onClick={onActivate}
-      className="group absolute focus:outline-none"
+      className="group absolute z-10 hover:z-50 focus:z-50 focus:outline-none"
       style={{
         left: `${pos[0]}%`,
         top: `${pos[1]}%`,
         width: BUBBLE_SIZE,
         height: BUBBLE_SIZE,
-        zIndex: 10,
         animation: `puyoAnim ${dur}s ease-in-out ${delay}s infinite`,
       }}
       aria-label={topic.category}
@@ -231,29 +239,27 @@ function PuyoBubble({
         />
       </span>
 
-      {/* Label */}
+      {/* Label — ホバー/フォーカス時のみ表示（常時表示すると塊内で重なるため） */}
       <span
-        className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-center"
+        className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-center opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus:opacity-100"
         style={{
-          ...(labelAbove ? { bottom: `calc(100% + 5px)` } : { top: `calc(100% + 5px)` }),
-          width: 104,
-          fontSize: "10.5px",
+          ...(labelAbove ? { bottom: `calc(100% + 6px)` } : { top: `calc(100% + 6px)` }),
+          width: 120,
+          zIndex: 60,
+          fontSize: "11px",
           fontWeight: 700,
           lineHeight: 1.35,
-          color: "rgba(255,255,255,0.95)",
-          background: "rgba(4,6,24,0.72)",
+          color: "rgba(255,255,255,0.98)",
+          background: "rgba(4,6,24,0.88)",
           border: `1px solid ${sty.border}`,
           borderRadius: 10,
-          padding: "2px 7px",
+          padding: "3px 9px",
           backdropFilter: "blur(8px)",
           WebkitBackdropFilter: "blur(8px)",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.30)",
+          boxShadow: `0 2px 12px rgba(0,0,0,0.45), 0 0 10px ${sty.glow}40`,
           wordBreak: "keep-all",
           overflowWrap: "anywhere",
-          display: "-webkit-box",
-          WebkitBoxOrient: "vertical",
-          WebkitLineClamp: 2,
-          overflow: "hidden",
+          whiteSpace: "normal",
         } as React.CSSProperties}
       >
         {topic.category}
@@ -300,6 +306,29 @@ export function InteropPuyoBubbleMap({
   return (
     <div className="absolute inset-0 overflow-hidden">
       <style>{PUYO_CSS}</style>
+
+      {/* 各塊の分類名（常時表示・1塊1つ） */}
+      {(Object.keys(CLUSTER_CENTER) as Array<keyof typeof CLUSTER_CENTER>).map((g) => {
+        const { c } = CLUSTER_CENTER[g];
+        const sty = GROUP_STYLE[g];
+        return (
+          <span
+            key={`group-label-${g}`}
+            className="pointer-events-none absolute z-30 -translate-x-1/2 whitespace-nowrap rounded-full px-3 py-1 text-[12.5px] font-bold text-white"
+            style={{
+              left: `${c[0]}%`,
+              top: `${clusterTopPct(g) - 4}%`,
+              background: `${sty.glow}d8`,
+              border: `1px solid ${sty.border}`,
+              boxShadow: `0 2px 12px ${sty.glow}66`,
+              backdropFilter: "blur(6px)",
+              WebkitBackdropFilter: "blur(6px)",
+            }}
+          >
+            {sty.label}
+          </span>
+        );
+      })}
 
       {topics.map((topic, i) => {
         const place = PLACEMENTS[i] ?? { pos: [50, 50] as [number, number], dir: [0, 1] as [number, number] };
