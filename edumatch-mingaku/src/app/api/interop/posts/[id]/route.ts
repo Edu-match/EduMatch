@@ -20,10 +20,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     isHidden?: boolean;
   };
 
-  const data: { body?: string; is_pinned?: boolean; is_hidden?: boolean } = {};
+  const data: { body?: string; is_pinned?: boolean; is_hidden?: boolean; auto_flagged?: boolean } = {};
   if (typeof body.body === "string" && body.body.trim()) data.body = body.body.trim().slice(0, 1000);
   if (typeof body.isPinned === "boolean") data.is_pinned = body.isPinned;
-  if (typeof body.isHidden === "boolean") data.is_hidden = body.isHidden;
+  if (typeof body.isHidden === "boolean") {
+    data.is_hidden = body.isHidden;
+    // 管理者が公開（非表示解除）したらAI要確認フラグも下ろす（レビュー完了）
+    if (body.isHidden === false) data.auto_flagged = false;
+  }
 
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: "更新内容がありません" }, { status: 400 });

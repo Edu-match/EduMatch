@@ -537,6 +537,10 @@ model InteropPost {
   is_hidden       Boolean            @default(false)
   /// 運営からのお知らせ・記事として上部に固定表示する
   is_pinned       Boolean            @default(false)
+  /// AIが危険・不適切と判定し自動で非表示にした（管理画面で要確認）
+  auto_flagged    Boolean            @default(false)
+  /// AI判定の理由（管理者レビュー用）
+  flag_reason     String             @default("")
   /// AIファシリテーターによる返信かどうか
   is_ai_reply     Boolean            @default(false)
   /// 元投稿ID（AIファシリテーター返信の場合のみセット）

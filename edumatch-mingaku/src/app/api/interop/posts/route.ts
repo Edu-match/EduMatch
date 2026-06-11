@@ -115,9 +115,11 @@ export async function POST(req: NextRequest) {
     // 固定（記事化）は管理者のみ。管理者の投稿はモデレーションをスキップする。
     const isPinned = isAdmin && body.isPinned === true;
 
+    // AIモデレーション：危険・不適切と判定された投稿は「拒否」ではなく
+    // 自動で非表示(is_hidden)＋フラグ(auto_flagged)にして保存し、管理画面で確認・解除できるようにする。
+    let autoHidden = false;
+    let flagReason = "";
     if (!isAdmin) {
-      // モデレーション（ベストエフォート）：APIキー未設定など skipped の場合は許可。
-      // 明確に不適切と判定された場合のみ拒否する。
       const url = new URL(req.url);
       const origin = `${url.protocol}//${url.host}`;
       const moderation = await moderateAndNotify({
@@ -130,10 +132,8 @@ export async function POST(req: NextRequest) {
       }).catch(() => null);
 
       if (moderation && !moderation.skipped && !moderation.allowed) {
-        return NextResponse.json(
-          { error: "この内容は掲示板のガイドラインに適合しないため投稿できません。表現を見直してください。" },
-          { status: 400 }
-        );
+        autoHidden = true;
+        flagReason = moderation.slackSummaryJa || "AIが不適切の可能性を検知";
       }
     }
 
@@ -144,8 +144,22 @@ export async function POST(req: NextRequest) {
         author_role: trimmedRole,
         body: text,
         is_pinned: isPinned,
+        is_hidden: autoHidden,
+        auto_flagged: autoHidden,
+        flag_reason: flagReason,
       },
     });
+
+    // 自動非表示になった場合は、投稿者には「確認中」と伝える（理由は晒さない）
+    if (autoHidden) {
+      return NextResponse.json(
+        {
+          pendingReview: true,
+          message: "投稿ありがとうございます。内容を確認のうえ公開されます。",
+        },
+        { status: 202 }
+      );
+    }
 
     return NextResponse.json(
       {

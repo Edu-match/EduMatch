@@ -56,6 +56,7 @@ export function InteropBoard({
   const [bodyText, setBodyText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const listTopRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -109,8 +110,15 @@ export function InteropBoard({
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || "投稿に失敗しました"); return; }
-      setPosts((prev) => [data.post, ...prev]);
       setBodyText("");
+      if (data.pendingReview || !data.post) {
+        // AIモデレーションで自動非表示 → 投稿者には確認中と伝える（理由は晒さない）
+        setError(null);
+        setNotice(data.message || "投稿ありがとうございます。内容を確認のうえ公開されます。");
+        setTimeout(() => setNotice(null), 5000);
+        return;
+      }
+      setPosts((prev) => [data.post, ...prev]);
       listTopRef.current?.scrollIntoView({ behavior: "smooth" });
     } catch {
       setError("通信エラーが発生しました");
@@ -241,6 +249,7 @@ export function InteropBoard({
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-white/10 bg-[#070a1c]/95 backdrop-blur">
         <div className="mx-auto w-full max-w-2xl px-4 py-3 sm:px-6">
           {error && <p className="mb-2 text-xs text-rose-300">{error}</p>}
+          {notice && <p className="mb-2 text-xs text-emerald-300">{notice}</p>}
           <div className="flex items-end gap-2">
             <div className="flex-1 space-y-2">
               <div className="flex gap-2">
