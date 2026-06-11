@@ -1023,8 +1023,8 @@ export function InteropPuyoBubbleMap({
 
       </div>{/* /パン可能キャンバス */}
 
-      {/* ズーム＆リセット操作（右下・固定） */}
-      <div className="absolute bottom-24 right-3 z-40 flex flex-col gap-1.5 md:bottom-16">
+      {/* ズーム＆リセット操作（右下・固定）。PCは右端の縦長AIバー(48px)を避けて左へ寄せる */}
+      <div className="absolute bottom-24 right-3 z-40 flex flex-col gap-1.5 md:bottom-6 md:right-16">
         <button
           type="button"
           onClick={() => zoomAt(1.2, (containerRef.current?.getBoundingClientRect().left ?? 0) + (containerRef.current?.clientWidth ?? 0) / 2, (containerRef.current?.getBoundingClientRect().top ?? 0) + (containerRef.current?.clientHeight ?? 0) / 2)}

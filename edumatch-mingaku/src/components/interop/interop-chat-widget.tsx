@@ -94,17 +94,17 @@ export function InteropChatWidget() {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="group absolute right-4 bottom-5 z-50 rounded-full px-4 py-3 text-sm font-bold text-white shadow-lg transition hover:scale-105 sm:bottom-auto sm:right-0 sm:top-1/2 sm:-translate-y-1/2 sm:rounded-l-2xl sm:rounded-r-none sm:px-2.5 sm:py-7 sm:hover:scale-100 sm:hover:pr-3.5"
+          className="group absolute right-4 bottom-5 z-50 flex items-center justify-center rounded-full px-4 py-3 text-sm font-bold text-white shadow-lg transition hover:scale-105 sm:inset-y-0 sm:bottom-0 sm:right-0 sm:h-full sm:w-12 sm:rounded-none sm:px-0 sm:py-0 sm:hover:scale-100 sm:hover:w-14"
           style={{
             background: ORANGE_GRAD,
-            border: "1px solid rgba(255,205,150,0.6)",
-            boxShadow: "0 6px 22px rgba(235,120,30,0.5)",
+            borderLeft: "1px solid rgba(255,205,150,0.6)",
+            boxShadow: "-4px 0 22px rgba(235,120,30,0.4)",
           }}
           aria-label="AIに質問"
         >
           <span className="flex items-center gap-2 sm:flex-col sm:gap-3">
             <Bot className="h-5 w-5 shrink-0 sm:h-6 sm:w-6" />
-            <span className="sm:[writing-mode:vertical-rl] sm:[text-orientation:upright] sm:text-[15px] sm:tracking-[0.12em]">
+            <span className="sm:[writing-mode:vertical-rl] sm:[text-orientation:upright] sm:text-[15px] sm:tracking-[0.14em]">
               AIに質問
             </span>
           </span>
