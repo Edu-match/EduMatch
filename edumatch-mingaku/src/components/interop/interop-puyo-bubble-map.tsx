@@ -89,21 +89,29 @@ function hexCluster(n: number): [number, number][] {
   return raw.slice(0, n).map((p) => [p.x, p.y] as [number, number]);
 }
 
+// 各教科F(12)は横長2段（上段=上ラベル・下段=下ラベルに分離して重なりを防ぐ）
+function fRows(): [number, number][] {
+  const pts: [number, number][] = [];
+  for (let i = 0; i < 6; i++) pts.push([i - 2.5, -0.55]);
+  for (let i = 0; i < 6; i++) pts.push([i - 2.5 + 0.5, 0.55]);
+  return pts;
+}
+
 // 少数個は列にならないよう手動で塊の形を指定
 const SHAPE: Record<number, [number, number][]> = {
   2: [[-0.42, -0.32], [0.42, 0.32]],                              // 斜め2個
   4: [[0, -0.62], [-0.56, 0.24], [0.56, 0.24], [0, 0.92]],        // ひし形の4連塊
-  12: hexCluster(12),                                             // 六角の大塊
+  12: fRows(),                                                    // 各教科：横長2段
 };
 
 // 各分類のクラスター中心（中心インタロップ=50,46 を囲むように配置）
 const CLUSTER_CENTER: Record<string, { c: [number, number]; n: number; sx: number; sy: number }> = {
-  A: { c: [22, 29], n: 4, sx: 5.6, sy: 9.6 },  // 左上：AI・テク
-  B: { c: [78, 29], n: 4, sx: 5.6, sy: 9.6 },  // 右上：評価・学習
-  C: { c: [14, 58], n: 4, sx: 5.6, sy: 9.6 },  // 左下：権利・規律
-  D: { c: [88, 52], n: 2, sx: 5.6, sy: 9.6 },  // 右：多様性
-  E: { c: [33, 82], n: 2, sx: 5.6, sy: 9.6 },  // 下：教師・学校
-  F: { c: [60, 74], n: 12, sx: 7.0, sy: 7.8 }, // 下中央の大塊：各教科（横長に展開）
+  A: { c: [21, 29], n: 4, sx: 6.0, sy: 10.2 },  // 左上：AI・テク
+  B: { c: [79, 29], n: 4, sx: 6.0, sy: 10.2 },  // 右上：評価・学習
+  C: { c: [13, 58], n: 4, sx: 6.0, sy: 10.2 },  // 左下：権利・規律
+  D: { c: [89, 52], n: 2, sx: 6.0, sy: 10.2 },  // 右：多様性
+  E: { c: [32, 83], n: 2, sx: 6.0, sy: 10.2 },  // 下：教師・学校
+  F: { c: [58, 72], n: 12, sx: 7.8, sy: 9.0 },  // 下中央の大塊：各教科（横長に展開）
 };
 
 type Placement = { pos: [number, number]; dir: [number, number] };
@@ -132,15 +140,6 @@ function buildPlacements(): Placement[] {
 
 const PLACEMENTS: Placement[] = buildPlacements();
 
-// 各塊の上端 y(%)（グループ名ラベルを塊の上に常時表示するため）
-function clusterTopPct(g: string): number {
-  const { c, n, sy } = CLUSTER_CENTER[g];
-  const offs = SHAPE[n] ?? hexCluster(n);
-  const my = offs.reduce((s, o) => s + o[1], 0) / offs.length;
-  const minRy = Math.min(...offs.map((o) => o[1] - my));
-  return c[1] + minRy * sy;
-}
-
 const PUYO_CSS = `
 @keyframes puyoAnim {
   0%   { transform: translate(-50%, calc(-50% + 0px)) scale(0.96); }
@@ -151,12 +150,17 @@ const PUYO_CSS = `
 }
 @keyframes centerPulse {
   0%,100% { transform: translate(-50%,-50%) scale(1.00); }
-  50%     { transform: translate(-50%,-50%) scale(1.07); }
+  50%     { transform: translate(-50%,-50%) scale(1.06); }
+}
+@keyframes centerRing {
+  0%   { transform: translate(-50%,-50%) scale(0.85); opacity: 0.55; }
+  70%  { opacity: 0; }
+  100% { transform: translate(-50%,-50%) scale(1.9); opacity: 0; }
 }
 `;
 
-const BUBBLE_SIZE = 60;
-const CENTER_SIZE = 118;
+const BUBBLE_SIZE = 64;
+const CENTER_SIZE = 132;
 
 function PuyoBubble({
   topic,
@@ -175,8 +179,17 @@ function PuyoBubble({
   const { Icon } = sty;
   const dur = 7 + ((topic.no * 13 + index * 9) % 60) / 10;
   const delay = -((topic.no * 7 + index * 4) % 70) / 10;
-  // ラベルを塊の外向き（上/下）に逃がして重なりを抑える
-  const labelAbove = dir[1] < -0.25;
+  // ラベルを塊の外向き（上/下/左/右）に常時配置して重なりを回避
+  const ax = dir[0];
+  const ay = dir[1];
+  const horizontal = Math.abs(ax) > Math.abs(ay) * 1.15;
+  const labelPos: React.CSSProperties = horizontal
+    ? ax < 0
+      ? { right: "calc(100% + 9px)", top: "50%", transform: "translateY(-50%)" }
+      : { left: "calc(100% + 9px)", top: "50%", transform: "translateY(-50%)" }
+    : ay < 0
+      ? { bottom: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)" }
+      : { top: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)" };
 
   return (
     <button
@@ -192,20 +205,20 @@ function PuyoBubble({
       }}
       aria-label={topic.category}
     >
-      {/* Glow halo */}
+      {/* Glow halo（常時＋ホバーで増強） */}
       <span
         className="pointer-events-none absolute rounded-full transition-opacity duration-300"
         style={{
-          inset: -16,
-          background: `radial-gradient(circle, ${sty.glow}2a 0%, transparent 65%)`,
-          opacity: 0.85,
+          inset: -22,
+          background: `radial-gradient(circle, ${sty.glow}3d 0%, ${sty.glow}14 45%, transparent 68%)`,
+          opacity: 0.95,
         }}
       />
       <span
         className="pointer-events-none absolute rounded-full opacity-0 transition-opacity duration-200 group-hover:opacity-100"
         style={{
-          inset: -16,
-          background: `radial-gradient(circle, ${sty.glow}55 0%, transparent 65%)`,
+          inset: -24,
+          background: `radial-gradient(circle, ${sty.glow}66 0%, transparent 66%)`,
         }}
       />
 
@@ -234,29 +247,30 @@ function PuyoBubble({
         {/* Center icon */}
         <Icon
           className="relative z-10"
-          style={{ width: 22, height: 22, color: sty.glow, opacity: 0.88 }}
-          strokeWidth={1.6}
+          style={{ width: 27, height: 27, color: sty.glow, opacity: 0.95, filter: `drop-shadow(0 0 4px ${sty.glow}88)` }}
+          strokeWidth={1.7}
         />
       </span>
 
-      {/* Label — ホバー/フォーカス時のみ表示（常時表示すると塊内で重なるため） */}
+      {/* Label — 常時表示・塊の外向き（放射状）に配置 */}
       <span
-        className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-center opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus:opacity-100"
+        className="pointer-events-none absolute text-center transition-transform duration-150 group-hover:scale-[1.06]"
         style={{
-          ...(labelAbove ? { bottom: `calc(100% + 6px)` } : { top: `calc(100% + 6px)` }),
-          width: 120,
-          zIndex: 60,
+          ...labelPos,
+          width: "max-content",
+          maxWidth: 116,
+          zIndex: 40,
           fontSize: "11px",
           fontWeight: 700,
-          lineHeight: 1.35,
+          lineHeight: 1.3,
           color: "rgba(255,255,255,0.98)",
-          background: "rgba(4,6,24,0.88)",
+          background: `linear-gradient(135deg, rgba(8,11,32,0.86) 0%, ${sty.glow}33 100%)`,
           border: `1px solid ${sty.border}`,
-          borderRadius: 10,
-          padding: "3px 9px",
+          borderRadius: 9,
+          padding: "2.5px 8px",
           backdropFilter: "blur(8px)",
           WebkitBackdropFilter: "blur(8px)",
-          boxShadow: `0 2px 12px rgba(0,0,0,0.45), 0 0 10px ${sty.glow}40`,
+          boxShadow: `0 2px 12px rgba(0,0,0,0.42), 0 0 12px ${sty.glow}38`,
           wordBreak: "keep-all",
           overflowWrap: "anywhere",
           whiteSpace: "normal",
@@ -307,29 +321,6 @@ export function InteropPuyoBubbleMap({
     <div className="absolute inset-0 overflow-hidden">
       <style>{PUYO_CSS}</style>
 
-      {/* 各塊の分類名（常時表示・1塊1つ） */}
-      {(Object.keys(CLUSTER_CENTER) as Array<keyof typeof CLUSTER_CENTER>).map((g) => {
-        const { c } = CLUSTER_CENTER[g];
-        const sty = GROUP_STYLE[g];
-        return (
-          <span
-            key={`group-label-${g}`}
-            className="pointer-events-none absolute z-30 -translate-x-1/2 whitespace-nowrap rounded-full px-3 py-1 text-[12.5px] font-bold text-white"
-            style={{
-              left: `${c[0]}%`,
-              top: `${clusterTopPct(g) - 4}%`,
-              background: `${sty.glow}d8`,
-              border: `1px solid ${sty.border}`,
-              boxShadow: `0 2px 12px ${sty.glow}66`,
-              backdropFilter: "blur(6px)",
-              WebkitBackdropFilter: "blur(6px)",
-            }}
-          >
-            {sty.label}
-          </span>
-        );
-      })}
-
       {topics.map((topic, i) => {
         const place = PLACEMENTS[i] ?? { pos: [50, 50] as [number, number], dir: [0, 1] as [number, number] };
         return (
@@ -359,18 +350,37 @@ export function InteropPuyoBubbleMap({
           }}
           aria-label="インタロップ"
         >
+          {/* 放射するパルスリング（2本・時差） */}
+          <span
+            className="pointer-events-none absolute left-1/2 top-1/2 rounded-full"
+            style={{
+              width: CENTER_SIZE,
+              height: CENTER_SIZE,
+              border: "2px solid rgba(170,200,255,0.55)",
+              animation: "centerRing 3.6s ease-out infinite",
+            }}
+          />
+          <span
+            className="pointer-events-none absolute left-1/2 top-1/2 rounded-full"
+            style={{
+              width: CENTER_SIZE,
+              height: CENTER_SIZE,
+              border: "2px solid rgba(170,200,255,0.45)",
+              animation: "centerRing 3.6s ease-out 1.8s infinite",
+            }}
+          />
           <span
             className="pointer-events-none absolute rounded-full"
             style={{
-              inset: -20,
-              background: "radial-gradient(circle, rgba(160,190,255,0.20) 0%, transparent 68%)",
+              inset: -26,
+              background: "radial-gradient(circle, rgba(160,190,255,0.28) 0%, transparent 68%)",
             }}
           />
           <span
             className="pointer-events-none absolute rounded-full opacity-0 transition-opacity duration-300 group-hover:opacity-100"
             style={{
-              inset: -20,
-              background: "radial-gradient(circle, rgba(160,190,255,0.42) 0%, transparent 68%)",
+              inset: -26,
+              background: "radial-gradient(circle, rgba(160,190,255,0.5) 0%, transparent 68%)",
             }}
           />
           <span
@@ -387,8 +397,8 @@ export function InteropPuyoBubbleMap({
               className="pointer-events-none absolute rounded-full"
               style={{ top: "10%", left: "14%", width: "44%", height: "34%", background: "rgba(255,255,255,0.90)", filter: "blur(4px)" }}
             />
-            <InteropIcon className="relative z-10 h-6 w-6 text-[#1a3a8a]" strokeWidth={1.8} />
-            <span className="relative z-10 mt-1 text-[11px] font-bold leading-tight text-[#1a3a8a]">インタロップ</span>
+            <InteropIcon className="relative z-10 h-7 w-7 text-[#1a3a8a]" strokeWidth={1.9} />
+            <span className="relative z-10 mt-1 text-[13px] font-bold leading-tight text-[#1a3a8a]">インタロップ</span>
           </span>
         </button>
       )}
