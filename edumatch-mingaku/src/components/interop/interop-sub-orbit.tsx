@@ -92,34 +92,46 @@ function SubTopicOrb({
       style={{ left: `${pos.left}%`, top: `${pos.top}%` }}
       aria-label={`${item.name} を開く`}
     >
+      {/* ホバーグロー */}
+      <span
+        className="pointer-events-none absolute rounded-full opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+        style={{ inset: -20, background: `radial-gradient(circle, ${color}44 0%, transparent 65%)` }}
+      />
+
       <span className="relative flex flex-col items-center">
         <span
-          className={puyoStyle ? "interop-puyo relative grid place-items-center rounded-full" : "relative grid place-items-center rounded-full transition-transform duration-300 group-hover:scale-[1.04]"}
+          className={puyoStyle ? "interop-puyo relative grid place-items-center rounded-full" : "relative grid place-items-center rounded-full transition-transform duration-300 group-hover:scale-[1.08]"}
           style={{
             width: baseSize,
             height: baseSize,
             background: hot
-              ? "radial-gradient(circle at 34% 28%, rgba(255,255,255,0.55) 0%, rgba(255,200,140,0.40) 40%, rgba(230,140,50,0.58) 100%)"
-              : `radial-gradient(circle at 34% 28%, rgba(255,255,255,0.50) 0%, ${color}33 42%, ${color}66 100%)`,
-            border: hot ? "1.5px solid rgba(255,190,120,0.75)" : `1.5px solid ${color}99`,
+              ? "radial-gradient(circle at 34% 28%, rgba(255,255,255,0.60) 0%, rgba(255,200,140,0.45) 40%, rgba(230,140,50,0.62) 100%)"
+              : `radial-gradient(circle at 34% 28%, rgba(255,255,255,0.55) 0%, ${color}44 42%, ${color}77 100%)`,
+            border: hot ? "1.5px solid rgba(255,190,120,0.80)" : `1.5px solid ${color}aa`,
             boxShadow: hot
-              ? "0 0 24px rgba(255,140,60,0.35), 0 10px 28px rgba(30,60,140,0.28), inset 0 2px 14px rgba(255,255,255,0.45)"
-              : `0 0 24px ${color}55, 0 10px 28px rgba(30,60,140,0.22), inset 0 2px 14px rgba(255,255,255,0.45)`,
-            backdropFilter: "blur(10px)",
-            WebkitBackdropFilter: "blur(10px)",
+              ? "0 0 28px rgba(255,140,60,0.40), 0 8px 24px rgba(30,60,140,0.30), inset 0 2px 14px rgba(255,255,255,0.50)"
+              : `0 0 28px ${color}44, 0 8px 24px rgba(30,60,140,0.25), inset 0 2px 14px rgba(255,255,255,0.50)`,
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
             ...puyoStyle,
           }}
         >
+          {/* 左上ハイライト */}
+          <span
+            className="pointer-events-none absolute rounded-full"
+            style={{ top: "10%", left: "14%", width: "40%", height: "32%", background: "rgba(255,255,255,0.55)", filter: "blur(4px)", opacity: 0.6 }}
+          />
           <Icon
-            style={{ color: hot ? "#ffb870" : color, width: iconSize, height: iconSize, filter: hot ? undefined : `drop-shadow(0 0 3px ${color}66)` }}
+            style={{ color: hot ? "#ffb870" : color, width: iconSize, height: iconSize, filter: hot ? undefined : `drop-shadow(0 0 4px ${color}77)` }}
             strokeWidth={1.7}
           />
           {hint && (
             <span
-              className="absolute -bottom-1 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full px-1.5 py-0.5 text-[9px] font-bold shadow"
+              className="absolute -bottom-1.5 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full px-1.5 py-0.5 text-[9px] font-bold shadow-md"
               style={{
-                background: hot ? "rgba(255,120,40,0.92)" : `${accent}cc`,
+                background: hot ? "rgba(255,120,40,0.95)" : `${color}ee`,
                 color: "#fff",
+                border: "1px solid rgba(255,255,255,0.25)",
               }}
             >
               {hint}
@@ -128,11 +140,15 @@ function SubTopicOrb({
         </span>
 
         <span
-          className="mt-2.5 max-w-[min(34vw,148px)] rounded-full px-3 py-1 text-center text-[11px] font-bold leading-snug text-white/95"
+          className="mt-3 max-w-[min(34vw,148px)] rounded-xl px-3 py-1 text-center text-[11.5px] font-bold leading-snug text-white transition-all duration-200 group-hover:text-white"
           style={{
-            background: "rgba(8,11,32,0.82)",
-            border: hot ? "1px solid rgba(255,170,90,0.4)" : "1px solid rgba(255,255,255,0.12)",
-            boxShadow: "0 4px 16px rgba(0,0,0,0.22)",
+            background: hot
+              ? "linear-gradient(135deg, rgba(12,18,44,0.88) 0%, rgba(90,50,0,0.50) 100%)"
+              : `linear-gradient(135deg, rgba(8,11,32,0.88) 0%, ${color}28 100%)`,
+            border: hot ? "1px solid rgba(255,170,90,0.45)" : `1px solid ${color}44`,
+            boxShadow: `0 4px 16px rgba(0,0,0,0.30), 0 0 10px ${color}22`,
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
           }}
         >
           {item.name}
@@ -181,36 +197,53 @@ export function InteropSubOrbit({
         className="relative aspect-square w-full shrink-0"
         style={{ width: containerSize, height: containerSize, maxHeight: "min(76vh, 680px)" }}
       >
+        {/* 軌道リング */}
         <span
           className="pointer-events-none absolute inset-[6%] rounded-full"
           style={{
-            border: "1px dashed rgba(255,255,255,0.28)",
-            boxShadow: `inset 0 0 40px ${accent}18`,
+            border: `1px solid ${accent}44`,
+            boxShadow: `inset 0 0 40px ${accent}1a, 0 0 20px ${accent}12`,
           }}
         />
         <span
           className="pointer-events-none absolute inset-[6%] rounded-full"
           style={{
-            background: `radial-gradient(circle, ${accent}14 0%, transparent 68%)`,
+            border: "1px dashed rgba(255,255,255,0.12)",
+          }}
+        />
+        <span
+          className="pointer-events-none absolute inset-[6%] rounded-full"
+          style={{
+            background: `radial-gradient(circle, ${accent}18 0%, transparent 65%)`,
           }}
         />
 
-        <div className="absolute left-1/2 top-1/2 z-20 w-[min(32%,200px)] min-w-[120px] -translate-x-1/2 -translate-y-1/2">
+        <div className="absolute left-1/2 top-1/2 z-20 w-[min(32%,200px)] min-w-[128px] -translate-x-1/2 -translate-y-1/2">
+          {/* 中央グロー */}
+          <span
+            className="pointer-events-none absolute inset-[-20px] rounded-full"
+            style={{ background: `radial-gradient(circle, ${accent}22 0%, transparent 65%)` }}
+          />
           <button
             type="button"
             onClick={onBack}
-            className="group w-full rounded-full px-3 py-3 text-center transition-shadow duration-300 hover:shadow-[0_0_28px_rgba(100,150,255,0.20)] focus:outline-none"
+            className="group relative w-full rounded-2xl px-3 py-3.5 text-center transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_0_32px_rgba(100,150,255,0.25)] focus:outline-none"
             style={{
-              background: "rgba(8,11,32,0.72)",
-              border: `1px solid ${accent}44`,
-              boxShadow: `0 0 18px ${accent}18, inset 0 1px 0 rgba(255,255,255,0.06)`,
-              backdropFilter: "blur(12px)",
+              background: `linear-gradient(160deg, rgba(12,16,40,0.82) 0%, ${accent}18 100%)`,
+              border: `1px solid ${accent}55`,
+              boxShadow: `0 0 22px ${accent}22, 0 8px 28px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.10)`,
+              backdropFilter: "blur(16px)",
             }}
             aria-label={backLabel}
           >
-            <CenterIcon className="mx-auto mb-1 h-5 w-5" style={{ color: accent }} strokeWidth={1.6} />
-            <p className="text-[11px] font-semibold text-white/80">{centerLabel}</p>
-            <span className="mt-2 inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/[0.05] px-2.5 py-0.5 text-[10px] font-medium text-white/55 transition group-hover:bg-white/12 group-hover:text-white/80">
+            <div
+              className="pointer-events-none absolute inset-x-4 top-0 h-px rounded-full"
+              style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.40) 50%, transparent)" }}
+            />
+            <CenterIcon className="mx-auto mb-1.5 h-6 w-6" style={{ color: accent, filter: `drop-shadow(0 0 6px ${accent}88)` }} strokeWidth={1.5} />
+            <p className="text-[12px] font-bold text-white/90">{centerLabel}</p>
+            {centerHint && <p className="mt-0.5 text-[9.5px] leading-tight text-white/50">{centerHint}</p>}
+            <span className="mt-2.5 inline-flex items-center gap-1 rounded-full border border-white/18 bg-white/[0.06] px-2.5 py-0.5 text-[10px] font-medium text-white/55 transition group-hover:bg-white/12 group-hover:text-white/80">
               <ArrowLeft className="h-2.5 w-2.5" /> {backLabel}
             </span>
           </button>

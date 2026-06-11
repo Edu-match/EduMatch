@@ -84,6 +84,15 @@ const AXIS_RX = 40;
 const AXIS_RY = 36;
 
 /** topic ごとの軸座標を画面配置に変換。近接玉は反発で分散（被り回避）。 */
+function detectSentimentColor(body: string): string {
+  if (/課題|問題|困って|難し|大変|壁|不満|不安|できな|なんで|なぜ/.test(body)) return "#9bc4ff";
+  if (/提言|すべき|べきで|提案|改善|必要|変えるべき|実現|目指す|したい|増やし|減らし/.test(body)) return "#7de8a0";
+  if (/[?？]|どうすれ|どこが|でしょうか|ますか|どんな|どうすれ/.test(body)) return "#f0d888";
+  if (/[!！]{2}|絶対|強く思|情熱|使命|変えたい|変えなければ/.test(body)) return "#d4b0ff";
+  if (/素晴らし|いいと思|好き|最高|よかった|嬉しい|ありがとう|楽しみ/.test(body)) return "#c0f0d8";
+  return "rgba(255,255,255,0.88)";
+}
+
 function computeAxisPlacements(
   topics: InteropPriorityTopic[],
   axisMap: Record<number, AxisPoint>
@@ -96,16 +105,16 @@ function computeAxisPlacements(
     return { x: AXIS_CX + a.x * AXIS_RX + jx, y: AXIS_CY - a.y * AXIS_RY + jy };
   });
   // 反発で被り回避（y方向は%が大きいので圧縮して等方近似）
-  const minDist = 11.5;
+  const minDist = 13.5;
   const ys = 0.60;
-  for (let k = 0; k < 240; k++) {
+  for (let k = 0; k < 480; k++) {
     for (let i = 0; i < pts.length; i++) {
       for (let j = i + 1; j < pts.length; j++) {
         const dx = pts[j].x - pts[i].x;
         const dy = (pts[j].y - pts[i].y) * ys;
         const d = Math.hypot(dx, dy) || 0.01;
         if (d < minDist) {
-          const push = (minDist - d) / 2;
+          const push = (minDist - d) / 2 * 1.4;
           const ux = dx / d;
           const uy = dy / d;
           pts[i].x -= ux * push;
@@ -114,11 +123,23 @@ function computeAxisPlacements(
           pts[j].y += (uy * push) / ys;
         }
       }
+      // 中心付近（インタロップボタン）を避ける
+      const cdx = pts[i].x - AXIS_CX;
+      const cdy = (pts[i].y - AXIS_CY) * ys;
+      const cd = Math.hypot(cdx, cdy) || 0.01;
+      if (cd < 16) {
+        const push = (16 - cd) / 2;
+        pts[i].x += (cdx / cd) * push;
+        pts[i].y += ((cdy / cd) * push) / ys;
+      }
+      // 境界クランプ
+      pts[i].x = Math.max(7, Math.min(93, pts[i].x));
+      pts[i].y = Math.max(10, Math.min(89, pts[i].y));
     }
   }
   return pts.map((p) => {
     const x = Math.max(7, Math.min(93, p.x));
-    const y = Math.max(11, Math.min(88, p.y));
+    const y = Math.max(10, Math.min(89, p.y));
     const dx = x - AXIS_CX;
     const dy = y - AXIS_CY;
     const len = Math.hypot(dx, dy) || 1;
@@ -162,11 +183,17 @@ const PUYO_CSS = `
   70%  { opacity: 0; }
   100% { transform: translate(-50%,-50%) scale(1.9); opacity: 0; }
 }
-@keyframes commentPopCloud {
+@keyframes commentPopCloudAbove {
   0%   { opacity: 0; transform: translate(-50%, calc(-100% + 4px)) scale(0.90); }
   14%  { opacity: 1; transform: translate(-50%, calc(-100% - 6px)) scale(1.00); }
   80%  { opacity: 1; transform: translate(-50%, calc(-100% - 12px)) scale(1.00); }
   100% { opacity: 0; transform: translate(-50%, calc(-100% - 20px)) scale(0.98); }
+}
+@keyframes commentPopCloudBelow {
+  0%   { opacity: 0; transform: translate(-50%, -4px) scale(0.90); }
+  14%  { opacity: 1; transform: translate(-50%, 10px) scale(1.00); }
+  80%  { opacity: 1; transform: translate(-50%, 16px) scale(1.00); }
+  100% { opacity: 0; transform: translate(-50%, 26px) scale(0.98); }
 }
 `;
 
@@ -613,7 +640,7 @@ export function InteropPuyoBubbleMap({
       cancelled = true;
     };
   }, []);
-  const [popups, setPopups] = useState<Array<{ id: string; body: string; author: string; pos: [number, number]; xExtra: number }>>([]);
+  const [popups, setPopups] = useState<Array<{ id: string; body: string; author: string; pos: [number, number]; xExtra: number; dir: "above" | "below"; sentimentColor: string }>>([]);
   useEffect(() => {
     if (isMobile || comments.length === 0) return;
     const tick = () => {
@@ -622,13 +649,14 @@ export function InteropPuyoBubbleMap({
       const pos = idx >= 0 ? placements[idx]?.pos : undefined;
       if (!pos) return;
       const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      const dir: "above" | "below" = pos[1] < 30 ? "below" : "above";
+      const sentimentColor = detectSentimentColor(c.body);
       setPopups((prev) => {
-        // 近い位置に既存の吹き出しがあれば x方向にずらして被りを回避
         const nearby = prev.filter(
           (p) => Math.abs(p.pos[0] - pos[0]) < 22 && Math.abs(p.pos[1] - pos[1]) < 22
         );
         const xExtra = nearby.length > 0 ? (pos[0] > 50 ? -185 : 185) : 0;
-        return [...prev.slice(-1), { id, body: c.body, author: c.authorName, pos, xExtra }];
+        return [...prev.slice(-1), { id, body: c.body, author: c.authorName, pos, xExtra, dir, sentimentColor }];
       });
       window.setTimeout(() => setPopups((prev) => prev.filter((p) => p.id !== id)), 5200);
     };
@@ -715,50 +743,57 @@ export function InteropPuyoBubbleMap({
         );
       })}
 
-      {/* 自動コメント吹き出し（玉の真上に浮かぶ雲形バブル） */}
-      {popups.map((p) => (
-        <div
-          key={p.id}
-          className="pointer-events-none absolute z-[45] w-[168px]"
-          style={{
-            left: `calc(${p.pos[0]}% + ${p.xExtra}px)`,
-            top: `calc(${p.pos[1]}% - ${bubbleSize / 2 + 10}px)`,
-            animation: "commentPopCloud 5.0s ease-in-out forwards",
-          }}
-        >
-          {/* 雲形吹き出し本体 */}
+      {/* 自動コメント吹き出し（玉の上or下に浮かぶ雲形バブル） */}
+      {popups.map((p) => {
+        const isAbove = p.dir === "above";
+        // xExtra補正でテイルを元の玉位置に向ける（クランプして吹き出し内に収める）
+        const tailOffset = Math.max(-60, Math.min(60, -p.xExtra * 0.5));
+        return (
           <div
-            className="relative rounded-[18px] px-3 py-2.5 text-left"
+            key={p.id}
+            className="pointer-events-none absolute z-[45] w-[168px]"
             style={{
-              background: "rgba(215,228,255,0.20)",
-              border: "1px solid rgba(255,255,255,0.38)",
-              backdropFilter: "blur(20px) saturate(1.3)",
-              WebkitBackdropFilter: "blur(20px) saturate(1.3)",
-              boxShadow: "0 4px 22px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.48), inset 0 -1px 0 rgba(255,255,255,0.08)",
+              left: `calc(${p.pos[0]}% + ${p.xExtra}px)`,
+              top: isAbove
+                ? `calc(${p.pos[1]}% - ${bubbleSize / 2 + 10}px)`
+                : `calc(${p.pos[1]}% + ${bubbleSize / 2 + 10}px)`,
+              animation: isAbove
+                ? "commentPopCloudAbove 5.0s ease-in-out forwards"
+                : "commentPopCloudBelow 5.0s ease-in-out forwards",
             }}
           >
-            {/* 上端グロスライン */}
+            {/* 雲形吹き出し本体 */}
             <div
-              className="pointer-events-none absolute inset-x-3 top-0 h-px rounded-full"
-              style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.60) 40%, rgba(255,255,255,0.70) 60%, transparent)" }}
+              className="relative rounded-[18px] px-3 py-2.5 text-left"
+              style={{
+                background: "rgba(215,228,255,0.20)",
+                border: "1px solid rgba(255,255,255,0.38)",
+                backdropFilter: "blur(20px) saturate(1.3)",
+                WebkitBackdropFilter: "blur(20px) saturate(1.3)",
+                boxShadow: "0 4px 22px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.48), inset 0 -1px 0 rgba(255,255,255,0.08)",
+              }}
+            >
+              <div
+                className="pointer-events-none absolute inset-x-3 top-0 h-px rounded-full"
+                style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.60) 40%, rgba(255,255,255,0.70) 60%, transparent)" }}
+              />
+              <p className="text-[10px] font-bold text-indigo-100/90">{p.author}</p>
+              <p className="mt-0.5 text-[11px] leading-snug line-clamp-3" style={{ color: p.sentimentColor }}>{p.body}</p>
+            </div>
+            {/* テイル: 上に浮いてる → 下向き (▼)、下に浮いてる → 上向き (▲) */}
+            <div
+              className="absolute"
+              style={{
+                left: `calc(50% + ${tailOffset}px)`,
+                transform: "translateX(-50%)",
+                ...(isAbove
+                  ? { bottom: -7, borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderTop: "8px solid rgba(215,228,255,0.28)" }
+                  : { top: -7, borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderBottom: "8px solid rgba(215,228,255,0.28)" }),
+              }}
             />
-            <p className="text-[10px] font-bold text-indigo-100/90">{p.author}</p>
-            <p className="mt-0.5 text-[11px] leading-snug text-white/88 line-clamp-3">{p.body}</p>
           </div>
-          {/* 下向きテイル（玉に向かう） */}
-          <div
-            className="absolute left-1/2 -translate-x-1/2"
-            style={{
-              bottom: -7,
-              width: 0,
-              height: 0,
-              borderLeft: "8px solid transparent",
-              borderRight: "8px solid transparent",
-              borderTop: "8px solid rgba(215,228,255,0.28)",
-            }}
-          />
-        </div>
-      ))}
+        );
+      })}
 
       {interopCat && (
         <button

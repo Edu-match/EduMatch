@@ -55,12 +55,15 @@ function CityscapeLayer({ period }: { period: Period }) {
     return { x, h, count, isCurrent };
   });
 
+  const hourLabels = [0, 6, 12, 18, 23];
+  const midY = 33 - MAX_H * 0.55;
+
   return (
     <svg
       className="pointer-events-none absolute inset-x-0 bottom-0 w-full"
-      viewBox="0 0 100 33"
+      viewBox="0 0 100 36"
       preserveAspectRatio="none"
-      style={{ height: "min(26vh, 240px)" }}
+      style={{ height: "min(28vh, 260px)" }}
       aria-hidden
     >
       <defs>
@@ -119,6 +122,26 @@ function CityscapeLayer({ period }: { period: Period }) {
           />
         </g>
       ))}
+
+      {/* 中間グリッドライン */}
+      <line x1={0} y1={midY} x2={100} y2={midY} stroke={bp.stroke} strokeWidth={0.18} strokeDasharray="1.5 1.5" opacity={0.35} />
+
+      {/* ベースライン */}
+      <line x1={0} y1={33} x2={100} y2={33} stroke={bp.accent} strokeWidth={0.22} opacity={0.55} />
+
+      {/* 時間ラベル */}
+      {hourLabels.map((h) => {
+        const x = h * (BAR_W + BAR_GAP) + BAR_W / 2;
+        return (
+          <g key={h}>
+            <line x1={x} y1={33} x2={x} y2={34.2} stroke={bp.accent} strokeWidth={0.22} opacity={0.5} />
+            <text x={x} y={35.8} textAnchor="middle" fontSize={1.6} fill={bp.accent} opacity={0.65} fontFamily="sans-serif">{h}</text>
+          </g>
+        );
+      })}
+
+      {/* 「直近24h」ラベル */}
+      <text x={1} y={midY - 0.8} fontSize={1.5} fill={bp.accent} opacity={0.55} fontFamily="sans-serif">投稿数 / 24h</text>
 
       {/* 窓（点灯パターン） */}
       {bars.map(({ x, h }, bi) => {
