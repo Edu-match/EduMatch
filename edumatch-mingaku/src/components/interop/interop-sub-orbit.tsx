@@ -2,7 +2,6 @@
 
 import { useMemo } from "react";
 import { ArrowLeft, MessageCircle, type LucideIcon } from "lucide-react";
-import { ForumHotFlame } from "@/components/community/forum-hot-flame";
 import {
   computeSubOrbDiameter,
   formatActivityHint,
@@ -79,9 +78,10 @@ function SubTopicOrb({
   const iconSize = Math.max(20, baseSize * 0.32);
   const Icon = item.icon ?? MessageCircle;
   const color = item.accentColor ?? accent; // 玉の色（分類色）
+  // 揺れは控えめに（やかましさ回避）。hot でも大きくは揺らさない。
   const puyoStyle =
-    intensity > 0.08 || hot
-      ? puyoAnimationStyle(index * 5 + item.name.length, intensity * 0.65, hot)
+    intensity > 0.2
+      ? puyoAnimationStyle(index * 5 + item.name.length, intensity * 0.28, false)
       : undefined;
 
   return (
@@ -93,19 +93,6 @@ function SubTopicOrb({
       aria-label={`${item.name} を開く`}
     >
       <span className="relative flex flex-col items-center">
-        {hot && (
-          <span
-            className="pointer-events-none absolute left-1/2 top-1/2 rounded-full"
-            style={{
-              width: baseSize + 28,
-              height: baseSize + 28,
-              transform: "translate(-50%, -50%)",
-              border: `1px dashed ${accent}66`,
-              animation: `itmOrbitPulse ${4.2 + index * 0.35}s ease-in-out infinite`,
-            }}
-          />
-        )}
-
         <span
           className={puyoStyle ? "interop-puyo relative grid place-items-center rounded-full" : "relative grid place-items-center rounded-full transition-transform duration-300 group-hover:scale-[1.04]"}
           style={{
@@ -127,11 +114,6 @@ function SubTopicOrb({
             style={{ color: hot ? "#ffb870" : color, width: iconSize, height: iconSize, filter: hot ? undefined : `drop-shadow(0 0 3px ${color}66)` }}
             strokeWidth={1.7}
           />
-          {hot && (
-            <span className="absolute -right-1 -top-1 z-10">
-              <ForumHotFlame size="sm" />
-            </span>
-          )}
           {hint && (
             <span
               className="absolute -bottom-1 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full px-1.5 py-0.5 text-[9px] font-bold shadow"
