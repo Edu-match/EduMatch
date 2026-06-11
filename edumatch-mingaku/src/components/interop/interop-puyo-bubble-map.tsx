@@ -120,8 +120,11 @@ function computeAxisPlacements(
   obstacles: Obstacle[] = [],
   /** 各玉の「占有半径(%)」。サイズ可変なので玉ごとに必要な空きが違う。 */
   radii: number[] = [],
-  /** y方向の等方圧縮率。縦長画面(スマホ)では大きくして縦に広く散らす。 */
-  ys = 0.6
+  /** y方向の等方圧縮率。小さいほど縦に広く散らす。 */
+  ys = 0.6,
+  /** 配置のy範囲(%)。スマホは下端を100超にして画面外へ展開→パンで探索。 */
+  yMin = 9,
+  yMax = 90
 ): Placement[] {
   const rOf = (i: number) => radii[i] ?? 6;
   const pts = topics.map((t, i) => {
@@ -169,7 +172,7 @@ function computeAxisPlacements(
   }
   return pts.map((p) => {
     const x = Math.max(5, Math.min(95, p.x));
-    const y = Math.max(9, Math.min(90, p.y));
+    const y = Math.max(yMin, Math.min(yMax, p.y));
     const dx = x - AXIS_CX;
     const dy = y - AXIS_CY;
     const len = Math.hypot(dx, dy) || 1;
@@ -253,10 +256,15 @@ type MapMetrics = {
   satOrb: number;      // サテライト直径(px)
   centerR: number;     // 中心ハブ占有半径(%)
   satR: number;        // サテライト占有半径(%)
-  ys: number;          // y圧縮率（縦長画面ほど大きく＝縦に散らす）
+  ys: number;          // y圧縮率（小さいほど縦に大きく散らす）
+  yMin: number;        // 配置の上端クランプ(%)
+  yMax: number;        // 配置の下端クランプ(%)。100超で画面より下へ展開→パンで探索
+  panLimY: number;     // 縦パンの可動域(px)
 };
-const METRICS_DESKTOP: MapMetrics = { base: 40, max: 150, refW: 1300, labelMargin: 4.2, centerSize: 132, satOrb: 84, centerR: 18, satR: 13, ys: 0.6 };
-const METRICS_MOBILE: MapMetrics  = { base: 28, max: 74,  refW: 430,  labelMargin: 4.8, centerSize: 92,  satOrb: 58, centerR: 18, satR: 14, ys: 0.9 };
+// スマホは1画面に玉が多すぎてゴチャつくため、縦に大きく展開して画面あたりの玉数を減らし、
+// 下へパンして探索できるようにする。
+const METRICS_DESKTOP: MapMetrics = { base: 40, max: 150, refW: 1300, labelMargin: 4.2, centerSize: 132, satOrb: 84, centerR: 18, satR: 13, ys: 0.6, yMin: 9, yMax: 90,  panLimY: 420 };
+const METRICS_MOBILE: MapMetrics  = { base: 26, max: 70,  refW: 430,  labelMargin: 4.2, centerSize: 88,  satOrb: 56, centerR: 17, satR: 13, ys: 0.5, yMin: 9, yMax: 170, panLimY: 920 };
 
 
 function PuyoBubble({
@@ -520,7 +528,7 @@ export function InteropPuyoBubbleMap({
 
   const clampPan = (x: number, y: number, scale: number) => {
     const lim = 560 * scale;
-    const limY = 420 * scale;
+    const limY = m.panLimY * scale;
     return { x: Math.max(-lim, Math.min(lim, x)), y: Math.max(-limY, Math.min(limY, y)) };
   };
 
@@ -667,8 +675,8 @@ export function InteropPuyoBubbleMap({
     [topics, activityByRoom, m.base, m.max, m.refW, m.labelMargin]
   );
   const placements = useMemo(
-    () => computeAxisPlacements(topics, topicPositions ?? DEFAULT_TOPIC_AXIS, obstacles, placeRadii, m.ys),
-    [topics, topicPositions, obstacles, placeRadii, m.ys]
+    () => computeAxisPlacements(topics, topicPositions ?? DEFAULT_TOPIC_AXIS, obstacles, placeRadii, m.ys, m.yMin, m.yMax),
+    [topics, topicPositions, obstacles, placeRadii, m.ys, m.yMin, m.yMax]
   );
   // 関連カテゴリのノード接続線（座標が近いトピック同士を結ぶ）
   const connections = useMemo(() => {
@@ -772,27 +780,32 @@ export function InteropPuyoBubbleMap({
         }}
       >
 
-      {/* 2軸の線とラベル（現場↔制度 × 人間↔技術） */}
-      <div
-        className="pointer-events-none absolute"
-        style={{
-          left: `${AXIS_CX}%`, top: "9%", bottom: "13%", width: 1,
-          transform: "translateX(-50%)",
-          background: "linear-gradient(rgba(255,255,255,0.02), rgba(255,255,255,0.15) 30%, rgba(255,255,255,0.15) 70%, rgba(255,255,255,0.02))",
-        }}
-      />
-      <div
-        className="pointer-events-none absolute"
-        style={{
-          top: `${AXIS_CY}%`, left: "6%", right: "6%", height: 1,
-          transform: "translateY(-50%)",
-          background: "linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.15) 30%, rgba(255,255,255,0.15) 70%, rgba(255,255,255,0.02))",
-        }}
-      />
-      <span className="pointer-events-none absolute z-[5] -translate-x-1/2 whitespace-nowrap text-[11px] font-bold tracking-wide text-white/55" style={{ left: `${AXIS_CX}%`, top: "5.5%" }}>↑ {axisConfig.yTop}</span>
-      <span className="pointer-events-none absolute z-[5] -translate-x-1/2 whitespace-nowrap text-[11px] font-bold tracking-wide text-white/55" style={{ left: `${AXIS_CX}%`, bottom: "8.5%" }}>{axisConfig.yBottom} ↓</span>
-      <span className="pointer-events-none absolute z-[5] -translate-y-1/2 whitespace-nowrap text-[11px] font-bold tracking-wide text-white/55" style={{ top: `${AXIS_CY}%`, left: "1.5%" }}>← {axisConfig.xLeft}</span>
-      <span className="pointer-events-none absolute z-[5] -translate-y-1/2 whitespace-nowrap text-[11px] font-bold tracking-wide text-white/55" style={{ top: `${AXIS_CY}%`, right: "1.5%" }}>{axisConfig.xRight} →</span>
+      {/* 2軸の線とラベル（現場↔制度 × 人間↔技術）。スマホは縦展開レイアウトと合わず
+          ゴチャつくため非表示。 */}
+      {!isMobile && (
+        <>
+          <div
+            className="pointer-events-none absolute"
+            style={{
+              left: `${AXIS_CX}%`, top: "9%", bottom: "13%", width: 1,
+              transform: "translateX(-50%)",
+              background: "linear-gradient(rgba(255,255,255,0.02), rgba(255,255,255,0.15) 30%, rgba(255,255,255,0.15) 70%, rgba(255,255,255,0.02))",
+            }}
+          />
+          <div
+            className="pointer-events-none absolute"
+            style={{
+              top: `${AXIS_CY}%`, left: "6%", right: "6%", height: 1,
+              transform: "translateY(-50%)",
+              background: "linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.15) 30%, rgba(255,255,255,0.15) 70%, rgba(255,255,255,0.02))",
+            }}
+          />
+          <span className="pointer-events-none absolute z-[5] -translate-x-1/2 whitespace-nowrap text-[11px] font-bold tracking-wide text-white/55" style={{ left: `${AXIS_CX}%`, top: "5.5%" }}>↑ {axisConfig.yTop}</span>
+          <span className="pointer-events-none absolute z-[5] -translate-x-1/2 whitespace-nowrap text-[11px] font-bold tracking-wide text-white/55" style={{ left: `${AXIS_CX}%`, bottom: "8.5%" }}>{axisConfig.yBottom} ↓</span>
+          <span className="pointer-events-none absolute z-[5] -translate-y-1/2 whitespace-nowrap text-[11px] font-bold tracking-wide text-white/55" style={{ top: `${AXIS_CY}%`, left: "1.5%" }}>← {axisConfig.xLeft}</span>
+          <span className="pointer-events-none absolute z-[5] -translate-y-1/2 whitespace-nowrap text-[11px] font-bold tracking-wide text-white/55" style={{ top: `${AXIS_CY}%`, right: "1.5%" }}>{axisConfig.xRight} →</span>
+        </>
+      )}
 
       {/* 関連カテゴリのノード接続線 */}
       <svg className="pointer-events-none absolute inset-0 z-[4] h-full w-full">
