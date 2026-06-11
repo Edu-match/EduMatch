@@ -26,6 +26,7 @@ import {
 import type { InteropActivityStats } from "@/lib/interop-activity";
 import type { InteropPriorityTopic } from "@/lib/interop-priority-topics";
 import type { InteropThemeMode } from "@/lib/interop-settings";
+import type { AxisConfig, AxisPoint } from "@/lib/interop-topic-axis";
 
 const ICONS: Record<string, LucideIcon> = {
   information: Info,
@@ -158,6 +159,14 @@ export function InteropExplorer({
   const [activityByCategory, setActivityByCategory] = useState<Map<string, InteropActivityStats>>(initialMaps.catMap);
   const [activityByRoom, setActivityByRoom] = useState<Map<string, InteropActivityStats>>(initialMaps.roomMap);
   const [activityByTopic, setActivityByTopic] = useState<Map<string, InteropActivityStats>>(initialMaps.topicMap);
+  // 2軸（DB由来。AIが日次で座標・週次で軸を更新）
+  const [axis, setAxis] = useState<{ config?: AxisConfig; positions?: Record<number, AxisPoint> }>({});
+  useEffect(() => {
+    fetch("/api/interop/axis")
+      .then((r) => r.json())
+      .then((d) => setAxis({ config: d.config ?? undefined, positions: d.positions ?? undefined }))
+      .catch(() => {});
+  }, []);
 
   const interopCat = useMemo(
     () =>
@@ -275,6 +284,8 @@ export function InteropExplorer({
           <InteropPuyoBubbleMap
             interopCat={interopCat}
             activityByRoom={activityByRoom}
+            axisConfig={axis.config}
+            topicPositions={axis.positions}
             iconFor={iconFor}
             onSelectCategory={handleSelectFromMap}
             onSelectTopic={handleSelectTopic}

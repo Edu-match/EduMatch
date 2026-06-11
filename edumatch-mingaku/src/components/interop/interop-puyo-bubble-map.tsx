@@ -11,7 +11,7 @@ import type { InteropCategory } from "@/components/interop/interop-category-bubb
 import { ForumHotFlame } from "@/components/community/forum-hot-flame";
 import type { InteropActivityStats } from "@/lib/interop-activity";
 import { computePuyoIntensity, INTEROP_PUYO_CSS, puyoAnimationStyle } from "@/lib/interop-puyopuyo";
-import { DEFAULT_AXIS_CONFIG, DEFAULT_TOPIC_AXIS, type AxisPoint } from "@/lib/interop-topic-axis";
+import { DEFAULT_AXIS_CONFIG, DEFAULT_TOPIC_AXIS, type AxisConfig, type AxisPoint } from "@/lib/interop-topic-axis";
 import { useEffect, useMemo, useState } from "react";
 
 type GroupStyleEntry = {
@@ -126,8 +126,6 @@ function computeAxisPlacements(
   });
 }
 
-const SORTED_TOPICS: InteropPriorityTopic[] = sortTopicsForBurst(INTEROP_PRIORITY_TOPICS);
-const DESKTOP_PLACEMENTS: Placement[] = computeAxisPlacements(SORTED_TOPICS, DEFAULT_TOPIC_AXIS);
 
 /** 全玉の投稿数から「炎=全体平均より上」「拡大=上位5」を判定するためのランキング */
 function computeBubbleRanking(
@@ -559,12 +557,16 @@ function MobileBubbleMap({
 export function InteropPuyoBubbleMap({
   interopCat,
   activityByRoom,
+  axisConfig = DEFAULT_AXIS_CONFIG,
+  topicPositions,
   onSelectCategory,
   onSelectTopic,
   iconFor,
 }: {
   interopCat: InteropCategory | undefined;
   activityByRoom: Map<string, InteropActivityStats>;
+  axisConfig?: AxisConfig;
+  topicPositions?: Record<number, AxisPoint>;
   onSelectCategory: (cat: InteropCategory) => void;
   onSelectTopic: (topic: InteropPriorityTopic) => void;
   iconFor: (slug: string) => LucideIcon;
@@ -573,6 +575,26 @@ export function InteropPuyoBubbleMap({
   const InteropIcon = interopCat ? iconFor(interopCat.slug) : Network;
   const isMobile = useIsMobile();
   const ranking = useMemo(() => computeBubbleRanking(topics, activityByRoom), [topics, activityByRoom]);
+  const placements = useMemo(
+    () => computeAxisPlacements(topics, topicPositions ?? DEFAULT_TOPIC_AXIS),
+    [topics, topicPositions]
+  );
+  // 関連カテゴリのノード接続線（座標が近いトピック同士を結ぶ）
+  const connections = useMemo(() => {
+    const pts = placements.map((p) => p.pos);
+    const res: Array<{ a: [number, number]; b: [number, number] }> = [];
+    for (let i = 0; i < pts.length; i++) {
+      const near = pts
+        .map((q, j) => ({ j, d: Math.hypot(q[0] - pts[i][0], (q[1] - pts[i][1]) * 0.55) }))
+        .filter((x) => x.j !== i)
+        .sort((a, b) => a.d - b.d)
+        .slice(0, 2);
+      for (const n of near) {
+        if (n.j > i && n.d < 22) res.push({ a: pts[i], b: pts[n.j] });
+      }
+    }
+    return res;
+  }, [placements]);
 
   // 自動コメント吹き出し（来場者向けの賑わい演出・ユーザー操作なし）
   const [comments, setComments] = useState<Array<{ roomId: string; body: string; authorName: string }>>([]);
@@ -594,7 +616,7 @@ export function InteropPuyoBubbleMap({
     const tick = () => {
       const c = comments[Math.floor(Math.random() * comments.length)];
       const idx = topics.findIndex((t) => t.roomId === c.roomId);
-      const pos = idx >= 0 ? DESKTOP_PLACEMENTS[idx]?.pos : undefined;
+      const pos = idx >= 0 ? placements[idx]?.pos : undefined;
       if (!pos) return;
       const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
       setPopups((prev) => [...prev.slice(-2), { id, body: c.body, author: c.authorName, pos }]);
@@ -602,7 +624,7 @@ export function InteropPuyoBubbleMap({
     };
     const interval = window.setInterval(tick, 2600);
     return () => window.clearInterval(interval);
-  }, [comments, isMobile, topics]);
+  }, [comments, isMobile, topics, placements]);
 
   // モバイルは専用UI（縦スクロールの分類セクション）
   if (isMobile) {
@@ -618,7 +640,6 @@ export function InteropPuyoBubbleMap({
     );
   }
 
-  const placements = DESKTOP_PLACEMENTS;
   const bubbleSize = BUBBLE_SIZE_DESKTOP;
   const centerSize = CENTER_SIZE_DESKTOP;
 
@@ -643,10 +664,25 @@ export function InteropPuyoBubbleMap({
           background: "linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.15) 30%, rgba(255,255,255,0.15) 70%, rgba(255,255,255,0.02))",
         }}
       />
-      <span className="pointer-events-none absolute z-[5] -translate-x-1/2 whitespace-nowrap text-[11px] font-bold tracking-wide text-white/55" style={{ left: `${AXIS_CX}%`, top: "5.5%" }}>↑ {DEFAULT_AXIS_CONFIG.yTop}</span>
-      <span className="pointer-events-none absolute z-[5] -translate-x-1/2 whitespace-nowrap text-[11px] font-bold tracking-wide text-white/55" style={{ left: `${AXIS_CX}%`, bottom: "8.5%" }}>{DEFAULT_AXIS_CONFIG.yBottom} ↓</span>
-      <span className="pointer-events-none absolute z-[5] -translate-y-1/2 whitespace-nowrap text-[11px] font-bold tracking-wide text-white/55" style={{ top: `${AXIS_CY}%`, left: "1.5%" }}>← {DEFAULT_AXIS_CONFIG.xLeft}</span>
-      <span className="pointer-events-none absolute z-[5] -translate-y-1/2 whitespace-nowrap text-[11px] font-bold tracking-wide text-white/55" style={{ top: `${AXIS_CY}%`, right: "1.5%" }}>{DEFAULT_AXIS_CONFIG.xRight} →</span>
+      <span className="pointer-events-none absolute z-[5] -translate-x-1/2 whitespace-nowrap text-[11px] font-bold tracking-wide text-white/55" style={{ left: `${AXIS_CX}%`, top: "5.5%" }}>↑ {axisConfig.yTop}</span>
+      <span className="pointer-events-none absolute z-[5] -translate-x-1/2 whitespace-nowrap text-[11px] font-bold tracking-wide text-white/55" style={{ left: `${AXIS_CX}%`, bottom: "8.5%" }}>{axisConfig.yBottom} ↓</span>
+      <span className="pointer-events-none absolute z-[5] -translate-y-1/2 whitespace-nowrap text-[11px] font-bold tracking-wide text-white/55" style={{ top: `${AXIS_CY}%`, left: "1.5%" }}>← {axisConfig.xLeft}</span>
+      <span className="pointer-events-none absolute z-[5] -translate-y-1/2 whitespace-nowrap text-[11px] font-bold tracking-wide text-white/55" style={{ top: `${AXIS_CY}%`, right: "1.5%" }}>{axisConfig.xRight} →</span>
+
+      {/* 関連カテゴリのノード接続線 */}
+      <svg className="pointer-events-none absolute inset-0 z-[4] h-full w-full">
+        {connections.map((c, i) => (
+          <line
+            key={i}
+            x1={`${c.a[0]}%`}
+            y1={`${c.a[1]}%`}
+            x2={`${c.b[0]}%`}
+            y2={`${c.b[1]}%`}
+            stroke="rgba(180,200,255,0.12)"
+            strokeWidth={1}
+          />
+        ))}
+      </svg>
 
       {topics.map((topic, i) => {
         const place = placements[i] ?? { pos: [50, 50] as [number, number], dir: [0, 1] as [number, number] };

@@ -7,6 +7,14 @@
     {
       "path": "/api/cron/forum-category-content-sync",
       "schedule": "10 15 * * *"
+    },
+    {
+      "path": "/api/cron/interop-axis-positions",
+      "schedule": "0 18 * * *"
+    },
+    {
+      "path": "/api/cron/interop-axis-config",
+      "schedule": "0 19 * * 0"
     }
   ]
 }
