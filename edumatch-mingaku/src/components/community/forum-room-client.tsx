@@ -24,6 +24,7 @@ import {
   Plus,
   Quote,
   Save,
+  Send,
   Sparkles,
   Strikethrough,
   Underline,
@@ -1113,6 +1114,25 @@ function NewPostComposer({
     return () => window.removeEventListener("edumatch:forum-draft-created", fillDraftFromChat);
   }, [roomId]);
 
+  // 特設(来場者)はサテライト掲示板と同じ「ニックネーム/肩書き」をローカルに共有・自動入力
+  useEffect(() => {
+    if (!fromInterop) return;
+    try {
+      const n = localStorage.getItem("interop_author_name");
+      if (n) setCustomNickname(n);
+      const r = localStorage.getItem("interop_author_role");
+      if (r) setCustomTitle(r);
+    } catch { /* noop */ }
+  }, [fromInterop]);
+  const updateNickname = (v: string) => {
+    setCustomNickname(v);
+    try { localStorage.setItem("interop_author_name", v); } catch { /* noop */ }
+  };
+  const updateRole = (v: string) => {
+    setCustomTitle(v);
+    try { localStorage.setItem("interop_author_role", v); } catch { /* noop */ }
+  };
+
   const handleSubmit = async () => {
     if (!canSubmit) return;
     await onSubmit({
@@ -1139,6 +1159,63 @@ function NewPostComposer({
           <Button asChild className="gap-1.5">
             <Link href="/auth/login"><LogIn className="h-4 w-4" />ログインする</Link>
           </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // 特設(来場者)：3つのサテライト掲示板と同じ「下部バー」フォーマット
+  if (fromInterop) {
+    return (
+      <div
+        id="new-post"
+        ref={rootRef}
+        className="rounded-2xl px-3 py-3"
+        style={{
+          background: "rgba(8,11,32,0.92)",
+          border: "1px solid rgba(255,255,255,0.14)",
+          boxShadow: "0 12px 40px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.10)",
+        }}
+      >
+        <div className="flex items-end gap-2">
+          <div className="flex-1 space-y-2">
+            <div className="flex gap-2">
+              <input
+                value={customNickname}
+                onChange={(e) => updateNickname(e.target.value)}
+                placeholder="ニックネーム（必須）"
+                maxLength={30}
+                className="w-full rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-white/30 focus:outline-none"
+              />
+              <input
+                value={customTitle}
+                onChange={(e) => updateRole(e.target.value)}
+                placeholder="肩書き（必須）"
+                maxLength={40}
+                className="w-full rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-white/30 focus:outline-none"
+              />
+            </div>
+            <textarea
+              ref={textareaRef}
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") handleSubmit(); }}
+              placeholder="ひとこと書く…"
+              rows={2}
+              maxLength={MAX_BODY}
+              className="w-full resize-none rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-white/30 focus:outline-none"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={!canSubmit}
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-xl font-bold text-white transition disabled:opacity-40"
+            style={{ background: "linear-gradient(135deg, rgba(255,150,56,0.97) 0%, rgba(236,104,26,0.97) 100%)" }}
+            aria-label="投稿する"
+          >
+            {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+          </button>
         </div>
       </div>
     );
