@@ -424,6 +424,7 @@ function ReplyCard({
   roomAiDiscussion,
   replyIndex,
   onRequireLogin,
+  fromInterop = false,
 }: {
   reply: ForumReply & { isAi?: boolean };
   isAi?: boolean;
@@ -433,6 +434,7 @@ function ReplyCard({
   roomAiDiscussion?: boolean;
   replyIndex?: number;
   onRequireLogin: () => void;
+  fromInterop?: boolean;
 }) {
   const legacyAi =
     postAuthorName &&
@@ -481,22 +483,36 @@ function ReplyCard({
 
   return (
     <div className="relative pl-7">
-      <span aria-hidden className={`absolute left-3 top-0 bottom-0 w-px ${isAiReply ? "bg-violet-200" : "bg-muted"}`} />
-      <span aria-hidden className={`absolute left-2.5 top-5 h-1.5 w-1.5 rounded-full ${isAiReply ? "bg-violet-400" : "bg-muted-foreground/40"}`} />
+      <span
+        aria-hidden
+        className={`absolute left-3 top-0 bottom-0 w-px ${isAiReply ? "bg-violet-200" : fromInterop ? "bg-white/15" : "bg-muted"}`}
+      />
+      <span
+        aria-hidden
+        className={`absolute left-2.5 top-5 h-1.5 w-1.5 rounded-full ${isAiReply ? "bg-violet-400" : fromInterop ? "bg-white/35" : "bg-muted-foreground/40"}`}
+      />
       <div className="flex gap-3">
         <Avatar name={displayAuthorName} storedAuthorRole={reply.authorRole} isAi={isAiReply} size="sm" />
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2 mb-1">
-            <span className={`text-sm font-semibold ${isAiReply ? "text-violet-800" : ""}`}>{displayAuthorName}</span>
+            <span
+              className={`text-sm font-semibold ${isAiReply ? (fromInterop ? "text-violet-200" : "text-violet-800") : fromInterop ? "text-white" : ""}`}
+            >
+              {displayAuthorName}
+            </span>
             {isAiReply ? <AiBadge /> : <OccupationBadge storedAuthorRole={reply.authorRole} />}
             {!isAiReply && reply.aiKenteiPassed && <AiKenteiBadge />}
-            <span className="text-xs text-muted-foreground"><RelativeTime iso={reply.postedAt} /></span>
+            <span className={`text-xs ${fromInterop ? "text-white/50" : "text-muted-foreground"}`}>
+              <RelativeTime iso={reply.postedAt} />
+            </span>
           </div>
-          <p className="text-sm leading-7 whitespace-pre-wrap">{reply.body}</p>
+          <p className={`text-sm leading-7 whitespace-pre-wrap ${fromInterop ? "text-white/85" : "text-foreground"}`}>
+            {reply.body}
+          </p>
           <button
             type="button"
             onClick={toggleLike}
-            className={`mt-2 flex items-center gap-1 text-xs transition-colors ${liked ? "text-pink-500" : "text-muted-foreground hover:text-pink-500"}`}
+            className={`mt-2 flex items-center gap-1 text-xs transition-colors ${liked ? "text-pink-500" : fromInterop ? "text-white/50 hover:text-pink-400" : "text-muted-foreground hover:text-pink-500"}`}
           >
             <Heart className={`h-3.5 w-3.5 ${liked ? "fill-pink-500" : ""}`} />
             {likeCount}
@@ -524,6 +540,7 @@ function PostCardWithStream({
   organizationTypeOther,
   aiKenteiPassed,
   onRequireLogin,
+  fromInterop = false,
 }: {
   post: ForumPost;
   streamText: string | null;
@@ -539,6 +556,7 @@ function PostCardWithStream({
   organizationTypeOther?: string | null;
   aiKenteiPassed?: boolean;
   onRequireLogin: () => void;
+  fromInterop?: boolean;
 }) {
   const replyPreviewRole = forumRolePreviewFromProfile(organizationType, organizationTypeOther);
   const [liked, setLiked] = useState(false);
@@ -639,13 +657,34 @@ function PostCardWithStream({
   };
 
   return (
-    <div className={`overflow-hidden rounded-xl border bg-card shadow-xs transition-shadow hover:shadow-sm ${post.isPinned ? "border-amber-300 bg-amber-50/60 shadow-amber-100/60" : ""}`}>
+    <div
+      className={[
+        "overflow-hidden rounded-xl border shadow-xs transition-shadow hover:shadow-sm",
+        fromInterop
+          ? post.isPinned
+            ? "border-amber-400/40 bg-[#12182e]/92 backdrop-blur-md"
+            : "border-white/15 bg-[#0d1225]/88 backdrop-blur-md"
+          : post.isPinned
+            ? "border-amber-300 bg-amber-50/60 shadow-amber-100/60"
+            : "bg-card text-card-foreground",
+      ].join(" ")}
+    >
       {/* 注目バナー */}
       {post.isPinned && (
-        <div className="flex items-center gap-2 border-b border-amber-200 bg-amber-100/70 px-5 py-2">
+        <div
+          className={`flex items-center gap-2 border-b px-5 py-2 ${
+            fromInterop
+              ? "border-amber-400/30 bg-amber-500/15"
+              : "border-amber-200 bg-amber-100/70"
+          }`}
+        >
           <Pin className="h-3.5 w-3.5 fill-amber-500 text-amber-500" aria-hidden />
-          <span className="text-xs font-bold uppercase tracking-wider text-amber-700">注目</span>
-          <span className="ml-1 text-xs text-amber-600/80">運営ピックアップ</span>
+          <span className={`text-xs font-bold uppercase tracking-wider ${fromInterop ? "text-amber-200" : "text-amber-700"}`}>
+            注目
+          </span>
+          <span className={`ml-1 text-xs ${fromInterop ? "text-amber-200/80" : "text-amber-600/80"}`}>
+            運営ピックアップ
+          </span>
         </div>
       )}
 
@@ -680,12 +719,16 @@ function PostCardWithStream({
           <Avatar name={post.authorName} storedAuthorRole={post.authorRole} />
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2 mb-1">
-              <span className="text-sm font-semibold">{post.authorName}</span>
+              <span className={`text-sm font-semibold ${fromInterop ? "text-white" : ""}`}>{post.authorName}</span>
               <OccupationBadge storedAuthorRole={post.authorRole} />
               {post.aiKenteiPassed && <AiKenteiBadge />}
-              <span className="text-xs text-muted-foreground"><RelativeTime iso={post.postedAt} /></span>
+              <span className={`text-xs ${fromInterop ? "text-white/50" : "text-muted-foreground"}`}>
+                <RelativeTime iso={post.postedAt} />
+              </span>
             </div>
-            <p className="text-sm leading-7 whitespace-pre-wrap">{post.body}</p>
+            <p className={`text-sm leading-7 whitespace-pre-wrap ${fromInterop ? "text-white/90" : "text-foreground"}`}>
+              {post.body}
+            </p>
             {post.relatedArticleUrl && (
               <a href={post.relatedArticleUrl} target="_blank" rel="noopener noreferrer"
                 className="mt-2 inline-flex items-center gap-1 text-xs text-primary hover:underline">
@@ -693,20 +736,26 @@ function PostCardWithStream({
               </a>
             )}
             <div className="mt-3 flex items-center gap-4">
-              <button type="button" onClick={toggleLike}
-                className={`flex items-center gap-1 text-xs transition-colors ${liked ? "text-pink-500" : "text-muted-foreground hover:text-pink-500"}`}>
+              <button
+                type="button"
+                onClick={toggleLike}
+                className={`flex items-center gap-1 text-xs transition-colors ${liked ? "text-pink-500" : fromInterop ? "text-white/50 hover:text-pink-400" : "text-muted-foreground hover:text-pink-500"}`}
+              >
                 <Heart className={`h-3.5 w-3.5 ${liked ? "fill-pink-500" : ""}`} />
                 {likeCount}
               </button>
               {hasReplies || isStreaming ? (
-                <button type="button" onClick={() => setRepliesOpen((v) => !v)}
-                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                <button
+                  type="button"
+                  onClick={() => setRepliesOpen((v) => !v)}
+                  className={`flex items-center gap-1 text-xs transition-colors ${fromInterop ? "text-white/50 hover:text-white/85" : "text-muted-foreground hover:text-foreground"}`}
+                >
                   <MessageSquare className="h-3.5 w-3.5" />
                   {replies.length + (isStreaming ? 1 : 0)} 件の返信
                   {autoOpenReplies ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                 </button>
               ) : (
-                <span className="flex items-center gap-1 text-xs text-muted-foreground/60">
+                <span className={`flex items-center gap-1 text-xs ${fromInterop ? "text-white/40" : "text-muted-foreground/60"}`}>
                   <MessageSquare className="h-3.5 w-3.5" />返信 0
                 </span>
               )}
@@ -720,10 +769,14 @@ function PostCardWithStream({
         </div>
 
         {showReplyForm && (
-          <div className="mt-4 ml-12 overflow-hidden rounded-xl border bg-card">
-            <div className="flex items-center gap-2.5 border-b bg-muted/20 px-4 py-2.5">
+          <div
+            className={`mt-4 ml-12 overflow-hidden rounded-xl border ${fromInterop ? "border-white/15 bg-[#0d1225]/88 backdrop-blur-md" : "bg-card text-card-foreground"}`}
+          >
+            <div className={`flex items-center gap-2.5 border-b px-4 py-2.5 ${fromInterop ? "border-white/12 bg-white/5" : "bg-muted/20"}`}>
               <UserAvatar name={isAnonReply ? "匿名" : (isLoggedIn ? userName : "ゲスト")} avatarUrl={isAnonReply ? null : avatarUrl} size={26} isAnon={isAnonReply} />
-              <span className="text-xs font-medium text-foreground">{isAnonReply ? "匿名ユーザー" : (isLoggedIn ? userName : "ゲスト")}</span>
+              <span className={`text-xs font-medium ${fromInterop ? "text-white/85" : "text-foreground"}`}>
+                {isAnonReply ? "匿名ユーザー" : (isLoggedIn ? userName : "ゲスト")}
+              </span>
               {!isAnonReply && (
                 <>
                   <span className="text-muted-foreground/40">·</span>
@@ -748,10 +801,10 @@ function PostCardWithStream({
               onChange={(e) => setReplyText(e.target.value)}
               placeholder="返信を入力…"
               rows={3}
-              className="w-full resize-none bg-transparent px-4 py-3 text-sm leading-6 outline-none placeholder:text-muted-foreground/50"
+              className={`w-full resize-none bg-transparent px-4 py-3 text-sm leading-6 outline-none ${fromInterop ? "text-white placeholder:text-white/35" : "placeholder:text-muted-foreground/50"}`}
               autoFocus
             />
-            <div className="flex items-center justify-end gap-2 border-t bg-muted/20 px-4 py-2">
+            <div className={`flex items-center justify-end gap-2 border-t px-4 py-2 ${fromInterop ? "border-white/12 bg-white/[0.03]" : "bg-muted/20"}`}>
               <Button variant="ghost" size="sm" onClick={() => { setShowReplyForm(false); setReplyText(""); }} className="h-7 text-xs">キャンセル</Button>
               <Button size="sm" onClick={submitReply} disabled={!canSubmitReply} className="h-7 rounded-full px-4 text-xs gap-1.5">
                 {submittingReply && <Loader2 className="h-3 w-3 animate-spin" />}
@@ -764,7 +817,7 @@ function PostCardWithStream({
 
       {/* 返信 + AIストリーミング */}
       {(autoOpenReplies && (hasReplies || isStreaming)) && (
-        <div className="border-t bg-muted/10 px-5 py-4 space-y-4">
+        <div className={`border-t px-5 py-4 space-y-4 ${fromInterop ? "border-white/12 bg-white/[0.03]" : "bg-muted/10"}`}>
           {replies.map((reply, replyIndex) => (
             <ReplyCard
               key={reply.id}
@@ -776,6 +829,7 @@ function PostCardWithStream({
               roomAiDiscussion={aiDiscussion}
               replyIndex={replyIndex}
               onRequireLogin={onRequireLogin}
+              fromInterop={fromInterop}
             />
           ))}
           {isStreaming && streamText !== null && (
@@ -1418,8 +1472,10 @@ export function ForumRoomClient({
                     </span>
                   )}
                 </div>
-                <p className="mt-1 text-sm text-muted-foreground">{room.description}</p>
-                <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                <p className={`mt-1 text-sm ${fromInterop ? "text-white/65" : "text-muted-foreground"}`}>
+                  {room.description}
+                </p>
+                <div className={`mt-2 flex flex-wrap items-center gap-3 text-xs ${fromInterop ? "text-white/50" : "text-muted-foreground"}`}>
                   <span className="flex items-center gap-1"><MessageSquare className="h-3.5 w-3.5" />{posts.length} 投稿</span>
                   <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{room.participantCount} 人参加</span>
                 </div>
@@ -1492,7 +1548,7 @@ export function ForumRoomClient({
           {/* 投稿一覧 */}
           {loading ? (
             <div className="flex items-center justify-center py-16">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <Loader2 className={`h-8 w-8 animate-spin ${fromInterop ? "text-white/50" : "text-muted-foreground"}`} />
             </div>
           ) : (
             <div className="space-y-6">
@@ -1516,6 +1572,7 @@ export function ForumRoomClient({
                       organizationTypeOther={auth.organizationTypeOther}
                       aiKenteiPassed={auth.aiKenteiPassed}
                       onRequireLogin={requireLogin}
+                      fromInterop={fromInterop}
                     />
                   ))}
                 </div>
@@ -1524,7 +1581,9 @@ export function ForumRoomClient({
               {/* ソート＋通常投稿 */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm text-muted-foreground">{regularPosts.length} 件の投稿</p>
+                  <p className={`text-sm ${fromInterop ? "text-white/60" : "text-muted-foreground"}`}>
+                    {regularPosts.length} 件の投稿
+                  </p>
                   <Tabs value={sort} onValueChange={(v) => setSort(v as SortKey)}>
                     <TabsList className="h-8">
                       <TabsTrigger value="newest" className="h-6 px-3 text-xs">新着順</TabsTrigger>
@@ -1534,11 +1593,17 @@ export function ForumRoomClient({
                 </div>
 
                 {regularPosts.length === 0 ? (
-                  <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed bg-muted/20 py-16 text-center">
-                    <MessageSquare className="h-12 w-12 text-muted-foreground/30" />
+                  <div
+                    className={`flex flex-col items-center gap-4 rounded-xl border border-dashed py-16 text-center ${
+                      fromInterop ? "border-white/20 bg-white/[0.04]" : "bg-muted/20"
+                    }`}
+                  >
+                    <MessageSquare className={`h-12 w-12 ${fromInterop ? "text-white/25" : "text-muted-foreground/30"}`} />
                     <div>
-                      <p className="text-base font-medium">まだ投稿がありません</p>
-                      <p className="mt-1 text-sm text-muted-foreground">最初の投稿者になりましょう</p>
+                      <p className={`text-base font-medium ${fromInterop ? "text-white/85" : ""}`}>まだ投稿がありません</p>
+                      <p className={`mt-1 text-sm ${fromInterop ? "text-white/55" : "text-muted-foreground"}`}>
+                        最初の投稿者になりましょう
+                      </p>
                     </div>
                   </div>
                 ) : (
@@ -1560,6 +1625,7 @@ export function ForumRoomClient({
                         organizationTypeOther={auth.organizationTypeOther}
                         aiKenteiPassed={auth.aiKenteiPassed}
                         onRequireLogin={requireLogin}
+                        fromInterop={fromInterop}
                       />
                     ))}
                   </div>
