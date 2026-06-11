@@ -528,18 +528,34 @@ export function InteropPuyoBubbleMap({
       zoomAt(factor, e.clientX, e.clientY);
     };
     const prevent = (e: TouchEvent) => { if (dragRef.current.active || pointersRef.current.size >= 2) e.preventDefault(); };
+    // コンテナ外でドラッグを離したときのフォールバック（capture 不使用のため）。
+    // コンテナ内での解放は React の onPointerUp が処理するので二重処理しない。
+    const endOutside = (ev: PointerEvent) => {
+      if (el.contains(ev.target as Node)) return;
+      if (dragRef.current.moved > 8) wasDragRef.current = true;
+      dragRef.current.active = false;
+      pointersRef.current.clear();
+      pinchRef.current = null;
+      setGrabbing(false);
+    };
     el.addEventListener("wheel", onWheel, { passive: false });
     el.addEventListener("touchmove", prevent, { passive: false });
+    window.addEventListener("pointerup", endOutside);
+    window.addEventListener("pointercancel", endOutside);
     return () => {
       el.removeEventListener("wheel", onWheel);
       el.removeEventListener("touchmove", prevent);
+      window.removeEventListener("pointerup", endOutside);
+      window.removeEventListener("pointercancel", endOutside);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const onPointerDown = (e: React.PointerEvent) => {
     pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    // ★setPointerCapture は使わない：コンテナがポインタを捕捉すると click が
+    //   コンテナへリターゲットされ、子の玉ボタンの onClick が発火しない（＝押しても入れない）。
+    //   pan は子要素からバブリングする pointermove で問題なく動く。
     if (pointersRef.current.size === 1) {
       dragRef.current = { active: true, lastX: e.clientX, lastY: e.clientY, moved: 0 };
       // 新しいジェスチャ開始ごとにドラッグ判定をリセット（前回のドラッグ後にクリックが
