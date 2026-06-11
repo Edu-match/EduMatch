@@ -8,7 +8,7 @@ import {
   type InteropPriorityTopic,
 } from "@/lib/interop-priority-topics";
 import type { InteropCategory } from "@/components/interop/interop-category-bubble-map";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type GroupStyleEntry = {
   bg: string;
@@ -89,39 +89,38 @@ function hexCluster(n: number): [number, number][] {
   return raw.slice(0, n).map((p) => [p.x, p.y] as [number, number]);
 }
 
-// 各教科F(12)は横長2段（上段=上ラベル・下段=下ラベルに分離して重なりを防ぐ）
+// 各教科F(12)：PC=横長2段（上段=上ラベル・下段=下ラベル）
 function fRows(): [number, number][] {
   const pts: [number, number][] = [];
   for (let i = 0; i < 6; i++) pts.push([i - 2.5, -0.55]);
   for (let i = 0; i < 6; i++) pts.push([i - 2.5 + 0.5, 0.55]);
   return pts;
 }
-
-// 少数個は列にならないよう手動で塊の形を指定
-const SHAPE: Record<number, [number, number][]> = {
-  2: [[-0.42, -0.32], [0.42, 0.32]],                              // 斜め2個
-  4: [[0, -0.62], [-0.56, 0.24], [0.56, 0.24], [0, 0.92]],        // ひし形の4連塊
-  12: fRows(),                                                    // 各教科：横長2段
+const SHAPE_DESKTOP: Record<number, [number, number][]> = {
+  2: [[-0.42, -0.32], [0.42, 0.32]],
+  4: [[0, -0.62], [-0.56, 0.24], [0.56, 0.24], [0, 0.92]],
+  12: fRows(),
 };
 
-// 各分類のクラスター中心（中心インタロップ=50,46 を囲むように配置）
-const CLUSTER_CENTER: Record<string, { c: [number, number]; n: number; sx: number; sy: number }> = {
+type Clusters = Record<string, { c: [number, number]; n: number; sx: number; sy: number }>;
+
+// PC：中心インタロップ(50,46)を囲む四隅＋下＋下中央の大塊
+const DESKTOP_CLUSTERS: Clusters = {
   A: { c: [21, 29], n: 4, sx: 6.0, sy: 10.2 },  // 左上：AI・テク
   B: { c: [79, 29], n: 4, sx: 6.0, sy: 10.2 },  // 右上：評価・学習
   C: { c: [13, 58], n: 4, sx: 6.0, sy: 10.2 },  // 左下：権利・規律
   D: { c: [89, 52], n: 2, sx: 6.0, sy: 10.2 },  // 右：多様性
   E: { c: [32, 83], n: 2, sx: 6.0, sy: 10.2 },  // 下：教師・学校
-  F: { c: [58, 72], n: 12, sx: 7.8, sy: 9.0 },  // 下中央の大塊：各教科（横長に展開）
+  F: { c: [58, 72], n: 12, sx: 7.8, sy: 9.0 },  // 下中央の大塊：各教科
 };
-
 type Placement = { pos: [number, number]; dir: [number, number] };
 
 // sortTopicsForBurst 順 = A×4, B×4, C×4, D×2, E×2, F×12 に対応
-function buildPlacements(): Placement[] {
+function buildPlacements(clusters: Clusters, shape: Record<number, [number, number][]>): Placement[] {
   const result: Placement[] = [];
   for (const g of ["A", "B", "C", "D", "E", "F"] as const) {
-    const { c, n, sx, sy } = CLUSTER_CENTER[g];
-    const offs = SHAPE[n] ?? hexCluster(n);
+    const { c, n, sx, sy } = clusters[g];
+    const offs = shape[n] ?? hexCluster(n);
     // 塊の重心を原点に合わせてからクラスター中心へ
     const mx = offs.reduce((s, o) => s + o[0], 0) / offs.length;
     const my = offs.reduce((s, o) => s + o[1], 0) / offs.length;
@@ -138,7 +137,7 @@ function buildPlacements(): Placement[] {
   return result;
 }
 
-const PLACEMENTS: Placement[] = buildPlacements();
+const DESKTOP_PLACEMENTS: Placement[] = buildPlacements(DESKTOP_CLUSTERS, SHAPE_DESKTOP);
 
 const PUYO_CSS = `
 @keyframes puyoAnim {
@@ -159,22 +158,38 @@ const PUYO_CSS = `
 }
 `;
 
-const BUBBLE_SIZE = 64;
-const CENTER_SIZE = 132;
+const BUBBLE_SIZE_DESKTOP = 64;
+const CENTER_SIZE_DESKTOP = 132;
+
+function useIsMobile(): boolean {
+  const [mobile, setMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 640px)");
+    const update = () => setMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return mobile;
+}
 
 function PuyoBubble({
   topic,
   pos,
   dir,
   index,
+  bubbleSize,
   onActivate,
 }: {
   topic: InteropPriorityTopic;
   pos: [number, number];
   dir: [number, number];
   index: number;
+  bubbleSize: number;
   onActivate: () => void;
 }) {
+  const iconSize = Math.round(bubbleSize * 0.42);
+  const labelFont = bubbleSize < 56 ? 9.5 : 11;
   const sty = GROUP_STYLE[topic.major] ?? GROUP_STYLE.F;
   const { Icon } = sty;
   const dur = 7 + ((topic.no * 13 + index * 9) % 60) / 10;
@@ -199,8 +214,8 @@ function PuyoBubble({
       style={{
         left: `${pos[0]}%`,
         top: `${pos[1]}%`,
-        width: BUBBLE_SIZE,
-        height: BUBBLE_SIZE,
+        width: bubbleSize,
+        height: bubbleSize,
         animation: `puyoAnim ${dur}s ease-in-out ${delay}s infinite`,
       }}
       aria-label={topic.category}
@@ -247,7 +262,7 @@ function PuyoBubble({
         {/* Center icon */}
         <Icon
           className="relative z-10"
-          style={{ width: 27, height: 27, color: sty.glow, opacity: 0.95, filter: `drop-shadow(0 0 4px ${sty.glow}88)` }}
+          style={{ width: iconSize, height: iconSize, color: sty.glow, opacity: 0.95, filter: `drop-shadow(0 0 4px ${sty.glow}88)` }}
           strokeWidth={1.7}
         />
       </span>
@@ -258,9 +273,9 @@ function PuyoBubble({
         style={{
           ...labelPos,
           width: "max-content",
-          maxWidth: 116,
+          maxWidth: bubbleSize < 56 ? 92 : 116,
           zIndex: 40,
-          fontSize: "11px",
+          fontSize: `${labelFont}px`,
           fontWeight: 700,
           lineHeight: 1.3,
           color: "rgba(255,255,255,0.98)",
@@ -302,6 +317,113 @@ function GroupChip({ label, sty }: { label: string; sty: GroupStyleEntry }) {
   );
 }
 
+// ───────────────── モバイル専用UI ─────────────────
+
+function MobilePuyoCard({ topic, onActivate }: { topic: InteropPriorityTopic; onActivate: () => void }) {
+  const sty = GROUP_STYLE[topic.major] ?? GROUP_STYLE.F;
+  const { Icon } = sty;
+  return (
+    <button
+      type="button"
+      onClick={onActivate}
+      className="flex flex-col items-center gap-1.5 transition-transform focus:outline-none active:scale-95"
+    >
+      <span
+        className="relative grid h-[60px] w-[60px] place-items-center rounded-full"
+        style={{
+          background: sty.bg,
+          border: `1.5px solid ${sty.border}`,
+          boxShadow: `0 0 16px ${sty.glow}33, 0 4px 12px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.6)`,
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+        }}
+      >
+        <span
+          className="pointer-events-none absolute rounded-full"
+          style={{ top: "10%", left: "14%", width: "42%", height: "32%", background: sty.shine, filter: "blur(3px)", opacity: 0.55 }}
+        />
+        <Icon style={{ width: 24, height: 24, color: sty.glow, opacity: 0.95, filter: `drop-shadow(0 0 3px ${sty.glow}77)` }} strokeWidth={1.7} />
+      </span>
+      <span
+        className="text-center text-[10.5px] font-semibold leading-tight text-white/95"
+        style={{ wordBreak: "keep-all", overflowWrap: "anywhere" }}
+      >
+        {topic.category}
+      </span>
+    </button>
+  );
+}
+
+/** モバイル：縦スクロールの分類セクション（玉ビジュアルは維持しつつ一覧性・タップ性を最優先） */
+function MobileBubbleMap({
+  interopCat,
+  onSelectCategory,
+  onSelectTopic,
+  iconFor,
+}: {
+  interopCat: InteropCategory | undefined;
+  onSelectCategory: (cat: InteropCategory) => void;
+  onSelectTopic: (topic: InteropPriorityTopic) => void;
+  iconFor: (slug: string) => LucideIcon;
+}) {
+  const groups = useMemo(() => {
+    const m: Record<string, InteropPriorityTopic[]> = {};
+    for (const t of sortTopicsForBurst(INTEROP_PRIORITY_TOPICS)) (m[t.major] ??= []).push(t);
+    return m;
+  }, []);
+  const InteropIcon = interopCat ? iconFor(interopCat.slug) : Network;
+
+  return (
+    <div className="absolute inset-0 overflow-y-auto overflow-x-hidden">
+      <div className="px-4 pb-28 pt-[4.75rem]">
+        {/* 中心インタロップ（大バナー） */}
+        {interopCat && (
+          <button
+            type="button"
+            onClick={() => onSelectCategory(interopCat)}
+            className="relative mb-6 flex w-full items-center gap-3 rounded-3xl px-4 py-3.5 text-left transition-transform focus:outline-none active:scale-[0.98]"
+            style={{
+              background:
+                "radial-gradient(circle at 24% 24%, rgba(255,255,255,0.96) 0%, rgba(218,228,255,0.86) 42%, rgba(150,172,255,0.80) 100%)",
+              border: "2px solid rgba(200,218,255,0.8)",
+              boxShadow: "0 0 28px rgba(130,160,255,0.45), 0 8px 22px rgba(0,0,0,0.25)",
+            }}
+          >
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white/70">
+              <InteropIcon className="h-6 w-6 text-[#1a3a8a]" strokeWidth={1.9} />
+            </span>
+            <span className="flex flex-col">
+              <span className="text-[15px] font-bold text-[#13245e]">インタロップ</span>
+              <span className="text-[11px] font-medium text-[#3a4a8a]">展示・セミナー・ご意見はこちら</span>
+            </span>
+          </button>
+        )}
+
+        {/* 分類セクション */}
+        {(["A", "B", "C", "D", "E", "F"] as const).map((major) => {
+          const sty = GROUP_STYLE[major];
+          const list = groups[major] ?? [];
+          if (!list.length) return null;
+          return (
+            <section key={major} className="mb-5">
+              <div className="mb-3 flex items-center gap-2">
+                <span className="inline-block h-3 w-3 rounded-full" style={{ background: sty.glow, boxShadow: `0 0 8px ${sty.glow}` }} />
+                <h3 className="text-[15px] font-bold text-white">{sty.label}</h3>
+                <span className="text-[11px] text-white/45">{list.length}件</span>
+              </div>
+              <div className="grid grid-cols-3 gap-x-2 gap-y-4">
+                {list.map((topic) => (
+                  <MobilePuyoCard key={topic.no} topic={topic} onActivate={() => onSelectTopic(topic)} />
+                ))}
+              </div>
+            </section>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /** トップ：28ぷよぷよ玉 + 中心インタロップ（中心から放射状配置） */
 export function InteropPuyoBubbleMap({
   interopCat,
@@ -316,13 +438,30 @@ export function InteropPuyoBubbleMap({
 }) {
   const topics = useMemo(() => sortTopicsForBurst(INTEROP_PRIORITY_TOPICS), []);
   const InteropIcon = interopCat ? iconFor(interopCat.slug) : Network;
+  const isMobile = useIsMobile();
+
+  // モバイルは専用UI（縦スクロールの分類セクション）
+  if (isMobile) {
+    return (
+      <MobileBubbleMap
+        interopCat={interopCat}
+        onSelectCategory={onSelectCategory}
+        onSelectTopic={onSelectTopic}
+        iconFor={iconFor}
+      />
+    );
+  }
+
+  const placements = DESKTOP_PLACEMENTS;
+  const bubbleSize = BUBBLE_SIZE_DESKTOP;
+  const centerSize = CENTER_SIZE_DESKTOP;
 
   return (
     <div className="absolute inset-0 overflow-hidden">
       <style>{PUYO_CSS}</style>
 
       {topics.map((topic, i) => {
-        const place = PLACEMENTS[i] ?? { pos: [50, 50] as [number, number], dir: [0, 1] as [number, number] };
+        const place = placements[i] ?? { pos: [50, 50] as [number, number], dir: [0, 1] as [number, number] };
         return (
           <PuyoBubble
             key={topic.no}
@@ -330,6 +469,7 @@ export function InteropPuyoBubbleMap({
             pos={place.pos}
             dir={place.dir}
             index={i}
+            bubbleSize={bubbleSize}
             onActivate={() => onSelectTopic(topic)}
           />
         );
@@ -342,9 +482,9 @@ export function InteropPuyoBubbleMap({
           className="group absolute focus:outline-none"
           style={{
             left: "50%",
-            top: "46%",
-            width: CENTER_SIZE,
-            height: CENTER_SIZE,
+            top: isMobile ? "30%" : "46%",
+            width: centerSize,
+            height: centerSize,
             zIndex: 20,
             animation: `centerPulse 8s ease-in-out infinite`,
           }}
@@ -354,8 +494,8 @@ export function InteropPuyoBubbleMap({
           <span
             className="pointer-events-none absolute left-1/2 top-1/2 rounded-full"
             style={{
-              width: CENTER_SIZE,
-              height: CENTER_SIZE,
+              width: centerSize,
+              height: centerSize,
               border: "2px solid rgba(170,200,255,0.55)",
               animation: "centerRing 3.6s ease-out infinite",
             }}
@@ -363,8 +503,8 @@ export function InteropPuyoBubbleMap({
           <span
             className="pointer-events-none absolute left-1/2 top-1/2 rounded-full"
             style={{
-              width: CENTER_SIZE,
-              height: CENTER_SIZE,
+              width: centerSize,
+              height: centerSize,
               border: "2px solid rgba(170,200,255,0.45)",
               animation: "centerRing 3.6s ease-out 1.8s infinite",
             }}

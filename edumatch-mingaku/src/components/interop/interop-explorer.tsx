@@ -227,7 +227,7 @@ export function InteropExplorer({
             onSelectCategory={handleSelectFromMap}
             onSelectTopic={handleSelectTopic}
           />
-          <div className="pointer-events-none absolute inset-x-0 top-16 z-20 flex justify-center px-4 sm:top-20">
+          <div className="pointer-events-none absolute inset-x-0 top-16 z-20 hidden justify-center px-4 sm:top-20 sm:flex">
             <div
               className="flex items-center gap-2 rounded-full px-4 py-2 text-center text-[12px] font-medium text-white/90 sm:text-sm"
               style={{
