@@ -11,6 +11,7 @@ import type { InteropCategory } from "@/components/interop/interop-category-bubb
 import { ForumHotFlame } from "@/components/community/forum-hot-flame";
 import type { InteropActivityStats } from "@/lib/interop-activity";
 import { computePuyoIntensity, INTEROP_PUYO_CSS, puyoAnimationStyle } from "@/lib/interop-puyopuyo";
+import { DEFAULT_AXIS_CONFIG, DEFAULT_TOPIC_AXIS, type AxisPoint } from "@/lib/interop-topic-axis";
 import { useEffect, useMemo, useState } from "react";
 
 type GroupStyleEntry = {
@@ -74,73 +75,59 @@ const GROUP_STYLE: Record<string, GroupStyleEntry> = {
   },
 };
 
-// ── 配置：各分類を「密集した塊（ぷよの房）」として中心インタロップの周りに散らす ──
-// オフセットはバブル径基準（=1）。各塊ごとに sx/sy で画面%へ変換（縦横比・形状補正）。
-
-// 六角パッキングで n 個を中心から近い順に詰めた塊（円のリングではなく中身の詰まった塊）
-function hexCluster(n: number): [number, number][] {
-  const raw: { x: number; y: number; d: number }[] = [];
-  const R = 4;
-  for (let q = -R; q <= R; q++) {
-    for (let r = -R; r <= R; r++) {
-      const x = q + r / 2;
-      const y = r * (Math.sqrt(3) / 2);
-      raw.push({ x, y, d: Math.hypot(x, y) });
-    }
-  }
-  raw.sort((a, b) => a.d - b.d);
-  return raw.slice(0, n).map((p) => [p.x, p.y] as [number, number]);
-}
-
-// 各教科F(12)：PC=横長2段（上段=上ラベル・下段=下ラベル）
-function fRows(): [number, number][] {
-  const pts: [number, number][] = [];
-  for (let i = 0; i < 6; i++) pts.push([i - 2.5, -0.55]);
-  for (let i = 0; i < 6; i++) pts.push([i - 2.5 + 0.5, 0.55]);
-  return pts;
-}
-const SHAPE_DESKTOP: Record<number, [number, number][]> = {
-  2: [[-0.42, -0.32], [0.42, 0.32]],
-  4: [[0, -0.62], [-0.56, 0.24], [0.56, 0.24], [0, 0.92]],
-  12: fRows(),
-};
-
-type Clusters = Record<string, { c: [number, number]; n: number; sx: number; sy: number }>;
-
-// PC：中心インタロップ(50,46)を囲む四隅＋下＋下中央の大塊
-const DESKTOP_CLUSTERS: Clusters = {
-  A: { c: [20, 28], n: 4, sx: 6.8, sy: 11.6 },  // 左上：AI・テク
-  B: { c: [80, 28], n: 4, sx: 6.8, sy: 11.6 },  // 右上：評価・学習
-  C: { c: [12, 59], n: 4, sx: 6.8, sy: 11.6 },  // 左下：権利・規律
-  D: { c: [90, 52], n: 2, sx: 6.8, sy: 11.6 },  // 右：多様性
-  E: { c: [31, 84], n: 2, sx: 6.8, sy: 11.6 },  // 下：教師・学校
-  F: { c: [58, 72], n: 12, sx: 8.6, sy: 10.0 }, // 下中央の大塊：各教科
-};
 type Placement = { pos: [number, number]; dir: [number, number] };
 
-// sortTopicsForBurst 順 = A×4, B×4, C×4, D×2, E×2, F×12 に対応
-function buildPlacements(clusters: Clusters, shape: Record<number, [number, number][]>): Placement[] {
-  const result: Placement[] = [];
-  for (const g of ["A", "B", "C", "D", "E", "F"] as const) {
-    const { c, n, sx, sy } = clusters[g];
-    const offs = shape[n] ?? hexCluster(n);
-    // 塊の重心を原点に合わせてからクラスター中心へ
-    const mx = offs.reduce((s, o) => s + o[0], 0) / offs.length;
-    const my = offs.reduce((s, o) => s + o[1], 0) / offs.length;
-    for (const [ox, oy] of offs) {
-      const rx = ox - mx;
-      const ry = oy - my;
-      const len = Math.hypot(rx, ry) || 1;
-      result.push({
-        pos: [+(c[0] + rx * sx).toFixed(2), +(c[1] + ry * sy).toFixed(2)],
-        dir: [rx / len, ry / len], // 塊重心→バブル の向き（ラベル配置に使用）
-      });
+// 2軸座標(-1..1) → 画面%。中心(50,49)、横半幅RX/縦半幅RY。
+const AXIS_CX = 50;
+const AXIS_CY = 49;
+const AXIS_RX = 40;
+const AXIS_RY = 36;
+
+/** topic ごとの軸座標を画面配置に変換。近接玉は反発で分散（被り回避）。 */
+function computeAxisPlacements(
+  topics: InteropPriorityTopic[],
+  axisMap: Record<number, AxisPoint>
+): Placement[] {
+  const pts = topics.map((t) => {
+    const a = axisMap[t.no] ?? { x: 0, y: 0 };
+    return { x: AXIS_CX + a.x * AXIS_RX, y: AXIS_CY - a.y * AXIS_RY };
+  });
+  // 反発で被り回避（y方向は%が大きいので圧縮して等方近似）
+  const minDist = 8.5;
+  const ys = 0.55;
+  for (let k = 0; k < 90; k++) {
+    for (let i = 0; i < pts.length; i++) {
+      for (let j = i + 1; j < pts.length; j++) {
+        const dx = pts[j].x - pts[i].x;
+        const dy = (pts[j].y - pts[i].y) * ys;
+        const d = Math.hypot(dx, dy) || 0.01;
+        if (d < minDist) {
+          const push = (minDist - d) / 2;
+          const ux = dx / d;
+          const uy = dy / d;
+          pts[i].x -= ux * push;
+          pts[i].y -= (uy * push) / ys;
+          pts[j].x += ux * push;
+          pts[j].y += (uy * push) / ys;
+        }
+      }
     }
   }
-  return result;
+  return pts.map((p) => {
+    const x = Math.max(8, Math.min(92, p.x));
+    const y = Math.max(13, Math.min(86, p.y));
+    const dx = x - AXIS_CX;
+    const dy = y - AXIS_CY;
+    const len = Math.hypot(dx, dy) || 1;
+    return {
+      pos: [+x.toFixed(2), +y.toFixed(2)] as [number, number],
+      dir: [dx / len, dy / len] as [number, number],
+    };
+  });
 }
 
-const DESKTOP_PLACEMENTS: Placement[] = buildPlacements(DESKTOP_CLUSTERS, SHAPE_DESKTOP);
+const SORTED_TOPICS: InteropPriorityTopic[] = sortTopicsForBurst(INTEROP_PRIORITY_TOPICS);
+const DESKTOP_PLACEMENTS: Placement[] = computeAxisPlacements(SORTED_TOPICS, DEFAULT_TOPIC_AXIS);
 
 /** 全玉の投稿数から「炎=全体平均より上」「拡大=上位5」を判定するためのランキング */
 function computeBubbleRanking(
@@ -638,6 +625,28 @@ export function InteropPuyoBubbleMap({
   return (
     <div className="absolute inset-0 overflow-hidden">
       <style>{PUYO_CSS}{INTEROP_PUYO_CSS}</style>
+
+      {/* 2軸の線とラベル（現場↔制度 × 人間↔技術） */}
+      <div
+        className="pointer-events-none absolute"
+        style={{
+          left: `${AXIS_CX}%`, top: "9%", bottom: "13%", width: 1,
+          transform: "translateX(-50%)",
+          background: "linear-gradient(rgba(255,255,255,0.02), rgba(255,255,255,0.15) 30%, rgba(255,255,255,0.15) 70%, rgba(255,255,255,0.02))",
+        }}
+      />
+      <div
+        className="pointer-events-none absolute"
+        style={{
+          top: `${AXIS_CY}%`, left: "6%", right: "6%", height: 1,
+          transform: "translateY(-50%)",
+          background: "linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.15) 30%, rgba(255,255,255,0.15) 70%, rgba(255,255,255,0.02))",
+        }}
+      />
+      <span className="pointer-events-none absolute z-[5] -translate-x-1/2 whitespace-nowrap text-[11px] font-bold tracking-wide text-white/55" style={{ left: `${AXIS_CX}%`, top: "5.5%" }}>↑ {DEFAULT_AXIS_CONFIG.yTop}</span>
+      <span className="pointer-events-none absolute z-[5] -translate-x-1/2 whitespace-nowrap text-[11px] font-bold tracking-wide text-white/55" style={{ left: `${AXIS_CX}%`, bottom: "8.5%" }}>{DEFAULT_AXIS_CONFIG.yBottom} ↓</span>
+      <span className="pointer-events-none absolute z-[5] -translate-y-1/2 whitespace-nowrap text-[11px] font-bold tracking-wide text-white/55" style={{ top: `${AXIS_CY}%`, left: "1.5%" }}>← {DEFAULT_AXIS_CONFIG.xLeft}</span>
+      <span className="pointer-events-none absolute z-[5] -translate-y-1/2 whitespace-nowrap text-[11px] font-bold tracking-wide text-white/55" style={{ top: `${AXIS_CY}%`, right: "1.5%" }}>{DEFAULT_AXIS_CONFIG.xRight} →</span>
 
       {topics.map((topic, i) => {
         const place = placements[i] ?? { pos: [50, 50] as [number, number], dir: [0, 1] as [number, number] };
