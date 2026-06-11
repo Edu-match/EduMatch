@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, getCurrentProfile } from "@/lib/auth";
 import { getAiKenteiDb } from "@/lib/ai-kentei-db";
-import { getForumAuthorRoleForUser } from "@/lib/forum-author-profile";
 import { mapForumReplyForApi } from "@/lib/forum-ai-reply";
 import { notifyAdminsForumHumanActivityMilestones } from "@/lib/forum-article-notify";
 import { moderateAndNotify } from "@/lib/post-moderation";
@@ -157,26 +156,23 @@ export async function POST(
       return NextResponse.json({ error: "postBody is required" }, { status: 400 });
     }
 
-    if (!authorName?.trim()) {
-      return NextResponse.json({ error: "authorName is required" }, { status: 400 });
+    const trimmedName = authorName?.trim() ?? "";
+    if (!trimmedName) {
+      return NextResponse.json({ error: "ニックネームを入力してください" }, { status: 400 });
+    }
+    if (trimmedName === "匿名ユーザー" || trimmedName === "匿名") {
+      return NextResponse.json({ error: "匿名での投稿はできません" }, { status: 400 });
     }
 
-    const trimmedName = authorName.trim();
-    const isAnon = trimmedName === "匿名ユーザー" || authorRole === "匿名";
-    let resolvedAuthorRole = "一般";
-    if (isAnon) {
-      resolvedAuthorRole = "匿名";
-    } else {
-      const customRole = authorRole?.trim();
-      const hasCustomRole = customRole && customRole.length <= 120 && customRole !== "一般" && customRole !== "匿名";
-      if (hasCustomRole) {
-        resolvedAuthorRole = customRole;
-      } else if (profile?.id) {
-        resolvedAuthorRole = await getForumAuthorRoleForUser(profile.id);
-      } else {
-        resolvedAuthorRole = customRole || "一般";
-      }
+    const customRole = authorRole?.trim() ?? "";
+    if (!customRole || customRole === "一般" || customRole === "匿名") {
+      return NextResponse.json({ error: "肩書きを入力してください" }, { status: 400 });
     }
+    if (customRole.length > 120) {
+      return NextResponse.json({ error: "肩書きは120文字以内で入力してください" }, { status: 400 });
+    }
+
+    const resolvedAuthorRole = customRole;
 
     let resolvedTopicId: string | null = topicId?.trim() || null;
     if (resolvedTopicId) {

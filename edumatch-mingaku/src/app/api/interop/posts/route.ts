@@ -83,8 +83,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "サブカテゴリが見つかりません" }, { status: 404 });
     }
 
-    const authorName = (body.authorName?.trim() || "匿名").slice(0, 40);
-    const authorRole = (body.authorRole?.trim() ?? "").slice(0, 60);
+    const authorName = body.authorName?.trim() ?? "";
+    const authorRole = body.authorRole?.trim() ?? "";
+    if (!authorName) {
+      return NextResponse.json({ error: "ニックネームを入力してください" }, { status: 400 });
+    }
+    if (authorName === "匿名" || authorName === "匿名ユーザー") {
+      return NextResponse.json({ error: "匿名での投稿はできません" }, { status: 400 });
+    }
+    if (!authorRole || authorRole === "匿名" || authorRole === "一般") {
+      return NextResponse.json({ error: "肩書きを入力してください" }, { status: 400 });
+    }
+    const trimmedName = authorName.slice(0, 40);
+    const trimmedRole = authorRole.slice(0, 60);
 
     const user = await getCurrentUser().catch(() => null);
     const profile = user ? await getCurrentProfile().catch(() => null) : null;
@@ -102,7 +113,7 @@ export async function POST(req: NextRequest) {
         kind: "comment",
         featureLabel: "Interop特設掲示板",
         userId: user?.id ?? "guest",
-        userName: profile?.name || authorName,
+        userName: profile?.name || trimmedName,
         contextUrl: `${origin}/interop`,
       }).catch(() => null);
 
@@ -117,8 +128,8 @@ export async function POST(req: NextRequest) {
     const post = await prisma.interopPost.create({
       data: {
         sub_category_id: body.subCategoryId,
-        author_name: authorName,
-        author_role: authorRole,
+        author_name: trimmedName,
+        author_role: trimmedRole,
         body: text,
         is_pinned: isPinned,
       },

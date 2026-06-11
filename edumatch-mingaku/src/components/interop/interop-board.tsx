@@ -40,6 +40,7 @@ export function InteropBoard({
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
+  const [role, setRole] = useState("");
   const [bodyText, setBodyText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,8 +60,10 @@ export function InteropBoard({
   // 名前は入力のたびに保持し、別カテゴリ／別ページでも自動入力する（リロードでも維持）
   useEffect(() => {
     try {
-      const saved = localStorage.getItem("interop_author_name");
-      if (saved) setName(saved);
+      const savedName = localStorage.getItem("interop_author_name");
+      if (savedName) setName(savedName);
+      const savedRole = localStorage.getItem("interop_author_role");
+      if (savedRole) setRole(savedRole);
     } catch { /* noop */ }
   }, []);
 
@@ -69,9 +72,16 @@ export function InteropBoard({
     try { localStorage.setItem("interop_author_name", value); } catch { /* noop */ }
   };
 
+  const updateRole = (value: string) => {
+    setRole(value);
+    try { localStorage.setItem("interop_author_role", value); } catch { /* noop */ }
+  };
+
+  const canSubmit = !!name.trim() && !!role.trim() && !!bodyText.trim() && !submitting;
+
   async function submit() {
     const trimmed = bodyText.trim();
-    if (!trimmed || submitting) return;
+    if (!canSubmit) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -80,7 +90,8 @@ export function InteropBoard({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           subCategoryId: sub.id,
-          authorName: name.trim() || "匿名",
+          authorName: name.trim(),
+          authorRole: role.trim(),
           postBody: trimmed,
         }),
       });
@@ -198,13 +209,22 @@ export function InteropBoard({
           {error && <p className="mb-2 text-xs text-rose-300">{error}</p>}
           <div className="flex items-end gap-2">
             <div className="flex-1 space-y-2">
-              <input
-                value={name}
-                onChange={(e) => updateName(e.target.value)}
-                placeholder="お名前（任意・空欄なら匿名）"
-                maxLength={40}
-                className="w-full rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-white/30 focus:outline-none"
-              />
+              <div className="flex gap-2">
+                <input
+                  value={name}
+                  onChange={(e) => updateName(e.target.value)}
+                  placeholder="ニックネーム（必須）"
+                  maxLength={40}
+                  className="w-full rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-white/30 focus:outline-none"
+                />
+                <input
+                  value={role}
+                  onChange={(e) => updateRole(e.target.value)}
+                  placeholder="肩書き（必須）"
+                  maxLength={60}
+                  className="w-full rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-white/30 focus:outline-none"
+                />
+              </div>
               <textarea
                 value={bodyText}
                 onChange={(e) => setBodyText(e.target.value)}
@@ -218,7 +238,7 @@ export function InteropBoard({
             <button
               type="button"
               onClick={submit}
-              disabled={submitting || !bodyText.trim()}
+              disabled={!canSubmit}
               className="grid h-11 w-11 shrink-0 place-items-center rounded-xl font-bold text-white transition disabled:opacity-40"
               style={{ background: accent }}
               aria-label="投稿する"

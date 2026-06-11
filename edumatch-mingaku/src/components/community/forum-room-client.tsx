@@ -564,8 +564,8 @@ function PostCardWithStream({
   const [repliesOpen, setRepliesOpen] = useState(false);
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [replyNickname, setReplyNickname] = useState("");
+  const [replyTitle, setReplyTitle] = useState("");
   const [replyText, setReplyText] = useState("");
-  const [isAnonReplyState, setIsAnonReplyState] = useState(false);
   const [submittingReply, setSubmittingReply] = useState(false);
   const [aiSummaryExpanded, setAiSummaryExpanded] = useState(false);
 
@@ -626,20 +626,23 @@ function PostCardWithStream({
     }
   };
 
-  const isAnonReply = isAnonReplyState;
-  const replyAuthorRoleForApi = isAnonReply ? "匿名" : "一般";
-  const canSubmitReply = !!replyText.trim() && !submittingReply;
+  const replyDisplayName = replyNickname.trim() || (isLoggedIn && userName ? userName : "");
+  const canSubmitReply =
+    !!replyText.trim() && !!replyDisplayName && !!replyTitle.trim() && !submittingReply;
 
   const submitReply = async () => {
     if (!canSubmitReply) return;
     setSubmittingReply(true);
-    const authorName = isAnonReply ? "匿名ユーザー" : (isLoggedIn && userName ? userName : "ゲスト");
     try {
       const res = await fetch(`/api/forum/posts/${post.id}/replies`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ authorName, authorRole: replyAuthorRoleForApi, replyBody: replyText.trim() }),
+        body: JSON.stringify({
+          authorName: replyDisplayName,
+          authorRole: replyTitle.trim(),
+          replyBody: replyText.trim(),
+        }),
       });
       if (res.status === 401) { onRequireLogin(); return; }
       if (res.ok) {
@@ -773,28 +776,42 @@ function PostCardWithStream({
           <div
             className={`mt-4 ml-12 overflow-hidden rounded-xl border ${fromInterop ? "border-white/15 bg-[#0d1225]/88 backdrop-blur-md" : "bg-card text-card-foreground"}`}
           >
-            <div className={`flex items-center gap-2.5 border-b px-4 py-2.5 ${fromInterop ? "border-white/12 bg-white/5" : "bg-muted/20"}`}>
-              <UserAvatar name={isAnonReply ? "匿名" : (isLoggedIn ? userName : "ゲスト")} avatarUrl={isAnonReply ? null : avatarUrl} size={26} isAnon={isAnonReply} />
-              <span className={`text-xs font-medium ${fromInterop ? "text-white/85" : "text-foreground"}`}>
-                {isAnonReply ? "匿名ユーザー" : (isLoggedIn ? userName : "ゲスト")}
-              </span>
-              {!isAnonReply && (
-                <>
-                  <span className="text-muted-foreground/40">·</span>
-                  <OccupationBadge storedAuthorRole={replyPreviewRole} />
-                  {aiKenteiPassed && <AiKenteiBadge />}
-                </>
-              )}
-              <div className="ml-auto">
-                <button
-                  type="button"
-                  onClick={() => setIsAnonReplyState((v) => !v)}
-                  className={["rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors",
-                    isAnonReply
-                      ? `${ROLE_STYLES["匿名"].bg} ${ROLE_STYLES["匿名"].text} ${ROLE_STYLES["匿名"].border}`
-                      : "border-transparent text-muted-foreground hover:bg-muted",
-                  ].join(" ")}
-                >{ROLE_STYLES["匿名"].icon} 匿名</button>
+            <div className={`border-b px-4 py-2.5 space-y-1.5 ${fromInterop ? "border-white/12 bg-white/5" : "bg-muted/20"}`}>
+              <div className="flex items-center gap-2.5">
+                <UserAvatar name={replyDisplayName || "ゲスト"} avatarUrl={avatarUrl} size={26} />
+                <span className={`text-xs font-medium ${fromInterop ? "text-white/85" : "text-foreground"}`}>
+                  {replyDisplayName || "ニックネームを入力"}
+                </span>
+                {replyTitle.trim() ? (
+                  <>
+                    <span className={fromInterop ? "text-white/30" : "text-muted-foreground/40"}>·</span>
+                    <span className={`text-[11px] ${fromInterop ? "text-white/55" : "text-muted-foreground"}`}>{replyTitle.trim()}</span>
+                  </>
+                ) : !fromInterop && isLoggedIn ? (
+                  <>
+                    <span className="text-muted-foreground/40">·</span>
+                    <OccupationBadge storedAuthorRole={replyPreviewRole} />
+                    {aiKenteiPassed && <AiKenteiBadge />}
+                  </>
+                ) : null}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={replyNickname}
+                  onChange={(e) => setReplyNickname(e.target.value)}
+                  placeholder={userName || "ニックネーム（必須）"}
+                  maxLength={30}
+                  className={`h-6 flex-1 rounded border px-2 text-[11px] focus:outline-none focus:ring-1 ${fromInterop ? "border-white/20 bg-white/[0.08] text-white placeholder:text-white/35 focus:ring-white/30" : "border-border/60 bg-background/60 text-foreground placeholder:text-muted-foreground/50 focus:ring-primary/30"}`}
+                />
+                <input
+                  type="text"
+                  value={replyTitle}
+                  onChange={(e) => setReplyTitle(e.target.value)}
+                  placeholder="肩書・属性（必須）"
+                  maxLength={40}
+                  className={`h-6 flex-1 rounded border px-2 text-[11px] focus:outline-none focus:ring-1 ${fromInterop ? "border-white/20 bg-white/[0.08] text-white placeholder:text-white/35 focus:ring-white/30" : "border-border/60 bg-background/60 text-foreground placeholder:text-muted-foreground/50 focus:ring-primary/30"}`}
+                />
               </div>
             </div>
             <textarea
@@ -1033,7 +1050,6 @@ function NewPostComposer({
 }) {
   const postPreviewRole = forumRolePreviewFromProfile(organizationType, organizationTypeOther);
   const [body, setBody] = useState("");
-  const [isAnon, setIsAnon] = useState(false);
   const [avatarColorIdx, setAvatarColorIdx] = useState(0);
   const [customTitle, setCustomTitle] = useState("");
   const [customNickname, setCustomNickname] = useState("");
@@ -1043,9 +1059,14 @@ function NewPostComposer({
   const rootRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  const displayName = isAnon ? "匿名ユーザー" : (fromInterop ? (customNickname.trim() || "ゲスト") : (customNickname.trim() || userName || "ゲスト"));
+  const displayName = customNickname.trim() || (isLoggedIn && userName ? userName : "");
   const remaining = MAX_BODY - body.length;
-  const canSubmit = body.trim().length > 0 && body.length <= MAX_BODY && !submitting;
+  const canSubmit =
+    body.trim().length > 0 &&
+    body.length <= MAX_BODY &&
+    !submitting &&
+    displayName.length > 0 &&
+    customTitle.trim().length > 0;
 
   useEffect(() => {
     const fillDraftFromChat = () => {
@@ -1062,7 +1083,13 @@ function NewPostComposer({
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
-    await onSubmit({ body, authorRole: isAnon ? "匿名" : "一般", relatedArticleUrl, displayName, customTitle: isAnon ? "" : customTitle.trim() });
+    await onSubmit({
+      body,
+      authorRole: customTitle.trim(),
+      relatedArticleUrl,
+      displayName,
+      customTitle: customTitle.trim(),
+    });
     setBody("");
     setRelatedArticleUrl("");
     setShowUrl(false);
@@ -1113,7 +1140,7 @@ function NewPostComposer({
       {/* 投稿者バー */}
       <div className={`border-b px-4 py-2 space-y-1.5 ${fromInterop ? "border-white/12 bg-white/[0.03]" : "bg-muted/10"}`}>
         <div className="flex items-center gap-2">
-          {fromInterop && !isAnon ? (
+          {fromInterop ? (
             <span className="flex items-center gap-1">
               {AVATAR_COLORS.map((c, ci) => (
                 <button
@@ -1133,54 +1160,42 @@ function NewPostComposer({
               ))}
             </span>
           ) : (
-            <UserAvatar name={displayName} avatarUrl={isAnon ? null : avatarUrl} size={26} isAnon={isAnon} />
+            <UserAvatar name={displayName || "ゲスト"} avatarUrl={avatarUrl} size={26} />
           )}
-          <span className={`text-xs font-medium ${fromInterop ? "text-white/80" : ""}`}>{displayName}</span>
-          {!isAnon && customTitle.trim() && (
+          <span className={`text-xs font-medium ${fromInterop ? "text-white/80" : ""}`}>
+            {displayName || "ニックネームを入力"}
+          </span>
+          {customTitle.trim() ? (
             <>
               <span className={fromInterop ? "text-white/30" : "text-muted-foreground/40"}>·</span>
               <span className={`text-[11px] ${fromInterop ? "text-white/55" : "text-muted-foreground"}`}>{customTitle.trim()}</span>
             </>
-          )}
-          {!isAnon && !customTitle.trim() && !fromInterop && (
+          ) : !fromInterop && isLoggedIn ? (
             <>
               <span className="text-muted-foreground/40">·</span>
               <OccupationBadge storedAuthorRole={postPreviewRole} />
               {aiKenteiPassed && <AiKenteiBadge />}
             </>
-          )}
-          <button
-            type="button"
-            onClick={() => setIsAnon((v) => !v)}
-            className={["ml-auto rounded-full border px-2.5 py-0.5 text-[10px] font-medium transition-colors",
-              isAnon
-                ? `${ROLE_STYLES["匿名"].bg} ${ROLE_STYLES["匿名"].text} ${ROLE_STYLES["匿名"].border}`
-                : fromInterop
-                  ? "border-white/20 text-white/50 hover:bg-white/10"
-                  : "border-transparent text-muted-foreground hover:bg-muted",
-            ].join(" ")}
-          >{ROLE_STYLES["匿名"].icon} 匿名</button>
+          ) : null}
         </div>
-        {!isAnon && (
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={customNickname}
-              onChange={(e) => setCustomNickname(e.target.value)}
-              placeholder={userName || "ニックネーム（任意）"}
-              maxLength={30}
-              className={`h-6 flex-1 rounded border px-2 text-[11px] focus:outline-none focus:ring-1 ${fromInterop ? "border-white/20 bg-white/[0.08] text-white placeholder:text-white/35 focus:ring-white/30" : "border-border/60 bg-background/60 text-foreground placeholder:text-muted-foreground/50 focus:ring-primary/30"}`}
-            />
-            <input
-              type="text"
-              value={customTitle}
-              onChange={(e) => setCustomTitle(e.target.value)}
-              placeholder="肩書・属性（任意）"
-              maxLength={40}
-              className={`h-6 flex-1 rounded border px-2 text-[11px] focus:outline-none focus:ring-1 ${fromInterop ? "border-white/20 bg-white/[0.08] text-white placeholder:text-white/35 focus:ring-white/30" : "border-border/60 bg-background/60 text-foreground placeholder:text-muted-foreground/50 focus:ring-primary/30"}`}
-            />
-          </div>
-        )}
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={customNickname}
+            onChange={(e) => setCustomNickname(e.target.value)}
+            placeholder={userName || "ニックネーム（必須）"}
+            maxLength={30}
+            className={`h-6 flex-1 rounded border px-2 text-[11px] focus:outline-none focus:ring-1 ${fromInterop ? "border-white/20 bg-white/[0.08] text-white placeholder:text-white/35 focus:ring-white/30" : "border-border/60 bg-background/60 text-foreground placeholder:text-muted-foreground/50 focus:ring-primary/30"}`}
+          />
+          <input
+            type="text"
+            value={customTitle}
+            onChange={(e) => setCustomTitle(e.target.value)}
+            placeholder="肩書・属性（必須）"
+            maxLength={40}
+            className={`h-6 flex-1 rounded border px-2 text-[11px] focus:outline-none focus:ring-1 ${fromInterop ? "border-white/20 bg-white/[0.08] text-white placeholder:text-white/35 focus:ring-white/30" : "border-border/60 bg-background/60 text-foreground placeholder:text-muted-foreground/50 focus:ring-primary/30"}`}
+          />
+        </div>
       </div>
 
       {/* テキストエリア */}
@@ -1400,8 +1415,8 @@ export function ForumRoomClient({
   const handleNewPost = useCallback(async (draft: PostDraft) => {
     if (submitting) return;
     setSubmitting(true);
-    const isAnon = draft.authorRole === "匿名";
-    const authorName = isAnon ? "匿名ユーザー" : (draft.displayName.trim() || (auth.isLoggedIn && auth.name ? auth.name : "ゲスト"));
+    const authorName = draft.displayName.trim();
+    const authorRole = draft.customTitle.trim();
     try {
       const res = await fetch(`/api/forum/rooms/${room.id}/posts`, {
         method: "POST",
@@ -1409,7 +1424,7 @@ export function ForumRoomClient({
         credentials: "include",
         body: JSON.stringify({
           authorName,
-          authorRole: isAnon ? "匿名" : (draft.customTitle || "一般"),
+          authorRole,
           postBody: draft.body.trim(),
           relatedArticleUrl: draft.relatedArticleUrl.trim() || undefined,
         }),

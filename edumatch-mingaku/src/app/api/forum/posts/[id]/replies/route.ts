@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, getCurrentProfile } from "@/lib/auth";
 import { getAiKenteiDb } from "@/lib/ai-kentei-db";
-import { getForumAuthorRoleForUser } from "@/lib/forum-author-profile";
 import { FORUM_AI_FACILITATOR_NAME } from "@/lib/forum-constants";
 import { mapForumReplyForApi } from "@/lib/forum-ai-reply";
 import { notifyAdminsForumHumanActivityMilestones } from "@/lib/forum-article-notify";
@@ -123,13 +122,24 @@ export async function POST(
       return NextResponse.json({ error: "replyBody is required" }, { status: 400 });
     }
 
-    if (!authorName?.trim()) {
-      return NextResponse.json({ error: "authorName is required" }, { status: 400 });
-    }
-
-    const trimmedName = authorName.trim();
-    const isAnon = trimmedName === "匿名ユーザー" || authorRole === "匿名";
+    const trimmedName = authorName?.trim() ?? "";
     const isAiFacilitator = trimmedName === FORUM_AI_FACILITATOR_NAME;
+
+    if (!isAiFacilitator) {
+      if (!trimmedName) {
+        return NextResponse.json({ error: "ニックネームを入力してください" }, { status: 400 });
+      }
+      if (trimmedName === "匿名ユーザー" || trimmedName === "匿名") {
+        return NextResponse.json({ error: "匿名での返信はできません" }, { status: 400 });
+      }
+      const customRole = authorRole?.trim() ?? "";
+      if (!customRole || customRole === "一般" || customRole === "匿名") {
+        return NextResponse.json({ error: "肩書きを入力してください" }, { status: 400 });
+      }
+      if (customRole.length > 120) {
+        return NextResponse.json({ error: "肩書きは120文字以内で入力してください" }, { status: 400 });
+      }
+    }
 
     // AIファシリテーター以外はモデレーション対象
     if (!isAiFacilitator) {
@@ -169,18 +179,7 @@ export async function POST(
       }
     }
 
-    let resolvedAuthorRole = "一般";
-    if (isAiFacilitator) {
-      resolvedAuthorRole = "専門家";
-    } else if (isAnon) {
-      resolvedAuthorRole = "匿名";
-    } else if (profile?.id) {
-      resolvedAuthorRole = await getForumAuthorRoleForUser(profile.id);
-    } else {
-      const guest = authorRole?.trim();
-      resolvedAuthorRole =
-        guest && guest.length <= 120 && guest !== "匿名" ? guest : "一般";
-    }
+    const resolvedAuthorRole = isAiFacilitator ? "専門家" : authorRole!.trim();
 
     const priorReplyCount = await prisma.forumReply.count({ where: { post_id: postId } });
 
