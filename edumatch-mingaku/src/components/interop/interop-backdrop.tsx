@@ -148,10 +148,11 @@ function CityscapeLayer({ period }: { period: Period }) {
 
 /** 現在時刻から時間帯を判定 */
 function periodFromHour(h: number): Period {
-  if (h >= 5 && h < 9) return "dawn";
-  if (h >= 9 && h < 16) return "day";
-  if (h >= 16 && h < 19) return "dusk";
-  return "night";
+  if (h >= 4 && h < 5)  return "dusk";  // 4〜5時: 夕方と同じ配色
+  if (h >= 5 && h < 10) return "dawn";  // 5〜10時: 朝
+  if (h >= 10 && h < 15) return "day";  // 10〜15時: 昼
+  if (h >= 15 && h < 17) return "dusk"; // 15〜17時: 夕方
+  return "night";                        // 17〜翌4時: 夜
 }
 
 type Palette = {
