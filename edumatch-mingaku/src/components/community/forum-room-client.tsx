@@ -1528,7 +1528,10 @@ export function ForumRoomClient({
           <Link
             href={
               fromInterop
-                ? "/interop"
+                ? // 来た場所に応じて復元：論点経由→論点ビュー / 井戸端経由→ハブ
+                  activeTopicId
+                  ? `/interop?topic=${encodeURIComponent(room.id)}`
+                  : "/interop?hub=1"
                 : categoryContext
                   ? `/forum?cat=${encodeURIComponent(categoryContext.categorySlug)}`
                   : "/forum"

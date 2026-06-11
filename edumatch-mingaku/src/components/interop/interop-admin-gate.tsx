@@ -45,7 +45,7 @@ export function InteropAdminGate({ notAdmin = false }: { notAdmin?: boolean }) {
     <main className="relative min-h-[100dvh] w-full bg-[#070a1c] text-white">
       <div className="mx-auto flex min-h-[100dvh] w-full max-w-sm flex-col justify-center px-5 py-12">
         <Link
-          href="/"
+          href="/interop"
           className="mb-8 inline-flex w-fit items-center gap-1.5 text-xs font-bold text-white/55 hover:text-white"
         >
           <ArrowLeft className="h-3.5 w-3.5" /> 特設サイトに戻る

@@ -25,7 +25,7 @@ import {
   type InteropSubCategory,
 } from "@/components/interop/interop-sub-orbit";
 import type { InteropActivityStats } from "@/lib/interop-activity";
-import type { InteropPriorityTopic } from "@/lib/interop-priority-topics";
+import { INTEROP_PRIORITY_TOPICS, type InteropPriorityTopic } from "@/lib/interop-priority-topics";
 import type { InteropThemeMode } from "@/lib/interop-settings";
 import type { AxisConfig, AxisPoint } from "@/lib/interop-topic-axis";
 
@@ -157,6 +157,8 @@ export function InteropExplorer({
   const router = useRouter();
   const searchParams = useSearchParams();
   const catParam = searchParams.get("cat");
+  const topicParam = searchParams.get("topic"); // フォーラムから「論点ビュー」へ戻る（roomId）
+  const hubParam = searchParams.get("hub"); // フォーラム(井戸端)から「ハブ」へ戻る
 
   const [categories, setCategories] = useState<InteropCategory[]>([]);
   const [subCategories, setSubCategories] = useState<InteropSubCategory[]>([]);
@@ -169,6 +171,16 @@ export function InteropExplorer({
   const [activityByCategory, setActivityByCategory] = useState<Map<string, InteropActivityStats>>(initialMaps.catMap);
   const [activityByRoom, setActivityByRoom] = useState<Map<string, InteropActivityStats>>(initialMaps.roomMap);
   const [activityByTopic, setActivityByTopic] = useState<Map<string, InteropActivityStats>>(initialMaps.topicMap);
+  // フォーラム等から戻ってきたとき、元のビュー（論点／ハブ）を復元する（カテゴリは下のcat復元で対応）
+  useEffect(() => {
+    if (topicParam) {
+      const t = INTEROP_PRIORITY_TOPICS.find((x) => x.roomId === topicParam);
+      if (t) { setView({ kind: "topic", topic: t }); return; }
+    }
+    if (hubParam) setView({ kind: "hub" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // 2軸（DB由来。AIが日次で座標・週次で軸を更新）
   const [axis, setAxis] = useState<{ config?: AxisConfig; positions?: Record<number, AxisPoint> }>({});
   useEffect(() => {
@@ -381,7 +393,7 @@ export function InteropExplorer({
               stats: activityByCategory.get(cat.id) ?? EMPTY_STATS,
               onActivate: () => setView({ kind: "category", cat }),
             }))}
-            backLabel="トップに戻る"
+            backLabel="マップに戻る"
             onBack={() => setView({ kind: "map" })}
           />
           {/* 自由記入コミュニティトピック（ハブ下部フローティングストリップ） */}
@@ -431,7 +443,7 @@ export function InteropExplorer({
                 router.push(`/forum/${view.topic.roomId}?from=interop&topic=${encodeURIComponent(topicId)}`),
             };
           })}
-          backLabel="トップに戻る"
+          backLabel="マップに戻る"
           onBack={() => setView({ kind: "map" })}
         />
       ) : loadingSubs ? (

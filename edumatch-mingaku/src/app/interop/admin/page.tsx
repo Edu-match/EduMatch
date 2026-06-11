@@ -30,7 +30,7 @@ export default async function InteropAdminPage() {
       <div className="relative z-10 border-b border-white/10 bg-white/[0.05] backdrop-blur-sm">
         <div className="container flex max-w-3xl items-center justify-between py-3">
           <Link
-            href="/"
+            href="/interop"
             className="inline-flex items-center gap-1.5 text-sm font-bold text-white/55 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" /> 特設サイトを開く
