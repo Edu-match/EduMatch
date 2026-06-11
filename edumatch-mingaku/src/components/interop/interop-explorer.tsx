@@ -92,12 +92,56 @@ type ForumRoomActivityPayload = {
   }>;
 };
 
+/** API レスポンス → 活動量マップ群（初期SSR値・ポーリング更新で共用） */
+function buildActivityMaps(
+  interop: ActivityPayload | null | undefined,
+  forum: { rooms?: ForumRoomActivityPayload[] } | null | undefined
+) {
+  const subMap = new Map<string, InteropActivityStats>();
+  for (const row of interop?.subs ?? []) {
+    subMap.set(row.subCategoryId, {
+      postCount: row.postCount,
+      participantCount: row.participantCount,
+      lastPostedAt: row.lastPostedAt,
+    });
+  }
+  const catMap = new Map<string, InteropActivityStats>();
+  for (const row of interop?.categories ?? []) {
+    catMap.set(row.categoryId, {
+      postCount: row.postCount,
+      participantCount: row.participantCount,
+      lastPostedAt: row.lastPostedAt,
+    });
+  }
+  const roomMap = new Map<string, InteropActivityStats>();
+  const topicMap = new Map<string, InteropActivityStats>();
+  for (const room of forum?.rooms ?? []) {
+    roomMap.set(room.id, {
+      postCount: room.postCount,
+      participantCount: room.participantCount,
+      lastPostedAt: room.lastPostedAt,
+    });
+    for (const t of room.topicActivity ?? []) {
+      topicMap.set(t.topicId, {
+        postCount: t.postCount,
+        participantCount: t.participantCount,
+        lastPostedAt: t.lastPostedAt,
+      });
+    }
+  }
+  return { subMap, catMap, roomMap, topicMap };
+}
+
 export function InteropExplorer({
   themeMode = "auto",
   guideText = "中央のインタロップをタップして展示情報へ · 周囲の◎トピックをタップして論点・井戸端へ",
+  initialInteropActivity = null,
+  initialForumActivity = null,
 }: {
   themeMode?: InteropThemeMode;
   guideText?: string;
+  initialInteropActivity?: ActivityPayload | null;
+  initialForumActivity?: { rooms?: ForumRoomActivityPayload[] } | null;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -108,10 +152,12 @@ export function InteropExplorer({
   const [loadingCats, setLoadingCats] = useState(true);
   const [loadingSubs, setLoadingSubs] = useState(false);
   const [view, setView] = useState<View>({ kind: "map" });
-  const [activityBySub, setActivityBySub] = useState<Map<string, InteropActivityStats>>(new Map());
-  const [activityByCategory, setActivityByCategory] = useState<Map<string, InteropActivityStats>>(new Map());
-  const [activityByRoom, setActivityByRoom] = useState<Map<string, InteropActivityStats>>(new Map());
-  const [activityByTopic, setActivityByTopic] = useState<Map<string, InteropActivityStats>>(new Map());
+  // SSR の初期活動量で初期化（初回表示から盛り上がり演出を出す＝遅延解消）
+  const [initialMaps] = useState(() => buildActivityMaps(initialInteropActivity, initialForumActivity));
+  const [activityBySub, setActivityBySub] = useState<Map<string, InteropActivityStats>>(initialMaps.subMap);
+  const [activityByCategory, setActivityByCategory] = useState<Map<string, InteropActivityStats>>(initialMaps.catMap);
+  const [activityByRoom, setActivityByRoom] = useState<Map<string, InteropActivityStats>>(initialMaps.roomMap);
+  const [activityByTopic, setActivityByTopic] = useState<Map<string, InteropActivityStats>>(initialMaps.topicMap);
 
   const interopCat = useMemo(
     () =>
@@ -131,42 +177,11 @@ export function InteropExplorer({
       fetch("/api/forum/rooms?communityThemes=true").then((r) => r.json() as Promise<{ rooms?: ForumRoomActivityPayload[] }>),
     ])
       .then(([interop, forum]) => {
-        const subMap = new Map<string, InteropActivityStats>();
-        for (const row of interop.subs ?? []) {
-          subMap.set(row.subCategoryId, {
-            postCount: row.postCount,
-            participantCount: row.participantCount,
-            lastPostedAt: row.lastPostedAt,
-          });
-        }
-        const catMap = new Map<string, InteropActivityStats>();
-        for (const row of interop.categories ?? []) {
-          catMap.set(row.categoryId, {
-            postCount: row.postCount,
-            participantCount: row.participantCount,
-            lastPostedAt: row.lastPostedAt,
-          });
-        }
-        const roomMap = new Map<string, InteropActivityStats>();
-        const topicMap = new Map<string, InteropActivityStats>();
-        for (const room of forum.rooms ?? []) {
-          roomMap.set(room.id, {
-            postCount: room.postCount,
-            participantCount: room.participantCount,
-            lastPostedAt: room.lastPostedAt,
-          });
-          for (const t of room.topicActivity ?? []) {
-            topicMap.set(t.topicId, {
-              postCount: t.postCount,
-              participantCount: t.participantCount,
-              lastPostedAt: t.lastPostedAt,
-            });
-          }
-        }
-        setActivityBySub(subMap);
-        setActivityByCategory(catMap);
-        setActivityByRoom(roomMap);
-        setActivityByTopic(topicMap);
+        const m = buildActivityMaps(interop, forum);
+        setActivityBySub(m.subMap);
+        setActivityByCategory(m.catMap);
+        setActivityByRoom(m.roomMap);
+        setActivityByTopic(m.topicMap);
       })
       .catch(console.error);
   }, []);

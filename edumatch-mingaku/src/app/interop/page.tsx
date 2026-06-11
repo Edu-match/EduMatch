@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { headers } from "next/headers";
 import Image from "next/image";
 import { Zen_Kaku_Gothic_New } from "next/font/google";
 import { CalendarDays, ChevronRight, GraduationCap } from "lucide-react";
@@ -7,6 +8,24 @@ import { InteropExplorer } from "@/components/interop/interop-explorer";
 import { InteropGeofence } from "@/components/interop/interop-geofence";
 import { getInteropSettings } from "@/lib/interop-settings.server";
 import { ensureExternalUrl } from "@/lib/interop-settings";
+
+/** SSR: 活動量を先に取得して初回から盛り上がり演出を出す（エフェクト遅延の解消） */
+async function fetchInitialActivity() {
+  try {
+    const h = await headers();
+    const host = h.get("host");
+    if (!host) return { interop: null, forum: null };
+    const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+    const origin = `${proto}://${host}`;
+    const [interop, forum] = await Promise.all([
+      fetch(`${origin}/api/interop/activity`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch(`${origin}/api/forum/rooms?communityThemes=true`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    ]);
+    return { interop, forum };
+  } catch {
+    return { interop: null, forum: null };
+  }
+}
 
 const zenKaku = Zen_Kaku_Gothic_New({ weight: ["700"], subsets: ["latin"], display: "swap" });
 
@@ -19,13 +38,21 @@ export const metadata: Metadata = {
 };
 
 export default async function InteropPage() {
-  const settings = await getInteropSettings();
+  const [settings, initialActivity] = await Promise.all([
+    getInteropSettings(),
+    fetchInitialActivity(),
+  ]);
 
   return (
     <main className="relative h-[100dvh] w-full overflow-hidden bg-[#070a1c] text-white">
       {/* ════════ 全画面マップ（背景として配置） ════════ */}
       <Suspense fallback={<div className="absolute inset-0 bg-[#070a1c]" />}>
-        <InteropExplorer themeMode={settings.themeMode} guideText={settings.guideText} />
+        <InteropExplorer
+          themeMode={settings.themeMode}
+          guideText={settings.guideText}
+          initialInteropActivity={initialActivity.interop}
+          initialForumActivity={initialActivity.forum}
+        />
       </Suspense>
 
       {/* 会場を出たときの演出（位置情報・任意） */}
