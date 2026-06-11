@@ -98,9 +98,8 @@ export function InteropContentAdmin() {
       )}
 
       <div>
-        <h2 className="text-sm font-semibold text-white/80">サテライト・掲示板投稿の管理</h2>
-        <p className="mb-3 mt-0.5 text-xs text-white/45">
-          中心インタロップ直下のサテライト（最新ニュース／登壇者への質問／ご意見BOX 等）と、その掲示板の投稿を管理します。
+        <p className="mb-3 text-xs text-white/45">
+          各サテライトを開くと、参考リンク（概要下にサムネ表示）・投稿管理ができます。下の「サテライトを追加」で新規追加。
         </p>
         {loading ? (
           <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-white/50" /></div>
