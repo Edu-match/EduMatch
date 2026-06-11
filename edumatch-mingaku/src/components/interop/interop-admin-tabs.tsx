@@ -25,7 +25,7 @@ export function InteropAdminTabs() {
   return (
     <div className="space-y-5">
       {/* タブ */}
-      <div className="flex gap-1 rounded-lg border bg-muted/40 p-1">
+      <div className="flex gap-1 rounded-xl border border-white/10 bg-white/[0.06] p-1 backdrop-blur-sm">
         {TABS.map((t) => {
           const Icon = t.icon;
           const active = tab === t.key;
@@ -34,8 +34,8 @@ export function InteropAdminTabs() {
               key={t.key}
               type="button"
               onClick={() => setTab(t.key)}
-              className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-2 text-sm font-bold transition ${
-                active ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-bold transition ${
+                active ? "bg-white/[0.14] text-white shadow-sm" : "text-white/50 hover:text-white"
               }`}
             >
               <Icon className="h-4 w-4" /> {t.label}
@@ -45,7 +45,7 @@ export function InteropAdminTabs() {
       </div>
 
       {msg && (
-        <p className={`rounded-md border px-4 py-2 text-sm font-medium ${msg.ok ? "border-green-300 bg-green-50 text-green-700" : "border-red-300 bg-red-50 text-red-700"}`}>
+        <p className={`rounded-xl border px-4 py-2 text-sm font-medium ${msg.ok ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200" : "border-red-400/30 bg-red-400/10 text-red-200"}`}>
           {msg.text}
         </p>
       )}

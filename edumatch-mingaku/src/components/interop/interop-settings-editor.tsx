@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   DEFAULT_INTEROP_SETTINGS,
   type InteropSettings,
@@ -63,20 +62,22 @@ export function InteropSettingsEditor() {
     setSaving(false);
   };
 
+  const di = "bg-white/[0.06] border-white/[0.12] text-white placeholder:text-white/30 focus-visible:ring-0 focus-visible:border-white/30";
+
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base">サイト設定（テキスト・背景テーマ）</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="rounded-xl border border-white/10 bg-white/[0.06] backdrop-blur-sm overflow-hidden">
+      <div className="border-b border-white/10 px-4 py-3">
+        <h3 className="text-base font-semibold text-white">サイト設定（テキスト・背景テーマ）</h3>
+      </div>
+      <div className="space-y-4 p-4">
         {loading ? (
           <div className="flex justify-center py-8">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <Loader2 className="h-5 w-5 animate-spin text-white/40" />
           </div>
         ) : (
           <>
             {msg && (
-              <p className={`rounded-md border px-3 py-2 text-sm font-medium ${msg.ok ? "border-green-300 bg-green-50 text-green-700" : "border-red-300 bg-red-50 text-red-700"}`}>
+              <p className={`rounded-xl border px-3 py-2 text-sm font-medium ${msg.ok ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200" : "border-red-400/30 bg-red-400/10 text-red-200"}`}>
                 {msg.text}
               </p>
             )}
@@ -84,18 +85,19 @@ export function InteropSettingsEditor() {
             <div className="grid gap-3 sm:grid-cols-2">
               {TEXT_FIELDS.map((f) => (
                 <label key={f.key} className="text-sm">
-                  <span className="mb-1 block text-muted-foreground">{f.label}</span>
+                  <span className="mb-1 block text-white/55">{f.label}</span>
                   <Input
                     value={String(settings[f.key] ?? "")}
                     onChange={(e) => update(f.key, e.target.value)}
                     placeholder={f.placeholder}
+                    className={di}
                   />
                 </label>
               ))}
             </div>
 
             <label className="block text-sm">
-              <span className="mb-1 block text-muted-foreground">背景テーマ（時間帯）</span>
+              <span className="mb-1 block text-white/55">背景テーマ（時間帯）</span>
               <div className="flex flex-wrap gap-2">
                 {THEME_OPTIONS.map((o) => {
                   const active = settings.themeMode === o.value;
@@ -106,8 +108,8 @@ export function InteropSettingsEditor() {
                       onClick={() => setSettings((s) => ({ ...s, themeMode: o.value }))}
                       className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${
                         active
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-input text-muted-foreground hover:bg-muted"
+                          ? "border-indigo-400 bg-indigo-400/20 text-indigo-300"
+                          : "border-white/15 text-white/40 hover:bg-white/[0.08] hover:text-white/80"
                       }`}
                     >
                       {o.label}
@@ -115,47 +117,46 @@ export function InteropSettingsEditor() {
                   );
                 })}
               </div>
-              <p className="mt-1.5 text-xs text-muted-foreground">
+              <p className="mt-1.5 text-xs text-white/40">
                 「自動」は朝5–9時・昼9–16時・夕16–19時・夜19–5時で配色が切り替わります。
               </p>
             </label>
 
-            {/* ───── 会場退出演出（ジオフェンス） ───── */}
-            <div className="rounded-md border bg-muted/20 p-3">
-              <label className="flex items-center gap-2 text-sm font-bold">
+            <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
+              <label className="flex items-center gap-2 text-sm font-bold text-white/80">
                 <input type="checkbox" checked={settings.geofenceEnabled}
                   onChange={(e) => setSettings((s) => ({ ...s, geofenceEnabled: e.target.checked }))} />
                 会場を出たときの演出を有効にする（位置情報）
               </label>
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="mt-1 text-xs text-white/40">
                 来場者が会場（中心座標＋半径）の外に出た瞬間に、バイブと「世界を出た」演出＋登録案内を表示します。
-                端末で <code>?exitpreview=1</code> を付けて開くと演出をプレビューできます。※iOSはバイブ非対応。
+                端末で <code className="text-violet-300">?exitpreview=1</code> を付けて開くと演出をプレビューできます。※iOSはバイブ非対応。
               </p>
 
               <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                <label className="text-sm"><span className="mb-1 block text-muted-foreground">中心緯度</span>
+                <label className="text-sm"><span className="mb-1 block text-white/55">中心緯度</span>
                   <Input type="number" step="0.0001" value={settings.venueLat}
-                    onChange={(e) => setSettings((s) => ({ ...s, venueLat: Number(e.target.value) }))} /></label>
-                <label className="text-sm"><span className="mb-1 block text-muted-foreground">中心経度</span>
+                    onChange={(e) => setSettings((s) => ({ ...s, venueLat: Number(e.target.value) }))} className={di} /></label>
+                <label className="text-sm"><span className="mb-1 block text-white/55">中心経度</span>
                   <Input type="number" step="0.0001" value={settings.venueLng}
-                    onChange={(e) => setSettings((s) => ({ ...s, venueLng: Number(e.target.value) }))} /></label>
-                <label className="text-sm"><span className="mb-1 block text-muted-foreground">半径（m）</span>
+                    onChange={(e) => setSettings((s) => ({ ...s, venueLng: Number(e.target.value) }))} className={di} /></label>
+                <label className="text-sm"><span className="mb-1 block text-white/55">半径（m）</span>
                   <Input type="number" step="50" value={settings.venueRadiusM}
-                    onChange={(e) => setSettings((s) => ({ ...s, venueRadiusM: Number(e.target.value) }))} /></label>
+                    onChange={(e) => setSettings((s) => ({ ...s, venueRadiusM: Number(e.target.value) }))} className={di} /></label>
               </div>
 
               <div className="mt-3 space-y-2">
-                <label className="block text-sm"><span className="mb-1 block text-muted-foreground">退出メッセージ見出し</span>
-                  <Input value={settings.exitTitle} onChange={(e) => setSettings((s) => ({ ...s, exitTitle: e.target.value }))} /></label>
-                <label className="block text-sm"><span className="mb-1 block text-muted-foreground">退出メッセージ本文</span>
+                <label className="block text-sm"><span className="mb-1 block text-white/55">退出メッセージ見出し</span>
+                  <Input value={settings.exitTitle} onChange={(e) => setSettings((s) => ({ ...s, exitTitle: e.target.value }))} className={di} /></label>
+                <label className="block text-sm"><span className="mb-1 block text-white/55">退出メッセージ本文</span>
                   <textarea value={settings.exitMessage} rows={3}
                     onChange={(e) => setSettings((s) => ({ ...s, exitMessage: e.target.value }))}
-                    className="w-full resize-none rounded-md border px-3 py-2 text-sm" /></label>
+                    className="w-full resize-none rounded-xl border border-white/12 bg-white/[0.06] px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none" /></label>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="text-sm"><span className="mb-1 block text-muted-foreground">CTAの文言</span>
-                    <Input value={settings.exitCtaLabel} onChange={(e) => setSettings((s) => ({ ...s, exitCtaLabel: e.target.value }))} /></label>
-                  <label className="text-sm"><span className="mb-1 block text-muted-foreground">CTAのリンク</span>
-                    <Input value={settings.exitCtaUrl} onChange={(e) => setSettings((s) => ({ ...s, exitCtaUrl: e.target.value }))} /></label>
+                  <label className="text-sm"><span className="mb-1 block text-white/55">CTAの文言</span>
+                    <Input value={settings.exitCtaLabel} onChange={(e) => setSettings((s) => ({ ...s, exitCtaLabel: e.target.value }))} className={di} /></label>
+                  <label className="text-sm"><span className="mb-1 block text-white/55">CTAのリンク</span>
+                    <Input value={settings.exitCtaUrl} onChange={(e) => setSettings((s) => ({ ...s, exitCtaUrl: e.target.value }))} className={di} /></label>
                 </div>
               </div>
             </div>
@@ -166,7 +167,7 @@ export function InteropSettingsEditor() {
             </Button>
           </>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

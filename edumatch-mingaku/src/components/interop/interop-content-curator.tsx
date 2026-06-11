@@ -6,7 +6,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+const di = "bg-white/[0.06] border-white/[0.12] text-white placeholder:text-white/30 focus-visible:ring-0 focus-visible:border-white/30";
 import { uploadImage } from "@/app/_actions/media";
 import { CUSTOM_LABEL_OPTIONS, INTEROP_CONTENT_KINDS, type InteropContentItem } from "@/lib/interop-content";
 
@@ -133,26 +134,27 @@ export function InteropContentCurator({ onMsg }: { onMsg: (t: string, ok: boolea
   const selectedSub = subs.find((s) => s.id === subId);
 
   return (
-    <Card>
-      <CardHeader className="pb-2"><CardTitle className="text-base">コンテンツ・キュレーション</CardTitle></CardHeader>
-      <CardContent className="space-y-5">
+    <div className="rounded-xl border border-white/10 bg-white/[0.06] backdrop-blur-sm overflow-hidden">
+      <div className="border-b border-white/10 px-4 py-3">
+        <h3 className="text-base font-semibold text-white">コンテンツ・キュレーション</h3>
+      </div>
+      <div className="space-y-5 p-4">
         {loadingSubs ? (
-          <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+          <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-white/40" /></div>
         ) : subs.length === 0 ? (
-          <p className="text-sm text-muted-foreground">先に「マップ構成」でサブカテゴリを作成してください。</p>
+          <p className="text-sm text-white/40">先に「マップ構成」でサブカテゴリを作成してください。</p>
         ) : (
           <>
-            {/* サブカテゴリ・ピッカー（カテゴリごとにグループ表示） */}
-            <div className="rounded-lg border bg-muted/20 p-3">
-              <p className="mb-2 text-xs font-semibold text-muted-foreground">編集するサブカテゴリ</p>
+            <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
+              <p className="mb-2 text-xs font-semibold text-white/55">編集するサブカテゴリ</p>
               <div className="space-y-2.5">
                 {cats.map((c) => {
                   const list = subs.filter((s) => s.categoryId === c.id);
                   if (list.length === 0) return null;
                   return (
                     <div key={c.id} className="flex flex-wrap items-center gap-1.5">
-                      <span className="inline-flex items-center gap-1.5 pr-1 text-xs font-bold text-foreground/70">
-                        <span className="h-2.5 w-2.5 rounded-full border" style={{ background: c.color ?? "#9fb4e8" }} />
+                      <span className="inline-flex items-center gap-1.5 pr-1 text-xs font-bold text-white/60">
+                        <span className="h-2.5 w-2.5 rounded-full border border-white/20" style={{ background: c.color ?? "#9fb4e8" }} />
                         {c.name}
                       </span>
                       {list.map((s) => {
@@ -163,7 +165,7 @@ export function InteropContentCurator({ onMsg }: { onMsg: (t: string, ok: boolea
                             type="button"
                             onClick={() => setSubId(s.id)}
                             className={`rounded-full border px-3 py-1 text-xs font-bold transition ${
-                              active ? "border-primary bg-primary text-primary-foreground shadow-sm" : "bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                              active ? "border-indigo-400 bg-indigo-500 text-white shadow-sm" : "border-white/15 bg-white/[0.04] text-white/50 hover:border-white/30 hover:text-white"
                             }`}
                           >
                             {s.name}
@@ -177,18 +179,17 @@ export function InteropContentCurator({ onMsg }: { onMsg: (t: string, ok: boolea
             </div>
 
             {selectedSub && (
-              <p className="text-sm font-bold">
+              <p className="text-sm font-bold text-white/80">
                 「{cats.find((c) => c.id === selectedSub.categoryId)?.name} ／ {selectedSub.name}」のコンテンツ
               </p>
             )}
 
-            {/* 現在の表示プレビュー */}
             <div>
-              <p className="mb-2 text-sm font-semibold">現在の表示（公開と同じ並び）</p>
+              <p className="mb-2 text-sm font-semibold text-white/80">現在の表示（公開と同じ並び）</p>
               {loading ? (
-                <div className="flex justify-center py-6"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
+                <div className="flex justify-center py-6"><Loader2 className="h-4 w-4 animate-spin text-white/40" /></div>
               ) : preview.length === 0 ? (
-                <p className="rounded-md border border-dashed px-3 py-4 text-xs text-muted-foreground">
+                <p className="rounded-xl border border-dashed border-white/15 px-3 py-4 text-xs text-white/40">
                   表示コンテンツがありません。下で検索してピン留めするか、「マップ構成」で自動抽出の種別・キーワードを設定してください。
                 </p>
               ) : (
@@ -197,23 +198,23 @@ export function InteropContentCurator({ onMsg }: { onMsg: (t: string, ok: boolea
                     const pin = visiblePins.find((p) => p.sourceType === it.sourceType && p.sourceId === it.sourceId);
                     const pinIdx = pin ? visiblePins.indexOf(pin) : -1;
                     return (
-                      <li key={it.id} className="flex items-center gap-2 rounded border bg-background px-2 py-1.5 text-xs">
+                      <li key={it.id} className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs">
                         <Thumb url={it.thumbnailUrl} />
-                        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-bold">{it.kindLabel}</span>
-                        <span className="flex-1 truncate">{it.title}</span>
+                        <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-bold text-white/70">{it.kindLabel}</span>
+                        <span className="flex-1 truncate text-white/80">{it.title}</span>
                         {it.pinned
-                          ? <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700"><Pin className="h-2.5 w-2.5" />ピン</span>
-                          : <span className="text-[10px] text-muted-foreground">自動</span>}
+                          ? <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-400/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-300"><Pin className="h-2.5 w-2.5" />ピン</span>
+                          : <span className="text-[10px] text-white/35">自動</span>}
                         {it.pinned && pin ? (
                           <>
-                            <button type="button" disabled={pinIdx <= 0} onClick={() => move(pinIdx, -1)} className="rounded p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30" title="上へ"><ArrowUp className="h-3.5 w-3.5" /></button>
-                            <button type="button" disabled={pinIdx >= visiblePins.length - 1} onClick={() => move(pinIdx, 1)} className="rounded p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30" title="下へ"><ArrowDown className="h-3.5 w-3.5" /></button>
-                            <button type="button" onClick={() => removePin(pin.id)} className="rounded p-0.5 text-muted-foreground hover:text-destructive" title="ピン解除"><Trash2 className="h-3.5 w-3.5" /></button>
+                            <button type="button" disabled={pinIdx <= 0} onClick={() => move(pinIdx, -1)} className="rounded p-0.5 text-white/40 hover:text-white disabled:opacity-30" title="上へ"><ArrowUp className="h-3.5 w-3.5" /></button>
+                            <button type="button" disabled={pinIdx >= visiblePins.length - 1} onClick={() => move(pinIdx, 1)} className="rounded p-0.5 text-white/40 hover:text-white disabled:opacity-30" title="下へ"><ArrowDown className="h-3.5 w-3.5" /></button>
+                            <button type="button" onClick={() => removePin(pin.id)} className="rounded p-0.5 text-white/40 hover:text-red-300" title="ピン解除"><Trash2 className="h-3.5 w-3.5" /></button>
                           </>
                         ) : (
                           <>
-                            <button type="button" onClick={() => addPin(it)} className="rounded p-0.5 text-muted-foreground hover:text-foreground" title="ピン留め（上部固定）"><Pin className="h-3.5 w-3.5" /></button>
-                            <button type="button" onClick={() => hideAuto(it)} className="rounded p-0.5 text-muted-foreground hover:text-destructive" title="非表示にする"><EyeOff className="h-3.5 w-3.5" /></button>
+                            <button type="button" onClick={() => addPin(it)} className="rounded p-0.5 text-white/40 hover:text-white" title="ピン留め（上部固定）"><Pin className="h-3.5 w-3.5" /></button>
+                            <button type="button" onClick={() => hideAuto(it)} className="rounded p-0.5 text-white/40 hover:text-red-300" title="非表示にする"><EyeOff className="h-3.5 w-3.5" /></button>
                           </>
                         )}
                       </li>
@@ -223,9 +224,9 @@ export function InteropContentCurator({ onMsg }: { onMsg: (t: string, ok: boolea
               )}
               {hiddenPins.length > 0 && (
                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                  <span className="text-[11px] text-muted-foreground">非表示中:</span>
+                  <span className="text-[11px] text-white/40">非表示中:</span>
                   {hiddenPins.map((p) => (
-                    <button key={p.id} type="button" onClick={() => removePin(p.id)} className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] text-muted-foreground hover:text-foreground" title="非表示を解除">
+                    <button key={p.id} type="button" onClick={() => removePin(p.id)} className="inline-flex items-center gap-1 rounded-full border border-white/15 px-2 py-0.5 text-[10px] text-white/40 hover:text-white" title="非表示を解除">
                       {p.title || p.sourceId} <X className="h-2.5 w-2.5" />
                     </button>
                   ))}
@@ -233,24 +234,23 @@ export function InteropContentCurator({ onMsg }: { onMsg: (t: string, ok: boolea
               )}
             </div>
 
-            {/* 検索してピン追加 */}
-            <div className="rounded-md border bg-muted/20 p-3">
-              <p className="mb-2 text-sm font-semibold">本体エデュマッチから探してピン留め</p>
+            <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
+              <p className="mb-2 text-sm font-semibold text-white/80">本体エデュマッチから探してピン留め</p>
               <div className="mb-2 flex flex-wrap items-center gap-2">
                 {INTEROP_CONTENT_KINDS.map((k) => {
                   const on = kinds.includes(k.value);
                   return (
                     <button key={k.value} type="button"
                       onClick={() => setKinds((prev) => on ? prev.filter((x) => x !== k.value) : [...prev, k.value])}
-                      className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${on ? "border-primary bg-primary/10 text-primary" : "text-muted-foreground"}`}>
+                      className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${on ? "border-indigo-400 bg-indigo-400/20 text-indigo-300" : "border-white/15 text-white/40 hover:text-white/70"}`}>
                       {k.label}
                     </button>
                   );
                 })}
-                <span className="text-[10px] text-muted-foreground">（未選択なら全種別）</span>
+                <span className="text-[10px] text-white/35">（未選択なら全種別）</span>
               </div>
               <div className="flex gap-2">
-                <Input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") search(); }} placeholder="キーワード（空ならカテゴリ名で検索）" className="h-9 text-sm" />
+                <Input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") search(); }} placeholder="キーワード（空ならカテゴリ名で検索）" className={`h-9 text-sm ${di}`} />
                 <Button onClick={search} disabled={searching} className="h-9 gap-1">
                   {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} 検索
                 </Button>
@@ -258,31 +258,30 @@ export function InteropContentCurator({ onMsg }: { onMsg: (t: string, ok: boolea
 
               {candidates.length > 0 && (
                 <div className="mt-3 space-y-2">
-                  {/* 結果の絞り込み（種別タブ＋テキスト） */}
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <button type="button" onClick={() => setResultKind("all")} className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${resultKind === "all" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>すべて {candidates.length}</button>
+                    <button type="button" onClick={() => setResultKind("all")} className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${resultKind === "all" ? "bg-indigo-500 text-white" : "bg-white/10 text-white/50"}`}>すべて {candidates.length}</button>
                     {resultKinds.map(([label, n]) => (
-                      <button key={label} type="button" onClick={() => setResultKind(label)} className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${resultKind === label ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>{label} {n}</button>
+                      <button key={label} type="button" onClick={() => setResultKind(label)} className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${resultKind === label ? "bg-indigo-500 text-white" : "bg-white/10 text-white/50"}`}>{label} {n}</button>
                     ))}
                     <div className="relative ml-auto">
-                      <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                      <input value={resultFilter} onChange={(e) => setResultFilter(e.target.value)} placeholder="結果を絞り込み" className="h-7 w-44 rounded-md border bg-background pl-7 pr-2 text-[11px]" />
+                      <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/40" />
+                      <input value={resultFilter} onChange={(e) => setResultFilter(e.target.value)} placeholder="結果を絞り込み" className="h-7 w-44 rounded-lg border border-white/12 bg-white/[0.06] pl-7 pr-2 text-[11px] text-white placeholder:text-white/30 focus:outline-none" />
                     </div>
                   </div>
 
-                  <p className="text-[11px] text-muted-foreground">{filteredCandidates.length}件を表示</p>
+                  <p className="text-[11px] text-white/40">{filteredCandidates.length}件を表示</p>
                   <ul className="max-h-80 space-y-1.5 overflow-y-auto pr-1">
                     {filteredCandidates.map((it) => {
                       const already = pinnedKeys.has(`${it.sourceType}:${it.sourceId}`);
                       return (
-                        <li key={it.id} className="flex items-center gap-2 rounded border bg-background px-2 py-1.5 text-xs">
+                        <li key={it.id} className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs">
                           <Thumb url={it.thumbnailUrl} />
-                          <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-bold">{it.kindLabel}</span>
-                          <span className="flex-1 truncate" title={it.title}>{it.title}</span>
+                          <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-bold text-white/70">{it.kindLabel}</span>
+                          <span className="flex-1 truncate text-white/80" title={it.title}>{it.title}</span>
                           {already ? (
-                            <span className="inline-flex items-center gap-0.5 px-1 text-[10px] font-bold text-emerald-600"><Check className="h-3 w-3" />追加済</span>
+                            <span className="inline-flex items-center gap-0.5 px-1 text-[10px] font-bold text-emerald-300"><Check className="h-3 w-3" />追加済</span>
                           ) : (
-                            <Button size="sm" variant="outline" onClick={() => addPin(it)} className="h-7 gap-1 text-[11px]"><Plus className="h-3 w-3" />ピン</Button>
+                            <Button size="sm" variant="outline" onClick={() => addPin(it)} className="h-7 gap-1 border-white/15 text-[11px] text-white/70 hover:bg-white/10"><Plus className="h-3 w-3" />ピン</Button>
                           )}
                         </li>
                       );
@@ -292,12 +291,11 @@ export function InteropContentCurator({ onMsg }: { onMsg: (t: string, ok: boolea
               )}
             </div>
 
-            {/* 自作コンテンツをアップロードして追加 */}
             <UploadContentForm subId={subId} onAdded={() => reload(subId)} onMsg={onMsg} />
           </>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -349,12 +347,11 @@ function UploadContentForm({ subId, onAdded, onMsg }: { subId: string; onAdded: 
   };
 
   return (
-    <div className="rounded-md border bg-muted/20 p-3">
-      <p className="mb-2 text-sm font-semibold">自作コンテンツをアップロードして追加</p>
+    <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
+      <p className="mb-2 text-sm font-semibold text-white/80">自作コンテンツをアップロードして追加</p>
       <div className="flex flex-col gap-3 sm:flex-row">
-        {/* 画像アップロード */}
         <div className="shrink-0">
-          <label className="grid h-28 w-44 cursor-pointer place-items-center overflow-hidden rounded-lg border border-dashed bg-background text-center text-xs text-muted-foreground transition hover:border-primary/50">
+          <label className="grid h-28 w-44 cursor-pointer place-items-center overflow-hidden rounded-xl border border-dashed border-white/15 bg-white/[0.04] text-center text-xs text-white/40 transition hover:border-indigo-400/50">
             {uploading ? (
               <Loader2 className="h-5 w-5 animate-spin" />
             ) : imageUrl ? (
@@ -366,24 +363,23 @@ function UploadContentForm({ subId, onAdded, onMsg }: { subId: string; onAdded: 
             <input type="file" accept="image/png,image/jpeg,image/gif,image/webp" className="hidden" onChange={(e) => onPick(e.target.files?.[0])} />
           </label>
           {imageUrl && (
-            <button type="button" onClick={() => setImageUrl(null)} className="mt-1 text-[11px] text-muted-foreground hover:text-destructive">画像を削除</button>
+            <button type="button" onClick={() => setImageUrl(null)} className="mt-1 text-[11px] text-white/40 hover:text-red-300">画像を削除</button>
           )}
         </div>
 
-        {/* テキスト入力 */}
         <div className="flex-1 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-muted-foreground">ラベル:</span>
+            <span className="text-xs text-white/55">ラベル:</span>
             {CUSTOM_LABEL_OPTIONS.map((o) => (
               <button key={o.sourceType} type="button" onClick={() => setSourceType(o.sourceType)}
-                className={`rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${sourceType === o.sourceType ? "border-primary bg-primary/10 text-primary" : "text-muted-foreground"}`}>
+                className={`rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${sourceType === o.sourceType ? "border-indigo-400 bg-indigo-400/20 text-indigo-300" : "border-white/15 text-white/40 hover:text-white/70"}`}>
                 {o.label}
               </button>
             ))}
           </div>
-          <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="タイトル（必須）" className="h-8 text-sm" />
-          <Input value={href} onChange={(e) => setHref(e.target.value)} placeholder="リンクURL（任意・空なら画像を開く）" className="h-8 text-sm" />
-          <Input value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="説明（任意）" className="h-8 text-sm" />
+          <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="タイトル（必須）" className={`h-8 text-sm ${di}`} />
+          <Input value={href} onChange={(e) => setHref(e.target.value)} placeholder="リンクURL（任意・空なら画像を開く）" className={`h-8 text-sm ${di}`} />
+          <Input value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="説明（任意）" className={`h-8 text-sm ${di}`} />
           <div className="flex justify-end">
             <Button size="sm" onClick={add} disabled={saving || uploading} className="h-8 gap-1 text-xs">
               {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}コンテンツに追加
@@ -397,12 +393,12 @@ function UploadContentForm({ subId, onAdded, onMsg }: { subId: string; onAdded: 
 
 function Thumb({ url }: { url: string | null }) {
   return (
-    <span className="grid h-9 w-14 shrink-0 place-items-center overflow-hidden rounded bg-muted">
+    <span className="grid h-9 w-14 shrink-0 place-items-center overflow-hidden rounded-lg bg-white/[0.06]">
       {url ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={url} alt="" className="h-full w-full object-cover" loading="lazy" />
       ) : (
-        <ImageIcon className="h-4 w-4 text-muted-foreground/50" />
+        <ImageIcon className="h-4 w-4 text-white/30" />
       )}
     </span>
   );
