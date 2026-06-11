@@ -1,7 +1,7 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
-import { Bot, BookMarked, BookOpen, GraduationCap, Network, Shield, Users } from "lucide-react";
+import { Bot, BookMarked, BookOpen, GraduationCap, Maximize2, Minus, Network, Plus, Shield, Users } from "lucide-react";
 import {
   INTEROP_PRIORITY_TOPICS,
   sortTopicsForBurst,
@@ -386,179 +386,19 @@ function GroupChip({ label, sty }: { label: string; sty: GroupStyleEntry }) {
   );
 }
 
-// ───────────────── モバイル専用UI ─────────────────
 
-function MobilePuyoCard({
-  topic,
-  stats,
-  isHot,
-  isBig,
-  onActivate,
-}: {
-  topic: InteropPriorityTopic;
-  stats: InteropActivityStats;
-  isHot: boolean;
-  isBig: boolean;
+/** 中心インタロップ周りの直行カテゴリ玉（投稿ページへ直結） */
+export type InteropSatellite = {
+  key: string;
+  label: string;
+  /** 中心からの配置: 左上/右上/真下 */
+  place: "topLeft" | "topRight" | "bottom";
+  color: string;
+  icon: LucideIcon;
+  /** 直近投稿数（賑わい表示用） */
+  postCount?: number;
   onActivate: () => void;
-}) {
-  const sty = GROUP_STYLE[topic.major] ?? GROUP_STYLE.F;
-  const { Icon } = sty;
-  const hot = isHot;
-  const size = isBig ? 69 : 60; // 上位5のみ控えめに拡大
-  const hint = stats.postCount > 0 ? `${stats.postCount}件` : undefined;
-  const isRecent = stats.lastPostedAt
-    ? Date.now() - new Date(stats.lastPostedAt).getTime() < 86_400_000
-    : false;
-  return (
-    <button
-      type="button"
-      onClick={onActivate}
-      className="flex flex-col items-center gap-1.5 transition-transform focus:outline-none active:scale-95"
-    >
-      <span
-        className="relative grid place-items-center rounded-full"
-        style={{
-          width: size,
-          height: size,
-          background: sty.bg,
-          border: `1.5px solid ${sty.border}`,
-          boxShadow: `0 0 16px ${sty.glow}33, 0 4px 12px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.6)`,
-          backdropFilter: "blur(12px)",
-          WebkitBackdropFilter: "blur(12px)",
-        }}
-      >
-        <span
-          className="pointer-events-none absolute rounded-full"
-          style={{ top: "10%", left: "14%", width: "42%", height: "32%", background: sty.shine, filter: "blur(3px)", opacity: 0.55 }}
-        />
-        <Icon
-          style={{
-            width: Math.round(size * 0.4),
-            height: Math.round(size * 0.4),
-            color: sty.glow,
-            opacity: 0.95,
-            filter: `drop-shadow(0 0 3px ${sty.glow}77)`,
-          }}
-          strokeWidth={1.7}
-        />
-        {hot && (
-          <span className="absolute -right-0.5 -top-0.5 z-10">
-            <ForumHotFlame size="sm" />
-          </span>
-        )}
-        {isRecent && (
-          <span
-            className="absolute -left-1 -top-1 z-10 grid h-4 w-4 place-items-center rounded-full text-[10px] font-black leading-none text-white shadow"
-            style={{ background: "#ff3b30" }}
-            title="24時間以内に新しい投稿があります"
-          >
-            !
-          </span>
-        )}
-        {hint && (
-          <span
-            className="absolute -bottom-1 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full px-1 py-0.5 text-[7px] font-bold text-white"
-            style={{ background: `${sty.glow}cc` }}
-          >
-            {hint}
-          </span>
-        )}
-      </span>
-      <span
-        className="text-center text-[10.5px] font-semibold leading-tight text-white/95"
-        style={{ wordBreak: "keep-all", overflowWrap: "anywhere" }}
-      >
-        {topic.category}
-      </span>
-    </button>
-  );
-}
-
-/** モバイル：縦スクロールの分類セクション（玉ビジュアルは維持しつつ一覧性・タップ性を最優先） */
-function MobileBubbleMap({
-  interopCat,
-  activityByRoom,
-  ranking,
-  onSelectCategory,
-  onSelectTopic,
-  iconFor,
-}: {
-  interopCat: InteropCategory | undefined;
-  activityByRoom: Map<string, InteropActivityStats>;
-  ranking: { avg: number; big: Set<string> };
-  onSelectCategory: (cat: InteropCategory) => void;
-  onSelectTopic: (topic: InteropPriorityTopic) => void;
-  iconFor: (slug: string) => LucideIcon;
-}) {
-  const groups = useMemo(() => {
-    const m: Record<string, InteropPriorityTopic[]> = {};
-    for (const t of sortTopicsForBurst(INTEROP_PRIORITY_TOPICS)) (m[t.major] ??= []).push(t);
-    return m;
-  }, []);
-  const InteropIcon = interopCat ? iconFor(interopCat.slug) : Network;
-
-  return (
-    <div className="absolute inset-0 overflow-y-auto overflow-x-hidden">
-      <div className="px-4 pb-28 pt-[4.75rem]">
-        {/* 中心インタロップ（大バナー） */}
-        {interopCat && (
-          <button
-            type="button"
-            onClick={() => onSelectCategory(interopCat)}
-            className="relative mb-6 flex w-full items-center gap-3 rounded-3xl px-4 py-3.5 text-left transition-transform focus:outline-none active:scale-[0.98]"
-            style={{
-              background:
-                "radial-gradient(circle at 24% 24%, rgba(255,255,255,0.96) 0%, rgba(218,228,255,0.86) 42%, rgba(150,172,255,0.80) 100%)",
-              border: "2px solid rgba(200,218,255,0.8)",
-              boxShadow: "0 0 28px rgba(130,160,255,0.45), 0 8px 22px rgba(0,0,0,0.25)",
-            }}
-          >
-            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white/70">
-              <InteropIcon className="h-6 w-6 text-[#1a3a8a]" strokeWidth={1.9} />
-            </span>
-            <span className="flex flex-col">
-              <span className="text-[15px] font-bold text-[#13245e]">インタロップ</span>
-              <span className="text-[11px] font-medium text-[#3a4a8a]">展示・セミナー・ご意見はこちら</span>
-            </span>
-          </button>
-        )}
-
-        {/* 分類セクション */}
-        {(["A", "B", "C", "D", "E", "F"] as const).map((major) => {
-          const sty = GROUP_STYLE[major];
-          const list = groups[major] ?? [];
-          if (!list.length) return null;
-          return (
-            <section key={major} className="mb-5">
-              <div className="mb-3 flex items-center gap-2">
-                <span className="inline-block h-3 w-3 rounded-full" style={{ background: sty.glow, boxShadow: `0 0 8px ${sty.glow}` }} />
-                <h3 className="text-[15px] font-bold text-white">{sty.label}</h3>
-                <span className="text-[11px] text-white/45">{list.length}件</span>
-              </div>
-              <div className="grid grid-cols-3 gap-x-2 gap-y-4">
-                {list.map((topic) => {
-                  const stats = activityByRoom.get(topic.roomId) ?? { postCount: 0, participantCount: 0 };
-                  const isHot = stats.postCount > 0 && stats.postCount > ranking.avg;
-                  const isBig = ranking.big.has(topic.roomId);
-                  return (
-                    <MobilePuyoCard
-                      key={topic.no}
-                      topic={topic}
-                      stats={stats}
-                      isHot={isHot}
-                      isBig={isBig}
-                      onActivate={() => onSelectTopic(topic)}
-                    />
-                  );
-                })}
-              </div>
-            </section>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
+};
 
 /** トップ：28ぷよぷよ玉 + 中心インタロップ（中心から放射状配置） */
 export function InteropPuyoBubbleMap({
@@ -566,6 +406,8 @@ export function InteropPuyoBubbleMap({
   activityByRoom,
   axisConfig = DEFAULT_AXIS_CONFIG,
   topicPositions,
+  satellites = [],
+  livePosts = [],
   onSelectCategory,
   onSelectTopic,
   iconFor,
@@ -574,6 +416,9 @@ export function InteropPuyoBubbleMap({
   activityByRoom: Map<string, InteropActivityStats>;
   axisConfig?: AxisConfig;
   topicPositions?: Record<number, AxisPoint>;
+  satellites?: InteropSatellite[];
+  /** リアルタイム投稿（オレンジ枠の吹き出しで表示） */
+  livePosts?: Array<{ id: string; body: string; authorName: string }>;
   onSelectCategory: (cat: InteropCategory) => void;
   onSelectTopic: (topic: InteropPriorityTopic) => void;
   iconFor: (slug: string) => LucideIcon;
@@ -582,45 +427,116 @@ export function InteropPuyoBubbleMap({
   const InteropIcon = interopCat ? iconFor(interopCat.slug) : Network;
   const ranking = useMemo(() => computeBubbleRanking(topics, activityByRoom), [topics, activityByRoom]);
 
-  // ── ドラッグでパン ──
-  const [pan, setPan] = useState({ x: 0, y: 0 });
+  // ── パン＆ズーム（ドラッグ移動・ホイール/ピンチ拡縮）──
+  const MIN_SCALE = 0.55;
+  const MAX_SCALE = 2.6;
+  const [view, setView] = useState({ x: 0, y: 0, scale: 1 });
   const [grabbing, setGrabbing] = useState(false);
   const dragRef = useRef({ active: false, lastX: 0, lastY: 0, moved: 0 });
   const wasDragRef = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  // 複数ポインタ追跡（ピンチ用）
+  const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const pinchRef = useRef<{ dist: number; cx: number; cy: number } | null>(null);
 
+  const clampPan = (x: number, y: number, scale: number) => {
+    const lim = 560 * scale;
+    const limY = 420 * scale;
+    return { x: Math.max(-lim, Math.min(lim, x)), y: Math.max(-limY, Math.min(limY, y)) };
+  };
+
+  const zoomAt = (factor: number, originX: number, originY: number) => {
+    setView((v) => {
+      const rect = containerRef.current?.getBoundingClientRect();
+      const ox = originX - (rect?.left ?? 0) - (rect?.width ?? 0) / 2;
+      const oy = originY - (rect?.top ?? 0) - (rect?.height ?? 0) / 2;
+      const next = Math.max(MIN_SCALE, Math.min(MAX_SCALE, v.scale * factor));
+      const ratio = next / v.scale;
+      // ポインタ位置を中心にズーム（その点が動かないように pan を補正）
+      const nx = ox - (ox - v.x) * ratio;
+      const ny = oy - (oy - v.y) * ratio;
+      const c = clampPan(nx, ny, next);
+      return { x: c.x, y: c.y, scale: next };
+    });
+  };
+
+  const resetView = () => setView({ x: 0, y: 0, scale: 1 });
+
+  // ホイールズーム（passive:false で preventDefault）＋タッチスクロール抑制
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    // passive:false でタッチスクロールを抑制
-    const prevent = (e: TouchEvent) => { if (dragRef.current.active) e.preventDefault(); };
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+      zoomAt(factor, e.clientX, e.clientY);
+    };
+    const prevent = (e: TouchEvent) => { if (dragRef.current.active || pointersRef.current.size >= 2) e.preventDefault(); };
+    el.addEventListener("wheel", onWheel, { passive: false });
     el.addEventListener("touchmove", prevent, { passive: false });
-    return () => el.removeEventListener("touchmove", prevent);
+    return () => {
+      el.removeEventListener("wheel", onWheel);
+      el.removeEventListener("touchmove", prevent);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const onPointerDown = (e: React.PointerEvent) => {
-    dragRef.current = { active: true, lastX: e.clientX, lastY: e.clientY, moved: 0 };
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    setGrabbing(true);
+    if (pointersRef.current.size === 1) {
+      dragRef.current = { active: true, lastX: e.clientX, lastY: e.clientY, moved: 0 };
+      setGrabbing(true);
+    } else if (pointersRef.current.size === 2) {
+      // ピンチ開始
+      dragRef.current.active = false;
+      const pts = [...pointersRef.current.values()];
+      pinchRef.current = {
+        dist: Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y),
+        cx: (pts[0].x + pts[1].x) / 2,
+        cy: (pts[0].y + pts[1].y) / 2,
+      };
+    }
   };
   const onPointerMove = (e: React.PointerEvent) => {
+    if (pointersRef.current.has(e.pointerId)) {
+      pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+    // ピンチズーム（2本指）
+    if (pointersRef.current.size >= 2 && pinchRef.current) {
+      const pts = [...pointersRef.current.values()];
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      const cx = (pts[0].x + pts[1].x) / 2;
+      const cy = (pts[0].y + pts[1].y) / 2;
+      const factor = dist / (pinchRef.current.dist || dist);
+      if (factor && Math.abs(factor - 1) > 0.005) {
+        zoomAt(factor, cx, cy);
+        pinchRef.current = { dist, cx, cy };
+        wasDragRef.current = true;
+      }
+      return;
+    }
     if (!dragRef.current.active) return;
     const dx = e.clientX - dragRef.current.lastX;
     const dy = e.clientY - dragRef.current.lastY;
     dragRef.current.moved += Math.hypot(dx, dy);
     dragRef.current.lastX = e.clientX;
     dragRef.current.lastY = e.clientY;
-    setPan((p) => ({
-      x: Math.max(-540, Math.min(540, p.x + dx)),
-      y: Math.max(-400, Math.min(400, p.y + dy)),
-    }));
+    setView((v) => {
+      const c = clampPan(v.x + dx, v.y + dy, v.scale);
+      return { ...v, x: c.x, y: c.y };
+    });
   };
-  const onPointerUp = () => {
-    wasDragRef.current = dragRef.current.moved > 8;
-    dragRef.current.active = false;
-    setGrabbing(false);
+  const onPointerUp = (e: React.PointerEvent) => {
+    pointersRef.current.delete(e.pointerId);
+    if (pointersRef.current.size < 2) pinchRef.current = null;
+    if (pointersRef.current.size === 0) {
+      wasDragRef.current = wasDragRef.current || dragRef.current.moved > 8;
+      dragRef.current.active = false;
+      setGrabbing(false);
+    }
   };
-  // ドラッグ後のクリックを抑制（バブルが意図せず開くのを防ぐ）
+  // ドラッグ/ピンチ後のクリックを抑制（バブルが意図せず開くのを防ぐ）
   const onClickCapture = (e: React.MouseEvent) => {
     if (wasDragRef.current) { e.stopPropagation(); wasDragRef.current = false; }
   };
@@ -659,7 +575,7 @@ export function InteropPuyoBubbleMap({
       cancelled = true;
     };
   }, []);
-  const [popups, setPopups] = useState<Array<{ id: string; body: string; author: string; pos: [number, number]; xExtra: number; dir: "above" | "below"; sentimentColor: string }>>([]);
+  const [popups, setPopups] = useState<Array<{ id: string; body: string; author: string; pos: [number, number]; xExtra: number; dir: "above" | "below"; sentimentColor: string; live?: boolean }>>([]);
   useEffect(() => {
     if (comments.length === 0) return;
     const tick = () => {
@@ -675,13 +591,36 @@ export function InteropPuyoBubbleMap({
           (p) => Math.abs(p.pos[0] - pos[0]) < 22 && Math.abs(p.pos[1] - pos[1]) < 22
         );
         const xExtra = nearby.length > 0 ? (pos[0] > 50 ? -185 : 185) : 0;
-        return [...prev.slice(-1), { id, body: c.body, author: c.authorName, pos, xExtra, dir, sentimentColor }];
+        return [...prev.slice(-2), { id, body: c.body, author: c.authorName, pos, xExtra, dir, sentimentColor }];
       });
       window.setTimeout(() => setPopups((prev) => prev.filter((p) => p.id !== id)), 5200);
     };
     const interval = window.setInterval(tick, 3200);
     return () => window.clearInterval(interval);
   }, [comments, topics, placements]);
+
+  // リアルタイム投稿（実データ）：オレンジ枠の吹き出しでマップ全体に浮かべる
+  const liveIdxRef = useRef(0);
+  useEffect(() => {
+    if (livePosts.length === 0) return;
+    const tick = () => {
+      const c = livePosts[liveIdxRef.current % livePosts.length];
+      liveIdxRef.current += 1;
+      // マップ上のランダムな玉位置に出す（実投稿は分類に紐づかないため拡散配置）
+      const place = placements[Math.floor(Math.random() * Math.max(1, placements.length))];
+      const pos: [number, number] = place?.pos ?? [50, 40];
+      const id = `live-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      const dir: "above" | "below" = pos[1] < 30 ? "below" : "above";
+      setPopups((prev) => {
+        const nearby = prev.filter((p) => Math.abs(p.pos[0] - pos[0]) < 22 && Math.abs(p.pos[1] - pos[1]) < 22);
+        const xExtra = nearby.length > 0 ? (pos[0] > 50 ? -185 : 185) : 0;
+        return [...prev.slice(-2), { id, body: c.body, author: c.authorName, pos, xExtra, dir, sentimentColor: "#ffd9a8", live: true }];
+      });
+      window.setTimeout(() => setPopups((prev) => prev.filter((p) => p.id !== id)), 6000);
+    };
+    const interval = window.setInterval(tick, 4500);
+    return () => window.clearInterval(interval);
+  }, [livePosts, placements]);
 
   const bubbleSize = BUBBLE_SIZE_DESKTOP;
   const centerSize = CENTER_SIZE_DESKTOP;
@@ -697,8 +636,15 @@ export function InteropPuyoBubbleMap({
       onClickCapture={onClickCapture}
     >
       <style>{PUYO_CSS}{INTEROP_PUYO_CSS}</style>
-      {/* パン可能なキャンバス */}
-      <div className="absolute inset-0" style={{ transform: `translate(${pan.x}px, ${pan.y}px)` }}>
+      {/* パン＆ズーム可能なキャンバス */}
+      <div
+        className="absolute inset-0"
+        style={{
+          transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})`,
+          transformOrigin: "center center",
+          transition: dragRef.current.active ? "none" : "transform 0.12s ease-out",
+        }}
+      >
 
       {/* 2軸の線とラベル（現場↔制度 × 人間↔技術） */}
       <div
@@ -777,22 +723,29 @@ export function InteropPuyoBubbleMap({
                 : "commentPopCloudBelow 5.0s ease-in-out forwards",
             }}
           >
-            {/* 雲形吹き出し本体 */}
+            {/* 雲形吹き出し本体（live=実投稿はオレンジ枠） */}
             <div
               className="relative rounded-[18px] px-3 py-2.5 text-left"
               style={{
-                background: "rgba(215,228,255,0.20)",
-                border: "1px solid rgba(255,255,255,0.38)",
+                background: p.live ? "rgba(60,38,16,0.42)" : "rgba(215,228,255,0.20)",
+                border: p.live ? "1.5px solid rgba(255,168,72,0.85)" : "1px solid rgba(255,255,255,0.38)",
                 backdropFilter: "blur(20px) saturate(1.3)",
                 WebkitBackdropFilter: "blur(20px) saturate(1.3)",
-                boxShadow: "0 4px 22px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.48), inset 0 -1px 0 rgba(255,255,255,0.08)",
+                boxShadow: p.live
+                  ? "0 4px 22px rgba(0,0,0,0.30), 0 0 16px rgba(255,150,50,0.35), inset 0 1px 0 rgba(255,210,150,0.40)"
+                  : "0 4px 22px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.48), inset 0 -1px 0 rgba(255,255,255,0.08)",
               }}
             >
               <div
                 className="pointer-events-none absolute inset-x-3 top-0 h-px rounded-full"
-                style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.60) 40%, rgba(255,255,255,0.70) 60%, transparent)" }}
+                style={{ background: p.live ? "linear-gradient(90deg, transparent, rgba(255,190,120,0.7) 50%, transparent)" : "linear-gradient(90deg, transparent, rgba(255,255,255,0.60) 40%, rgba(255,255,255,0.70) 60%, transparent)" }}
               />
-              <p className="text-[10px] font-bold text-indigo-100/90">{p.author}</p>
+              {p.live && (
+                <span className="mb-0.5 inline-flex items-center gap-1 rounded-full bg-orange-400/90 px-1.5 py-0.5 text-[8px] font-black leading-none text-orange-950">
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-orange-950 animate-pulse" /> LIVE投稿
+                </span>
+              )}
+              <p className={`text-[10px] font-bold ${p.live ? "text-orange-100" : "text-indigo-100/90"}`}>{p.author}</p>
               <p className="mt-0.5 text-[11px] leading-snug line-clamp-3" style={{ color: p.sentimentColor }}>{p.body}</p>
             </div>
             {/* テイル: 上に浮いてる → 下向き (▼)、下に浮いてる → 上向き (▲) */}
@@ -802,8 +755,8 @@ export function InteropPuyoBubbleMap({
                 left: `calc(50% + ${tailOffset}px)`,
                 transform: "translateX(-50%)",
                 ...(isAbove
-                  ? { bottom: -7, borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderTop: "8px solid rgba(215,228,255,0.28)" }
-                  : { top: -7, borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderBottom: "8px solid rgba(215,228,255,0.28)" }),
+                  ? { bottom: -7, borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderTop: `8px solid ${p.live ? "rgba(255,168,72,0.55)" : "rgba(215,228,255,0.28)"}` }
+                  : { top: -7, borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderBottom: `8px solid ${p.live ? "rgba(255,168,72,0.55)" : "rgba(215,228,255,0.28)"}` }),
               }}
             />
           </div>
@@ -878,10 +831,98 @@ export function InteropPuyoBubbleMap({
         </button>
       )}
 
+      {/* 中心インタロップ直行の3カテゴリ玉（左上＝最新ニュース／右上＝登壇者への質問／真下＝ご意見BOX）。投稿ページへ直結 */}
+      {satellites.map((s) => {
+        const SIcon = s.icon;
+        // 中心(50%,46%)を基準に配置
+        const placePos =
+          s.place === "topLeft" ? { left: "32%", top: "27%" }
+          : s.place === "topRight" ? { left: "68%", top: "27%" }
+          : { left: "50%", top: "70%" };
+        return (
+          <button
+            key={s.key}
+            type="button"
+            onClick={s.onActivate}
+            className="group absolute z-[22] flex -translate-x-1/2 -translate-y-1/2 flex-col items-center focus:outline-none"
+            style={{ left: placePos.left, top: placePos.top }}
+            aria-label={s.label}
+          >
+            <span
+              className="pointer-events-none absolute rounded-full opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+              style={{ inset: -18, background: `radial-gradient(circle, ${s.color}55 0%, transparent 65%)` }}
+            />
+            <span
+              className="relative grid h-[78px] w-[78px] place-items-center rounded-full transition-transform duration-200 group-hover:scale-[1.09] group-active:scale-95"
+              style={{
+                background: `radial-gradient(circle at 34% 26%, rgba(255,255,255,0.92) 0%, ${s.color}66 44%, ${s.color}cc 100%)`,
+                border: `2px solid ${s.color}`,
+                boxShadow: `0 0 26px ${s.color}55, 0 6px 18px rgba(0,0,0,0.28), inset 0 2px 12px rgba(255,255,255,0.55)`,
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+              }}
+            >
+              <span className="pointer-events-none absolute rounded-full" style={{ top: "11%", left: "15%", width: "40%", height: "30%", background: "rgba(255,255,255,0.75)", filter: "blur(3px)" }} />
+              <SIcon className="relative z-10 h-7 w-7" style={{ color: "#15224e" }} strokeWidth={1.9} />
+              {typeof s.postCount === "number" && s.postCount > 0 && (
+                <span className="absolute -bottom-1 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-full px-1.5 py-0.5 text-[8px] font-bold text-white shadow" style={{ background: `${s.color}ee` }}>
+                  {s.postCount}件
+                </span>
+              )}
+            </span>
+            <span
+              className="mt-2 whitespace-nowrap rounded-lg px-2.5 py-1 text-center text-[11.5px] font-bold leading-tight text-white"
+              style={{
+                background: `linear-gradient(135deg, rgba(8,11,32,0.88) 0%, ${s.color}33 100%)`,
+                border: `1px solid ${s.color}66`,
+                boxShadow: `0 2px 12px rgba(0,0,0,0.40), 0 0 10px ${s.color}33`,
+                backdropFilter: "blur(8px)",
+                WebkitBackdropFilter: "blur(8px)",
+              }}
+            >
+              {s.label}
+            </span>
+          </button>
+        );
+      })}
+
       </div>{/* /パン可能キャンバス */}
 
+      {/* ズーム＆リセット操作（右下・固定） */}
+      <div className="absolute bottom-24 right-3 z-40 flex flex-col gap-1.5 md:bottom-16">
+        <button
+          type="button"
+          onClick={() => zoomAt(1.2, (containerRef.current?.getBoundingClientRect().left ?? 0) + (containerRef.current?.clientWidth ?? 0) / 2, (containerRef.current?.getBoundingClientRect().top ?? 0) + (containerRef.current?.clientHeight ?? 0) / 2)}
+          className="grid h-9 w-9 place-items-center rounded-xl border border-white/15 bg-[#0a1024]/80 text-white/80 backdrop-blur transition hover:bg-white/15 hover:text-white"
+          aria-label="拡大"
+        >
+          <Plus className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => zoomAt(1 / 1.2, (containerRef.current?.getBoundingClientRect().left ?? 0) + (containerRef.current?.clientWidth ?? 0) / 2, (containerRef.current?.getBoundingClientRect().top ?? 0) + (containerRef.current?.clientHeight ?? 0) / 2)}
+          className="grid h-9 w-9 place-items-center rounded-xl border border-white/15 bg-[#0a1024]/80 text-white/80 backdrop-blur transition hover:bg-white/15 hover:text-white"
+          aria-label="縮小"
+        >
+          <Minus className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={resetView}
+          className={`grid h-9 w-9 place-items-center rounded-xl border backdrop-blur transition ${
+            view.scale !== 1 || view.x !== 0 || view.y !== 0
+              ? "border-indigo-300/50 bg-indigo-500/30 text-white hover:bg-indigo-500/45"
+              : "border-white/15 bg-[#0a1024]/80 text-white/60 hover:bg-white/15 hover:text-white"
+          }`}
+          aria-label="表示をリセット"
+          title="表示をリセット"
+        >
+          <Maximize2 className="h-4 w-4" />
+        </button>
+      </div>
+
       {/* 凡例：パンしても固定表示 */}
-      <div className="pointer-events-none absolute bottom-20 left-4 right-4 z-30 flex flex-wrap gap-1.5 md:bottom-6">
+      <div className="pointer-events-none absolute bottom-20 left-4 right-16 z-30 flex flex-wrap gap-1.5 md:bottom-6">
         {Object.entries(GROUP_STYLE).map(([major, sty]) => (
           <GroupChip key={major} label={sty.label} sty={sty} />
         ))}

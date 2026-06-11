@@ -16,9 +16,9 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { InteropBackdrop } from "@/components/interop/interop-backdrop";
-import { InteropPuyoBubbleMap } from "@/components/interop/interop-puyo-bubble-map";
-import { InteropFeedbackButton } from "@/components/interop/interop-feedback-button";
+import { InteropPuyoBubbleMap, type InteropSatellite } from "@/components/interop/interop-puyo-bubble-map";
 import type { InteropCategory } from "@/components/interop/interop-category-bubble-map";
+import { Mic, Newspaper, MessagesSquare } from "lucide-react";
 import {
   InteropSubOrbit,
   type InteropSubCategory,
@@ -177,6 +177,53 @@ export function InteropExplorer({
       .catch(() => {});
   }, []);
 
+  // ── 中心インタロップ直行サテライト（最新ニュース／登壇者への質問／ご意見BOX）の解決 ──
+  const [allSubs, setAllSubs] = useState<InteropSubCategory[]>([]);
+  useEffect(() => {
+    fetch("/api/interop/sub-categories")
+      .then((r) => r.json())
+      .then((d) => { if (Array.isArray(d.subCategories)) setAllSubs(d.subCategories); })
+      .catch(() => {});
+  }, []);
+
+  // ── リアルタイム投稿（オレンジ吹き出し）──
+  const [livePosts, setLivePosts] = useState<Array<{ id: string; body: string; authorName: string }>>([]);
+  useEffect(() => {
+    const load = () =>
+      fetch("/api/interop/recent-posts")
+        .then((r) => r.json())
+        .then((d) => { if (Array.isArray(d.posts)) setLivePosts(d.posts); })
+        .catch(() => {});
+    load();
+    const t = window.setInterval(load, 30_000);
+    return () => window.clearInterval(t);
+  }, []);
+
+  const satellites = useMemo<InteropSatellite[]>(() => {
+    const defs = [
+      { slug: "interop-latest-news", nameHints: ["最新ニュース", "ニュース"], label: "最新ニュース", place: "topLeft" as const, color: "#7dd4fc", icon: Newspaper },
+      { slug: "interop-speaker-qa", nameHints: ["登壇者への質問", "登壇", "質問"], label: "登壇者への質問", place: "topRight" as const, color: "#fcd34d", icon: Mic },
+      { slug: "interop-opinion-box", nameHints: ["ご意見BOX", "ご意見", "意見"], label: "ご意見BOX", place: "bottom" as const, color: "#86efac", icon: MessagesSquare },
+    ];
+    const result: InteropSatellite[] = [];
+    for (const d of defs) {
+      const sub =
+        allSubs.find((s) => s.slug === d.slug) ??
+        allSubs.find((s) => d.nameHints.some((h) => s.name.includes(h)));
+      if (!sub) continue;
+      result.push({
+        key: d.slug,
+        label: d.label,
+        place: d.place,
+        color: d.color,
+        icon: d.icon,
+        postCount: activityBySub.get(sub.id)?.postCount,
+        onActivate: () => router.push(`/interop/t/${sub.id}`),
+      });
+    }
+    return result;
+  }, [allSubs, activityBySub, router]);
+
   const interopCat = useMemo(
     () =>
       categories.find((c) => c.slug === "interop") ??
@@ -295,6 +342,8 @@ export function InteropExplorer({
             activityByRoom={activityByRoom}
             axisConfig={axis.config}
             topicPositions={axis.positions}
+            satellites={satellites}
+            livePosts={livePosts}
             iconFor={iconFor}
             onSelectCategory={handleSelectFromMap}
             onSelectTopic={handleSelectTopic}
@@ -315,7 +364,6 @@ export function InteropExplorer({
               {guideText}
             </div>
           </div>
-          <InteropFeedbackButton />
         </>
       ) : view.kind === "hub" ? (
         <>
