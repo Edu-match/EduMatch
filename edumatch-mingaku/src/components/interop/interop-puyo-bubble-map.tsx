@@ -124,7 +124,10 @@ function computeAxisPlacements(
   ys = 0.6,
   /** 配置のy範囲(%)。スマホは下端を100超にして画面外へ展開→パンで探索。 */
   yMin = 9,
-  yMax = 90
+  yMax = 90,
+  /** 配置のx範囲(%)。端の玉ラベルが画面外/バーに被らないよう内側に寄せる。 */
+  xMin = 5,
+  xMax = 95
 ): Placement[] {
   const rOf = (i: number) => radii[i] ?? 6;
   const pts = topics.map((t, i) => {
@@ -171,7 +174,7 @@ function computeAxisPlacements(
     }
   }
   return pts.map((p) => {
-    const x = Math.max(5, Math.min(95, p.x));
+    const x = Math.max(xMin, Math.min(xMax, p.x));
     const y = Math.max(yMin, Math.min(yMax, p.y));
     const dx = x - AXIS_CX;
     const dy = y - AXIS_CY;
@@ -259,12 +262,14 @@ type MapMetrics = {
   ys: number;          // y圧縮率（小さいほど縦に大きく散らす）
   yMin: number;        // 配置の上端クランプ(%)
   yMax: number;        // 配置の下端クランプ(%)。100超で画面より下へ展開→パンで探索
+  xMin: number;        // 配置の左端クランプ(%)
+  xMax: number;        // 配置の右端クランプ(%)
   panLimY: number;     // 縦パンの可動域(px)
 };
 // スマホは1画面に玉が多すぎてゴチャつくため、縦に大きく展開して画面あたりの玉数を減らし、
 // 下へパンして探索できるようにする。
-const METRICS_DESKTOP: MapMetrics = { base: 40, max: 150, refW: 1300, labelMargin: 4.2, centerSize: 132, satOrb: 84, centerR: 18, satR: 13, ys: 0.6, yMin: 9, yMax: 90,  panLimY: 420 };
-const METRICS_MOBILE: MapMetrics  = { base: 26, max: 70,  refW: 430,  labelMargin: 4.2, centerSize: 88,  satOrb: 56, centerR: 17, satR: 13, ys: 0.5, yMin: 9, yMax: 170, panLimY: 920 };
+const METRICS_DESKTOP: MapMetrics = { base: 40, max: 150, refW: 1300, labelMargin: 4.2, centerSize: 132, satOrb: 84, centerR: 18, satR: 13, ys: 0.6, yMin: 18, yMax: 91, xMin: 10, xMax: 88, panLimY: 420 };
+const METRICS_MOBILE: MapMetrics  = { base: 26, max: 70,  refW: 430,  labelMargin: 4.7, centerSize: 88,  satOrb: 56, centerR: 17, satR: 13, ys: 0.5, yMin: 16, yMax: 175, xMin: 7, xMax: 93, panLimY: 940 };
 
 
 function PuyoBubble({
@@ -306,17 +311,22 @@ function PuyoBubble({
   const { Icon } = sty;
   const dur = 7 + ((topic.no * 13 + index * 9) % 60) / 10;
   const delay = -((topic.no * 7 + index * 4) % 70) / 10;
-  // ラベルを塊の外向き（上/下/左/右）に常時配置して重なりを回避
+  // ラベルを塊の外向き（上/下/左/右）に常時配置して重なりを回避。
+  // ただし画面の上端付近はラベルを必ず「下」、下端付近は必ず「上」にして、
+  // ヘッダー/フッターや画面外に被らないようにする。
   const ax = dir[0];
   const ay = dir[1];
+  const below: React.CSSProperties = { top: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)" };
+  const above: React.CSSProperties = { bottom: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)" };
   const horizontal = Math.abs(ax) > Math.abs(ay) * 1.15;
-  const labelPos: React.CSSProperties = horizontal
-    ? ax < 0
+  let labelPos: React.CSSProperties;
+  if (pos[1] < 22) labelPos = below;
+  else if (pos[1] > 86) labelPos = above;
+  else if (horizontal)
+    labelPos = ax < 0
       ? { right: "calc(100% + 9px)", top: "50%", transform: "translateY(-50%)" }
-      : { left: "calc(100% + 9px)", top: "50%", transform: "translateY(-50%)" }
-    : ay < 0
-      ? { bottom: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)" }
-      : { top: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)" };
+      : { left: "calc(100% + 9px)", top: "50%", transform: "translateY(-50%)" };
+  else labelPos = ay < 0 ? above : below;
 
   return (
     <button
@@ -681,8 +691,8 @@ export function InteropPuyoBubbleMap({
     [topics, activityByRoom, m.base, m.max, m.refW, m.labelMargin]
   );
   const placements = useMemo(
-    () => computeAxisPlacements(topics, topicPositions ?? DEFAULT_TOPIC_AXIS, obstacles, placeRadii, m.ys, m.yMin, m.yMax),
-    [topics, topicPositions, obstacles, placeRadii, m.ys, m.yMin, m.yMax]
+    () => computeAxisPlacements(topics, topicPositions ?? DEFAULT_TOPIC_AXIS, obstacles, placeRadii, m.ys, m.yMin, m.yMax, m.xMin, m.xMax),
+    [topics, topicPositions, obstacles, placeRadii, m.ys, m.yMin, m.yMax, m.xMin, m.xMax]
   );
   // 関連カテゴリのノード接続線（座標が近いトピック同士を結ぶ）
   const connections = useMemo(() => {
@@ -768,7 +778,8 @@ export function InteropPuyoBubbleMap({
   return (
     <div
       ref={containerRef}
-      className={`absolute inset-0 overflow-hidden select-none touch-none ${grabbing ? "cursor-grabbing" : "cursor-grab"}`}
+      // PCは右端の縦長AIバー(48px)分だけ右を空け、玉・ラベルがバーに潜らないようにする
+      className={`absolute inset-y-0 left-0 right-0 overflow-hidden select-none touch-none sm:right-12 ${grabbing ? "cursor-grabbing" : "cursor-grab"}`}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
