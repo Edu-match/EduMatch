@@ -14,8 +14,10 @@ const SUGGESTIONS = [
   "生成AIを授業で使うときの注意点は？",
 ];
 
-/** Interop特設ページ向けの来場者AIチャット（ログイン不要・1人24hで15回） */
-export function InteropChatWidget() {
+/** Interop特設ページ向けの来場者AIチャット（ログイン不要・1人24hで15回）。
+ *  全ページ共通で出すため fixed 配置。下部に投稿バーがあるページは mobileRaise で
+ *  スマホの起動ボタンを少し上げてバーとの重なりを防ぐ。 */
+export function InteropChatWidget({ mobileRaise = false }: { mobileRaise?: boolean } = {}) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
@@ -94,7 +96,7 @@ export function InteropChatWidget() {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="group absolute right-4 bottom-5 z-50 flex items-center justify-center rounded-full px-4 py-3 text-sm font-bold text-white shadow-lg transition hover:scale-105 sm:inset-y-0 sm:bottom-0 sm:right-0 sm:h-full sm:w-12 sm:rounded-none sm:px-0 sm:py-0 sm:hover:scale-100 sm:hover:w-14"
+          className={`group fixed right-4 z-50 flex items-center justify-center rounded-full px-4 py-3 text-sm font-bold text-white shadow-lg transition hover:scale-105 ${mobileRaise ? "bottom-28" : "bottom-5"} sm:inset-y-0 sm:bottom-0 sm:right-0 sm:h-full sm:w-12 sm:rounded-none sm:px-0 sm:py-0 sm:hover:scale-100 sm:hover:w-14`}
           style={{
             background: ORANGE_GRAD,
             borderLeft: "1px solid rgba(255,205,150,0.6)",
@@ -114,7 +116,7 @@ export function InteropChatWidget() {
       {/* チャットパネル */}
       {open && (
         <div
-          className="absolute inset-x-0 bottom-0 z-50 mx-auto flex h-[80dvh] max-h-[680px] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl sm:inset-y-0 sm:left-auto sm:right-0 sm:bottom-0 sm:mx-0 sm:h-full sm:max-h-none sm:w-[400px] sm:rounded-none sm:rounded-l-3xl"
+          className="fixed inset-x-0 bottom-0 z-50 mx-auto flex h-[80dvh] max-h-[680px] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl sm:inset-y-0 sm:left-auto sm:right-0 sm:bottom-0 sm:mx-0 sm:h-full sm:max-h-none sm:w-[400px] sm:rounded-none sm:rounded-l-3xl"
           style={{
             background: "rgba(8,12,32,0.94)",
             border: "1px solid rgba(255,180,110,0.28)",

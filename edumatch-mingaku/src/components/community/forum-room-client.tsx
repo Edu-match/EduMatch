@@ -33,6 +33,7 @@ import {
   Zap,
 } from "lucide-react";
 import { InteropBackdrop } from "@/components/interop/interop-backdrop";
+import { InteropChatWidget } from "@/components/interop/interop-chat-widget";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -1831,6 +1832,9 @@ export function ForumRoomClient({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* 特設(来場者)はどのページでもいつでもAIに質問できる */}
+      {fromInterop && <InteropChatWidget mobileRaise />}
     </div>
   );
 }

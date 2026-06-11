@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, Bot, Loader2, MessageCircle, Pin, Send } from "lucide-react";
 import { InteropBackdrop } from "@/components/interop/interop-backdrop";
 import { InteropContentCarousel } from "@/components/interop/interop-content-carousel";
+import { InteropChatWidget } from "@/components/interop/interop-chat-widget";
 import type { InteropThemeMode } from "@/lib/interop-settings";
 
 type AiReply = { body: string; postedAt: string };
@@ -327,6 +328,9 @@ export function InteropBoard({
           </div>
         </div>
       </div>
+
+      {/* どのページでもいつでも質問できるAIチャット（下部に投稿バーがあるので少し上げる） */}
+      <InteropChatWidget mobileRaise />
     </main>
   );
 }
