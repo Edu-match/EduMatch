@@ -1587,10 +1587,16 @@ export function ForumRoomClient({
       {/* ─── メインコンテンツ（コミュニティページでは表示しない） ─── */}
       {categoryContext?.contentKind === "community" ? null : (
       <div className={`container py-8 ${fromInterop ? "relative z-10" : ""}`}>
-        <div className="mx-auto max-w-5xl space-y-8">
+        <div className={`mx-auto max-w-5xl ${fromInterop ? "flex flex-col gap-5" : "space-y-8"}`}>
 
-          {/* 投稿フォーム ＋ AI壁打ちサイドバー */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_260px]">
+          {/* 投稿フォーム ＋ AI壁打ちサイドバー（特設はチャット風に下へ固定） */}
+          <div
+            className={`grid grid-cols-1 gap-4 ${
+              fromInterop
+                ? "order-2 sticky bottom-3 z-30 rounded-2xl"
+                : "lg:grid-cols-[1fr_260px]"
+            }`}
+          >
             <NewPostComposer
               onSubmit={handleNewPost}
               roomId={room.id}
@@ -1607,7 +1613,8 @@ export function ForumRoomClient({
             {!fromInterop && <AiHelperSidebar roomTheme={roomDiscussionContext} body={composerBody} />}
           </div>
 
-          {/* 投稿一覧 */}
+          {/* 投稿一覧（特設は上に配置） */}
+          <div className={fromInterop ? "order-1" : "contents"}>
           {loading ? (
             <div className="flex items-center justify-center py-16">
               <Loader2 className={`h-8 w-8 animate-spin ${fromInterop ? "text-white/50" : "text-muted-foreground"}`} />
@@ -1695,6 +1702,7 @@ export function ForumRoomClient({
               </div>
             </div>
           )}
+          </div>
         </div>
       </div>
       )}
