@@ -23,7 +23,7 @@ import {
   type InteropSubCategory,
 } from "@/components/interop/interop-sub-orbit";
 import type { InteropActivityStats } from "@/lib/interop-activity";
-import { priorityTopicId, type InteropPriorityTopic } from "@/lib/interop-priority-topics";
+import type { InteropPriorityTopic } from "@/lib/interop-priority-topics";
 import type { InteropThemeMode } from "@/lib/interop-settings";
 
 const ICONS: Record<string, LucideIcon> = {
@@ -78,6 +78,19 @@ type View =
 const ACTIVITY_POLL_MS = 45_000;
 const EMPTY_STATS: InteropActivityStats = { postCount: 0, participantCount: 0 };
 
+type ForumRoomActivityPayload = {
+  id: string;
+  postCount: number;
+  participantCount: number;
+  lastPostedAt: string;
+  topicActivity?: Array<{
+    topicId: string;
+    postCount: number;
+    participantCount: number;
+    lastPostedAt: string | null;
+  }>;
+};
+
 export function InteropExplorer({
   themeMode = "auto",
   guideText = "中央のインタロップをタップして展示情報へ · 周囲の◎トピックをタップして論点・井戸端へ",
@@ -96,6 +109,8 @@ export function InteropExplorer({
   const [view, setView] = useState<View>({ kind: "map" });
   const [activityBySub, setActivityBySub] = useState<Map<string, InteropActivityStats>>(new Map());
   const [activityByCategory, setActivityByCategory] = useState<Map<string, InteropActivityStats>>(new Map());
+  const [activityByRoom, setActivityByRoom] = useState<Map<string, InteropActivityStats>>(new Map());
+  const [activityByTopic, setActivityByTopic] = useState<Map<string, InteropActivityStats>>(new Map());
 
   const interopCat = useMemo(
     () =>
@@ -110,11 +125,13 @@ export function InteropExplorer({
   );
 
   const loadActivity = useCallback(() => {
-    fetch("/api/interop/activity")
-      .then((r) => r.json())
-      .then((d: ActivityPayload) => {
+    Promise.all([
+      fetch("/api/interop/activity").then((r) => r.json() as Promise<ActivityPayload>),
+      fetch("/api/forum/rooms?communityThemes=true").then((r) => r.json() as Promise<{ rooms?: ForumRoomActivityPayload[] }>),
+    ])
+      .then(([interop, forum]) => {
         const subMap = new Map<string, InteropActivityStats>();
-        for (const row of d.subs ?? []) {
+        for (const row of interop.subs ?? []) {
           subMap.set(row.subCategoryId, {
             postCount: row.postCount,
             participantCount: row.participantCount,
@@ -122,15 +139,33 @@ export function InteropExplorer({
           });
         }
         const catMap = new Map<string, InteropActivityStats>();
-        for (const row of d.categories ?? []) {
+        for (const row of interop.categories ?? []) {
           catMap.set(row.categoryId, {
             postCount: row.postCount,
             participantCount: row.participantCount,
             lastPostedAt: row.lastPostedAt,
           });
         }
+        const roomMap = new Map<string, InteropActivityStats>();
+        const topicMap = new Map<string, InteropActivityStats>();
+        for (const room of forum.rooms ?? []) {
+          roomMap.set(room.id, {
+            postCount: room.postCount,
+            participantCount: room.participantCount,
+            lastPostedAt: room.lastPostedAt,
+          });
+          for (const t of room.topicActivity ?? []) {
+            topicMap.set(t.topicId, {
+              postCount: t.postCount,
+              participantCount: t.participantCount,
+              lastPostedAt: t.lastPostedAt,
+            });
+          }
+        }
         setActivityBySub(subMap);
         setActivityByCategory(catMap);
+        setActivityByRoom(roomMap);
+        setActivityByTopic(topicMap);
       })
       .catch(console.error);
   }, []);
@@ -223,6 +258,7 @@ export function InteropExplorer({
         <>
           <InteropPuyoBubbleMap
             interopCat={interopCat}
+            activityByRoom={activityByRoom}
             iconFor={iconFor}
             onSelectCategory={handleSelectFromMap}
             onSelectTopic={handleSelectTopic}
@@ -267,14 +303,21 @@ export function InteropExplorer({
           centerIcon={MessageCircle}
           centerHint={`${view.topic.topics.length}つの論点 · タップで井戸端へ`}
           accent={view.topic.color}
-          items={view.topic.topics.map((t, idx) => ({
-            id: `${priorityTopicId(view.topic.no)}-t${idx + 1}`,
-            name: t,
-            icon: MessageCircle,
-            accentColor: view.topic.color,
-            stats: EMPTY_STATS,
-            onActivate: () => router.push(`/forum/${view.topic.roomId}?from=interop`),
-          }))}
+          items={view.topic.topics.map((t, idx) => {
+            const topicId = `${view.topic.roomId}-t${idx + 1}`;
+            return {
+              id: topicId,
+              name: t,
+              icon: MessageCircle,
+              accentColor: view.topic.color,
+              stats:
+                activityByTopic.get(topicId) ??
+                activityByRoom.get(view.topic.roomId) ??
+                EMPTY_STATS,
+              onActivate: () =>
+                router.push(`/forum/${view.topic.roomId}?from=interop&topic=${encodeURIComponent(topicId)}`),
+            };
+          })}
           backLabel="トップに戻る"
           onBack={() => setView({ kind: "map" })}
         />

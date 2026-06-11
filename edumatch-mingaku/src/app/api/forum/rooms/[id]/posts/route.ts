@@ -22,6 +22,7 @@ export async function GET(
     const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1", 10));
     const skip = (page - 1) * PAGE_SIZE;
     const includeHidden = url.searchParams.get("includeHidden") === "true";
+    const topicId = url.searchParams.get("topicId")?.trim() || null;
 
     // includeHidden は管理者のみ許可
     let isAdmin = false;
@@ -32,9 +33,25 @@ export async function GET(
     }
     const hiddenFilter = includeHidden && isAdmin ? undefined : false;
 
+    if (topicId) {
+      const topic = await prisma.forumRoomTopic.findFirst({
+        where: { id: topicId, room_id: roomId },
+        select: { id: true },
+      });
+      if (!topic) {
+        return NextResponse.json({ error: "Topic not found" }, { status: 404 });
+      }
+    }
+
+    const postWhere = {
+      room_id: roomId,
+      ...(topicId ? { topic_id: topicId } : {}),
+      ...(hiddenFilter !== undefined && { is_hidden: hiddenFilter }),
+    };
+
     const [posts, total, room] = await Promise.all([
       prisma.forumPost.findMany({
-        where: { room_id: roomId, ...(hiddenFilter !== undefined && { is_hidden: hiddenFilter }) },
+        where: postWhere,
         orderBy: { created_at: "desc" },
         skip,
         take: PAGE_SIZE,
@@ -50,7 +67,7 @@ export async function GET(
           },
         },
       }),
-      prisma.forumPost.count({ where: { room_id: roomId, ...(hiddenFilter !== undefined && { is_hidden: hiddenFilter }) } }),
+      prisma.forumPost.count({ where: postWhere }),
       prisma.forumRoom.findUnique({ where: { id: roomId }, select: { ai_discussion: true } }),
     ]);
 

@@ -1377,6 +1377,8 @@ export function ForumRoomClient({
   const auth = useAuthUser();
   const searchParams = useSearchParams();
   const fromInterop = searchParams.get("from") === "interop";
+  const activeTopicId = searchParams.get("topic")?.trim() || null;
+  const [activeTopicTitle, setActiveTopicTitle] = useState<string | null>(null);
   const [sort, setSort] = useState<SortKey>("newest");
   const [posts, setPosts] = useState<ForumPost[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1395,15 +1397,35 @@ export function ForumRoomClient({
   const requireLogin = useCallback(() => setLoginDialogOpen(true), []);
 
   useEffect(() => {
+    if (!activeTopicId) {
+      setActiveTopicTitle(null);
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/forum/rooms/${room.id}/topics`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled || !Array.isArray(data.topics)) return;
+        const match = data.topics.find((t: { id: string; title: string }) => t.id === activeTopicId);
+        setActiveTopicTitle(match?.title ?? null);
+      })
+      .catch(console.error);
+    return () => { cancelled = true; };
+  }, [room.id, activeTopicId]);
+
+  useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fetch(`/api/forum/rooms/${room.id}/posts`, { credentials: "include" })
+    const postsUrl = activeTopicId
+      ? `/api/forum/rooms/${room.id}/posts?topicId=${encodeURIComponent(activeTopicId)}`
+      : `/api/forum/rooms/${room.id}/posts`;
+    fetch(postsUrl, { credentials: "include" })
       .then((r) => r.json())
       .then((data) => { if (!cancelled && data.posts) setPosts(data.posts); })
       .catch(console.error)
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [room.id]);
+  }, [room.id, activeTopicId]);
 
   const pinnedPosts = useMemo(() => posts.filter((p) => p.isPinned && !p.isHidden), [posts]);
   const regularPosts = useMemo<ForumPost[]>(() => {
@@ -1427,6 +1449,7 @@ export function ForumRoomClient({
           authorRole,
           postBody: draft.body.trim(),
           relatedArticleUrl: draft.relatedArticleUrl.trim() || undefined,
+          topicId: activeTopicId ?? room.currentTopicId ?? undefined,
         }),
       });
       if (!res.ok) {
@@ -1443,7 +1466,7 @@ export function ForumRoomClient({
       // サーバの定期ジョブ（/api/cron/forum-ai-delayed-replies）が後からAI返信を付与する。
       // これにより「まず人どうしの会話を促し、停滞したときだけAIが入る」挙動になる。
     } finally { setSubmitting(false); }
-  }, [auth, room, submitting]);
+  }, [activeTopicId, room, submitting]);
 
   const handleReplyAdded = useCallback((postId: string, reply: ForumReply) => {
     setPosts((prev) => prev.map((p) => p.id !== postId ? p : { ...p, replies: [...(p.replies ?? []), reply] }));
@@ -1489,6 +1512,11 @@ export function ForumRoomClient({
                     </span>
                   )}
                 </div>
+                {activeTopicTitle ? (
+                  <p className={`mt-1 text-sm font-medium ${fromInterop ? "text-amber-200/90" : "text-primary"}`}>
+                    論点: {activeTopicTitle}
+                  </p>
+                ) : null}
                 <p className={`mt-1 text-sm ${fromInterop ? "text-white/65" : "text-muted-foreground"}`}>
                   {room.description}
                 </p>

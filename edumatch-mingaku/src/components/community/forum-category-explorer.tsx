@@ -9,6 +9,11 @@ import {
 } from "lucide-react";
 import { computeCategoryConnectionsFromTags } from "@/lib/forum-category-tags";
 import { isForumHot } from "@/lib/forum-hot";
+import {
+  computePuyoIntensity,
+  computeThemeRoomBubbleDiameter,
+  isInteropHot,
+} from "@/lib/interop-activity";
 import { ForumHotFlame } from "@/components/community/forum-hot-flame";
 import { BubbleGraphCanvas } from "@/components/community/forum-bubble-graph/BubbleGraphCanvas";
 import { computeBubbleDiameter } from "@/components/community/forum-bubble-graph/layout";
@@ -299,14 +304,22 @@ export function ForumCategoryExplorer({
       communityThemeRooms.map((room, i) => {
         const majorSlug = majorSlugFromCommunityRoomId(room.id);
         const majorCat = categories.find((c) => c.slug === majorSlug);
+        const stats = {
+          postCount: room.postCount,
+          participantCount: room.participantCount,
+          lastPostedAt: room.lastPostedAt,
+        };
+        const hot = isInteropHot(stats) || isForumHot(stats);
         return {
           id: room.id,
           label: room.name,
           sublabel: majorCat?.name || undefined,
-          diameter: categoryDiameter.default,
+          diameter: computeThemeRoomBubbleDiameter(categoryDiameter.default, stats),
           backgroundColor:
             categoryColorBySlug[majorSlug] || FALLBACK_COLORS[i % FALLBACK_COLORS.length],
-          isHot: true,
+          isHot: hot,
+          puyoIntensity: computePuyoIntensity(stats),
+          animationSeed: room.postCount + i * 3,
           onActivate: () => handleOpenThemeRoom(room.id),
         };
       }),
@@ -410,6 +423,7 @@ export function ForumCategoryExplorer({
                 connections={mapConnections}
                 layoutMode="category"
                 className="h-full"
+                puyopuyo={themeMapMode}
               />
             )}
           </div>

@@ -8,6 +8,14 @@ import {
   type InteropPriorityTopic,
 } from "@/lib/interop-priority-topics";
 import type { InteropCategory } from "@/components/interop/interop-category-bubble-map";
+import { ForumHotFlame } from "@/components/community/forum-hot-flame";
+import {
+  computeThemeRoomBubbleDiameter,
+  formatActivityHint,
+  isInteropHot,
+  type InteropActivityStats,
+} from "@/lib/interop-activity";
+import { computePuyoIntensity, INTEROP_PUYO_CSS, puyoAnimationStyle } from "@/lib/interop-puyopuyo";
 import { useEffect, useMemo, useState } from "react";
 
 type GroupStyleEntry = {
@@ -179,6 +187,7 @@ function PuyoBubble({
   dir,
   index,
   bubbleSize,
+  stats,
   onActivate,
 }: {
   topic: InteropPriorityTopic;
@@ -186,10 +195,19 @@ function PuyoBubble({
   dir: [number, number];
   index: number;
   bubbleSize: number;
+  stats: InteropActivityStats;
   onActivate: () => void;
 }) {
-  const iconSize = Math.round(bubbleSize * 0.42);
-  const labelFont = bubbleSize < 56 ? 9.5 : 11;
+  const hot = isInteropHot(stats);
+  const size = computeThemeRoomBubbleDiameter(bubbleSize, stats);
+  const hint = formatActivityHint(stats);
+  const intensity = computePuyoIntensity(stats);
+  const puyoStyle =
+    intensity > 0.06 || hot
+      ? puyoAnimationStyle(topic.no * 7 + index, intensity * 0.7, hot)
+      : undefined;
+  const iconSize = Math.round(size * 0.42);
+  const labelFont = size < 56 ? 9.5 : 11;
   const sty = GROUP_STYLE[topic.major] ?? GROUP_STYLE.F;
   const { Icon } = sty;
   const dur = 7 + ((topic.no * 13 + index * 9) % 60) / 10;
@@ -214,8 +232,8 @@ function PuyoBubble({
       style={{
         left: `${pos[0]}%`,
         top: `${pos[1]}%`,
-        width: bubbleSize,
-        height: bubbleSize,
+        width: size,
+        height: size,
         animation: `puyoAnim ${dur}s ease-in-out ${delay}s infinite`,
       }}
       aria-label={topic.category}
@@ -224,9 +242,11 @@ function PuyoBubble({
       <span
         className="pointer-events-none absolute rounded-full transition-opacity duration-300"
         style={{
-          inset: -22,
-          background: `radial-gradient(circle, ${sty.glow}3d 0%, ${sty.glow}14 45%, transparent 68%)`,
-          opacity: 0.95,
+          inset: hot ? -30 : -22,
+          background: hot
+            ? "radial-gradient(circle, rgba(255,150,60,0.45) 0%, rgba(255,100,30,0.18) 45%, transparent 68%)"
+            : `radial-gradient(circle, ${sty.glow}3d 0%, ${sty.glow}14 45%, transparent 68%)`,
+          opacity: hot ? 1 : 0.95,
         }}
       />
       <span
@@ -239,11 +259,16 @@ function PuyoBubble({
 
       {/* Bubble body — transparent glass */}
       <span
-        className="relative flex h-full w-full items-center justify-center rounded-full transition-transform duration-200 group-hover:scale-[1.10] group-active:scale-[0.92]"
+        className={`relative flex h-full w-full items-center justify-center rounded-full transition-transform duration-200 group-hover:scale-[1.10] group-active:scale-[0.92]${puyoStyle ? " interop-puyo" : ""}`}
         style={{
-          background: sty.bg,
-          border: `1.5px solid ${sty.border}`,
-          boxShadow: `0 0 20px ${sty.glow}22, 0 4px 16px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.60)`,
+          ...puyoStyle,
+          background: hot
+            ? "radial-gradient(circle at 35% 28%, rgba(255,255,255,0.50) 0%, rgba(255,200,140,0.22) 42%, rgba(230,140,50,0.28) 100%)"
+            : sty.bg,
+          border: hot ? "1.5px solid rgba(255,190,120,0.75)" : `1.5px solid ${sty.border}`,
+          boxShadow: hot
+            ? "0 0 28px rgba(255,130,50,0.42), 0 4px 16px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.60)"
+            : `0 0 20px ${sty.glow}22, 0 4px 16px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.60)`,
           backdropFilter: "blur(14px)",
           WebkitBackdropFilter: "blur(14px)",
         }}
@@ -262,9 +287,28 @@ function PuyoBubble({
         {/* Center icon */}
         <Icon
           className="relative z-10"
-          style={{ width: iconSize, height: iconSize, color: sty.glow, opacity: 0.95, filter: `drop-shadow(0 0 4px ${sty.glow}88)` }}
+          style={{
+            width: iconSize,
+            height: iconSize,
+            color: hot ? "#ffb870" : sty.glow,
+            opacity: 0.95,
+            filter: hot ? undefined : `drop-shadow(0 0 4px ${sty.glow}88)`,
+          }}
           strokeWidth={1.7}
         />
+        {hot && (
+          <span className="absolute -right-0.5 -top-0.5 z-20">
+            <ForumHotFlame size="sm" />
+          </span>
+        )}
+        {hint && (
+          <span
+            className="absolute -bottom-1 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-full px-1.5 py-0.5 text-[8px] font-bold text-white shadow"
+            style={{ background: hot ? "rgba(255,120,40,0.92)" : `${sty.glow}cc` }}
+          >
+            {hint}
+          </span>
+        )}
       </span>
 
       {/* Label — 常時表示・塊の外向き（放射状）に配置 */}
@@ -273,7 +317,7 @@ function PuyoBubble({
         style={{
           ...labelPos,
           width: "max-content",
-          maxWidth: bubbleSize < 56 ? 92 : 116,
+          maxWidth: size < 56 ? 92 : 116,
           zIndex: 40,
           fontSize: `${labelFont}px`,
           fontWeight: 700,
@@ -319,9 +363,20 @@ function GroupChip({ label, sty }: { label: string; sty: GroupStyleEntry }) {
 
 // ───────────────── モバイル専用UI ─────────────────
 
-function MobilePuyoCard({ topic, onActivate }: { topic: InteropPriorityTopic; onActivate: () => void }) {
+function MobilePuyoCard({
+  topic,
+  stats,
+  onActivate,
+}: {
+  topic: InteropPriorityTopic;
+  stats: InteropActivityStats;
+  onActivate: () => void;
+}) {
   const sty = GROUP_STYLE[topic.major] ?? GROUP_STYLE.F;
   const { Icon } = sty;
+  const hot = isInteropHot(stats);
+  const size = computeThemeRoomBubbleDiameter(60, stats);
+  const hint = formatActivityHint(stats);
   return (
     <button
       type="button"
@@ -329,11 +384,17 @@ function MobilePuyoCard({ topic, onActivate }: { topic: InteropPriorityTopic; on
       className="flex flex-col items-center gap-1.5 transition-transform focus:outline-none active:scale-95"
     >
       <span
-        className="relative grid h-[60px] w-[60px] place-items-center rounded-full"
+        className="relative grid place-items-center rounded-full"
         style={{
-          background: sty.bg,
-          border: `1.5px solid ${sty.border}`,
-          boxShadow: `0 0 16px ${sty.glow}33, 0 4px 12px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.6)`,
+          width: size,
+          height: size,
+          background: hot
+            ? "radial-gradient(circle at 35% 28%, rgba(255,255,255,0.50) 0%, rgba(255,200,140,0.22) 42%, rgba(230,140,50,0.28) 100%)"
+            : sty.bg,
+          border: hot ? "1.5px solid rgba(255,190,120,0.75)" : `1.5px solid ${sty.border}`,
+          boxShadow: hot
+            ? "0 0 20px rgba(255,130,50,0.38), 0 4px 12px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.6)"
+            : `0 0 16px ${sty.glow}33, 0 4px 12px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.6)`,
           backdropFilter: "blur(12px)",
           WebkitBackdropFilter: "blur(12px)",
         }}
@@ -342,7 +403,29 @@ function MobilePuyoCard({ topic, onActivate }: { topic: InteropPriorityTopic; on
           className="pointer-events-none absolute rounded-full"
           style={{ top: "10%", left: "14%", width: "42%", height: "32%", background: sty.shine, filter: "blur(3px)", opacity: 0.55 }}
         />
-        <Icon style={{ width: 24, height: 24, color: sty.glow, opacity: 0.95, filter: `drop-shadow(0 0 3px ${sty.glow}77)` }} strokeWidth={1.7} />
+        <Icon
+          style={{
+            width: Math.round(size * 0.4),
+            height: Math.round(size * 0.4),
+            color: hot ? "#ffb870" : sty.glow,
+            opacity: 0.95,
+            filter: hot ? undefined : `drop-shadow(0 0 3px ${sty.glow}77)`,
+          }}
+          strokeWidth={1.7}
+        />
+        {hot && (
+          <span className="absolute -right-0.5 -top-0.5 z-10">
+            <ForumHotFlame size="sm" />
+          </span>
+        )}
+        {hint && (
+          <span
+            className="absolute -bottom-1 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full px-1 py-0.5 text-[7px] font-bold text-white"
+            style={{ background: "rgba(255,120,40,0.92)" }}
+          >
+            {hint}
+          </span>
+        )}
       </span>
       <span
         className="text-center text-[10.5px] font-semibold leading-tight text-white/95"
@@ -357,11 +440,13 @@ function MobilePuyoCard({ topic, onActivate }: { topic: InteropPriorityTopic; on
 /** モバイル：縦スクロールの分類セクション（玉ビジュアルは維持しつつ一覧性・タップ性を最優先） */
 function MobileBubbleMap({
   interopCat,
+  activityByRoom,
   onSelectCategory,
   onSelectTopic,
   iconFor,
 }: {
   interopCat: InteropCategory | undefined;
+  activityByRoom: Map<string, InteropActivityStats>;
   onSelectCategory: (cat: InteropCategory) => void;
   onSelectTopic: (topic: InteropPriorityTopic) => void;
   iconFor: (slug: string) => LucideIcon;
@@ -413,7 +498,12 @@ function MobileBubbleMap({
               </div>
               <div className="grid grid-cols-3 gap-x-2 gap-y-4">
                 {list.map((topic) => (
-                  <MobilePuyoCard key={topic.no} topic={topic} onActivate={() => onSelectTopic(topic)} />
+                  <MobilePuyoCard
+                    key={topic.no}
+                    topic={topic}
+                    stats={activityByRoom.get(topic.roomId) ?? { postCount: 0, participantCount: 0 }}
+                    onActivate={() => onSelectTopic(topic)}
+                  />
                 ))}
               </div>
             </section>
@@ -427,11 +517,13 @@ function MobileBubbleMap({
 /** トップ：28ぷよぷよ玉 + 中心インタロップ（中心から放射状配置） */
 export function InteropPuyoBubbleMap({
   interopCat,
+  activityByRoom,
   onSelectCategory,
   onSelectTopic,
   iconFor,
 }: {
   interopCat: InteropCategory | undefined;
+  activityByRoom: Map<string, InteropActivityStats>;
   onSelectCategory: (cat: InteropCategory) => void;
   onSelectTopic: (topic: InteropPriorityTopic) => void;
   iconFor: (slug: string) => LucideIcon;
@@ -445,6 +537,7 @@ export function InteropPuyoBubbleMap({
     return (
       <MobileBubbleMap
         interopCat={interopCat}
+        activityByRoom={activityByRoom}
         onSelectCategory={onSelectCategory}
         onSelectTopic={onSelectTopic}
         iconFor={iconFor}
@@ -458,7 +551,7 @@ export function InteropPuyoBubbleMap({
 
   return (
     <div className="absolute inset-0 overflow-hidden">
-      <style>{PUYO_CSS}</style>
+      <style>{PUYO_CSS}{INTEROP_PUYO_CSS}</style>
 
       {topics.map((topic, i) => {
         const place = placements[i] ?? { pos: [50, 50] as [number, number], dir: [0, 1] as [number, number] };
@@ -466,6 +559,7 @@ export function InteropPuyoBubbleMap({
           <PuyoBubble
             key={topic.no}
             topic={topic}
+            stats={activityByRoom.get(topic.roomId) ?? { postCount: 0, participantCount: 0 }}
             pos={place.pos}
             dir={place.dir}
             index={i}

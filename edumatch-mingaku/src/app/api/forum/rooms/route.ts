@@ -110,6 +110,79 @@ export async function GET(req: NextRequest) {
     const participantMap = Object.fromEntries(participantCounts.map((c) => [c.id, c.count]));
     const lastPostedMap = Object.fromEntries(lastPostedAts.map((l) => [l.id, l.at]));
 
+    // ゲスト投稿（author_id null）のニックネームも参加者数に含める
+    const guestParticipantCounts = communityThemesOnly
+      ? await Promise.all(
+          rooms.map(async (room) => {
+            const guests = await prisma.forumPost.findMany({
+              where: { room_id: room.id, is_hidden: false, author_id: null },
+              select: { author_name: true },
+              distinct: ["author_name"],
+            });
+            return { id: room.id, count: guests.length };
+          })
+        )
+      : [];
+    const guestParticipantMap = Object.fromEntries(
+      guestParticipantCounts.map((c) => [c.id, c.count])
+    );
+
+    // 論点（topic_id）ごとの投稿数（◎28テーマの3論点表示用）
+    type TopicActivityRow = {
+      topicId: string;
+      postCount: number;
+      participantCount: number;
+      lastPostedAt: string | null;
+    };
+    const topicActivityByRoom = new Map<string, TopicActivityRow[]>();
+
+    if (communityThemesOnly && rooms.length > 0) {
+      const roomIds = rooms.map((r) => r.id);
+      const topicPosts = await prisma.forumPost.findMany({
+        where: {
+          room_id: { in: roomIds },
+          is_hidden: false,
+          topic_id: { not: null },
+        },
+        select: {
+          room_id: true,
+          topic_id: true,
+          author_name: true,
+          author_id: true,
+          created_at: true,
+        },
+      });
+
+      const acc = new Map<
+        string,
+        { roomId: string; postCount: number; authors: Set<string>; lastAt: Date | null }
+      >();
+      for (const p of topicPosts) {
+        if (!p.topic_id) continue;
+        const cur = acc.get(p.topic_id) ?? {
+          roomId: p.room_id,
+          postCount: 0,
+          authors: new Set<string>(),
+          lastAt: null,
+        };
+        cur.postCount += 1;
+        cur.authors.add(p.author_id ?? p.author_name);
+        if (!cur.lastAt || p.created_at > cur.lastAt) cur.lastAt = p.created_at;
+        acc.set(p.topic_id, cur);
+      }
+
+      for (const [topicId, row] of acc) {
+        const list = topicActivityByRoom.get(row.roomId) ?? [];
+        list.push({
+          topicId,
+          postCount: row.postCount,
+          participantCount: row.authors.size,
+          lastPostedAt: row.lastAt?.toISOString() ?? null,
+        });
+        topicActivityByRoom.set(row.roomId, list);
+      }
+    }
+
     const result = rooms.map((room) => ({
       id: room.id,
       name: room.name,
@@ -119,9 +192,13 @@ export async function GET(req: NextRequest) {
       aiDiscussion: room.ai_discussion,
       aiWeeklyTopicEnabled: room.ai_weekly_topic_enabled,
       postCount: room._count.posts,
-      participantCount: participantMap[room.id] ?? 0,
+      participantCount:
+        (participantMap[room.id] ?? 0) + (guestParticipantMap[room.id] ?? 0),
       lastPostedAt: lastPostedMap[room.id] ?? room.created_at.toISOString(),
       isHidden: room.is_hidden ?? false,
+      ...(communityThemesOnly
+        ? { topicActivity: topicActivityByRoom.get(room.id) ?? [] }
+        : {}),
     }));
 
     return NextResponse.json({ rooms: result });
