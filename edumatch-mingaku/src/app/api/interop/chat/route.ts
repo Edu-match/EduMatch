@@ -17,7 +17,11 @@ const INTEROP_CHAT_MODEL = process.env.INTEROP_CHAT_MODEL?.trim() || "gpt-5.4-mi
 const MAX_INPUT_CHARS = 1500;
 
 type MessageRole = "user" | "assistant";
-type RequestBody = { messages: { role: MessageRole; content: string }[] };
+type RequestBody = {
+  messages: { role: MessageRole; content: string }[];
+  /** 来場者が今見ている場所（カテゴリ/論点名など） */
+  context?: string;
+};
 
 // ── システムプロンプト（教育×AI・公的文書RAG。エデュマッチ宣伝はしない）──────
 const SYSTEM_PROMPT = `あなたは「インタロップ東京2026 教育AIサミット」特設サイトのAIアシスタントです。
@@ -104,19 +108,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // ── 利用回数チェック（Cookie）──
+  // ── 利用回数（記録のみ・制限なし）──
+  // リロードでCookieを消せば回避できてしまい制限が形骸化するため、回数制限は撤廃。
   const now = Date.now();
   const cutoff = now - TWENTY_FOUR_HOURS_MS;
   const events = parseUsage(req.cookies.get(USAGE_COOKIE)?.value);
-  const used = countRecent(events, cutoff);
-  if (used >= USAGE_LIMIT) {
-    return new Response(
-      JSON.stringify({
-        error: `利用回数（24時間で${USAGE_LIMIT}回）に達しました。しばらく経ってからご利用ください。`,
-      }),
-      { status: 429, headers: { "Content-Type": "application/json" } }
-    );
-  }
   const updatedEvents = [...events.filter((e) => e.at > cutoff), { at: now }];
   const usageCookie = serializeUsageCookie(updatedEvents);
 
@@ -140,6 +136,11 @@ export async function POST(req: NextRequest) {
   })();
 
   let systemPrompt = SYSTEM_PROMPT;
+  // 来場者が今見ている場所（カテゴリ/論点）を文脈として渡す
+  const viewing = typeof body.context === "string" ? body.context.trim().slice(0, 200) : "";
+  if (viewing) {
+    systemPrompt += `\n\n## 来場者が今見ているページ\n来場者は現在「${viewing}」を閲覧しています。質問が曖昧なときはこの文脈を踏まえて解釈し、関連づけて答えてください。`;
+  }
   if (knowledgeHits.length > 0) {
     const block = knowledgeHits
       .map((k, i) => {

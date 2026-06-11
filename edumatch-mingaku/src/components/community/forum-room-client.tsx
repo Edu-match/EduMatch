@@ -1834,7 +1834,12 @@ export function ForumRoomClient({
       </Dialog>
 
       {/* 特設(来場者)はどのページでもいつでもAIに質問できる */}
-      {fromInterop && <InteropChatWidget mobileRaise />}
+      {fromInterop && (
+        <InteropChatWidget
+          mobileRaise
+          context={`井戸端「${room.name}」${activeTopicTitle ? `／論点: ${activeTopicTitle}` : ""}`}
+        />
+      )}
     </div>
   );
 }

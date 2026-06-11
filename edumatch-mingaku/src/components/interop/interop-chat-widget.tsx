@@ -43,7 +43,14 @@ const SUGGESTIONS = [
 /** Interop特設ページ向けの来場者AIチャット（ログイン不要・1人24hで15回）。
  *  全ページ共通で出すため fixed 配置。下部に投稿バーがあるページは mobileRaise で
  *  スマホの起動ボタンを少し上げてバーとの重なりを防ぐ。 */
-export function InteropChatWidget({ mobileRaise = false }: { mobileRaise?: boolean } = {}) {
+export function InteropChatWidget({
+  mobileRaise = false,
+  context,
+}: {
+  mobileRaise?: boolean;
+  /** 来場者が今見ている場所（カテゴリ/サブカテゴリ/論点名など）。AIに文脈として渡す。 */
+  context?: string;
+} = {}) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
@@ -51,7 +58,6 @@ export function InteropChatWidget({ mobileRaise = false }: { mobileRaise?: boole
   // 思考プロセス（回答の最初の文字が来るまでの「検索中／考え中」表示）
   const [thinking, setThinking] = useState(false);
   const [thinkStep, setThinkStep] = useState(0);
-  const [usage, setUsage] = useState<{ used: number; limit: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -65,10 +71,7 @@ export function InteropChatWidget({ mobileRaise = false }: { mobileRaise?: boole
 
   useEffect(() => {
     if (!open) return;
-    fetch("/api/interop/chat")
-      .then((r) => r.json())
-      .then((d) => { if (typeof d.used === "number") setUsage({ used: d.used, limit: d.limit }); })
-      .catch(() => {});
+    // 回数制限なし。開いたら入力にフォーカスするだけ。
     setTimeout(() => inputRef.current?.focus(), 150);
   }, [open]);
 
@@ -92,7 +95,10 @@ export function InteropChatWidget({ mobileRaise = false }: { mobileRaise?: boole
       const res = await fetch("/api/interop/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: history.map((m) => ({ role: m.role, content: m.content })) }),
+        body: JSON.stringify({
+          messages: history.map((m) => ({ role: m.role, content: m.content })),
+          context: context?.trim() || undefined,
+        }),
       });
 
       if (!res.ok || !res.body) {
@@ -103,10 +109,6 @@ export function InteropChatWidget({ mobileRaise = false }: { mobileRaise?: boole
         setThinking(false);
         return;
       }
-
-      const used = res.headers.get("X-Usage-Used");
-      const limit = res.headers.get("X-Usage-Limit");
-      if (used && limit) setUsage({ used: Number(used), limit: Number(limit) });
 
       // リアルタイム検索の結果（参照した公的文書）をメッセージに付与
       const ragHits = parseInt(res.headers.get("X-RAG-Knowledge-Hits") ?? "0", 10);
@@ -133,8 +135,6 @@ export function InteropChatWidget({ mobileRaise = false }: { mobileRaise?: boole
       setThinking(false);
     }
   };
-
-  const reachedLimit = usage ? usage.used >= usage.limit : false;
 
   return (
     <>
@@ -181,15 +181,10 @@ export function InteropChatWidget({ mobileRaise = false }: { mobileRaise?: boole
               <span className="text-sm font-bold text-white">教育AIアシスタント</span>
               <span className="text-[10px] text-white/45">ログイン不要 · 公的資料を参照</span>
             </div>
-            {usage && (
-              <span className="ml-auto rounded-full bg-white/8 px-2 py-0.5 text-[10px] font-bold text-white/55">
-                残り {Math.max(0, usage.limit - usage.used)}/{usage.limit}
-              </span>
-            )}
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="ml-1 grid h-8 w-8 place-items-center rounded-full text-white/55 transition hover:bg-white/10 hover:text-white"
+              className="ml-auto grid h-8 w-8 place-items-center rounded-full text-white/55 transition hover:bg-white/10 hover:text-white"
               aria-label="閉じる"
             >
               <X className="h-4 w-4" />
@@ -289,12 +284,7 @@ export function InteropChatWidget({ mobileRaise = false }: { mobileRaise?: boole
           {/* 入力 */}
           <div className="border-t border-white/10 px-3 py-3">
             {error && <p className="mb-2 px-1 text-xs text-rose-300">{error}</p>}
-            {reachedLimit ? (
-              <p className="px-1 py-2 text-center text-xs text-amber-200/80">
-                本日の利用上限に達しました。また明日ご利用ください。
-              </p>
-            ) : (
-              <div className="flex items-end gap-2">
+            <div className="flex items-end gap-2">
                 <textarea
                   ref={inputRef}
                   value={input}
@@ -317,8 +307,7 @@ export function InteropChatWidget({ mobileRaise = false }: { mobileRaise?: boole
                 >
                   {streaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 </button>
-              </div>
-            )}
+            </div>
           </div>
         </div>
       )}

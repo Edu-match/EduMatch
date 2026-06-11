@@ -330,7 +330,7 @@ export function InteropBoard({
       </div>
 
       {/* どのページでもいつでも質問できるAIチャット（下部に投稿バーがあるので少し上げる） */}
-      <InteropChatWidget mobileRaise />
+      <InteropChatWidget mobileRaise context={`${sub.categoryName}｜${sub.name}`} />
     </main>
   );
 }

@@ -468,8 +468,18 @@ export function InteropExplorer({
         />
       )}
 
-      {/* 来場者向けAIチャット（ログイン不要・全ビュー共通） */}
-      <InteropChatWidget />
+      {/* 来場者向けAIチャット（ログイン不要・全ビュー共通）。今見ているビューを文脈として渡す */}
+      <InteropChatWidget
+        context={
+          view.kind === "category"
+            ? `展示カテゴリ「${view.cat.name}」`
+            : view.kind === "topic"
+              ? `論点エリア「${view.topic.category}」`
+              : view.kind === "hub"
+                ? `インタロップ（展示一覧）`
+                : `教育AIサミットのトップマップ`
+        }
+      />
     </div>
   );
 }
