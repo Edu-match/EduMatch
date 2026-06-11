@@ -174,6 +174,12 @@ const PUYO_CSS = `
   70%  { opacity: 0; }
   100% { transform: translate(-50%,-50%) scale(1.9); opacity: 0; }
 }
+@keyframes commentPop {
+  0%   { opacity: 0; transform: translate(-50%, -4px) scale(0.92); }
+  12%  { opacity: 1; transform: translate(-50%, -12px) scale(1); }
+  82%  { opacity: 1; transform: translate(-50%, -16px) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -24px) scale(0.98); }
+}
 `;
 
 const BUBBLE_SIZE_DESKTOP = 64;
@@ -581,6 +587,36 @@ export function InteropPuyoBubbleMap({
   const isMobile = useIsMobile();
   const ranking = useMemo(() => computeBubbleRanking(topics, activityByRoom), [topics, activityByRoom]);
 
+  // 自動コメント吹き出し（来場者向けの賑わい演出・ユーザー操作なし）
+  const [comments, setComments] = useState<Array<{ roomId: string; body: string; authorName: string }>>([]);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/interop/sample-comments")
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled) setComments(Array.isArray(d.comments) ? d.comments : []);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const [popups, setPopups] = useState<Array<{ id: string; body: string; author: string; pos: [number, number] }>>([]);
+  useEffect(() => {
+    if (isMobile || comments.length === 0) return;
+    const tick = () => {
+      const c = comments[Math.floor(Math.random() * comments.length)];
+      const idx = topics.findIndex((t) => t.roomId === c.roomId);
+      const pos = idx >= 0 ? DESKTOP_PLACEMENTS[idx]?.pos : undefined;
+      if (!pos) return;
+      const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      setPopups((prev) => [...prev.slice(-2), { id, body: c.body, author: c.authorName, pos }]);
+      window.setTimeout(() => setPopups((prev) => prev.filter((p) => p.id !== id)), 5200);
+    };
+    const interval = window.setInterval(tick, 2600);
+    return () => window.clearInterval(interval);
+  }, [comments, isMobile, topics]);
+
   // モバイルは専用UI（縦スクロールの分類セクション）
   if (isMobile) {
     return (
@@ -623,6 +659,32 @@ export function InteropPuyoBubbleMap({
           />
         );
       })}
+
+      {/* 自動コメント吹き出し（ふわっと出て消える） */}
+      {popups.map((p) => (
+        <div
+          key={p.id}
+          className="pointer-events-none absolute z-[45] w-[170px]"
+          style={{
+            left: `${p.pos[0]}%`,
+            top: `calc(${p.pos[1]}% - ${bubbleSize / 2 + 12}px)`,
+            transform: "translate(-50%, 0)",
+            animation: "commentPop 5.2s ease-in-out forwards",
+          }}
+        >
+          <div
+            className="rounded-2xl rounded-bl-sm px-3 py-2 text-left shadow-lg"
+            style={{
+              background: "rgba(10,14,34,0.92)",
+              border: "1px solid rgba(255,255,255,0.16)",
+              backdropFilter: "blur(8px)",
+            }}
+          >
+            <p className="text-[10px] font-bold text-indigo-200">{p.author}</p>
+            <p className="mt-0.5 text-[11px] leading-snug text-white/90 line-clamp-3">{p.body}</p>
+          </div>
+        </div>
+      ))}
 
       {interopCat && (
         <button
