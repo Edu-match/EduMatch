@@ -10,9 +10,7 @@ import {
 import type { InteropCategory } from "@/components/interop/interop-category-bubble-map";
 import { ForumHotFlame } from "@/components/community/forum-hot-flame";
 import {
-  computeThemeRoomBubbleDiameter,
   formatActivityHint,
-  isInteropHot,
   type InteropActivityStats,
 } from "@/lib/interop-activity";
 import { computePuyoIntensity, INTEROP_PUYO_CSS, puyoAnimationStyle } from "@/lib/interop-puyopuyo";
@@ -147,6 +145,21 @@ function buildPlacements(clusters: Clusters, shape: Record<number, [number, numb
 
 const DESKTOP_PLACEMENTS: Placement[] = buildPlacements(DESKTOP_CLUSTERS, SHAPE_DESKTOP);
 
+/** 全玉の投稿数から「炎=全体平均より上」「拡大=上位5」を判定するためのランキング */
+function computeBubbleRanking(
+  topics: InteropPriorityTopic[],
+  activityByRoom: Map<string, InteropActivityStats>
+): { avg: number; big: Set<string> } {
+  const counts = topics.map((t) => activityByRoom.get(t.roomId)?.postCount ?? 0);
+  const avg = counts.reduce((a, b) => a + b, 0) / (counts.length || 1);
+  const ranked = topics
+    .map((t) => ({ id: t.roomId, c: activityByRoom.get(t.roomId)?.postCount ?? 0 }))
+    .filter((x) => x.c > 0)
+    .sort((a, b) => b.c - a.c);
+  const big = new Set(ranked.slice(0, 5).map((x) => x.id));
+  return { avg, big };
+}
+
 const PUYO_CSS = `
 @keyframes puyoAnim {
   0%   { transform: translate(-50%, calc(-50% + 0px)) scale(0.96); }
@@ -188,6 +201,8 @@ function PuyoBubble({
   index,
   bubbleSize,
   stats,
+  isHot,
+  isBig,
   onActivate,
 }: {
   topic: InteropPriorityTopic;
@@ -196,11 +211,15 @@ function PuyoBubble({
   index: number;
   bubbleSize: number;
   stats: InteropActivityStats;
+  /** 炎・盛り上がり配色（全体平均より投稿が多い） */
+  isHot: boolean;
+  /** 拡大対象（投稿数 上位5） */
+  isBig: boolean;
   onActivate: () => void;
 }) {
-  const hot = isInteropHot(stats);
-  // サイズは固定（拡大すると固定配置で隣の玉・ラベルに被るため）。盛り上がりは色/グロー/🔥/炎で表現。
-  const size = bubbleSize;
+  const hot = isHot;
+  // 拡大は上位5のみ・控えめ（1.15倍）。間隔に余裕があるので被らない。
+  const size = isBig ? Math.round(bubbleSize * 1.15) : bubbleSize;
   const hint = formatActivityHint(stats);
   const intensity = computePuyoIntensity(stats);
   // 揺れは控えめに（やかましさ・被り回避）。hot でも大きくは揺らさない。
@@ -368,16 +387,20 @@ function GroupChip({ label, sty }: { label: string; sty: GroupStyleEntry }) {
 function MobilePuyoCard({
   topic,
   stats,
+  isHot,
+  isBig,
   onActivate,
 }: {
   topic: InteropPriorityTopic;
   stats: InteropActivityStats;
+  isHot: boolean;
+  isBig: boolean;
   onActivate: () => void;
 }) {
   const sty = GROUP_STYLE[topic.major] ?? GROUP_STYLE.F;
   const { Icon } = sty;
-  const hot = isInteropHot(stats);
-  const size = computeThemeRoomBubbleDiameter(60, stats);
+  const hot = isHot;
+  const size = isBig ? 69 : 60; // 上位5のみ控えめに拡大
   const hint = formatActivityHint(stats);
   return (
     <button
@@ -443,12 +466,14 @@ function MobilePuyoCard({
 function MobileBubbleMap({
   interopCat,
   activityByRoom,
+  ranking,
   onSelectCategory,
   onSelectTopic,
   iconFor,
 }: {
   interopCat: InteropCategory | undefined;
   activityByRoom: Map<string, InteropActivityStats>;
+  ranking: { avg: number; big: Set<string> };
   onSelectCategory: (cat: InteropCategory) => void;
   onSelectTopic: (topic: InteropPriorityTopic) => void;
   iconFor: (slug: string) => LucideIcon;
@@ -499,14 +524,21 @@ function MobileBubbleMap({
                 <span className="text-[11px] text-white/45">{list.length}件</span>
               </div>
               <div className="grid grid-cols-3 gap-x-2 gap-y-4">
-                {list.map((topic) => (
-                  <MobilePuyoCard
-                    key={topic.no}
-                    topic={topic}
-                    stats={activityByRoom.get(topic.roomId) ?? { postCount: 0, participantCount: 0 }}
-                    onActivate={() => onSelectTopic(topic)}
-                  />
-                ))}
+                {list.map((topic) => {
+                  const stats = activityByRoom.get(topic.roomId) ?? { postCount: 0, participantCount: 0 };
+                  const isHot = stats.postCount > 0 && stats.postCount > ranking.avg;
+                  const isBig = ranking.big.has(topic.roomId);
+                  return (
+                    <MobilePuyoCard
+                      key={topic.no}
+                      topic={topic}
+                      stats={stats}
+                      isHot={isHot}
+                      isBig={isBig}
+                      onActivate={() => onSelectTopic(topic)}
+                    />
+                  );
+                })}
               </div>
             </section>
           );
@@ -533,6 +565,7 @@ export function InteropPuyoBubbleMap({
   const topics = useMemo(() => sortTopicsForBurst(INTEROP_PRIORITY_TOPICS), []);
   const InteropIcon = interopCat ? iconFor(interopCat.slug) : Network;
   const isMobile = useIsMobile();
+  const ranking = useMemo(() => computeBubbleRanking(topics, activityByRoom), [topics, activityByRoom]);
 
   // モバイルは専用UI（縦スクロールの分類セクション）
   if (isMobile) {
@@ -540,6 +573,7 @@ export function InteropPuyoBubbleMap({
       <MobileBubbleMap
         interopCat={interopCat}
         activityByRoom={activityByRoom}
+        ranking={ranking}
         onSelectCategory={onSelectCategory}
         onSelectTopic={onSelectTopic}
         iconFor={iconFor}
@@ -557,11 +591,16 @@ export function InteropPuyoBubbleMap({
 
       {topics.map((topic, i) => {
         const place = placements[i] ?? { pos: [50, 50] as [number, number], dir: [0, 1] as [number, number] };
+        const stats = activityByRoom.get(topic.roomId) ?? { postCount: 0, participantCount: 0 };
+        const isHot = stats.postCount > 0 && stats.postCount > ranking.avg;
+        const isBig = ranking.big.has(topic.roomId);
         return (
           <PuyoBubble
             key={topic.no}
             topic={topic}
-            stats={activityByRoom.get(topic.roomId) ?? { postCount: 0, participantCount: 0 }}
+            stats={stats}
+            isHot={isHot}
+            isBig={isBig}
             pos={place.pos}
             dir={place.dir}
             index={i}
