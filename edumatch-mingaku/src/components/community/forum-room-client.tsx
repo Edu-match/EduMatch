@@ -667,7 +667,7 @@ function PostCardWithStream({
         fromInterop
           ? post.isPinned
             ? "border-amber-400/40 bg-[#12182e]/92 backdrop-blur-md"
-            : "border-white/15 bg-[#0d1225]/88 backdrop-blur-md"
+            : "border-transparent bg-transparent shadow-none"
           : post.isPinned
             ? "border-amber-300 bg-amber-50/60 shadow-amber-100/60"
             : "bg-card text-card-foreground",
@@ -718,26 +718,43 @@ function PostCardWithStream({
         </div>
       )}
 
-      <div className="p-5">
-        <div className="flex gap-3">
+      <div className={fromInterop ? "px-1.5 py-2" : "p-5"}>
+        <div className="flex gap-2.5">
           <Avatar name={post.authorName} storedAuthorRole={post.authorRole} />
           <div className="flex-1 min-w-0">
-            <div className="flex flex-wrap items-center gap-2 mb-1">
-              <span className={`text-sm font-semibold ${fromInterop ? "text-white" : ""}`}>{post.authorName}</span>
+            <div className="mb-1 flex flex-wrap items-center gap-2">
+              <span className={`text-sm font-semibold ${fromInterop ? "text-white/90" : ""}`}>{post.authorName}</span>
               <OccupationBadge storedAuthorRole={post.authorRole} />
               {post.aiKenteiPassed && <AiKenteiBadge />}
               <span className={`text-xs ${fromInterop ? "text-white/50" : "text-muted-foreground"}`}>
                 <RelativeTime iso={post.postedAt} />
               </span>
             </div>
-            <p className={`text-sm leading-7 whitespace-pre-wrap ${fromInterop ? "text-white/90" : "text-foreground"}`}>
-              {post.body}
-            </p>
-            {post.relatedArticleUrl && (
-              <a href={post.relatedArticleUrl} target="_blank" rel="noopener noreferrer"
-                className="mt-2 inline-flex items-center gap-1 text-xs text-primary hover:underline">
-                <Link2 className="h-3 w-3" />関連記事
-              </a>
+            {fromInterop ? (
+              <div
+                className="inline-block max-w-full rounded-2xl rounded-tl-sm px-3.5 py-2.5"
+                style={{ background: "rgba(255,255,255,0.09)", border: "1px solid rgba(255,255,255,0.10)" }}
+              >
+                <p className="text-sm leading-7 whitespace-pre-wrap text-white/92">{post.body}</p>
+                {post.relatedArticleUrl && (
+                  <a href={post.relatedArticleUrl} target="_blank" rel="noopener noreferrer"
+                    className="mt-2 inline-flex items-center gap-1 text-xs text-indigo-300 hover:underline">
+                    <Link2 className="h-3 w-3" />関連記事
+                  </a>
+                )}
+              </div>
+            ) : (
+              <>
+                <p className="text-sm leading-7 whitespace-pre-wrap text-foreground">
+                  {post.body}
+                </p>
+                {post.relatedArticleUrl && (
+                  <a href={post.relatedArticleUrl} target="_blank" rel="noopener noreferrer"
+                    className="mt-2 inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                    <Link2 className="h-3 w-3" />関連記事
+                  </a>
+                )}
+              </>
             )}
             <div className="mt-3 flex items-center gap-4">
               <button
