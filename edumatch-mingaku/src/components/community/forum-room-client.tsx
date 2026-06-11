@@ -563,6 +563,7 @@ function PostCardWithStream({
   const [likeCount, setLikeCount] = useState(post.likeCount);
   const [repliesOpen, setRepliesOpen] = useState(false);
   const [showReplyForm, setShowReplyForm] = useState(false);
+  const [replyNickname, setReplyNickname] = useState("");
   const [replyText, setReplyText] = useState("");
   const [isAnonReplyState, setIsAnonReplyState] = useState(false);
   const [submittingReply, setSubmittingReply] = useState(false);

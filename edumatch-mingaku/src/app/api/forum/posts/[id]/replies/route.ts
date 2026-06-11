@@ -91,11 +91,9 @@ export async function POST(
       return NextResponse.json({ error: "Post not found" }, { status: 404 });
     }
 
+    // ログイン不要：未ログインでも author_name（ニックネーム）があれば匿名返信(author_id null)を許可
     const user = await getCurrentUser();
     const profile = user ? await getCurrentProfile() : null;
-    if (!user || !profile) {
-      return NextResponse.json({ error: "返信するにはログインが必要です" }, { status: 401 });
-    }
 
     // AI検定合格チェック
     let aiKenteiPassed = false;
@@ -141,8 +139,8 @@ export async function POST(
         text: replyBody.trim(),
         kind: "comment",
         featureLabel: "井戸端会議",
-        userId: user.id,
-        userName: profile.name || user.email?.split("@")[0] || "（不明）",
+        userId: user?.id ?? "guest",
+        userName: profile?.name || trimmedName || "ゲスト",
         contextUrl: `${origin}/forum/${post.room_id}`,
       });
       if (moderation.skipped) {
