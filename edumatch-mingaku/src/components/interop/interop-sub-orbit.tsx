@@ -31,6 +31,8 @@ export type InteropOrbitItem = {
   name: string;
   /** 玉の中央アイコン（既定: MessageCircle） */
   icon?: LucideIcon;
+  /** 玉の色（#RRGGBB）。トップマップの分類色と揃える。未指定なら accent を使用 */
+  accentColor?: string;
   stats: InteropActivityStats;
   onActivate: () => void;
 };
@@ -76,6 +78,7 @@ function SubTopicOrb({
   const intensity = computePuyoIntensity(stats);
   const iconSize = Math.max(20, baseSize * 0.32);
   const Icon = item.icon ?? MessageCircle;
+  const color = item.accentColor ?? accent; // 玉の色（分類色）
   const puyoStyle =
     intensity > 0.08 || hot
       ? puyoAnimationStyle(index * 5 + item.name.length, intensity * 0.65, hot)
@@ -108,18 +111,21 @@ function SubTopicOrb({
           style={{
             width: baseSize,
             height: baseSize,
-            background:
-              "radial-gradient(circle at 34% 28%, rgba(255,255,255,0.55) 0%, rgba(160,205,255,0.42) 38%, rgba(70,130,230,0.62) 100%)",
-            border: hot ? "1.5px solid rgba(255,190,120,0.75)" : "1.5px solid rgba(255,255,255,0.42)",
+            background: hot
+              ? "radial-gradient(circle at 34% 28%, rgba(255,255,255,0.55) 0%, rgba(255,200,140,0.40) 40%, rgba(230,140,50,0.58) 100%)"
+              : `radial-gradient(circle at 34% 28%, rgba(255,255,255,0.50) 0%, ${color}33 42%, ${color}66 100%)`,
+            border: hot ? "1.5px solid rgba(255,190,120,0.75)" : `1.5px solid ${color}99`,
             boxShadow: hot
               ? "0 0 24px rgba(255,140,60,0.35), 0 10px 28px rgba(30,60,140,0.28), inset 0 2px 14px rgba(255,255,255,0.45)"
-              : "0 0 20px rgba(100,160,255,0.28), 0 10px 28px rgba(30,60,140,0.22), inset 0 2px 14px rgba(255,255,255,0.42)",
+              : `0 0 24px ${color}55, 0 10px 28px rgba(30,60,140,0.22), inset 0 2px 14px rgba(255,255,255,0.45)`,
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
             ...puyoStyle,
           }}
         >
           <Icon
-            style={{ color: hot ? "#ffb870" : "rgba(255,255,255,0.92)", width: iconSize, height: iconSize }}
-            strokeWidth={1.6}
+            style={{ color: hot ? "#ffb870" : color, width: iconSize, height: iconSize, filter: hot ? undefined : `drop-shadow(0 0 3px ${color}66)` }}
+            strokeWidth={1.7}
           />
           {hot && (
             <span className="absolute -right-1 -top-1 z-10">

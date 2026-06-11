@@ -254,6 +254,7 @@ export function InteropExplorer({
             id: cat.id,
             name: cat.name,
             icon: iconFor(cat.slug),
+            accentColor: cat.color || "#9fb4e8",
             stats: activityByCategory.get(cat.id) ?? EMPTY_STATS,
             onActivate: () => setView({ kind: "category", cat }),
           }))}
@@ -270,6 +271,7 @@ export function InteropExplorer({
             id: `${priorityTopicId(view.topic.no)}-t${idx + 1}`,
             name: t,
             icon: MessageCircle,
+            accentColor: view.topic.color,
             stats: EMPTY_STATS,
             onActivate: () => router.push(`/forum/${view.topic.roomId}?from=interop`),
           }))}
@@ -289,6 +291,7 @@ export function InteropExplorer({
             id: sub.id,
             name: sub.name,
             icon: MessageCircle,
+            accentColor: view.cat.color || "#9fb4e8",
             stats: activityBySub.get(sub.id) ?? EMPTY_STATS,
             onActivate: () => router.push(`/interop/t/${sub.id}`),
           }))}
