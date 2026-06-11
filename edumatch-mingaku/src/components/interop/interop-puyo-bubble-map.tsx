@@ -76,12 +76,32 @@ const GROUP_STYLE: Record<string, GroupStyleEntry> = {
 };
 
 type Placement = { pos: [number, number]; dir: [number, number] };
+/** 反発計算で「玉を寄せ付けない」固定の占有円（中心ハブ・サテライト）。r は中心からの最小距離(%)。 */
+type Obstacle = { x: number; y: number; r: number };
 
 // 2軸座標(-1..1) → 画面%。中心(50,49)、横半幅RX/縦半幅RY。
 const AXIS_CX = 50;
 const AXIS_CY = 49;
 const AXIS_RX = 40;
 const AXIS_RY = 36;
+
+// ── 中心ハブ＆3サテライトの固定座標（占有ゾーン＝玉はここに入らない）──
+const CENTER_POS = { x: 50, y: 46 };
+const SATELLITE_POS: Record<InteropSatellite["place"], { x: number; y: number }> = {
+  topLeft: { x: 33, y: 28 },
+  topRight: { x: 67, y: 28 },
+  bottom: { x: 50, y: 66 },
+};
+
+/** 吹き出し(幅約170px)が画面外/隣の玉に被らないよう、玉のx%に応じて水平オフセット(px)を返す。
+ *  画面端の玉は中央寄りへ、中央付近の玉は真上/真下に出す。 */
+function popupXExtra(xPct: number): number {
+  if (xPct > 76) return -135;
+  if (xPct > 62) return -85;
+  if (xPct < 24) return 135;
+  if (xPct < 38) return 85;
+  return 0;
+}
 
 /** topic ごとの軸座標を画面配置に変換。近接玉は反発で分散（被り回避）。 */
 function detectSentimentColor(body: string): string {
@@ -95,7 +115,8 @@ function detectSentimentColor(body: string): string {
 
 function computeAxisPlacements(
   topics: InteropPriorityTopic[],
-  axisMap: Record<number, AxisPoint>
+  axisMap: Record<number, AxisPoint>,
+  obstacles: Obstacle[] = []
 ): Placement[] {
   const pts = topics.map((t, i) => {
     const a = axisMap[t.no] ?? { x: 0, y: 0 };
@@ -104,10 +125,11 @@ function computeAxisPlacements(
     const jy = ((i * 7654321 + t.no * 1234567) % 200 - 100) * 0.004;
     return { x: AXIS_CX + a.x * AXIS_RX + jx, y: AXIS_CY - a.y * AXIS_RY + jy };
   });
-  // 反発で被り回避（y方向は%が大きいので圧縮して等方近似）
-  const minDist = 9.0;
+  // 反発で被り回避（y方向は%が大きいので圧縮して等方近似）。ラベル分も見込んで広めに。
+  const minDist = 10.2;
   const ys = 0.60;
-  for (let k = 0; k < 120; k++) {
+  for (let k = 0; k < 160; k++) {
+    // 玉どうしの反発
     for (let i = 0; i < pts.length; i++) {
       for (let j = i + 1; j < pts.length; j++) {
         const dx = pts[j].x - pts[i].x;
@@ -124,10 +146,23 @@ function computeAxisPlacements(
         }
       }
     }
+    // 中心ハブ・サテライトの占有ゾーンから玉を押し出す（被り回避の核心）
+    for (let i = 0; i < pts.length; i++) {
+      for (const o of obstacles) {
+        const dx = pts[i].x - o.x;
+        const dy = (pts[i].y - o.y) * ys;
+        const d = Math.hypot(dx, dy) || 0.01;
+        if (d < o.r) {
+          const push = o.r - d;
+          pts[i].x += (dx / d) * push;
+          pts[i].y += ((dy / d) * push) / ys;
+        }
+      }
+    }
   }
   return pts.map((p) => {
-    const x = Math.max(7, Math.min(93, p.x));
-    const y = Math.max(10, Math.min(89, p.y));
+    const x = Math.max(5, Math.min(95, p.x));
+    const y = Math.max(9, Math.min(90, p.y));
     const dx = x - AXIS_CX;
     const dy = y - AXIS_CY;
     const len = Math.hypot(dx, dy) || 1;
@@ -280,11 +315,11 @@ function PuyoBubble({
         className={`relative flex h-full w-full items-center justify-center rounded-full transition-transform duration-200 group-hover:scale-[1.10] group-active:scale-[0.92]${puyoStyle ? " interop-puyo" : ""}`}
         style={{
           ...puyoStyle,
+          // 暗い星空の上では半透明グラデ＋ハイライト＋縁で十分にガラス質感が出る。
+          // backdrop-filter は28玉×無限アニメで毎フレーム再ブラーになり最重量のため不使用。
           background: sty.bg,
           border: `1.5px solid ${sty.border}`,
-          boxShadow: `0 0 20px ${sty.glow}22, 0 4px 16px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.60)`,
-          backdropFilter: "blur(14px)",
-          WebkitBackdropFilter: "blur(14px)",
+          boxShadow: `0 0 20px ${sty.glow}22, 0 4px 16px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.60), inset 0 0 18px ${sty.glow}1a`,
         }}
       >
         {/* Top-left shine */}
@@ -348,12 +383,11 @@ function PuyoBubble({
           fontWeight: 700,
           lineHeight: 1.3,
           color: "rgba(255,255,255,0.98)",
-          background: `linear-gradient(135deg, rgba(8,11,32,0.86) 0%, ${sty.glow}33 100%)`,
+          // 不透明寄りのグラデ背景なので blur 無しでも視認性は十分（全玉ぶんの再ブラーを削減）
+          background: `linear-gradient(135deg, rgba(8,11,32,0.92) 0%, ${sty.glow}3a 100%)`,
           border: `1px solid ${sty.border}`,
           borderRadius: 9,
           padding: "2.5px 8px",
-          backdropFilter: "blur(8px)",
-          WebkitBackdropFilter: "blur(8px)",
           boxShadow: `0 2px 12px rgba(0,0,0,0.42), 0 0 12px ${sty.glow}38`,
           wordBreak: "keep-all",
           overflowWrap: "anywhere",
@@ -540,9 +574,19 @@ export function InteropPuyoBubbleMap({
   const onClickCapture = (e: React.MouseEvent) => {
     if (wasDragRef.current) { e.stopPropagation(); wasDragRef.current = false; }
   };
+  // 中心ハブ＋実在するサテライトを「占有ゾーン」として反発に渡す（玉が下に潜らない）
+  const obstacles = useMemo<Obstacle[]>(() => {
+    const list: Obstacle[] = [{ x: CENTER_POS.x, y: CENTER_POS.y, r: 18 }];
+    for (const s of satellites) {
+      const p = SATELLITE_POS[s.place];
+      // 下サテラはラベルが下に伸びるぶん少し広めに確保
+      list.push({ x: p.x, y: p.y, r: s.place === "bottom" ? 13.5 : 12 });
+    }
+    return list;
+  }, [satellites]);
   const placements = useMemo(
-    () => computeAxisPlacements(topics, topicPositions ?? DEFAULT_TOPIC_AXIS),
-    [topics, topicPositions]
+    () => computeAxisPlacements(topics, topicPositions ?? DEFAULT_TOPIC_AXIS, obstacles),
+    [topics, topicPositions, obstacles]
   );
   // 関連カテゴリのノード接続線（座標が近いトピック同士を結ぶ）
   const connections = useMemo(() => {
@@ -584,18 +628,14 @@ export function InteropPuyoBubbleMap({
       const pos = idx >= 0 ? placements[idx]?.pos : undefined;
       if (!pos) return;
       const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-      const dir: "above" | "below" = pos[1] < 30 ? "below" : "above";
+      const dir: "above" | "below" = pos[1] < 32 ? "below" : "above";
       const sentimentColor = detectSentimentColor(c.body);
-      setPopups((prev) => {
-        const nearby = prev.filter(
-          (p) => Math.abs(p.pos[0] - pos[0]) < 22 && Math.abs(p.pos[1] - pos[1]) < 22
-        );
-        const xExtra = nearby.length > 0 ? (pos[0] > 50 ? -185 : 185) : 0;
-        return [...prev.slice(-2), { id, body: c.body, author: c.authorName, pos, xExtra, dir, sentimentColor }];
-      });
+      const xExtra = popupXExtra(pos[0]);
+      // 吹き出しは常に1件のみ（被り・ごちゃつき防止）。新しい1件で置き換える。
+      setPopups([{ id, body: c.body, author: c.authorName, pos, xExtra, dir, sentimentColor }]);
       window.setTimeout(() => setPopups((prev) => prev.filter((p) => p.id !== id)), 5200);
     };
-    const interval = window.setInterval(tick, 3200);
+    const interval = window.setInterval(tick, 5200);
     return () => window.clearInterval(interval);
   }, [comments, topics, placements]);
 
@@ -610,15 +650,13 @@ export function InteropPuyoBubbleMap({
       const place = placements[Math.floor(Math.random() * Math.max(1, placements.length))];
       const pos: [number, number] = place?.pos ?? [50, 40];
       const id = `live-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-      const dir: "above" | "below" = pos[1] < 30 ? "below" : "above";
-      setPopups((prev) => {
-        const nearby = prev.filter((p) => Math.abs(p.pos[0] - pos[0]) < 22 && Math.abs(p.pos[1] - pos[1]) < 22);
-        const xExtra = nearby.length > 0 ? (pos[0] > 50 ? -185 : 185) : 0;
-        return [...prev.slice(-2), { id, body: c.body, author: c.authorName, pos, xExtra, dir, sentimentColor: "#ffd9a8", live: true }];
-      });
+      const dir: "above" | "below" = pos[1] < 32 ? "below" : "above";
+      const xExtra = popupXExtra(pos[0]);
+      // LIVE吹き出しも常に1件のみ（置き換え）
+      setPopups([{ id, body: c.body, author: c.authorName, pos, xExtra, dir, sentimentColor: "#ffd9a8", live: true }]);
       window.setTimeout(() => setPopups((prev) => prev.filter((p) => p.id !== id)), 6000);
     };
-    const interval = window.setInterval(tick, 4500);
+    const interval = window.setInterval(tick, 6500);
     return () => window.clearInterval(interval);
   }, [livePosts, placements]);
 
@@ -707,17 +745,18 @@ export function InteropPuyoBubbleMap({
       {/* 自動コメント吹き出し（玉の上or下に浮かぶ雲形バブル） */}
       {popups.map((p) => {
         const isAbove = p.dir === "above";
-        // xExtra補正でテイルを元の玉位置に向ける（クランプして吹き出し内に収める）
-        const tailOffset = Math.max(-60, Math.min(60, -p.xExtra * 0.5));
+        // テイルを元の玉位置へ向ける（吹き出し内に収まるようクランプ）
+        const tailOffset = Math.max(-66, Math.min(66, -p.xExtra * 0.55));
         return (
           <div
             key={p.id}
-            className="pointer-events-none absolute z-[45] w-[168px]"
+            className="pointer-events-none absolute z-[46] w-[158px]"
             style={{
               left: `calc(${p.pos[0]}% + ${p.xExtra}px)`,
+              // 玉本体＋件数バッジ＋ラベルを十分に避ける縦クリアランス
               top: isAbove
-                ? `calc(${p.pos[1]}% - ${bubbleSize / 2 + 10}px)`
-                : `calc(${p.pos[1]}% + ${bubbleSize / 2 + 10}px)`,
+                ? `calc(${p.pos[1]}% - ${bubbleSize / 2 + 18}px)`
+                : `calc(${p.pos[1]}% + ${bubbleSize / 2 + 18}px)`,
               animation: isAbove
                 ? "commentPopCloudAbove 5.0s ease-in-out forwards"
                 : "commentPopCloudBelow 5.0s ease-in-out forwards",
@@ -727,10 +766,10 @@ export function InteropPuyoBubbleMap({
             <div
               className="relative rounded-[18px] px-3 py-2.5 text-left"
               style={{
-                background: p.live ? "rgba(60,38,16,0.42)" : "rgba(215,228,255,0.20)",
+                background: p.live ? "rgba(46,30,13,0.82)" : "rgba(18,26,58,0.78)",
                 border: p.live ? "1.5px solid rgba(255,168,72,0.85)" : "1px solid rgba(255,255,255,0.38)",
-                backdropFilter: "blur(20px) saturate(1.3)",
-                WebkitBackdropFilter: "blur(20px) saturate(1.3)",
+                backdropFilter: "blur(10px) saturate(1.2)",
+                WebkitBackdropFilter: "blur(10px) saturate(1.2)",
                 boxShadow: p.live
                   ? "0 4px 22px rgba(0,0,0,0.30), 0 0 16px rgba(255,150,50,0.35), inset 0 1px 0 rgba(255,210,150,0.40)"
                   : "0 4px 22px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.48), inset 0 -1px 0 rgba(255,255,255,0.08)",
@@ -834,11 +873,9 @@ export function InteropPuyoBubbleMap({
       {/* 中心インタロップ直行の3カテゴリ玉（左上＝最新ニュース／右上＝登壇者への質問／真下＝ご意見BOX）。投稿ページへ直結 */}
       {satellites.map((s) => {
         const SIcon = s.icon;
-        // 中心(50%,46%)を基準に配置
-        const placePos =
-          s.place === "topLeft" ? { left: "32%", top: "27%" }
-          : s.place === "topRight" ? { left: "68%", top: "27%" }
-          : { left: "50%", top: "70%" };
+        // 中心ハブを基準にした固定座標（反発の占有ゾーンと一致させて被りを防ぐ）
+        const sp = SATELLITE_POS[s.place];
+        const placePos = { left: `${sp.x}%`, top: `${sp.y}%` };
         return (
           <button
             key={s.key}
@@ -858,8 +895,6 @@ export function InteropPuyoBubbleMap({
                 background: `radial-gradient(circle at 34% 26%, rgba(255,255,255,0.92) 0%, ${s.color}66 44%, ${s.color}cc 100%)`,
                 border: `2px solid ${s.color}`,
                 boxShadow: `0 0 26px ${s.color}55, 0 6px 18px rgba(0,0,0,0.28), inset 0 2px 12px rgba(255,255,255,0.55)`,
-                backdropFilter: "blur(12px)",
-                WebkitBackdropFilter: "blur(12px)",
               }}
             >
               <span className="pointer-events-none absolute rounded-full" style={{ top: "11%", left: "15%", width: "40%", height: "30%", background: "rgba(255,255,255,0.75)", filter: "blur(3px)" }} />
@@ -873,11 +908,9 @@ export function InteropPuyoBubbleMap({
             <span
               className="mt-2 whitespace-nowrap rounded-lg px-2.5 py-1 text-center text-[11.5px] font-bold leading-tight text-white"
               style={{
-                background: `linear-gradient(135deg, rgba(8,11,32,0.88) 0%, ${s.color}33 100%)`,
+                background: `linear-gradient(135deg, rgba(8,11,32,0.92) 0%, ${s.color}33 100%)`,
                 border: `1px solid ${s.color}66`,
                 boxShadow: `0 2px 12px rgba(0,0,0,0.40), 0 0 10px ${s.color}33`,
-                backdropFilter: "blur(8px)",
-                WebkitBackdropFilter: "blur(8px)",
               }}
             >
               {s.label}

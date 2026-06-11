@@ -111,8 +111,6 @@ function SubTopicOrb({
             boxShadow: hot
               ? "0 0 28px rgba(255,140,60,0.40), 0 8px 24px rgba(30,60,140,0.30), inset 0 2px 14px rgba(255,255,255,0.50)"
               : `0 0 28px ${color}44, 0 8px 24px rgba(30,60,140,0.25), inset 0 2px 14px rgba(255,255,255,0.50)`,
-            backdropFilter: "blur(12px)",
-            WebkitBackdropFilter: "blur(12px)",
             ...puyoStyle,
           }}
         >
@@ -143,12 +141,10 @@ function SubTopicOrb({
           className="mt-3 max-w-[min(34vw,148px)] rounded-xl px-3 py-1 text-center text-[11.5px] font-bold leading-snug text-white transition-all duration-200 group-hover:text-white"
           style={{
             background: hot
-              ? "linear-gradient(135deg, rgba(12,18,44,0.88) 0%, rgba(90,50,0,0.50) 100%)"
-              : `linear-gradient(135deg, rgba(8,11,32,0.88) 0%, ${color}28 100%)`,
+              ? "linear-gradient(135deg, rgba(12,18,44,0.92) 0%, rgba(90,50,0,0.52) 100%)"
+              : `linear-gradient(135deg, rgba(8,11,32,0.92) 0%, ${color}2e 100%)`,
             border: hot ? "1px solid rgba(255,170,90,0.45)" : `1px solid ${color}44`,
             boxShadow: `0 4px 16px rgba(0,0,0,0.30), 0 0 10px ${color}22`,
-            backdropFilter: "blur(8px)",
-            WebkitBackdropFilter: "blur(8px)",
           }}
         >
           {item.name}

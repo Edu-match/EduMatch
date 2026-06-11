@@ -246,7 +246,7 @@ export function InteropBackdrop({ themeMode = "auto" }: { themeMode?: InteropThe
 
   const stars = useMemo(
     () =>
-      Array.from({ length: 80 }, () => ({
+      Array.from({ length: 56 }, () => ({
         left: Math.random() * 100,
         top: Math.random() * 72,
         d: 0.7 + Math.random() * 1.8,
