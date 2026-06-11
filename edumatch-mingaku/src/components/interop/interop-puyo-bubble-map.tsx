@@ -13,6 +13,7 @@ import type { InteropActivityStats } from "@/lib/interop-activity";
 import { computePuyoIntensity, INTEROP_PUYO_CSS, puyoAnimationStyle } from "@/lib/interop-puyopuyo";
 import { DEFAULT_AXIS_CONFIG, DEFAULT_TOPIC_AXIS, type AxisConfig, type AxisPoint } from "@/lib/interop-topic-axis";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 type GroupStyleEntry = {
   bg: string;
@@ -483,12 +484,13 @@ export function InteropPuyoBubbleMap({
   axisConfig?: AxisConfig;
   topicPositions?: Record<number, AxisPoint>;
   satellites?: InteropSatellite[];
-  /** リアルタイム投稿（オレンジ枠の吹き出しで表示） */
-  livePosts?: Array<{ id: string; body: string; authorName: string }>;
+  /** リアルタイム投稿（オレンジ枠の吹き出しで表示）。subId があればその投稿ページへ飛べる */
+  livePosts?: Array<{ id: string; body: string; authorName: string; subId?: string }>;
   onSelectCategory: (cat: InteropCategory) => void;
   onSelectTopic: (topic: InteropPriorityTopic) => void;
   iconFor: (slug: string) => LucideIcon;
 }) {
+  const router = useRouter();
   const topics = useMemo(() => sortTopicsForBurst(INTEROP_PRIORITY_TOPICS), []);
   const InteropIcon = interopCat ? iconFor(interopCat.slug) : Network;
   const ranking = useMemo(() => computeBubbleRanking(topics, activityByRoom), [topics, activityByRoom]);
@@ -699,7 +701,7 @@ export function InteropPuyoBubbleMap({
       cancelled = true;
     };
   }, []);
-  const [popups, setPopups] = useState<Array<{ id: string; body: string; author: string; pos: [number, number]; size: number; xExtra: number; dir: "above" | "below"; sentimentColor: string; live?: boolean }>>([]);
+  const [popups, setPopups] = useState<Array<{ id: string; body: string; author: string; pos: [number, number]; size: number; xExtra: number; dir: "above" | "below"; sentimentColor: string; live?: boolean; href?: string }>>([]);
   useEffect(() => {
     if (comments.length === 0) return;
     const tick = () => {
@@ -712,8 +714,10 @@ export function InteropPuyoBubbleMap({
       const dir: "above" | "below" = pos[1] < 32 ? "below" : "above";
       const sentimentColor = detectSentimentColor(c.body);
       const xExtra = popupXExtra(pos[0]);
+      // クリックでそのコメントの井戸端ルームへ
+      const href = c.roomId ? `/forum/${c.roomId}?from=interop` : undefined;
       // 吹き出しは常に1件のみ（被り・ごちゃつき防止）。新しい1件で置き換える。
-      setPopups([{ id, body: c.body, author: c.authorName, pos, size, xExtra, dir, sentimentColor }]);
+      setPopups([{ id, body: c.body, author: c.authorName, pos, size, xExtra, dir, sentimentColor, href }]);
       window.setTimeout(() => setPopups((prev) => prev.filter((p) => p.id !== id)), 5200);
     };
     const interval = window.setInterval(tick, 5200);
@@ -735,8 +739,10 @@ export function InteropPuyoBubbleMap({
       const id = `live-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
       const dir: "above" | "below" = pos[1] < 32 ? "below" : "above";
       const xExtra = popupXExtra(pos[0]);
+      // クリックでその投稿のページ（掲示板）へ。subId が無ければリンクなし
+      const href = c.subId ? `/interop/t/${c.subId}?post=${c.id}` : undefined;
       // LIVE吹き出しも常に1件のみ（置き換え）
-      setPopups([{ id, body: c.body, author: c.authorName, pos, size, xExtra, dir, sentimentColor: "#ffd9a8", live: true }]);
+      setPopups([{ id, body: c.body, author: c.authorName, pos, size, xExtra, dir, sentimentColor: "#ffd9a8", live: true, href }]);
       window.setTimeout(() => setPopups((prev) => prev.filter((p) => p.id !== id)), 6000);
     };
     const interval = window.setInterval(tick, 6500);
@@ -842,9 +848,11 @@ export function InteropPuyoBubbleMap({
                 : "commentPopCloudBelow 5.0s ease-in-out forwards",
             }}
           >
-            {/* 雲形吹き出し本体（live=実投稿はオレンジ枠） */}
+            {/* 雲形吹き出し本体（live=実投稿はオレンジ枠）。href があればクリックでその投稿へ */}
             <div
-              className="relative rounded-[18px] px-3 py-2.5 text-left"
+              role={p.href ? "button" : undefined}
+              onClick={p.href ? () => router.push(p.href as string) : undefined}
+              className={`relative rounded-[18px] px-3 py-2.5 text-left ${p.href ? "pointer-events-auto cursor-pointer transition-transform hover:scale-[1.04] active:scale-95" : ""}`}
               style={{
                 background: p.live ? "rgba(46,30,13,0.82)" : "rgba(18,26,58,0.78)",
                 border: p.live ? "1.5px solid rgba(255,168,72,0.85)" : "1px solid rgba(255,255,255,0.38)",
@@ -866,6 +874,9 @@ export function InteropPuyoBubbleMap({
               )}
               <p className={`text-[10px] font-bold ${p.live ? "text-orange-100" : "text-indigo-100/90"}`}>{p.author}</p>
               <p className="mt-0.5 text-[11px] leading-snug line-clamp-3" style={{ color: p.sentimentColor }}>{p.body}</p>
+              {p.href && (
+                <p className={`mt-1 text-[9.5px] font-bold ${p.live ? "text-orange-200/80" : "text-indigo-200/70"}`}>投稿を見る →</p>
+              )}
             </div>
             {/* テイル: 上に浮いてる → 下向き (▼)、下に浮いてる → 上向き (▲) */}
             <div

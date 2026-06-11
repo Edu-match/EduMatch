@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Bot, Loader2, MessageCircle, Pin, Send } from "lucide-react";
 import { InteropBackdrop } from "@/components/interop/interop-backdrop";
@@ -61,6 +62,10 @@ export function InteropBoard({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const listTopRef = useRef<HTMLDivElement>(null);
+  // マップの吹き出しから「投稿を見る」で来たときに該当投稿へスクロール＆ハイライト
+  const searchParams = useSearchParams();
+  const focusPostId = searchParams.get("post");
+  const [highlightId, setHighlightId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -72,6 +77,18 @@ export function InteropBoard({
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [sub.id]);
+
+  // 投稿読み込み後に該当投稿へスクロール＆一時ハイライト
+  useEffect(() => {
+    if (!focusPostId || loading || posts.length === 0) return;
+    if (!posts.some((p) => p.id === focusPostId)) return;
+    const el = document.getElementById(`post-${focusPostId}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    setHighlightId(focusPostId);
+    const t = setTimeout(() => setHighlightId(null), 2600);
+    return () => clearTimeout(t);
+  }, [focusPostId, loading, posts]);
 
   // 名前は入力のたびに保持し、別カテゴリ／別ページでも自動入力する（リロードでも維持）
   useEffect(() => {
@@ -210,10 +227,12 @@ export function InteropBoard({
               {posts.map((p) => {
                 const sentimentColor = detectSentimentColor(p.body);
                 return (
-                  <li key={p.id} className="rounded-2xl border" style={
-                    p.isPinned
-                      ? { borderColor: `${accent}66`, background: `${accent}14` }
-                      : { borderColor: "rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)" }
+                  <li key={p.id} id={`post-${p.id}`} className="scroll-mt-20 rounded-2xl border transition-all duration-500" style={
+                    highlightId === p.id
+                      ? { borderColor: accent, background: `${accent}26`, boxShadow: `0 0 0 2px ${accent}, 0 0 22px ${accent}66` }
+                      : p.isPinned
+                        ? { borderColor: `${accent}66`, background: `${accent}14` }
+                        : { borderColor: "rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)" }
                   }>
                     <div className="px-4 py-3">
                       <div className="flex items-center gap-2 text-xs text-white/55">

@@ -1540,7 +1540,9 @@ export function ForumRoomClient({
           >
             <ArrowLeft className="h-4 w-4" />
             {fromInterop
-              ? "インタロップに戻る"
+              ? activeTopicId
+                ? "論点の選択に戻る"
+                : "インタロップに戻る"
               : categoryContext
                 ? "サブカテゴリの選択に戻る"
                 : "AIUEO 井戸端会議"}

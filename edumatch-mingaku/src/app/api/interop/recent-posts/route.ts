@@ -11,10 +11,10 @@ export async function GET() {
       where: { is_hidden: false, is_ai_reply: false },
       orderBy: { created_at: "desc" },
       take: 20,
-      select: { id: true, body: true, author_name: true },
+      select: { id: true, body: true, author_name: true, sub_category_id: true },
     });
     return NextResponse.json({
-      posts: posts.map((p) => ({ id: p.id, body: p.body, authorName: p.author_name })),
+      posts: posts.map((p) => ({ id: p.id, body: p.body, authorName: p.author_name, subId: p.sub_category_id })),
     });
   } catch (err) {
     console.error("[interop/recent-posts GET]", err);

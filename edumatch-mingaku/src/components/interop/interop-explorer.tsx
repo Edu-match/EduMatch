@@ -200,7 +200,7 @@ export function InteropExplorer({
   }, []);
 
   // ── リアルタイム投稿（オレンジ吹き出し）──
-  const [livePosts, setLivePosts] = useState<Array<{ id: string; body: string; authorName: string }>>([]);
+  const [livePosts, setLivePosts] = useState<Array<{ id: string; body: string; authorName: string; subId?: string }>>([]);
   useEffect(() => {
     const load = () =>
       fetch("/api/interop/recent-posts")
