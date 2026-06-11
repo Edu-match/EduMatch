@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { InteropBackdrop } from "@/components/interop/interop-backdrop";
 import { InteropPuyoBubbleMap, type InteropSatellite } from "@/components/interop/interop-puyo-bubble-map";
+import { InteropChatWidget } from "@/components/interop/interop-chat-widget";
 import type { InteropCategory } from "@/components/interop/interop-category-bubble-map";
 import { Mic, Newspaper, MessagesSquare } from "lucide-react";
 import {
@@ -454,6 +455,9 @@ export function InteropExplorer({
           onBack={() => setView({ kind: "hub" })}
         />
       )}
+
+      {/* 来場者向けAIチャット（ログイン不要・全ビュー共通） */}
+      <InteropChatWidget />
     </div>
   );
 }
