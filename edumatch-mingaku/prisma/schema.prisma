@@ -489,6 +489,8 @@ model InteropSubCategory {
   description  String          @default("")
   sort_order   Int             @default(0)
   is_active    Boolean         @default(true)
+  /// サテライト/掲示板の概要下にサムネ表示する参考URL（任意）
+  url          String          @default("")
   /// 本体エデュマッチから自動抽出する種別（article/service/media/events-info）。空なら自動抽出オフ。
   content_kinds String[]       @default([])
   /// 自動抽出のキーワード上書き（空ならカテゴリ名＋サブカテゴリ名）
@@ -574,7 +576,9 @@ model InteropTopic {
   topic1     String   @default("")
   topic2     String   @default("")
   topic3     String   @default("")
-  url        String   @default("") // 概要下にサムネ表示する参考URL（任意）
+  url        String   @default("") // (旧)玉単位の参考URL。現在は point_links を使用。
+  /// 各論点(topic1..3)に対応する参考リンク [{url, on}]。on=true でその論点の投稿ページにサムネ表示。
+  point_links Json    @default("[]")
   axis_x     Float    @default(0) // -1..1（人間↔技術）
   axis_y     Float    @default(0) // -1..1（現場↔制度）
   sort_order Int      @default(0)

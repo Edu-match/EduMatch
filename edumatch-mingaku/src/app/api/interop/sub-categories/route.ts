@@ -28,6 +28,7 @@ export async function GET(req: NextRequest) {
         name: s.name,
         slug: s.slug,
         description: s.description,
+        url: s.url,
         sortOrder: s.sort_order,
         isActive: s.is_active,
         contentKinds: s.content_kinds,

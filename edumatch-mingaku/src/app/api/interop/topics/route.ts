@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
     const rawTopics = rows.map((r) => ({
       id: r.id, no: r.no, major: r.major, name: r.name, roomId: r.room_id,
       topic1: r.topic1, topic2: r.topic2, topic3: r.topic3, url: r.url,
+      pointLinks: Array.isArray(r.point_links) ? r.point_links : [],
       axisX: r.axis_x, axisY: r.axis_y, sortOrder: r.sort_order, isActive: r.is_active,
     }));
     return NextResponse.json({ topics, positions, rawTopics });

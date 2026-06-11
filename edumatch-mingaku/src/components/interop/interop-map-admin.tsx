@@ -8,6 +8,7 @@ import { InteropContentAdmin } from "@/components/interop/interop-content-admin"
 const di =
   "bg-white/[0.06] border border-white/[0.12] rounded-lg px-2.5 py-1.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-white/30 w-full";
 
+type PointLink = { url: string; on: boolean };
 type RawTopic = {
   id: string;
   no: number;
@@ -18,6 +19,7 @@ type RawTopic = {
   topic2: string;
   topic3: string;
   url: string;
+  pointLinks: PointLink[];
   axisX: number;
   axisY: number;
   sortOrder: number;
@@ -25,6 +27,23 @@ type RawTopic = {
 };
 
 const MAJORS = Object.keys(MAJOR_META);
+
+/** オン/オフのトグルスイッチ */
+function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!on)}
+      className="inline-flex items-center gap-1.5 text-[11px] text-white/55"
+      aria-pressed={on}
+    >
+      <span className={`relative inline-block h-4 w-7 rounded-full transition-colors ${on ? "bg-emerald-400/80" : "bg-white/15"}`}>
+        <span className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all ${on ? "left-3.5" : "left-0.5"}`} />
+      </span>
+      {label}
+    </button>
+  );
+}
 
 async function api(url: string, opts?: RequestInit) {
   const res = await fetch(url, { credentials: "include", ...opts });
@@ -75,6 +94,16 @@ export function InteropMapAdmin() {
   };
   const update = (id: string, p: Partial<RawTopic>) =>
     setTopics((prev) => prev.map((t) => (t.id === id ? { ...t, ...p } : t)));
+
+  // 論点ごとのリンク（最大3）を取得・更新
+  const linkAt = (t: RawTopic, i: number): PointLink => t.pointLinks[i] ?? { url: "", on: false };
+  const setLink = (t: RawTopic, i: number, patch: Partial<PointLink>, save: boolean) => {
+    const next: PointLink[] = [0, 1, 2].map((k) => ({ ...linkAt(t, k), ...(k === i ? patch : {}) }));
+    update(t.id, { pointLinks: next });
+    if (save) patch_(t.id, { pointLinks: next });
+  };
+  const patch_ = (id: string, body: Record<string, unknown>) =>
+    api(`/api/interop/topics/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 
   const remove = async (t: RawTopic) => {
     if (!confirm(`「${t.name}」を削除しますか？`)) return;
@@ -162,32 +191,43 @@ export function InteropMapAdmin() {
                               {to ? <ChevronDown className="h-3.5 w-3.5 text-white/50" /> : <ChevronRight className="h-3.5 w-3.5 text-white/50" />}
                               <span className="text-sm font-semibold text-white/90">{t.name || "（無題）"}</span>
                               {!t.isActive && <span className="rounded bg-white/10 px-1.5 text-[10px] text-white/45">非表示</span>}
-                              {t.url && <span className="rounded bg-sky-400/15 px-1.5 text-[10px] text-sky-200">URL</span>}
+                              {t.pointLinks.some((l) => l?.on && l?.url) && <span className="rounded bg-sky-400/15 px-1.5 text-[10px] text-sky-200">リンク</span>}
                             </button>
                             <button type="button" onClick={() => remove(t)} className="grid h-7 w-7 place-items-center rounded text-red-300/70 hover:bg-red-400/10" aria-label="削除"><Trash2 className="h-4 w-4" /></button>
                           </div>
 
                           {to && (
-                            <div className="space-y-2 border-t border-white/10 p-2.5">
+                            <div className="space-y-2.5 border-t border-white/10 p-2.5">
                               <div className="flex items-center gap-2">
                                 <input value={t.name} onChange={(e) => update(t.id, { name: e.target.value })} onBlur={() => patch(t.id, { name: t.name })} className={di} placeholder="玉の名称" />
-                                <label className="flex shrink-0 items-center gap-1 text-[11px] text-white/55">
-                                  <input type="checkbox" checked={t.isActive} onChange={(e) => { update(t.id, { isActive: e.target.checked }); patch(t.id, { isActive: e.target.checked }); }} /> 表示
-                                </label>
+                                <Toggle on={t.isActive} onChange={(v) => { update(t.id, { isActive: v }); patch(t.id, { isActive: v }); }} label="表示" />
                               </div>
-
-                              <label className="block text-[10px] text-white/45">参考URL（入れると論点ページの概要下にサムネ表示）
-                                <input value={t.url} onChange={(e) => update(t.id, { url: e.target.value })} onBlur={() => patch(t.id, { url: t.url })} className={di} placeholder="https://..." />
-                              </label>
 
                               <label className="block text-[10px] text-white/45">井戸端ルームID（/forum/＜id＞）
                                 <input value={t.roomId} onChange={(e) => update(t.id, { roomId: e.target.value })} onBlur={() => patch(t.id, { roomId: t.roomId })} className={di} placeholder="room-..." />
                               </label>
 
-                              <div className="space-y-1.5">
+                              {/* 論点（投稿ページ）。各論点にテキスト＋リンク＋サムネ表示トグル */}
+                              <div className="space-y-2">
+                                <p className="text-[10px] font-bold text-white/55">論点（タップで投稿ページへ）</p>
                                 {([1, 2, 3] as const).map((n) => {
                                   const key = `topic${n}` as "topic1" | "topic2" | "topic3";
-                                  return <input key={n} value={t[key]} onChange={(e) => update(t.id, { [key]: e.target.value })} onBlur={() => patch(t.id, { [key]: t[key] })} className={di} placeholder={`論点${n}`} />;
+                                  const lk = linkAt(t, n - 1);
+                                  return (
+                                    <div key={n} className="rounded-lg border border-white/10 bg-white/[0.03] p-2 space-y-1.5">
+                                      <input value={t[key]} onChange={(e) => update(t.id, { [key]: e.target.value })} onBlur={() => patch(t.id, { [key]: t[key] })} className={di} placeholder={`論点${n}（テキスト）`} />
+                                      <div className="flex items-center gap-2">
+                                        <input
+                                          value={lk.url}
+                                          onChange={(e) => setLink(t, n - 1, { url: e.target.value }, false)}
+                                          onBlur={() => setLink(t, n - 1, {}, true)}
+                                          className={di}
+                                          placeholder="リンクURL（任意・概要下にサムネ表示）"
+                                        />
+                                        <Toggle on={lk.on} onChange={(v) => setLink(t, n - 1, { on: v }, true)} label="表示" />
+                                      </div>
+                                    </div>
+                                  );
                                 })}
                               </div>
 

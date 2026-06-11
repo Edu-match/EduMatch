@@ -50,6 +50,7 @@ export default async function InteropSubPage({
           id: sub.id,
           name: sub.name,
           description: sub.description,
+          url: sub.url,
           categoryId: sub.category.id,
           categoryName: sub.category.name,
           categorySlug: sub.category.slug,

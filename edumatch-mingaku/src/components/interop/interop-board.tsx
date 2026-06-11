@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Bot, Loader2, MessageCircle, Pin, Send } from "lucide-react";
+import { ArrowLeft, Bot, Link2, Loader2, MessageCircle, Pin, Send } from "lucide-react";
 import { InteropBackdrop } from "@/components/interop/interop-backdrop";
 import { InteropContentCarousel } from "@/components/interop/interop-content-carousel";
 import { InteropChatWidget } from "@/components/interop/interop-chat-widget";
@@ -20,6 +20,16 @@ type Post = {
   postedAt: string;
   aiReply?: AiReply | null;
 };
+
+/** 参考URL → サムネ画像/ドメインを推定 */
+function linkPreview(url: string): { img: string | null; domain: string } {
+  let domain = url;
+  try { domain = new URL(url).hostname.replace(/^www\./, ""); } catch { /* noop */ }
+  const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{11})/);
+  if (yt) return { img: `https://img.youtube.com/vi/${yt[1]}/hqdefault.jpg`, domain };
+  if (/\.(png|jpe?g|webp|gif|avif)(\?|#|$)/i.test(url)) return { img: url, domain };
+  return { img: null, domain };
+}
 
 function detectSentimentColor(body: string): string {
   if (/課題|問題|困って|難し|大変|壁|不満|不安|できな|なんで|なぜ/.test(body)) return "#9bc4ff";
@@ -47,7 +57,7 @@ export function InteropBoard({
   accent,
   themeMode = "auto",
 }: {
-  sub: { id: string; name: string; description: string; categoryId: string; categoryName: string; categorySlug?: string };
+  sub: { id: string; name: string; description: string; url?: string; categoryId: string; categoryName: string; categorySlug?: string };
   accent: string;
   themeMode?: InteropThemeMode;
 }) {
@@ -204,6 +214,34 @@ export function InteropBoard({
             <p className="mt-2 text-sm leading-relaxed text-white/70">{sub.description}</p>
           )}
         </header>
+
+        {/* ════ 概要下の参考リンク（サムネ） ════ */}
+        {sub.url && (() => {
+          const { img, domain } = linkPreview(sub.url);
+          return (
+            <a
+              href={sub.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group mt-3 block max-w-md overflow-hidden rounded-2xl border border-white/12 bg-white/[0.04] transition hover:border-white/25"
+            >
+              <div className="relative aspect-[16/9] w-full overflow-hidden bg-[#0d1130]">
+                {img ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={img} alt="" loading="lazy" className="h-full w-full object-cover transition group-hover:scale-105" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-white/25"><Link2 className="h-10 w-10" /></div>
+                )}
+                <span className="absolute left-2 top-2 rounded-full px-2 py-0.5 text-[10px] font-bold text-white" style={{ background: `${accent}cc` }}>参考リンク</span>
+              </div>
+              <div className="flex items-center gap-1.5 px-3.5 py-2.5 text-sm text-white/80">
+                <Link2 className="h-3.5 w-3.5 shrink-0 text-white/45" />
+                <span className="truncate">{domain}</span>
+                <span className="ml-auto shrink-0 text-xs font-bold" style={{ color: accent }}>開く →</span>
+              </div>
+            </a>
+          );
+        })()}
 
         {/* ════ 関連コンテンツ（本体エデュマッチ） ════ */}
         <InteropContentCarousel subId={sub.id} accent={accent} />

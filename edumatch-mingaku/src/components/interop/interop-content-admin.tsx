@@ -37,6 +37,7 @@ type SubCategory = {
   name: string;
   slug: string;
   description: string;
+  url?: string;
   sortOrder: number;
   isActive: boolean;
   contentKinds?: string[];
@@ -259,6 +260,7 @@ function SubRow({ sub, onChanged, onMsg }: { sub: SubCategory; onChanged: () => 
   const [showPosts, setShowPosts] = useState(false);
   const [name, setName] = useState(sub.name);
   const [desc, setDesc] = useState(sub.description);
+  const [url, setUrl] = useState(sub.url ?? "");
   const [kinds, setKinds] = useState<string[]>(sub.contentKinds ?? []);
   const [query, setQuery] = useState(sub.contentQuery ?? "");
   const [busy, setBusy] = useState(false);
@@ -267,7 +269,7 @@ function SubRow({ sub, onChanged, onMsg }: { sub: SubCategory; onChanged: () => 
     setBusy(true);
     const { ok } = await api(`/api/interop/sub-categories/${sub.id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, description: desc, contentKinds: kinds, contentQuery: query }),
+      body: JSON.stringify({ name, description: desc, url, contentKinds: kinds, contentQuery: query }),
     });
     setBusy(false);
     if (ok) { onMsg("サブカテゴリを更新しました。", true); setEditing(false); onChanged(); } else onMsg("更新に失敗しました。", false);
@@ -296,6 +298,8 @@ function SubRow({ sub, onChanged, onMsg }: { sub: SubCategory; onChanged: () => 
             <label className="text-xs"><span className="mb-1 block text-white/55">説明</span>
               <Input value={desc} onChange={(e) => setDesc(e.target.value)} className={`h-8 w-56 text-xs ${darkInput}`} /></label>
           </div>
+          <label className="block text-xs"><span className="mb-1 block text-white/55">参考リンクURL（概要下にサムネ表示）</span>
+            <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." className={`h-8 w-full text-xs ${darkInput}`} /></label>
           <div className="rounded-lg border border-white/10 bg-white/[0.04] p-2">
             <p className="mb-1.5 text-[11px] font-semibold text-white/55">自動コンテンツ（本体から関連を引っ張る）</p>
             <div className="mb-1.5 flex flex-wrap gap-1.5">

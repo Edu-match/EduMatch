@@ -26,6 +26,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (typeof b.topic2 === "string") data.topic2 = b.topic2.trim();
   if (typeof b.topic3 === "string") data.topic3 = b.topic3.trim();
   if (typeof b.url === "string") data.url = b.url.trim();
+  if (Array.isArray(b.pointLinks)) {
+    data.point_links = (b.pointLinks as unknown[]).slice(0, 3).map((p) => {
+      const o = (p ?? {}) as { url?: unknown; on?: unknown };
+      return { url: typeof o.url === "string" ? o.url.trim() : "", on: o.on === true };
+    });
+  }
   const ax = clampAxis(b.axisX as number | undefined);
   if (ax !== undefined) data.axis_x = ax;
   const ay = clampAxis(b.axisY as number | undefined);

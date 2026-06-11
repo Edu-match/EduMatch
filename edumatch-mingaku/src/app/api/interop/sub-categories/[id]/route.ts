@@ -20,10 +20,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     isActive?: boolean;
     contentKinds?: string[];
     contentQuery?: string;
+    url?: string;
   };
 
   const ALLOWED_KINDS = ["article", "service", "media", "events-info"];
   const data: Record<string, unknown> = {};
+  if (typeof body.url === "string") data.url = body.url.trim();
   if (typeof body.name === "string" && body.name.trim()) data.name = body.name.trim();
   if (typeof body.description === "string") data.description = body.description.trim();
   if (typeof body.sortOrder === "number") data.sort_order = body.sortOrder;

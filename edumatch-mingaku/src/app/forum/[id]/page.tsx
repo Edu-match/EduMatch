@@ -89,21 +89,31 @@ export default async function ForumRoomPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ fromNotify?: string }>;
+  searchParams: Promise<{ fromNotify?: string; topic?: string }>;
 }) {
   const { id } = await params;
   const sp = await searchParams;
   const room = await getRoomFromDb(id);
   if (!room) notFound();
 
-  // この論点(玉)に参考URLが設定されていれば、概要下にサムネ表示する
+  // この論点に参考リンクが設定され ON なら、概要下にサムネ表示する。
+  // topic パラメータ（{roomId}-t{n}）から論点番号を取り、その論点のリンクを選ぶ。
   let interopTopicUrl = "";
   try {
     const topic = await prisma.interopTopic.findFirst({
       where: { room_id: id },
-      select: { url: true },
+      select: { url: true, point_links: true },
     });
-    interopTopicUrl = topic?.url?.trim() ?? "";
+    const m = sp.topic?.match(/-t(\d+)$/);
+    const idx = m ? parseInt(m[1], 10) - 1 : 0;
+    const links = Array.isArray(topic?.point_links) ? (topic!.point_links as Array<{ url?: string; on?: boolean }>) : [];
+    const link = links[idx];
+    if (link && link.on && typeof link.url === "string" && link.url.trim()) {
+      interopTopicUrl = link.url.trim();
+    } else if (!sp.topic && topic?.url?.trim()) {
+      // 論点未指定で玉URLがあればフォールバック（旧データ互換）
+      interopTopicUrl = topic.url.trim();
+    }
   } catch {
     interopTopicUrl = "";
   }
