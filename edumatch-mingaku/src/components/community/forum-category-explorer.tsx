@@ -9,11 +9,8 @@ import {
 } from "lucide-react";
 import { computeCategoryConnectionsFromTags } from "@/lib/forum-category-tags";
 import { isForumHot } from "@/lib/forum-hot";
-import {
-  computePuyoIntensity,
-  computeThemeRoomBubbleDiameter,
-  isInteropHot,
-} from "@/lib/interop-activity";
+import { computeThemeRoomBubbleDiameter, isInteropHot } from "@/lib/interop-activity";
+import { computePuyoIntensity } from "@/lib/interop-puyopuyo";
 import { ForumHotFlame } from "@/components/community/forum-hot-flame";
 import { BubbleGraphCanvas } from "@/components/community/forum-bubble-graph/BubbleGraphCanvas";
 import { computeBubbleDiameter } from "@/components/community/forum-bubble-graph/layout";
