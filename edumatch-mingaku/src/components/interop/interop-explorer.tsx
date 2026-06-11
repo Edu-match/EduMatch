@@ -28,6 +28,15 @@ import type { InteropPriorityTopic } from "@/lib/interop-priority-topics";
 import type { InteropThemeMode } from "@/lib/interop-settings";
 import type { AxisConfig, AxisPoint } from "@/lib/interop-topic-axis";
 
+// インタロップハブ内「自由記入」コミュニティトピック
+const INTEROP_HUB_COMMUNITY = [
+  { id: "interop-2026-freewrite",  name: "ひとことメッセージ", emoji: "💬", color: "#9fb4e8" },
+  { id: "interop-2026-ai-edu",     name: "AI×教育の体験",     emoji: "🤖", color: "#7dd4fc" },
+  { id: "interop-2026-future",     name: "未来の学校像",       emoji: "🏫", color: "#86efac" },
+  { id: "interop-2026-field-voice",name: "現場の声",           emoji: "📢", color: "#fca5a5" },
+  { id: "interop-2026-idea",       name: "教育アイデア",       emoji: "💡", color: "#fcd34d" },
+] as const;
+
 const ICONS: Record<string, LucideIcon> = {
   information: Info,
   "giin-kaikan": Landmark,
@@ -309,22 +318,49 @@ export function InteropExplorer({
           <InteropFeedbackButton />
         </>
       ) : view.kind === "hub" ? (
-        <InteropSubOrbit
-          centerLabel={interopCat?.name ?? "インタロップ"}
-          centerIcon={iconFor(interopCat?.slug ?? "interop")}
-          centerHint={`${exhibitionCats.length}つのエリア · タップして展示・情報へ`}
-          accent={interopCat?.color || "#9fb4e8"}
-          items={exhibitionCats.map((cat) => ({
-            id: cat.id,
-            name: cat.name,
-            icon: iconFor(cat.slug),
-            accentColor: cat.color || "#9fb4e8",
-            stats: activityByCategory.get(cat.id) ?? EMPTY_STATS,
-            onActivate: () => setView({ kind: "category", cat }),
-          }))}
-          backLabel="トップに戻る"
-          onBack={() => setView({ kind: "map" })}
-        />
+        <>
+          <InteropSubOrbit
+            centerLabel={interopCat?.name ?? "インタロップ"}
+            centerIcon={iconFor(interopCat?.slug ?? "interop")}
+            centerHint={`${exhibitionCats.length}つのエリア · タップして展示・情報へ`}
+            accent={interopCat?.color || "#9fb4e8"}
+            items={exhibitionCats.map((cat) => ({
+              id: cat.id,
+              name: cat.name,
+              icon: iconFor(cat.slug),
+              accentColor: cat.color || "#9fb4e8",
+              stats: activityByCategory.get(cat.id) ?? EMPTY_STATS,
+              onActivate: () => setView({ kind: "category", cat }),
+            }))}
+            backLabel="トップに戻る"
+            onBack={() => setView({ kind: "map" })}
+          />
+          {/* 自由記入コミュニティトピック（ハブ下部フローティングストリップ） */}
+          <div
+            className="absolute inset-x-0 bottom-5 z-30 flex items-center gap-2 overflow-x-auto px-4 pb-1 sm:bottom-7"
+            style={{ scrollbarWidth: "none" }}
+          >
+            <span className="flex-none whitespace-nowrap text-[11px] font-semibold text-white/45 pr-0.5">自由に書く</span>
+            {INTEROP_HUB_COMMUNITY.map((room) => (
+              <button
+                key={room.id}
+                type="button"
+                onClick={() => router.push(`/forum/${room.id}?from=interop`)}
+                className="flex-none flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold text-white/90 transition-all hover:scale-[1.04] active:scale-95"
+                style={{
+                  background: `linear-gradient(135deg, rgba(14,22,52,0.68) 0%, ${room.color}20 100%)`,
+                  border: `1px solid ${room.color}55`,
+                  backdropFilter: "blur(12px)",
+                  WebkitBackdropFilter: "blur(12px)",
+                  boxShadow: `0 2px 12px rgba(0,0,0,0.32), 0 0 8px ${room.color}22`,
+                }}
+              >
+                <span aria-hidden>{room.emoji}</span>
+                {room.name}
+              </button>
+            ))}
+          </div>
+        </>
       ) : view.kind === "topic" ? (
         <InteropSubOrbit
           centerLabel={view.topic.category}

@@ -610,7 +610,7 @@ export function InteropPuyoBubbleMap({
       cancelled = true;
     };
   }, []);
-  const [popups, setPopups] = useState<Array<{ id: string; body: string; author: string; pos: [number, number] }>>([]);
+  const [popups, setPopups] = useState<Array<{ id: string; body: string; author: string; pos: [number, number]; xExtra: number }>>([]);
   useEffect(() => {
     if (isMobile || comments.length === 0) return;
     const tick = () => {
@@ -619,10 +619,17 @@ export function InteropPuyoBubbleMap({
       const pos = idx >= 0 ? placements[idx]?.pos : undefined;
       if (!pos) return;
       const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-      setPopups((prev) => [...prev.slice(-2), { id, body: c.body, author: c.authorName, pos }]);
+      setPopups((prev) => {
+        // 近い位置に既存の吹き出しがあれば x方向にずらして被りを回避
+        const nearby = prev.filter(
+          (p) => Math.abs(p.pos[0] - pos[0]) < 22 && Math.abs(p.pos[1] - pos[1]) < 22
+        );
+        const xExtra = nearby.length > 0 ? (pos[0] > 50 ? -185 : 185) : 0;
+        return [...prev.slice(-1), { id, body: c.body, author: c.authorName, pos, xExtra }];
+      });
       window.setTimeout(() => setPopups((prev) => prev.filter((p) => p.id !== id)), 5200);
     };
-    const interval = window.setInterval(tick, 2600);
+    const interval = window.setInterval(tick, 3200);
     return () => window.clearInterval(interval);
   }, [comments, isMobile, topics, placements]);
 
@@ -711,7 +718,7 @@ export function InteropPuyoBubbleMap({
           key={p.id}
           className="pointer-events-none absolute z-[45] w-[170px]"
           style={{
-            left: `${p.pos[0]}%`,
+            left: `calc(${p.pos[0]}% + ${p.xExtra}px)`,
             top: `calc(${p.pos[1]}% - ${bubbleSize / 2 + 12}px)`,
             transform: "translate(-50%, 0)",
             animation: "commentPop 5.2s ease-in-out forwards",

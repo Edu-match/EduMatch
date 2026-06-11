@@ -1,0 +1,44 @@
+-- インタロップハブ内の「自由記入」コミュニティフォーラムルーム（5件）
+INSERT INTO forum_rooms (id, name, description, emoji, ai_discussion, is_hidden)
+VALUES
+  (
+    'interop-2026-freewrite',
+    'ひとことメッセージ',
+    '教育AI国際会議へ来た感想・気づきをひと言どうぞ。どんな内容でも歓迎です。',
+    '💬',
+    true,
+    false
+  ),
+  (
+    'interop-2026-ai-edu',
+    'AI×教育、あなたの体験',
+    '実際にAIを授業・教育で使った経験や印象を聞かせてください。うまくいったこと、困ったことも。',
+    '🤖',
+    true,
+    false
+  ),
+  (
+    'interop-2026-future',
+    '未来の学校・教育のあり方',
+    '10年後の教育に何を残したいですか？理想の学びのかたちを自由に語ってください。',
+    '🏫',
+    true,
+    false
+  ),
+  (
+    'interop-2026-field-voice',
+    '現場の声・困っていること',
+    '教育現場で今感じている課題・悩みをシェアしてください。立場を問わず歓迎します。',
+    '📢',
+    true,
+    false
+  ),
+  (
+    'interop-2026-idea',
+    'こんな教育があったら',
+    'あなたの教育アイデア・提案をどうぞ。ジャンル・規模不問。ひとことでも大歓迎。',
+    '💡',
+    true,
+    false
+  )
+ON CONFLICT (id) DO NOTHING;

@@ -296,6 +296,21 @@ function CommunityRoomsSection({
   );
 }
 
+// ─── 感情色（fromInterop モード用） ──────────────────────
+
+function detectSentimentColor(body: string): string {
+  const pos = (body.match(/良い|素晴らしい|嬉しい|楽しい|好き|賛成|最高|希望|感謝|できる|改善|前向き|ありがとう|期待|ぜひ|面白い|充実|成功|明るい/g) || []).length;
+  const neg = (body.match(/悪い|困る|問題|心配|不安|反対|辛い|難しい|厳しい|懸念|課題|不足|無理|危険|リスク|批判|矛盾|格差/g) || []).length;
+  const q   = (body.match(/[？?]|なぜ|どうして|どうやって|だろうか|でしょうか|かな[。、 ]|のか[。、 ]/g) || []).length;
+  const exc = (body.match(/[！!]{2,}|絶対|必ず|革命|変革|どんどん|もっと/g) || []).length;
+  const threshold = 2;
+  if (pos >= threshold && pos > neg && pos > q) return "#9fe8c4";   // mint – ポジティブ
+  if (neg >= threshold && neg > pos && neg > q) return "#ffc0c0";   // rose – 懸念・課題
+  if (q >= threshold && q > pos)                return "#ffe4a0";   // amber – 疑問・問いかけ
+  if (exc >= threshold)                          return "#d8b8ff";   // violet – 熱量・強調
+  return "rgba(255,255,255,0.92)";
+}
+
 // ─── 定数 ────────────────────────────────────────────────
 
 const ROLE_STYLES: Record<
@@ -735,7 +750,7 @@ function PostCardWithStream({
                 className="inline-block max-w-full rounded-2xl rounded-tl-sm px-3.5 py-2.5"
                 style={{ background: "rgba(255,255,255,0.09)", border: "1px solid rgba(255,255,255,0.10)" }}
               >
-                <p className="text-sm leading-7 whitespace-pre-wrap text-white/92">{post.body}</p>
+                <p className="text-sm leading-7 whitespace-pre-wrap" style={{ color: detectSentimentColor(post.body) }}>{post.body}</p>
                 {post.relatedArticleUrl && (
                   <a href={post.relatedArticleUrl} target="_blank" rel="noopener noreferrer"
                     className="mt-2 inline-flex items-center gap-1 text-xs text-indigo-300 hover:underline">
@@ -1133,9 +1148,22 @@ function NewPostComposer({
     <div
       id="new-post"
       ref={rootRef}
-      className={`overflow-hidden rounded-2xl border shadow-xs ${fromInterop ? "border-white/15 bg-[#0d1225]/88" : "bg-card"}`}
-      style={fromInterop ? { backdropFilter: "blur(14px)" } : undefined}
+      className={`relative overflow-hidden rounded-2xl ${fromInterop ? "" : "border shadow-xs bg-card"}`}
+      style={fromInterop ? {
+        background: "rgba(10,16,42,0.52)",
+        border: "1.5px solid rgba(255,255,255,0.22)",
+        boxShadow: "0 12px 40px rgba(0,0,0,0.48), inset 0 1px 0 rgba(255,255,255,0.14), inset 0 -1px 0 rgba(255,255,255,0.04)",
+        backdropFilter: "blur(32px) saturate(1.5)",
+        WebkitBackdropFilter: "blur(32px) saturate(1.5)",
+      } : undefined}
     >
+      {/* リキッドグラス上端ハイライト */}
+      {fromInterop && (
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-px rounded-t-2xl"
+          style={{ background: "linear-gradient(90deg, transparent 5%, rgba(255,255,255,0.55) 30%, rgba(255,255,255,0.70) 50%, rgba(255,255,255,0.55) 70%, transparent 95%)" }}
+        />
+      )}
       {/* ヘッダー */}
       <div className={`border-b px-4 py-3 ${fromInterop ? "border-white/12 bg-white/5" : "bg-muted/20"}`}>
         <p className={`text-sm font-semibold ${fromInterop ? "text-white" : ""}`}>投稿する</p>
