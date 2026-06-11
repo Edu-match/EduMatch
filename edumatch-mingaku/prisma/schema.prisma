@@ -563,6 +563,27 @@ model InteropSetting {
   @@map("interop_settings")
 }
 
+/// トップマップの28話題玉（旧 INTEROP_PRIORITY_TOPICS をDB管理化）。
+/// major(A〜F)で色グループ、axis_x/yで2軸配置、room_idで井戸端ルームに接続。
+model InteropTopic {
+  id         String   @id @default(uuid()) @db.Uuid
+  no         Int      @unique // 軸キー・既存番号
+  major      String   @default("F") // A〜F の色グループ
+  name       String // 玉のラベル（旧 category）
+  room_id    String   @default("") // /forum/{room_id}
+  topic1     String   @default("")
+  topic2     String   @default("")
+  topic3     String   @default("")
+  axis_x     Float    @default(0) // -1..1（人間↔技術）
+  axis_y     Float    @default(0) // -1..1（現場↔制度）
+  sort_order Int      @default(0)
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+
+  @@map("interop_topics")
+}
+
 /// AI日次スキャンで選んだカテゴリ×サブカテゴリ向けコンテンツ
 model ForumCategoryContentCache {
   id              String           @id @default(uuid()) @db.Uuid

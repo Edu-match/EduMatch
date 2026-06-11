@@ -12,7 +12,7 @@ export type InteropPriorityTopic = {
   topics: [string, string, string];
 };
 
-const MAJOR_META: Record<string, { label: string; color: string }> = {
+export const MAJOR_META: Record<string, { label: string; color: string }> = {
   A: { label: "AI・テクノロジー活用", color: "#BDE8FB" },
   B: { label: "評価・学力・カリキュラム", color: "#C7EFC0" },
   C: { label: "子どもの権利・生活・規律", color: "#FBC9D4" },
@@ -20,6 +20,29 @@ const MAJOR_META: Record<string, { label: string; color: string }> = {
   E: { label: "教師・学校経営・制度", color: "#F6EBB0" },
   F: { label: "教科の指導", color: "#C9D4F6" },
 };
+
+/** DB の interop_topics 行 → InteropPriorityTopic（色・ラベルは major から導出） */
+export type InteropTopicRow = {
+  no: number;
+  major: string;
+  name: string;
+  room_id: string;
+  topic1: string;
+  topic2: string;
+  topic3: string;
+};
+export function dbRowToTopic(r: InteropTopicRow): InteropPriorityTopic {
+  const meta = MAJOR_META[r.major] ?? MAJOR_META.F;
+  return {
+    no: r.no,
+    major: r.major,
+    majorLabel: meta.label,
+    category: r.name,
+    color: meta.color,
+    roomId: r.room_id,
+    topics: [r.topic1, r.topic2, r.topic3],
+  };
+}
 
 function topic(
   no: number,

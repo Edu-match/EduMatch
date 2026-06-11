@@ -1,16 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { LayoutGrid, Settings, ShieldAlert, Sparkles } from "lucide-react";
+import { CircleDot, LayoutGrid, Settings, ShieldAlert, Sparkles } from "lucide-react";
 import { InteropSettingsEditor } from "@/components/interop/interop-settings-editor";
 import { InteropContentAdmin } from "@/components/interop/interop-content-admin";
 import { InteropContentCurator } from "@/components/interop/interop-content-curator";
 import { InteropModerationAdmin } from "@/components/interop/interop-moderation-admin";
+import { InteropTopicAdmin } from "@/components/interop/interop-topic-admin";
 
-type Tab = "settings" | "map" | "content" | "moderation";
+type Tab = "settings" | "map" | "topics" | "content" | "moderation";
 
 const TABS: { key: Tab; label: string; icon: typeof Settings }[] = [
   { key: "map", label: "マップ構成・投稿", icon: LayoutGrid },
+  { key: "topics", label: "話題玉", icon: CircleDot },
   { key: "content", label: "コンテンツ", icon: Sparkles },
   { key: "moderation", label: "モデレーション", icon: ShieldAlert },
   { key: "settings", label: "サイト設定", icon: Settings },
@@ -53,6 +55,7 @@ export function InteropAdminTabs() {
       )}
 
       {tab === "map" && <InteropContentAdmin />}
+      {tab === "topics" && <InteropTopicAdmin />}
       {tab === "content" && <InteropContentCurator onMsg={flash} />}
       {tab === "moderation" && <InteropModerationAdmin />}
       {tab === "settings" && <InteropSettingsEditor />}

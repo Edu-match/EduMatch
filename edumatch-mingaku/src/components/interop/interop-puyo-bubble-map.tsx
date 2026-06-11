@@ -481,6 +481,7 @@ export function InteropPuyoBubbleMap({
   activityByRoom,
   axisConfig = DEFAULT_AXIS_CONFIG,
   topicPositions,
+  topics: topicsProp,
   satellites = [],
   livePosts = [],
   onSelectCategory,
@@ -491,6 +492,8 @@ export function InteropPuyoBubbleMap({
   activityByRoom: Map<string, InteropActivityStats>;
   axisConfig?: AxisConfig;
   topicPositions?: Record<number, AxisPoint>;
+  /** DB管理の話題玉（未指定/空ならハードコードのデフォルトを使用） */
+  topics?: InteropPriorityTopic[];
   satellites?: InteropSatellite[];
   /** リアルタイム投稿（オレンジ枠の吹き出しで表示）。subId があればその投稿ページへ飛べる */
   livePosts?: Array<{ id: string; body: string; authorName: string; subId?: string }>;
@@ -499,7 +502,10 @@ export function InteropPuyoBubbleMap({
   iconFor: (slug: string) => LucideIcon;
 }) {
   const router = useRouter();
-  const topics = useMemo(() => sortTopicsForBurst(INTEROP_PRIORITY_TOPICS), []);
+  const topics = useMemo(
+    () => sortTopicsForBurst(topicsProp && topicsProp.length > 0 ? topicsProp : INTEROP_PRIORITY_TOPICS),
+    [topicsProp]
+  );
   const InteropIcon = interopCat ? iconFor(interopCat.slug) : Network;
   const ranking = useMemo(() => computeBubbleRanking(topics, activityByRoom), [topics, activityByRoom]);
 

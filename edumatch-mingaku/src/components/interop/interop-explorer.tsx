@@ -190,6 +190,19 @@ export function InteropExplorer({
       .catch(() => {});
   }, []);
 
+  // DB管理の話題玉（28玉）。空ならマップ側がハードコードのデフォルトにフォールバック。
+  const [dbTopics, setDbTopics] = useState<InteropPriorityTopic[] | undefined>(undefined);
+  const [dbTopicPositions, setDbTopicPositions] = useState<Record<number, AxisPoint> | undefined>(undefined);
+  useEffect(() => {
+    fetch("/api/interop/topics")
+      .then((r) => r.json())
+      .then((d) => {
+        if (Array.isArray(d.topics) && d.topics.length > 0) setDbTopics(d.topics);
+        if (d.positions && Object.keys(d.positions).length > 0) setDbTopicPositions(d.positions);
+      })
+      .catch(() => {});
+  }, []);
+
   // ── 中心インタロップ直行サテライト（最新ニュース／登壇者への質問／ご意見BOX）の解決 ──
   const [allSubs, setAllSubs] = useState<InteropSubCategory[]>([]);
   useEffect(() => {
@@ -354,7 +367,8 @@ export function InteropExplorer({
             interopCat={interopCat}
             activityByRoom={activityByRoom}
             axisConfig={axis.config}
-            topicPositions={axis.positions}
+            topics={dbTopics}
+            topicPositions={dbTopicPositions ?? axis.positions}
             satellites={satellites}
             livePosts={livePosts}
             iconFor={iconFor}
