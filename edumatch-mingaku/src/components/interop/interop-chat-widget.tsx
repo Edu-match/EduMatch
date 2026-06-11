@@ -5,6 +5,9 @@ import { Bot, Loader2, Send, Sparkles, X } from "lucide-react";
 
 type ChatMsg = { id: string; role: "user" | "assistant"; content: string };
 
+// エデュマッチ本サイトに合わせたオレンジ配色
+const ORANGE_GRAD = "linear-gradient(135deg, rgba(255,150,56,0.97) 0%, rgba(236,104,26,0.97) 100%)";
+
 const SUGGESTIONS = [
   "教育現場でのAI活用、どこから始めればいい？",
   "GIGAスクール構想のこれからは？",
@@ -86,16 +89,16 @@ export function InteropChatWidget() {
 
   return (
     <>
-      {/* 起動ボタン（右下・固定） */}
+      {/* 起動ボタン：スマホ＝右下／PC＝右上 */}
       {!open && (
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="absolute right-3 top-[5.25rem] z-50 flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold text-white shadow-lg transition hover:scale-105"
+          className="absolute right-4 bottom-5 z-50 flex items-center gap-2 rounded-full px-4 py-3 text-sm font-bold text-white shadow-lg transition hover:scale-105 sm:bottom-auto sm:right-3 sm:top-[5.25rem] sm:py-2.5"
           style={{
-            background: "linear-gradient(135deg, rgba(120,150,255,0.95) 0%, rgba(90,110,230,0.95) 100%)",
-            border: "1px solid rgba(190,205,255,0.5)",
-            boxShadow: "0 6px 22px rgba(80,100,230,0.45)",
+            background: ORANGE_GRAD,
+            border: "1px solid rgba(255,205,150,0.6)",
+            boxShadow: "0 6px 22px rgba(235,120,30,0.5)",
           }}
         >
           <Sparkles className="h-4 w-4" /> AIに質問
@@ -105,10 +108,10 @@ export function InteropChatWidget() {
       {/* チャットパネル */}
       {open && (
         <div
-          className="absolute inset-x-0 bottom-0 z-50 mx-auto flex h-[78dvh] max-h-[640px] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl sm:inset-x-auto sm:right-4 sm:bottom-4 sm:h-[600px] sm:w-[400px] sm:rounded-3xl"
+          className="absolute inset-x-0 bottom-0 z-50 mx-auto flex h-[80dvh] max-h-[680px] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl sm:inset-y-0 sm:left-auto sm:right-0 sm:bottom-0 sm:mx-0 sm:h-full sm:max-h-none sm:w-[400px] sm:rounded-none sm:rounded-l-3xl"
           style={{
-            background: "rgba(8,12,32,0.92)",
-            border: "1px solid rgba(255,255,255,0.14)",
+            background: "rgba(8,12,32,0.94)",
+            border: "1px solid rgba(255,180,110,0.28)",
             backdropFilter: "blur(28px) saturate(1.4)",
             WebkitBackdropFilter: "blur(28px) saturate(1.4)",
             boxShadow: "0 -8px 40px rgba(0,0,0,0.5)",
@@ -116,7 +119,7 @@ export function InteropChatWidget() {
         >
           {/* ヘッダ */}
           <div className="flex items-center gap-2 border-b border-white/10 px-4 py-3">
-            <span className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-indigo-400 to-violet-500">
+            <span className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-orange-400 to-amber-500">
               <Bot className="h-4 w-4 text-white" />
             </span>
             <div className="flex flex-col">
@@ -167,7 +170,7 @@ export function InteropChatWidget() {
                     }`}
                     style={
                       m.role === "user"
-                        ? { background: "linear-gradient(135deg, rgba(120,150,255,0.9), rgba(90,110,230,0.9))" }
+                        ? { background: ORANGE_GRAD }
                         : { background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }
                     }
                   >
@@ -204,7 +207,7 @@ export function InteropChatWidget() {
                   onClick={() => send(input)}
                   disabled={!input.trim() || streaming}
                   className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-white transition disabled:opacity-35"
-                  style={{ background: "linear-gradient(135deg, rgba(120,150,255,0.95), rgba(90,110,230,0.95))" }}
+                  style={{ background: ORANGE_GRAD }}
                   aria-label="送信"
                 >
                   {streaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}

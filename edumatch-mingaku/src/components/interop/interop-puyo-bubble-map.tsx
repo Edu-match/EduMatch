@@ -118,7 +118,9 @@ function computeAxisPlacements(
   axisMap: Record<number, AxisPoint>,
   obstacles: Obstacle[] = [],
   /** 各玉の「占有半径(%)」。サイズ可変なので玉ごとに必要な空きが違う。 */
-  radii: number[] = []
+  radii: number[] = [],
+  /** y方向の等方圧縮率。縦長画面(スマホ)では大きくして縦に広く散らす。 */
+  ys = 0.6
 ): Placement[] {
   const rOf = (i: number) => radii[i] ?? 6;
   const pts = topics.map((t, i) => {
@@ -130,7 +132,6 @@ function computeAxisPlacements(
   });
   // 反発で被り回避（y方向は%が大きいので圧縮して等方近似）。
   // 必要間隔は2玉の占有半径の和（大きい玉ほど広く確保）。
-  const ys = 0.60;
   for (let k = 0; k < 220; k++) {
     // 玉どうしの反発
     for (let i = 0; i < pts.length; i++) {
@@ -235,17 +236,26 @@ const PUYO_CSS = `
 `;
 
 // ── 玉サイズ：投稿数に応じて連続的に拡大（デフォルト小さめ／上限あり）──
-const BUBBLE_BASE = 40;   // 投稿0件のデフォルト直径(px)。以前(64)よりかなり小さい。
-const BUBBLE_MAX = 150;   // 上限直径(px)＝デフォルトの約3.75個分。中心ハブは超えない範囲。
-// 直径 +6%/件 ≒ +18%/3件（「3件ごとにちょっと大きく」）。約32件で上限に到達。
+// 直径 +6%/件 ≒ +18%/3件（「3件ごとにちょっと大きく」）。
 const BUBBLE_GROWTH_PER_POST = 0.06;
-function bubbleSizeFor(postCount: number): number {
+function bubbleSizeFor(postCount: number, base: number, max: number): number {
   const factor = 1 + Math.max(0, postCount) * BUBBLE_GROWTH_PER_POST;
-  return Math.min(BUBBLE_MAX, Math.round(BUBBLE_BASE * factor));
+  return Math.min(max, Math.round(base * factor));
 }
-// 配置計算でpx半径→画面%へ近似変換する基準幅。
-const PLACE_REF_W = 1300;
-const CENTER_SIZE_DESKTOP = 132;
+// 端末別のレイアウト寸法（スマホは画面が狭いので全体を小さく＆間隔を広く取る）
+type MapMetrics = {
+  base: number;      // 玉デフォルト直径(px)
+  max: number;       // 玉上限直径(px)
+  refW: number;      // px半径→% 変換の基準幅（≒画面幅）
+  labelMargin: number; // 反発時のラベル余白(%)
+  centerSize: number;  // 中心ハブ直径(px)
+  satOrb: number;      // サテライト直径(px)
+  centerR: number;     // 中心ハブ占有半径(%)
+  satR: number;        // サテライト占有半径(%)
+  ys: number;          // y圧縮率（縦長画面ほど大きく＝縦に散らす）
+};
+const METRICS_DESKTOP: MapMetrics = { base: 40, max: 150, refW: 1300, labelMargin: 4.2, centerSize: 132, satOrb: 84, centerR: 18, satR: 13, ys: 0.6 };
+const METRICS_MOBILE: MapMetrics  = { base: 28, max: 74,  refW: 430,  labelMargin: 4.8, centerSize: 92,  satOrb: 58, centerR: 18, satR: 14, ys: 0.9 };
 
 
 function PuyoBubble({
@@ -425,7 +435,7 @@ function PuyoBubble({
 function GroupChip({ label, sty }: { label: string; sty: GroupStyleEntry }) {
   return (
     <span
-      className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10.5px] font-semibold text-white/90"
+      className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[10.5px] font-semibold text-white/90"
       style={{
         background: `${sty.glow}22`,
         border: `1px solid ${sty.border}`,
@@ -482,6 +492,17 @@ export function InteropPuyoBubbleMap({
   const topics = useMemo(() => sortTopicsForBurst(INTEROP_PRIORITY_TOPICS), []);
   const InteropIcon = interopCat ? iconFor(interopCat.slug) : Network;
   const ranking = useMemo(() => computeBubbleRanking(topics, activityByRoom), [topics, activityByRoom]);
+
+  // ── 端末判定（スマホは寸法を別系統に切替）──
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 640px)");
+    const apply = () => setIsMobile(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+  const m = isMobile ? METRICS_MOBILE : METRICS_DESKTOP;
 
   // ── パン＆ズーム（ドラッグ移動・ホイール/ピンチ拡縮）──
   const MIN_SCALE = 0.55;
@@ -620,32 +641,32 @@ export function InteropPuyoBubbleMap({
   };
   // 中心ハブ＋実在するサテライトを「占有ゾーン」として反発に渡す（玉が下に潜らない）
   const obstacles = useMemo<Obstacle[]>(() => {
-    const list: Obstacle[] = [{ x: CENTER_POS.x, y: CENTER_POS.y, r: 18 }];
+    const list: Obstacle[] = [{ x: CENTER_POS.x, y: CENTER_POS.y, r: m.centerR }];
     for (const s of satellites) {
       const p = SATELLITE_POS[s.place];
       // 下サテラはラベルが下に伸びるぶん少し広めに確保
-      list.push({ x: p.x, y: p.y, r: s.place === "bottom" ? 14.5 : 13 });
+      list.push({ x: p.x, y: p.y, r: s.place === "bottom" ? m.satR + 1.5 : m.satR });
     }
     return list;
-  }, [satellites]);
+  }, [satellites, m.centerR, m.satR]);
   // 各玉の直径(px)＝投稿数で連続拡大。位置計算は3件刻みにバケット化して
   // ポーリング毎の細かな再配置（ガタつき）を抑える。
   const sizes = useMemo(
-    () => topics.map((t) => bubbleSizeFor(activityByRoom.get(t.roomId)?.postCount ?? 0)),
-    [topics, activityByRoom]
+    () => topics.map((t) => bubbleSizeFor(activityByRoom.get(t.roomId)?.postCount ?? 0, m.base, m.max)),
+    [topics, activityByRoom, m.base, m.max]
   );
   const placeRadii = useMemo(
     () =>
       topics.map((t) => {
-        const bucketed = bubbleSizeFor(Math.floor((activityByRoom.get(t.roomId)?.postCount ?? 0) / 3) * 3);
+        const bucketed = bubbleSizeFor(Math.floor((activityByRoom.get(t.roomId)?.postCount ?? 0) / 3) * 3, m.base, m.max);
         // px半径→%換算 ＋ ラベル/余白マージン
-        return (bucketed / 2 / PLACE_REF_W) * 100 + 4.2;
+        return (bucketed / 2 / m.refW) * 100 + m.labelMargin;
       }),
-    [topics, activityByRoom]
+    [topics, activityByRoom, m.base, m.max, m.refW, m.labelMargin]
   );
   const placements = useMemo(
-    () => computeAxisPlacements(topics, topicPositions ?? DEFAULT_TOPIC_AXIS, obstacles, placeRadii),
-    [topics, topicPositions, obstacles, placeRadii]
+    () => computeAxisPlacements(topics, topicPositions ?? DEFAULT_TOPIC_AXIS, obstacles, placeRadii, m.ys),
+    [topics, topicPositions, obstacles, placeRadii, m.ys]
   );
   // 関連カテゴリのノード接続線（座標が近いトピック同士を結ぶ）
   const connections = useMemo(() => {
@@ -686,7 +707,7 @@ export function InteropPuyoBubbleMap({
       const idx = topics.findIndex((t) => t.roomId === c.roomId);
       const pos = idx >= 0 ? placements[idx]?.pos : undefined;
       if (!pos) return;
-      const size = sizes[idx] ?? BUBBLE_BASE;
+      const size = sizes[idx] ?? m.base;
       const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
       const dir: "above" | "below" = pos[1] < 32 ? "below" : "above";
       const sentimentColor = detectSentimentColor(c.body);
@@ -710,7 +731,7 @@ export function InteropPuyoBubbleMap({
       const ridx = Math.floor(Math.random() * Math.max(1, placements.length));
       const place = placements[ridx];
       const pos: [number, number] = place?.pos ?? [50, 40];
-      const size = sizes[ridx] ?? BUBBLE_BASE;
+      const size = sizes[ridx] ?? m.base;
       const id = `live-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
       const dir: "above" | "below" = pos[1] < 32 ? "below" : "above";
       const xExtra = popupXExtra(pos[0]);
@@ -722,7 +743,7 @@ export function InteropPuyoBubbleMap({
     return () => window.clearInterval(interval);
   }, [livePosts, placements, sizes]);
 
-  const centerSize = CENTER_SIZE_DESKTOP;
+  const centerSize = m.centerSize;
 
   return (
     <div
@@ -795,7 +816,7 @@ export function InteropPuyoBubbleMap({
             pos={place.pos}
             dir={place.dir}
             index={i}
-            size={sizes[i] ?? BUBBLE_BASE}
+            size={sizes[i] ?? m.base}
             onActivate={() => onSelectTopic(topic)}
           />
         );
@@ -935,7 +956,7 @@ export function InteropPuyoBubbleMap({
         // 中心ハブを基準にした固定座標（反発の占有ゾーンと一致させて被りを防ぐ）
         const sp = SATELLITE_POS[s.place];
         const placePos = { left: `${sp.x}%`, top: `${sp.y}%` };
-        const ORB = 84;
+        const ORB = m.satOrb;
         return (
           <button
             key={s.key}
@@ -1035,8 +1056,8 @@ export function InteropPuyoBubbleMap({
         </button>
       </div>
 
-      {/* 凡例：パンしても固定表示 */}
-      <div className="pointer-events-none absolute bottom-20 left-4 right-16 z-30 flex flex-wrap gap-1.5 md:bottom-6">
+      {/* 凡例：パンしても固定表示。スマホ＝横スクロール1行／PC＝折返し */}
+      <div className="pointer-events-auto absolute bottom-2 left-2 right-16 z-30 flex flex-nowrap gap-1.5 overflow-x-auto [scrollbar-width:none] md:pointer-events-none md:bottom-6 md:left-4 md:right-16 md:flex-wrap md:overflow-visible">
         {Object.entries(GROUP_STYLE).map(([major, sty]) => (
           <GroupChip key={major} label={sty.label} sty={sty} />
         ))}

@@ -92,7 +92,7 @@ export default async function InteropPage() {
             </div>
             <div>
               <h1
-                className={`${zenKaku.className} text-[clamp(1.2rem,3.4vw,1.9rem)] font-bold leading-none tracking-tight text-white`}
+                className={`${zenKaku.className} text-[clamp(1.02rem,3.4vw,1.9rem)] font-bold leading-tight tracking-tight text-white [word-break:keep-all]`}
                 style={{ textShadow: "0 0 18px rgba(120,150,255,0.4)" }}
               >
                 {settings.title}
@@ -112,9 +112,9 @@ export default async function InteropPage() {
               href={ensureExternalUrl(settings.registerUrl, "https://www.interop.jp/")}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-indigo-400 to-violet-500 px-3.5 py-1.5 text-[11px] font-bold text-white shadow-lg shadow-violet-500/25 transition-transform hover:scale-105 sm:text-xs"
+              className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-gradient-to-r from-indigo-400 to-violet-500 px-3.5 py-1.5 text-[11px] font-bold text-white shadow-lg shadow-violet-500/25 transition-transform hover:scale-105 sm:text-xs"
             >
-              {settings.registerLabel} <ChevronRight className="h-3.5 w-3.5" />
+              {settings.registerLabel} <ChevronRight className="h-3.5 w-3.5 shrink-0" />
             </a>
           </div>
         </div>
