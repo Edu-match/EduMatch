@@ -11,7 +11,7 @@ async function loadSub(subId: string) {
   try {
     return await prisma.interopSubCategory.findFirst({
       where: { id: subId, is_active: true },
-      include: { category: { select: { id: true, name: true, color: true } } },
+      include: { category: { select: { id: true, name: true, color: true, slug: true } } },
     });
   } catch {
     return null;
@@ -52,6 +52,7 @@ export default async function InteropSubPage({
           description: sub.description,
           categoryId: sub.category.id,
           categoryName: sub.category.name,
+          categorySlug: sub.category.slug,
         }}
         accent={sub.category.color || "#9fb4e8"}
         themeMode={settings.themeMode}

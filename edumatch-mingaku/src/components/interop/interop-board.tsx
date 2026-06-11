@@ -45,10 +45,13 @@ export function InteropBoard({
   accent,
   themeMode = "auto",
 }: {
-  sub: { id: string; name: string; description: string; categoryId: string; categoryName: string };
+  sub: { id: string; name: string; description: string; categoryId: string; categoryName: string; categorySlug?: string };
   accent: string;
   themeMode?: InteropThemeMode;
 }) {
+  // interop 直下の「直行サテライト」（最新ニュース／登壇者への質問／ご意見BOX）は
+  // トップマップから直接入るので、戻り先はハブではなくトップマップにする。
+  const isSatellite = sub.categorySlug === "interop";
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
@@ -134,21 +137,35 @@ export function InteropBoard({
       <div className="relative z-10 mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col px-4 pb-28 pt-4 sm:px-6">
         {/* 戻る（大カテゴリ／マップ） */}
         <div className="flex flex-wrap items-center gap-2">
-          <Link
-            href={`/?cat=${sub.categoryId}`}
-            prefetch={false}
-            className="inline-flex w-fit items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-bold text-white/85 backdrop-blur transition-colors hover:brightness-110"
-            style={{ background: `${accent}22`, borderColor: `${accent}66` }}
-          >
-            <ArrowLeft className="h-3.5 w-3.5" /> {sub.categoryName}に戻る
-          </Link>
-          <Link
-            href="/"
-            prefetch={false}
-            className="inline-flex w-fit items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.06] px-3.5 py-1.5 text-xs font-bold text-white/70 backdrop-blur transition-colors hover:bg-white/12 hover:text-white"
-          >
-            マップ全体
-          </Link>
+          {isSatellite ? (
+            // 直行サテライト：トップマップへ直接戻る
+            <Link
+              href="/"
+              prefetch={false}
+              className="inline-flex w-fit items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-bold text-white/85 backdrop-blur transition-colors hover:brightness-110"
+              style={{ background: `${accent}22`, borderColor: `${accent}66` }}
+            >
+              <ArrowLeft className="h-3.5 w-3.5" /> マップに戻る
+            </Link>
+          ) : (
+            <>
+              <Link
+                href={`/?cat=${sub.categoryId}`}
+                prefetch={false}
+                className="inline-flex w-fit items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-bold text-white/85 backdrop-blur transition-colors hover:brightness-110"
+                style={{ background: `${accent}22`, borderColor: `${accent}66` }}
+              >
+                <ArrowLeft className="h-3.5 w-3.5" /> {sub.categoryName}に戻る
+              </Link>
+              <Link
+                href="/"
+                prefetch={false}
+                className="inline-flex w-fit items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.06] px-3.5 py-1.5 text-xs font-bold text-white/70 backdrop-blur transition-colors hover:bg-white/12 hover:text-white"
+              >
+                マップ全体
+              </Link>
+            </>
+          )}
         </div>
 
         {/* ════ 画面上部：コンテンツ ════ */}
