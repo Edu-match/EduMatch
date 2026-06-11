@@ -9,10 +9,7 @@ import {
 } from "@/lib/interop-priority-topics";
 import type { InteropCategory } from "@/components/interop/interop-category-bubble-map";
 import { ForumHotFlame } from "@/components/community/forum-hot-flame";
-import {
-  formatActivityHint,
-  type InteropActivityStats,
-} from "@/lib/interop-activity";
+import type { InteropActivityStats } from "@/lib/interop-activity";
 import { computePuyoIntensity, INTEROP_PUYO_CSS, puyoAnimationStyle } from "@/lib/interop-puyopuyo";
 import { useEffect, useMemo, useState } from "react";
 
@@ -220,7 +217,11 @@ function PuyoBubble({
   const hot = isHot;
   // 拡大は上位5のみ・控えめ（1.15倍）。間隔に余裕があるので被らない。
   const size = isBig ? Math.round(bubbleSize * 1.15) : bubbleSize;
-  const hint = formatActivityHint(stats);
+  // 件数表示（炎マークは付けない）。直近24hに新着があれば「！」を出す。
+  const hint = stats.postCount > 0 ? `${stats.postCount}件` : undefined;
+  const isRecent = stats.lastPostedAt
+    ? Date.now() - new Date(stats.lastPostedAt).getTime() < 86_400_000
+    : false;
   const intensity = computePuyoIntensity(stats);
   // 揺れは控えめに（やかましさ・被り回避）。hot でも大きくは揺らさない。
   const puyoStyle =
@@ -259,15 +260,13 @@ function PuyoBubble({
       }}
       aria-label={topic.category}
     >
-      {/* Glow halo（常時＋ホバーで増強） */}
+      {/* Glow halo（常時・分類色を維持。盛り上がりでもオレンジにしない） */}
       <span
         className="pointer-events-none absolute rounded-full transition-opacity duration-300"
         style={{
-          inset: hot ? -18 : -16,
-          background: hot
-            ? "radial-gradient(circle, rgba(255,150,60,0.42) 0%, rgba(255,100,30,0.16) 45%, transparent 68%)"
-            : `radial-gradient(circle, ${sty.glow}3d 0%, ${sty.glow}14 45%, transparent 68%)`,
-          opacity: hot ? 1 : 0.9,
+          inset: -16,
+          background: `radial-gradient(circle, ${sty.glow}3d 0%, ${sty.glow}14 45%, transparent 68%)`,
+          opacity: 0.9,
         }}
       />
       <span
@@ -283,13 +282,9 @@ function PuyoBubble({
         className={`relative flex h-full w-full items-center justify-center rounded-full transition-transform duration-200 group-hover:scale-[1.10] group-active:scale-[0.92]${puyoStyle ? " interop-puyo" : ""}`}
         style={{
           ...puyoStyle,
-          background: hot
-            ? "radial-gradient(circle at 35% 28%, rgba(255,255,255,0.50) 0%, rgba(255,200,140,0.22) 42%, rgba(230,140,50,0.28) 100%)"
-            : sty.bg,
-          border: hot ? "1.5px solid rgba(255,190,120,0.75)" : `1.5px solid ${sty.border}`,
-          boxShadow: hot
-            ? "0 0 28px rgba(255,130,50,0.42), 0 4px 16px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.60)"
-            : `0 0 20px ${sty.glow}22, 0 4px 16px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.60)`,
+          background: sty.bg,
+          border: `1.5px solid ${sty.border}`,
+          boxShadow: `0 0 20px ${sty.glow}22, 0 4px 16px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.60)`,
           backdropFilter: "blur(14px)",
           WebkitBackdropFilter: "blur(14px)",
         }}
@@ -311,21 +306,32 @@ function PuyoBubble({
           style={{
             width: iconSize,
             height: iconSize,
-            color: hot ? "#ffb870" : sty.glow,
+            color: sty.glow,
             opacity: 0.95,
-            filter: hot ? undefined : `drop-shadow(0 0 4px ${sty.glow}88)`,
+            filter: `drop-shadow(0 0 4px ${sty.glow}88)`,
           }}
           strokeWidth={1.7}
         />
+        {/* 盛り上がり（全体平均超え）＝炎マークのみ。玉の色は分類色を維持 */}
         {hot && (
           <span className="absolute -right-0.5 -top-0.5 z-20">
             <ForumHotFlame size="sm" />
           </span>
         )}
+        {/* 直近24h新着＝「！」マーク */}
+        {isRecent && (
+          <span
+            className="absolute -left-1 -top-1 z-20 grid h-4 w-4 place-items-center rounded-full text-[10px] font-black leading-none text-white shadow"
+            style={{ background: "#ff3b30" }}
+            title="24時間以内に新しい投稿があります"
+          >
+            !
+          </span>
+        )}
         {hint && (
           <span
             className="absolute -bottom-1 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-full px-1.5 py-0.5 text-[8px] font-bold text-white shadow"
-            style={{ background: hot ? "rgba(255,120,40,0.92)" : `${sty.glow}cc` }}
+            style={{ background: `${sty.glow}cc` }}
           >
             {hint}
           </span>
@@ -401,7 +407,10 @@ function MobilePuyoCard({
   const { Icon } = sty;
   const hot = isHot;
   const size = isBig ? 69 : 60; // 上位5のみ控えめに拡大
-  const hint = formatActivityHint(stats);
+  const hint = stats.postCount > 0 ? `${stats.postCount}件` : undefined;
+  const isRecent = stats.lastPostedAt
+    ? Date.now() - new Date(stats.lastPostedAt).getTime() < 86_400_000
+    : false;
   return (
     <button
       type="button"
@@ -413,13 +422,9 @@ function MobilePuyoCard({
         style={{
           width: size,
           height: size,
-          background: hot
-            ? "radial-gradient(circle at 35% 28%, rgba(255,255,255,0.50) 0%, rgba(255,200,140,0.22) 42%, rgba(230,140,50,0.28) 100%)"
-            : sty.bg,
-          border: hot ? "1.5px solid rgba(255,190,120,0.75)" : `1.5px solid ${sty.border}`,
-          boxShadow: hot
-            ? "0 0 20px rgba(255,130,50,0.38), 0 4px 12px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.6)"
-            : `0 0 16px ${sty.glow}33, 0 4px 12px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.6)`,
+          background: sty.bg,
+          border: `1.5px solid ${sty.border}`,
+          boxShadow: `0 0 16px ${sty.glow}33, 0 4px 12px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.6)`,
           backdropFilter: "blur(12px)",
           WebkitBackdropFilter: "blur(12px)",
         }}
@@ -432,9 +437,9 @@ function MobilePuyoCard({
           style={{
             width: Math.round(size * 0.4),
             height: Math.round(size * 0.4),
-            color: hot ? "#ffb870" : sty.glow,
+            color: sty.glow,
             opacity: 0.95,
-            filter: hot ? undefined : `drop-shadow(0 0 3px ${sty.glow}77)`,
+            filter: `drop-shadow(0 0 3px ${sty.glow}77)`,
           }}
           strokeWidth={1.7}
         />
@@ -443,10 +448,19 @@ function MobilePuyoCard({
             <ForumHotFlame size="sm" />
           </span>
         )}
+        {isRecent && (
+          <span
+            className="absolute -left-1 -top-1 z-10 grid h-4 w-4 place-items-center rounded-full text-[10px] font-black leading-none text-white shadow"
+            style={{ background: "#ff3b30" }}
+            title="24時間以内に新しい投稿があります"
+          >
+            !
+          </span>
+        )}
         {hint && (
           <span
             className="absolute -bottom-1 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full px-1 py-0.5 text-[7px] font-bold text-white"
-            style={{ background: "rgba(255,120,40,0.92)" }}
+            style={{ background: `${sty.glow}cc` }}
           >
             {hint}
           </span>
