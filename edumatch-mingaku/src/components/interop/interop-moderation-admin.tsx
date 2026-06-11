@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, Check, Eye, Loader2, ShieldAlert, Trash2 } from "lucide-react";
+import { AlertTriangle, Bot, Check, Eye, Loader2, ShieldAlert, Trash2 } from "lucide-react";
 
 type FlaggedPost = {
   id: string;
@@ -27,6 +27,22 @@ export function InteropModerationAdmin() {
   const [posts, setPosts] = useState<FlaggedPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
+  // 既存投稿へのAI返信バックフィル
+  const [backfilling, setBackfilling] = useState(false);
+  const [backfillMsg, setBackfillMsg] = useState<string | null>(null);
+
+  const runBackfill = async () => {
+    if (!confirm("既存の投稿のうち、未返信のものからランダムに選び、全体の約8割にAIファシリテーター返信を付けます。実行しますか？")) return;
+    setBackfilling(true);
+    setBackfillMsg(null);
+    const { ok, data } = await api("/api/interop/admin/backfill-ai-replies", { method: "POST" });
+    setBackfilling(false);
+    if (ok) {
+      setBackfillMsg(`完了：${data.created}件のAI返信を生成（返信率 約${data.coverage}％ / 全${data.totalPosts}投稿）`);
+    } else {
+      setBackfillMsg(data.error || "実行に失敗しました。");
+    }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -57,6 +73,26 @@ export function InteropModerationAdmin() {
   };
 
   return (
+    <div className="space-y-4">
+      {/* 既存投稿へのAI返信バックフィル */}
+      <div className="rounded-xl border border-indigo-300/20 bg-indigo-400/[0.06] p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <Bot className="h-5 w-5 text-indigo-300" />
+          <h3 className="text-base font-bold text-white">既存投稿へのAI返信</h3>
+          <span className="text-xs text-white/45">未返信の投稿に、全体の約8割になるよう付与</span>
+          <button
+            type="button"
+            onClick={runBackfill}
+            disabled={backfilling}
+            className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-indigo-300/40 bg-indigo-400/15 px-3 py-1.5 text-xs font-bold text-indigo-100 transition hover:bg-indigo-400/25 disabled:opacity-50"
+          >
+            {backfilling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Bot className="h-3.5 w-3.5" />}
+            AI返信を付与（8割）
+          </button>
+        </div>
+        {backfillMsg && <p className="mt-2 text-xs font-medium text-indigo-100/85">{backfillMsg}</p>}
+      </div>
+
     <div className="rounded-xl border border-white/10 bg-white/[0.06] p-4 backdrop-blur-sm">
       <div className="mb-3 flex items-center gap-2">
         <ShieldAlert className="h-5 w-5 text-amber-300" />
@@ -130,6 +166,7 @@ export function InteropModerationAdmin() {
           ))}
         </ul>
       )}
+    </div>
     </div>
   );
 }
