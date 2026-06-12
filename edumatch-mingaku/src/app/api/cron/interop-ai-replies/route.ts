@@ -33,6 +33,7 @@ export async function GET(req: NextRequest) {
   const candidates = await prisma.interopPost.findMany({
     where: {
       is_hidden: false,
+      is_pinned: false,
       is_ai_reply: false,
       parent_post_id: null,
       created_at: { gte: windowStart },

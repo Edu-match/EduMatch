@@ -9,7 +9,7 @@ import OpenAI from "openai";
  * プロンプトはストリーミング版と内容を揃えること。
  */
 
-export const FORUM_AI_REPLY_MODEL = "gpt-5.4";
+export const FORUM_AI_REPLY_MODEL = process.env.FORUM_AI_REPLY_MODEL?.trim() || "gpt-4o-mini";
 
 export const FORUM_AI_SYSTEM_PROMPT = `あなたは「AIUEO井戸端会議」というオンラインコミュニティに参加するAIファシリテーターです。
 教育現場の実践者・研究者・保護者・企業が集まるフォーラムで、議論を豊かにするサポートをしています。

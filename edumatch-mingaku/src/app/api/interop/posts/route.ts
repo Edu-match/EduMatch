@@ -40,8 +40,7 @@ export async function GET(req: NextRequest) {
       },
       include: {
         replies: {
-          where: { is_ai_reply: true },
-          take: 1,
+          where: includeHidden ? {} : { is_hidden: false },
           orderBy: { created_at: "asc" },
         },
       },
@@ -49,20 +48,29 @@ export async function GET(req: NextRequest) {
       take: PAGE_SIZE,
     });
     return NextResponse.json({
-      posts: posts.map((p) => ({
-        id: p.id,
-        subCategoryId: p.sub_category_id,
-        topicId: p.topic_id,
-        authorName: p.author_name,
-        authorRole: p.author_role,
-        body: p.body,
-        isPinned: p.is_pinned,
-        isHidden: p.is_hidden,
-        postedAt: p.created_at.toISOString(),
-        aiReply: p.replies[0]
-          ? { body: p.replies[0].body, postedAt: p.replies[0].created_at.toISOString() }
-          : null,
-      })),
+      posts: posts.map((p) => {
+        const aiReply = p.replies.find((r) => r.is_ai_reply);
+        const userReplies = p.replies.filter((r) => !r.is_ai_reply);
+        return {
+          id: p.id,
+          subCategoryId: p.sub_category_id,
+          topicId: p.topic_id,
+          authorName: p.author_name,
+          authorRole: p.author_role,
+          body: p.body,
+          isPinned: p.is_pinned,
+          isHidden: p.is_hidden,
+          postedAt: p.created_at.toISOString(),
+          aiReply: aiReply ? { body: aiReply.body, postedAt: aiReply.created_at.toISOString() } : null,
+          userReplies: userReplies.map((r) => ({
+            id: r.id,
+            authorName: r.author_name,
+            authorRole: r.author_role,
+            body: r.body,
+            postedAt: r.created_at.toISOString(),
+          })),
+        };
+      }),
     });
   } catch (err) {
     console.error("[interop/posts GET]", err);
@@ -77,6 +85,8 @@ export async function POST(req: NextRequest) {
       subCategoryId?: string;
       /** トピック設定があるサブカテゴリではトピックIDを指定 */
       topicId?: string;
+      /** 返信対象の投稿ID（指定時はその投稿への返信として保存） */
+      parentPostId?: string;
       authorName?: string;
       authorRole?: string;
       postBody?: string;
@@ -160,10 +170,24 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // 返信対象の投稿IDの検証（指定があれば同サブカテゴリ所属か確認）
+    let parentPostId: string | null = null;
+    if (body.parentPostId) {
+      const parent = await prisma.interopPost.findFirst({
+        where: { id: body.parentPostId, sub_category_id: sub.id, parent_post_id: null },
+        select: { id: true },
+      });
+      if (!parent) {
+        return NextResponse.json({ error: "返信対象の投稿が見つかりません" }, { status: 404 });
+      }
+      parentPostId = parent.id;
+    }
+
     const post = await prisma.interopPost.create({
       data: {
         sub_category_id: body.subCategoryId,
         topic_id: topicId,
+        parent_post_id: parentPostId,
         author_name: trimmedName,
         author_role: trimmedRole,
         body: text,
@@ -185,10 +209,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // AIファシリテーター返信：運営の固定投稿以外には必ず即時生成する。
+    // AIファシリテーター返信：トップレベル投稿にのみ付与（返信・固定投稿は除く）。
     // レスポンスはブロックせず after() で送信後に実行（Vercel Fluid Compute で確実に走る）。
     // 万一ここで失敗しても cron（/api/cron/interop-ai-replies）が拾って付与する。
-    if (!isPinned && !autoHidden) {
+    if (!isPinned && !autoHidden && !parentPostId) {
       const createdPostId = post.id;
       const createdTopicId = topicId;
       const subCategoryId = sub.id;

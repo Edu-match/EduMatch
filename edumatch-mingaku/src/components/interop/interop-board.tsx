@@ -3,13 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Bot, Link2, Loader2, MessageCircle, Pin, Send } from "lucide-react";
+import { ArrowLeft, Bot, CornerDownRight, Link2, Loader2, MessageCircle, Pin, Send } from "lucide-react";
 import { InteropBackdrop } from "@/components/interop/interop-backdrop";
 import { InteropContentCarousel } from "@/components/interop/interop-content-carousel";
 import { InteropChatWidget } from "@/components/interop/interop-chat-widget";
 import type { InteropThemeMode } from "@/lib/interop-settings";
 
 type AiReply = { body: string; postedAt: string };
+type UserReply = { id: string; authorName: string; authorRole: string; body: string; postedAt: string };
 
 type Post = {
   id: string;
@@ -19,6 +20,7 @@ type Post = {
   isPinned?: boolean;
   postedAt: string;
   aiReply?: AiReply | null;
+  userReplies?: UserReply[];
 };
 
 /** 参考URL → サムネ画像/ドメインを推定 */
@@ -75,6 +77,9 @@ export function InteropBoard({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [replyingToId, setReplyingToId] = useState<string | null>(null);
+  const [replyBody, setReplyBody] = useState("");
+  const [replySubmitting, setReplySubmitting] = useState(false);
   const listTopRef = useRef<HTMLDivElement>(null);
   // マップの吹き出しから「投稿を見る」で来たときに該当投稿へスクロール＆ハイライト
   const searchParams = useSearchParams();
@@ -159,6 +164,41 @@ export function InteropBoard({
       setError("通信エラーが発生しました");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function submitReply(parentId: string) {
+    const trimmed = replyBody.trim();
+    if (!trimmed || !name.trim() || !role.trim() || replySubmitting) return;
+    setReplySubmitting(true);
+    try {
+      const res = await fetch("/api/interop/posts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subCategoryId: sub.id,
+          topicId: topic?.id,
+          parentPostId: parentId,
+          authorName: name.trim(),
+          authorRole: role.trim(),
+          postBody: trimmed,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || "返信に失敗しました"); return; }
+      setReplyBody("");
+      setReplyingToId(null);
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === parentId
+            ? { ...p, userReplies: [...(p.userReplies ?? []), { id: data.post.id, authorName: data.post.authorName, authorRole: data.post.authorRole, body: data.post.body, postedAt: data.post.postedAt }] }
+            : p
+        )
+      );
+    } catch {
+      setError("通信エラーが発生しました");
+    } finally {
+      setReplySubmitting(false);
     }
   }
 
@@ -316,7 +356,63 @@ export function InteropBoard({
                       >
                         {p.body}
                       </p>
+                      {/* 返信ボタン（固定/お知らせ投稿は除く） */}
+                      {!p.isPinned && (
+                        <button
+                          type="button"
+                          onClick={() => { setReplyingToId(replyingToId === p.id ? null : p.id); setReplyBody(""); }}
+                          className="mt-2 inline-flex items-center gap-1 text-[11px] text-white/35 hover:text-white/70 transition"
+                        >
+                          <CornerDownRight className="h-3 w-3" />
+                          {replyingToId === p.id ? "キャンセル" : `返信する（${(p.userReplies ?? []).length > 0 ? (p.userReplies ?? []).length + "件" : ""}）`}
+                        </button>
+                      )}
                     </div>
+
+                    {/* ユーザー返信一覧 */}
+                    {(p.userReplies ?? []).length > 0 && (
+                      <div className="mx-3 mb-2 space-y-2 border-l-2 border-white/10 pl-3">
+                        {(p.userReplies ?? []).map((r) => (
+                          <div key={r.id}>
+                            <div className="flex items-center gap-1.5 text-[10.5px] text-white/50">
+                              <span className="font-bold text-white/75">{r.authorName}</span>
+                              {r.authorRole && <span className="text-white/35">· {r.authorRole}</span>}
+                              <span className="ml-auto">{timeAgo(r.postedAt)}</span>
+                            </div>
+                            <p className="mt-0.5 whitespace-pre-wrap break-words text-xs text-white/70">{r.body}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* インライン返信フォーム */}
+                    {replyingToId === p.id && (
+                      <div className="mx-3 mb-3 space-y-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5">
+                        {(!name.trim() || !role.trim()) && (
+                          <p className="text-[11px] text-amber-300/80">下のフォームでニックネームと肩書きを入力してから返信できます。</p>
+                        )}
+                        <textarea
+                          value={replyBody}
+                          onChange={(e) => setReplyBody(e.target.value)}
+                          placeholder={`${p.authorName}さんへ返信…`}
+                          rows={2}
+                          maxLength={500}
+                          className="w-full resize-none rounded-lg border border-white/12 bg-white/[0.04] px-2.5 py-1.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none"
+                        />
+                        <div className="flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => submitReply(p.id)}
+                            disabled={replySubmitting || !name.trim() || !role.trim() || !replyBody.trim()}
+                            className="inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-bold text-white transition disabled:opacity-40"
+                            style={{ background: accent }}
+                          >
+                            {replySubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                            返信する
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     {p.aiReply && (
                       <div
