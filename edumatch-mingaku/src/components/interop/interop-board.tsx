@@ -81,6 +81,9 @@ export function InteropBoard({
   const [replyBody, setReplyBody] = useState("");
   const [replySubmitting, setReplySubmitting] = useState(false);
   const listTopRef = useRef<HTMLDivElement>(null);
+  const composeRef = useRef<HTMLDivElement>(null);
+  // 固定投稿欄の実高に合わせて下余白を動的に確保（pb-28 固定だと最下部が隠れる）
+  const [composePad, setComposePad] = useState(160);
   // マップの吹き出しから「投稿を見る」で来たときに該当投稿へスクロール＆ハイライト
   const searchParams = useSearchParams();
   const focusPostId = searchParams.get("post");
@@ -110,6 +113,16 @@ export function InteropBoard({
   }, [focusPostId, loading, posts]);
 
   // 名前は入力のたびに保持し、別カテゴリ／別ページでも自動入力する（リロードでも維持）
+  useEffect(() => {
+    const el = composeRef.current;
+    if (!el) return;
+    const syncPad = () => setComposePad(el.getBoundingClientRect().height + 16);
+    syncPad();
+    const ro = new ResizeObserver(syncPad);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   useEffect(() => {
     try {
       const savedName = localStorage.getItem("interop_author_name");
@@ -206,7 +219,10 @@ export function InteropBoard({
     <main className="relative min-h-[100dvh] w-full bg-[#070a1c] text-white">
       <InteropBackdrop themeMode={themeMode} />
 
-      <div className="relative z-10 mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col px-4 pb-28 pt-4 sm:px-6">
+      <div
+        className="relative z-10 mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col px-4 pt-4 sm:px-6"
+        style={{ paddingBottom: composePad }}
+      >
         {/* 戻る（トピック一覧／大カテゴリ／マップ） */}
         <div className="flex flex-wrap items-center gap-2">
           {topic ? (
@@ -440,7 +456,10 @@ export function InteropBoard({
       </div>
 
       {/* ════ 最下部：投稿欄（固定） ════ */}
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-white/10 bg-[#070a1c]/95 backdrop-blur">
+      <div
+        ref={composeRef}
+        className="fixed inset-x-0 bottom-0 z-20 border-t border-white/10 bg-[#070a1c]/95 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur"
+      >
         <div className="mx-auto w-full max-w-2xl px-4 py-3 sm:px-6">
           {error && <p className="mb-2 text-xs text-rose-300">{error}</p>}
           {notice && <p className="mb-2 text-xs text-emerald-300">{notice}</p>}
