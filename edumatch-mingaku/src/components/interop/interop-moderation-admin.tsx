@@ -32,14 +32,14 @@ export function InteropModerationAdmin() {
   const [backfillMsg, setBackfillMsg] = useState<string | null>(null);
 
   const runBackfill = async () => {
-    if (!confirm("お知らせ（固定投稿）に誤って付いたAI返信を削除し、一般投稿のうち未返信のものすべてにAIファシリテーター返信を付けます。実行しますか？")) return;
+    if (!confirm("お知らせ（固定投稿）の誤AI返信を削除し、「登壇者への質問」のAI返信も削除します。一般投稿の未返信分にAI返信を付与します（登壇者への質問は除く）。実行しますか？")) return;
     setBackfilling(true);
     setBackfillMsg(null);
     const { ok, data } = await api("/api/interop/admin/backfill-ai-replies", { method: "POST" });
     setBackfilling(false);
     if (ok) {
       setBackfillMsg(
-        `完了：お知らせから${data.removedFromPinned}件のAI返信を削除／一般投稿に${data.created}件を生成（返信率 約${data.coverage}％ / 全${data.totalGeneralPosts}件）`
+        `完了：お知らせから${data.removedFromPinned}件・登壇者への質問から${data.removedFromSpeakerQa ?? 0}件のAI返信を削除／一般投稿に${data.created}件を生成（返信率 約${data.coverage}％ / 全${data.totalGeneralPosts}件）`
       );
     } else {
       setBackfillMsg(data.error || "実行に失敗しました。");
@@ -81,7 +81,7 @@ export function InteropModerationAdmin() {
         <div className="flex flex-wrap items-center gap-2">
           <Bot className="h-5 w-5 text-indigo-300" />
           <h3 className="text-base font-bold text-white">AI返信の是正・付与</h3>
-          <span className="text-xs text-white/45">お知らせの誤返信を削除し、一般投稿の未返信すべてに付与</span>
+          <span className="text-xs text-white/45">お知らせの誤返信を削除・登壇者への質問はAI返信なし・一般投稿に付与</span>
           <button
             type="button"
             onClick={runBackfill}

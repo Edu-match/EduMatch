@@ -27,7 +27,7 @@ import {
 import type { InteropActivityStats } from "@/lib/interop-activity";
 import { INTEROP_PRIORITY_TOPICS, type InteropPriorityTopic } from "@/lib/interop-priority-topics";
 import type { InteropThemeMode } from "@/lib/interop-settings";
-import type { AxisConfig, AxisPoint } from "@/lib/interop-topic-axis";
+import { DEFAULT_TOPIC_AXIS, type AxisConfig, type AxisPoint } from "@/lib/interop-topic-axis";
 
 // インタロップハブ内「自由記入」コミュニティトピック
 const INTEROP_HUB_COMMUNITY = [
@@ -143,6 +143,22 @@ function buildActivityMaps(
   return { subMap, catMap, roomMap, topicMap };
 }
 
+/** interop_topics.axis_x/y を優先し、未設定(0,0)は interop_topic_position → 初期値へ */
+function mergeTopicPositions(
+  dbPositions: Record<number, AxisPoint> | undefined,
+  axisPositions: Record<number, AxisPoint> | undefined,
+): Record<number, AxisPoint> {
+  const base = axisPositions ?? DEFAULT_TOPIC_AXIS;
+  if (!dbPositions) return base;
+  const merged: Record<number, AxisPoint> = { ...base };
+  for (const [noStr, pt] of Object.entries(dbPositions)) {
+    const no = Number(noStr);
+    if (pt.x !== 0 || pt.y !== 0) merged[no] = pt;
+    else if (!(no in merged)) merged[no] = pt;
+  }
+  return merged;
+}
+
 export function InteropExplorer({
   themeMode = "auto",
   guideText = "中央のインタロップをタップして展示情報へ · 周囲の◎トピックをタップして論点・井戸端へ",
@@ -202,6 +218,11 @@ export function InteropExplorer({
       })
       .catch(() => {});
   }, []);
+
+  const topicPositions = useMemo(
+    () => mergeTopicPositions(dbTopicPositions, axis.positions),
+    [dbTopicPositions, axis.positions],
+  );
 
   // ── 中心インタロップ直行サテライト（最新ニュース／登壇者への質問／ご意見BOX）の解決 ──
   const [allSubs, setAllSubs] = useState<InteropSubCategory[]>([]);
@@ -368,7 +389,7 @@ export function InteropExplorer({
             activityByRoom={activityByRoom}
             axisConfig={axis.config}
             topics={dbTopics}
-            topicPositions={dbTopicPositions ?? axis.positions}
+            topicPositions={topicPositions}
             satellites={satellites}
             livePosts={livePosts}
             iconFor={iconFor}
