@@ -487,7 +487,7 @@ export function InteropBoard({
       </div>
 
       {/* どのページでもいつでも質問できるAIチャット（下部に投稿バーがあるので少し上げる）。
-          今見ているページ（トピック・概要）をアタッチとしてAIに渡せる */}
+          今見ているページ（トピック・概要）に加え、ページ内の投稿・返信もアタッチして渡す */}
       <InteropChatWidget
         mobileRaise
         context={
@@ -495,7 +495,25 @@ export function InteropBoard({
             ? `${sub.categoryName}｜${sub.name}｜トピック「${topic.name}」${topic.description ? `（${topic.description}）` : ""}`
             : `${sub.categoryName}｜${sub.name}${sub.description ? `（${sub.description}）` : ""}`
         }
+        contextDetail={serializePostsForAi(posts)}
       />
     </main>
   );
+}
+
+/** このページの投稿と、その返信（AI・参加者）をAIチャットに渡すテキストに整形。
+ *  新しい順で最大20件・各本文は長すぎないよう丸める。 */
+function serializePostsForAi(posts: Post[]): string {
+  if (posts.length === 0) return "";
+  const clip = (s: string, n: number) => (s.length > n ? s.slice(0, n) + "…" : s);
+  const blocks = posts.slice(0, 20).map((p, i) => {
+    const head = `${i + 1}. ${p.authorName}${p.authorRole ? `（${p.authorRole}）` : ""}${p.isPinned ? "［お知らせ］" : ""}: ${clip(p.body, 280)}`;
+    const lines = [head];
+    if (p.aiReply) lines.push(`   └ AIファシリテーター: ${clip(p.aiReply.body, 200)}`);
+    for (const r of p.userReplies ?? []) {
+      lines.push(`   └ ${r.authorName}${r.authorRole ? `（${r.authorRole}）` : ""}: ${clip(r.body, 200)}`);
+    }
+    return lines.join("\n");
+  });
+  return `このページに投稿されている内容（新しい順・最大20件、返信も含む）:\n${blocks.join("\n")}`;
 }

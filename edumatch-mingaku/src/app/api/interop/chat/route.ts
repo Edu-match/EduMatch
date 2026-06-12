@@ -21,7 +21,11 @@ type RequestBody = {
   messages: { role: MessageRole; content: string }[];
   /** 来場者が今見ている場所（カテゴリ/論点名など） */
   context?: string;
+  /** 今見ているページの投稿・返信などの本文（アタッチ時に渡される） */
+  pageContent?: string;
 };
+/** ページ投稿コンテキストの最大文字数（プロンプト肥大・コスト対策） */
+const MAX_PAGE_CONTENT_CHARS = 4000;
 
 // ── システムプロンプト（教育×AI・公的文書RAG。エデュマッチ宣伝はしない）──────
 const SYSTEM_PROMPT = `あなたは「インタロップ東京2026 教育AIサミット」特設サイトのAIアシスタントです。
@@ -140,6 +144,12 @@ export async function POST(req: NextRequest) {
   const viewing = typeof body.context === "string" ? body.context.trim().slice(0, 400) : "";
   if (viewing) {
     systemPrompt += `\n\n## 来場者が今見ているページ\n来場者は現在「${viewing}」を閲覧しています。質問が曖昧なときはこの文脈を踏まえて解釈し、関連づけて答えてください。`;
+  }
+  // 今見ているページの投稿・返信の本文（あれば全体を踏まえて回答できるよう渡す）
+  const pageContent =
+    typeof body.pageContent === "string" ? body.pageContent.trim().slice(0, MAX_PAGE_CONTENT_CHARS) : "";
+  if (pageContent) {
+    systemPrompt += `\n\n## このページの投稿・返信（来場者が見ている内容）\n以下は来場者が今見ているページに実際に投稿されている意見とその返信です。質問がこのページの議論や投稿に関するときは、必ずこの内容を踏まえて具体的に答えてください（「○○さんの投稿」「このページでは〜という意見が出ています」のように参照して構いません）。\n\n${pageContent}`;
   }
   if (knowledgeHits.length > 0) {
     const block = knowledgeHits

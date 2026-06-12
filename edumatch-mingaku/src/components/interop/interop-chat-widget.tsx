@@ -46,10 +46,13 @@ const SUGGESTIONS = [
 export function InteropChatWidget({
   mobileRaise = false,
   context,
+  contextDetail,
 }: {
   mobileRaise?: boolean;
   /** 来場者が今見ている場所（カテゴリ/サブカテゴリ/論点名など）。AIに文脈として渡す。 */
   context?: string;
+  /** 今見ているページの投稿・返信などの詳細本文。アタッチ時にAIへ渡す（ピルには出さない）。 */
+  contextDetail?: string;
 } = {}) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMsg[]>([]);
@@ -99,8 +102,9 @@ export function InteropChatWidget({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: history.map((m) => ({ role: m.role, content: m.content })),
-          // アタッチONのときだけ「今見ているページ」をAIに渡す
+          // アタッチONのときだけ「今見ているページ」と、その投稿・返信をAIに渡す
           context: attachPage ? context?.trim() || undefined : undefined,
+          pageContent: attachPage ? contextDetail?.trim() || undefined : undefined,
         }),
       });
 
@@ -297,10 +301,10 @@ export function InteropChatWidget({
                     ? "border-amber-300/50 bg-amber-300/15 text-amber-100"
                     : "border-white/15 bg-white/[0.04] text-white/40 hover:text-white/70"
                 }`}
-                title={attachPage ? "このページの情報をAIに渡しています（タップで解除）" : "タップでこのページの情報をAIに渡す"}
+                title={attachPage ? "このページの情報（投稿・返信を含む）をAIに渡しています（タップで解除）" : "タップでこのページの情報をAIに渡す"}
               >
                 <Paperclip className="h-3 w-3 shrink-0" />
-                <span className="truncate">{context}</span>
+                <span className="truncate">{context}{contextDetail ? "（投稿・返信も含む）" : ""}</span>
                 <span className="shrink-0 text-[10px] font-normal opacity-70">{attachPage ? "添付中" : "添付しない"}</span>
               </button>
             )}
