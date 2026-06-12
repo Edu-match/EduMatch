@@ -132,9 +132,14 @@ function computeAxisPlacements(
   const rOf = (i: number) => radii[i] ?? 6;
   const pts = topics.map((t, i) => {
     const a = axisMap[t.no] ?? { x: 0, y: 0 };
-    // 決定論的微小ジッター（全く同じ初期座標の重なり解消、Math.random非依存）
-    const jx = ((i * 1234567 + t.no * 7654321) % 200 - 100) * 0.004;
-    const jy = ((i * 7654321 + t.no * 1234567) % 200 - 100) * 0.004;
+    // 軸座標が同じ／近い玉が「一直線」に並ぶのを防ぐため、決定論的な擬似乱数で
+    // 角度＋半径を割り当て、初期位置を2D方向に大きく散らす（Math.random非依存）。
+    const h1 = (((t.no + 1) * 2654435761) >>> 0) / 4294967295;          // [0,1) 角度用
+    const h2 = (((t.no + 1) * 40503 + (i + 1) * 2246822519) >>> 0) / 4294967295; // [0,1) 半径用
+    const ang = h1 * Math.PI * 2;
+    const rad = 3.0 + h2 * 5.0; // 3〜8% の振れ幅で円状に散らす
+    const jx = Math.cos(ang) * rad;
+    const jy = Math.sin(ang) * rad;
     return { x: AXIS_CX + a.x * AXIS_RX + jx, y: AXIS_CY - a.y * AXIS_RY + jy };
   });
   // 反発で被り回避（y方向は%が大きいので圧縮して等方近似）。
@@ -274,11 +279,12 @@ type MapMetrics = {
   xMin: number;        // 配置の左端クランプ(%)
   xMax: number;        // 配置の右端クランプ(%)
   panLimY: number;     // 縦パンの可動域(px)
+  aiBtn: { x: number; y: number; r: number }; // AIチャットボタン（右下固定）の占有ゾーン(%)
 };
 // スマホは1画面に玉が多すぎてゴチャつくため、縦に大きく展開して画面あたりの玉数を減らし、
 // 下へパンして探索できるようにする。
-const METRICS_DESKTOP: MapMetrics = { base: 40, max: 150, refW: 1300, labelMargin: 7.5, centerSize: 132, satOrb: 84, centerR: 18, satR: 14, ys: 0.55, yMin: 19, yMax: 90, xMin: 10, xMax: 88, panLimY: 420 };
-const METRICS_MOBILE: MapMetrics  = { base: 26, max: 70,  refW: 430,  labelMargin: 9.5, centerSize: 88,  satOrb: 56, centerR: 17, satR: 14, ys: 0.45, yMin: 17, yMax: 195, xMin: 7, xMax: 93, panLimY: 1100 };
+const METRICS_DESKTOP: MapMetrics = { base: 40, max: 150, refW: 1300, labelMargin: 6.0, centerSize: 132, satOrb: 84, centerR: 18, satR: 14, ys: 0.62, yMin: 19, yMax: 88, xMin: 9, xMax: 89, panLimY: 420, aiBtn: { x: 93, y: 90, r: 11 } };
+const METRICS_MOBILE: MapMetrics  = { base: 26, max: 70,  refW: 430,  labelMargin: 7.0, centerSize: 88,  satOrb: 56, centerR: 17, satR: 14, ys: 0.5, yMin: 17, yMax: 205, xMin: 6, xMax: 94, panLimY: 1180, aiBtn: { x: 90, y: 93, r: 13 } };
 
 
 function PuyoBubble({
@@ -674,7 +680,8 @@ export function InteropPuyoBubbleMap({
     if (wasDragRef.current) e.stopPropagation();
     wasDragRef.current = false;
   };
-  // 中心ハブ＋実在するサテライトを「占有ゾーン」として反発に渡す（玉が下に潜らない）
+  // 中心ハブ＋実在するサテライト＋UI要素（AIチャットボタン）を「占有ゾーン」として
+  // 反発に渡す（玉がヘッダー／AIボタンの下に潜らないようにする）。
   const obstacles = useMemo<Obstacle[]>(() => {
     const list: Obstacle[] = [{ x: CENTER_POS.x, y: CENTER_POS.y, r: m.centerR }];
     for (const s of satellites) {
@@ -682,8 +689,10 @@ export function InteropPuyoBubbleMap({
       // サテライトはラベルが下に伸びる（mt-3＋タグ）ぶん広めに確保。下サテラはさらに余裕を持つ
       list.push({ x: p.x, y: p.y, r: s.place === "bottom" ? m.satR + 3 : m.satR + 1 });
     }
+    // AIチャットボタン（右下固定）。玉やラベルが被らないよう右下コーナーを占有ゾーンに。
+    list.push({ x: m.aiBtn.x, y: m.aiBtn.y, r: m.aiBtn.r });
     return list;
-  }, [satellites, m.centerR, m.satR]);
+  }, [satellites, m.centerR, m.satR, m.aiBtn]);
   // 各玉の直径(px)＝投稿数で連続拡大。位置計算は3件刻みにバケット化して
   // ポーリング毎の細かな再配置（ガタつき）を抑える。
   const sizes = useMemo(
