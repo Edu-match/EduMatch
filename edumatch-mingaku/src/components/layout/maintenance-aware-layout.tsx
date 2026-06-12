@@ -7,6 +7,7 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { SideMenu } from "@/components/layout/side-menu";
 import { ChatbotWidget } from "@/components/layout/chatbot-widget";
+import { SwipeNavigation } from "@/components/layout/swipe-navigation";
 import { AiPanelProvider, useAiPanel } from "@/components/layout/ai-panel-context";
 import { useAiKenteiExamBlocksChat } from "@/hooks/use-ai-kentei-exam-blocks-chat";
 import { Bot, Menu } from "lucide-react";
@@ -223,15 +224,23 @@ export function MaintenanceAwareLayout({
   const isBareLayout =
     pathname === "/maintenance" ||
     !!pathname?.startsWith("/interop") ||
+    // 井戸端会議 常設ルート（middleware で /interop に内部 rewrite される並行ルート）
+    !!pathname?.startsWith("/idobata") ||
     isSpecialHost ||
     (!!pathname?.startsWith("/forum") && fromInterop);
 
   if (isBareLayout) {
-    return <div className="min-h-screen flex flex-col">{children}</div>;
+    return (
+      <div className="min-h-screen flex flex-col">
+        <SwipeNavigation />
+        {children}
+      </div>
+    );
   }
 
   return (
     <AiPanelProvider>
+      <SwipeNavigation />
       <AiPanelLayout>{children}</AiPanelLayout>
     </AiPanelProvider>
   );

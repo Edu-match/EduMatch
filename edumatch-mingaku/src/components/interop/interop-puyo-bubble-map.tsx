@@ -1,7 +1,7 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
-import { Bot, BookMarked, BookOpen, GraduationCap, Maximize2, Minus, Network, Plus, Shield, Sparkles, Users } from "lucide-react";
+import { Bot, BookMarked, BookOpen, GraduationCap, Minus, Network, Plus, RotateCcw, Shield, Sparkles, Users } from "lucide-react";
 import {
   INTEROP_PRIORITY_TOPICS,
   sortTopicsForBurst,
@@ -104,9 +104,9 @@ const SATELLITE_POS: Record<InteropSatellite["place"], { x: number; y: number }>
 /** サテライト玉＋グロー＋ラベル分の占有半径(%) — 反発ゾーン用 */
 function satelliteFootprintPct(orbPx: number, place: InteropSatellite["place"], containerW: number): number {
   const w = Math.max(containerW, 320);
-  const orbR = pxToPctRadius(orbPx / 2 + 24, w);
-  const labelExtra = place === "bottom" ? pxToPctRadius(36, w) : pxToPctRadius(28, w);
-  return orbR + labelExtra + 3;
+  const orbR = pxToPctRadius(orbPx / 2 + 28, w);
+  const labelExtra = place === "bottom" ? pxToPctRadius(40, w) : pxToPctRadius(32, w);
+  return orbR + labelExtra + 5;
 }
 
 /** 拡大時は中心から外側へアンカーを少しずらし、中心ハブ・隣接サテライトとの被りを抑える */
@@ -146,10 +146,12 @@ function orbCollisionRadiusPct(diameterPx: number, containerW: number, labelMarg
   const w = Math.max(containerW, 320);
   // ラベルは assignLabelSides で空いた向きへ逃がすため、当たり判定では控えめに予約
   // （ここを大きく取ると全体が間延びして縦パンが増える）。
-  const bodyAndGlow = pxToPctRadius(diameterPx / 2 + 20, w);
-  const labelExt = pxToPctRadius(diameterPx < 56 ? 20 : 26, w);
-  const badgeExt = pxToPctRadius(12, w);
-  return bodyAndGlow + labelExt + badgeExt + labelMargin + 1.5;
+  // bodyAndGlow=玉本体どうしを離す主因（重なり防止）。labelExt は assignLabelSides が
+  // 空き方向へ逃がすため控えめでよい。
+  const bodyAndGlow = pxToPctRadius(diameterPx / 2 + 18, w);
+  const labelExt = pxToPctRadius(diameterPx < 56 ? 11 : 20, w);
+  const badgeExt = pxToPctRadius(9, w);
+  return bodyAndGlow + labelExt + badgeExt + labelMargin + 1.0;
 }
 
 function pxToPctRadius(px: number, containerW: number): number {
@@ -435,7 +437,7 @@ type MapMetrics = {
 // スマホは1画面に玉が多すぎてゴチャつくため、縦に大きく展開して画面あたりの玉数を減らし、
 // 下へパンして探索できるようにする。
 const METRICS_DESKTOP: MapMetrics = { base: 40, max: 132, refW: 1300, labelMargin: 2.2, centerSize: 132, satOrb: 84, satOrbMax: 200, centerR: 20, ys: 0.62, yMin: 14, yMax: 142, xMin: 6, xMax: 92, panLimY: 840, aiBtn: { x: 93, y: 90, r: 12 } };
-const METRICS_MOBILE: MapMetrics  = { base: 26, max: 96,  refW: 430,  labelMargin: 2.0, centerSize: 88,  satOrb: 56, satOrbMax: 128, centerR: 19, ys: 0.5, yMin: 14, yMax: 340, xMin: 5, xMax: 95, panLimY: 2000, aiBtn: { x: 90, y: 93, r: 14 } };
+const METRICS_MOBILE: MapMetrics  = { base: 30, max: 80,  refW: 400,  labelMargin: 0.8, centerSize: 72,  satOrb: 44, satOrbMax: 80,  centerR: 16, ys: 0.5, yMin: 16, yMax: 280, xMin: 5, xMax: 95, panLimY: 1700, aiBtn: { x: 90, y: 93, r: 14 } };
 
 
 function PuyoBubble({
@@ -592,7 +594,7 @@ function PuyoBubble({
         style={{
           ...labelPos,
           width: "max-content",
-          maxWidth: size < 56 ? 72 : 96,
+          maxWidth: size < 56 ? 66 : 96,
           zIndex: 40,
           fontSize: `${labelFont}px`,
           fontWeight: 700,
@@ -1031,9 +1033,8 @@ export function InteropPuyoBubbleMap({
         }}
       >
 
-      {/* 2軸の線とラベル（現場↔制度 × 人間↔技術）。スマホは縦展開レイアウトと合わず
-          ゴチャつくため非表示。 */}
-      {!isMobile && (
+      {/* 2軸の線とラベル（現場↔制度 × 人間↔技術）。スマホでも初期ビューの方位ガイドとして表示。 */}
+      {(
         <>
           <div
             className="pointer-events-none absolute"
@@ -1216,8 +1217,8 @@ export function InteropPuyoBubbleMap({
               className="pointer-events-none absolute rounded-full"
               style={{ top: "10%", left: "14%", width: "44%", height: "34%", background: "rgba(255,255,255,0.90)", filter: "blur(4px)" }}
             />
-            <InteropIcon className="relative z-10 h-7 w-7 text-[#1a3a8a]" strokeWidth={1.9} />
-            <span className="relative z-10 mt-1 text-[13px] font-bold leading-tight text-[#1a3a8a]">インタロップ</span>
+            <InteropIcon className="relative z-10 text-[#1a3a8a]" strokeWidth={1.9} style={{ width: Math.round(centerSize * 0.22), height: Math.round(centerSize * 0.22) }} />
+            <span className="relative z-10 mt-0.5 whitespace-nowrap font-bold leading-tight text-[#1a3a8a]" style={{ fontSize: Math.max(10, Math.round(centerSize * 0.13)) }}>インタロップ</span>
           </span>
         </button>
       )}
@@ -1326,7 +1327,7 @@ export function InteropPuyoBubbleMap({
           aria-label="表示をリセット"
           title="表示をリセット"
         >
-          <Maximize2 className="h-4 w-4" />
+          <RotateCcw className="h-4 w-4" />
         </button>
       </div>
 

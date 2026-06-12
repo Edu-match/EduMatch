@@ -82,6 +82,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.rewrite(url);
   }
 
+  // 井戸端会議 常設ルート（/idobata）：実体は /interop と同一コンポーネント（並行ルート）。
+  // 段階移行のため /interop はそのまま残し、こちらは内部 rewrite のみ（URLは /idobata を維持）。
+  if (pathname === "/idobata" || pathname.startsWith("/idobata/")) {
+    const url = request.nextUrl.clone();
+    url.pathname = `/interop${pathname.slice("/idobata".length)}` || "/interop";
+    return NextResponse.rewrite(url);
+  }
+
   // NEXT_PUBLIC_IS_RELEASED が false のとき: 最初の画面は常にメンテナンス。管理者は「管理者」から Basic 認証で入場
   // （Vercel の Preview デプロイでは PR 確認のためメンテに閉じない）
   if (BASIC_AUTH_ENABLED && !SKIP_MAINTENANCE_FOR_VERCEL_PREVIEW) {

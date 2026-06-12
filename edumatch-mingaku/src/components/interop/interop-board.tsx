@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Bot, CornerDownRight, Heart, Link2, Loader2, MessageCircle, Pin, Send } from "lucide-react";
+import { ArrowLeft, Bot, ChevronDown, ChevronUp, CornerDownRight, Heart, Link2, Loader2, MessageCircle, Pin, Send, X } from "lucide-react";
 import { getInteropVoterKey } from "@/lib/interop-voter";
 import { InteropBackdrop } from "@/components/interop/interop-backdrop";
 import { InteropContentCarousel } from "@/components/interop/interop-content-carousel";
@@ -100,15 +100,19 @@ export function InteropBoard({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [replyingToId, setReplyingToId] = useState<string | null>(null);
-  // 返信への返信：誰宛か（@メンション）。トップ投稿への返信は null。
-  const [replyMention, setReplyMention] = useState<string | null>(null);
+  /** 返信スレッドを展開している投稿ID */
+  const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
+  /** 開いている返信フォーム（postId + 宛先名。宛先なし＝投稿者宛） */
+  const [activeReply, setActiveReply] = useState<{ postId: string; mentionName: string } | null>(null);
   const [replyBody, setReplyBody] = useState("");
   const [replySubmitting, setReplySubmitting] = useState(false);
+  const replyFormRef = useRef<HTMLDivElement>(null);
+  /** 下部の新規投稿欄（デフォルトは閉じる） */
+  const [composeOpen, setComposeOpen] = useState(false);
   const listTopRef = useRef<HTMLDivElement>(null);
   const composeRef = useRef<HTMLDivElement>(null);
   // 固定投稿欄の実高に合わせて下余白を動的に確保（pb-28 固定だと最下部が隠れる）
-  const [composePad, setComposePad] = useState(160);
+  const [composePad, setComposePad] = useState(72);
   // マップの吹き出しから「投稿を見る」で来たときに該当投稿へスクロール＆ハイライト
   const searchParams = useSearchParams();
   const focusPostId = searchParams.get("post");
@@ -148,7 +152,37 @@ export function InteropBoard({
     const ro = new ResizeObserver(syncPad);
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [composeOpen]);
+
+  function toggleThread(postId: string) {
+    setExpandedThreads((prev) => {
+      const next = new Set(prev);
+      if (next.has(postId)) next.delete(postId);
+      else next.add(postId);
+      return next;
+    });
+  }
+
+  function openReply(postId: string, mentionName: string, expandThread = false) {
+    setActiveReply({ postId, mentionName });
+    setReplyBody("");
+    if (expandThread) {
+      setExpandedThreads((prev) => new Set(prev).add(postId));
+    }
+  }
+
+  useEffect(() => {
+    if (!activeReply) return;
+    requestAnimationFrame(() => {
+      replyFormRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      replyFormRef.current?.querySelector("textarea")?.focus();
+    });
+  }, [activeReply]);
+
+  function closeReply() {
+    setActiveReply(null);
+    setReplyBody("");
+  }
 
   useEffect(() => {
     try {
@@ -241,13 +275,14 @@ export function InteropBoard({
     }
   }
 
-  async function submitReply(parentId: string) {
+  async function submitReply(parentId: string, mentionName: string) {
     const trimmed = replyBody.trim();
     if (!trimmed || !name.trim() || !role.trim() || replySubmitting) return;
     // 返信への返信は本文先頭に「@相手名」を付け、同じスレッド内にフラット表示する
-    const mention = replyMention?.trim();
-    const finalBody = mention ? `@${mention} ${trimmed}` : trimmed;
+    const mention = mentionName.trim();
+    const finalBody = `@${mention} ${trimmed}`;
     setReplySubmitting(true);
+    setError(null);
     try {
       const res = await fetch("/api/interop/posts", {
         method: "POST",
@@ -263,9 +298,14 @@ export function InteropBoard({
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || "返信に失敗しました"); return; }
-      setReplyBody("");
-      setReplyingToId(null);
-      setReplyMention(null);
+      if (data.pendingReview || !data.post) {
+        setNotice(data.message || "返信ありがとうございます。内容を確認のうえ公開されます。");
+        setTimeout(() => setNotice(null), 5000);
+        closeReply();
+        return;
+      }
+      closeReply();
+      setExpandedThreads((prev) => new Set(prev).add(parentId));
       setPosts((prev) =>
         prev.map((p) =>
           p.id === parentId
@@ -408,6 +448,10 @@ export function InteropBoard({
             <ul className="space-y-3">
               {posts.map((p) => {
                 const sentimentColor = detectSentimentColor(p.body);
+                const userReplies = p.userReplies ?? [];
+                const replyCount = userReplies.length + (p.aiReply ? 1 : 0);
+                const threadOpen = expandedThreads.has(p.id);
+                const replyOpen = activeReply?.postId === p.id;
                 return (
                   <li key={p.id} id={`post-${p.id}`} className="scroll-mt-20 rounded-2xl border transition-all duration-500" style={
                     highlightId === p.id
@@ -436,11 +480,11 @@ export function InteropBoard({
                       >
                         {p.body}
                       </p>
-                      <div className="mt-2 flex flex-wrap items-center gap-3">
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
                         <button
                           type="button"
                           onClick={() => toggleLike(p.id)}
-                          className={`inline-flex items-center gap-1 text-[11px] transition ${
+                          className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] transition ${
                             p.liked ? "text-pink-400" : "text-white/40 hover:text-pink-300"
                           }`}
                           aria-pressed={p.liked}
@@ -449,106 +493,160 @@ export function InteropBoard({
                           <Heart className={`h-3.5 w-3.5 ${p.liked ? "fill-pink-400" : ""}`} />
                           {(p.likeCount ?? 0) > 0 ? p.likeCount : "いいね"}
                         </button>
-                        {/* 返信ボタン（固定/お知らせ投稿は除く） */}
                         {!p.isPinned && (
                           <button
                             type="button"
-                            onClick={() => { const close = replyingToId === p.id && !replyMention; setReplyingToId(close ? null : p.id); setReplyMention(null); setReplyBody(""); }}
-                            className="inline-flex items-center gap-1 text-[11px] text-white/35 hover:text-white/70 transition"
+                            onClick={() => (replyOpen ? closeReply() : openReply(p.id, p.authorName))}
+                            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold transition ${
+                              replyOpen
+                                ? "bg-white/12 text-white"
+                                : "text-white/55 hover:bg-white/8 hover:text-white/85"
+                            }`}
                           >
                             <CornerDownRight className="h-3 w-3" />
-                            {replyingToId === p.id && !replyMention ? "キャンセル" : `返信する${(p.userReplies ?? []).length > 0 ? `（${(p.userReplies ?? []).length}件）` : ""}`}
+                            {replyOpen ? "返信をやめる" : "返信する"}
+                          </button>
+                        )}
+                        {replyCount > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => toggleThread(p.id)}
+                            className="inline-flex items-center gap-1 rounded-full border border-white/12 px-2.5 py-1 text-[11px] text-white/55 transition hover:border-white/25 hover:text-white/80"
+                          >
+                            {threadOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                            返信 {replyCount}件{threadOpen ? "を閉じる" : "を見る"}
                           </button>
                         )}
                       </div>
                     </div>
 
-                    {/* ユーザー返信一覧 */}
-                    {(p.userReplies ?? []).length > 0 && (
+                    {/* 返信フォーム（開いたときだけ表示・投稿直下に配置） */}
+                    {replyOpen && activeReply && (
                       <div
-                        className="mx-3 mb-2 space-y-2 rounded-xl border border-white/10 px-3 py-2"
+                        ref={replyFormRef}
+                        className="mx-3 mb-3 space-y-2 rounded-xl border px-3 py-2.5"
+                        style={{ ...POST_SURFACE, borderColor: `${accent}55` }}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="flex items-center gap-1 text-xs text-sky-300">
+                            <CornerDownRight className="h-3.5 w-3.5" />
+                            <span className="font-bold">@{activeReply.mentionName}</span>
+                            <span className="text-white/55">さんへ返信</span>
+                          </p>
+                          <button
+                            type="button"
+                            onClick={closeReply}
+                            className="rounded-full p-1 text-white/40 transition hover:bg-white/10 hover:text-white/70"
+                            aria-label="返信を閉じる"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                        {(!name.trim() || !role.trim()) && (
+                          <div className="space-y-2 rounded-lg border border-amber-400/25 bg-amber-950/20 px-2.5 py-2">
+                            <p className="text-[11px] text-amber-200/90">返信にはニックネームと肩書きが必要です。</p>
+                            <div className="flex gap-2">
+                              <input
+                                value={name}
+                                onChange={(e) => updateName(e.target.value)}
+                                placeholder="ニックネーム"
+                                maxLength={40}
+                                className="w-full rounded-lg border border-white/12 bg-white/[0.04] px-2.5 py-1.5 text-xs text-white placeholder:text-white/35 focus:border-white/30 focus:outline-none"
+                              />
+                              <input
+                                value={role}
+                                onChange={(e) => updateRole(e.target.value)}
+                                placeholder="肩書き"
+                                maxLength={60}
+                                className="w-full rounded-lg border border-white/12 bg-white/[0.04] px-2.5 py-1.5 text-xs text-white placeholder:text-white/35 focus:border-white/30 focus:outline-none"
+                              />
+                            </div>
+                          </div>
+                        )}
+                        <textarea
+                          value={replyBody}
+                          onChange={(e) => setReplyBody(e.target.value)}
+                          placeholder={`@${activeReply.mentionName} さんへ返信…`}
+                          rows={3}
+                          maxLength={500}
+                          className="w-full resize-none rounded-lg border border-white/12 bg-white/[0.04] px-2.5 py-2 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none"
+                        />
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={closeReply}
+                            className="inline-flex h-8 items-center rounded-lg px-3 text-xs text-white/55 transition hover:text-white/80"
+                          >
+                            キャンセル
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => submitReply(p.id, activeReply.mentionName)}
+                            disabled={replySubmitting || !name.trim() || !role.trim() || !replyBody.trim()}
+                            className="inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-bold text-white transition disabled:opacity-40"
+                            style={{ background: accent }}
+                          >
+                            {replySubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                            返信を送る
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 返信スレッド（デフォルト折りたたみ） */}
+                    {replyCount > 0 && threadOpen && (
+                      <div
+                        className="mx-3 mb-3 space-y-2 rounded-xl border border-white/10 px-3 py-2.5"
                         style={{
                           background: "rgba(6,10,28,0.45)",
                           backdropFilter: "blur(10px)",
                           WebkitBackdropFilter: "blur(10px)",
                         }}
                       >
-                        {(p.userReplies ?? []).map((r, ri) => (
-                          <div key={r.id ?? `${p.id}-r${ri}`}>
+                        {p.aiReply && (
+                          <div className="rounded-lg border border-indigo-400/25 bg-indigo-950/30 px-3 py-2">
+                            <div className="flex flex-wrap items-center gap-1.5 text-[10.5px] text-indigo-200/90">
+                              <Bot className="h-3 w-3" />
+                              <span className="font-bold">AIファシリテーター</span>
+                              <span className="ml-auto text-white/40">{timeAgo(p.aiReply.postedAt)}</span>
+                            </div>
+                            <p className="mt-1 whitespace-pre-wrap break-words text-xs leading-relaxed text-white/88">
+                              {p.aiReply.body}
+                            </p>
+                            {!p.isPinned && (
+                              <button
+                                type="button"
+                                onClick={() => openReply(p.id, "AIファシリテーター", true)}
+                                className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-white/6 px-2 py-0.5 text-[10px] font-bold text-white/55 transition hover:bg-white/12 hover:text-white/85"
+                              >
+                                <CornerDownRight className="h-2.5 w-2.5" />
+                                返信する
+                              </button>
+                            )}
+                          </div>
+                        )}
+                        {userReplies.map((r) => (
+                          <div key={r.id} className="rounded-lg border border-white/8 bg-white/[0.03] px-3 py-2">
                             <div className="flex items-center gap-1.5 text-[10.5px] text-white/55">
                               <span className="font-bold text-white/85">{r.authorName}</span>
                               {r.authorRole && <span className="text-white/45">· {r.authorRole}</span>}
                               <span className="ml-auto">{timeAgo(r.postedAt)}</span>
                             </div>
-                            <p className="mt-0.5 whitespace-pre-wrap break-words text-xs leading-relaxed text-white/82">{renderBodyWithMention(r.body)}</p>
-                            {/* この返信へさらに返信（@相手名 付きで同スレッドに表示） */}
-                            <button
-                              type="button"
-                              onClick={() => { setReplyingToId(p.id); setReplyMention(r.authorName); setReplyBody(""); }}
-                              className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-white/35 hover:text-white/70 transition"
-                            >
-                              <CornerDownRight className="h-2.5 w-2.5" />
-                              返信
-                            </button>
+                            <p className="mt-1 whitespace-pre-wrap break-words text-xs leading-relaxed text-white/82">
+                              {renderBodyWithMention(r.body)}
+                            </p>
+                            {!p.isPinned && (
+                              <button
+                                type="button"
+                                onClick={() => openReply(p.id, r.authorName, true)}
+                                className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-white/6 px-2 py-0.5 text-[10px] font-bold text-white/55 transition hover:bg-white/12 hover:text-white/85"
+                              >
+                                <CornerDownRight className="h-2.5 w-2.5" />
+                                {r.authorName}さんに返信
+                              </button>
+                            )}
                           </div>
                         ))}
-                      </div>
-                    )}
-
-                    {/* インライン返信フォーム */}
-                    {replyingToId === p.id && (
-                      <div
-                        className="mx-3 mb-3 space-y-1.5 rounded-xl border border-white/12 px-3 py-2.5"
-                        style={POST_SURFACE}
-                      >
-                        {replyMention && (
-                          <p className="flex items-center gap-1 text-[11px] text-sky-300/90">
-                            <CornerDownRight className="h-3 w-3" />
-                            <span className="font-bold">@{replyMention}</span> さんへの返信
-                          </p>
-                        )}
-                        {(!name.trim() || !role.trim()) && (
-                          <p className="text-[11px] text-amber-300/80">下のフォームでニックネームと肩書きを入力してから返信できます。</p>
-                        )}
-                        <textarea
-                          value={replyBody}
-                          onChange={(e) => setReplyBody(e.target.value)}
-                          placeholder={`${replyMention ?? p.authorName}さんへ返信…`}
-                          rows={2}
-                          maxLength={500}
-                          className="w-full resize-none rounded-lg border border-white/12 bg-white/[0.04] px-2.5 py-1.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none"
-                        />
-                        <div className="flex justify-end">
-                          <button
-                            type="button"
-                            onClick={() => submitReply(p.id)}
-                            disabled={replySubmitting || !name.trim() || !role.trim() || !replyBody.trim()}
-                            className="inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-bold text-white transition disabled:opacity-40"
-                            style={{ background: accent }}
-                          >
-                            {replySubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                            返信する
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {p.aiReply && (
-                      <div
-                        className="mx-3 mb-3 rounded-xl border px-3.5 py-2.5"
-                        style={{
-                          ...POST_SURFACE,
-                          background: "linear-gradient(145deg, rgba(12,18,48,0.72) 0%, rgba(40,60,120,0.35) 100%)",
-                          borderColor: "rgba(120,160,255,0.32)",
-                        }}
-                      >
-                        <div className="mb-1 flex items-center gap-1.5 text-[10.5px] font-bold text-indigo-200/90">
-                          <Bot className="h-3 w-3" /> AIファシリテーター
-                          <span className="ml-auto font-normal text-white/40">{timeAgo(p.aiReply.postedAt)}</span>
-                        </div>
-                        <p className="whitespace-pre-wrap break-words text-xs leading-relaxed text-white/88">
-                          {p.aiReply.body}
-                        </p>
                       </div>
                     )}
                   </li>
@@ -559,7 +657,7 @@ export function InteropBoard({
         </div>
       </div>
 
-      {/* ════ 最下部：投稿欄（固定） ════ */}
+      {/* ════ 最下部：新規投稿欄（デフォルト閉じ・タップで展開） ════ */}
       <div
         ref={composeRef}
         className="fixed inset-x-0 bottom-0 z-20 border-t border-white/10 bg-[#070a1c]/95 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur"
@@ -567,45 +665,72 @@ export function InteropBoard({
         <div className="mx-auto w-full max-w-2xl px-4 py-3 sm:px-6">
           {error && <p className="mb-2 text-xs text-rose-300">{error}</p>}
           {notice && <p className="mb-2 text-xs text-emerald-300">{notice}</p>}
-          <div className="flex items-end gap-2">
-            <div className="flex-1 space-y-2">
-              <div className="flex gap-2">
-                <input
-                  value={name}
-                  onChange={(e) => updateName(e.target.value)}
-                  placeholder="ニックネーム（必須）"
-                  maxLength={40}
-                  className="w-full rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-white/30 focus:outline-none"
-                />
-                <input
-                  value={role}
-                  onChange={(e) => updateRole(e.target.value)}
-                  placeholder="肩書き（必須）"
-                  maxLength={60}
-                  className="w-full rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-white/30 focus:outline-none"
-                />
+          {composeOpen ? (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-white/70">新しい投稿</span>
+                <button
+                  type="button"
+                  onClick={() => setComposeOpen(false)}
+                  className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] text-white/45 transition hover:bg-white/8 hover:text-white/70"
+                >
+                  <ChevronDown className="h-3.5 w-3.5" />
+                  閉じる
+                </button>
               </div>
-              <textarea
-                value={bodyText}
-                onChange={(e) => setBodyText(e.target.value)}
-                onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") submit(); }}
-                placeholder="ひとこと書く…"
-                rows={2}
-                maxLength={1000}
-                className="w-full resize-none rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-white/30 focus:outline-none"
-              />
+              <div className="flex items-end gap-2">
+                <div className="flex-1 space-y-2">
+                  <div className="flex gap-2">
+                    <input
+                      value={name}
+                      onChange={(e) => updateName(e.target.value)}
+                      placeholder="ニックネーム（必須）"
+                      maxLength={40}
+                      className="w-full rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-white/30 focus:outline-none"
+                    />
+                    <input
+                      value={role}
+                      onChange={(e) => updateRole(e.target.value)}
+                      placeholder="肩書き（必須）"
+                      maxLength={60}
+                      className="w-full rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-white/30 focus:outline-none"
+                    />
+                  </div>
+                  <textarea
+                    value={bodyText}
+                    onChange={(e) => setBodyText(e.target.value)}
+                    onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") submit(); }}
+                    placeholder="ひとこと書く…"
+                    rows={2}
+                    maxLength={1000}
+                    className="w-full resize-none rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-white/30 focus:outline-none"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={submit}
+                  disabled={!canSubmit}
+                  className="grid h-11 w-11 shrink-0 place-items-center rounded-xl font-bold text-white transition disabled:opacity-40"
+                  style={{ background: accent }}
+                  aria-label="投稿する"
+                >
+                  {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+                </button>
+              </div>
             </div>
+          ) : (
             <button
               type="button"
-              onClick={submit}
-              disabled={!canSubmit}
-              className="grid h-11 w-11 shrink-0 place-items-center rounded-xl font-bold text-white transition disabled:opacity-40"
-              style={{ background: accent }}
-              aria-label="投稿する"
+              onClick={() => setComposeOpen(true)}
+              className="flex w-full items-center justify-between gap-3 rounded-xl border border-white/12 bg-white/[0.04] px-4 py-3 text-left transition hover:border-white/22 hover:bg-white/[0.07]"
             >
-              {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+              <span className="flex items-center gap-2 text-sm text-white/55">
+                <MessageCircle className="h-4 w-4 shrink-0" style={{ color: accent }} />
+                新しい投稿を書く…
+              </span>
+              <ChevronUp className="h-4 w-4 shrink-0 text-white/35" />
             </button>
-          </div>
+          )}
         </div>
       </div>
 
