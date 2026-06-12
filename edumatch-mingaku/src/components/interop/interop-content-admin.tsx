@@ -99,11 +99,11 @@ type BoardTopic = {
   isActive: boolean;
 };
 
-/** トップマップから直行できる3サテライトの判定（slug優先・名前ヒントでフォールバック） */
+/** トップマップから直行できる3サテライト（slug固定・管理画面からワンクリック追加可） */
 const SATELLITE_DEFS = [
-  { slug: "interop-latest-news", hints: ["最新ニュース", "ニュース"] },
-  { slug: "interop-speaker-qa", hints: ["登壇者への質問", "登壇", "質問"] },
-  { slug: "interop-opinion-box", hints: ["ご意見BOX", "ご意見", "意見"] },
+  { slug: "interop-latest-news", name: "最新ニュース", description: "運営・登壇者からの最新ニュースとお知らせ。", hints: ["最新ニュース", "ニュース"], sortOrder: 1 },
+  { slug: "interop-speaker-qa", name: "登壇者への質問", description: "登壇者・出展者への質問を投稿できます。", hints: ["登壇者への質問", "登壇", "質問"], sortOrder: 2 },
+  { slug: "interop-opinion-box", name: "ご意見BOX", description: "教育とAIについて、ご意見・ご感想を自由にどうぞ。", hints: ["ご意見BOX", "ご意見", "意見"], sortOrder: 3 },
 ];
 
 function isSatelliteSub(s: SubCategory): boolean {
@@ -186,7 +186,7 @@ export function InteropContentAdmin() {
               <span className="text-[11px] text-white/40">トップマップから直行（最新ニュース／登壇者への質問／ご意見BOX）</span>
             </div>
             {satelliteSubs.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-white/12 px-3 py-4 text-center text-[11px] text-white/35">サテライトページが見つかりません。</p>
+              <p className="rounded-lg border border-dashed border-white/12 px-3 py-4 text-center text-[11px] text-white/35">サテライトページが見つかりません。下のボタンから追加できます。</p>
             ) : (
               <ul className="space-y-1.5">
                 {satelliteSubs.map((s) => (
@@ -194,6 +194,7 @@ export function InteropContentAdmin() {
                 ))}
               </ul>
             )}
+            <AddSatelliteForm categoryId={interopCatId} existing={sats} onAdded={load} onMsg={flash} />
           </section>
 
           {/* ② インタロップ配下のページ */}
@@ -594,6 +595,59 @@ function TopicRow({ topic, subId, autoEdit = false, onChanged, onMsg }: {
         </div>
       )}
     </li>
+  );
+}
+
+/* ─────────── サテライト追加（固定slug・トップマップ直行） ─────────── */
+function AddSatelliteForm({ categoryId, existing, onAdded, onMsg }: {
+  categoryId: string;
+  existing: SubCategory[];
+  onAdded: () => void;
+  onMsg: (t: string, ok: boolean) => void;
+}) {
+  const [busy, setBusy] = useState<string | null>(null);
+  const missing = SATELLITE_DEFS.filter((d) => !existing.some((s) => s.slug === d.slug || d.hints.some((h) => s.name.includes(h))));
+
+  const addPreset = async (def: (typeof SATELLITE_DEFS)[number]) => {
+    setBusy(def.slug);
+    const { ok, data } = await api("/api/interop/sub-categories", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        categoryId,
+        name: def.name,
+        description: def.description,
+        slug: def.slug,
+        sortOrder: def.sortOrder,
+      }),
+    });
+    setBusy(null);
+    if (ok) { onMsg(`サテライト「${def.name}」を追加しました。`, true); onAdded(); }
+    else onMsg(data.error || "追加に失敗しました。", false);
+  };
+
+  if (missing.length === 0) return null;
+
+  return (
+    <div className="mt-2 rounded-lg border border-dashed border-amber-400/30 bg-amber-400/[0.05] p-2.5">
+      <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold text-amber-200/80">
+        <Plus className="h-3.5 w-3.5" /> サテライトを追加
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {missing.map((d) => (
+          <button
+            key={d.slug}
+            type="button"
+            onClick={() => addPreset(d)}
+            disabled={busy !== null}
+            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-amber-400/40 bg-amber-500/20 px-3 text-xs font-semibold text-amber-100 transition hover:bg-amber-500/30 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {busy === d.slug ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+            {d.name}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 

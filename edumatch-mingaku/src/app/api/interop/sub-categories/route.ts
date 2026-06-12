@@ -54,18 +54,29 @@ export async function POST(req: NextRequest) {
     name?: string;
     description?: string;
     sortOrder?: number;
+    /** サテライト等で固定slugを使いたいとき明示指定（未指定なら名前から自動生成） */
+    slug?: string;
   };
   if (!body.categoryId) return NextResponse.json({ error: "categoryId is required" }, { status: 400 });
   if (!body.name?.trim()) return NextResponse.json({ error: "name is required" }, { status: 400 });
 
-  // slug: categorySlug-name のケバブケース
   const cat = await prisma.interopCategory.findUnique({ where: { id: body.categoryId } });
   if (!cat) return NextResponse.json({ error: "category not found" }, { status: 404 });
 
-  const namePart = body.name.trim().toLowerCase().replace(/[^a-z0-9ぁ-んァ-ヶ一-龯]+/g, "-").replace(/^-+|-+$/g, "") || "sub";
-  let slug = `${cat.slug}-${namePart}`;
-  if (await prisma.interopSubCategory.findUnique({ where: { slug } })) {
-    slug = `${slug}-${Math.random().toString(36).slice(2, 6)}`;
+  // slug: 明示指定があればそれを優先（サテライトの固定slug用）、なければ categorySlug-name から生成
+  let slug: string;
+  if (body.slug?.trim()) {
+    slug = body.slug.trim().toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "");
+    // 固定slugが既に存在するなら重複作成は拒否（サテライトの二重作成防止）
+    if (await prisma.interopSubCategory.findUnique({ where: { slug } })) {
+      return NextResponse.json({ error: "このサテライトは既に存在します" }, { status: 409 });
+    }
+  } else {
+    const namePart = body.name.trim().toLowerCase().replace(/[^a-z0-9ぁ-んァ-ヶ一-龯]+/g, "-").replace(/^-+|-+$/g, "") || "sub";
+    slug = `${cat.slug}-${namePart}`;
+    if (await prisma.interopSubCategory.findUnique({ where: { slug } })) {
+      slug = `${slug}-${Math.random().toString(36).slice(2, 6)}`;
+    }
   }
 
   const created = await prisma.interopSubCategory.create({
