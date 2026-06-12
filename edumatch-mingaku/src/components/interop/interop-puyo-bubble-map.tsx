@@ -17,7 +17,7 @@ import {
   type AxisConfig,
   type AxisPoint,
 } from "@/lib/interop-topic-axis";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type GroupStyleEntry = {
@@ -100,11 +100,11 @@ const SATELLITE_POS: Record<InteropSatellite["place"], { x: number; y: number }>
 };
 
 /** サテライト玉＋グロー＋ラベル分の占有半径(%) — 反発ゾーン用 */
-function satelliteFootprintPct(orbPx: number, place: InteropSatellite["place"], refW: number): number {
-  const orbR = (orbPx / 2 / refW) * 100;
-  const glowR = (Math.round(orbPx * 0.52) / 2 / refW) * 100;
-  const labelExtra = place === "bottom" ? 11 : 9;
-  return orbR + glowR * 0.45 + labelExtra + 2.5;
+function satelliteFootprintPct(orbPx: number, place: InteropSatellite["place"], containerW: number): number {
+  const w = Math.max(containerW, 320);
+  const orbR = pxToPctRadius(orbPx / 2 + 24, w);
+  const labelExtra = place === "bottom" ? pxToPctRadius(36, w) : pxToPctRadius(28, w);
+  return orbR + labelExtra + 3;
 }
 
 /** 拡大時は中心から外側へアンカーを少しずらし、中心ハブ・隣接サテライトとの被りを抑える */
@@ -139,14 +139,17 @@ function popupXExtra(xPct: number): number {
   return 0;
 }
 
-/** 描画サイズ（グロー・ラベル・ぷよアニメ余白）込みの反発用半径(%) */
-function orbCollisionRadiusPct(diameterPx: number, refW: number, labelMargin: number): number {
-  const bodyR = (diameterPx / 2 / refW) * 100;
-  const glowPad = (20 / refW) * 100;
-  const animPad = bodyR * 0.08;
-  const labelPad = diameterPx < 56 ? 7 : 9.5;
-  const badgePad = 2.5;
-  return bodyR + glowPad + animPad + labelMargin + labelPad + badgePad;
+/** 描画サイズ（グロー・ラベル・バッジ）込みの反発用半径(%) — containerW は実際のマップ幅(px) */
+function orbCollisionRadiusPct(diameterPx: number, containerW: number, labelMargin: number): number {
+  const w = Math.max(containerW, 320);
+  const bodyAndGlow = pxToPctRadius(diameterPx / 2 + 22, w);
+  const labelExt = pxToPctRadius(diameterPx < 56 ? 32 : 40, w);
+  const badgeExt = pxToPctRadius(14, w);
+  return bodyAndGlow + labelExt + badgeExt + labelMargin + 2.5;
+}
+
+function pxToPctRadius(px: number, containerW: number): number {
+  return (Math.max(0, px) / containerW) * 100;
 }
 
 /** topic ごとの軸座標を画面配置に変換。近接玉は反発で分散（被り回避）。 */
@@ -163,100 +166,108 @@ function computeAxisPlacements(
   topics: InteropPriorityTopic[],
   axisMap: Record<number, AxisPoint>,
   obstacles: Obstacle[] = [],
-  /** 各玉の「占有半径(%)」。サイズ可変なので玉ごとに必要な空きが違う。 */
   radii: number[] = [],
-  /** y方向の等方圧縮率。小さいほど縦に広く散らす。 */
-  ys = 0.6,
-  /** 配置のy範囲(%)。スマホは下端を100超にして画面外へ展開→パンで探索。 */
   yMin = 9,
   yMax = 90,
-  /** 配置のx範囲(%)。端の玉ラベルが画面外/バーに被らないよう内側に寄せる。 */
   xMin = 5,
   xMax = 95
 ): Placement[] {
-  const rOf = (i: number) => radii[i] ?? 6;
+  const rOf = (i: number) => radii[i] ?? 8;
   const axisOf = (no: number) => axisMap[no] ?? DEFAULT_TOPIC_AXIS[no] ?? { x: 0, y: 0 };
+  const ORB_GAP = 2.8;
+
   const pts = topics.map((t, i) => {
     const a = axisOf(t.no);
-    // 軸座標が極めて近い玉だけ、決定論的な微小オフセットで重なりを緩和（反発の前処理）。
-    const hasNear = topics.some((ot, oi) => {
-      if (oi === i) return false;
-      const oa = axisOf(ot.no);
-      return Math.hypot(a.x - oa.x, a.y - oa.y) < 0.06;
-    });
-    let jx = 0;
-    let jy = 0;
-    if (hasNear) {
-      const h1 = (((t.no + 1) * 2654435761) >>> 0) / 4294967295;
-      const h2 = (((t.no + 1) * 40503 + (i + 1) * 2246822519) >>> 0) / 4294967295;
-      const ang = h1 * Math.PI * 2;
-      const rad = 1.0 + h2 * 1.8; // 1.0〜2.8% — 軸分布を崩さない微調整
-      jx = Math.cos(ang) * rad;
-      jy = Math.sin(ang) * rad;
-    }
-    return { x: AXIS_CX + a.x * AXIS_RX + jx, y: AXIS_CY - a.y * AXIS_RY + jy };
+    return { x: AXIS_CX + a.x * AXIS_RX, y: AXIS_CY - a.y * AXIS_RY, idx: i, no: t.no };
   });
-  // 玉同士が接触しないよう余白を加算（軸分布より優先して反発で押し出す）
-  const ORB_GAP = 6.5;
 
-  const repelOrbs = (strength = 1) => {
-    for (let i = 0; i < pts.length; i++) {
-      for (let j = i + 1; j < pts.length; j++) {
-        const minDist = rOf(i) + rOf(j) + ORB_GAP;
-        const dx = pts[j].x - pts[i].x;
-        const dy = (pts[j].y - pts[i].y) * ys;
-        const d = Math.hypot(dx, dy) || 0.01;
-        if (d < minDist) {
-          const push = ((minDist - d) / 2) * strength;
-          const ux = dx / d;
-          const uy = dy / d;
-          pts[i].x -= ux * push;
-          pts[i].y -= (uy * push) / ys;
-          pts[j].x += ux * push;
-          pts[j].y += (uy * push) / ys;
-        }
-      }
+  // 同一座標の玉は黄金角で初期分散（反発前処理）
+  const bucket = new Map<string, number>();
+  for (const p of pts) {
+    const key = `${p.x.toFixed(2)}:${p.y.toFixed(2)}`;
+    const n = bucket.get(key) ?? 0;
+    if (n > 0) {
+      const ang = (n * 137.508 * Math.PI) / 180;
+      const rad = (rOf(p.idx) + ORB_GAP + 1.5) * n;
+      p.x += Math.cos(ang) * rad;
+      p.y += Math.sin(ang) * rad;
     }
+    bucket.set(key, n + 1);
+  }
+
+  const dist = (i: number, j: number) =>
+    Math.hypot(pts[j].x - pts[i].x, pts[j].y - pts[i].y);
+
+  const separatePair = (i: number, j: number, strength = 1) => {
+    const minD = rOf(i) + rOf(j) + ORB_GAP;
+    let dx = pts[j].x - pts[i].x;
+    let dy = pts[j].y - pts[i].y;
+    let d = Math.hypot(dx, dy);
+    if (d < 0.02) {
+      const ang = (((pts[i].no + 1) * 97 + (pts[j].no + 1) * 53) % 360) * (Math.PI / 180);
+      dx = Math.cos(ang);
+      dy = Math.sin(ang);
+      d = 1;
+    }
+    if (d >= minD) return;
+    const push = ((minD - d) / 2) * strength;
+    pts[i].x -= (dx / d) * push;
+    pts[i].y -= (dy / d) * push;
+    pts[j].x += (dx / d) * push;
+    pts[j].y += (dy / d) * push;
   };
 
-  const repelObstacles = () => {
+  const repelObstacles = (strength = 1) => {
     for (let i = 0; i < pts.length; i++) {
       for (const o of obstacles) {
-        const clearance = o.r + rOf(i) + ORB_GAP * 0.35;
+        const clearance = o.r + rOf(i) + ORB_GAP;
         const dx = pts[i].x - o.x;
-        const dy = (pts[i].y - o.y) * ys;
+        const dy = pts[i].y - o.y;
         const d = Math.hypot(dx, dy) || 0.01;
         if (d < clearance) {
-          const push = clearance - d;
+          const push = (clearance - d) * strength;
           pts[i].x += (dx / d) * push;
-          pts[i].y += ((dy / d) * push) / ys;
+          pts[i].y += (dy / d) * push;
         }
       }
     }
   };
 
-  const clampBounds = () => {
+  const keepInBounds = () => {
     for (let i = 0; i < pts.length; i++) {
-      pts[i].x = Math.max(xMin, Math.min(xMax, pts[i].x));
-      pts[i].y = Math.max(yMin, Math.min(yMax, pts[i].y));
+      const ri = rOf(i);
+      pts[i].x = Math.max(xMin + ri, Math.min(xMax - ri, pts[i].x));
+      pts[i].y = Math.max(yMin + ri, Math.min(yMax - ri, pts[i].y));
     }
   };
 
-  // 反発＋障害物回避＋枠内クランプを繰り返し収束
-  for (let k = 0; k < 520; k++) {
-    repelOrbs(1.05);
-    repelObstacles();
-    clampBounds();
+  for (let k = 0; k < 500; k++) {
+    for (let i = 0; i < pts.length; i++) {
+      for (let j = i + 1; j < pts.length; j++) separatePair(i, j, 1.2);
+    }
+    repelObstacles(1.1);
+    keepInBounds();
   }
-  // 枠クランプなしの追い反発（端に押し込まれて重なった分を解消・軸より優先）
-  for (let k = 0; k < 280; k++) {
-    repelOrbs(1.15);
-    repelObstacles();
+
+  // 重なりゼロまで追い込み（軸位置より分離を優先）
+  for (let k = 0; k < 600; k++) {
+    let overlapped = false;
+    for (let i = 0; i < pts.length; i++) {
+      for (let j = i + 1; j < pts.length; j++) {
+        if (dist(i, j) < rOf(i) + rOf(j) + ORB_GAP - 0.02) {
+          separatePair(i, j, 1.8);
+          overlapped = true;
+        }
+      }
+    }
+    repelObstacles(1.4);
+    keepInBounds();
+    if (!overlapped) break;
   }
-  clampBounds();
+
   return pts.map((p) => {
-    const x = Math.max(xMin, Math.min(xMax, p.x));
-    const y = Math.max(yMin, Math.min(yMax, p.y));
+    const x = p.x;
+    const y = p.y;
     const dx = x - AXIS_CX;
     const dy = y - AXIS_CY;
     const len = Math.hypot(dx, dy) || 1;
@@ -292,8 +303,8 @@ const PUYO_CSS = `
   100% { transform: translate(-50%, calc(-50% + 0px)) scale(0.96); }
 }
 @keyframes centerPulse {
-  0%,100% { transform: translate(-50%,-50%) scale(1.00); }
-  50%     { transform: translate(-50%,-50%) scale(1.06); }
+  0%,100% { transform: scale(1.00); }
+  50%     { transform: scale(1.06); }
 }
 @keyframes centerRing {
   0%   { transform: translate(-50%,-50%) scale(0.85); opacity: 0.55; }
@@ -358,8 +369,8 @@ type MapMetrics = {
 };
 // スマホは1画面に玉が多すぎてゴチャつくため、縦に大きく展開して画面あたりの玉数を減らし、
 // 下へパンして探索できるようにする。
-const METRICS_DESKTOP: MapMetrics = { base: 40, max: 150, refW: 1300, labelMargin: 8.5, centerSize: 132, satOrb: 84, satOrbMax: 228, centerR: 20, ys: 0.62, yMin: 18, yMax: 90, xMin: 8, xMax: 90, panLimY: 420, aiBtn: { x: 93, y: 90, r: 12 } };
-const METRICS_MOBILE: MapMetrics  = { base: 26, max: 70,  refW: 430,  labelMargin: 9.0, centerSize: 88,  satOrb: 56, satOrbMax: 148, centerR: 19, ys: 0.5, yMin: 16, yMax: 210, xMin: 5, xMax: 95, panLimY: 1180, aiBtn: { x: 90, y: 93, r: 14 } };
+const METRICS_DESKTOP: MapMetrics = { base: 40, max: 120, refW: 1300, labelMargin: 3.5, centerSize: 132, satOrb: 84, satOrbMax: 200, centerR: 20, ys: 0.62, yMin: 14, yMax: 92, xMin: 7, xMax: 91, panLimY: 480, aiBtn: { x: 93, y: 90, r: 12 } };
+const METRICS_MOBILE: MapMetrics  = { base: 26, max: 64,  refW: 430,  labelMargin: 4.0, centerSize: 88,  satOrb: 56, satOrbMax: 128, centerR: 19, ys: 0.5, yMin: 14, yMax: 220, xMin: 6, xMax: 94, panLimY: 1280, aiBtn: { x: 90, y: 93, r: 14 } };
 
 
 function PuyoBubble({
@@ -629,6 +640,20 @@ export function InteropPuyoBubbleMap({
   const dragRef = useRef({ active: false, lastX: 0, lastY: 0, moved: 0 });
   const wasDragRef = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [mapW, setMapW] = useState(1200);
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (el) setMapW(Math.max(el.clientWidth, 320));
+  }, []);
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const sync = () => setMapW(Math.max(el.clientWidth, 320));
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   // 複数ポインタ追跡（ピンチ用）
   const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
   const pinchRef = useRef<{ dist: number; cx: number; cy: number } | null>(null);
@@ -769,31 +794,30 @@ export function InteropPuyoBubbleMap({
   // 中心ハブ＋実在するサテライト＋UI要素（AIチャットボタン）を「占有ゾーン」として
   // 反発に渡す（玉がヘッダー／AIボタンの下に潜らないようにする）。
   const obstacles = useMemo<Obstacle[]>(() => {
+    const w = Math.max(mapW, 320);
     const maxSat = satelliteSizes.length > 0 ? Math.max(...satelliteSizes) : m.satOrb;
-    const centerFootprint = (m.centerSize / 2 / m.refW) * 100 + 5;
-    const centerBoost = Math.max(0, ((maxSat - m.satOrb) / m.refW) * 100 * 0.2);
+    const centerFootprint = pxToPctRadius(m.centerSize / 2 + 32, w) + 5;
+    const centerBoost = pxToPctRadius(Math.max(0, maxSat - m.satOrb) * 0.35, w);
     const list: Obstacle[] = [{ x: CENTER_POS.x, y: CENTER_POS.y, r: Math.max(m.centerR, centerFootprint + centerBoost) }];
     satellites.forEach((s, i) => {
       const anchor = satelliteAnchors[i] ?? SATELLITE_POS[s.place];
       const orbPx = satelliteSizes[i] ?? m.satOrb;
-      list.push({ x: anchor.x, y: anchor.y, r: satelliteFootprintPct(orbPx, s.place, m.refW) });
+      list.push({ x: anchor.x, y: anchor.y, r: satelliteFootprintPct(orbPx, s.place, w) });
     });
-    // AIチャットボタン（右下固定）。玉やラベルが被らないよう右下コーナーを占有ゾーンに。
     list.push({ x: m.aiBtn.x, y: m.aiBtn.y, r: m.aiBtn.r });
     return list;
-  }, [satellites, satelliteSizes, satelliteAnchors, m.centerR, m.centerSize, m.satOrb, m.refW, m.aiBtn]);
-  // 各玉の直径(px)＝投稿数で連続拡大。反発半径は実描画サイズ＋グロー/ラベル込みで算出。
+  }, [satellites, satelliteSizes, satelliteAnchors, m.centerR, m.centerSize, m.satOrb, m.aiBtn, mapW]);
   const sizes = useMemo(
     () => topics.map((t) => bubbleSizeFor(activityByRoom.get(t.roomId)?.postCount ?? 0, m.base, m.max)),
     [topics, activityByRoom, m.base, m.max]
   );
   const placeRadii = useMemo(
-    () => sizes.map((px) => orbCollisionRadiusPct(px, m.refW, m.labelMargin)),
-    [sizes, m.refW, m.labelMargin]
+    () => sizes.map((px) => orbCollisionRadiusPct(px, mapW, m.labelMargin)),
+    [sizes, mapW, m.labelMargin]
   );
   const placements = useMemo(
-    () => computeAxisPlacements(topics, topicPositions ?? DEFAULT_TOPIC_AXIS, obstacles, placeRadii, m.ys, m.yMin, m.yMax, m.xMin, m.xMax),
-    [topics, topicPositions, obstacles, placeRadii, m.ys, m.yMin, m.yMax, m.xMin, m.xMax]
+    () => computeAxisPlacements(topics, topicPositions ?? DEFAULT_TOPIC_AXIS, obstacles, placeRadii, m.yMin, m.yMax, m.xMin, m.xMax),
+    [topics, topicPositions, obstacles, placeRadii, m.yMin, m.yMax, m.xMin, m.xMax]
   );
   // 関連カテゴリのノード接続線（座標が近いトピック同士を結ぶ）
   const connections = useMemo(() => {
@@ -1063,13 +1087,10 @@ export function InteropPuyoBubbleMap({
         <button
           type="button"
           onClick={() => onSelectCategory(interopCat)}
-          className="group absolute focus:outline-none"
+          className="group absolute left-1/2 top-[46%] z-20 -translate-x-1/2 -translate-y-1/2 focus:outline-none"
           style={{
-            left: "50%",
-            top: "46%",
             width: centerSize,
             height: centerSize,
-            zIndex: 20,
             animation: `centerPulse 8s ease-in-out infinite`,
           }}
           aria-label="インタロップ"
