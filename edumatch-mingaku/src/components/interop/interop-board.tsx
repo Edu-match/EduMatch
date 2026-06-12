@@ -56,6 +56,18 @@ function timeAgo(iso: string): string {
   return `${d}日前`;
 }
 
+/** 本文先頭の「@相手名」をメンションとして装飾表示（返信への返信の宛先） */
+function renderBodyWithMention(body: string): React.ReactNode {
+  const match = body.match(/^@(\S+)\s+([\s\S]*)$/);
+  if (!match) return body;
+  return (
+    <>
+      <span className="font-bold text-sky-300">@{match[1]}</span>
+      <span> {match[2]}</span>
+    </>
+  );
+}
+
 /** フロストグラス：時間帯背景を透かしつつ本文のコントラストを確保 */
 const POST_SURFACE = {
   background: "linear-gradient(145deg, rgba(14,20,52,0.62) 0%, rgba(8,12,36,0.72) 100%)",
@@ -89,6 +101,8 @@ export function InteropBoard({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
+  // 返信への返信：誰宛か（@メンション）。トップ投稿への返信は null。
+  const [replyMention, setReplyMention] = useState<string | null>(null);
   const [replyBody, setReplyBody] = useState("");
   const [replySubmitting, setReplySubmitting] = useState(false);
   const listTopRef = useRef<HTMLDivElement>(null);
@@ -230,6 +244,9 @@ export function InteropBoard({
   async function submitReply(parentId: string) {
     const trimmed = replyBody.trim();
     if (!trimmed || !name.trim() || !role.trim() || replySubmitting) return;
+    // 返信への返信は本文先頭に「@相手名」を付け、同じスレッド内にフラット表示する
+    const mention = replyMention?.trim();
+    const finalBody = mention ? `@${mention} ${trimmed}` : trimmed;
     setReplySubmitting(true);
     try {
       const res = await fetch("/api/interop/posts", {
@@ -241,13 +258,14 @@ export function InteropBoard({
           parentPostId: parentId,
           authorName: name.trim(),
           authorRole: role.trim(),
-          postBody: trimmed,
+          postBody: finalBody,
         }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || "返信に失敗しました"); return; }
       setReplyBody("");
       setReplyingToId(null);
+      setReplyMention(null);
       setPosts((prev) =>
         prev.map((p) =>
           p.id === parentId
@@ -435,11 +453,11 @@ export function InteropBoard({
                         {!p.isPinned && (
                           <button
                             type="button"
-                            onClick={() => { setReplyingToId(replyingToId === p.id ? null : p.id); setReplyBody(""); }}
+                            onClick={() => { const close = replyingToId === p.id && !replyMention; setReplyingToId(close ? null : p.id); setReplyMention(null); setReplyBody(""); }}
                             className="inline-flex items-center gap-1 text-[11px] text-white/35 hover:text-white/70 transition"
                           >
                             <CornerDownRight className="h-3 w-3" />
-                            {replyingToId === p.id ? "キャンセル" : `返信する${(p.userReplies ?? []).length > 0 ? `（${(p.userReplies ?? []).length}件）` : ""}`}
+                            {replyingToId === p.id && !replyMention ? "キャンセル" : `返信する${(p.userReplies ?? []).length > 0 ? `（${(p.userReplies ?? []).length}件）` : ""}`}
                           </button>
                         )}
                       </div>
@@ -455,14 +473,23 @@ export function InteropBoard({
                           WebkitBackdropFilter: "blur(10px)",
                         }}
                       >
-                        {(p.userReplies ?? []).map((r) => (
-                          <div key={r.id}>
+                        {(p.userReplies ?? []).map((r, ri) => (
+                          <div key={r.id ?? `${p.id}-r${ri}`}>
                             <div className="flex items-center gap-1.5 text-[10.5px] text-white/55">
                               <span className="font-bold text-white/85">{r.authorName}</span>
                               {r.authorRole && <span className="text-white/45">· {r.authorRole}</span>}
                               <span className="ml-auto">{timeAgo(r.postedAt)}</span>
                             </div>
-                            <p className="mt-0.5 whitespace-pre-wrap break-words text-xs leading-relaxed text-white/82">{r.body}</p>
+                            <p className="mt-0.5 whitespace-pre-wrap break-words text-xs leading-relaxed text-white/82">{renderBodyWithMention(r.body)}</p>
+                            {/* この返信へさらに返信（@相手名 付きで同スレッドに表示） */}
+                            <button
+                              type="button"
+                              onClick={() => { setReplyingToId(p.id); setReplyMention(r.authorName); setReplyBody(""); }}
+                              className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-white/35 hover:text-white/70 transition"
+                            >
+                              <CornerDownRight className="h-2.5 w-2.5" />
+                              返信
+                            </button>
                           </div>
                         ))}
                       </div>
@@ -474,13 +501,19 @@ export function InteropBoard({
                         className="mx-3 mb-3 space-y-1.5 rounded-xl border border-white/12 px-3 py-2.5"
                         style={POST_SURFACE}
                       >
+                        {replyMention && (
+                          <p className="flex items-center gap-1 text-[11px] text-sky-300/90">
+                            <CornerDownRight className="h-3 w-3" />
+                            <span className="font-bold">@{replyMention}</span> さんへの返信
+                          </p>
+                        )}
                         {(!name.trim() || !role.trim()) && (
                           <p className="text-[11px] text-amber-300/80">下のフォームでニックネームと肩書きを入力してから返信できます。</p>
                         )}
                         <textarea
                           value={replyBody}
                           onChange={(e) => setReplyBody(e.target.value)}
-                          placeholder={`${p.authorName}さんへ返信…`}
+                          placeholder={`${replyMention ?? p.authorName}さんへ返信…`}
                           rows={2}
                           maxLength={500}
                           className="w-full resize-none rounded-lg border border-white/12 bg-white/[0.04] px-2.5 py-1.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none"

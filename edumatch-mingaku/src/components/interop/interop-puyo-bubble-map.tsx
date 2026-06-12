@@ -86,10 +86,12 @@ type Placement = { pos: [number, number]; dir: [number, number] };
 type Obstacle = { x: number; y: number; r: number };
 
 // 2軸座標(-1..1) → 画面%。中心(50,49)、横半幅RX/縦半幅RY。
+// RX/RY は初期配置の広がり。小さくすると全体が中心へ寄る（最小間隔は反発計算で保証されるので
+// 玉どうしの間隔は変わらず、クラスタだけ中央に集まる）。
 const AXIS_CX = 50;
 const AXIS_CY = 49;
-const AXIS_RX = 40;
-const AXIS_RY = 36;
+const AXIS_RX = 33;
+const AXIS_RY = 29;
 
 // ── 中心ハブ＆3サテライトの固定座標（占有ゾーン＝玉はここに入らない）──
 const CENTER_POS = { x: 50, y: 46 };
@@ -142,10 +144,12 @@ function popupXExtra(xPct: number): number {
 /** 描画サイズ（グロー・ラベル・バッジ）込みの反発用半径(%) — containerW は実際のマップ幅(px) */
 function orbCollisionRadiusPct(diameterPx: number, containerW: number, labelMargin: number): number {
   const w = Math.max(containerW, 320);
-  const bodyAndGlow = pxToPctRadius(diameterPx / 2 + 22, w);
-  const labelExt = pxToPctRadius(diameterPx < 56 ? 32 : 40, w);
-  const badgeExt = pxToPctRadius(14, w);
-  return bodyAndGlow + labelExt + badgeExt + labelMargin + 2.5;
+  // ラベルは assignLabelSides で空いた向きへ逃がすため、当たり判定では控えめに予約
+  // （ここを大きく取ると全体が間延びして縦パンが増える）。
+  const bodyAndGlow = pxToPctRadius(diameterPx / 2 + 20, w);
+  const labelExt = pxToPctRadius(diameterPx < 56 ? 20 : 26, w);
+  const badgeExt = pxToPctRadius(12, w);
+  return bodyAndGlow + labelExt + badgeExt + labelMargin + 1.5;
 }
 
 function pxToPctRadius(px: number, containerW: number): number {
@@ -174,7 +178,7 @@ function computeAxisPlacements(
 ): Placement[] {
   const rOf = (i: number) => radii[i] ?? 8;
   const axisOf = (no: number) => axisMap[no] ?? DEFAULT_TOPIC_AXIS[no] ?? { x: 0, y: 0 };
-  const ORB_GAP = 2.8;
+  const ORB_GAP = 3.0;
 
   const pts = topics.map((t, i) => {
     const a = axisOf(t.no);
@@ -279,6 +283,66 @@ function computeAxisPlacements(
 }
 
 
+type LabelSide = "up" | "down" | "left" | "right";
+
+/** 各玉のラベルを、近隣の玉・既に置いたラベル・画面端から最も離れた向きへ割り当てて被りを抑える。
+ *  x/y は別尺度（%）なので yAspect で縦を画面比に合わせて距離評価する。 */
+function assignLabelSides(
+  pts: Array<[number, number]>,
+  bodyR: number[],
+  yMin: number,
+  yMax: number,
+  xMin: number,
+  xMax: number,
+  yAspect = 0.62,
+): LabelSide[] {
+  const n = pts.length;
+  const sides: LabelSide[] = [];
+  const placed: Array<[number, number]> = []; // 確定済みラベル中心（相互回避）
+  for (let i = 0; i < n; i++) {
+    const [x, y] = pts[i];
+    const r = bodyR[i] ?? 6;
+    const offV = r + 4;
+    const offH = r + 7;
+    const cands: Array<{ side: LabelSide; cx: number; cy: number }> = [
+      { side: "down", cx: x, cy: y + offV },
+      { side: "up", cx: x, cy: y - offV },
+      { side: "right", cx: x + offH, cy: y },
+      { side: "left", cx: x - offH, cy: y },
+    ];
+    // 上端付近は必ず「下」、下端付近は必ず「上」（ヘッダー/フッター・画面外回避）
+    const forced: LabelSide | null = y < yMin + 9 ? "down" : y > yMax - 9 ? "up" : null;
+    let best: LabelSide = "down";
+    let bestScore = -Infinity;
+    for (const c of cands) {
+      if (forced && c.side !== forced) continue;
+      let score = 0;
+      for (let j = 0; j < n; j++) {
+        if (j === i) continue;
+        const dx = c.cx - pts[j][0];
+        const dy = (c.cy - pts[j][1]) * yAspect;
+        score -= 70 / (dx * dx + dy * dy + 1.5);
+      }
+      for (const p of placed) {
+        const dx = c.cx - p[0];
+        const dy = (c.cy - p[1]) * yAspect;
+        score -= 55 / (dx * dx + dy * dy + 1.5);
+      }
+      if (c.cx < xMin + 5 || c.cx > xMax - 5) score -= 60; // 横ラベルが画面外
+      if (c.cy < yMin || c.cy > yMax) score -= 60;
+      if (c.side === "up") score -= 1.2; // 上はわずかに敬遠（上部の密集回避）
+      if (score > bestScore) {
+        bestScore = score;
+        best = c.side;
+      }
+    }
+    sides.push(best);
+    const chosen = cands.find((c) => c.side === best)!;
+    placed.push([chosen.cx, chosen.cy]);
+  }
+  return sides;
+}
+
 /** 全玉の投稿数から「炎=全体平均より上」「拡大=上位5」を判定するためのランキング */
 function computeBubbleRanking(
   topics: InteropPriorityTopic[],
@@ -334,11 +398,12 @@ const PUYO_CSS = `
 }
 `;
 
-// ── 玉サイズ：投稿数に応じて連続的に拡大（デフォルト小さめ／上限あり）──
-// 直径 +6%/件 ≒ +18%/3件（「3件ごとにちょっと大きく」）。
-const BUBBLE_GROWTH_PER_POST = 0.06;
-function bubbleSizeFor(postCount: number, base: number, max: number): number {
-  const factor = 1 + Math.max(0, postCount) * BUBBLE_GROWTH_PER_POST;
+// ── 玉サイズ：全体平均(avg)を基準に、平均以下は base のまま／平均を超えた分だけ拡大 ──
+// 「件数が少ないうちは現状サイズ・増えたら大きく」。平均を1件超えるごとに直径 +11%。
+const BUBBLE_GROWTH_PER_POST = 0.11;
+function bubbleSizeFor(postCount: number, base: number, max: number, avg = 0): number {
+  const over = Math.max(0, postCount - avg);
+  const factor = 1 + over * BUBBLE_GROWTH_PER_POST;
   return Math.min(max, Math.round(base * factor));
 }
 
@@ -369,14 +434,14 @@ type MapMetrics = {
 };
 // スマホは1画面に玉が多すぎてゴチャつくため、縦に大きく展開して画面あたりの玉数を減らし、
 // 下へパンして探索できるようにする。
-const METRICS_DESKTOP: MapMetrics = { base: 40, max: 120, refW: 1300, labelMargin: 3.5, centerSize: 132, satOrb: 84, satOrbMax: 200, centerR: 20, ys: 0.62, yMin: 14, yMax: 92, xMin: 7, xMax: 91, panLimY: 480, aiBtn: { x: 93, y: 90, r: 12 } };
-const METRICS_MOBILE: MapMetrics  = { base: 26, max: 64,  refW: 430,  labelMargin: 4.0, centerSize: 88,  satOrb: 56, satOrbMax: 128, centerR: 19, ys: 0.5, yMin: 14, yMax: 220, xMin: 6, xMax: 94, panLimY: 1280, aiBtn: { x: 90, y: 93, r: 14 } };
+const METRICS_DESKTOP: MapMetrics = { base: 40, max: 132, refW: 1300, labelMargin: 2.2, centerSize: 132, satOrb: 84, satOrbMax: 200, centerR: 20, ys: 0.62, yMin: 14, yMax: 142, xMin: 6, xMax: 92, panLimY: 840, aiBtn: { x: 93, y: 90, r: 12 } };
+const METRICS_MOBILE: MapMetrics  = { base: 26, max: 96,  refW: 430,  labelMargin: 2.0, centerSize: 88,  satOrb: 56, satOrbMax: 128, centerR: 19, ys: 0.5, yMin: 14, yMax: 340, xMin: 5, xMax: 95, panLimY: 2000, aiBtn: { x: 90, y: 93, r: 14 } };
 
 
 function PuyoBubble({
   topic,
   pos,
-  dir,
+  side,
   index,
   size,
   stats,
@@ -385,7 +450,8 @@ function PuyoBubble({
 }: {
   topic: InteropPriorityTopic;
   pos: [number, number];
-  dir: [number, number];
+  /** ラベルを出す向き（assignLabelSides で被りを避けて決定） */
+  side: LabelSide;
   index: number;
   /** 投稿数に応じて算出済みの直径(px) */
   size: number;
@@ -410,22 +476,14 @@ function PuyoBubble({
   const { Icon } = sty;
   const dur = 7 + ((topic.no * 13 + index * 9) % 60) / 10;
   const delay = -((topic.no * 7 + index * 4) % 70) / 10;
-  // ラベルを塊の外向き（上/下/左/右）に常時配置して重なりを回避。
-  // ただし画面の上端付近はラベルを必ず「下」、下端付近は必ず「上」にして、
-  // ヘッダー/フッターや画面外に被らないようにする。
-  const ax = dir[0];
-  const ay = dir[1];
-  const below: React.CSSProperties = { top: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)" };
-  const above: React.CSSProperties = { bottom: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)" };
-  const horizontal = Math.abs(ax) > Math.abs(ay) * 1.15;
-  let labelPos: React.CSSProperties;
-  if (pos[1] < 22) labelPos = below;
-  else if (pos[1] > 86) labelPos = above;
-  else if (horizontal)
-    labelPos = ax < 0
-      ? { right: "calc(100% + 9px)", top: "50%", transform: "translateY(-50%)" }
-      : { left: "calc(100% + 9px)", top: "50%", transform: "translateY(-50%)" };
-  else labelPos = ay < 0 ? above : below;
+  // ラベルは assignLabelSides が選んだ「最も空いている向き」に配置（隣の玉・ラベルとの被り回避）。
+  // 「下」は件数バッジ(玉の真下)を避けるため少し離す。
+  const below: React.CSSProperties = { top: "calc(100% + 18px)", left: "50%", transform: "translateX(-50%)" };
+  const above: React.CSSProperties = { bottom: "calc(100% + 9px)", left: "50%", transform: "translateX(-50%)" };
+  const leftPos: React.CSSProperties = { right: "calc(100% + 10px)", top: "50%", transform: "translateY(-50%)" };
+  const rightPos: React.CSSProperties = { left: "calc(100% + 10px)", top: "50%", transform: "translateY(-50%)" };
+  const labelPos: React.CSSProperties =
+    side === "up" ? above : side === "down" ? below : side === "left" ? leftPos : rightPos;
 
   return (
     <button
@@ -513,8 +571,15 @@ function PuyoBubble({
         )}
         {hint && (
           <span
-            className="absolute -bottom-1 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-full px-1.5 py-0.5 text-[8px] font-bold text-white shadow"
-            style={{ background: `${sty.glow}cc` }}
+            className="absolute left-1/2 z-30 -translate-x-1/2 whitespace-nowrap rounded-full font-extrabold leading-none text-white"
+            style={{
+              bottom: -9,
+              background: sty.glow,
+              border: "1.5px solid rgba(255,255,255,0.9)",
+              fontSize: size < 56 ? 9.5 : 11.5,
+              padding: size < 56 ? "1.5px 6px" : "2px 8px",
+              boxShadow: `0 2px 8px rgba(0,0,0,0.5), 0 0 8px ${sty.glow}aa`,
+            }}
           >
             {hint}
           </span>
@@ -527,7 +592,7 @@ function PuyoBubble({
         style={{
           ...labelPos,
           width: "max-content",
-          maxWidth: size < 56 ? 80 : 108,
+          maxWidth: size < 56 ? 72 : 96,
           zIndex: 40,
           fontSize: `${labelFont}px`,
           fontWeight: 700,
@@ -808,8 +873,8 @@ export function InteropPuyoBubbleMap({
     return list;
   }, [satellites, satelliteSizes, satelliteAnchors, m.centerR, m.centerSize, m.satOrb, m.aiBtn, mapW]);
   const sizes = useMemo(
-    () => topics.map((t) => bubbleSizeFor(activityByRoom.get(t.roomId)?.postCount ?? 0, m.base, m.max)),
-    [topics, activityByRoom, m.base, m.max]
+    () => topics.map((t) => bubbleSizeFor(activityByRoom.get(t.roomId)?.postCount ?? 0, m.base, m.max, ranking.avg)),
+    [topics, activityByRoom, m.base, m.max, ranking.avg]
   );
   const placeRadii = useMemo(
     () => sizes.map((px) => orbCollisionRadiusPct(px, mapW, m.labelMargin)),
@@ -818,6 +883,15 @@ export function InteropPuyoBubbleMap({
   const placements = useMemo(
     () => computeAxisPlacements(topics, topicPositions ?? DEFAULT_TOPIC_AXIS, obstacles, placeRadii, m.yMin, m.yMax, m.xMin, m.xMax),
     [topics, topicPositions, obstacles, placeRadii, m.yMin, m.yMax, m.xMin, m.xMax]
+  );
+  // 各玉のラベル向き（玉本体半径ぶん外側へ出し、近隣と被らない側を選ぶ）
+  const bodyRadiiPct = useMemo(
+    () => sizes.map((px) => pxToPctRadius(px / 2 + 6, mapW)),
+    [sizes, mapW]
+  );
+  const labelSides = useMemo(
+    () => assignLabelSides(placements.map((p) => p.pos), bodyRadiiPct, m.yMin, m.yMax, m.xMin, m.xMax),
+    [placements, bodyRadiiPct, m.yMin, m.yMax, m.xMin, m.xMax]
   );
   // 関連カテゴリのノード接続線（座標が近いトピック同士を結ぶ）
   const connections = useMemo(() => {
@@ -1010,7 +1084,7 @@ export function InteropPuyoBubbleMap({
             stats={stats}
             isHot={isHot}
             pos={place.pos}
-            dir={place.dir}
+            side={labelSides[i] ?? "down"}
             index={i}
             size={sizes[i] ?? m.base}
             onActivate={() => onSelectTopic(topic)}
@@ -1026,7 +1100,7 @@ export function InteropPuyoBubbleMap({
         return (
           <div
             key={p.id}
-            className="pointer-events-none absolute z-[46] w-[158px]"
+            className="pointer-events-none absolute z-[46] w-[146px]"
             style={{
               left: `calc(${p.pos[0]}% + ${p.xExtra}px)`,
               // 玉本体（サイズ可変）＋件数バッジ＋ラベルを十分に避ける縦クリアランス
