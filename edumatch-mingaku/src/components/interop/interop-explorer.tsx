@@ -235,14 +235,18 @@ export function InteropExplorer({
 
   // ── リアルタイム投稿（オレンジ吹き出し）──
   const [livePosts, setLivePosts] = useState<Array<{ id: string; body: string; authorName: string; subId?: string }>>([]);
+  const [livePostsReady, setLivePostsReady] = useState(false);
   useEffect(() => {
     const load = () =>
       fetch("/api/interop/recent-posts")
         .then((r) => r.json())
-        .then((d) => { if (Array.isArray(d.posts)) setLivePosts(d.posts); })
+        .then((d) => {
+          if (Array.isArray(d.posts)) setLivePosts(d.posts);
+          setLivePostsReady(true);
+        })
         .catch(() => {});
     load();
-    const t = window.setInterval(load, 30_000);
+    const t = window.setInterval(load, 5_000);
     return () => window.clearInterval(t);
   }, []);
 
@@ -392,6 +396,7 @@ export function InteropExplorer({
             topicPositions={topicPositions}
             satellites={satellites}
             livePosts={livePosts}
+            livePostsReady={livePostsReady}
             iconFor={iconFor}
             onSelectCategory={handleSelectFromMap}
             onSelectTopic={handleSelectTopic}

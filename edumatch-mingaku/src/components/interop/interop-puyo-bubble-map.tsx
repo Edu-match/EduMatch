@@ -561,6 +561,7 @@ export function InteropPuyoBubbleMap({
   topics: topicsProp,
   satellites = [],
   livePosts = [],
+  livePostsReady = false,
   onSelectCategory,
   onSelectTopic,
   iconFor,
@@ -574,6 +575,8 @@ export function InteropPuyoBubbleMap({
   satellites?: InteropSatellite[];
   /** リアルタイム投稿（オレンジ枠の吹き出しで表示）。subId があればその投稿ページへ飛べる */
   livePosts?: Array<{ id: string; body: string; authorName: string; subId?: string }>;
+  /** 初回の recent-posts 取得完了後に true（既存投稿を新着扱いしないため） */
+  livePostsReady?: boolean;
   onSelectCategory: (cat: InteropCategory) => void;
   onSelectTopic: (topic: InteropPriorityTopic) => void;
   iconFor: (slug: string) => LucideIcon;
@@ -808,10 +811,58 @@ export function InteropPuyoBubbleMap({
       cancelled = true;
     };
   }, []);
-  const [popups, setPopups] = useState<Array<{ id: string; body: string; author: string; pos: [number, number]; size: number; xExtra: number; dir: "above" | "below"; sentimentColor: string; live?: boolean; href?: string }>>([]);
+  type MapPopup = {
+    id: string;
+    body: string;
+    author: string;
+    pos: [number, number];
+    size: number;
+    xExtra: number;
+    dir: "above" | "below";
+    sentimentColor: string;
+    live?: boolean;
+    href?: string;
+  };
+  const [popups, setPopups] = useState<MapPopup[]>([]);
+  const liveQueueRef = useRef<Array<{ id: string; body: string; authorName: string; subId?: string }>>([]);
+  const seenLiveIdsRef = useRef<Set<string>>(new Set());
+  const liveBaselineReadyRef = useRef(false);
+  const tickRef = useRef<(() => void) | null>(null);
+
+  // 新着投稿をキューへ（ポーリングのたびに effect を張り直さない）
   useEffect(() => {
-    if (comments.length === 0) return;
-    const tick = () => {
+    if (!livePostsReady) return;
+    if (!liveBaselineReadyRef.current) {
+      for (const p of livePosts) seenLiveIdsRef.current.add(p.id);
+      liveBaselineReadyRef.current = true;
+      return;
+    }
+    const fresh = livePosts.filter((p) => !seenLiveIdsRef.current.has(p.id));
+    if (fresh.length === 0) return;
+    for (const p of fresh) seenLiveIdsRef.current.add(p.id);
+    liveQueueRef.current.push(...fresh);
+    tickRef.current?.();
+  }, [livePosts, livePostsReady]);
+
+  // 吹き出しは常に1件のみ。LIVE新着を優先し、無いときだけ井戸端サンプルコメントを表示。
+  useEffect(() => {
+    if (!livePostsReady) return;
+
+    const showLive = (c: { id: string; body: string; authorName: string; subId?: string }) => {
+      const ridx = Math.floor(Math.random() * Math.max(1, placements.length));
+      const place = placements[ridx];
+      const pos: [number, number] = place?.pos ?? [50, 40];
+      const size = sizes[ridx] ?? m.base;
+      const id = `live-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      const dir: "above" | "below" = pos[1] < 32 ? "below" : "above";
+      const xExtra = popupXExtra(pos[0]);
+      const href = c.subId ? `/interop/t/${c.subId}?post=${c.id}` : undefined;
+      setPopups([{ id, body: c.body, author: c.authorName, pos, size, xExtra, dir, sentimentColor: "#ffd9a8", live: true, href }]);
+      window.setTimeout(() => setPopups((prev) => prev.filter((p) => p.id !== id)), 6000);
+    };
+
+    const showSample = () => {
+      if (comments.length === 0) return;
       const c = comments[Math.floor(Math.random() * comments.length)];
       const idx = topics.findIndex((t) => t.roomId === c.roomId);
       const pos = idx >= 0 ? placements[idx]?.pos : undefined;
@@ -821,40 +872,27 @@ export function InteropPuyoBubbleMap({
       const dir: "above" | "below" = pos[1] < 32 ? "below" : "above";
       const sentimentColor = detectSentimentColor(c.body);
       const xExtra = popupXExtra(pos[0]);
-      // クリックでそのコメントの井戸端ルームへ
       const href = c.roomId ? `/forum/${c.roomId}?from=interop` : undefined;
-      // 吹き出しは常に1件のみ（被り・ごちゃつき防止）。新しい1件で置き換える。
       setPopups([{ id, body: c.body, author: c.authorName, pos, size, xExtra, dir, sentimentColor, href }]);
       window.setTimeout(() => setPopups((prev) => prev.filter((p) => p.id !== id)), 5200);
     };
-    const interval = window.setInterval(tick, 5200);
-    return () => window.clearInterval(interval);
-  }, [comments, topics, placements, sizes]);
 
-  // リアルタイム投稿（実データ）：オレンジ枠の吹き出しでマップ全体に浮かべる
-  const liveIdxRef = useRef(0);
-  useEffect(() => {
-    if (livePosts.length === 0) return;
     const tick = () => {
-      const c = livePosts[liveIdxRef.current % livePosts.length];
-      liveIdxRef.current += 1;
-      // マップ上のランダムな玉位置に出す（実投稿は分類に紐づかないため拡散配置）
-      const ridx = Math.floor(Math.random() * Math.max(1, placements.length));
-      const place = placements[ridx];
-      const pos: [number, number] = place?.pos ?? [50, 40];
-      const size = sizes[ridx] ?? m.base;
-      const id = `live-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-      const dir: "above" | "below" = pos[1] < 32 ? "below" : "above";
-      const xExtra = popupXExtra(pos[0]);
-      // クリックでその投稿のページ（掲示板）へ。subId が無ければリンクなし
-      const href = c.subId ? `/interop/t/${c.subId}?post=${c.id}` : undefined;
-      // LIVE吹き出しも常に1件のみ（置き換え）
-      setPopups([{ id, body: c.body, author: c.authorName, pos, size, xExtra, dir, sentimentColor: "#ffd9a8", live: true, href }]);
-      window.setTimeout(() => setPopups((prev) => prev.filter((p) => p.id !== id)), 6000);
+      const queued = liveQueueRef.current.shift();
+      if (queued) {
+        showLive(queued);
+        return;
+      }
+      showSample();
     };
-    const interval = window.setInterval(tick, 6500);
-    return () => window.clearInterval(interval);
-  }, [livePosts, placements, sizes]);
+    tickRef.current = tick;
+
+    const interval = window.setInterval(tick, 6000);
+    return () => {
+      tickRef.current = null;
+      window.clearInterval(interval);
+    };
+  }, [comments, topics, placements, sizes, livePostsReady, m.base]);
 
   const centerSize = m.centerSize;
 
