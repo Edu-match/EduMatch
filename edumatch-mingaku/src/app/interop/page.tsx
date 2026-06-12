@@ -18,8 +18,8 @@ async function fetchInitialActivity() {
     const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
     const origin = `${proto}://${host}`;
     const [interop, forum] = await Promise.all([
-      fetch(`${origin}/api/interop/activity`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch(`${origin}/api/forum/rooms?communityThemes=true`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch(`${origin}/api/interop/activity`, { next: { revalidate: 30 } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch(`${origin}/api/forum/rooms?communityThemes=true`, { next: { revalidate: 60 } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
     ]);
     return { interop, forum };
   } catch {

@@ -142,7 +142,7 @@ function computeAxisPlacements(
   // ★毎イテレーションで枠内クランプも行う：最後に一度だけクランプすると
   //   端に押し込まれた玉同士が再び重なるため、「クランプ→再反発」を繰り返して
   //   枠内で重なりゼロの配置に収束させる。
-  for (let k = 0; k < 260; k++) {
+  for (let k = 0; k < 360; k++) {
     // 玉どうしの反発
     for (let i = 0; i < pts.length; i++) {
       for (let j = i + 1; j < pts.length; j++) {
@@ -277,8 +277,8 @@ type MapMetrics = {
 };
 // スマホは1画面に玉が多すぎてゴチャつくため、縦に大きく展開して画面あたりの玉数を減らし、
 // 下へパンして探索できるようにする。
-const METRICS_DESKTOP: MapMetrics = { base: 40, max: 150, refW: 1300, labelMargin: 4.8, centerSize: 132, satOrb: 84, centerR: 18, satR: 14, ys: 0.6, yMin: 19, yMax: 90, xMin: 10, xMax: 88, panLimY: 420 };
-const METRICS_MOBILE: MapMetrics  = { base: 26, max: 70,  refW: 430,  labelMargin: 5.2, centerSize: 88,  satOrb: 56, centerR: 17, satR: 14, ys: 0.5, yMin: 17, yMax: 175, xMin: 7, xMax: 93, panLimY: 940 };
+const METRICS_DESKTOP: MapMetrics = { base: 40, max: 150, refW: 1300, labelMargin: 7.5, centerSize: 132, satOrb: 84, centerR: 18, satR: 14, ys: 0.55, yMin: 19, yMax: 90, xMin: 10, xMax: 88, panLimY: 420 };
+const METRICS_MOBILE: MapMetrics  = { base: 26, max: 70,  refW: 430,  labelMargin: 9.5, centerSize: 88,  satOrb: 56, centerR: 17, satR: 14, ys: 0.45, yMin: 17, yMax: 195, xMin: 7, xMax: 93, panLimY: 1100 };
 
 
 function PuyoBubble({
@@ -437,7 +437,7 @@ function PuyoBubble({
         style={{
           ...labelPos,
           width: "max-content",
-          maxWidth: size < 56 ? 92 : 116,
+          maxWidth: size < 56 ? 80 : 108,
           zIndex: 40,
           fontSize: `${labelFont}px`,
           fontWeight: 700,

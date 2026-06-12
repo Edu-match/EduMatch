@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 30; // 30秒キャッシュ（投稿数カウントはリアルタイム不要）
 
 type ActivityRow = {
   sub_category_id: string;
