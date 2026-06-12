@@ -392,23 +392,10 @@ function SubRow({ sub, onChanged, onMsg }: { sub: SubCategory; onChanged: () => 
           </div>
           <label className="block text-xs"><span className="mb-1 block text-white/55">参考リンクURL（概要下にサムネ表示）</span>
             <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." className={`h-8 w-full text-xs ${darkInput}`} /></label>
-          <div className="rounded-lg border border-white/10 bg-white/[0.04] p-2">
-            <p className="mb-1.5 text-[11px] font-semibold text-white/55">検索コンテンツ（本体エデュマッチから検索して表示。トピック側に設定があればそちらを優先）</p>
-            <div className="mb-1.5 flex flex-wrap gap-1.5">
-              {CONTENT_KIND_OPTIONS.map((k) => {
-                const on = kinds.includes(k.value);
-                return (
-                  <button key={k.value} type="button"
-                    onClick={() => setKinds((prev) => on ? prev.filter((x) => x !== k.value) : [...prev, k.value])}
-                    className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${on ? "border-indigo-400 bg-indigo-400/20 text-indigo-300" : "border-white/15 text-white/40 hover:text-white/70"}`}>
-                    {k.label}
-                  </button>
-                );
-              })}
-            </div>
-            <label className="text-xs"><span className="mb-1 block text-white/55">キーワード（空ならカテゴリ名＋サブ名）</span>
-              <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="例：探究 AI" className={`h-8 w-64 text-xs ${darkInput}`} /></label>
-          </div>
+          <ContentSearchPanel subId={sub.id}
+            kinds={kinds} query={query}
+            onKindsChange={setKinds} onQueryChange={setQuery}
+          />
           <Button size="sm" onClick={save} disabled={busy} className="h-8 gap-1 text-xs">
             {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}保存</Button>
         </div>
@@ -427,6 +414,9 @@ function TopicManager({ subId, onMsg }: { subId: string; onMsg: (t: string, ok: 
   const [topics, setTopics] = useState<BoardTopic[]>([]);
   const [loading, setLoading] = useState(true);
   const [newName, setNewName] = useState("");
+  const [newDesc, setNewDesc] = useState("");
+  const [newUrl, setNewUrl] = useState("");
+  const [autoEditId, setAutoEditId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -440,13 +430,23 @@ function TopicManager({ subId, onMsg }: { subId: string; onMsg: (t: string, ok: 
   const add = async () => {
     if (!newName.trim()) return;
     setBusy(true);
-    const { ok } = await api("/api/interop/board-topics", {
+    const { ok, data } = await api("/api/interop/board-topics", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ subCategoryId: subId, name: newName, sortOrder: topics.length }),
+      body: JSON.stringify({
+        subCategoryId: subId,
+        name: newName,
+        description: newDesc,
+        url: newUrl,
+        sortOrder: topics.length,
+      }),
     });
     setBusy(false);
-    if (ok) { onMsg(`トピック「${newName}」を追加しました。`, true); setNewName(""); load(); }
-    else onMsg("トピックの追加に失敗しました。", false);
+    if (ok) {
+      onMsg(`トピック「${newName}」を追加しました。`, true);
+      setNewName(""); setNewDesc(""); setNewUrl("");
+      setAutoEditId(data.topic?.id ?? null);
+      load();
+    } else onMsg("トピックの追加に失敗しました。", false);
   };
 
   return (
@@ -464,23 +464,158 @@ function TopicManager({ subId, onMsg }: { subId: string; onMsg: (t: string, ok: 
       ) : (
         <ul className="space-y-1.5">
           {topics.map((t) => (
-            <TopicRow key={t.id} topic={t} onChanged={load} onMsg={onMsg} />
+            <TopicRow key={t.id} topic={t} subId={subId} autoEdit={autoEditId === t.id} onChanged={load} onMsg={onMsg} />
           ))}
         </ul>
       )}
-      <div className="flex items-end gap-2 pt-1">
-        <label className="flex-1 text-xs"><span className="mb-1 block text-white/55">新しいトピック名</span>
-          <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="例：生成AIと授業づくり" className={`h-8 text-xs ${darkInput}`} /></label>
-        <Button size="sm" variant="outline" onClick={add} disabled={busy} className="h-8 gap-1 border-white/15 text-xs text-white/80 hover:bg-white/10">
-          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} 追加
-        </Button>
+
+      {/* 新規追加フォーム：名前・説明・URLを一度に入力可能 */}
+      <div className="rounded-lg border border-white/10 bg-white/[0.04] p-2.5 space-y-2">
+        <p className="text-[11px] font-semibold text-white/60">トピックを追加</p>
+        <div className="flex flex-wrap gap-2">
+          <label className="flex-1 min-w-[120px] text-xs">
+            <span className="mb-1 block text-white/55">名前 *</span>
+            <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="例：生成AIと授業づくり" className={`h-8 text-xs ${darkInput}`} />
+          </label>
+          <label className="flex-1 min-w-[120px] text-xs">
+            <span className="mb-1 block text-white/55">説明（任意）</span>
+            <Input value={newDesc} onChange={(e) => setNewDesc(e.target.value)} placeholder="短い説明" className={`h-8 text-xs ${darkInput}`} />
+          </label>
+        </div>
+        <label className="block text-xs">
+          <span className="mb-1 block text-white/55">参考リンクURL（任意）</span>
+          <Input value={newUrl} onChange={(e) => setNewUrl(e.target.value)} placeholder="https://..." className={`h-8 w-full text-xs ${darkInput}`} />
+        </label>
+        {newUrl.trim() && <UrlPreview url={newUrl.trim()} />}
+        <div className="flex justify-end">
+          <button
+            type="button" onClick={add} disabled={busy || !newName.trim()}
+            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-indigo-400/40 bg-indigo-500/20 px-3 text-xs font-semibold text-indigo-200 transition hover:bg-indigo-500/30 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} 追加
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-function TopicRow({ topic, onChanged, onMsg }: { topic: BoardTopic; onChanged: () => void; onMsg: (t: string, ok: boolean) => void }) {
-  const [editing, setEditing] = useState(false);
+/* ─────────── コンテンツ検索パネル ─────────── */
+type ContentItem = { id: string; title: string; description: string; thumbnailUrl: string | null; href: string; kindLabel: string };
+
+function ContentSearchPanel({ subId, topicId, kinds, query, onKindsChange, onQueryChange }: {
+  subId: string; topicId?: string;
+  kinds: string[]; query: string;
+  onKindsChange: (k: string[]) => void; onQueryChange: (q: string) => void;
+}) {
+  const [results, setResults] = useState<ContentItem[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searched, setSearched] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  const search = async () => {
+    if (kinds.length === 0) return;
+    setSearching(true);
+    setSearched(true);
+    const params = new URLSearchParams({ kinds: kinds.join(","), q: query });
+    const { data } = await api(`/api/interop/content/search?${params}`);
+    setResults(data.items ?? []);
+    setSearching(false);
+  };
+
+  // トピック保存済みの実際の表示内容を確認
+  const preview = async () => {
+    setSearching(true);
+    setSearched(true);
+    const params = new URLSearchParams({ subCategoryId: subId });
+    if (topicId) params.set("topicId", topicId);
+    const { data } = await api(`/api/interop/content?${params}`);
+    setResults(data.items ?? []);
+    setSearching(false);
+  };
+
+  return (
+    <div className="rounded-lg border border-white/10 bg-white/[0.04] p-2">
+      <button type="button" onClick={() => setExpanded((v) => !v)}
+        className="flex w-full items-center gap-1.5 text-[11px] font-semibold text-white/55 hover:text-white/80">
+        {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+        エデュマッチ コンテンツ検索・設定
+        {kinds.length > 0 && <span className="rounded-full bg-indigo-400/20 px-1.5 text-[10px] text-indigo-300">{kinds.length}種別</span>}
+      </button>
+      {expanded && (
+        <div className="mt-2 space-y-2">
+          <div>
+            <p className="mb-1 text-[10px] text-white/45">表示する種別を選択</p>
+            <div className="flex flex-wrap gap-1.5">
+              {CONTENT_KIND_OPTIONS.map((k) => {
+                const on = kinds.includes(k.value);
+                return (
+                  <button key={k.value} type="button"
+                    onClick={() => onKindsChange(on ? kinds.filter((x) => x !== k.value) : [...kinds, k.value])}
+                    className={`rounded-full border px-2.5 py-1 text-[11px] font-bold transition ${on ? "border-indigo-400 bg-indigo-400/20 text-indigo-300" : "border-white/15 text-white/40 hover:text-white/70"}`}>
+                    {k.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <label className="block text-[10px]">
+            <span className="mb-1 block text-white/45">検索キーワード（空ならサブカテゴリ名＋トピック名）</span>
+            <Input value={query} onChange={(e) => onQueryChange(e.target.value)} placeholder="例：探究 AI" className={`h-8 w-64 text-xs ${darkInput}`} />
+          </label>
+          <div className="flex gap-2">
+            <button type="button" onClick={search} disabled={searching || kinds.length === 0}
+              className="inline-flex h-7 items-center gap-1 rounded-md border border-white/20 bg-white/[0.08] px-2.5 text-[11px] font-semibold text-white/80 transition hover:bg-white/[0.14] disabled:opacity-40">
+              {searching ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+              キーワード検索
+            </button>
+            {topicId && (
+              <button type="button" onClick={preview} disabled={searching}
+                className="inline-flex h-7 items-center gap-1 rounded-md border border-sky-400/30 bg-sky-400/10 px-2.5 text-[11px] font-semibold text-sky-200 transition hover:bg-sky-400/20 disabled:opacity-40">
+                保存済み設定でプレビュー
+              </button>
+            )}
+          </div>
+          {searched && (
+            <div>
+              {searching ? (
+                <div className="flex justify-center py-4"><Loader2 className="h-4 w-4 animate-spin text-white/40" /></div>
+              ) : results.length === 0 ? (
+                <p className="text-[11px] text-white/40">該当するコンテンツが見つかりませんでした。</p>
+              ) : (
+                <ul className="mt-1.5 space-y-1.5 max-h-72 overflow-y-auto pr-1">
+                  {results.map((item) => (
+                    <li key={item.id} className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] p-2 text-xs">
+                      {item.thumbnailUrl ? (
+                        <img src={item.thumbnailUrl} alt="" className="h-10 w-14 shrink-0 rounded object-cover" />
+                      ) : (
+                        <div className="flex h-10 w-14 shrink-0 items-center justify-center rounded bg-white/[0.06] text-white/20 text-[9px]">{item.kindLabel}</div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-semibold text-white/85">{item.title}</p>
+                        <p className="truncate text-[10px] text-white/40">{item.description}</p>
+                        <span className="rounded-full bg-white/10 px-1.5 text-[9px] text-white/50">{item.kindLabel}</span>
+                      </div>
+                      <a href={item.href} target="_blank" rel="noopener noreferrer"
+                        className="shrink-0 rounded p-1 text-white/30 hover:text-white">
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TopicRow({ topic, subId, autoEdit = false, onChanged, onMsg }: {
+  topic: BoardTopic; subId: string; autoEdit?: boolean; onChanged: () => void; onMsg: (t: string, ok: boolean) => void;
+}) {
+  const [editing, setEditing] = useState(autoEdit);
   const [name, setName] = useState(topic.name);
   const [desc, setDesc] = useState(topic.description);
   const [url, setUrl] = useState(topic.url);
@@ -538,23 +673,10 @@ function TopicRow({ topic, onChanged, onMsg }: { topic: BoardTopic; onChanged: (
               <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." className={`h-8 w-full text-xs ${darkInput}`} /></label>
             {url.trim() && <UrlPreview url={url.trim()} />}
           </div>
-          <div className="rounded-lg border border-white/10 bg-white/[0.04] p-2">
-            <p className="mb-1.5 text-[11px] font-semibold text-white/55">検索コンテンツ（本体エデュマッチから検索して表示）</p>
-            <div className="mb-1.5 flex flex-wrap gap-1.5">
-              {CONTENT_KIND_OPTIONS.map((k) => {
-                const on = kinds.includes(k.value);
-                return (
-                  <button key={k.value} type="button"
-                    onClick={() => setKinds((prev) => on ? prev.filter((x) => x !== k.value) : [...prev, k.value])}
-                    className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${on ? "border-indigo-400 bg-indigo-400/20 text-indigo-300" : "border-white/15 text-white/40 hover:text-white/70"}`}>
-                    {k.label}
-                  </button>
-                );
-              })}
-            </div>
-            <label className="text-xs"><span className="mb-1 block text-white/55">検索キーワード（空ならサブカテゴリ名＋トピック名）</span>
-              <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="例：探究 AI" className={`h-8 w-64 text-xs ${darkInput}`} /></label>
-          </div>
+          <ContentSearchPanel subId={subId} topicId={topic.id}
+            kinds={kinds} query={query}
+            onKindsChange={setKinds} onQueryChange={setQuery}
+          />
           <Button size="sm" onClick={save} disabled={busy} className="h-8 gap-1 text-xs">
             {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}保存</Button>
         </div>
