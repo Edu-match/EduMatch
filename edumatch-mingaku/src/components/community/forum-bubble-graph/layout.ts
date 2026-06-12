@@ -39,12 +39,13 @@ export function computeCircularGraphPoints(
   nodeIds: string[],
   graphWidth: number,
   graphHeight: number,
-  spreadFactor = 1.05
+  spreadFactor = 1.05,
+  radiusRatio = 0.34
 ): Record<string, GraphPoint> {
   const points: Record<string, GraphPoint> = {};
   const centerX = graphWidth / 2;
   const centerY = graphHeight / 2;
-  const radius = Math.min(graphWidth, graphHeight) * 0.34 * spreadFactor;
+  const radius = Math.min(graphWidth, graphHeight) * radiusRatio * spreadFactor;
   const innerOffset = Math.min(graphWidth, graphHeight) * 0.06;
 
   nodeIds.forEach((id, index) => {
@@ -127,19 +128,32 @@ export function resolveGraphCollisions(
   nodes: BubbleGraphNode[],
   detailLevel: ZoomDetailLevel,
   graphWidth: number,
-  graphHeight: number
+  graphHeight: number,
+  options?: { spread?: number; iterations?: number; padding?: number; pinnedIds?: string[] }
 ): Record<string, GraphPoint> {
   const points = Object.fromEntries(
     Object.entries(initialPoints).map(([id, p]) => [id, { ...p }])
   ) as Record<string, GraphPoint>;
   const nodeById = new Map(nodes.map((n) => [n.id, n]));
   const ids = Object.keys(points);
-  const padding = collisionPadding(detailLevel);
-  const iterations = detailLevel === "detail" ? 140 : 100;
+  const padding = options?.padding ?? collisionPadding(detailLevel);
+  const iterations = options?.iterations ?? (detailLevel === "detail" ? 140 : 100);
+  const pinned = new Set(
+    options?.pinnedIds ??
+      nodes.filter((n) => n.isPrimary).map((n) => n.id)
+  );
+  const pinnedPositions = new Map<string, GraphPoint>();
+  for (const id of pinned) {
+    if (points[id]) pinnedPositions.set(id, { ...points[id] });
+  }
+
+  const isPinned = (id: string) => pinned.has(id);
 
   const spread =
-    detailLevel === "detail" ? 1.15 : detailLevel === "standard" ? 1.1 : 1.05;
+    options?.spread ??
+    (detailLevel === "detail" ? 1.15 : detailLevel === "standard" ? 1.1 : 1.05);
   spreadFromCenter(points, spread, graphWidth / 2, graphHeight / 2);
+  for (const [id, p] of pinnedPositions) points[id] = { ...p };
 
   for (let iter = 0; iter < iterations; iter += 1) {
     for (let i = 0; i < ids.length; i += 1) {
@@ -159,20 +173,33 @@ export function resolveGraphCollisions(
         const push = (minDist - dist) / 2 + 1;
         const nx = dx / dist;
         const ny = dy / dist;
-        a.x -= nx * push;
-        a.y -= ny * push;
-        b.x += nx * push;
-        b.y += ny * push;
+        const aPinned = isPinned(a.id);
+        const bPinned = isPinned(b.id);
+        if (aPinned && bPinned) continue;
+        if (aPinned) {
+          b.x += nx * push * 2;
+          b.y += ny * push * 2;
+        } else if (bPinned) {
+          a.x -= nx * push * 2;
+          a.y -= ny * push * 2;
+        } else {
+          a.x -= nx * push;
+          a.y -= ny * push;
+          b.x += nx * push;
+          b.y += ny * push;
+        }
       }
     }
 
     for (const id of ids) {
+      if (isPinned(id)) continue;
       const node = nodeById.get(id);
       if (!node) continue;
       const margin = node.diameter / 2 + padding * 0.4;
       points[id].x = clampNumber(points[id].x, margin, graphWidth - margin);
       points[id].y = clampNumber(points[id].y, margin, graphHeight - margin);
     }
+    for (const [id, p] of pinnedPositions) points[id] = { ...p };
   }
 
   return points;
@@ -184,6 +211,56 @@ export function getGraphDimensions(nodeCount: number) {
     width: Math.round(BASE_GRAPH_WIDTH * scale),
     height: Math.round(BASE_GRAPH_HEIGHT * scale),
   };
+}
+
+/**
+ * Interop特設トップ：中心ハブ → 内側カテゴリ → 外周優先トピックの放射配置
+ */
+export function computeInteropTopGraphPoints(
+  centerId: string,
+  innerIds: string[],
+  outerIds: string[],
+  graphWidth: number,
+  graphHeight: number
+): Record<string, GraphPoint> {
+  const points: Record<string, GraphPoint> = {};
+  const cx = graphWidth / 2;
+  const cy = graphHeight / 2;
+  const minDim = Math.min(graphWidth, graphHeight);
+
+  points[centerId] = { id: centerId, x: cx, y: cy };
+
+  const innerR = minDim * 0.21;
+  innerIds.forEach((id, i) => {
+    const angle = -Math.PI / 2 + (Math.PI * 2 * i) / Math.max(1, innerIds.length);
+    const wobble = Math.sin(i * 1.9) * minDim * 0.006;
+    points[id] = {
+      id,
+      x: cx + Math.cos(angle) * (innerR + wobble),
+      y: cy + Math.sin(angle) * (innerR + wobble),
+    };
+  });
+
+  const outerCount = outerIds.length;
+  // 内側リングが無い（中心＝インタロップ＋外周＝◎のみ）場合は、外周を中心玉の外側へ広げて散らす
+  const noInner = innerIds.length === 0;
+  const baseR = minDim * (noInner ? 0.3 : 0.23);
+  const rSpread = minDim * (noInner ? 0.14 : 0.055);
+
+  outerIds.forEach((id, i) => {
+    const t = outerCount <= 1 ? 0.5 : i / outerCount;
+    const wave = Math.sin(i * 2.17) * 0.045 + Math.cos(i * 0.83) * 0.028;
+    const angle = -Math.PI / 2 + Math.PI * 2 * t + wave;
+    const layer = (i % 4) * 0.016 + Math.sin(i * 0.62) * 0.012;
+    const r = baseR + rSpread * (0.32 + t * 0.52 + layer);
+    points[id] = {
+      id,
+      x: cx + Math.cos(angle) * r,
+      y: cy + Math.sin(angle) * r,
+    };
+  });
+
+  return points;
 }
 
 /** 浮遊オフセット適用後のバブル同士が重ならないよう調整 */

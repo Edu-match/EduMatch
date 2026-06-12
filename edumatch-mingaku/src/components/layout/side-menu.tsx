@@ -31,7 +31,8 @@ const generalItems = [
   { href: "/", labelKey: "home", icon: Home },
   { href: "/services", labelKey: "services", icon: Search },
   { href: "/articles", labelKey: "articles", icon: Newspaper },
-  { href: "/forum", labelKey: "forum", icon: MessageSquare },
+  // 井戸端会議：NEXT_PUBLIC_IDOBATA_NAV=1 で常設マップ版（/idobata）へ切替
+  { href: process.env.NEXT_PUBLIC_IDOBATA_NAV === "1" ? "/idobata" : "/forum", labelKey: "forum", icon: MessageSquare },
   { href: "/videos", labelKey: "videos", icon: Video },
   { href: "/events", labelKey: "events", icon: Calendar },
   { href: "/companies", labelKey: "companies", icon: Building2 },

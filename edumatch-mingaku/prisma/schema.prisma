@@ -461,6 +461,177 @@ model ForumSubCategory {
   @@map("forum_sub_categories")
 }
 
+/// Interop特設ページ専用カテゴリ（井戸端のコピー。本体フォーラムとは完全に別データ）
+model InteropCategory {
+  id            String               @id @default(uuid()) @db.Uuid
+  name          String
+  slug          String               @unique
+  description   String               @default("")
+  color         String               @default("#C9D4F6")
+  /// 中心に配置するインフォメーション等
+  is_primary    Boolean              @default(false)
+  sort_order    Int                  @default(0)
+  is_active     Boolean              @default(true)
+  created_at    DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime             @updatedAt @db.Timestamptz(6)
+  subCategories InteropSubCategory[]
+
+  @@map("interop_categories")
+}
+
+/// Interop特設ページ専用サブカテゴリ（カテゴリ配下）
+model InteropSubCategory {
+  id           String          @id @default(uuid()) @db.Uuid
+  category_id  String          @db.Uuid
+  category     InteropCategory @relation(fields: [category_id], references: [id], onDelete: Cascade)
+  name         String
+  slug         String          @unique
+  description  String          @default("")
+  sort_order   Int             @default(0)
+  is_active    Boolean         @default(true)
+  /// サテライト/掲示板の概要下にサムネ表示する参考URL（任意）
+  url          String          @default("")
+  /// 本体エデュマッチから自動抽出する種別（article/service/media/events-info）。空なら自動抽出オフ。
+  content_kinds String[]       @default([])
+  /// 自動抽出のキーワード上書き（空ならカテゴリ名＋サブカテゴリ名）
+  content_query String         @default("")
+  created_at   DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime        @updatedAt @db.Timestamptz(6)
+  posts        InteropPost[]
+  contentPins  InteropContentPin[]
+  boardTopics  InteropBoardTopic[]
+
+  @@map("interop_sub_categories")
+}
+
+/// サブカテゴリ配下の「トピック」。1件でも設定すると投稿前にトピック選択画面を挟む。
+/// トピック単位で参考URL・検索コンテンツ（kinds/query）を上書きできる。
+model InteropBoardTopic {
+  id              String             @id @default(uuid()) @db.Uuid
+  sub_category_id String             @db.Uuid
+  subCategory     InteropSubCategory @relation(fields: [sub_category_id], references: [id], onDelete: Cascade)
+  name            String
+  description     String             @default("")
+  /// 概要下にサムネ表示する参考URL（任意・サブカテゴリ設定より優先）
+  url             String             @default("")
+  /// 本体エデュマッチから検索して表示する種別（article/service/media/events-info）
+  content_kinds   String[]           @default([])
+  /// 検索キーワード（空ならサブカテゴリ名＋トピック名）
+  content_query   String             @default("")
+  sort_order      Int                @default(0)
+  is_active       Boolean            @default(true)
+  created_at      DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime           @updatedAt @db.Timestamptz(6)
+  posts           InteropPost[]
+
+  @@index([sub_category_id, sort_order])
+  @@map("interop_board_topics")
+}
+
+/// Interop特設の手動キュレーション（本体コンテンツのピン留め／除外。スナップショット保存）
+model InteropContentPin {
+  id              String             @id @default(uuid()) @db.Uuid
+  sub_category_id String             @db.Uuid
+  subCategory     InteropSubCategory @relation(fields: [sub_category_id], references: [id], onDelete: Cascade)
+  /// 由来（post/service/video/seminar_event）
+  source_type     String
+  /// 由来コンテンツのID（重複排除・除外判定に使用）
+  source_id       String
+  title           String
+  description     String             @default("")
+  thumbnail_url   String?
+  href            String
+  meta            String?
+  /// true = 自動抽出から該当source_idを除外するマーカー（手動追加ピンはfalse）
+  is_hidden       Boolean            @default(false)
+  rank_order      Int                @default(0)
+  created_at      DateTime           @default(now()) @db.Timestamptz(6)
+
+  @@index([sub_category_id, rank_order])
+  @@map("interop_content_pins")
+}
+
+/// Interop特設ページのサブカテゴリ掲示板（来場者が投稿。ログイン不要）
+model InteropPost {
+  id              String             @id @default(uuid()) @db.Uuid
+  sub_category_id String             @db.Uuid
+  subCategory     InteropSubCategory @relation(fields: [sub_category_id], references: [id], onDelete: Cascade)
+  /// 投稿者の表示名（未ログインの来場者が入力。空なら匿名）
+  author_name     String             @default("匿名")
+  /// 任意の所属・肩書き
+  author_role     String             @default("")
+  body            String
+  is_hidden       Boolean            @default(false)
+  /// 運営からのお知らせ・記事として上部に固定表示する
+  is_pinned       Boolean            @default(false)
+  /// AIが危険・不適切と判定し自動で非表示にした（管理画面で要確認）
+  auto_flagged    Boolean            @default(false)
+  /// AI判定の理由（管理者レビュー用）
+  flag_reason     String             @default("")
+  /// AIファシリテーターによる返信かどうか
+  is_ai_reply     Boolean            @default(false)
+  /// 元投稿ID（AIファシリテーター返信の場合のみセット）
+  parent_post_id  String?            @db.Uuid
+  parentPost      InteropPost?       @relation("InteropPostReplies", fields: [parent_post_id], references: [id], onDelete: Cascade)
+  replies         InteropPost[]      @relation("InteropPostReplies")
+  /// 所属トピック（サブカテゴリにトピックが設定されている場合のみセット）
+  topic_id        String?            @db.Uuid
+  topic           InteropBoardTopic? @relation(fields: [topic_id], references: [id], onDelete: SetNull)
+  created_at      DateTime           @default(now()) @db.Timestamptz(6)
+  likes           InteropPostLike[]
+
+  @@index([sub_category_id, created_at])
+  @@index([parent_post_id])
+  @@index([topic_id])
+  @@map("interop_posts")
+}
+
+/// Interop掲示板の投稿いいね（来場者はログイン不要・voter_key で端末単位に1回）
+model InteropPostLike {
+  id         String      @id @default(uuid()) @db.Uuid
+  post_id    String      @db.Uuid
+  post       InteropPost @relation(fields: [post_id], references: [id], onDelete: Cascade)
+  voter_key  String
+  created_at DateTime    @default(now()) @db.Timestamptz(6)
+
+  @@unique([post_id, voter_key])
+  @@index([post_id])
+  @@map("interop_post_likes")
+}
+
+/// Interop特設ページのサイト設定（テキスト・テーマ等のkey-value）
+model InteropSetting {
+  key        String   @id
+  value      Json
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+
+  @@map("interop_settings")
+}
+
+/// トップマップの28話題玉（旧 INTEROP_PRIORITY_TOPICS をDB管理化）。
+/// major(A〜F)で色グループ、axis_x/yで2軸配置、room_idで井戸端ルームに接続。
+model InteropTopic {
+  id         String   @id @default(uuid()) @db.Uuid
+  no         Int      @unique // 軸キー・既存番号
+  major      String   @default("F") // A〜F の色グループ
+  name       String // 玉のラベル（旧 category）
+  room_id    String   @default("") // /forum/{room_id}
+  topic1     String   @default("")
+  topic2     String   @default("")
+  topic3     String   @default("")
+  url        String   @default("") // (旧)玉単位の参考URL。現在は point_links を使用。
+  /// 各論点(topic1..3)に対応する参考リンク [{url, on}]。on=true でその論点の投稿ページにサムネ表示。
+  point_links Json    @default("[]")
+  axis_x     Float    @default(0) // -1..1（人間↔技術）
+  axis_y     Float    @default(0) // -1..1（現場↔制度）
+  sort_order Int      @default(0)
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+
+  @@map("interop_topics")
+}
+
 /// AI日次スキャンで選んだカテゴリ×サブカテゴリ向けコンテンツ
 model ForumCategoryContentCache {
   id              String           @id @default(uuid()) @db.Uuid
