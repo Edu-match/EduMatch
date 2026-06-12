@@ -53,6 +53,13 @@ function timeAgo(iso: string): string {
   return `${d}日前`;
 }
 
+/** 時間帯背景の上でも本文が読めるよう、投稿面は暗めの半透明＋ブラーに統一 */
+const POST_SURFACE = {
+  background: "rgba(8,11,32,0.86)",
+  backdropFilter: "blur(10px)",
+  WebkitBackdropFilter: "blur(10px)",
+} as const;
+
 /** サブカテゴリ別ページの掲示板（上＝コンテンツ、下＝投稿欄）。来場者はログイン不要で投稿。
  *  topic を渡すと「トピック別」掲示板になる（投稿・一覧・参考URL・検索コンテンツがトピック単位）。 */
 export function InteropBoard({
@@ -347,10 +354,10 @@ export function InteropBoard({
                 return (
                   <li key={p.id} id={`post-${p.id}`} className="scroll-mt-20 rounded-2xl border transition-all duration-500" style={
                     highlightId === p.id
-                      ? { borderColor: accent, background: `${accent}26`, boxShadow: `0 0 0 2px ${accent}, 0 0 22px ${accent}66` }
+                      ? { ...POST_SURFACE, borderColor: accent, background: `linear-gradient(135deg, rgba(8,11,32,0.92) 0%, ${accent}22 100%)`, boxShadow: `0 0 0 2px ${accent}, 0 0 22px ${accent}66` }
                       : p.isPinned
-                        ? { borderColor: `${accent}66`, background: `${accent}14` }
-                        : { borderColor: "rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)" }
+                        ? { ...POST_SURFACE, borderColor: `${accent}66`, background: `linear-gradient(135deg, rgba(8,11,32,0.88) 0%, ${accent}16 100%)` }
+                        : { ...POST_SURFACE, borderColor: "rgba(255,255,255,0.14)" }
                   }>
                     <div className="px-4 py-3">
                       <div className="flex items-center gap-2 text-xs text-white/55">
@@ -387,15 +394,15 @@ export function InteropBoard({
 
                     {/* ユーザー返信一覧 */}
                     {(p.userReplies ?? []).length > 0 && (
-                      <div className="mx-3 mb-2 space-y-2 border-l-2 border-white/10 pl-3">
+                      <div className="mx-3 mb-2 space-y-2 rounded-xl border border-white/8 bg-black/20 px-3 py-2">
                         {(p.userReplies ?? []).map((r) => (
                           <div key={r.id}>
-                            <div className="flex items-center gap-1.5 text-[10.5px] text-white/50">
-                              <span className="font-bold text-white/75">{r.authorName}</span>
-                              {r.authorRole && <span className="text-white/35">· {r.authorRole}</span>}
+                            <div className="flex items-center gap-1.5 text-[10.5px] text-white/55">
+                              <span className="font-bold text-white/85">{r.authorName}</span>
+                              {r.authorRole && <span className="text-white/45">· {r.authorRole}</span>}
                               <span className="ml-auto">{timeAgo(r.postedAt)}</span>
                             </div>
-                            <p className="mt-0.5 whitespace-pre-wrap break-words text-xs text-white/70">{r.body}</p>
+                            <p className="mt-0.5 whitespace-pre-wrap break-words text-xs leading-relaxed text-white/82">{r.body}</p>
                           </div>
                         ))}
                       </div>
@@ -403,7 +410,10 @@ export function InteropBoard({
 
                     {/* インライン返信フォーム */}
                     {replyingToId === p.id && (
-                      <div className="mx-3 mb-3 space-y-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5">
+                      <div
+                        className="mx-3 mb-3 space-y-1.5 rounded-xl border border-white/12 px-3 py-2.5"
+                        style={POST_SURFACE}
+                      >
                         {(!name.trim() || !role.trim()) && (
                           <p className="text-[11px] text-amber-300/80">下のフォームでニックネームと肩書きを入力してから返信できます。</p>
                         )}
@@ -432,17 +442,18 @@ export function InteropBoard({
 
                     {p.aiReply && (
                       <div
-                        className="mx-3 mb-3 rounded-xl px-3.5 py-2.5"
+                        className="mx-3 mb-3 rounded-xl border px-3.5 py-2.5"
                         style={{
-                          background: "rgba(100,140,255,0.09)",
-                          borderTop: "1px solid rgba(120,160,255,0.18)",
+                          ...POST_SURFACE,
+                          background: "rgba(10,14,42,0.92)",
+                          borderColor: "rgba(120,160,255,0.28)",
                         }}
                       >
-                        <div className="mb-1 flex items-center gap-1.5 text-[10.5px] font-bold text-indigo-300/80">
+                        <div className="mb-1 flex items-center gap-1.5 text-[10.5px] font-bold text-indigo-200/90">
                           <Bot className="h-3 w-3" /> AIファシリテーター
-                          <span className="ml-auto text-white/30 font-normal">{timeAgo(p.aiReply.postedAt)}</span>
+                          <span className="ml-auto font-normal text-white/40">{timeAgo(p.aiReply.postedAt)}</span>
                         </div>
-                        <p className="whitespace-pre-wrap break-words text-xs leading-relaxed text-white/75">
+                        <p className="whitespace-pre-wrap break-words text-xs leading-relaxed text-white/88">
                           {p.aiReply.body}
                         </p>
                       </div>
