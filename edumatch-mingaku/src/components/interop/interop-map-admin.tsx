@@ -153,7 +153,7 @@ export function InteropMapAdmin() {
         >
           {openSat ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           サテライト・掲示板投稿
-          <span className="text-[11px] font-normal text-white/40">最新ニュース／登壇者への質問／ご意見BOX</span>
+          <span className="text-[11px] font-normal text-white/40">最新ニュース／登壇者への質問／ご意見BOX＋インタロップ配下</span>
         </button>
         {openSat && <div className="border-t border-white/10 p-3"><InteropContentAdmin /></div>}
       </div>

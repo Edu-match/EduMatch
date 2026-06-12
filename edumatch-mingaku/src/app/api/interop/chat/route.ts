@@ -12,8 +12,8 @@ const USAGE_LIMIT = 15;
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 const USAGE_COOKIE = "interop_chat_usage";
 /** 既定モデル（環境変数 INTEROP_CHAT_MODEL で上書き可。
- *  もしこのモデルIDがOpenAI側に無くエラーになる場合は、環境変数で gpt-4o-mini 等に切替可能） */
-const INTEROP_CHAT_MODEL = process.env.INTEROP_CHAT_MODEL?.trim() || "gpt-5.4-mini";
+ *  注意: 既定値は実在するモデルIDにすること（"gpt-5.4-mini" は存在せずエラーになる） */
+const INTEROP_CHAT_MODEL = process.env.INTEROP_CHAT_MODEL?.trim() || "gpt-4o-mini";
 const MAX_INPUT_CHARS = 1500;
 
 type MessageRole = "user" | "assistant";
@@ -137,7 +137,7 @@ export async function POST(req: NextRequest) {
 
   let systemPrompt = SYSTEM_PROMPT;
   // 来場者が今見ている場所（カテゴリ/論点）を文脈として渡す
-  const viewing = typeof body.context === "string" ? body.context.trim().slice(0, 200) : "";
+  const viewing = typeof body.context === "string" ? body.context.trim().slice(0, 400) : "";
   if (viewing) {
     systemPrompt += `\n\n## 来場者が今見ているページ\n来場者は現在「${viewing}」を閲覧しています。質問が曖昧なときはこの文脈を踏まえて解釈し、関連づけて答えてください。`;
   }

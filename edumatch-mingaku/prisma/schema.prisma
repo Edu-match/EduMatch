@@ -499,8 +499,33 @@ model InteropSubCategory {
   updated_at   DateTime        @updatedAt @db.Timestamptz(6)
   posts        InteropPost[]
   contentPins  InteropContentPin[]
+  boardTopics  InteropBoardTopic[]
 
   @@map("interop_sub_categories")
+}
+
+/// サブカテゴリ配下の「トピック」。1件でも設定すると投稿前にトピック選択画面を挟む。
+/// トピック単位で参考URL・検索コンテンツ（kinds/query）を上書きできる。
+model InteropBoardTopic {
+  id              String             @id @default(uuid()) @db.Uuid
+  sub_category_id String             @db.Uuid
+  subCategory     InteropSubCategory @relation(fields: [sub_category_id], references: [id], onDelete: Cascade)
+  name            String
+  description     String             @default("")
+  /// 概要下にサムネ表示する参考URL（任意・サブカテゴリ設定より優先）
+  url             String             @default("")
+  /// 本体エデュマッチから検索して表示する種別（article/service/media/events-info）
+  content_kinds   String[]           @default([])
+  /// 検索キーワード（空ならサブカテゴリ名＋トピック名）
+  content_query   String             @default("")
+  sort_order      Int                @default(0)
+  is_active       Boolean            @default(true)
+  created_at      DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime           @updatedAt @db.Timestamptz(6)
+  posts           InteropPost[]
+
+  @@index([sub_category_id, sort_order])
+  @@map("interop_board_topics")
 }
 
 /// Interop特設の手動キュレーション（本体コンテンツのピン留め／除外。スナップショット保存）
@@ -549,10 +574,14 @@ model InteropPost {
   parent_post_id  String?            @db.Uuid
   parentPost      InteropPost?       @relation("InteropPostReplies", fields: [parent_post_id], references: [id], onDelete: Cascade)
   replies         InteropPost[]      @relation("InteropPostReplies")
+  /// 所属トピック（サブカテゴリにトピックが設定されている場合のみセット）
+  topic_id        String?            @db.Uuid
+  topic           InteropBoardTopic? @relation(fields: [topic_id], references: [id], onDelete: SetNull)
   created_at      DateTime           @default(now()) @db.Timestamptz(6)
 
   @@index([sub_category_id, created_at])
   @@index([parent_post_id])
+  @@index([topic_id])
   @@map("interop_posts")
 }
 

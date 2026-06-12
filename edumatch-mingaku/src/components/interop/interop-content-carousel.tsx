@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { ExternalLink, ImageIcon, Sparkles, X } from "lucide-react";
 import type { InteropContentItem } from "@/lib/interop-content";
 
-/** サブカテゴリの関連コンテンツ（本体エデュマッチ）をサムネ付きカードで横スクロール表示 */
-export function InteropContentCarousel({ subId, accent }: { subId: string; accent: string }) {
+/** サブカテゴリ／トピックの関連コンテンツ（本体エデュマッチから検索）をサムネ付きカードで横スクロール表示 */
+export function InteropContentCarousel({ subId, topicId, accent }: { subId: string; topicId?: string; accent: string }) {
   const [items, setItems] = useState<InteropContentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [active, setActive] = useState<InteropContentItem | null>(null);
@@ -13,13 +13,13 @@ export function InteropContentCarousel({ subId, accent }: { subId: string; accen
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fetch(`/api/interop/content?subCategoryId=${subId}`)
+    fetch(`/api/interop/content?subCategoryId=${subId}${topicId ? `&topicId=${topicId}` : ""}`)
       .then((r) => r.json())
       .then((d) => { if (!cancelled && Array.isArray(d.items)) setItems(d.items); })
       .catch(console.error)
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [subId]);
+  }, [subId, topicId]);
 
   // 読み込み中で何もない場合や0件のときはセクションごと非表示
   if (!loading && items.length === 0) return null;

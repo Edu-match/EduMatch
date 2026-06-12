@@ -5,8 +5,8 @@ import { generateInteropAiReplyText, INTEROP_AI_FACILITATOR_NAME } from "@/lib/f
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-const MIN_DELAY_MS = 2 * 60 * 60 * 1000;
-const MAX_DELAY_MS = 5 * 60 * 60 * 1000;
+// AI返信は投稿直後に posts API 側で即時付与する方針。
+// この cron は「即時生成に失敗した投稿」を拾うフォールバック（遅延なし・直近24h対象）。
 const SCAN_WINDOW_MS = 24 * 60 * 60 * 1000;
 const BATCH_LIMIT = 8;
 
@@ -17,17 +17,9 @@ function verifyCron(req: NextRequest): boolean {
   return auth === `Bearer ${secret}`;
 }
 
-function replyDelayForPost(postId: string): number {
-  let h = 0;
-  for (let i = 0; i < postId.length; i++) {
-    h = (h * 31 + postId.charCodeAt(i)) >>> 0;
-  }
-  return MIN_DELAY_MS + (h % (MAX_DELAY_MS - MIN_DELAY_MS));
-}
-
 /**
- * 定期ジョブ：Interop特設ページの投稿に対してAIファシリテーター返信を付与する。
- * - 2〜5時間経過 & まだAI返信なし の投稿を対象
+ * 定期ジョブ：AI返信がまだ付いていないInterop投稿に返信を付与する（フォールバック）。
+ * - 直近24h以内 & まだAI返信なし の投稿を対象（遅延なし）
  * - 返信への返信はしない（parent_post_id IS NULL のもののみ対象）
  */
 export async function GET(req: NextRequest) {
@@ -37,20 +29,20 @@ export async function GET(req: NextRequest) {
 
   const now = Date.now();
   const windowStart = new Date(now - SCAN_WINDOW_MS);
-  const dueBefore = new Date(now - MIN_DELAY_MS);
 
   const candidates = await prisma.interopPost.findMany({
     where: {
       is_hidden: false,
       is_ai_reply: false,
       parent_post_id: null,
-      created_at: { gte: windowStart, lte: dueBefore },
+      created_at: { gte: windowStart },
       author_name: { not: INTEROP_AI_FACILITATOR_NAME },
       replies: { none: {} },
     },
     select: {
       id: true,
       body: true,
+      topic_id: true,
       created_at: true,
       subCategory: {
         select: {
@@ -64,9 +56,7 @@ export async function GET(req: NextRequest) {
     take: 50,
   });
 
-  const due = candidates
-    .filter((p) => now - p.created_at.getTime() >= replyDelayForPost(p.id))
-    .slice(0, BATCH_LIMIT);
+  const due = candidates.slice(0, BATCH_LIMIT);
 
   let created = 0;
   for (const post of due) {
@@ -99,6 +89,7 @@ export async function GET(req: NextRequest) {
     await prisma.interopPost.create({
       data: {
         sub_category_id: post.subCategory.id,
+        topic_id: post.topic_id,
         parent_post_id: post.id,
         is_ai_reply: true,
         author_name: INTEROP_AI_FACILITATOR_NAME,

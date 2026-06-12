@@ -139,7 +139,10 @@ function computeAxisPlacements(
   });
   // 反発で被り回避（y方向は%が大きいので圧縮して等方近似）。
   // 必要間隔は2玉の占有半径の和（大きい玉ほど広く確保）。
-  for (let k = 0; k < 220; k++) {
+  // ★毎イテレーションで枠内クランプも行う：最後に一度だけクランプすると
+  //   端に押し込まれた玉同士が再び重なるため、「クランプ→再反発」を繰り返して
+  //   枠内で重なりゼロの配置に収束させる。
+  for (let k = 0; k < 260; k++) {
     // 玉どうしの反発
     for (let i = 0; i < pts.length; i++) {
       for (let j = i + 1; j < pts.length; j++) {
@@ -171,6 +174,12 @@ function computeAxisPlacements(
           pts[i].y += ((dy / d) * push) / ys;
         }
       }
+    }
+    // 枠内クランプ（ヘッダー/フッター/AIバーに玉が潜らないようにしたうえで、
+    // 次イテレーションの反発で玉同士の重なりを解消する）
+    for (let i = 0; i < pts.length; i++) {
+      pts[i].x = Math.max(xMin, Math.min(xMax, pts[i].x));
+      pts[i].y = Math.max(yMin, Math.min(yMax, pts[i].y));
     }
   }
   return pts.map((p) => {
@@ -268,8 +277,8 @@ type MapMetrics = {
 };
 // スマホは1画面に玉が多すぎてゴチャつくため、縦に大きく展開して画面あたりの玉数を減らし、
 // 下へパンして探索できるようにする。
-const METRICS_DESKTOP: MapMetrics = { base: 40, max: 150, refW: 1300, labelMargin: 4.2, centerSize: 132, satOrb: 84, centerR: 18, satR: 13, ys: 0.6, yMin: 18, yMax: 91, xMin: 10, xMax: 88, panLimY: 420 };
-const METRICS_MOBILE: MapMetrics  = { base: 26, max: 70,  refW: 430,  labelMargin: 4.7, centerSize: 88,  satOrb: 56, centerR: 17, satR: 13, ys: 0.5, yMin: 16, yMax: 175, xMin: 7, xMax: 93, panLimY: 940 };
+const METRICS_DESKTOP: MapMetrics = { base: 40, max: 150, refW: 1300, labelMargin: 4.8, centerSize: 132, satOrb: 84, centerR: 18, satR: 14, ys: 0.6, yMin: 19, yMax: 90, xMin: 10, xMax: 88, panLimY: 420 };
+const METRICS_MOBILE: MapMetrics  = { base: 26, max: 70,  refW: 430,  labelMargin: 5.2, centerSize: 88,  satOrb: 56, centerR: 17, satR: 14, ys: 0.5, yMin: 17, yMax: 175, xMin: 7, xMax: 93, panLimY: 940 };
 
 
 function PuyoBubble({
@@ -670,8 +679,8 @@ export function InteropPuyoBubbleMap({
     const list: Obstacle[] = [{ x: CENTER_POS.x, y: CENTER_POS.y, r: m.centerR }];
     for (const s of satellites) {
       const p = SATELLITE_POS[s.place];
-      // 下サテラはラベルが下に伸びるぶん少し広めに確保
-      list.push({ x: p.x, y: p.y, r: s.place === "bottom" ? m.satR + 1.5 : m.satR });
+      // サテライトはラベルが下に伸びる（mt-3＋タグ）ぶん広めに確保。下サテラはさらに余裕を持つ
+      list.push({ x: p.x, y: p.y, r: s.place === "bottom" ? m.satR + 3 : m.satR + 1 });
     }
     return list;
   }, [satellites, m.centerR, m.satR]);
@@ -871,8 +880,8 @@ export function InteropPuyoBubbleMap({
               left: `calc(${p.pos[0]}% + ${p.xExtra}px)`,
               // 玉本体（サイズ可変）＋件数バッジ＋ラベルを十分に避ける縦クリアランス
               top: isAbove
-                ? `calc(${p.pos[1]}% - ${p.size / 2 + 18}px)`
-                : `calc(${p.pos[1]}% + ${p.size / 2 + 18}px)`,
+                ? `calc(${p.pos[1]}% - ${p.size / 2 + 26}px)`
+                : `calc(${p.pos[1]}% + ${p.size / 2 + 26}px)`,
               animation: isAbove
                 ? "commentPopCloudAbove 5.0s ease-in-out forwards"
                 : "commentPopCloudBelow 5.0s ease-in-out forwards",

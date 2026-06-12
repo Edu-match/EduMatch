@@ -1,28 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { LayoutGrid, Settings, ShieldAlert, Sparkles } from "lucide-react";
+import { LayoutGrid, Settings, ShieldAlert } from "lucide-react";
 import { InteropSettingsEditor } from "@/components/interop/interop-settings-editor";
-import { InteropContentCurator } from "@/components/interop/interop-content-curator";
 import { InteropModerationAdmin } from "@/components/interop/interop-moderation-admin";
 import { InteropMapAdmin } from "@/components/interop/interop-map-admin";
 
-type Tab = "settings" | "map" | "content" | "moderation";
+type Tab = "settings" | "map" | "moderation";
 
 const TABS: { key: Tab; label: string; icon: typeof Settings }[] = [
   { key: "map", label: "マップ管理", icon: LayoutGrid },
-  { key: "content", label: "コンテンツ", icon: Sparkles },
   { key: "moderation", label: "モデレーション", icon: ShieldAlert },
   { key: "settings", label: "サイト設定", icon: Settings },
 ];
 
 export function InteropAdminTabs() {
   const [tab, setTab] = useState<Tab>("map");
-  const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
-  const flash = (text: string, ok: boolean) => {
-    setMsg({ text, ok });
-    if (ok) setTimeout(() => setMsg(null), 2500);
-  };
 
   return (
     <div className="space-y-5">
@@ -46,14 +39,7 @@ export function InteropAdminTabs() {
         })}
       </div>
 
-      {msg && (
-        <p className={`rounded-xl border px-4 py-2 text-sm font-medium ${msg.ok ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200" : "border-red-400/30 bg-red-400/10 text-red-200"}`}>
-          {msg.text}
-        </p>
-      )}
-
       {tab === "map" && <InteropMapAdmin />}
-      {tab === "content" && <InteropContentCurator onMsg={flash} />}
       {tab === "moderation" && <InteropModerationAdmin />}
       {tab === "settings" && <InteropSettingsEditor />}
     </div>

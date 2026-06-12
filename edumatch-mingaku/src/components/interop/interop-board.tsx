@@ -51,13 +51,16 @@ function timeAgo(iso: string): string {
   return `${d}日前`;
 }
 
-/** サブカテゴリ別ページの掲示板（上＝コンテンツ、下＝投稿欄）。来場者はログイン不要で投稿。 */
+/** サブカテゴリ別ページの掲示板（上＝コンテンツ、下＝投稿欄）。来場者はログイン不要で投稿。
+ *  topic を渡すと「トピック別」掲示板になる（投稿・一覧・参考URL・検索コンテンツがトピック単位）。 */
 export function InteropBoard({
   sub,
+  topic,
   accent,
   themeMode = "auto",
 }: {
   sub: { id: string; name: string; description: string; url?: string; categoryId: string; categoryName: string; categorySlug?: string };
+  topic?: { id: string; name: string; description: string; url?: string };
   accent: string;
   themeMode?: InteropThemeMode;
 }) {
@@ -81,13 +84,13 @@ export function InteropBoard({
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fetch(`/api/interop/posts?subCategoryId=${sub.id}`)
+    fetch(`/api/interop/posts?subCategoryId=${sub.id}${topic ? `&topicId=${topic.id}` : ""}`)
       .then((r) => r.json())
       .then((d) => { if (!cancelled && Array.isArray(d.posts)) setPosts(d.posts); })
       .catch(console.error)
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [sub.id]);
+  }, [sub.id, topic?.id]);
 
   // 投稿読み込み後に該当投稿へスクロール＆一時ハイライト
   useEffect(() => {
@@ -134,6 +137,7 @@ export function InteropBoard({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           subCategoryId: sub.id,
+          topicId: topic?.id,
           authorName: name.trim(),
           authorRole: role.trim(),
           postBody: trimmed,
@@ -163,9 +167,27 @@ export function InteropBoard({
       <InteropBackdrop themeMode={themeMode} />
 
       <div className="relative z-10 mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col px-4 pb-28 pt-4 sm:px-6">
-        {/* 戻る（大カテゴリ／マップ） */}
+        {/* 戻る（トピック一覧／大カテゴリ／マップ） */}
         <div className="flex flex-wrap items-center gap-2">
-          {isSatellite ? (
+          {topic ? (
+            <>
+              <Link
+                href={`/interop/t/${sub.id}`}
+                prefetch={false}
+                className="inline-flex w-fit items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-bold text-white/85 backdrop-blur transition-colors hover:brightness-110"
+                style={{ background: `${accent}22`, borderColor: `${accent}66` }}
+              >
+                <ArrowLeft className="h-3.5 w-3.5" /> トピック一覧に戻る
+              </Link>
+              <Link
+                href="/interop"
+                prefetch={false}
+                className="inline-flex w-fit items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.06] px-3.5 py-1.5 text-xs font-bold text-white/70 backdrop-blur transition-colors hover:bg-white/12 hover:text-white"
+              >
+                マップに戻る
+              </Link>
+            </>
+          ) : isSatellite ? (
             // 直行サテライト：トップマップへ直接戻る（/interop は両ドメインで正しく解決される）
             <Link
               href="/interop"
@@ -207,20 +229,21 @@ export function InteropBoard({
           }}
         >
           <div className="flex items-center gap-1.5 text-[11px] font-bold" style={{ color: accent }}>
-            <MessageCircle className="h-3.5 w-3.5" /> {sub.categoryName}
+            <MessageCircle className="h-3.5 w-3.5" /> {topic ? `${sub.categoryName}｜${sub.name}` : sub.categoryName}
           </div>
-          <h1 className="mt-1 text-2xl font-bold leading-tight">{sub.name}</h1>
-          {sub.description && (
-            <p className="mt-2 text-sm leading-relaxed text-white/70">{sub.description}</p>
+          <h1 className="mt-1 text-2xl font-bold leading-tight">{topic ? topic.name : sub.name}</h1>
+          {(topic ? topic.description : sub.description) && (
+            <p className="mt-2 text-sm leading-relaxed text-white/70">{topic ? topic.description : sub.description}</p>
           )}
         </header>
 
-        {/* ════ 概要下の参考リンク（サムネ） ════ */}
-        {sub.url && (() => {
-          const { img, domain } = linkPreview(sub.url);
+        {/* ════ 概要下の参考リンク（サムネ）。トピック側URLがあれば優先 ════ */}
+        {(topic?.url || sub.url) && (() => {
+          const refUrl = (topic?.url || sub.url) as string;
+          const { img, domain } = linkPreview(refUrl);
           return (
             <a
-              href={sub.url}
+              href={refUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="group mt-3 block max-w-md overflow-hidden rounded-2xl border border-white/12 bg-white/[0.04] transition hover:border-white/25"
@@ -243,8 +266,8 @@ export function InteropBoard({
           );
         })()}
 
-        {/* ════ 関連コンテンツ（本体エデュマッチ） ════ */}
-        <InteropContentCarousel subId={sub.id} accent={accent} />
+        {/* ════ 関連コンテンツ（本体エデュマッチから検索） ════ */}
+        <InteropContentCarousel subId={sub.id} topicId={topic?.id} accent={accent} />
 
         {/* ════ その下：投稿一覧 ════ */}
         <div ref={listTopRef} className="mt-6 flex items-center justify-between">
@@ -367,8 +390,16 @@ export function InteropBoard({
         </div>
       </div>
 
-      {/* どのページでもいつでも質問できるAIチャット（下部に投稿バーがあるので少し上げる） */}
-      <InteropChatWidget mobileRaise context={`${sub.categoryName}｜${sub.name}`} />
+      {/* どのページでもいつでも質問できるAIチャット（下部に投稿バーがあるので少し上げる）。
+          今見ているページ（トピック・概要）をアタッチとしてAIに渡せる */}
+      <InteropChatWidget
+        mobileRaise
+        context={
+          topic
+            ? `${sub.categoryName}｜${sub.name}｜トピック「${topic.name}」${topic.description ? `（${topic.description}）` : ""}`
+            : `${sub.categoryName}｜${sub.name}${sub.description ? `（${sub.description}）` : ""}`
+        }
+      />
     </main>
   );
 }

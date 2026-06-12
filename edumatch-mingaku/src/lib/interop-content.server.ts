@@ -54,7 +54,8 @@ function candidateToItem(c: ContentCandidate): InteropContentItem {
  */
 export async function getInteropContent(
   subCategoryId: string,
-  limit = 8
+  limit = 8,
+  topicId?: string
 ): Promise<InteropContentItem[]> {
   try {
     const sub = await prisma.interopSubCategory.findUnique({
@@ -62,6 +63,14 @@ export async function getInteropContent(
       include: { category: { select: { name: true } } },
     });
     if (!sub) return [];
+
+    // トピック単位の検索設定（あればサブカテゴリ設定を上書き）
+    const topic = topicId
+      ? await prisma.interopBoardTopic.findFirst({
+          where: { id: topicId, sub_category_id: subCategoryId },
+          select: { name: true, content_kinds: true, content_query: true },
+        })
+      : null;
 
     const pins = await prisma.interopContentPin.findMany({
       where: { sub_category_id: subCategoryId },
@@ -87,11 +96,13 @@ export async function getInteropContent(
     const excludedIds = new Set(pins.filter((p) => p.is_hidden).map((p) => p.source_id));
     const pinnedSourceIds = new Set(pinnedItems.map((p) => p.sourceId));
 
-    // 自動抽出
-    const kinds = (sub.content_kinds ?? []) as string[];
+    // 検索抽出（トピック設定があればそちらを優先）
+    const kinds = ((topic ? topic.content_kinds : sub.content_kinds) ?? []) as string[];
     let autoItems: InteropContentItem[] = [];
     if (kinds.length > 0) {
-      const query = sub.content_query?.trim() || `${sub.category.name} ${sub.name}`;
+      const query = topic
+        ? topic.content_query?.trim() || `${sub.name} ${topic.name}`
+        : sub.content_query?.trim() || `${sub.category.name} ${sub.name}`;
       const lists = await Promise.all(
         kinds.map((k) => fetchContentCandidates(k, 48).catch(() => [] as ContentCandidate[]))
       );

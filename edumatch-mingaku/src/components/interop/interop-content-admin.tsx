@@ -6,6 +6,7 @@ import {
   ChevronRight,
   Eye,
   EyeOff,
+  ListTree,
   Loader2,
   MessageSquare,
   Pencil,
@@ -52,6 +53,28 @@ type Post = {
   isHidden: boolean;
   postedAt: string;
 };
+type BoardTopic = {
+  id: string;
+  subCategoryId: string;
+  name: string;
+  description: string;
+  url: string;
+  contentKinds: string[];
+  contentQuery: string;
+  sortOrder: number;
+  isActive: boolean;
+};
+
+/** トップマップから直行できる3サテライトの判定（slug優先・名前ヒントでフォールバック） */
+const SATELLITE_DEFS = [
+  { slug: "interop-latest-news", hints: ["最新ニュース", "ニュース"] },
+  { slug: "interop-speaker-qa", hints: ["登壇者への質問", "登壇", "質問"] },
+  { slug: "interop-opinion-box", hints: ["ご意見BOX", "ご意見", "意見"] },
+];
+
+function isSatelliteSub(s: SubCategory): boolean {
+  return SATELLITE_DEFS.some((d) => s.slug === d.slug || d.hints.some((h) => s.name.includes(h)));
+}
 
 async function api(url: string, opts?: RequestInit) {
   const res = await fetch(url, { credentials: "include", ...opts });
@@ -60,11 +83,13 @@ async function api(url: string, opts?: RequestInit) {
 }
 
 export function InteropContentAdmin() {
-  // 中心インタロップ直下のサテライト（サブカテゴリ）と、その掲示板投稿だけを管理する。
-  // 展示カテゴリ（ブース）構成の管理はUIから外している。
+  // 中心インタロップ直下のサブカテゴリを管理する。
+  // 3サテライト（最新ニュース／登壇者への質問／ご意見BOX）は直下に、
+  // それ以外は「インタロップ」階層の下にまとめて表示する。
   const [interopCatId, setInteropCatId] = useState<string | null>(null);
   const [sats, setSats] = useState<SubCategory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [openInterop, setOpenInterop] = useState(false);
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
 
   const flash = (text: string, ok: boolean) => {
@@ -99,7 +124,8 @@ export function InteropContentAdmin() {
 
       <div>
         <p className="mb-3 text-xs text-white/45">
-          各サテライトを開くと、参考リンク（概要下にサムネ表示）・投稿管理ができます。下の「サテライトを追加」で新規追加。
+          各ページを開くと、トピック・参考リンク（概要下にサムネ表示）・検索コンテンツ・投稿の管理ができます。
+          トピックを1件でも設定すると、来場者は「トピック選択 → 投稿ページ」の順に進みます（未設定なら直接投稿ページ）。
         </p>
         {loading ? (
           <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-white/50" /></div>
@@ -109,10 +135,39 @@ export function InteropContentAdmin() {
           </p>
         ) : (
           <div className="space-y-2">
-            {sats.map((s) => (
+            {/* 3サテライトは直下に表示 */}
+            {sats.filter(isSatelliteSub).map((s) => (
               <SubRow key={s.id} sub={s} onChanged={load} onMsg={flash} />
             ))}
-            <AddSubForm categoryId={interopCatId} count={sats.length} onAdded={load} onMsg={flash} />
+
+            {/* それ以外は「インタロップ」階層の下へ */}
+            <div className="rounded-xl border border-white/10 bg-white/[0.03]">
+              <button
+                type="button"
+                onClick={() => setOpenInterop((v) => !v)}
+                className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm font-bold text-white/85"
+              >
+                {openInterop ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                インタロップ
+                <span className="text-[11px] font-normal text-white/40">
+                  サテライト以外のページ（{sats.filter((s) => !isSatelliteSub(s)).length}件）
+                </span>
+              </button>
+              {openInterop && (
+                <div className="space-y-2 border-t border-white/10 p-3">
+                  {sats.filter((s) => !isSatelliteSub(s)).length === 0 ? (
+                    <p className="text-xs text-white/40">ページはまだありません。下のフォームから追加できます。</p>
+                  ) : (
+                    <ul className="space-y-1.5">
+                      {sats.filter((s) => !isSatelliteSub(s)).map((s) => (
+                        <SubRow key={s.id} sub={s} onChanged={load} onMsg={flash} />
+                      ))}
+                    </ul>
+                  )}
+                  <AddSubForm categoryId={interopCatId} count={sats.length} onAdded={load} onMsg={flash} />
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -257,6 +312,7 @@ function CategoryRow({ cat, subs, open, onToggle, onChanged, onMsg }: {
 function SubRow({ sub, onChanged, onMsg }: { sub: SubCategory; onChanged: () => void; onMsg: (t: string, ok: boolean) => void }) {
   const [editing, setEditing] = useState(false);
   const [showPosts, setShowPosts] = useState(false);
+  const [showTopics, setShowTopics] = useState(false);
   const [name, setName] = useState(sub.name);
   const [desc, setDesc] = useState(sub.description);
   const [url, setUrl] = useState(sub.url ?? "");
@@ -283,6 +339,9 @@ function SubRow({ sub, onChanged, onMsg }: { sub: SubCategory; onChanged: () => 
     <li className="rounded-lg border border-white/10 bg-white/[0.04] overflow-hidden">
       <div className="flex items-center gap-2 px-3 py-1.5 text-sm">
         <span className="flex-1 text-white/90">{sub.name}</span>
+        <button type="button" onClick={() => setShowTopics((v) => !v)} className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-white/40 hover:text-white" title="トピックを管理（設定すると投稿前に選択画面が出ます）">
+          <ListTree className="h-3.5 w-3.5" /> トピック
+        </button>
         <button type="button" onClick={() => setShowPosts((v) => !v)} className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-white/40 hover:text-white" title="投稿・記事を管理">
           <MessageSquare className="h-3.5 w-3.5" /> 投稿
         </button>
@@ -300,7 +359,7 @@ function SubRow({ sub, onChanged, onMsg }: { sub: SubCategory; onChanged: () => 
           <label className="block text-xs"><span className="mb-1 block text-white/55">参考リンクURL（概要下にサムネ表示）</span>
             <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." className={`h-8 w-full text-xs ${darkInput}`} /></label>
           <div className="rounded-lg border border-white/10 bg-white/[0.04] p-2">
-            <p className="mb-1.5 text-[11px] font-semibold text-white/55">自動コンテンツ（本体から関連を引っ張る）</p>
+            <p className="mb-1.5 text-[11px] font-semibold text-white/55">検索コンテンツ（本体エデュマッチから検索して表示。トピック側に設定があればそちらを優先）</p>
             <div className="mb-1.5 flex flex-wrap gap-1.5">
               {CONTENT_KIND_OPTIONS.map((k) => {
                 const on = kinds.includes(k.value);
@@ -320,7 +379,149 @@ function SubRow({ sub, onChanged, onMsg }: { sub: SubCategory; onChanged: () => 
             {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}保存</Button>
         </div>
       )}
+      {showTopics && <TopicManager subId={sub.id} onMsg={onMsg} />}
       {showPosts && <PostManager subId={sub.id} onMsg={onMsg} />}
+    </li>
+  );
+}
+
+/* ─────────── トピックマネージャ ───────────
+ * サブカテゴリ配下のトピック管理。1件でも設定すると来場者は
+ * 「トピック選択 → 投稿ページ」の順になる。トピック単位で
+ * 参考URL・検索コンテンツ（kinds/query）を上書きできる。 */
+function TopicManager({ subId, onMsg }: { subId: string; onMsg: (t: string, ok: boolean) => void }) {
+  const [topics, setTopics] = useState<BoardTopic[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newName, setNewName] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const { data } = await api(`/api/interop/board-topics?subCategoryId=${subId}&all=true`);
+    setTopics((data.topics ?? []) as BoardTopic[]);
+    setLoading(false);
+  }, [subId]);
+  useEffect(() => { load(); }, [load]);
+
+  const add = async () => {
+    if (!newName.trim()) return;
+    setBusy(true);
+    const { ok } = await api("/api/interop/board-topics", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ subCategoryId: subId, name: newName, sortOrder: topics.length }),
+    });
+    setBusy(false);
+    if (ok) { onMsg(`トピック「${newName}」を追加しました。`, true); setNewName(""); load(); }
+    else onMsg("トピックの追加に失敗しました。", false);
+  };
+
+  return (
+    <div className="space-y-2 border-t border-white/10 bg-white/[0.04] px-3 py-3">
+      <p className="text-xs font-semibold text-white/80">
+        トピック
+        <span className="ml-1.5 font-normal text-white/40">
+          1件でも設定すると、来場者は「トピック選択 → 投稿ページ」の順になります
+        </span>
+      </p>
+      {loading ? (
+        <div className="flex justify-center py-3"><Loader2 className="h-4 w-4 animate-spin text-white/40" /></div>
+      ) : topics.length === 0 ? (
+        <p className="text-xs text-white/40">トピックはまだありません（来場者は直接投稿ページに入ります）。</p>
+      ) : (
+        <ul className="space-y-1.5">
+          {topics.map((t) => (
+            <TopicRow key={t.id} topic={t} onChanged={load} onMsg={onMsg} />
+          ))}
+        </ul>
+      )}
+      <div className="flex items-end gap-2 pt-1">
+        <label className="flex-1 text-xs"><span className="mb-1 block text-white/55">新しいトピック名</span>
+          <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="例：生成AIと授業づくり" className={`h-8 text-xs ${darkInput}`} /></label>
+        <Button size="sm" variant="outline" onClick={add} disabled={busy} className="h-8 gap-1 border-white/15 text-xs text-white/80 hover:bg-white/10">
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} 追加
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function TopicRow({ topic, onChanged, onMsg }: { topic: BoardTopic; onChanged: () => void; onMsg: (t: string, ok: boolean) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(topic.name);
+  const [desc, setDesc] = useState(topic.description);
+  const [url, setUrl] = useState(topic.url);
+  const [kinds, setKinds] = useState<string[]>(topic.contentKinds ?? []);
+  const [query, setQuery] = useState(topic.contentQuery ?? "");
+  const [busy, setBusy] = useState(false);
+
+  const save = async () => {
+    setBusy(true);
+    const { ok } = await api(`/api/interop/board-topics/${topic.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, description: desc, url, contentKinds: kinds, contentQuery: query }),
+    });
+    setBusy(false);
+    if (ok) { onMsg("トピックを更新しました。", true); setEditing(false); onChanged(); }
+    else onMsg("更新に失敗しました。", false);
+  };
+  const toggleActive = async () => {
+    const { ok } = await api(`/api/interop/board-topics/${topic.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isActive: !topic.isActive }),
+    });
+    if (ok) onChanged(); else onMsg("更新に失敗しました。", false);
+  };
+  const remove = async () => {
+    if (!confirm(`トピック「${topic.name}」を削除しますか？（投稿は残り、トピックなし扱いになります）`)) return;
+    const { ok } = await api(`/api/interop/board-topics/${topic.id}`, { method: "DELETE" });
+    if (ok) { onMsg("削除しました。", true); onChanged(); } else onMsg("削除に失敗しました。", false);
+  };
+
+  return (
+    <li className={`rounded-lg border border-white/10 bg-white/[0.05] overflow-hidden ${topic.isActive ? "" : "opacity-60"}`}>
+      <div className="flex items-center gap-2 px-2.5 py-1.5 text-xs">
+        <span className="flex-1 font-semibold text-white/90">{topic.name}</span>
+        {!topic.isActive && <span className="rounded bg-white/10 px-1.5 text-[10px] text-white/45">非表示</span>}
+        {(topic.url || (topic.contentKinds?.length ?? 0) > 0) && (
+          <span className="rounded bg-sky-400/15 px-1.5 text-[10px] text-sky-200">設定あり</span>
+        )}
+        <button type="button" onClick={() => setEditing((v) => !v)} className="rounded p-0.5 text-white/40 hover:text-white" title="編集"><Pencil className="h-3.5 w-3.5" /></button>
+        <button type="button" onClick={toggleActive} className="rounded p-0.5 text-white/40 hover:text-white" title={topic.isActive ? "非表示にする" : "表示する"}>
+          {topic.isActive ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+        </button>
+        <button type="button" onClick={remove} className="rounded p-0.5 text-white/40 hover:text-red-300" title="削除"><Trash2 className="h-3.5 w-3.5" /></button>
+      </div>
+      {editing && (
+        <div className="space-y-2 border-t border-white/10 bg-white/[0.04] px-2.5 py-2">
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="text-xs"><span className="mb-1 block text-white/55">名前</span>
+              <Input value={name} onChange={(e) => setName(e.target.value)} className={`h-8 w-44 text-xs ${darkInput}`} /></label>
+            <label className="flex-1 text-xs"><span className="mb-1 block text-white/55">説明（任意）</span>
+              <Input value={desc} onChange={(e) => setDesc(e.target.value)} className={`h-8 w-full text-xs ${darkInput}`} /></label>
+          </div>
+          <label className="block text-xs"><span className="mb-1 block text-white/55">参考リンクURL（概要下にサムネ表示・サブカテゴリ設定より優先）</span>
+            <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." className={`h-8 w-full text-xs ${darkInput}`} /></label>
+          <div className="rounded-lg border border-white/10 bg-white/[0.04] p-2">
+            <p className="mb-1.5 text-[11px] font-semibold text-white/55">検索コンテンツ（本体エデュマッチから検索して表示）</p>
+            <div className="mb-1.5 flex flex-wrap gap-1.5">
+              {CONTENT_KIND_OPTIONS.map((k) => {
+                const on = kinds.includes(k.value);
+                return (
+                  <button key={k.value} type="button"
+                    onClick={() => setKinds((prev) => on ? prev.filter((x) => x !== k.value) : [...prev, k.value])}
+                    className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${on ? "border-indigo-400 bg-indigo-400/20 text-indigo-300" : "border-white/15 text-white/40 hover:text-white/70"}`}>
+                    {k.label}
+                  </button>
+                );
+              })}
+            </div>
+            <label className="text-xs"><span className="mb-1 block text-white/55">検索キーワード（空ならサブカテゴリ名＋トピック名）</span>
+              <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="例：探究 AI" className={`h-8 w-64 text-xs ${darkInput}`} /></label>
+          </div>
+          <Button size="sm" onClick={save} disabled={busy} className="h-8 gap-1 text-xs">
+            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}保存</Button>
+        </div>
+      )}
     </li>
   );
 }

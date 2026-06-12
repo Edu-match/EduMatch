@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Bot, FileText, Loader2, Search, Send, X } from "lucide-react";
+import { Bot, FileText, Loader2, Paperclip, Search, Send, X } from "lucide-react";
 
 type DocRef = { title: string; url: string | null };
 type ChatMsg = {
@@ -54,6 +54,8 @@ export function InteropChatWidget({
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
+  // 今開いているページ（トピック等）をAIにアタッチするか（既定オン・タップで解除可）
+  const [attachPage, setAttachPage] = useState(true);
   const [streaming, setStreaming] = useState(false);
   // 思考プロセス（回答の最初の文字が来るまでの「検索中／考え中」表示）
   const [thinking, setThinking] = useState(false);
@@ -97,7 +99,8 @@ export function InteropChatWidget({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: history.map((m) => ({ role: m.role, content: m.content })),
-          context: context?.trim() || undefined,
+          // アタッチONのときだけ「今見ているページ」をAIに渡す
+          context: attachPage ? context?.trim() || undefined : undefined,
         }),
       });
 
@@ -284,6 +287,23 @@ export function InteropChatWidget({
           {/* 入力 */}
           <div className="border-t border-white/10 px-3 py-3">
             {error && <p className="mb-2 px-1 text-xs text-rose-300">{error}</p>}
+            {/* ページアタッチ（今見ているトピック等をAIに添付） */}
+            {context?.trim() && (
+              <button
+                type="button"
+                onClick={() => setAttachPage((v) => !v)}
+                className={`mb-2 inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold transition ${
+                  attachPage
+                    ? "border-amber-300/50 bg-amber-300/15 text-amber-100"
+                    : "border-white/15 bg-white/[0.04] text-white/40 hover:text-white/70"
+                }`}
+                title={attachPage ? "このページの情報をAIに渡しています（タップで解除）" : "タップでこのページの情報をAIに渡す"}
+              >
+                <Paperclip className="h-3 w-3 shrink-0" />
+                <span className="truncate">{context}</span>
+                <span className="shrink-0 text-[10px] font-normal opacity-70">{attachPage ? "添付中" : "添付しない"}</span>
+              </button>
+            )}
             <div className="flex items-end gap-2">
                 <textarea
                   ref={inputRef}

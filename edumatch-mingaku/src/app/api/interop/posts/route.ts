@@ -10,8 +10,6 @@ export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 30;
 const MAX_BODY = 1000;
-/** 新規投稿にAI返信を付ける確率（全体の約8割に返信が付くように） */
-const AI_REPLY_PROBABILITY = 0.8;
 
 /** サブカテゴリ掲示板の投稿一覧（公開）
  *  ?subCategoryId=xxx 必須。
@@ -22,6 +20,8 @@ export async function GET(req: NextRequest) {
     if (!subCategoryId) {
       return NextResponse.json({ error: "subCategoryId is required" }, { status: 400 });
     }
+    // トピック指定があればそのトピックの投稿のみ返す
+    const topicId = req.nextUrl.searchParams.get("topicId");
 
     // includeHidden=true は管理者のみ（非表示投稿も含めて返す）
     let includeHidden = false;
@@ -35,6 +35,7 @@ export async function GET(req: NextRequest) {
         sub_category_id: subCategoryId,
         is_ai_reply: false,
         parent_post_id: null,
+        ...(topicId ? { topic_id: topicId } : {}),
         ...(includeHidden ? {} : { is_hidden: false }),
       },
       include: {
@@ -51,6 +52,7 @@ export async function GET(req: NextRequest) {
       posts: posts.map((p) => ({
         id: p.id,
         subCategoryId: p.sub_category_id,
+        topicId: p.topic_id,
         authorName: p.author_name,
         authorRole: p.author_role,
         body: p.body,
@@ -73,6 +75,8 @@ export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as {
       subCategoryId?: string;
+      /** トピック設定があるサブカテゴリではトピックIDを指定 */
+      topicId?: string;
       authorName?: string;
       authorRole?: string;
       postBody?: string;
@@ -97,6 +101,21 @@ export async function POST(req: NextRequest) {
     });
     if (!sub) {
       return NextResponse.json({ error: "サブカテゴリが見つかりません" }, { status: 404 });
+    }
+
+    // トピック指定の検証（指定があれば同サブカテゴリ所属かを確認）
+    let topicId: string | null = null;
+    let topicName: string | null = null;
+    if (body.topicId) {
+      const topic = await prisma.interopBoardTopic.findFirst({
+        where: { id: body.topicId, sub_category_id: sub.id, is_active: true },
+        select: { id: true, name: true },
+      });
+      if (!topic) {
+        return NextResponse.json({ error: "トピックが見つかりません" }, { status: 404 });
+      }
+      topicId = topic.id;
+      topicName = topic.name;
     }
 
     const authorName = body.authorName?.trim() ?? "";
@@ -144,6 +163,7 @@ export async function POST(req: NextRequest) {
     const post = await prisma.interopPost.create({
       data: {
         sub_category_id: body.subCategoryId,
+        topic_id: topicId,
         author_name: trimmedName,
         author_role: trimmedRole,
         body: text,
@@ -165,12 +185,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // AIファシリテーター返信：運営の固定投稿以外に、約8割の確率で生成する。
+    // AIファシリテーター返信：運営の固定投稿以外には必ず即時生成する。
     // レスポンスはブロックせず after() で送信後に実行（Vercel Fluid Compute で確実に走る）。
-    if (!isPinned && !autoHidden && Math.random() < AI_REPLY_PROBABILITY) {
+    // 万一ここで失敗しても cron（/api/cron/interop-ai-replies）が拾って付与する。
+    if (!isPinned && !autoHidden) {
       const createdPostId = post.id;
+      const createdTopicId = topicId;
       const subCategoryId = sub.id;
-      const subName = sub.name;
+      const subName = topicName ? `${sub.name}｜${topicName}` : sub.name;
       const catName = sub.category.name;
       const postBody = text;
       after(async () => {
@@ -178,6 +200,7 @@ export async function POST(req: NextRequest) {
           const recent = await prisma.interopPost.findMany({
             where: {
               sub_category_id: subCategoryId,
+              ...(createdTopicId ? { topic_id: createdTopicId } : {}),
               is_hidden: false,
               is_ai_reply: false,
               parent_post_id: null,
@@ -197,6 +220,7 @@ export async function POST(req: NextRequest) {
           await prisma.interopPost.create({
             data: {
               sub_category_id: subCategoryId,
+              topic_id: createdTopicId,
               parent_post_id: createdPostId,
               is_ai_reply: true,
               author_name: INTEROP_AI_FACILITATOR_NAME,
@@ -215,6 +239,7 @@ export async function POST(req: NextRequest) {
         post: {
           id: post.id,
           subCategoryId: post.sub_category_id,
+          topicId: post.topic_id,
           authorName: post.author_name,
           authorRole: post.author_role,
           body: post.body,
