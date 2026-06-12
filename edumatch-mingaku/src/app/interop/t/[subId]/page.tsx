@@ -76,6 +76,7 @@ export default async function InteropSubPage({
           sub={{
             id: sub.id,
             name: sub.name,
+            slug: sub.slug,
             description: sub.description,
             categoryName: sub.category.name,
             categorySlug: sub.category.slug,

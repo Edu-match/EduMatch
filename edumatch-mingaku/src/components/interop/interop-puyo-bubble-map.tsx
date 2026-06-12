@@ -263,6 +263,14 @@ function bubbleSizeFor(postCount: number, base: number, max: number): number {
   const factor = 1 + Math.max(0, postCount) * BUBBLE_GROWTH_PER_POST;
   return Math.min(max, Math.round(base * factor));
 }
+
+// サテライト（最新ニュース等）：投稿が増えるほど目立つよう、トピック玉より速く・大きく拡大
+const SATELLITE_GROWTH_PER_POST = 0.09;
+function satelliteSizeFor(postCount: number, base: number, max: number): number {
+  const bucketed = Math.floor(Math.max(0, postCount) / 2) * 2;
+  const factor = 1 + bucketed * SATELLITE_GROWTH_PER_POST;
+  return Math.min(max, Math.round(base * factor));
+}
 // 端末別のレイアウト寸法（スマホは画面が狭いので全体を小さく＆間隔を広く取る）
 type MapMetrics = {
   base: number;      // 玉デフォルト直径(px)
@@ -270,9 +278,9 @@ type MapMetrics = {
   refW: number;      // px半径→% 変換の基準幅（≒画面幅）
   labelMargin: number; // 反発時のラベル余白(%)
   centerSize: number;  // 中心ハブ直径(px)
-  satOrb: number;      // サテライト直径(px)
+  satOrb: number;      // サテライト初期直径(px)
+  satOrbMax: number;   // サテライト上限直径(px)
   centerR: number;     // 中心ハブ占有半径(%)
-  satR: number;        // サテライト占有半径(%)
   ys: number;          // y圧縮率（小さいほど縦に大きく散らす）
   yMin: number;        // 配置の上端クランプ(%)
   yMax: number;        // 配置の下端クランプ(%)。100超で画面より下へ展開→パンで探索
@@ -283,8 +291,8 @@ type MapMetrics = {
 };
 // スマホは1画面に玉が多すぎてゴチャつくため、縦に大きく展開して画面あたりの玉数を減らし、
 // 下へパンして探索できるようにする。
-const METRICS_DESKTOP: MapMetrics = { base: 40, max: 150, refW: 1300, labelMargin: 6.0, centerSize: 132, satOrb: 84, centerR: 18, satR: 14, ys: 0.62, yMin: 19, yMax: 88, xMin: 9, xMax: 89, panLimY: 420, aiBtn: { x: 93, y: 90, r: 11 } };
-const METRICS_MOBILE: MapMetrics  = { base: 26, max: 70,  refW: 430,  labelMargin: 7.0, centerSize: 88,  satOrb: 56, centerR: 17, satR: 14, ys: 0.5, yMin: 17, yMax: 205, xMin: 6, xMax: 94, panLimY: 1180, aiBtn: { x: 90, y: 93, r: 13 } };
+const METRICS_DESKTOP: MapMetrics = { base: 40, max: 150, refW: 1300, labelMargin: 6.0, centerSize: 132, satOrb: 84, satOrbMax: 228, centerR: 18, ys: 0.62, yMin: 19, yMax: 88, xMin: 9, xMax: 89, panLimY: 420, aiBtn: { x: 93, y: 90, r: 11 } };
+const METRICS_MOBILE: MapMetrics  = { base: 26, max: 70,  refW: 430,  labelMargin: 7.0, centerSize: 88,  satOrb: 56, satOrbMax: 148, centerR: 17, ys: 0.5, yMin: 17, yMax: 205, xMin: 6, xMax: 94, panLimY: 1180, aiBtn: { x: 90, y: 93, r: 13 } };
 
 
 function PuyoBubble({
@@ -680,19 +688,28 @@ export function InteropPuyoBubbleMap({
     if (wasDragRef.current) e.stopPropagation();
     wasDragRef.current = false;
   };
+  // サテライト直径：投稿数に応じて拡大（2件刻みでバケット化しポーリング時のガタつきを抑制）
+  const satelliteSizes = useMemo(
+    () => satellites.map((s) => satelliteSizeFor(s.postCount ?? 0, m.satOrb, m.satOrbMax)),
+    [satellites, m.satOrb, m.satOrbMax]
+  );
+
   // 中心ハブ＋実在するサテライト＋UI要素（AIチャットボタン）を「占有ゾーン」として
   // 反発に渡す（玉がヘッダー／AIボタンの下に潜らないようにする）。
   const obstacles = useMemo<Obstacle[]>(() => {
     const list: Obstacle[] = [{ x: CENTER_POS.x, y: CENTER_POS.y, r: m.centerR }];
-    for (const s of satellites) {
+    satellites.forEach((s, i) => {
       const p = SATELLITE_POS[s.place];
-      // サテライトはラベルが下に伸びる（mt-3＋タグ）ぶん広めに確保。下サテラはさらに余裕を持つ
-      list.push({ x: p.x, y: p.y, r: s.place === "bottom" ? m.satR + 3 : m.satR + 1 });
-    }
+      const orbPx = satelliteSizes[i] ?? m.satOrb;
+      const orbR = (orbPx / 2 / m.refW) * 100;
+      // ラベル（mt-3＋タグ）分を加算。下サテラはさらに余裕を持つ
+      const labelExtra = s.place === "bottom" ? 8 : 6;
+      list.push({ x: p.x, y: p.y, r: orbR + labelExtra });
+    });
     // AIチャットボタン（右下固定）。玉やラベルが被らないよう右下コーナーを占有ゾーンに。
     list.push({ x: m.aiBtn.x, y: m.aiBtn.y, r: m.aiBtn.r });
     return list;
-  }, [satellites, m.centerR, m.satR, m.aiBtn]);
+  }, [satellites, satelliteSizes, m.centerR, m.satOrb, m.refW, m.aiBtn]);
   // 各玉の直径(px)＝投稿数で連続拡大。位置計算は3件刻みにバケット化して
   // ポーリング毎の細かな再配置（ガタつき）を抑える。
   const sizes = useMemo(
@@ -1015,7 +1032,10 @@ export function InteropPuyoBubbleMap({
         // 中心ハブを基準にした固定座標（反発の占有ゾーンと一致させて被りを防ぐ）
         const sp = SATELLITE_POS[s.place];
         const placePos = { left: `${sp.x}%`, top: `${sp.y}%` };
-        const ORB = m.satOrb;
+        const ORB = satelliteSizes[si] ?? m.satOrb;
+        const iconSize = Math.round(ORB * 0.38);
+        const glowPad = Math.round(ORB * 0.52);
+        const borderW = ORB >= 120 ? 3 : 2;
         return (
           <button
             key={s.key}
@@ -1028,38 +1048,38 @@ export function InteropPuyoBubbleMap({
             {/* 脈動リング2本（特別な「直行ポータル」だと一目で分かる目印）。
                 keyframe側で translate(-50%,-50%) するので基準点だけ orb 中心に置く */}
             <span
-              className="pointer-events-none absolute"
+              className="pointer-events-none absolute transition-[width,height] duration-500 ease-out"
               style={{ left: "50%", top: ORB / 2, width: ORB, height: ORB,
-                borderRadius: "9999px", border: `2px solid ${s.color}`,
+                borderRadius: "9999px", border: `${borderW}px solid ${s.color}`,
                 animation: `satRing 3.2s ease-out ${si * 0.5}s infinite` }}
             />
             <span
-              className="pointer-events-none absolute"
+              className="pointer-events-none absolute transition-[width,height] duration-500 ease-out"
               style={{ left: "50%", top: ORB / 2, width: ORB, height: ORB,
-                borderRadius: "9999px", border: `2px solid ${s.color}`,
+                borderRadius: "9999px", border: `${borderW}px solid ${s.color}`,
                 animation: `satRing 3.2s ease-out ${si * 0.5 + 1.6}s infinite` }}
             />
             {/* 常時グロー（強め）＋ホバーで増幅 */}
             <span
-              className="pointer-events-none absolute rounded-full transition-opacity duration-300 group-hover:opacity-100"
-              style={{ top: ORB / 2, left: "50%", width: ORB + 44, height: ORB + 44, transform: "translate(-50%,-50%)",
+              className="pointer-events-none absolute rounded-full transition-[width,height,opacity] duration-500 ease-out group-hover:opacity-100"
+              style={{ top: ORB / 2, left: "50%", width: ORB + glowPad, height: ORB + glowPad, transform: "translate(-50%,-50%)",
                 background: `radial-gradient(circle, ${s.color}55 0%, ${s.color}1f 45%, transparent 70%)`, opacity: 0.85 }}
             />
             <span
-              className="relative grid place-items-center rounded-full transition-transform duration-200 group-hover:scale-[1.08] group-active:scale-95"
+              className="relative grid place-items-center rounded-full transition-[width,height,transform] duration-500 ease-out group-hover:scale-[1.08] group-active:scale-95"
               style={{
                 width: ORB, height: ORB,
                 // トピック玉（半透明ガラス）と差別化：ビビッドで濃い発光球にする
                 background: `radial-gradient(circle at 36% 26%, #ffffff 0%, ${s.color} 46%, ${s.color} 100%)`,
-                border: `3px solid #ffffff`,
-                boxShadow: `0 0 30px ${s.color}aa, 0 0 12px ${s.color}, 0 8px 22px rgba(0,0,0,0.34), inset 0 2px 14px rgba(255,255,255,0.65)`,
+                border: `${borderW}px solid #ffffff`,
+                boxShadow: `0 0 ${Math.round(ORB * 0.36)}px ${s.color}aa, 0 0 ${Math.round(ORB * 0.14)}px ${s.color}, 0 8px 22px rgba(0,0,0,0.34), inset 0 2px 14px rgba(255,255,255,0.65)`,
                 animation: `satFloat ${4.5 + si * 0.6}s ease-in-out ${si * 0.4}s infinite`,
               }}
             >
               <span className="pointer-events-none absolute rounded-full" style={{ top: "12%", left: "16%", width: "40%", height: "30%", background: "rgba(255,255,255,0.9)", filter: "blur(3px)" }} />
-              <SIcon className="relative z-10 h-8 w-8" style={{ color: "#15224e" }} strokeWidth={2.1} />
+              <SIcon className="relative z-10" style={{ color: "#15224e", width: iconSize, height: iconSize }} strokeWidth={2.1} />
               {typeof s.postCount === "number" && s.postCount > 0 && (
-                <span className="absolute -bottom-1.5 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-full px-1.5 py-0.5 text-[8px] font-black text-white shadow" style={{ background: "#0b1330", border: `1px solid ${s.color}` }}>
+                <span className="absolute -bottom-1.5 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-full px-1.5 py-0.5 font-black text-white shadow" style={{ background: "#0b1330", border: `1px solid ${s.color}`, fontSize: ORB >= 120 ? 10 : 8 }}>
                   {s.postCount}件
                 </span>
               )}
