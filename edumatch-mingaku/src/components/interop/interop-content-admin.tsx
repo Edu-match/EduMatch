@@ -123,7 +123,7 @@ export function InteropContentAdmin() {
   const [interopCatId, setInteropCatId] = useState<string | null>(null);
   const [sats, setSats] = useState<SubCategory[]>([]);
   const [loading, setLoading] = useState(true);
-  const [openInterop, setOpenInterop] = useState(false);
+  const [openInterop, setOpenInterop] = useState(true);
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
 
   const flash = (text: string, ok: boolean) => {
@@ -689,22 +689,35 @@ function TopicRow({ topic, subId, autoEdit = false, onChanged, onMsg }: {
 function AddSubForm({ categoryId, count, onAdded, onMsg }: { categoryId: string; count: number; onAdded: () => void; onMsg: (t: string, ok: boolean) => void }) {
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
+  const [busy, setBusy] = useState(false);
   const add = async () => {
     if (!name.trim()) return;
+    setBusy(true);
     const { ok } = await api("/api/interop/sub-categories", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ categoryId, name, description: desc, sortOrder: count }),
     });
-    if (ok) { onMsg(`サブカテゴリ「${name}」を追加しました。`, true); setName(""); setDesc(""); onAdded(); }
+    setBusy(false);
+    if (ok) { onMsg(`ページ「${name}」を追加しました。`, true); setName(""); setDesc(""); onAdded(); }
     else onMsg("追加に失敗しました。", false);
   };
   return (
-    <div className="flex flex-wrap items-end gap-2 pt-1">
-      <label className="text-xs"><span className="mb-1 block text-white/55">サブカテゴリ名</span>
-        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="例：タイムテーブル" className={`h-8 w-36 text-xs ${darkInput}`} /></label>
-      <label className="text-xs"><span className="mb-1 block text-white/55">説明（任意）</span>
-        <Input value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="任意" className={`h-8 w-44 text-xs ${darkInput}`} /></label>
-      <Button size="sm" variant="outline" onClick={add} className="h-8 gap-1 border-white/15 text-xs text-white/80 hover:bg-white/10"><Plus className="h-3.5 w-3.5" /> 追加</Button>
+    <div className="mt-1 rounded-lg border border-dashed border-indigo-400/30 bg-indigo-400/[0.05] p-2.5">
+      <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold text-indigo-200/80">
+        <Plus className="h-3.5 w-3.5" /> ページ（掲示板）を追加
+      </p>
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="text-xs"><span className="mb-1 block text-white/55">ページ名</span>
+          <Input value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") add(); }} placeholder="例：タイムテーブル" className={`h-8 w-40 text-xs ${darkInput}`} /></label>
+        <label className="text-xs"><span className="mb-1 block text-white/55">説明（任意）</span>
+          <Input value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="任意" className={`h-8 w-48 text-xs ${darkInput}`} /></label>
+        <button
+          type="button" onClick={add} disabled={busy || !name.trim()}
+          className="inline-flex h-8 items-center gap-1.5 rounded-md border border-indigo-400/40 bg-indigo-500/25 px-3 text-xs font-semibold text-indigo-100 transition hover:bg-indigo-500/40 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} 追加
+        </button>
+      </div>
     </div>
   );
 }

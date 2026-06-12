@@ -32,13 +32,15 @@ export function InteropModerationAdmin() {
   const [backfillMsg, setBackfillMsg] = useState<string | null>(null);
 
   const runBackfill = async () => {
-    if (!confirm("既存の投稿のうち、未返信のものからランダムに選び、全体の約8割にAIファシリテーター返信を付けます。実行しますか？")) return;
+    if (!confirm("お知らせ（固定投稿）に誤って付いたAI返信を削除し、一般投稿のうち未返信のものすべてにAIファシリテーター返信を付けます。実行しますか？")) return;
     setBackfilling(true);
     setBackfillMsg(null);
     const { ok, data } = await api("/api/interop/admin/backfill-ai-replies", { method: "POST" });
     setBackfilling(false);
     if (ok) {
-      setBackfillMsg(`完了：${data.created}件のAI返信を生成（返信率 約${data.coverage}％ / 全${data.totalPosts}投稿）`);
+      setBackfillMsg(
+        `完了：お知らせから${data.removedFromPinned}件のAI返信を削除／一般投稿に${data.created}件を生成（返信率 約${data.coverage}％ / 全${data.totalGeneralPosts}件）`
+      );
     } else {
       setBackfillMsg(data.error || "実行に失敗しました。");
     }
@@ -78,8 +80,8 @@ export function InteropModerationAdmin() {
       <div className="rounded-xl border border-indigo-300/20 bg-indigo-400/[0.06] p-4">
         <div className="flex flex-wrap items-center gap-2">
           <Bot className="h-5 w-5 text-indigo-300" />
-          <h3 className="text-base font-bold text-white">既存投稿へのAI返信</h3>
-          <span className="text-xs text-white/45">未返信の投稿に、全体の約8割になるよう付与</span>
+          <h3 className="text-base font-bold text-white">AI返信の是正・付与</h3>
+          <span className="text-xs text-white/45">お知らせの誤返信を削除し、一般投稿の未返信すべてに付与</span>
           <button
             type="button"
             onClick={runBackfill}
@@ -87,7 +89,7 @@ export function InteropModerationAdmin() {
             className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-indigo-300/40 bg-indigo-400/15 px-3 py-1.5 text-xs font-bold text-indigo-100 transition hover:bg-indigo-400/25 disabled:opacity-50"
           >
             {backfilling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Bot className="h-3.5 w-3.5" />}
-            AI返信を付与（8割）
+            是正＋AI返信を付与
           </button>
         </div>
         {backfillMsg && <p className="mt-2 text-xs font-medium text-indigo-100/85">{backfillMsg}</p>}
