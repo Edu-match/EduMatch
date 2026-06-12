@@ -164,11 +164,14 @@ export function InteropExplorer({
   guideText = "中央のインタロップをタップして展示情報へ · 周囲の◎トピックをタップして論点・井戸端へ",
   initialInteropActivity = null,
   initialForumActivity = null,
+  showChat = true,
 }: {
   themeMode?: InteropThemeMode;
   guideText?: string;
   initialInteropActivity?: ActivityPayload | null;
   initialForumActivity?: { rooms?: ForumRoomActivityPayload[] } | null;
+  /** 来場者向けAIチャット(fixed配置)を出すか。井戸端会議・ホーム埋め込みでは false。 */
+  showChat?: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -508,18 +511,21 @@ export function InteropExplorer({
         />
       )}
 
-      {/* 来場者向けAIチャット（ログイン不要・全ビュー共通）。今見ているビューを文脈として渡す */}
-      <InteropChatWidget
-        context={
-          view.kind === "category"
-            ? `展示カテゴリ「${view.cat.name}」`
-            : view.kind === "topic"
-              ? `論点エリア「${view.topic.category}」`
-              : view.kind === "hub"
-                ? `インタロップ（展示一覧）`
-                : `教育AIサミットのトップマップ`
-        }
-      />
+      {/* 来場者向けAIチャット（ログイン不要・全ビュー共通）。今見ているビューを文脈として渡す。
+          井戸端会議・ホーム埋め込みでは showChat=false で非表示（fixed配置のはみ出し回避）。 */}
+      {showChat && (
+        <InteropChatWidget
+          context={
+            view.kind === "category"
+              ? `展示カテゴリ「${view.cat.name}」`
+              : view.kind === "topic"
+                ? `論点エリア「${view.topic.category}」`
+                : view.kind === "hub"
+                  ? `インタロップ（展示一覧）`
+                  : `教育AIサミットのトップマップ`
+          }
+        />
+      )}
     </div>
   );
 }
