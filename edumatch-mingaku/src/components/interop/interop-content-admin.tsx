@@ -148,199 +148,87 @@ export function InteropContentAdmin() {
 
   useEffect(() => { load(); }, [load]);
 
+  const satelliteSubs = sats.filter(isSatelliteSub);
+  const interopSubs = sats.filter((s) => !isSatelliteSub(s));
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {msg && (
         <p className={`sticky top-2 z-10 rounded-xl border px-4 py-2 text-sm font-medium ${msg.ok ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200" : "border-red-400/30 bg-red-400/10 text-red-200"}`}>
           {msg.text}
         </p>
       )}
 
-      <div>
-        <p className="mb-3 text-xs text-white/45">
-          各ページを開くと、トピック・参考リンク（概要下にサムネ表示）・検索コンテンツ・投稿の管理ができます。
+      {/* 構造ガイド */}
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+        <p className="flex items-center gap-1.5 text-xs font-bold text-white/70">
+          <ListTree className="h-3.5 w-3.5" /> 階層：ページ（掲示板） → トピック → 投稿
+        </p>
+        <p className="mt-1.5 text-[11px] leading-relaxed text-white/45">
+          各ページを開くと「<span className="text-white/65">トピック</span>・<span className="text-white/65">参考リンク</span>・<span className="text-white/65">検索コンテンツ</span>・<span className="text-white/65">投稿</span>」を管理できます。
           トピックを1件でも設定すると、来場者は「トピック選択 → 投稿ページ」の順に進みます（未設定なら直接投稿ページ）。
         </p>
-        {loading ? (
-          <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-white/50" /></div>
-        ) : !interopCatId ? (
-          <p className="rounded-xl border border-dashed border-white/15 px-4 py-8 text-center text-xs text-white/40">
-            「interop」カテゴリが見つかりません。SQLマイグレーション／シードを実行してください。
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {/* 3サテライトは直下に表示 */}
-            {sats.filter(isSatelliteSub).map((s) => (
-              <SubRow key={s.id} sub={s} onChanged={load} onMsg={flash} />
-            ))}
+      </div>
 
-            {/* それ以外は「インタロップ」階層の下へ */}
-            <div className="rounded-xl border border-white/10 bg-white/[0.03]">
-              <button
-                type="button"
-                onClick={() => setOpenInterop((v) => !v)}
-                className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm font-bold text-white/85"
-              >
-                {openInterop ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                インタロップ
-                <span className="text-[11px] font-normal text-white/40">
-                  サテライト以外のページ（{sats.filter((s) => !isSatelliteSub(s)).length}件）
-                </span>
-              </button>
-              {openInterop && (
-                <div className="space-y-2 border-t border-white/10 p-3">
-                  {sats.filter((s) => !isSatelliteSub(s)).length === 0 ? (
-                    <p className="text-xs text-white/40">ページはまだありません。下のフォームから追加できます。</p>
-                  ) : (
-                    <ul className="space-y-1.5">
-                      {sats.filter((s) => !isSatelliteSub(s)).map((s) => (
-                        <SubRow key={s.id} sub={s} onChanged={load} onMsg={flash} />
-                      ))}
-                    </ul>
-                  )}
-                  <AddSubForm categoryId={interopCatId} count={sats.length} onAdded={load} onMsg={flash} />
-                </div>
-              )}
+      {loading ? (
+        <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-white/50" /></div>
+      ) : !interopCatId ? (
+        <p className="rounded-xl border border-dashed border-white/15 px-4 py-8 text-center text-xs text-white/40">
+          「interop」カテゴリが見つかりません。SQLマイグレーション／シードを実行してください。
+        </p>
+      ) : (
+        <div className="space-y-4">
+          {/* ① サテライト（トップマップから直行する3ページ） */}
+          <section>
+            <div className="mb-2 flex items-center gap-2">
+              <span className="grid h-5 w-5 place-items-center rounded-md bg-amber-400/20 text-[11px] font-black text-amber-300">★</span>
+              <h3 className="text-sm font-bold text-white/85">サテライト</h3>
+              <span className="text-[11px] text-white/40">トップマップから直行（最新ニュース／登壇者への質問／ご意見BOX）</span>
             </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
+            {satelliteSubs.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-white/12 px-3 py-4 text-center text-[11px] text-white/35">サテライトページが見つかりません。</p>
+            ) : (
+              <ul className="space-y-1.5">
+                {satelliteSubs.map((s) => (
+                  <SubRow key={s.id} sub={s} onChanged={load} onMsg={flash} />
+                ))}
+              </ul>
+            )}
+          </section>
 
-/* ─────────── カテゴリ追加 ─────────── */
-function AddCategoryForm({ count, onAdded, onMsg }: { count: number; onAdded: () => void; onMsg: (t: string, ok: boolean) => void }) {
-  const [name, setName] = useState("");
-  const [color, setColor] = useState("#9fb4e8");
-  const [primary, setPrimary] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const add = async () => {
-    if (!name.trim()) return;
-    setBusy(true);
-    const { ok, data } = await api("/api/interop/categories", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, color, isPrimary: primary, sortOrder: count }),
-    });
-    setBusy(false);
-    if (ok) { onMsg(`「${data.category.name}」を追加しました。`, true); setName(""); setPrimary(false); onAdded(); }
-    else onMsg("追加に失敗しました。", false);
-  };
-  return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.06] backdrop-blur-sm overflow-hidden">
-      <div className="border-b border-white/10 px-4 py-3">
-        <h3 className="text-base font-semibold text-white">カテゴリを追加</h3>
-      </div>
-      <div className="flex flex-wrap items-end gap-3 p-4">
-        <label className="text-sm">
-          <span className="mb-1 block text-white/55">カテゴリ名</span>
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="例：AI部" className={`w-48 ${darkInput}`} />
-        </label>
-        <label className="text-sm">
-          <span className="mb-1 block text-white/55">色</span>
-          <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="h-9 w-14 rounded border border-white/15 bg-white/[0.06]" />
-        </label>
-        <label className="flex items-center gap-1.5 text-sm text-white/80">
-          <input type="checkbox" checked={primary} onChange={(e) => setPrimary(e.target.checked)} /> 中心（インフォメーション）
-        </label>
-        <Button onClick={add} disabled={busy} className="gap-1.5">
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} 追加
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-/* ─────────── カテゴリ行 ─────────── */
-function CategoryRow({ cat, subs, open, onToggle, onChanged, onMsg }: {
-  cat: Category; subs: SubCategory[]; open: boolean; onToggle: () => void; onChanged: () => void; onMsg: (t: string, ok: boolean) => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(cat.name);
-  const [color, setColor] = useState(cat.color);
-  const [desc, setDesc] = useState(cat.description);
-  const [busy, setBusy] = useState(false);
-
-  const save = async () => {
-    setBusy(true);
-    const { ok } = await api(`/api/interop/categories/${cat.id}`, {
-      method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, color, description: desc }),
-    });
-    setBusy(false);
-    if (ok) { onMsg("カテゴリを更新しました。", true); setEditing(false); onChanged(); }
-    else onMsg("更新に失敗しました。", false);
-  };
-  const toggleActive = async () => {
-    const { ok } = await api(`/api/interop/categories/${cat.id}`, {
-      method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isActive: !cat.isActive }),
-    });
-    if (ok) onChanged(); else onMsg("更新に失敗しました。", false);
-  };
-  const setPrimary = async () => {
-    const { ok } = await api(`/api/interop/categories/${cat.id}`, {
-      method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isPrimary: true }),
-    });
-    if (ok) { onMsg("中心カテゴリに設定しました。", true); onChanged(); } else onMsg("更新に失敗しました。", false);
-  };
-  const remove = async () => {
-    if (!confirm(`「${cat.name}」とその配下（サブカテゴリ・投稿）をすべて削除しますか？`)) return;
-    const { ok } = await api(`/api/interop/categories/${cat.id}`, { method: "DELETE" });
-    if (ok) { onMsg("削除しました。", true); onChanged(); } else onMsg("削除に失敗しました。", false);
-  };
-
-  return (
-    <div className={`rounded-xl border border-white/10 bg-white/[0.06] backdrop-blur-sm overflow-hidden ${cat.isActive ? "" : "opacity-60"}`}>
-      <div className="flex items-center gap-2 px-3 py-3">
-        <button type="button" onClick={onToggle} className="flex flex-1 items-center gap-3 text-left">
-          <span className="h-4 w-4 shrink-0 rounded-full border border-white/20" style={{ background: cat.color }} />
-          <span className="font-medium text-white">{cat.name}</span>
-          {cat.isPrimary && <span className="rounded-full bg-indigo-400/20 px-2 py-0.5 text-[10px] font-semibold text-indigo-300">中心</span>}
-          {!cat.isActive && <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-white/40">非公開</span>}
-          <span className="text-[11px] text-white/40">{subs.length}件</span>
-        </button>
-        <button type="button" onClick={() => setEditing((v) => !v)} className="rounded p-1 text-white/40 hover:text-white" title="編集"><Pencil className="h-4 w-4" /></button>
-        {!cat.isPrimary && (
-          <button type="button" onClick={setPrimary} className="rounded p-1 text-white/40 hover:text-white" title="中心にする"><Pin className="h-4 w-4" /></button>
-        )}
-        <button type="button" onClick={toggleActive} className="rounded p-1 text-white/40 hover:text-white" title={cat.isActive ? "非公開にする" : "公開する"}>
-          {cat.isActive ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-        </button>
-        <button type="button" onClick={remove} className="rounded p-1 text-white/40 hover:text-red-300" title="削除"><Trash2 className="h-4 w-4" /></button>
-        <button type="button" onClick={onToggle} className="rounded p-1 text-white/40">{open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}</button>
-      </div>
-
-      {editing && (
-        <div className="flex flex-wrap items-end gap-2 border-t border-white/10 bg-white/[0.04] px-3 py-3">
-          <label className="text-xs"><span className="mb-1 block text-white/55">名前</span>
-            <Input value={name} onChange={(e) => setName(e.target.value)} className={`h-8 w-40 text-xs ${darkInput}`} /></label>
-          <label className="text-xs"><span className="mb-1 block text-white/55">色</span>
-            <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="h-8 w-12 rounded border border-white/15 bg-white/[0.06]" /></label>
-          <label className="text-xs"><span className="mb-1 block text-white/55">説明</span>
-            <Input value={desc} onChange={(e) => setDesc(e.target.value)} className={`h-8 w-56 text-xs ${darkInput}`} /></label>
-          <Button size="sm" onClick={save} disabled={busy} className="h-8 gap-1 text-xs">
-            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}保存</Button>
-        </div>
-      )}
-
-      {open && (
-        <div className="space-y-2 border-t border-white/10 bg-white/[0.04] px-3 py-3">
-          {subs.length === 0 ? (
-            <p className="text-xs text-white/40">サブカテゴリはまだありません。</p>
-          ) : (
-            <ul className="space-y-1.5">
-              {subs.map((s) => <SubRow key={s.id} sub={s} onChanged={onChanged} onMsg={onMsg} />)}
-            </ul>
-          )}
-          <AddSubForm categoryId={cat.id} count={subs.length} onAdded={onChanged} onMsg={onMsg} />
+          {/* ② インタロップ配下のページ */}
+          <section className="rounded-xl border border-white/10 bg-white/[0.03]">
+            <button
+              type="button"
+              onClick={() => setOpenInterop((v) => !v)}
+              className="flex w-full items-center gap-2 px-3 py-2.5 text-left"
+            >
+              {openInterop ? <ChevronDown className="h-4 w-4 text-white/60" /> : <ChevronRight className="h-4 w-4 text-white/60" />}
+              <span className="grid h-5 w-5 place-items-center rounded-md bg-indigo-400/20 text-[11px] font-black text-indigo-300">＃</span>
+              <span className="text-sm font-bold text-white/85">インタロップ配下のページ</span>
+              <span className="text-[11px] font-normal text-white/40">{interopSubs.length}件</span>
+            </button>
+            {openInterop && (
+              <div className="space-y-2 border-t border-white/10 p-3">
+                {interopSubs.length === 0 ? (
+                  <p className="text-xs text-white/40">ページはまだありません。下のフォームから追加できます。</p>
+                ) : (
+                  <ul className="space-y-1.5">
+                    {interopSubs.map((s) => (
+                      <SubRow key={s.id} sub={s} onChanged={load} onMsg={flash} />
+                    ))}
+                  </ul>
+                )}
+                <AddSubForm categoryId={interopCatId} count={sats.length} onAdded={load} onMsg={flash} />
+              </div>
+            )}
+          </section>
         </div>
       )}
     </div>
   );
 }
+
 
 /* ─────────── サブカテゴリ行 ─────────── */
 function SubRow({ sub, onChanged, onMsg }: { sub: SubCategory; onChanged: () => void; onMsg: (t: string, ok: boolean) => void }) {
@@ -368,19 +256,43 @@ function SubRow({ sub, onChanged, onMsg }: { sub: SubCategory; onChanged: () => 
     const { ok } = await api(`/api/interop/sub-categories/${sub.id}`, { method: "DELETE" });
     if (ok) { onMsg("削除しました。", true); onChanged(); } else onMsg("削除に失敗しました。", false);
   };
+  const toggleActive = async () => {
+    const { ok } = await api(`/api/interop/sub-categories/${sub.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isActive: !sub.isActive }),
+    });
+    if (ok) onChanged(); else onMsg("更新に失敗しました。", false);
+  };
+
+  const pill = (active: boolean) =>
+    `inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-semibold transition ${
+      active
+        ? "border-indigo-400/50 bg-indigo-500/20 text-indigo-100"
+        : "border-white/12 bg-white/[0.04] text-white/55 hover:bg-white/[0.1] hover:text-white/85"
+    }`;
 
   return (
-    <li className="rounded-lg border border-white/10 bg-white/[0.04] overflow-hidden">
-      <div className="flex items-center gap-2 px-3 py-1.5 text-sm">
-        <span className="flex-1 text-white/90">{sub.name}</span>
-        <button type="button" onClick={() => setShowTopics((v) => !v)} className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-white/40 hover:text-white" title="トピックを管理（設定すると投稿前に選択画面が出ます）">
+    <li className={`rounded-lg border bg-white/[0.04] overflow-hidden ${sub.isActive ? "border-white/10" : "border-white/10 opacity-60"}`}>
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 px-3 py-2 text-sm">
+        <span className="flex-1 font-medium text-white/90">
+          {sub.name}
+          {!sub.isActive && <span className="ml-1.5 rounded bg-white/10 px-1.5 text-[10px] font-normal text-white/45">非公開</span>}
+          {sub.url && <span className="ml-1.5 rounded bg-sky-400/15 px-1.5 text-[10px] font-normal text-sky-200">リンク</span>}
+          {(sub.contentKinds?.length ?? 0) > 0 && <span className="ml-1.5 rounded bg-emerald-400/15 px-1.5 text-[10px] font-normal text-emerald-200">検索{sub.contentKinds!.length}</span>}
+        </span>
+        <button type="button" onClick={() => setShowTopics((v) => !v)} className={pill(showTopics)} title="トピックを管理（設定すると投稿前に選択画面が出ます）">
           <ListTree className="h-3.5 w-3.5" /> トピック
         </button>
-        <button type="button" onClick={() => setShowPosts((v) => !v)} className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-white/40 hover:text-white" title="投稿・記事を管理">
+        <button type="button" onClick={() => setShowPosts((v) => !v)} className={pill(showPosts)} title="投稿・記事を管理">
           <MessageSquare className="h-3.5 w-3.5" /> 投稿
         </button>
-        <button type="button" onClick={() => setEditing((v) => !v)} className="rounded p-0.5 text-white/40 hover:text-white" title="編集"><Pencil className="h-3.5 w-3.5" /></button>
-        <button type="button" onClick={remove} className="rounded p-0.5 text-white/40 hover:text-red-300" title="削除"><Trash2 className="h-3.5 w-3.5" /></button>
+        <button type="button" onClick={() => setEditing((v) => !v)} className={pill(editing)} title="このページの編集（名前・リンク・検索）">
+          <Pencil className="h-3.5 w-3.5" /> 編集
+        </button>
+        <button type="button" onClick={toggleActive} className="grid h-7 w-7 place-items-center rounded-md text-white/40 transition hover:bg-white/10 hover:text-white" title={sub.isActive ? "非公開にする" : "公開する"}>
+          {sub.isActive ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+        </button>
+        <button type="button" onClick={remove} className="grid h-7 w-7 place-items-center rounded-md text-white/40 transition hover:bg-red-400/10 hover:text-red-300" title="削除"><Trash2 className="h-3.5 w-3.5" /></button>
       </div>
       {editing && (
         <div className="space-y-2 border-t border-white/10 bg-white/[0.04] px-3 py-2">
