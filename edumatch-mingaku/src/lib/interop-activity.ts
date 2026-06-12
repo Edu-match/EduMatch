@@ -32,6 +32,17 @@ export function computeSubOrbDiameter(stats: ForumActivityStats): number {
   return base;
 }
 
+/** 軌道トピック玉の直径（px）。視認性重視：投稿数に比例してわかりやすく拡大 */
+export function computeTopicOrbDiameter(stats: ForumActivityStats): number {
+  const posts = Math.max(0, stats.postCount ?? 0);
+  const base = 88;
+  const max = 168;
+  const perPost = 6;
+  let size = base + posts * perPost;
+  if (isInteropHot(stats)) size = Math.round(size * 1.06);
+  return Math.min(max, Math.max(base, size));
+}
+
 /** テーマルーム／ぷよ玉の直径（px）。base を起点に投稿数で拡大、ホット時はさらに一回り大きく */
 export function computeThemeRoomBubbleDiameter(base: number, stats: ForumActivityStats): number {
   const activity = stats.postCount + (stats.participantCount ?? 0) * 0.4;

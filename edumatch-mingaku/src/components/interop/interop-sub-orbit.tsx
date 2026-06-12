@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { ArrowLeft, MessageCircle, type LucideIcon } from "lucide-react";
 import {
   computeSubOrbDiameter,
+  computeTopicOrbDiameter,
   formatActivityHint,
   isInteropHot,
   type InteropActivityStats,
@@ -33,6 +34,8 @@ export type InteropOrbitItem = {
   /** 玉の色（#RRGGBB）。トップマップの分類色と揃える。未指定なら accent を使用 */
   accentColor?: string;
   stats: InteropActivityStats;
+  /** true なら投稿数ベースの視認性重視サイズ（サテライト内トピック等） */
+  topicOrb?: boolean;
   onActivate: () => void;
 };
 
@@ -71,11 +74,12 @@ function SubTopicOrb({
 }) {
   const pos = orbitPosition(index, total, orbitRadius);
   const stats = item.stats;
-  const baseSize = computeSubOrbDiameter(stats);
+  const baseSize = item.topicOrb ? computeTopicOrbDiameter(stats) : computeSubOrbDiameter(stats);
   const hot = isInteropHot(stats);
   const hint = formatActivityHint(stats);
   const intensity = computePuyoIntensity(stats);
   const iconSize = Math.max(20, baseSize * 0.32);
+  const badgeFont = baseSize >= 130 ? 10 : 9;
   const Icon = item.icon ?? MessageCircle;
   const color = item.accentColor ?? accent; // 玉の色（分類色）
   // 揺れは控えめに（やかましさ回避）。hot でも大きくは揺らさない。
@@ -100,7 +104,7 @@ function SubTopicOrb({
 
       <span className="relative flex flex-col items-center">
         <span
-          className={puyoStyle ? "interop-puyo relative grid place-items-center rounded-full" : "relative grid place-items-center rounded-full transition-transform duration-300 group-hover:scale-[1.08]"}
+          className={puyoStyle ? "interop-puyo relative grid place-items-center rounded-full" : "relative grid place-items-center rounded-full transition-[width,height,transform] duration-500 ease-out group-hover:scale-[1.08]"}
           style={{
             width: baseSize,
             height: baseSize,
@@ -125,8 +129,9 @@ function SubTopicOrb({
           />
           {hint && (
             <span
-              className="absolute -bottom-1.5 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full px-1.5 py-0.5 text-[9px] font-bold shadow-md"
+              className="absolute -bottom-1.5 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full px-1.5 py-0.5 font-bold shadow-md"
               style={{
+                fontSize: badgeFont,
                 background: hot ? "rgba(255,120,40,0.95)" : `${color}ee`,
                 color: "#fff",
                 border: "1px solid rgba(255,255,255,0.25)",

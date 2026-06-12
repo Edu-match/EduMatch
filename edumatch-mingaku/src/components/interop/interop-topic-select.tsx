@@ -61,6 +61,7 @@ export function InteropTopicSelect({
           name: t.name,
           icon: MessageCircle,
           accentColor: meta.color,
+          topicOrb: true,
           stats: { postCount: t.postCount, participantCount: 0 },
           onActivate: () => router.push(`/interop/t/${sub.id}/topic/${t.id}`),
         }))}
