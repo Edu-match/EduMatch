@@ -59,3 +59,9 @@ export function formatActivityHint(stats: ForumActivityStats): string | undefine
   if (isInteropHot(stats)) return `🔥 ${stats.postCount}件`;
   return `${stats.postCount}件`;
 }
+
+/** 直近24時間以内に投稿があれば true（新着「！」表示用） */
+export function isInteropRecentPost(stats: ForumActivityStats): boolean {
+  if (!stats.lastPostedAt || (stats.postCount ?? 0) < 1) return false;
+  return Date.now() - new Date(stats.lastPostedAt).getTime() < 86_400_000;
+}

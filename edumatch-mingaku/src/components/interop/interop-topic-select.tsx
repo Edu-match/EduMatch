@@ -13,6 +13,7 @@ export type SelectableTopic = {
   name: string;
   description: string;
   postCount: number;
+  lastPostedAt?: string | null;
 };
 
 const SATELLITE_META: Record<string, { color: string; icon: LucideIcon }> = {
@@ -62,7 +63,11 @@ export function InteropTopicSelect({
           icon: MessageCircle,
           accentColor: meta.color,
           topicOrb: true,
-          stats: { postCount: t.postCount, participantCount: 0 },
+          stats: {
+            postCount: t.postCount,
+            participantCount: 0,
+            lastPostedAt: t.lastPostedAt ?? null,
+          },
           onActivate: () => router.push(`/interop/t/${sub.id}/topic/${t.id}`),
         }))}
         backLabel="マップに戻る"

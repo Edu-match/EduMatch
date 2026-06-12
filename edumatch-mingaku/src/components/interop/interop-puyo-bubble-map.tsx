@@ -9,7 +9,7 @@ import {
 } from "@/lib/interop-priority-topics";
 import type { InteropCategory } from "@/components/interop/interop-category-bubble-map";
 import { ForumHotFlame } from "@/components/community/forum-hot-flame";
-import type { InteropActivityStats } from "@/lib/interop-activity";
+import { isInteropRecentPost, type InteropActivityStats } from "@/lib/interop-activity";
 import { computePuyoIntensity, INTEROP_PUYO_CSS, puyoAnimationStyle } from "@/lib/interop-puyopuyo";
 import {
   DEFAULT_AXIS_CONFIG,
@@ -103,8 +103,8 @@ const SATELLITE_POS: Record<InteropSatellite["place"], { x: number; y: number }>
 function satelliteFootprintPct(orbPx: number, place: InteropSatellite["place"], refW: number): number {
   const orbR = (orbPx / 2 / refW) * 100;
   const glowR = (Math.round(orbPx * 0.52) / 2 / refW) * 100;
-  const labelExtra = place === "bottom" ? 9 : 7;
-  return orbR + glowR * 0.35 + labelExtra;
+  const labelExtra = place === "bottom" ? 11 : 9;
+  return orbR + glowR * 0.45 + labelExtra + 2.5;
 }
 
 /** 拡大時は中心から外側へアンカーを少しずらし、中心ハブ・隣接サテライトとの被りを抑える */
@@ -137,6 +137,16 @@ function popupXExtra(xPct: number): number {
   if (xPct < 24) return 135;
   if (xPct < 38) return 85;
   return 0;
+}
+
+/** 描画サイズ（グロー・ラベル・ぷよアニメ余白）込みの反発用半径(%) */
+function orbCollisionRadiusPct(diameterPx: number, refW: number, labelMargin: number): number {
+  const bodyR = (diameterPx / 2 / refW) * 100;
+  const glowPad = (20 / refW) * 100;
+  const animPad = bodyR * 0.08;
+  const labelPad = diameterPx < 56 ? 7 : 9.5;
+  const badgePad = 2.5;
+  return bodyR + glowPad + animPad + labelMargin + labelPad + badgePad;
 }
 
 /** topic ごとの軸座標を画面配置に変換。近接玉は反発で分散（被り回避）。 */
@@ -186,21 +196,18 @@ function computeAxisPlacements(
     }
     return { x: AXIS_CX + a.x * AXIS_RX + jx, y: AXIS_CY - a.y * AXIS_RY + jy };
   });
-  // 反発で被り回避（y方向は%が大きいので圧縮して等方近似）。
-  // 必要間隔は2玉の占有半径の和（大きい玉ほど広く確保）。
-  // ★毎イテレーションで枠内クランプも行う：最後に一度だけクランプすると
-  //   端に押し込まれた玉同士が再び重なるため、「クランプ→再反発」を繰り返して
-  //   枠内で重なりゼロの配置に収束させる。
-  for (let k = 0; k < 360; k++) {
-    // 玉どうしの反発
+  // 玉同士が接触しないよう余白を加算（軸分布より優先して反発で押し出す）
+  const ORB_GAP = 6.5;
+
+  const repelOrbs = (strength = 1) => {
     for (let i = 0; i < pts.length; i++) {
       for (let j = i + 1; j < pts.length; j++) {
-        const minDist = rOf(i) + rOf(j);
+        const minDist = rOf(i) + rOf(j) + ORB_GAP;
         const dx = pts[j].x - pts[i].x;
         const dy = (pts[j].y - pts[i].y) * ys;
         const d = Math.hypot(dx, dy) || 0.01;
         if (d < minDist) {
-          const push = (minDist - d) / 2;
+          const push = ((minDist - d) / 2) * strength;
           const ux = dx / d;
           const uy = dy / d;
           pts[i].x -= ux * push;
@@ -210,10 +217,12 @@ function computeAxisPlacements(
         }
       }
     }
-    // 中心ハブ・サテライトの占有ゾーンから玉を押し出す（玉サイズ分も上乗せ）
+  };
+
+  const repelObstacles = () => {
     for (let i = 0; i < pts.length; i++) {
       for (const o of obstacles) {
-        const clearance = o.r + rOf(i) * 0.6;
+        const clearance = o.r + rOf(i) + ORB_GAP * 0.35;
         const dx = pts[i].x - o.x;
         const dy = (pts[i].y - o.y) * ys;
         const d = Math.hypot(dx, dy) || 0.01;
@@ -224,13 +233,27 @@ function computeAxisPlacements(
         }
       }
     }
-    // 枠内クランプ（ヘッダー/フッター/AIバーに玉が潜らないようにしたうえで、
-    // 次イテレーションの反発で玉同士の重なりを解消する）
+  };
+
+  const clampBounds = () => {
     for (let i = 0; i < pts.length; i++) {
       pts[i].x = Math.max(xMin, Math.min(xMax, pts[i].x));
       pts[i].y = Math.max(yMin, Math.min(yMax, pts[i].y));
     }
+  };
+
+  // 反発＋障害物回避＋枠内クランプを繰り返し収束
+  for (let k = 0; k < 520; k++) {
+    repelOrbs(1.05);
+    repelObstacles();
+    clampBounds();
   }
+  // 枠クランプなしの追い反発（端に押し込まれて重なった分を解消・軸より優先）
+  for (let k = 0; k < 280; k++) {
+    repelOrbs(1.15);
+    repelObstacles();
+  }
+  clampBounds();
   return pts.map((p) => {
     const x = Math.max(xMin, Math.min(xMax, p.x));
     const y = Math.max(yMin, Math.min(yMax, p.y));
@@ -335,8 +358,8 @@ type MapMetrics = {
 };
 // スマホは1画面に玉が多すぎてゴチャつくため、縦に大きく展開して画面あたりの玉数を減らし、
 // 下へパンして探索できるようにする。
-const METRICS_DESKTOP: MapMetrics = { base: 40, max: 150, refW: 1300, labelMargin: 6.0, centerSize: 132, satOrb: 84, satOrbMax: 228, centerR: 18, ys: 0.62, yMin: 19, yMax: 88, xMin: 9, xMax: 89, panLimY: 420, aiBtn: { x: 93, y: 90, r: 11 } };
-const METRICS_MOBILE: MapMetrics  = { base: 26, max: 70,  refW: 430,  labelMargin: 7.0, centerSize: 88,  satOrb: 56, satOrbMax: 148, centerR: 17, ys: 0.5, yMin: 17, yMax: 205, xMin: 6, xMax: 94, panLimY: 1180, aiBtn: { x: 90, y: 93, r: 13 } };
+const METRICS_DESKTOP: MapMetrics = { base: 40, max: 150, refW: 1300, labelMargin: 8.5, centerSize: 132, satOrb: 84, satOrbMax: 228, centerR: 20, ys: 0.62, yMin: 18, yMax: 90, xMin: 8, xMax: 90, panLimY: 420, aiBtn: { x: 93, y: 90, r: 12 } };
+const METRICS_MOBILE: MapMetrics  = { base: 26, max: 70,  refW: 430,  labelMargin: 9.0, centerSize: 88,  satOrb: 56, satOrbMax: 148, centerR: 19, ys: 0.5, yMin: 16, yMax: 210, xMin: 5, xMax: 95, panLimY: 1180, aiBtn: { x: 90, y: 93, r: 14 } };
 
 
 function PuyoBubble({
@@ -363,9 +386,7 @@ function PuyoBubble({
   const hot = isHot;
   // 件数表示（炎マークは付けない）。直近24hに新着があれば「！」を出す。
   const hint = stats.postCount > 0 ? `${stats.postCount}件` : undefined;
-  const isRecent = stats.lastPostedAt
-    ? Date.now() - new Date(stats.lastPostedAt).getTime() < 86_400_000
-    : false;
+  const isRecent = isInteropRecentPost(stats);
   const intensity = computePuyoIntensity(stats);
   // 揺れは控えめに（やかましさ・被り回避）。hot でも大きくは揺らさない。
   const puyoStyle =
@@ -761,20 +782,14 @@ export function InteropPuyoBubbleMap({
     list.push({ x: m.aiBtn.x, y: m.aiBtn.y, r: m.aiBtn.r });
     return list;
   }, [satellites, satelliteSizes, satelliteAnchors, m.centerR, m.centerSize, m.satOrb, m.refW, m.aiBtn]);
-  // 各玉の直径(px)＝投稿数で連続拡大。位置計算は3件刻みにバケット化して
-  // ポーリング毎の細かな再配置（ガタつき）を抑える。
+  // 各玉の直径(px)＝投稿数で連続拡大。反発半径は実描画サイズ＋グロー/ラベル込みで算出。
   const sizes = useMemo(
     () => topics.map((t) => bubbleSizeFor(activityByRoom.get(t.roomId)?.postCount ?? 0, m.base, m.max)),
     [topics, activityByRoom, m.base, m.max]
   );
   const placeRadii = useMemo(
-    () =>
-      topics.map((t) => {
-        const bucketed = bubbleSizeFor(Math.floor((activityByRoom.get(t.roomId)?.postCount ?? 0) / 3) * 3, m.base, m.max);
-        // px半径→%換算 ＋ ラベル/余白マージン
-        return (bucketed / 2 / m.refW) * 100 + m.labelMargin;
-      }),
-    [topics, activityByRoom, m.base, m.max, m.refW, m.labelMargin]
+    () => sizes.map((px) => orbCollisionRadiusPct(px, m.refW, m.labelMargin)),
+    [sizes, m.refW, m.labelMargin]
   );
   const placements = useMemo(
     () => computeAxisPlacements(topics, topicPositions ?? DEFAULT_TOPIC_AXIS, obstacles, placeRadii, m.ys, m.yMin, m.yMax, m.xMin, m.xMax),

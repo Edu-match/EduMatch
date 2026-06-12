@@ -5,6 +5,7 @@ import { getCurrentUser, getCurrentProfile } from "@/lib/auth";
 import { moderateAndNotify } from "@/lib/post-moderation";
 import { generateInteropAiReplyText, INTEROP_AI_FACILITATOR_NAME } from "@/lib/forum-ai-comment";
 import { isInteropAiReplyDisabled } from "@/lib/interop-ai-reply-policy";
+import { isValidInteropVoterKey } from "@/lib/interop-voter";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -48,6 +49,29 @@ export async function GET(req: NextRequest) {
       orderBy: [{ is_pinned: "desc" }, { created_at: "desc" }],
       take: PAGE_SIZE,
     });
+
+    const postIds = posts.map((p) => p.id);
+    const voterKey = req.nextUrl.searchParams.get("voterKey")?.trim() ?? "";
+    const likeCounts =
+      postIds.length > 0
+        ? await prisma.interopPostLike.groupBy({
+            by: ["post_id"],
+            where: { post_id: { in: postIds } },
+            _count: { _all: true },
+          })
+        : [];
+    const likeCountMap = Object.fromEntries(
+      likeCounts.map((row) => [row.post_id, row._count._all]),
+    );
+    const likedSet = new Set<string>();
+    if (voterKey && isValidInteropVoterKey(voterKey) && postIds.length > 0) {
+      const likedRows = await prisma.interopPostLike.findMany({
+        where: { post_id: { in: postIds }, voter_key: voterKey },
+        select: { post_id: true },
+      });
+      for (const row of likedRows) likedSet.add(row.post_id);
+    }
+
     return NextResponse.json({
       posts: posts.map((p) => {
         const aiReply = p.replies.find((r) => r.is_ai_reply);
@@ -61,6 +85,8 @@ export async function GET(req: NextRequest) {
           body: p.body,
           isPinned: p.is_pinned,
           isHidden: p.is_hidden,
+          likeCount: likeCountMap[p.id] ?? 0,
+          liked: likedSet.has(p.id),
           postedAt: p.created_at.toISOString(),
           aiReply: aiReply
             ? {
@@ -276,6 +302,8 @@ export async function POST(req: NextRequest) {
           body: post.body,
           isPinned: post.is_pinned,
           isHidden: post.is_hidden,
+          likeCount: 0,
+          liked: false,
           postedAt: post.created_at.toISOString(),
         },
       },

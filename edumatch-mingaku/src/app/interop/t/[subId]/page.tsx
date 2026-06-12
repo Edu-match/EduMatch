@@ -66,9 +66,13 @@ export default async function InteropSubPage({
           topic_id: { in: topics.map((t) => t.id) },
         },
         _count: { _all: true },
+        _max: { created_at: true },
       })
-      .catch(() => [] as Array<{ topic_id: string | null; _count: { _all: number } }>);
+      .catch(() => [] as Array<{ topic_id: string | null; _count: { _all: number }; _max: { created_at: Date | null } }>);
     const countMap = new Map(counts.map((c) => [c.topic_id, c._count._all]));
+    const lastPostedMap = new Map(
+      counts.map((c) => [c.topic_id, c._max.created_at?.toISOString() ?? null]),
+    );
 
     return (
       <>
@@ -86,6 +90,7 @@ export default async function InteropSubPage({
             name: t.name,
             description: t.description,
             postCount: countMap.get(t.id) ?? 0,
+            lastPostedAt: lastPostedMap.get(t.id) ?? null,
           }))}
           accent={sub.category.color || "#9fb4e8"}
           themeMode={settings.themeMode}

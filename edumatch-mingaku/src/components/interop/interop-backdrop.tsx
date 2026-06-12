@@ -20,6 +20,12 @@ const BAR_GAP = 0.35;
 const MIN_H = 4;
 const MAX_H = 31;
 
+function formatHourLabel(hour: number): string {
+  const suffix = hour < 12 ? "AM" : "PM";
+  const h12 = hour % 12;
+  return `${h12 === 0 ? 12 : h12} ${suffix}`;
+}
+
 function CityscapeLayer({ period }: { period: Period }) {
   const [hourly, setHourly] = useState<number[] | null>(null);
   const currentHour = new Date().getHours();
@@ -55,7 +61,6 @@ function CityscapeLayer({ period }: { period: Period }) {
     return { x, h, count, isCurrent };
   });
 
-  const hourLabels = [0, 6, 12, 18, 23];
   const midY = 33 - MAX_H * 0.55;
 
   return (
@@ -119,6 +124,19 @@ function CityscapeLayer({ period }: { period: Period }) {
             stroke={isCurrent ? bp.accent : bp.stroke}
             strokeWidth={isCurrent ? 0.28 : 0.15}
           />
+          {/* 各時間帯ラベル（棒の先端） */}
+          <text
+            x={x + BAR_W / 2}
+            y={33 - h - 0.55}
+            textAnchor="middle"
+            fontSize={isCurrent ? 1.25 : 0.95}
+            fill={bp.accent}
+            opacity={isCurrent ? 0.92 : 0.58}
+            fontFamily="system-ui, sans-serif"
+            fontWeight={isCurrent ? 700 : 500}
+          >
+            {formatHourLabel(i)}
+          </text>
         </g>
       ))}
 
@@ -127,20 +145,6 @@ function CityscapeLayer({ period }: { period: Period }) {
 
       {/* ベースライン */}
       <line x1={0} y1={33} x2={100} y2={33} stroke={bp.accent} strokeWidth={0.22} opacity={0.55} />
-
-      {/* 時間ラベル */}
-      {hourLabels.map((h) => {
-        const x = h * (BAR_W + BAR_GAP) + BAR_W / 2;
-        return (
-          <g key={h}>
-            <line x1={x} y1={33} x2={x} y2={34.2} stroke={bp.accent} strokeWidth={0.22} opacity={0.5} />
-            <text x={x} y={35.8} textAnchor="middle" fontSize={1.6} fill={bp.accent} opacity={0.65} fontFamily="sans-serif">{h}</text>
-          </g>
-        );
-      })}
-
-      {/* 「直近24h」ラベル */}
-      <text x={1} y={midY - 0.8} fontSize={1.5} fill={bp.accent} opacity={0.55} fontFamily="sans-serif">投稿数 / 24h</text>
 
       {/* 窓（点灯パターン）。矩形数を抑えて描画を軽量化（点灯した窓のみ描画） */}
       {bars.map(({ x, h }, bi) => {

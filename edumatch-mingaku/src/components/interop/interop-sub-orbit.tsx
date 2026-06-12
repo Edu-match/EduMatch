@@ -7,6 +7,7 @@ import {
   computeTopicOrbDiameter,
   formatActivityHint,
   isInteropHot,
+  isInteropRecentPost,
   type InteropActivityStats,
 } from "@/lib/interop-activity";
 import {
@@ -49,6 +50,18 @@ const FX_CSS = `
   }
 `;
 
+function RecentPostBadge() {
+  return (
+    <span
+      className="absolute -left-1 -top-1 z-20 grid h-4 w-4 place-items-center rounded-full text-[10px] font-black leading-none text-white shadow"
+      style={{ background: "#ff3b30" }}
+      title="24時間以内に新しい投稿があります"
+    >
+      !
+    </span>
+  );
+}
+
 function orbitPosition(index: number, total: number, radiusPercent: number) {
   const angleDeg = (360 / Math.max(total, 1)) * index - 90;
   const angle = (angleDeg * Math.PI) / 180;
@@ -75,6 +88,7 @@ function SubTopicOrb({
   const stats = item.stats;
   const baseSize = item.topicOrb ? computeTopicOrbDiameter(stats) : computeSubOrbDiameter(stats);
   const hot = isInteropHot(stats);
+  const isRecent = isInteropRecentPost(stats);
   const hint = formatActivityHint(stats);
   const intensity = computePuyoIntensity(stats);
   const iconSize = Math.max(20, baseSize * 0.32);
@@ -126,6 +140,7 @@ function SubTopicOrb({
             style={{ color: hot ? "#ffb870" : color, width: iconSize, height: iconSize, filter: hot ? undefined : `drop-shadow(0 0 4px ${color}77)` }}
             strokeWidth={1.7}
           />
+          {isRecent && <RecentPostBadge />}
           {hint && (
             <span
               className="absolute -bottom-1.5 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full px-1.5 py-0.5 font-bold shadow-md"

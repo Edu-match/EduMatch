@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Bot, CornerDownRight, Link2, Loader2, MessageCircle, Pin, Send } from "lucide-react";
+import { ArrowLeft, Bot, CornerDownRight, Heart, Link2, Loader2, MessageCircle, Pin, Send } from "lucide-react";
+import { getInteropVoterKey } from "@/lib/interop-voter";
 import { InteropBackdrop } from "@/components/interop/interop-backdrop";
 import { InteropContentCarousel } from "@/components/interop/interop-content-carousel";
 import { InteropChatWidget } from "@/components/interop/interop-chat-widget";
@@ -18,6 +19,8 @@ type Post = {
   authorRole: string;
   body: string;
   isPinned?: boolean;
+  likeCount?: number;
+  liked?: boolean;
   postedAt: string;
   aiReply?: AiReply | null;
   userReplies?: UserReply[];
@@ -53,11 +56,12 @@ function timeAgo(iso: string): string {
   return `${d}日前`;
 }
 
-/** 時間帯背景の上でも本文が読めるよう、投稿面は暗めの半透明＋ブラーに統一 */
+/** フロストグラス：時間帯背景を透かしつつ本文のコントラストを確保 */
 const POST_SURFACE = {
-  background: "rgba(8,11,32,0.86)",
-  backdropFilter: "blur(10px)",
-  WebkitBackdropFilter: "blur(10px)",
+  background: "linear-gradient(145deg, rgba(14,20,52,0.62) 0%, rgba(8,12,36,0.72) 100%)",
+  backdropFilter: "blur(16px) saturate(1.15)",
+  WebkitBackdropFilter: "blur(16px) saturate(1.15)",
+  boxShadow: "0 8px 32px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.12)",
 } as const;
 
 /** サブカテゴリ別ページの掲示板（上＝コンテンツ、下＝投稿欄）。来場者はログイン不要で投稿。
@@ -95,11 +99,13 @@ export function InteropBoard({
   const searchParams = useSearchParams();
   const focusPostId = searchParams.get("post");
   const [highlightId, setHighlightId] = useState<string | null>(null);
+  const voterKeyRef = useRef(getInteropVoterKey());
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fetch(`/api/interop/posts?subCategoryId=${sub.id}${topic ? `&topicId=${topic.id}` : ""}`)
+    const voter = encodeURIComponent(voterKeyRef.current);
+    fetch(`/api/interop/posts?subCategoryId=${sub.id}${topic ? `&topicId=${topic.id}` : ""}&voterKey=${voter}`)
       .then((r) => r.json())
       .then((d) => { if (!cancelled && Array.isArray(d.posts)) setPosts(d.posts); })
       .catch(console.error)
@@ -184,6 +190,40 @@ export function InteropBoard({
       setError("通信エラーが発生しました");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function toggleLike(postId: string) {
+    const target = posts.find((p) => p.id === postId);
+    if (!target) return;
+    const wasLiked = target.liked ?? false;
+    const prevCount = target.likeCount ?? 0;
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === postId
+          ? { ...p, liked: !wasLiked, likeCount: Math.max(0, prevCount + (wasLiked ? -1 : 1)) }
+          : p,
+      ),
+    );
+    try {
+      const res = await fetch("/api/interop/posts/likes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ postId, voterKey: voterKeyRef.current }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "like failed");
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === postId ? { ...p, liked: data.liked, likeCount: data.count } : p,
+        ),
+      );
+    } catch {
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === postId ? { ...p, liked: wasLiked, likeCount: prevCount } : p,
+        ),
+      );
     }
   }
 
@@ -285,10 +325,9 @@ export function InteropBoard({
         <header
           className="mt-4 rounded-3xl border px-5 py-6"
           style={{
-            background: "rgba(8,11,32,0.72)",
-            borderColor: `${accent}44`,
-            boxShadow: `0 0 30px ${accent}1f`,
-            backdropFilter: "blur(8px)",
+            ...POST_SURFACE,
+            borderColor: `${accent}55`,
+            boxShadow: `0 8px 32px rgba(0,0,0,0.28), 0 0 24px ${accent}1a, inset 0 1px 0 rgba(255,255,255,0.14)`,
           }}
         >
           <div className="flex items-center gap-1.5 text-[11px] font-bold" style={{ color: accent }}>
@@ -354,10 +393,10 @@ export function InteropBoard({
                 return (
                   <li key={p.id} id={`post-${p.id}`} className="scroll-mt-20 rounded-2xl border transition-all duration-500" style={
                     highlightId === p.id
-                      ? { ...POST_SURFACE, borderColor: accent, background: `linear-gradient(135deg, rgba(8,11,32,0.92) 0%, ${accent}22 100%)`, boxShadow: `0 0 0 2px ${accent}, 0 0 22px ${accent}66` }
+                      ? { ...POST_SURFACE, borderColor: accent, background: `linear-gradient(145deg, rgba(14,20,52,0.78) 0%, ${accent}28 100%)`, boxShadow: `0 0 0 2px ${accent}, 0 8px 28px ${accent}55, inset 0 1px 0 rgba(255,255,255,0.14)` }
                       : p.isPinned
-                        ? { ...POST_SURFACE, borderColor: `${accent}66`, background: `linear-gradient(135deg, rgba(8,11,32,0.88) 0%, ${accent}16 100%)` }
-                        : { ...POST_SURFACE, borderColor: "rgba(255,255,255,0.14)" }
+                        ? { ...POST_SURFACE, borderColor: `${accent}55`, background: `linear-gradient(145deg, rgba(14,20,52,0.68) 0%, ${accent}1e 100%)` }
+                        : { ...POST_SURFACE, borderColor: "rgba(255,255,255,0.16)" }
                   }>
                     <div className="px-4 py-3">
                       <div className="flex items-center gap-2 text-xs text-white/55">
@@ -379,22 +418,43 @@ export function InteropBoard({
                       >
                         {p.body}
                       </p>
-                      {/* 返信ボタン（固定/お知らせ投稿は除く） */}
-                      {!p.isPinned && (
+                      <div className="mt-2 flex flex-wrap items-center gap-3">
                         <button
                           type="button"
-                          onClick={() => { setReplyingToId(replyingToId === p.id ? null : p.id); setReplyBody(""); }}
-                          className="mt-2 inline-flex items-center gap-1 text-[11px] text-white/35 hover:text-white/70 transition"
+                          onClick={() => toggleLike(p.id)}
+                          className={`inline-flex items-center gap-1 text-[11px] transition ${
+                            p.liked ? "text-pink-400" : "text-white/40 hover:text-pink-300"
+                          }`}
+                          aria-pressed={p.liked}
+                          aria-label={p.liked ? "いいねを取り消す" : "いいねする"}
                         >
-                          <CornerDownRight className="h-3 w-3" />
-                          {replyingToId === p.id ? "キャンセル" : `返信する（${(p.userReplies ?? []).length > 0 ? (p.userReplies ?? []).length + "件" : ""}）`}
+                          <Heart className={`h-3.5 w-3.5 ${p.liked ? "fill-pink-400" : ""}`} />
+                          {(p.likeCount ?? 0) > 0 ? p.likeCount : "いいね"}
                         </button>
-                      )}
+                        {/* 返信ボタン（固定/お知らせ投稿は除く） */}
+                        {!p.isPinned && (
+                          <button
+                            type="button"
+                            onClick={() => { setReplyingToId(replyingToId === p.id ? null : p.id); setReplyBody(""); }}
+                            className="inline-flex items-center gap-1 text-[11px] text-white/35 hover:text-white/70 transition"
+                          >
+                            <CornerDownRight className="h-3 w-3" />
+                            {replyingToId === p.id ? "キャンセル" : `返信する${(p.userReplies ?? []).length > 0 ? `（${(p.userReplies ?? []).length}件）` : ""}`}
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     {/* ユーザー返信一覧 */}
                     {(p.userReplies ?? []).length > 0 && (
-                      <div className="mx-3 mb-2 space-y-2 rounded-xl border border-white/8 bg-black/20 px-3 py-2">
+                      <div
+                        className="mx-3 mb-2 space-y-2 rounded-xl border border-white/10 px-3 py-2"
+                        style={{
+                          background: "rgba(6,10,28,0.45)",
+                          backdropFilter: "blur(10px)",
+                          WebkitBackdropFilter: "blur(10px)",
+                        }}
+                      >
                         {(p.userReplies ?? []).map((r) => (
                           <div key={r.id}>
                             <div className="flex items-center gap-1.5 text-[10.5px] text-white/55">
@@ -445,8 +505,8 @@ export function InteropBoard({
                         className="mx-3 mb-3 rounded-xl border px-3.5 py-2.5"
                         style={{
                           ...POST_SURFACE,
-                          background: "rgba(10,14,42,0.92)",
-                          borderColor: "rgba(120,160,255,0.28)",
+                          background: "linear-gradient(145deg, rgba(12,18,48,0.72) 0%, rgba(40,60,120,0.35) 100%)",
+                          borderColor: "rgba(120,160,255,0.32)",
                         }}
                       >
                         <div className="mb-1 flex items-center gap-1.5 text-[10.5px] font-bold text-indigo-200/90">

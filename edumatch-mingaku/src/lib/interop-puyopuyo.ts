@@ -65,11 +65,12 @@ export function getOrbitRadiusPercent(count: number): number {
 export function getOrbitLayoutForMaxOrb(count: number, maxOrbPx: number) {
   const baseRadius = getOrbitRadiusPercent(count);
   const baseVmin = Math.min(96, 74 + Math.max(count, 1) * 5);
-  const excess = Math.max(0, maxOrbPx - 96);
-  const boost = Math.min(10, Math.round(excess / 7));
+  const excess = Math.max(0, maxOrbPx - 88);
+  const boost = Math.min(22, Math.round(excess / 4.5));
+  const countBoost = count > 6 ? Math.min(6, (count - 6) * 0.8) : 0;
   return {
-    orbitRadius: Math.min(48, baseRadius + boost * 0.5),
-    containerSize: `min(${Math.min(96, baseVmin + boost)}vmin, min(98vw, 900px))`,
+    orbitRadius: Math.min(50, baseRadius + boost * 0.7 + countBoost),
+    containerSize: `min(${Math.min(98, baseVmin + boost + countBoost * 1.5)}vmin, min(98vw, 940px))`,
   };
 }
 
