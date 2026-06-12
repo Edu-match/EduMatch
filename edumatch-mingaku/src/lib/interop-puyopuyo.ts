@@ -61,6 +61,18 @@ export function getOrbitRadiusPercent(count: number): number {
   return Math.min(46, 34 + Math.max(count, 1) * 2.5);
 }
 
+/** 最大玉直径に応じて軌道半径・コンテナを拡大（拡大時の被り回避・上限付き） */
+export function getOrbitLayoutForMaxOrb(count: number, maxOrbPx: number) {
+  const baseRadius = getOrbitRadiusPercent(count);
+  const baseVmin = Math.min(96, 74 + Math.max(count, 1) * 5);
+  const excess = Math.max(0, maxOrbPx - 96);
+  const boost = Math.min(10, Math.round(excess / 7));
+  return {
+    orbitRadius: Math.min(48, baseRadius + boost * 0.5),
+    containerSize: `min(${Math.min(96, baseVmin + boost)}vmin, min(98vw, 900px))`,
+  };
+}
+
 export const INTEROP_PUYO_CSS = `
   @keyframes interopPuyopuyo {
     0%, 100% {

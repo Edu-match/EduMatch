@@ -11,8 +11,7 @@ import {
 } from "@/lib/interop-activity";
 import {
   computePuyoIntensity,
-  getOrbitContainerSize,
-  getOrbitRadiusPercent,
+  getOrbitLayoutForMaxOrb,
   INTEROP_PUYO_CSS,
   puyoAnimationStyle,
 } from "@/lib/interop-puyopuyo";
@@ -92,8 +91,8 @@ function SubTopicOrb({
     <button
       type="button"
       onClick={item.onActivate}
-      className="group absolute z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center focus:outline-none"
-      style={{ left: `${pos.left}%`, top: `${pos.top}%` }}
+      className="group absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center focus:outline-none transition-[left,top] duration-500 ease-out"
+      style={{ left: `${pos.left}%`, top: `${pos.top}%`, zIndex: 10 + Math.round(baseSize / 40) }}
       aria-label={`${item.name} を開く`}
     >
       {/* ホバーグロー */}
@@ -178,8 +177,20 @@ export function InteropSubOrbit({
   onBack: () => void;
 }) {
   const count = items.length;
-  const containerSize = useMemo(() => getOrbitContainerSize(count), [count]);
-  const orbitRadius = useMemo(() => getOrbitRadiusPercent(count), [count]);
+  const maxOrbPx = useMemo(
+    () =>
+      Math.max(
+        96,
+        ...items.map((item) =>
+          item.topicOrb ? computeTopicOrbDiameter(item.stats) : computeSubOrbDiameter(item.stats)
+        )
+      ),
+    [items]
+  );
+  const { containerSize, orbitRadius } = useMemo(
+    () => getOrbitLayoutForMaxOrb(count, maxOrbPx),
+    [count, maxOrbPx]
+  );
   const hint =
     centerHint ??
     (count === 0

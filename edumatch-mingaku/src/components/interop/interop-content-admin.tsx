@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
+  Bot,
   ChevronDown,
   ChevronRight,
   ExternalLink,
@@ -86,6 +87,8 @@ type Post = {
   isPinned: boolean;
   isHidden: boolean;
   postedAt: string;
+  aiReply?: { id: string; body: string; postedAt: string; isHidden?: boolean } | null;
+  userReplies?: Array<{ id: string; authorName: string; authorRole: string; body: string; postedAt: string; isHidden?: boolean }>;
 };
 type BoardTopic = {
   id: string;
@@ -695,6 +698,7 @@ function PostManager({ subId, onMsg }: { subId: string; onMsg: (t: string, ok: b
   const [articleTitle, setArticleTitle] = useState("運営からのお知らせ");
   const [articleBody, setArticleBody] = useState("");
   const [posting, setPosting] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -723,6 +727,19 @@ function PostManager({ subId, onMsg }: { subId: string; onMsg: (t: string, ok: b
     const { ok } = await api(`/api/interop/posts/${id}`, { method: "DELETE" });
     if (ok) { onMsg("削除しました。", true); load(); } else onMsg("削除に失敗しました。", false);
   };
+  const bulkSetHidden = async (isHidden: boolean) => {
+    const label = isHidden ? "すべて非表示" : "すべて表示";
+    if (!confirm(`このページの投稿・返信・AI返信を${label}にしますか？`)) return;
+    setBulkBusy(true);
+    const { ok, data } = await api("/api/interop/posts/bulk-hide", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ subCategoryId: subId, isHidden }),
+    });
+    setBulkBusy(false);
+    if (ok) { onMsg(`${data.updated ?? 0}件を${label}にしました。`, true); load(); }
+    else onMsg("一括更新に失敗しました。", false);
+  };
 
   return (
     <div className="space-y-3 border-t border-white/10 bg-white/[0.04] px-3 py-3">
@@ -742,28 +759,94 @@ function PostManager({ subId, onMsg }: { subId: string; onMsg: (t: string, ok: b
       ) : posts.length === 0 ? (
         <p className="text-xs text-white/40">投稿はまだありません。</p>
       ) : (
-        <ul className="space-y-1.5">
-          {posts.map((p) => (
-            <li key={p.id} className={`rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-2 text-xs ${p.isHidden ? "opacity-50" : ""}`}>
-              <div className="mb-1 flex items-center gap-1.5">
-                {p.isPinned && <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-400/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-300"><Pin className="h-2.5 w-2.5" />固定</span>}
-                <span className="font-bold text-white">{p.authorName}</span>
-                {p.authorRole && <span className="text-white/40">· {p.authorRole}</span>}
-                {p.isHidden && <span className="text-[10px] text-white/30">（非表示）</span>}
-                <div className="ml-auto flex items-center gap-1">
-                  <button type="button" onClick={() => patch(p.id, { isPinned: !p.isPinned })} className="rounded p-0.5 text-white/40 hover:text-white" title={p.isPinned ? "固定解除" : "固定する"}>
-                    {p.isPinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
-                  </button>
-                  <button type="button" onClick={() => patch(p.id, { isHidden: !p.isHidden })} className="rounded p-0.5 text-white/40 hover:text-white" title={p.isHidden ? "表示する" : "非表示にする"}>
-                    {p.isHidden ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                  </button>
-                  <button type="button" onClick={() => remove(p.id)} className="rounded p-0.5 text-white/40 hover:text-red-300" title="削除"><Trash2 className="h-3.5 w-3.5" /></button>
+        <>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[11px] text-white/45">{posts.length}件の投稿</span>
+            <button
+              type="button"
+              onClick={() => bulkSetHidden(true)}
+              disabled={bulkBusy}
+              className="ml-auto inline-flex h-7 items-center gap-1 rounded-md border border-white/15 bg-white/[0.06] px-2.5 text-[11px] font-semibold text-white/75 transition hover:bg-white/10 disabled:opacity-40"
+            >
+              {bulkBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <EyeOff className="h-3 w-3" />}
+              すべて非表示
+            </button>
+            <button
+              type="button"
+              onClick={() => bulkSetHidden(false)}
+              disabled={bulkBusy}
+              className="inline-flex h-7 items-center gap-1 rounded-md border border-emerald-400/30 bg-emerald-400/10 px-2.5 text-[11px] font-semibold text-emerald-200 transition hover:bg-emerald-400/20 disabled:opacity-40"
+            >
+              {bulkBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Eye className="h-3 w-3" />}
+              すべて表示
+            </button>
+          </div>
+          <ul className="space-y-1.5">
+            {posts.map((p) => (
+              <li key={p.id} className={`rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-2 text-xs ${p.isHidden ? "opacity-50" : ""}`}>
+                <div className="mb-1 flex items-center gap-1.5">
+                  {p.isPinned && <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-400/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-300"><Pin className="h-2.5 w-2.5" />固定</span>}
+                  <span className="font-bold text-white">{p.authorName}</span>
+                  {p.authorRole && <span className="text-white/40">· {p.authorRole}</span>}
+                  {p.isHidden && <span className="text-[10px] text-white/30">（非表示）</span>}
+                  <div className="ml-auto flex items-center gap-1">
+                    <button type="button" onClick={() => patch(p.id, { isPinned: !p.isPinned })} className="rounded p-0.5 text-white/40 hover:text-white" title={p.isPinned ? "固定解除" : "固定する"}>
+                      {p.isPinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
+                    </button>
+                    <button type="button" onClick={() => patch(p.id, { isHidden: !p.isHidden })} className="rounded p-0.5 text-white/40 hover:text-white" title={p.isHidden ? "表示する" : "非表示にする"}>
+                      {p.isHidden ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                    </button>
+                    <button type="button" onClick={() => remove(p.id)} className="rounded p-0.5 text-white/40 hover:text-red-300" title="削除"><Trash2 className="h-3.5 w-3.5" /></button>
+                  </div>
                 </div>
-              </div>
-              <p className="whitespace-pre-wrap break-words text-white/80">{p.body}</p>
-            </li>
-          ))}
-        </ul>
+                <p className="whitespace-pre-wrap break-words text-white/80">{p.body}</p>
+
+                {p.aiReply && (
+                  <div className={`mt-2 rounded-md border border-violet-400/25 bg-violet-400/[0.08] px-2 py-1.5 ${p.aiReply.isHidden ? "opacity-50" : ""}`}>
+                    <div className="mb-0.5 flex items-center gap-1.5">
+                      <Bot className="h-3 w-3 text-violet-300" />
+                      <span className="font-semibold text-violet-200">AI返信</span>
+                      {p.aiReply.isHidden && <span className="text-[10px] text-white/30">（非表示）</span>}
+                      <button
+                        type="button"
+                        onClick={() => patch(p.aiReply!.id, { isHidden: !p.aiReply!.isHidden })}
+                        className="ml-auto rounded p-0.5 text-white/40 hover:text-white"
+                        title={p.aiReply.isHidden ? "表示する" : "非表示にする"}
+                      >
+                        {p.aiReply.isHidden ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                      </button>
+                    </div>
+                    <p className="whitespace-pre-wrap break-words text-white/75">{p.aiReply.body}</p>
+                  </div>
+                )}
+
+                {(p.userReplies?.length ?? 0) > 0 && (
+                  <ul className="mt-2 space-y-1.5 border-l border-white/10 pl-2">
+                    {p.userReplies!.map((r) => (
+                      <li key={r.id} className={`rounded-md border border-white/10 bg-white/[0.03] px-2 py-1.5 ${r.isHidden ? "opacity-50" : ""}`}>
+                        <div className="mb-0.5 flex items-center gap-1.5">
+                          <MessageSquare className="h-3 w-3 text-white/40" />
+                          <span className="font-semibold text-white/85">{r.authorName}</span>
+                          {r.authorRole && <span className="text-white/40">· {r.authorRole}</span>}
+                          {r.isHidden && <span className="text-[10px] text-white/30">（非表示）</span>}
+                          <button
+                            type="button"
+                            onClick={() => patch(r.id, { isHidden: !r.isHidden })}
+                            className="ml-auto rounded p-0.5 text-white/40 hover:text-white"
+                            title={r.isHidden ? "表示する" : "非表示にする"}
+                          >
+                            {r.isHidden ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                          </button>
+                        </div>
+                        <p className="whitespace-pre-wrap break-words text-white/75">{r.body}</p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            ))}
+          </ul>
+        </>
       )}
     </div>
   );

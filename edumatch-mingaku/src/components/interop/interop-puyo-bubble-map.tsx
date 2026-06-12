@@ -11,7 +11,12 @@ import type { InteropCategory } from "@/components/interop/interop-category-bubb
 import { ForumHotFlame } from "@/components/community/forum-hot-flame";
 import type { InteropActivityStats } from "@/lib/interop-activity";
 import { computePuyoIntensity, INTEROP_PUYO_CSS, puyoAnimationStyle } from "@/lib/interop-puyopuyo";
-import { DEFAULT_AXIS_CONFIG, DEFAULT_TOPIC_AXIS, type AxisConfig, type AxisPoint } from "@/lib/interop-topic-axis";
+import {
+  DEFAULT_AXIS_CONFIG,
+  DEFAULT_TOPIC_AXIS,
+  type AxisConfig,
+  type AxisPoint,
+} from "@/lib/interop-topic-axis";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -94,6 +99,36 @@ const SATELLITE_POS: Record<InteropSatellite["place"], { x: number; y: number }>
   bottom: { x: 50, y: 66 },
 };
 
+/** サテライト玉＋グロー＋ラベル分の占有半径(%) — 反発ゾーン用 */
+function satelliteFootprintPct(orbPx: number, place: InteropSatellite["place"], refW: number): number {
+  const orbR = (orbPx / 2 / refW) * 100;
+  const glowR = (Math.round(orbPx * 0.52) / 2 / refW) * 100;
+  const labelExtra = place === "bottom" ? 9 : 7;
+  return orbR + glowR * 0.35 + labelExtra;
+}
+
+/** 拡大時は中心から外側へアンカーを少しずらし、中心ハブ・隣接サテライトとの被りを抑える */
+function adjustSatelliteAnchor(
+  place: InteropSatellite["place"],
+  orbPx: number,
+  baseOrbPx: number,
+): { x: number; y: number } {
+  const base = SATELLITE_POS[place];
+  const growth = Math.max(0, orbPx - baseOrbPx);
+  const pushPct = Math.min(5.5, (growth / baseOrbPx) * 3.2);
+  const cx = CENTER_POS.x;
+  const cy = CENTER_POS.y;
+  const dx = base.x - cx;
+  const dy = base.y - cy;
+  const len = Math.hypot(dx, dy) || 1;
+  let x = base.x + (dx / len) * pushPct;
+  let y = base.y + (dy / len) * pushPct;
+  if (place === "topLeft" && growth > baseOrbPx * 0.15) x -= 1.2;
+  if (place === "topRight" && growth > baseOrbPx * 0.15) x += 1.2;
+  if (place === "bottom" && growth > baseOrbPx * 0.12) y += 1.8;
+  return { x, y };
+}
+
 /** 吹き出し(幅約170px)が画面外/隣の玉に被らないよう、玉のx%に応じて水平オフセット(px)を返す。
  *  画面端の玉は中央寄りへ、中央付近の玉は真上/真下に出す。 */
 function popupXExtra(xPct: number): number {
@@ -130,16 +165,25 @@ function computeAxisPlacements(
   xMax = 95
 ): Placement[] {
   const rOf = (i: number) => radii[i] ?? 6;
+  const axisOf = (no: number) => axisMap[no] ?? DEFAULT_TOPIC_AXIS[no] ?? { x: 0, y: 0 };
   const pts = topics.map((t, i) => {
-    const a = axisMap[t.no] ?? { x: 0, y: 0 };
-    // 軸座標が同じ／近い玉が「一直線」に並ぶのを防ぐため、決定論的な擬似乱数で
-    // 角度＋半径を割り当て、初期位置を2D方向に大きく散らす（Math.random非依存）。
-    const h1 = (((t.no + 1) * 2654435761) >>> 0) / 4294967295;          // [0,1) 角度用
-    const h2 = (((t.no + 1) * 40503 + (i + 1) * 2246822519) >>> 0) / 4294967295; // [0,1) 半径用
-    const ang = h1 * Math.PI * 2;
-    const rad = 3.0 + h2 * 5.0; // 3〜8% の振れ幅で円状に散らす
-    const jx = Math.cos(ang) * rad;
-    const jy = Math.sin(ang) * rad;
+    const a = axisOf(t.no);
+    // 軸座標が極めて近い玉だけ、決定論的な微小オフセットで重なりを緩和（反発の前処理）。
+    const hasNear = topics.some((ot, oi) => {
+      if (oi === i) return false;
+      const oa = axisOf(ot.no);
+      return Math.hypot(a.x - oa.x, a.y - oa.y) < 0.06;
+    });
+    let jx = 0;
+    let jy = 0;
+    if (hasNear) {
+      const h1 = (((t.no + 1) * 2654435761) >>> 0) / 4294967295;
+      const h2 = (((t.no + 1) * 40503 + (i + 1) * 2246822519) >>> 0) / 4294967295;
+      const ang = h1 * Math.PI * 2;
+      const rad = 1.0 + h2 * 1.8; // 1.0〜2.8% — 軸分布を崩さない微調整
+      jx = Math.cos(ang) * rad;
+      jy = Math.sin(ang) * rad;
+    }
     return { x: AXIS_CX + a.x * AXIS_RX + jx, y: AXIS_CY - a.y * AXIS_RY + jy };
   });
   // 反発で被り回避（y方向は%が大きいので圧縮して等方近似）。
@@ -693,23 +737,27 @@ export function InteropPuyoBubbleMap({
     () => satellites.map((s) => satelliteSizeFor(s.postCount ?? 0, m.satOrb, m.satOrbMax)),
     [satellites, m.satOrb, m.satOrbMax]
   );
+  const satelliteAnchors = useMemo(
+    () => satellites.map((s, i) => adjustSatelliteAnchor(s.place, satelliteSizes[i] ?? m.satOrb, m.satOrb)),
+    [satellites, satelliteSizes, m.satOrb]
+  );
 
   // 中心ハブ＋実在するサテライト＋UI要素（AIチャットボタン）を「占有ゾーン」として
   // 反発に渡す（玉がヘッダー／AIボタンの下に潜らないようにする）。
   const obstacles = useMemo<Obstacle[]>(() => {
-    const list: Obstacle[] = [{ x: CENTER_POS.x, y: CENTER_POS.y, r: m.centerR }];
+    const maxSat = satelliteSizes.length > 0 ? Math.max(...satelliteSizes) : m.satOrb;
+    const centerFootprint = (m.centerSize / 2 / m.refW) * 100 + 5;
+    const centerBoost = Math.max(0, ((maxSat - m.satOrb) / m.refW) * 100 * 0.2);
+    const list: Obstacle[] = [{ x: CENTER_POS.x, y: CENTER_POS.y, r: Math.max(m.centerR, centerFootprint + centerBoost) }];
     satellites.forEach((s, i) => {
-      const p = SATELLITE_POS[s.place];
+      const anchor = satelliteAnchors[i] ?? SATELLITE_POS[s.place];
       const orbPx = satelliteSizes[i] ?? m.satOrb;
-      const orbR = (orbPx / 2 / m.refW) * 100;
-      // ラベル（mt-3＋タグ）分を加算。下サテラはさらに余裕を持つ
-      const labelExtra = s.place === "bottom" ? 8 : 6;
-      list.push({ x: p.x, y: p.y, r: orbR + labelExtra });
+      list.push({ x: anchor.x, y: anchor.y, r: satelliteFootprintPct(orbPx, s.place, m.refW) });
     });
     // AIチャットボタン（右下固定）。玉やラベルが被らないよう右下コーナーを占有ゾーンに。
     list.push({ x: m.aiBtn.x, y: m.aiBtn.y, r: m.aiBtn.r });
     return list;
-  }, [satellites, satelliteSizes, m.centerR, m.satOrb, m.refW, m.aiBtn]);
+  }, [satellites, satelliteSizes, satelliteAnchors, m.centerR, m.centerSize, m.satOrb, m.refW, m.aiBtn]);
   // 各玉の直径(px)＝投稿数で連続拡大。位置計算は3件刻みにバケット化して
   // ポーリング毎の細かな再配置（ガタつき）を抑える。
   const sizes = useMemo(
@@ -1029,8 +1077,7 @@ export function InteropPuyoBubbleMap({
       {/* 中心インタロップ直行の3カテゴリ玉（左上＝最新ニュース／右上＝登壇者への質問／真下＝ご意見BOX）。投稿ページへ直結 */}
       {satellites.map((s, si) => {
         const SIcon = s.icon;
-        // 中心ハブを基準にした固定座標（反発の占有ゾーンと一致させて被りを防ぐ）
-        const sp = SATELLITE_POS[s.place];
+        const sp = satelliteAnchors[si] ?? SATELLITE_POS[s.place];
         const placePos = { left: `${sp.x}%`, top: `${sp.y}%` };
         const ORB = satelliteSizes[si] ?? m.satOrb;
         const iconSize = Math.round(ORB * 0.38);
@@ -1041,7 +1088,7 @@ export function InteropPuyoBubbleMap({
             key={s.key}
             type="button"
             onClick={s.onActivate}
-            className="group absolute z-[24] flex -translate-x-1/2 -translate-y-1/2 flex-col items-center focus:outline-none"
+            className="group absolute z-[24] flex -translate-x-1/2 -translate-y-1/2 flex-col items-center focus:outline-none transition-[left,top] duration-500 ease-out"
             style={{ left: placePos.left, top: placePos.top }}
             aria-label={s.label}
           >

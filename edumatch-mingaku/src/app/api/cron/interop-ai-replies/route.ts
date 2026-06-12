@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateInteropAiReplyText, INTEROP_AI_FACILITATOR_NAME } from "@/lib/forum-ai-comment";
+import { isInteropAiReplyDisabled } from "@/lib/interop-ai-reply-policy";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -49,6 +50,7 @@ export async function GET(req: NextRequest) {
         select: {
           id: true,
           name: true,
+          slug: true,
           category: { select: { name: true } },
         },
       },
@@ -61,6 +63,8 @@ export async function GET(req: NextRequest) {
 
   let created = 0;
   for (const post of due) {
+    if (isInteropAiReplyDisabled(post.subCategory)) continue;
+
     const replyCount = await prisma.interopPost.count({
       where: { parent_post_id: post.id, is_ai_reply: true },
     });

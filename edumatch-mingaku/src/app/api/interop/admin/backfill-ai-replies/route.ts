@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentProfile } from "@/lib/auth";
 import { generateInteropAiReplyText, INTEROP_AI_FACILITATOR_NAME } from "@/lib/forum-ai-comment";
+import { INTEROP_NO_AI_REPLY_SLUGS, isInteropAiReplyDisabled } from "@/lib/interop-ai-reply-policy";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -26,6 +27,14 @@ export async function POST(_req: NextRequest) {
     },
   });
 
+  // ── 1b) 「登壇者への質問」配下のAI返信を削除（今後も付与しない） ──
+  const removedSpeakerQa = await prisma.interopPost.deleteMany({
+    where: {
+      is_ai_reply: true,
+      subCategory: { slug: { in: [...INTEROP_NO_AI_REPLY_SLUGS] } },
+    },
+  });
+
   // ── 2) 一般投稿（非固定・トップレベル）でAI返信が無いものを対象 ──
   const allPosts = await prisma.interopPost.findMany({
     where: {
@@ -43,6 +52,7 @@ export async function POST(_req: NextRequest) {
         select: {
           id: true,
           name: true,
+          slug: true,
           category: { select: { name: true } },
         },
       },
@@ -59,6 +69,8 @@ export async function POST(_req: NextRequest) {
   const errors: string[] = [];
 
   for (const post of replyless) {
+    if (isInteropAiReplyDisabled(post.subCategory)) continue;
+
     const recent = await prisma.interopPost.findMany({
       where: {
         sub_category_id: post.subCategory.id,
@@ -103,6 +115,7 @@ export async function POST(_req: NextRequest) {
   return NextResponse.json({
     ok: true,
     removedFromPinned: removed.count,
+    removedFromSpeakerQa: removedSpeakerQa.count,
     totalGeneralPosts: total,
     replyless: replyless.length,
     created,

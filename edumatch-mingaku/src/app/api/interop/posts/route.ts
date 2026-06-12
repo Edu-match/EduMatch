@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser, getCurrentProfile } from "@/lib/auth";
 import { moderateAndNotify } from "@/lib/post-moderation";
 import { generateInteropAiReplyText, INTEROP_AI_FACILITATOR_NAME } from "@/lib/forum-ai-comment";
+import { isInteropAiReplyDisabled } from "@/lib/interop-ai-reply-policy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -61,9 +62,15 @@ export async function GET(req: NextRequest) {
           isPinned: p.is_pinned,
           isHidden: p.is_hidden,
           postedAt: p.created_at.toISOString(),
-          aiReply: aiReply ? { body: aiReply.body, postedAt: aiReply.created_at.toISOString() } : null,
+          aiReply: aiReply
+            ? {
+                body: aiReply.body,
+                postedAt: aiReply.created_at.toISOString(),
+                ...(includeHidden ? { id: aiReply.id, isHidden: aiReply.is_hidden } : {}),
+              }
+            : null,
           userReplies: userReplies.map((r) => ({
-            id: r.id,
+            ...(includeHidden ? { id: r.id, isHidden: r.is_hidden } : {}),
             authorName: r.author_name,
             authorRole: r.author_role,
             body: r.body,
@@ -107,7 +114,7 @@ export async function POST(req: NextRequest) {
 
     const sub = await prisma.interopSubCategory.findUnique({
       where: { id: body.subCategoryId },
-      select: { id: true, name: true, category: { select: { name: true } } },
+      select: { id: true, name: true, slug: true, category: { select: { name: true } } },
     });
     if (!sub) {
       return NextResponse.json({ error: "サブカテゴリが見つかりません" }, { status: 404 });
@@ -209,10 +216,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // AIファシリテーター返信：トップレベル投稿にのみ付与（返信・固定投稿は除く）。
+    // AIファシリテーター返信：トップレベル投稿にのみ付与（返信・固定投稿・登壇者への質問は除く）。
     // レスポンスはブロックせず after() で送信後に実行（Vercel Fluid Compute で確実に走る）。
     // 万一ここで失敗しても cron（/api/cron/interop-ai-replies）が拾って付与する。
-    if (!isPinned && !autoHidden && !parentPostId) {
+    if (!isPinned && !autoHidden && !parentPostId && !isInteropAiReplyDisabled(sub)) {
       const createdPostId = post.id;
       const createdTopicId = topicId;
       const subCategoryId = sub.id;
