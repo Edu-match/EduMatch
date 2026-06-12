@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
+  ExternalLink,
   Eye,
   EyeOff,
   ListTree,
@@ -21,6 +22,39 @@ import { Input } from "@/components/ui/input";
 import { INTEROP_CONTENT_KINDS as CONTENT_KIND_OPTIONS } from "@/lib/interop-content";
 
 const darkInput = "bg-white/[0.06] border-white/[0.12] text-white placeholder:text-white/30 focus-visible:ring-0 focus-visible:border-white/30";
+
+function linkPreview(url: string): { thumb: string | null; domain: string } {
+  try {
+    const u = new URL(url);
+    const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+    if (ytMatch) return { thumb: `https://img.youtube.com/vi/${ytMatch[1]}/mqdefault.jpg`, domain: "youtube.com" };
+    if (/\.(jpe?g|png|gif|webp|svg)(\?|$)/i.test(u.pathname)) return { thumb: url, domain: u.hostname };
+    return { thumb: null, domain: u.hostname };
+  } catch {
+    return { thumb: null, domain: "" };
+  }
+}
+
+function UrlPreview({ url }: { url: string }) {
+  const { thumb, domain } = linkPreview(url);
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer"
+      className="flex items-center gap-2.5 rounded-lg border border-white/10 bg-white/[0.04] p-2 transition hover:bg-white/[0.08]">
+      {thumb ? (
+        <img src={thumb} alt="" className="h-12 w-20 shrink-0 rounded object-cover" />
+      ) : (
+        <div className="flex h-12 w-20 shrink-0 items-center justify-center rounded border border-white/10 bg-white/[0.06] text-white/25">
+          <ExternalLink className="h-5 w-5" />
+        </div>
+      )}
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[11px] font-semibold text-sky-300">{domain}</p>
+        <p className="truncate text-[10px] text-white/40">{url}</p>
+      </div>
+      <ExternalLink className="h-3.5 w-3.5 shrink-0 text-white/25" />
+    </a>
+  );
+}
 
 type Category = {
   id: string;
@@ -499,8 +533,11 @@ function TopicRow({ topic, onChanged, onMsg }: { topic: BoardTopic; onChanged: (
             <label className="flex-1 text-xs"><span className="mb-1 block text-white/55">説明（任意）</span>
               <Input value={desc} onChange={(e) => setDesc(e.target.value)} className={`h-8 w-full text-xs ${darkInput}`} /></label>
           </div>
-          <label className="block text-xs"><span className="mb-1 block text-white/55">参考リンクURL（概要下にサムネ表示・サブカテゴリ設定より優先）</span>
-            <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." className={`h-8 w-full text-xs ${darkInput}`} /></label>
+          <div className="space-y-1.5">
+            <label className="block text-xs"><span className="mb-1 block text-white/55">参考リンクURL（概要下にサムネ表示・サブカテゴリ設定より優先）</span>
+              <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." className={`h-8 w-full text-xs ${darkInput}`} /></label>
+            {url.trim() && <UrlPreview url={url.trim()} />}
+          </div>
           <div className="rounded-lg border border-white/10 bg-white/[0.04] p-2">
             <p className="mb-1.5 text-[11px] font-semibold text-white/55">検索コンテンツ（本体エデュマッチから検索して表示）</p>
             <div className="mb-1.5 flex flex-wrap gap-1.5">
