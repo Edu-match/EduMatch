@@ -721,6 +721,7 @@ export function InteropPuyoBubbleMap({
   interopCat,
   centerLabel,
   groupFilter,
+  initialScale = 1,
   activityByRoom,
   axisConfig = DEFAULT_AXIS_CONFIG,
   topicPositions,
@@ -739,6 +740,8 @@ export function InteropPuyoBubbleMap({
   centerLabel?: string;
   /** 指定時、その major(A〜F)のトピックだけに絞り込む（ミニマップからのフォーカス遷移用）。 */
   groupFilter?: string;
+  /** 初期ズーム倍率（ミニマップで拡大表示＆ドラッグ可動域を確保するため）。既定1。 */
+  initialScale?: number;
   activityByRoom: Map<string, InteropActivityStats>;
   axisConfig?: AxisConfig;
   topicPositions?: Record<number, AxisPoint>;
@@ -780,7 +783,7 @@ export function InteropPuyoBubbleMap({
   // ── パン＆ズーム（ドラッグ移動・ホイール/ピンチ拡縮）──
   const MIN_SCALE = 0.55;
   const MAX_SCALE = 2.6;
-  const [view, setView] = useState({ x: 0, y: 0, scale: 1 });
+  const [view, setView] = useState({ x: 0, y: 0, scale: initialScale });
   const [grabbing, setGrabbing] = useState(false);
   const dragRef = useRef({ active: false, lastX: 0, lastY: 0, moved: 0 });
   const wasDragRef = useRef(false);
@@ -845,7 +848,7 @@ export function InteropPuyoBubbleMap({
     });
   };
 
-  const resetView = () => setView({ x: 0, y: 0, scale: 1 });
+  const resetView = () => setView({ x: 0, y: 0, scale: initialScale });
 
   // ホイールズーム（passive:false で preventDefault）＋タッチスクロール抑制
   useEffect(() => {

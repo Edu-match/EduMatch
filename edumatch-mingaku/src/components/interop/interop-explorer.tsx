@@ -177,6 +177,7 @@ export function InteropExplorer({
   showLatestNews = true,
   showSpeakerQa = true,
   showOpinionBox = true,
+  initialScale,
 }: {
   themeMode?: InteropThemeMode;
   guideText?: string;
@@ -188,6 +189,8 @@ export function InteropExplorer({
   showLatestNews?: boolean;
   showSpeakerQa?: boolean;
   showOpinionBox?: boolean;
+  /** 埋め込み時の初期ズーム倍率（ミニマップで拡大＆ドラッグ可動域を確保）。 */
+  initialScale?: number;
   /** ホーム等への埋め込みプレビュー。true ならライブポーリング（activity/recent-posts）を止め、
    *  SSR初期値のみで表示する（ホーム遷移を軽くするため）。 */
   embedded?: boolean;
@@ -488,6 +491,7 @@ export function InteropExplorer({
             interopCat={interopCat}
             centerLabel={isGiinKaikanCenter ? "教育AIサミット＠衆議院第一議員会館" : interopCat?.name}
             groupFilter={groupParam ?? undefined}
+            initialScale={initialScale}
             activityByRoom={activityByRoom}
             axisConfig={axis.config}
             topics={dbTopics}
