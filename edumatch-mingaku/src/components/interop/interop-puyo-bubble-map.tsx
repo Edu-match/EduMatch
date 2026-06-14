@@ -141,7 +141,10 @@ function popupXExtra(xPct: number): number {
  *  いたため、小さな玉でも中心間124px等の過大間隔を要求し、狭い画面では28玉が物理的に
  *  収まらず必ず重なっていた。ラベルの被りは assignLabelSides が空き方向へ逃がして吸収する。 */
 function orbCollisionRadiusPx(diameterPx: number): number {
-  return diameterPx / 2 + 12;
+  // 小さい玉は従来どおり「本体＋わずかな余白(12)」のみ（28玉が画面に収まる前提を維持）。
+  // 投稿増で大きく育った玉だけ、隣やラベルと被らないよう余白を比例して上乗せする
+  // （70pxを超えた分の0.16倍。基準サイズの玉には影響しない）。
+  return diameterPx / 2 + 12 + Math.max(0, diameterPx - 70) * 0.16;
 }
 
 function pxToPctRadius(px: number, containerW: number): number {

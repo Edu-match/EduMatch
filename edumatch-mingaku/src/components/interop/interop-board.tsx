@@ -340,7 +340,7 @@ export function InteropBoard({
                 <ArrowLeft className="h-3.5 w-3.5" /> トピック一覧に戻る
               </Link>
               <Link
-                href="/interop"
+                href="/forum"
                 prefetch={false}
                 className="inline-flex w-fit items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.06] px-3.5 py-1.5 text-xs font-bold text-white/70 backdrop-blur transition-colors hover:bg-white/12 hover:text-white"
               >
@@ -350,7 +350,7 @@ export function InteropBoard({
           ) : isSatellite ? (
             // 直行サテライト：トップマップへ直接戻る（/interop は両ドメインで正しく解決される）
             <Link
-              href="/interop"
+              href="/forum"
               prefetch={false}
               className="inline-flex w-fit items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-bold text-white/85 backdrop-blur transition-colors hover:brightness-110"
               style={{ background: `${accent}22`, borderColor: `${accent}66` }}
@@ -360,7 +360,7 @@ export function InteropBoard({
           ) : (
             <>
               <Link
-                href={`/interop?cat=${sub.categoryId}`}
+                href={`/forum?cat=${sub.categoryId}`}
                 prefetch={false}
                 className="inline-flex w-fit items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-bold text-white/85 backdrop-blur transition-colors hover:brightness-110"
                 style={{ background: `${accent}22`, borderColor: `${accent}66` }}
@@ -368,7 +368,7 @@ export function InteropBoard({
                 <ArrowLeft className="h-3.5 w-3.5" /> {sub.categoryName}に戻る
               </Link>
               <Link
-                href="/interop"
+                href="/forum"
                 prefetch={false}
                 className="inline-flex w-fit items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.06] px-3.5 py-1.5 text-xs font-bold text-white/70 backdrop-blur transition-colors hover:bg-white/12 hover:text-white"
               >
