@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Building2, Calendar, Play, FileText, Check, Star, Pencil } from "lucide-react";
 import { unstable_noStore } from "next/cache";
+import { getTranslations, getLocale } from "next-intl/server";
+import { translateText, translateFields } from "@/lib/translate";
 import { getServiceById, getPopularServices, recordView } from "@/app/_actions";
 import { getCurrentUser, getCurrentProfile } from "@/lib/auth";
 import { notFound } from "next/navigation";
@@ -22,8 +24,8 @@ import { ServiceCategoryBadges } from "@/components/services/service-category-ba
 
 export const dynamic = "force-dynamic";
 
-function formatDate(date: Date): string {
-  return new Intl.DateTimeFormat("ja-JP", {
+function formatDate(date: Date, locale: string): string {
+  return new Intl.DateTimeFormat(locale === "en" ? "en-US" : "ja-JP", {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -38,11 +40,21 @@ export default async function ServiceDetailPage({
 }) {
   unstable_noStore();
   const { id } = await params;
-  const service = await getServiceById(id);
+  const rawService = await getServiceById(id);
 
-  if (!service) {
+  if (!rawService) {
     notFound();
   }
+
+  const t = await getTranslations("service");
+  const locale = await getLocale();
+
+  // DB 由来テキストを表示言語へ機械翻訳（ja のときは原文のまま）
+  const service = await translateFields(
+    rawService,
+    ["title", "description", "content", "price_info", "category"],
+    locale as "ja" | "en"
+  );
 
   const [user, profile] = await Promise.all([getCurrentUser(), getCurrentProfile()]);
   if (user) {
@@ -67,7 +79,14 @@ export default async function ServiceDetailPage({
 
   // 関連サービスを取得
   const relatedServices = await getPopularServices(4);
-  const filteredRelatedServices = relatedServices.filter((s) => s.id !== service.id).slice(0, 3);
+  const filteredRelatedServices = await Promise.all(
+    relatedServices
+      .filter((s) => s.id !== service.id)
+      .slice(0, 3)
+      .map((s) =>
+        translateFields(s, ["title", "description", "category"], locale as "ja" | "en")
+      )
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/10">
@@ -77,7 +96,7 @@ export default async function ServiceDetailPage({
           <Button variant="ghost" asChild className="hover:bg-primary/10">
             <Link href="/services">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              サービス一覧に戻る
+              {t("backToList")}
             </Link>
           </Button>
         </div>
@@ -104,7 +123,7 @@ export default async function ServiceDetailPage({
                 ) : null}
                 <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                   <Calendar className="h-4 w-4" />
-                  {formatDate(service.created_at)}
+                  {formatDate(service.created_at, locale)}
                 </div>
               </div>
               <div className="flex items-start justify-between gap-4 mb-6">
@@ -116,7 +135,7 @@ export default async function ServiceDetailPage({
                     <Button variant="outline" size="sm" asChild>
                       <Link href={`/services/${service.id}/edit`}>
                         <Pencil className="h-4 w-4 mr-1" />
-                        編集
+                        {t("edit")}
                       </Link>
                     </Button>
                   )}
@@ -140,7 +159,7 @@ export default async function ServiceDetailPage({
                     <Button asChild size="lg" className="shadow-lg">
                       <Link href={`/request-info?serviceId=${service.id}`}>
                         <FileText className="h-5 w-5 mr-2" />
-                        資料請求する（無料）
+                        {t("requestMaterial")}
                       </Link>
                     </Button>
                   )}
@@ -197,7 +216,7 @@ export default async function ServiceDetailPage({
                   <div className="p-2 bg-primary/10 rounded-lg">
                     <FileText className="h-5 w-5 text-primary" />
                   </div>
-                  サービス詳細
+                  {t("detail")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
@@ -211,7 +230,7 @@ export default async function ServiceDetailPage({
             {service.images && service.images.length > 0 && (
               <Card className="border-2 shadow-lg">
                 <CardHeader className="bg-gradient-to-r from-primary/5 to-background">
-                  <CardTitle>画像ギャラリー</CardTitle>
+                  <CardTitle>{t("imageGallery")}</CardTitle>
                 </CardHeader>
                 <CardContent className="p-6">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -222,7 +241,7 @@ export default async function ServiceDetailPage({
                       >
                         <ImageWithUrlError
                           originalSrc={imageUrl}
-                          alt={`${service.title} - 画像${index + 1}`}
+                          alt={t("imageAlt", { title: service.title, index: index + 1 })}
                           fill
                           className="object-contain transition-transform duration-300 group-hover:scale-110"
                           unoptimized
@@ -242,7 +261,7 @@ export default async function ServiceDetailPage({
                     <div className="p-2 bg-red-500 rounded-lg">
                       <Play className="h-5 w-5 text-white" />
                     </div>
-                    サービス紹介動画
+                    {t("introVideo")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -258,7 +277,7 @@ export default async function ServiceDetailPage({
                   <div className="p-2 bg-blue-100 rounded-lg">
                     <Building2 className="h-5 w-5 text-blue-600" />
                   </div>
-                  提供企業
+                  {t("provider")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
@@ -283,7 +302,7 @@ export default async function ServiceDetailPage({
                         {service.provider_display_name ?? service.provider.name}
                       </p>
                       <p className="text-sm text-muted-foreground mb-2">
-                        教育サービス提供企業
+                        {t("providerCaption")}
                       </p>
                     </div>
                   </div>
@@ -311,10 +330,10 @@ export default async function ServiceDetailPage({
                         {service.provider_display_name ?? service.provider.name}
                       </p>
                       <p className="text-sm text-muted-foreground mb-2">
-                        教育サービス提供企業
+                        {t("providerCaption")}
                       </p>
                       <span className="text-sm text-primary font-medium">
-                        投稿者プロフィールを見る →
+                        {t("viewProviderProfile")}
                       </span>
                     </div>
                   </Link>
@@ -330,10 +349,10 @@ export default async function ServiceDetailPage({
                     <div className="p-2 bg-yellow-100 rounded-lg">
                       <Star className="h-5 w-5 text-yellow-600" />
                     </div>
-                    口コミ・レビュー
+                    {t("reviews")}
                     {reviews.length > 0 && (
                       <span className="ml-1 text-sm font-normal text-muted-foreground">
-                        （{reviews.length} 件）
+                        {t("reviewCount", { count: reviews.length })}
                       </span>
                     )}
                   </CardTitle>
@@ -352,7 +371,7 @@ export default async function ServiceDetailPage({
               <Card className="border-2 border-primary/20 shadow-2xl overflow-hidden">
                 <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-background p-6">
                   <div className="text-center mb-6">
-                    <p className="text-sm text-muted-foreground mb-2">料金プラン</p>
+                    <p className="text-sm text-muted-foreground mb-2">{t("pricePlan")}</p>
                     <p className="text-3xl font-bold text-primary mb-1">
                       {service.price_info}
                     </p>
@@ -363,7 +382,7 @@ export default async function ServiceDetailPage({
                       <Button asChild className="w-full shadow-lg" size="lg">
                         <Link href={`/request-info?serviceId=${service.id}`}>
                           <FileText className="h-5 w-5 mr-2" />
-                          資料請求する（無料）
+                          {t("requestMaterial")}
                         </Link>
                       </Button>
                     )}
@@ -391,19 +410,19 @@ export default async function ServiceDetailPage({
                       <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
                         <Check className="h-3 w-3 text-primary" />
                       </div>
-                      <span>詳細資料を無料でダウンロード</span>
+                      <span>{t("perkDownload")}</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
                       <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
                         <Check className="h-3 w-3 text-primary" />
                       </div>
-                      <span>導入事例・活用例を確認</span>
+                      <span>{t("perkCases")}</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
                       <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
                         <Check className="h-3 w-3 text-primary" />
                       </div>
-                      <span>無料トライアルのご案内</span>
+                      <span>{t("perkTrial")}</span>
                     </div>
                   </div>
                 </div>
@@ -412,7 +431,7 @@ export default async function ServiceDetailPage({
               {/* カテゴリカード */}
               <Card className="border-2 shadow-lg overflow-hidden">
                 <CardHeader>
-                  <CardTitle className="text-lg">カテゴリ</CardTitle>
+                  <CardTitle className="text-lg">{t("category")}</CardTitle>
                 </CardHeader>
                 <CardContent className="min-w-0">
                   <ServiceCategoryBadges
@@ -429,7 +448,7 @@ export default async function ServiceDetailPage({
               <Card className="border-2 border-primary/20 shadow-2xl sticky bottom-4">
                 <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-background p-6">
                   <div className="text-center mb-4">
-                    <p className="text-sm text-muted-foreground mb-1">料金プラン</p>
+                    <p className="text-sm text-muted-foreground mb-1">{t("pricePlan")}</p>
                     <p className="text-2xl font-bold text-primary">
                       {service.price_info}
                     </p>
@@ -440,7 +459,7 @@ export default async function ServiceDetailPage({
                       <Button asChild className="w-full shadow-lg" size="lg">
                         <Link href={`/request-info?serviceId=${service.id}`}>
                           <FileText className="h-5 w-5 mr-2" />
-                          資料請求する（無料）
+                          {t("requestMaterial")}
                         </Link>
                       </Button>
                     )}
@@ -463,9 +482,9 @@ export default async function ServiceDetailPage({
         {filteredRelatedServices.length > 0 && (
           <Card className="mt-12 border-2 shadow-xl">
             <CardHeader className="bg-gradient-to-r from-primary/5 to-background">
-              <CardTitle className="text-2xl">こちらのサービスもおすすめ</CardTitle>
+              <CardTitle className="text-2xl">{t("relatedTitle")}</CardTitle>
               <p className="text-sm text-muted-foreground mt-2">
-                同じカテゴリの人気サービス
+                {t("relatedSubtitle")}
               </p>
             </CardHeader>
             <CardContent className="p-6">

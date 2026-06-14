@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, getCurrentProfile } from "@/lib/auth";
 import { createAiWeeklyTopicForRoom } from "@/lib/forum-weekly-topic-ai";
 import { logActivity } from "@/app/_actions/activity-log";
+import { communityUserRoomIdPrefix, generateForumRoomId } from "@/lib/forum-room-id";
+import {
+  createForumRoomSafe,
+  forumRoomCreateErrorMessage,
+} from "@/lib/forum-room-create";
+import { isPrismaMissingColumn } from "@/lib/prisma-schema-fallback";
 
 export const dynamic = "force-dynamic";
 
@@ -11,49 +18,93 @@ export async function GET(req: NextRequest) {
   try {
     const url = new URL(req.url);
     const includeHidden = url.searchParams.get("includeHidden") === "true";
+    const subCategoryId = url.searchParams.get("subCategoryId") ?? undefined;
+    const categoryId = url.searchParams.get("categoryId") ?? undefined;
+    const categorySlug = url.searchParams.get("categorySlug") ?? undefined;
+    const subSlug = url.searchParams.get("subSlug") ?? undefined;
     let isAdmin = false;
     if (includeHidden) {
       const profile = await getCurrentProfile();
       isAdmin = profile?.role === "ADMIN";
     }
 
-    // is_hidden カラムが未追加の場合に備えてフォールバック
-    const roomsWithCounts = await prisma.forumRoom.findMany({
-      orderBy: { created_at: "asc" },
-      include: {
-        _count: { select: { posts: { where: { is_hidden: false } } } },
-      },
-    });
+    let roomsWithCounts: Awaited<
+      ReturnType<typeof prisma.forumRoom.findMany<{ include: { _count: { select: { posts: true } } } }>>
+    >;
+
+    if (categoryId && categorySlug && subSlug) {
+      const prefix = communityUserRoomIdPrefix(categorySlug, subSlug);
+      try {
+        roomsWithCounts = await prisma.forumRoom.findMany({
+          where: {
+            category_id: categoryId,
+            id: { startsWith: prefix },
+          },
+          orderBy: { created_at: "desc" },
+          include: {
+            _count: { select: { posts: { where: { is_hidden: false } } } },
+          },
+        });
+      } catch (err) {
+        if (!isPrismaMissingColumn(err)) throw err;
+        roomsWithCounts = await prisma.forumRoom.findMany({
+          where: { id: { startsWith: prefix } },
+          orderBy: { created_at: "desc" },
+          include: {
+            _count: { select: { posts: { where: { is_hidden: false } } } },
+          },
+        });
+      }
+    } else if (subCategoryId) {
+      try {
+        roomsWithCounts = await prisma.forumRoom.findMany({
+          where: { sub_category_id: subCategoryId },
+          orderBy: { created_at: "asc" },
+          include: {
+            _count: { select: { posts: { where: { is_hidden: false } } } },
+          },
+        });
+      } catch (err) {
+        if (!isPrismaMissingColumn(err)) throw err;
+        roomsWithCounts = [];
+      }
+    } else {
+      roomsWithCounts = await prisma.forumRoom.findMany({
+        orderBy: { created_at: "asc" },
+        include: {
+          _count: { select: { posts: { where: { is_hidden: false } } } },
+        },
+      });
+    }
     const rooms =
       includeHidden && isAdmin
         ? roomsWithCounts
         : roomsWithCounts.filter((r: { is_hidden?: boolean }) => !r.is_hidden);
 
-    // 参加者数 = 各部屋の投稿でユニークな author_id の数（ゲスト除く）
-    const participantCounts = await Promise.all(
-      rooms.map(async (room) => {
-        const distinct = await prisma.forumPost.findMany({
-          where: { room_id: room.id, is_hidden: false, author_id: { not: null } },
-          select: { author_id: true },
-          distinct: ["author_id"],
-        });
-        return { id: room.id, count: distinct.length };
-      })
-    );
-
-    const lastPostedAts = await Promise.all(
-      rooms.map(async (room) => {
-        const latest = await prisma.forumPost.findFirst({
-          where: { room_id: room.id, is_hidden: false },
-          orderBy: { created_at: "desc" },
-          select: { created_at: true },
-        });
-        return { id: room.id, at: latest?.created_at?.toISOString() ?? null };
-      })
-    );
-
-    const participantMap = Object.fromEntries(participantCounts.map((c) => [c.id, c.count]));
-    const lastPostedMap = Object.fromEntries(lastPostedAts.map((l) => [l.id, l.at]));
+    // 参加者数(ユニークauthor_id) と 最終投稿日 を、部屋ごとの個別クエリ(N+1)ではなく
+    // 各1本のGROUP BYで一括集計する。以前は部屋数×2回(数百クエリ)でSSRの主要遅延だった。
+    const roomIds = rooms.map((r) => r.id);
+    let participantMap: Record<string, number> = {};
+    let lastPostedMap: Record<string, string | null> = {};
+    if (roomIds.length > 0) {
+      const idList = Prisma.join(roomIds);
+      const [participantRows, lastRows] = await Promise.all([
+        prisma.$queryRaw<Array<{ room_id: string; c: number }>>`
+          SELECT room_id, COUNT(DISTINCT author_id)::int AS c
+          FROM forum_posts
+          WHERE is_hidden = false AND author_id IS NOT NULL AND room_id IN (${idList})
+          GROUP BY room_id`,
+        prisma.$queryRaw<Array<{ room_id: string; at: Date | null }>>`
+          SELECT room_id, MAX(created_at) AS at
+          FROM forum_posts
+          WHERE is_hidden = false AND room_id IN (${idList})
+          GROUP BY room_id`,
+      ]);
+      participantMap = Object.fromEntries(participantRows.map((r) => [r.room_id, Number(r.c)]));
+      lastPostedMap = Object.fromEntries(
+        lastRows.map((r) => [r.room_id, r.at ? new Date(r.at).toISOString() : null]),
+      );
+    }
 
     const result = rooms.map((room) => ({
       id: room.id,
@@ -90,39 +141,68 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { name, description, weeklyTopic, aiDiscussion, emoji, aiWeeklyTopicEnabled } = body as {
+    const {
+      name,
+      description,
+      weeklyTopic,
+      aiDiscussion,
+      emoji,
+      aiWeeklyTopicEnabled,
+      categoryId,
+      subCategoryId,
+      categorySlug,
+      subCategorySlug,
+    } = body as {
       name: string;
       description?: string;
       weeklyTopic: string;
       aiDiscussion?: boolean;
       emoji?: string;
       aiWeeklyTopicEnabled?: boolean;
+      categoryId?: string;
+      subCategoryId?: string;
+      categorySlug?: string;
+      subCategorySlug?: string;
     };
 
     if (!name?.trim()) {
-      return NextResponse.json({ error: "name is required" }, { status: 400 });
+      return NextResponse.json({ error: "部屋名を入力してください" }, { status: 400 });
     }
 
-    const slug = name
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, "-")
-      .replace(/[^\w-]/g, "");
-
-    const id = `${slug}-${Date.now()}`;
+    const id = generateForumRoomId(name, {
+      categorySlug: categorySlug ?? undefined,
+      subSlug: subCategorySlug ?? undefined,
+    });
 
     const aiWeekly = aiWeeklyTopicEnabled ?? true;
-    const room = await prisma.forumRoom.create({
-      data: {
-        id,
-        name: name.trim(),
-        description: description?.trim() ?? "",
-        weekly_topic: aiWeekly ? "" : weeklyTopic?.trim() ?? "",
-        ai_discussion: aiDiscussion ?? true,
-        ai_weekly_topic_enabled: aiWeeklyTopicEnabled ?? true,
-        emoji: emoji ?? "",
-        created_by: user.id,
-      },
+
+    // コミュニティのメインルームが (category_id, sub_category_id) を占有しているため、
+    // ユーザー作成ルームでは sub_category_id を付けない
+    let linkSubCategoryId = subCategoryId;
+    if (categoryId && subCategoryId) {
+      try {
+        const occupied = await prisma.forumRoom.findFirst({
+          where: { category_id: categoryId, sub_category_id: subCategoryId },
+          select: { id: true },
+        });
+        if (occupied) linkSubCategoryId = undefined;
+      } catch (err) {
+        if (!isPrismaMissingColumn(err)) throw err;
+        linkSubCategoryId = undefined;
+      }
+    }
+
+    const room = await createForumRoomSafe({
+      id,
+      name: name.trim(),
+      description: description?.trim() ?? "",
+      weeklyTopic: aiWeekly ? "" : weeklyTopic?.trim() ?? "",
+      aiDiscussion: aiDiscussion ?? true,
+      aiWeeklyTopicEnabled: aiWeeklyTopicEnabled ?? true,
+      emoji: emoji ?? "",
+      createdBy: profile.id,
+      categoryId: categoryId ?? undefined,
+      subCategoryId: linkSubCategoryId,
     });
 
     if (aiWeekly) {
@@ -163,6 +243,10 @@ export async function POST(req: NextRequest) {
     }, { status: 201 });
   } catch (err) {
     console.error("[forum/rooms POST]", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    const hint = forumRoomCreateErrorMessage(err);
+    return NextResponse.json(
+      { error: hint ?? "部屋の作成に失敗しました。しばらくしてから再度お試しください。" },
+      { status: 500 }
+    );
   }
 }

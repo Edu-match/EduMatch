@@ -12,6 +12,7 @@ import { loginSchema, type LoginInput } from "@/lib/validations/auth";
 import { createSupabaseBrowserClient } from "@/utils/supabase/client";
 import { FEATURES } from "@/lib/features";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 type Props = {
   onSuccess?: () => void;
@@ -19,6 +20,7 @@ type Props = {
 };
 
 export function LoginForm({ onSuccess, redirectTo = "/" }: Props) {
+  const t = useTranslations("auth");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [globalHint, setGlobalHint] = useState<string | null>(null);
@@ -54,7 +56,7 @@ export function LoginForm({ onSuccess, redirectTo = "/" }: Props) {
       const result = await response.json();
 
       if (!response.ok) {
-        setGlobalError(result.error || "ログインに失敗しました");
+        setGlobalError(result.error || t("loginFailed"));
         if (result.hint) setGlobalHint(result.hint);
         else setGlobalHint(null);
         setIsSubmitting(false);
@@ -71,7 +73,7 @@ export function LoginForm({ onSuccess, redirectTo = "/" }: Props) {
       }
       window.location.href = redirectTo;
     } catch {
-      setGlobalError("ログインに失敗しました。もう一度お試しください。");
+      setGlobalError(t("loginFailedRetry"));
       setIsSubmitting(false);
     }
   };
@@ -85,11 +87,11 @@ export function LoginForm({ onSuccess, redirectTo = "/" }: Props) {
   return (
     <div className="space-y-6">
       <div className="space-y-3">
-        <p className="text-sm font-semibold text-foreground">ログインするアカウント種別を選んでください</p>
+        <p className="text-sm font-semibold text-foreground">{t("selectLoginType")}</p>
         <div
           className="grid gap-3 sm:grid-cols-2"
           role="radiogroup"
-          aria-label="ログインアカウント種別"
+          aria-label={t("loginTypeAria")}
         >
           <button
             type="button"
@@ -120,9 +122,9 @@ export function LoginForm({ onSuccess, redirectTo = "/" }: Props) {
                 effectiveUserType === "viewer" ? "text-primary" : "text-muted-foreground"
               )}
             />
-            <span className="block text-sm font-semibold text-foreground">一般利用</span>
+            <span className="block text-sm font-semibold text-foreground">{t("accountTypeViewer")}</span>
             <span className="mt-1 block text-xs text-muted-foreground leading-relaxed">
-              個人・保護者・学生など。サービスの検索・比較・資料請求に利用します。
+              {t("viewerDesc")}
             </span>
           </button>
 
@@ -156,21 +158,21 @@ export function LoginForm({ onSuccess, redirectTo = "/" }: Props) {
                   userType === "provider" ? "text-primary" : "text-muted-foreground"
                 )}
               />
-              <span className="block text-sm font-semibold text-foreground">事業者・団体</span>
+              <span className="block text-sm font-semibold text-foreground">{t("accountTypeProvider")}</span>
               <span className="mt-1 block text-xs text-muted-foreground leading-relaxed">
-                EdTech事業者や教育関連団体としてのアカウントでログインします。
+                {t("providerLoginDesc")}
               </span>
             </button>
           ) : (
             <div
               className="relative text-left rounded-xl border border-dashed border-muted-foreground/30 bg-muted/20 p-4 opacity-80"
               aria-disabled
-              title="現在、事業者向けのログイン選択は停止しています"
+              title={t("providerLoginDisabledTitle")}
             >
               <Building2 className="h-8 w-8 mb-2 text-muted-foreground" />
-              <span className="block text-sm font-semibold text-muted-foreground">事業者・団体</span>
+              <span className="block text-sm font-semibold text-muted-foreground">{t("accountTypeProvider")}</span>
               <span className="mt-1 block text-xs text-muted-foreground leading-relaxed">
-                現在は一般利用アカウントでログインしてください。
+                {t("providerLoginDisabledDesc")}
               </span>
             </div>
           )}
@@ -187,12 +189,12 @@ export function LoginForm({ onSuccess, redirectTo = "/" }: Props) {
               disabled={isSubmitting}
             >
               <Chrome className="h-4 w-4 mr-2" />
-              Googleでログイン
+              {t("googleLogin")}
             </Button>
             <div className="relative my-5">
               <Separator />
               <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-3 text-xs font-medium text-muted-foreground">
-                またはメールでログイン
+                {t("orEmailLogin")}
               </span>
             </div>
           </div>
@@ -201,7 +203,7 @@ export function LoginForm({ onSuccess, redirectTo = "/" }: Props) {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="login-email" className="text-sm font-medium text-foreground">
-                メールアドレス <span className="text-destructive">*</span>
+                {t("email")} <span className="text-destructive">*</span>
               </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -225,7 +227,7 @@ export function LoginForm({ onSuccess, redirectTo = "/" }: Props) {
 
             <div className="space-y-2">
               <label htmlFor="login-password" className="text-sm font-medium text-foreground">
-                パスワード <span className="text-destructive">*</span>
+                {t("password")} <span className="text-destructive">*</span>
               </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -233,7 +235,7 @@ export function LoginForm({ onSuccess, redirectTo = "/" }: Props) {
                   id="login-password"
                   {...register("password")}
                   type="password"
-                  placeholder="パスワードを入力"
+                  placeholder={t("passwordPlaceholder")}
                   autoComplete="current-password"
                   className="pl-10 h-11 rounded-lg"
                   disabled={isSubmitting}
@@ -252,7 +254,7 @@ export function LoginForm({ onSuccess, redirectTo = "/" }: Props) {
                 href="/auth/password-reset"
                 className="text-sm text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
               >
-                パスワードをお忘れですか？
+                {t("forgotPassword")}
               </Link>
             </div>
 
@@ -267,24 +269,24 @@ export function LoginForm({ onSuccess, redirectTo = "/" }: Props) {
                 </div>
                 {globalHint && (
                   <p className="text-sm text-muted-foreground pl-6">
-                    Googleで登録した方は
+                    {t("googleHintPrefix")}
                     <button
                       type="button"
                       onClick={handleGoogleLogin}
                       className="text-primary hover:underline font-medium mx-0.5"
                     >
-                      Googleでログイン
+                      {t("googleLogin")}
                     </button>
-                    を、パスワードをまだ設定していない方は
+                    {t("googleHintMiddle")}
                     <Link href="/auth/password-reset" className="text-primary hover:underline font-medium mx-0.5">
-                      パスワードをお忘れですか？
+                      {t("forgotPassword")}
                     </Link>
-                    でパスワードを設定してからメールでログインできます。
+                    {t("googleHintSuffix")}
                   </p>
                 )}
                 {globalError.includes("サービス事業者として登録されています") && (
                   <p className="text-sm text-muted-foreground pl-6">
-                    事業者アカウントの方は、上部の「事業者・団体」を選択して再度ログインしてください。
+                    {t("providerAccountHint")}
                   </p>
                 )}
               </div>
@@ -299,10 +301,10 @@ export function LoginForm({ onSuccess, redirectTo = "/" }: Props) {
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ログイン中...
+                  {t("loggingIn")}
                 </>
               ) : (
-                "ログイン"
+                t("submitLogin")
               )}
             </Button>
           </form>

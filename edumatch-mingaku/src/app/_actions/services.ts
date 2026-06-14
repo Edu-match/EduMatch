@@ -9,6 +9,7 @@ import type { Service, Role } from "@prisma/client";
 import { logActivity } from "./activity-log";
 import { revalidatePath } from "next/cache";
 import { resolveShowMaterialRequestButton } from "@/lib/service-material-request";
+import { findPublishedServicesWithProviders } from "@/lib/prisma-schema-fallback";
 
 export type ServiceWithProvider = Service & {
   request_notification_emails?: string[];
@@ -371,41 +372,11 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
 export async function getAllServices(): Promise<ServiceWithProvider[]> {
   try {
     const user = await getCurrentUser();
-    const where = !user
-      ? {
-          AND: [
-            { OR: [{ status: "APPROVED" as const }, { is_published: true }] },
-            { is_member_only: false },
-          ],
-        }
-      : { OR: [{ status: "APPROVED" as const }, { is_published: true }] };
-
-    const services = await prisma.service.findMany({
-      where,
-      include: {
-        provider: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            avatar_url: true,
-            corporateProfile: {
-              select: { notification_email_2: true, notification_email_3: true },
-            },
-          },
-        },
-      },
-      orderBy: [
-        { display_order: "asc" },
-        { sort_order: "asc" },
-        { created_at: "desc" },
-      ],
+    return await findPublishedServicesWithProviders({
+      memberOnlyPublic: !user,
+      mapProvider: (provider, providerId) =>
+        flattenServiceProvider(provider as ProviderWithCorporateRow | null, providerId),
     });
-
-    return services.map((s) => ({
-      ...s,
-      provider: flattenServiceProvider(s.provider as ProviderWithCorporateRow | null, s.provider_id),
-    }));
   } catch (error) {
     if (isDbUnavailable(error)) {
       if (process.env.NODE_ENV === "development") {
@@ -426,42 +397,12 @@ export async function getAllServices(): Promise<ServiceWithProvider[]> {
 export async function getPopularServices(limit: number = 5): Promise<ServiceWithProvider[]> {
   try {
     const user = await getCurrentUser();
-    const where = !user
-      ? {
-          AND: [
-            { OR: [{ status: "APPROVED" as const }, { is_published: true }] },
-            { is_member_only: false },
-          ],
-        }
-      : { OR: [{ status: "APPROVED" as const }, { is_published: true }] };
-
-    const services = await prisma.service.findMany({
-      where,
-      include: {
-        provider: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            avatar_url: true,
-            corporateProfile: {
-              select: { notification_email_2: true, notification_email_3: true },
-            },
-          },
-        },
-      },
-      orderBy: [
-        { display_order: "asc" },
-        { sort_order: "asc" },
-        { created_at: "desc" },
-      ],
+    return await findPublishedServicesWithProviders({
+      memberOnlyPublic: !user,
       take: limit,
+      mapProvider: (provider, providerId) =>
+        flattenServiceProvider(provider as ProviderWithCorporateRow | null, providerId),
     });
-
-    return services.map((s) => ({
-      ...s,
-      provider: flattenServiceProvider(s.provider as ProviderWithCorporateRow | null, s.provider_id),
-    }));
   } catch (error) {
     if (isDbUnavailable(error)) {
       if (process.env.NODE_ENV === "development") {

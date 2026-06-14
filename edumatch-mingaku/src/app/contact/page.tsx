@@ -18,16 +18,17 @@ import { Mail, MessageCircle, Clock, HelpCircle, Loader2 } from "lucide-react";
 import { OpenAiChatButton } from "@/components/ui/open-ai-chat-button";
 import { toast } from "sonner";
 import { submitContact } from "@/app/_actions";
-
-const categories = [
-  { value: "general", label: "一般的なお問い合わせ" },
-  { value: "billing", label: "料金・請求について" },
-  { value: "listing", label: "サービス掲載について" },
-  { value: "partnership", label: "提携・パートナーシップ" },
-  { value: "other", label: "その他" },
-];
+import { useTranslations } from "next-intl";
 
 export default function ContactPage() {
+  const t = useTranslations("contact");
+  const categories = [
+    { value: "general", label: t("catGeneral") },
+    { value: "billing", label: t("catBilling") },
+    { value: "listing", label: t("catListing") },
+    { value: "partnership", label: t("catPartnership") },
+    { value: "other", label: t("catOther") },
+  ];
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -38,19 +39,19 @@ export default function ContactPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      toast.error("お名前を入力してください");
+      toast.error(t("errName"));
       return;
     }
     if (!email.trim()) {
-      toast.error("メールアドレスを入力してください");
+      toast.error(t("errEmail"));
       return;
     }
     if (!category) {
-      toast.error("お問い合わせ種別を選択してください");
+      toast.error(t("errCategory"));
       return;
     }
     if (!message.trim()) {
-      toast.error("お問い合わせ内容を入力してください");
+      toast.error(t("errMessage"));
       return;
     }
 
@@ -73,15 +74,15 @@ export default function ContactPage() {
       router.push(`/contact/complete?${params.toString()}`);
       return;
     }
-    toast.error(result.error ?? "送信に失敗しました");
+    toast.error(result.error ?? t("errSend"));
   };
 
   return (
     <div className="container py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">お問い合わせ</h1>
+        <h1 className="text-3xl font-bold mb-2">{t("title")}</h1>
         <p className="text-muted-foreground">
-          エデュマッチ運営へのお問い合わせはこちらから
+          {t("subtitle")}
         </p>
       </div>
 
@@ -89,24 +90,24 @@ export default function ContactPage() {
         {/* メインフォーム */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>お問い合わせフォーム</CardTitle>
+            <CardTitle>{t("formTitle")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">
-                  お名前 <span className="text-red-500">*</span>
+                  {t("name")} <span className="text-red-500">*</span>
                 </label>
                 <Input
-                  placeholder="山田太郎"
+                  placeholder={t("namePlaceholder")}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">
-                  メールアドレス <span className="text-red-500">*</span>
+                  {t("email")} <span className="text-red-500">*</span>
                 </label>
                 <Input
                   type="email"
@@ -119,11 +120,11 @@ export default function ContactPage() {
 
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                お問い合わせ種別 <span className="text-red-500">*</span>
+                {t("categoryLabel")} <span className="text-red-500">*</span>
               </label>
               <Select value={category} onValueChange={setCategory}>
                 <SelectTrigger>
-                  <SelectValue placeholder="選択してください" />
+                  <SelectValue placeholder={t("selectPlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
                   {categories.map((cat) => (
@@ -137,10 +138,10 @@ export default function ContactPage() {
 
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                お問い合わせ内容 <span className="text-red-500">*</span>
+                {t("messageLabel")} <span className="text-red-500">*</span>
               </label>
               <Textarea
-                placeholder="お問い合わせ内容を詳しくご記入ください"
+                placeholder={t("messagePlaceholder")}
                 rows={8}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
@@ -149,8 +150,7 @@ export default function ContactPage() {
 
             <div className="p-4 rounded-lg bg-muted/50">
               <p className="text-sm text-muted-foreground">
-                <span className="text-red-500">*</span> は必須項目です。
-                お問い合わせ内容によっては、回答までにお時間をいただく場合がございます。
+                {t("requiredNote")}
               </p>
             </div>
 
@@ -164,10 +164,10 @@ export default function ContactPage() {
                 {submitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    送信中...
+                    {t("submitting")}
                   </>
                 ) : (
-                  "送信する"
+                  t("submit")
                 )}
               </Button>
             </div>
@@ -181,15 +181,15 @@ export default function ContactPage() {
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Clock className="h-5 w-5" />
-                対応時間
+                {t("hoursTitle")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground mb-2">
-                平日 9:00 - 18:00（土日祝日を除く）
+                {t("hoursBody")}
               </p>
               <p className="text-sm text-muted-foreground">
-                ※ お問い合わせへの回答は、通常2〜3営業日以内にご連絡いたします。
+                {t("hoursNote")}
               </p>
             </CardContent>
           </Card>
@@ -198,7 +198,7 @@ export default function ContactPage() {
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Mail className="h-5 w-5" />
-                メールでのお問い合わせ
+                {t("emailTitle")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -210,15 +210,15 @@ export default function ContactPage() {
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <MessageCircle className="h-5 w-5" />
-                AIチャットサポート
+                {t("aiTitle")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground mb-4">
-                画面右下のAIナビゲーターからもお問い合わせいただけます（AIによる自動応答です）。
+                {t("aiBody")}
               </p>
               <OpenAiChatButton variant="outline" className="w-full">
-                AIチャットを開く
+                {t("aiButton")}
               </OpenAiChatButton>
             </CardContent>
           </Card>
@@ -227,15 +227,15 @@ export default function ContactPage() {
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <HelpCircle className="h-5 w-5" />
-                よくある質問
+                {t("faqTitle")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground mb-4">
-                お問い合わせの前に、よくある質問をご確認ください。
+                {t("faqBody")}
               </p>
               <Button variant="outline" className="w-full" asChild>
-                <Link href="/faq">FAQを見る</Link>
+                <Link href="/faq">{t("faqButton")}</Link>
               </Button>
             </CardContent>
           </Card>

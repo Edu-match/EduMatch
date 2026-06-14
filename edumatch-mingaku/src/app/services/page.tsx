@@ -1,6 +1,9 @@
+import { getLocale } from "next-intl/server";
 import { getAllServices } from "@/app/_actions";
 import { ServicesClient } from "./services-client";
 import { SERVICE_CATEGORY_LIST } from "@/lib/categories";
+import { translateBatch } from "@/lib/translate";
+import type { Locale } from "@/i18n/config";
 
 export const dynamic = "force-dynamic";
 
@@ -18,13 +21,21 @@ export type ServiceForList = {
 
 export default async function ServicesPage() {
   const services = await getAllServices();
+  const locale = (await getLocale()) as Locale;
 
   // 表示順は Supabase の sort_order で管理（DB取得時点でソート済み）
   const displayOrderIds = services.map((s) => s.id);
-  const serviceList: ServiceForList[] = services.map((service) => ({
+
+  // DB 由来テキスト（名称・説明）を表示言語へ機械翻訳（ja のときは原文のまま）
+  const [translatedNames, translatedDescriptions] = await Promise.all([
+    translateBatch(services.map((s) => s.title), locale),
+    translateBatch(services.map((s) => s.description ?? ""), locale),
+  ]);
+
+  const serviceList: ServiceForList[] = services.map((service, i) => ({
     id: service.id,
-    name: service.title,
-    description: service.description ?? "",
+    name: translatedNames[i],
+    description: translatedDescriptions[i],
     category: service.category ?? "",
     image: service.thumbnail_url ?? undefined,
     price: service.price_info ?? "",

@@ -8,50 +8,62 @@ import { getDefaultContentForEdit } from "@/lib/default-site-pages";
 import { getCurrentProfile } from "@/lib/auth";
 import type { SitePageKey } from "@/app/_actions/site-pages";
 import { ArrowRight } from "lucide-react";
+import { getTranslations, getLocale } from "next-intl/server";
+import { translateText } from "@/lib/translate";
+import type { Locale } from "@/i18n/config";
 
-export const metadata: Metadata = {
-  title: "運営について",
-  description:
-    "エデュマッチは教育現場と教育サービスをつなぐプラットフォームです。私たちは、教育現場が抱える課題を解決し、より良い教育環境の実現をサポートします。",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("about");
+  return {
+    title: t("metaTitle"),
+    description: t("metaDescription"),
+  };
+}
 
 export default async function AboutPage() {
+  const t = await getTranslations("about");
+  const locale = (await getLocale()) as Locale;
   const [aboutPage, companyInfoPage, profile] = await Promise.all([
     getSitePage("about"),
     getSitePage("company_info"),
     getCurrentProfile(),
   ]);
 
-  const aboutContent = aboutPage.body?.trim()
+  const aboutContentRaw = aboutPage.body?.trim()
     ? aboutPage.body
     : getDefaultContentForEdit("about" as SitePageKey, null);
-  const companyInfoContent = companyInfoPage.body?.trim()
+  const companyInfoContentRaw = companyInfoPage.body?.trim()
     ? companyInfoPage.body
     : getDefaultContentForEdit("company_info" as SitePageKey, null);
+
+  const [aboutContent, companyInfoContent] = await Promise.all([
+    translateText(aboutContentRaw, locale),
+    translateText(companyInfoContentRaw, locale),
+  ]);
   const isAdmin = profile?.role === "ADMIN";
 
   return (
     <div className="container py-8">
       {/* ヒーローセクション */}
       <div className="text-center mb-16">
-        <h1 className="text-4xl font-bold mb-4">会社概要</h1>
+        <h1 className="text-4xl font-bold mb-4">{t("heroTitle")}</h1>
         <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-          教育の未来を見つける、つながる。
+          {t("heroBody1")}
           <br />
-          エデュマッチは教育現場と教育サービスをつなぐプラットフォームです。
+          {t("heroBody2")}
         </p>
       </div>
 
       {/* 運営について（ミッション・価値観） */}
       <section className="mb-16">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold">運営について</h2>
+          <h2 className="text-2xl font-bold">{t("aboutSection")}</h2>
           {isAdmin && (
             <Link
               href="/admin/pages/about/edit"
               className="text-sm text-primary hover:underline"
             >
-              編集
+              {t("edit")}
             </Link>
           )}
         </div>
@@ -65,13 +77,13 @@ export default async function AboutPage() {
       {/* 会社情報 */}
       <section className="mb-16">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold">会社情報</h2>
+          <h2 className="text-2xl font-bold">{t("companySection")}</h2>
           {isAdmin && (
             <Link
               href="/admin/pages/company_info/edit"
               className="text-sm text-primary hover:underline"
             >
-              編集
+              {t("edit")}
             </Link>
           )}
         </div>
@@ -86,14 +98,13 @@ export default async function AboutPage() {
       <section>
         <Card className="bg-gradient-to-r from-primary/10 to-primary/5">
           <CardContent className="p-8 text-center">
-            <h2 className="text-2xl font-bold mb-4">お問い合わせ</h2>
+            <h2 className="text-2xl font-bold mb-4">{t("ctaTitle")}</h2>
             <p className="text-muted-foreground mb-6">
-              サービスに関するお問い合わせ、取材依頼、パートナーシップのご相談など、
-              お気軽にご連絡ください。
+              {t("ctaBody")}
             </p>
             <Button asChild size="lg">
               <Link href="/contact">
-                お問い合わせする
+                {t("ctaButton")}
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Link>
             </Button>

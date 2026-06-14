@@ -1,11 +1,15 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { Megaphone, Calendar, ChevronRight } from "lucide-react";
 import { getPopularServicesByEngagement } from "@/app/_actions/popularity";
 import { getUpcomingEvents } from "@/app/_actions/events";
 import { RankingServiceImage } from "./ranking-service-image";
+import { SponsorSidebarCard } from "./sponsor-sidebar-card";
+import { ForumMapSidebarWidget } from "@/components/community/forum-map-sidebar-widget";
 
 /** トップページ右サイドバー：ランキング（上位5社）＋セミナー・イベント情報 */
 export async function RightRankingSidebar() {
+  const t = await getTranslations("home");
   const [services, events] = await Promise.all([
     getPopularServicesByEngagement(8),
     getUpcomingEvents(5),
@@ -13,11 +17,17 @@ export async function RightRankingSidebar() {
 
   return (
     <aside className="lg:sticky lg:top-20 flex flex-col gap-6 min-w-0 w-full">
+      {/* 井戸端マップ（PR枠）— /forum の本物マップへ誘導 */}
+      <ForumMapSidebarWidget />
+
+      {/* スポンサーPR（登録があれば表示） */}
+      <SponsorSidebarCard />
+
       {/* [PR]注目のサービス */}
       <div className="border rounded-xl bg-card shadow-sm overflow-hidden flex flex-col">
         <div className="p-4 border-b flex items-center gap-3 shrink-0">
           <Megaphone className="h-6 w-6 text-primary shrink-0" />
-          <h3 className="text-lg font-bold truncate">[PR]注目のサービス</h3>
+          <h3 className="text-lg font-bold truncate">{t("prFeatured")}</h3>
         </div>
         <div className="p-4">
           {services.length > 0 ? (
@@ -37,7 +47,7 @@ export async function RightRankingSidebar() {
               ))}
             </ul>
           ) : (
-            <p className="text-center text-muted-foreground py-4 text-sm">サービスがありません</p>
+            <p className="text-center text-muted-foreground py-4 text-sm">{t("noServices")}</p>
           )}
         </div>
         <div className="border-t p-4">
@@ -45,7 +55,7 @@ export async function RightRankingSidebar() {
             href="/services"
             className="flex items-center justify-center gap-1.5 w-full py-2 rounded-lg bg-primary/5 hover:bg-primary/10 text-primary font-semibold text-sm transition-colors"
           >
-            もっと見る
+            {t("viewMore")}
             <ChevronRight className="h-4 w-4" />
           </Link>
         </div>
@@ -55,7 +65,7 @@ export async function RightRankingSidebar() {
       <div className="border rounded-xl bg-card shadow-sm overflow-hidden flex flex-col">
         <div className="p-4 border-b flex items-center gap-3 shrink-0">
           <Calendar className="h-6 w-6 text-primary shrink-0" />
-          <h3 className="text-lg font-bold truncate">セミナー・イベント情報</h3>
+          <h3 className="text-lg font-bold truncate">{t("eventsInfo")}</h3>
         </div>
         <div className="p-4">
           {events.length > 0 ? (
@@ -73,7 +83,7 @@ export async function RightRankingSidebar() {
               ))}
             </ul>
           ) : (
-            <p className="text-center text-muted-foreground py-4 text-sm">イベント情報がありません</p>
+            <p className="text-center text-muted-foreground py-4 text-sm">{t("noEvents")}</p>
           )}
         </div>
         <div className="border-t p-4">
@@ -81,7 +91,7 @@ export async function RightRankingSidebar() {
             href="/events"
             className="flex items-center justify-center gap-1.5 w-full py-2 rounded-lg bg-primary/5 hover:bg-primary/10 text-primary font-semibold text-sm transition-colors"
           >
-            もっと見る
+            {t("viewMore")}
             <ChevronRight className="h-4 w-4" />
           </Link>
         </div>

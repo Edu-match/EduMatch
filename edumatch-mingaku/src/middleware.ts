@@ -50,8 +50,64 @@ const protectedPaths = [
 // 認証済みユーザーがアクセスすべきでないパス
 const authPaths = ["/login", "/auth/login"];
 
+function isNextSoftNavigation(request: NextRequest): boolean {
+  return (
+    request.headers.get("RSC") === "1" ||
+    request.headers.get("Next-Router-Prefetch") === "1" ||
+    request.headers.get("x-middleware-prefetch") === "1"
+  );
+}
+
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+
+  // 掲示板の正規URL /t/... → 実体 /interop/t/...（全ホスト共通）
+  if (pathname === "/t" || pathname.startsWith("/t/")) {
+    const url = request.nextUrl.clone();
+    url.pathname = `/interop${pathname}`;
+    return NextResponse.rewrite(url);
+  }
+
+  // 特設サブドメイン（special.*）は常に総合案内所(/interop)を表示する。
+  // 来場者向けの公開ページなので Basic認証/メンテナンスゲートはバイパスする。
+  const host = request.headers.get("host") ?? "";
+  if (host.startsWith("special.")) {
+    // URL を special.edu-match.com 側に寄せる：/interop と /interop/... へ来た来場者は
+    // プレフィックスを取り除いた正規URLへ 308 リダイレクト（重複ページの混乱を解消）。
+    // ただし管理画面 /interop/admin は実体パスのまま表示する（rewrite で内部表示）。
+    // App Router のクライアント遷移(RSC)では 308 だと 404 になりやすいため rewrite のまま通す。
+    if (pathname === "/interop" || pathname.startsWith("/interop/")) {
+      if (pathname === "/interop/admin" || pathname.startsWith("/interop/admin/")) {
+        return NextResponse.next();
+      }
+      if (!isNextSoftNavigation(request)) {
+        const stripped = pathname.slice("/interop".length) || "/";
+        const url = request.nextUrl.clone();
+        url.pathname = stripped;
+        return NextResponse.redirect(url, 308);
+      }
+      return NextResponse.next();
+    }
+    if (
+      pathname.startsWith("/_next") ||
+      pathname.startsWith("/api") ||
+      pathname.startsWith("/forum") || // ◎トピック→実ルーム。/interopへrewriteせず本物のフォーラムルームを表示
+      /\.[a-zA-Z0-9]+$/.test(pathname)
+    ) {
+      return NextResponse.next();
+    }
+    const url = request.nextUrl.clone();
+    url.pathname = pathname === "/" ? "/interop" : `/interop${pathname}`;
+    return NextResponse.rewrite(url);
+  }
+
+  // 井戸端会議 常設ルート（/idobata）：実体は /interop と同一コンポーネント（並行ルート）。
+  // 段階移行のため /interop はそのまま残し、こちらは内部 rewrite のみ（URLは /idobata を維持）。
+  if (pathname === "/idobata" || pathname.startsWith("/idobata/")) {
+    const url = request.nextUrl.clone();
+    url.pathname = `/interop${pathname.slice("/idobata".length)}` || "/interop";
+    return NextResponse.rewrite(url);
+  }
 
   // NEXT_PUBLIC_IS_RELEASED が false のとき: 最初の画面は常にメンテナンス。管理者は「管理者」から Basic 認証で入場
   // （Vercel の Preview デプロイでは PR 確認のためメンテに閉じない）

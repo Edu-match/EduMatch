@@ -10,44 +10,44 @@ datasource db {
 
 /// ログイン共通の1行。一般は VIEWER、事業者は PROVIDER、管理者は ADMIN。拡張は GeneralProfile / CorporateProfile
 model Profile {
-  id                              String            @id @db.Uuid
-  role                            Role              @default(VIEWER)
+  id                              String               @id @db.Uuid
+  role                            Role                 @default(VIEWER)
   name                            String
-  email                           String            @unique
+  email                           String               @unique
   avatar_url                      String?
-  subscription_status             String            @default("INACTIVE")
-  created_at                      DateTime          @default(now())
-  updated_at                      DateTime          @updatedAt
+  subscription_status             String               @default("INACTIVE")
+  created_at                      DateTime             @default(now())
+  updated_at                      DateTime             @updatedAt
   phone                           String?
   bio                             String?
   website                         String?
   subscription_plan               String?
-  stripe_customer_id              String?           @unique
+  stripe_customer_id              String?              @unique
   stripe_subscription_id          String?
   subscription_current_period_end DateTime?
   /// チャット利用履歴（24時間ローリング） [{ mode, at }] at は ISO 文字列
-  chat_usage_events                Json?
+  chat_usage_events               Json?
   /// AIナビゲーター利用規約に同意した日時（null = 未同意）
-  ai_navigator_agreed_at           DateTime?
+  ai_navigator_agreed_at          DateTime?
   /// 関心のあるカテゴリ（複数選択）
-  interests                        String[]  @default([])
+  interests                       String[]             @default([])
   /// 関心カテゴリで「その他」を選んだときの自由記述（最大100文字）
-  interest_other                   String?
+  interest_other                  String?
   /// Table Editor 用: 手動で general | corporate（ジョブで GeneralProfile / CorporateProfile に反映）
-  manual_profile_kind              String?
+  manual_profile_kind             String?
   /// 初回プロフィール設定完了日時。null の間は OAuth 後も登録ウィザードへ誘導する
   onboarding_completed_at         DateTime?
   /// AI検定合格フラグ（井戸端会議・人材マッチングのバッジ表示用）
-  ai_kentei_passed                Boolean           @default(false)
+  ai_kentei_passed                Boolean              @default(false)
   material_requests               MaterialRequest[]
   posts                           Post[]
   reviews                         Review[]
   services                        Service[]
   view_histories                  ViewHistory[]
   chat_sessions                   ChatSession[]
-  in_app_notifications           InAppNotification[]
-  reports_made                    UserReport[] @relation("UserReportReporter")
-  reports_received                UserReport[] @relation("UserReportSubject")
+  in_app_notifications            InAppNotification[]
+  reports_made                    UserReport[]         @relation("UserReportReporter")
+  reports_received                UserReport[]         @relation("UserReportSubject")
   generalProfile                  GeneralProfile?
   corporateProfile                CorporateProfile?
   activity_logs                   ActivityLog[]
@@ -56,6 +56,10 @@ model Profile {
   forum_posts                     ForumPost[]
   forum_replies                   ForumReply[]
   forum_likes                     ForumLike[]
+  videos                          Video[]
+  video_comments                  VideoComment[]
+  ai_persona                      UserAiPersona?
+  interop_posts                   InteropPost[]        @relation("InteropPostAuthor")
 
   @@index([email])
   @@index([stripe_customer_id])
@@ -63,47 +67,47 @@ model Profile {
 
 /// 一般ユーザー向け拡張（所属・年代など）。Profile と 1:1
 model GeneralProfile {
-  id                 String   @id @db.Uuid
-  profile            Profile  @relation(fields: [id], references: [id], onDelete: Cascade)
-  legal_name         String?
-  age                String?
-  organization       String?
-  organization_type  String?
+  id                          String   @id @db.Uuid
+  profile                     Profile  @relation(fields: [id], references: [id], onDelete: Cascade)
+  legal_name                  String?
+  age                         String?
+  organization                String?
+  organization_type           String?
   /// 所属の種類が「その他」のときの補足（任意）
-  organization_type_other String?
+  organization_type_other     String?
   /// 人材マッチングへの登録可否。公開ページは main では提供しない
   talent_matching_enabled     Boolean  @default(false)
   talent_matching_description String?
   talent_badges               String[] @default([])
   talent_hourly_rate          String?
-  created_at         DateTime @default(now())
-  updated_at         DateTime @updatedAt
+  created_at                  DateTime @default(now())
+  updated_at                  DateTime @updatedAt
 }
 
 /// 企業ユーザー向け拡張（資料請求通知先・事業者住所など）。Profile と 1:1。行があれば投稿・サービス掲載を許可
 model CorporateProfile {
-  id                    String   @id @db.Uuid
-  profile               Profile  @relation(fields: [id], references: [id], onDelete: Cascade)
-  legal_name            String?
+  id                          String   @id @db.Uuid
+  profile                     Profile  @relation(fields: [id], references: [id], onDelete: Cascade)
+  legal_name                  String?
   /// 役職・職種（「その他」の自由記述を含む）
-  job_title             String?
-  organization          String?
-  organization_type     String?
+  job_title                   String?
+  organization                String?
+  organization_type           String?
   /// 所属の種類が「その他」のときの補足（任意）
-  organization_type_other String?
-  notification_email_2  String?
-  notification_email_3  String?
-  address               String?
-  city                  String?
-  postal_code           String?
-  prefecture            String?
+  organization_type_other     String?
+  notification_email_2        String?
+  notification_email_3        String?
+  address                     String?
+  city                        String?
+  postal_code                 String?
+  prefecture                  String?
   /// 人材マッチングへの登録可否。公開ページは main では提供しない
   talent_matching_enabled     Boolean  @default(false)
   talent_matching_description String?
   talent_badges               String[] @default([])
   talent_hourly_rate          String?
-  created_at            DateTime @default(now())
-  updated_at            DateTime @updatedAt
+  created_at                  DateTime @default(now())
+  updated_at                  DateTime @updatedAt
 }
 
 /// サイト内通知（「通知」一覧・マイページ）
@@ -160,9 +164,9 @@ model MaterialRequest {
   delivery_address      String?
   delivery_email        String
   message               String?
-  created_at           DateTime @default(now())
-  service              Service  @relation(fields: [service_id], references: [id], onDelete: Cascade)
-  user                 Profile  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  created_at            DateTime @default(now())
+  service               Service  @relation(fields: [service_id], references: [id], onDelete: Cascade)
+  user                  Profile  @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
   @@index([service_id])
@@ -199,48 +203,48 @@ model ChatSession {
 }
 
 model Service {
-  id                    String            @id @default(cuid())
-  provider_id           String            @db.Uuid
-  title                 String
-  description           String
-  content               String
-  thumbnail_url         String?
-  category              String
-  price_info            String
-  is_published          Boolean           @default(false)
-  created_at            DateTime          @default(now())
-  updated_at            DateTime          @updatedAt
-  images                String[]
-  youtube_url           String?
-  approved_at           DateTime?
-  rejected_at           DateTime?
-  rejection_reason      String?
-  status                PublishStatus     @default(DRAFT)
-  submitted_at          DateTime?
-  is_member_only        Boolean           @default(false)
-  view_count            Int               @default(0)
-  favorite_count        Int               @default(0)
-  request_count         Int               @default(0)
+  id                           String               @id @default(cuid())
+  provider_id                  String               @db.Uuid
+  title                        String
+  description                  String
+  content                      String
+  thumbnail_url                String?
+  category                     String
+  price_info                   String
+  is_published                 Boolean              @default(false)
+  created_at                   DateTime             @default(now())
+  updated_at                   DateTime             @updatedAt
+  images                       String[]
+  youtube_url                  String?
+  approved_at                  DateTime?
+  rejected_at                  DateTime?
+  rejection_reason             String?
+  status                       PublishStatus        @default(DRAFT)
+  submitted_at                 DateTime?
+  is_member_only               Boolean              @default(false)
+  view_count                   Int                  @default(0)
+  favorite_count               Int                  @default(0)
+  request_count                Int                  @default(0)
   /// サービス個別の表示順（小さいほど先に表示）
-  display_order         Int               @default(999)
-  tags                  String[]          @default([])
+  display_order                Int                  @default(999)
+  tags                         String[]             @default([])
   /// 表示順（Supabase でプルダウン: プレミアム/スタンダード/ベーシック/その他/なし）
-  sort_order            ServiceSortOrderTier @default(NONE)
+  sort_order                   ServiceSortOrderTier @default(NONE)
   /// 表示用提供者名。未設定時は provider.name
-  provider_display_name String?
+  provider_display_name        String?
   /// 表示用提供者アイコン。未設定時は provider.avatar_url
-  provider_display_avatar_url String?
+  provider_display_avatar_url  String?
   /// WooCommerce product (post) ID。XML とのマッチ・再インポート用
-  wp_product_id         Int?
+  wp_product_id                Int?
   /// 口コミ数（非正規化キャッシュ）
-  review_count          Int               @default(0)
+  review_count                 Int                  @default(0)
   /// サービス詳細で資料請求ボタンを表示するか
-  show_material_request_button Boolean    @default(true)
+  show_material_request_button Boolean              @default(true)
   /// 資料請求通知先メール（サービス単位・任意）。1件以上設定時は provider.email には送らない
-  request_notification_emails String[]    @default([])
-  material_requests     MaterialRequest[]
-  reviews               Review[]
-  provider              Profile           @relation(fields: [provider_id], references: [id], onDelete: Cascade)
+  request_notification_emails  String[]             @default([])
+  material_requests            MaterialRequest[]
+  reviews                      Review[]
+  provider                     Profile              @relation(fields: [provider_id], references: [id], onDelete: Cascade)
 
   @@index([provider_id])
   @@index([category])
@@ -327,18 +331,18 @@ model SitePage {
 
 /// 運営情報（サイト更新情報）。WordPress インポートまたは手動登録。
 model SiteUpdate {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  title           String
-  body            String   @default("")
-  excerpt         String?
-  published_at    DateTime @db.Timestamptz(6)
-  link            String?
-  wp_post_id      Int?     @unique
-  thumbnail_url   String?
-  category        String?
-  show_in_slider  Boolean  @default(false)
-  created_at      DateTime @default(now()) @db.Timestamptz(6)
-  updated_at      DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title          String
+  body           String   @default("")
+  excerpt        String?
+  published_at   DateTime @db.Timestamptz(6)
+  link           String?
+  wp_post_id     Int?     @unique
+  thumbnail_url  String?
+  category       String?
+  show_in_slider Boolean  @default(false)
+  created_at     DateTime @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime @default(now()) @updatedAt @db.Timestamptz(6)
 
   @@index([published_at(sort: Desc)])
   @@index([show_in_slider])
@@ -375,12 +379,12 @@ model SeminarEvent {
   id           String   @id @default(cuid())
   title        String
   description  String   @default("")
-  event_date   String?               /// イベント開催日 YYYY-MM-DD 文字列
-  venue        String?               /// 開催場所
-  company      String?               /// 主催者
-  external_url String?               /// 詳細・申込URL
-  wp_post_id   Int?     @unique      /// WordPress post_id（重複インポート防止）
-  wp_link      String?               /// WordPress 元ページURL
+  event_date   String? /// イベント開催日 YYYY-MM-DD 文字列
+  venue        String? /// 開催場所
+  company      String? /// 主催者
+  external_url String? /// 詳細・申込URL
+  wp_post_id   Int?     @unique /// WordPress post_id（重複インポート防止）
+  wp_link      String? /// WordPress 元ページURL
   created_at   DateTime @default(now())
   updated_at   DateTime @updatedAt
 
@@ -425,19 +429,338 @@ model ActivityLogComment {
   @@index([created_at(sort: Desc)])
 }
 
+model ForumCategory {
+  id           String                      @id @default(uuid()) @db.Uuid
+  name         String
+  slug         String                      @unique
+  description  String                      @default("")
+  color        String                      @default("#FFB5C8")
+  tags         String[]                    @default([])
+  sort_order   Int                         @default(0)
+  is_active    Boolean                     @default(true)
+  created_at   DateTime                    @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime                    @updatedAt @db.Timestamptz(6)
+  rooms        ForumRoom[]
+  contentCache ForumCategoryContentCache[]
+
+  @@map("forum_categories")
+}
+
+model ForumSubCategory {
+  id           String                      @id @default(uuid()) @db.Uuid
+  name         String
+  slug         String                      @unique
+  icon         String?
+  /// community = 純粋な掲示板 / article / service / media / events-info = DBコンテンツ表示
+  content_kind String                      @default("community")
+  sort_order   Int                         @default(0)
+  is_active    Boolean                     @default(true)
+  created_at   DateTime                    @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime                    @updatedAt @db.Timestamptz(6)
+  rooms        ForumRoom[]
+  contentCache ForumCategoryContentCache[]
+
+  @@map("forum_sub_categories")
+}
+
+/// Interop特設ページ専用カテゴリ（井戸端のコピー。本体フォーラムとは完全に別データ）
+model InteropCategory {
+  id            String               @id @default(uuid()) @db.Uuid
+  name          String
+  slug          String               @unique
+  description   String               @default("")
+  color         String               @default("#C9D4F6")
+  /// 中心に配置するインフォメーション等
+  is_primary    Boolean              @default(false)
+  sort_order    Int                  @default(0)
+  is_active     Boolean              @default(true)
+  created_at    DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime             @updatedAt @db.Timestamptz(6)
+  subCategories InteropSubCategory[]
+
+  @@map("interop_categories")
+}
+
+/// Interop特設ページ専用サブカテゴリ（カテゴリ配下）
+model InteropSubCategory {
+  id            String              @id @default(uuid()) @db.Uuid
+  category_id   String              @db.Uuid
+  category      InteropCategory     @relation(fields: [category_id], references: [id], onDelete: Cascade)
+  name          String
+  slug          String              @unique
+  description   String              @default("")
+  sort_order    Int                 @default(0)
+  is_active     Boolean             @default(true)
+  /// サテライト/掲示板の概要下にサムネ表示する参考URL（任意）
+  url           String              @default("")
+  /// 本体エデュマッチから自動抽出する種別（article/service/media/events-info）。空なら自動抽出オフ。
+  content_kinds String[]            @default([])
+  /// 自動抽出のキーワード上書き（空ならカテゴリ名＋サブカテゴリ名）
+  content_query String              @default("")
+  created_at    DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime            @updatedAt @db.Timestamptz(6)
+  posts         InteropPost[]
+  contentPins   InteropContentPin[]
+  boardTopics   InteropBoardTopic[]
+
+  @@map("interop_sub_categories")
+}
+
+/// サブカテゴリ配下の「トピック」。1件でも設定すると投稿前にトピック選択画面を挟む。
+/// トピック単位で参考URL・検索コンテンツ（kinds/query）を上書きできる。
+model InteropBoardTopic {
+  id              String             @id @default(uuid()) @db.Uuid
+  sub_category_id String             @db.Uuid
+  subCategory     InteropSubCategory @relation(fields: [sub_category_id], references: [id], onDelete: Cascade)
+  name            String
+  description     String             @default("")
+  /// 概要下にサムネ表示する参考URL（任意・サブカテゴリ設定より優先）
+  url             String             @default("")
+  /// 本体エデュマッチから検索して表示する種別（article/service/media/events-info）
+  content_kinds   String[]           @default([])
+  /// 検索キーワード（空ならサブカテゴリ名＋トピック名）
+  content_query   String             @default("")
+  sort_order      Int                @default(0)
+  is_active       Boolean            @default(true)
+  created_at      DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime           @updatedAt @db.Timestamptz(6)
+  posts           InteropPost[]
+
+  @@index([sub_category_id, sort_order])
+  @@map("interop_board_topics")
+}
+
+/// Interop特設の手動キュレーション（本体コンテンツのピン留め／除外。スナップショット保存）
+model InteropContentPin {
+  id              String             @id @default(uuid()) @db.Uuid
+  sub_category_id String             @db.Uuid
+  subCategory     InteropSubCategory @relation(fields: [sub_category_id], references: [id], onDelete: Cascade)
+  /// 由来（post/service/video/seminar_event）
+  source_type     String
+  /// 由来コンテンツのID（重複排除・除外判定に使用）
+  source_id       String
+  title           String
+  description     String             @default("")
+  thumbnail_url   String?
+  href            String
+  meta            String?
+  /// true = 自動抽出から該当source_idを除外するマーカー（手動追加ピンはfalse）
+  is_hidden       Boolean            @default(false)
+  rank_order      Int                @default(0)
+  created_at      DateTime           @default(now()) @db.Timestamptz(6)
+
+  @@index([sub_category_id, rank_order])
+  @@map("interop_content_pins")
+}
+
+/// Interop特設ページのサブカテゴリ掲示板（来場者が投稿。ログイン不要）
+model InteropPost {
+  id              String             @id @default(uuid()) @db.Uuid
+  sub_category_id String             @db.Uuid
+  subCategory     InteropSubCategory @relation(fields: [sub_category_id], references: [id], onDelete: Cascade)
+  /// 投稿者の表示名（未ログインの来場者が入力。空なら匿名）
+  author_name     String             @default("匿名")
+  /// 任意の所属・肩書き
+  author_role     String             @default("")
+  body            String
+  is_hidden       Boolean            @default(false)
+  /// 運営からのお知らせ・記事として上部に固定表示する
+  is_pinned       Boolean            @default(false)
+  /// AIが危険・不適切と判定し自動で非表示にした（管理画面で要確認）
+  auto_flagged    Boolean            @default(false)
+  /// AI判定の理由（管理者レビュー用）
+  flag_reason     String             @default("")
+  /// トーン分類（"" =問題なし / negative / non_constructive / harsh）。掲載は可だが警告バッジを表示。
+  tone_flag       String             @default("")
+  tone_reason     String             @default("")
+  /// AIファシリテーターによる返信かどうか
+  is_ai_reply     Boolean            @default(false)
+  /// 元投稿ID（AIファシリテーター返信の場合のみセット）
+  parent_post_id  String?            @db.Uuid
+  parentPost      InteropPost?       @relation("InteropPostReplies", fields: [parent_post_id], references: [id], onDelete: Cascade)
+  replies         InteropPost[]      @relation("InteropPostReplies")
+  /// 所属トピック（サブカテゴリにトピックが設定されている場合のみセット）
+  topic_id        String?            @db.Uuid
+  topic           InteropBoardTopic? @relation(fields: [topic_id], references: [id], onDelete: SetNull)
+  /// ログインユーザーの投稿なら Profile に紐付け（匿名投稿は NULL）
+  author_id       String?            @db.Uuid
+  author          Profile?           @relation("InteropPostAuthor", fields: [author_id], references: [id], onDelete: SetNull)
+  /// パーソナルAIペルソナによる発話なら紐付け（人間の投稿は NULL）
+  persona_id      String?            @db.Uuid
+  persona         UserAiPersona?     @relation(fields: [persona_id], references: [id], onDelete: SetNull)
+  created_at      DateTime           @default(now()) @db.Timestamptz(6)
+  likes           InteropPostLike[]
+
+  @@index([sub_category_id, created_at])
+  @@index([parent_post_id])
+  @@index([topic_id])
+  @@index([author_id])
+  @@map("interop_posts")
+}
+
+/// パーソナルAIペルソナ（Profile と 1:1・オプトイン）。
+/// 登録時のマインド/価値観から persona_prompt・アバター画像を生成し、
+/// そのマインドに基づいて投稿へ自動返信する発話主体になる。
+model UserAiPersona {
+  id                String        @id @default(uuid()) @db.Uuid
+  profile_id        String        @unique @db.Uuid
+  profile           Profile       @relation(fields: [profile_id], references: [id], onDelete: Cascade)
+  /// 表示名（既定はユーザー名）
+  display_name      String
+  /// 生成されたアバター画像URL
+  avatar_url        String?
+  /// AIが本人らしく振る舞うためのシステムプロンプト（マインド要約）
+  persona_prompt    String        @default("")
+  /// 専門・得意分野タグ
+  expertise         String[]      @default([])
+  /// 価値観・大切にしていること（自由記述の要約）
+  values_text       String        @default("")
+  /// 返信を許可するトピックID（空なら全許可）
+  allowed_topic_ids String[]      @default([])
+  /// 1日あたりの自動返信上限
+  reply_daily_limit Int           @default(5)
+  /// 自動返信を有効化しているか（オプトイン）
+  is_active         Boolean       @default(false)
+  /// 運営による一時停止
+  is_suspended      Boolean       @default(false)
+  xp                Int           @default(0)
+  level             Int           @default(1)
+  stage             Int           @default(0)
+  last_replied_at   DateTime?     @db.Timestamptz(6)
+  created_at        DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime      @updatedAt @db.Timestamptz(6)
+  interop_posts     InteropPost[]
+
+  @@index([is_active, is_suspended])
+  @@map("user_ai_personas")
+}
+
+/// Interop掲示板の投稿いいね（来場者はログイン不要・voter_key で端末単位に1回）
+model InteropPostLike {
+  id         String      @id @default(uuid()) @db.Uuid
+  post_id    String      @db.Uuid
+  post       InteropPost @relation(fields: [post_id], references: [id], onDelete: Cascade)
+  voter_key  String
+  created_at DateTime    @default(now()) @db.Timestamptz(6)
+
+  @@unique([post_id, voter_key])
+  @@index([post_id])
+  @@map("interop_post_likes")
+}
+
+/// 教育AIサミット＠議員会館 特設ページ「ご意見・要望」の書き込み（来場者・ログイン不要）。
+/// 既存テーブルへのFK追加なしの独立テーブル（additive）。
+model KaikanVoice {
+  id          String   @id @default(uuid()) @db.Uuid
+  /// 任意の表示名（未入力なら空）
+  author_name String   @default("")
+  body        String
+  /// 管理者が非表示にした場合 true
+  is_hidden   Boolean  @default(false)
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([created_at])
+  @@map("kaikan_voices")
+}
+
+/// Interop特設ページのサイト設定（テキスト・テーマ等のkey-value）
+model InteropSetting {
+  key        String   @id
+  value      Json
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+
+  @@map("interop_settings")
+}
+
+/// トップマップの28話題玉（旧 INTEROP_PRIORITY_TOPICS をDB管理化）。
+/// major(A〜F)で色グループ、axis_x/yで2軸配置、room_idで井戸端ルームに接続。
+model InteropTopic {
+  id          String   @id @default(uuid()) @db.Uuid
+  no          Int      @unique // 軸キー・既存番号
+  major       String   @default("F") // A〜F の色グループ
+  name        String // 玉のラベル（旧 category）
+  room_id     String   @default("") // /forum/{room_id}
+  topic1      String   @default("")
+  topic2      String   @default("")
+  topic3      String   @default("")
+  url         String   @default("") // (旧)玉単位の参考URL。現在は point_links を使用。
+  /// 各論点(topic1..3)に対応する参考リンク [{url, on}]。on=true でその論点の投稿ページにサムネ表示。
+  point_links Json     @default("[]")
+  axis_x      Float    @default(0) // -1..1（人間↔技術）
+  axis_y      Float    @default(0) // -1..1（現場↔制度）
+  sort_order  Int      @default(0)
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime @updatedAt @db.Timestamptz(6)
+
+  @@map("interop_topics")
+}
+
+/// AI日次スキャンで選んだカテゴリ×サブカテゴリ向けコンテンツ
+model ForumCategoryContentCache {
+  id              String           @id @default(uuid()) @db.Uuid
+  category_id     String           @db.Uuid
+  sub_category_id String           @db.Uuid
+  content_kind    String
+  source_type     String
+  source_id       String
+  title           String
+  description     String           @default("")
+  thumbnail_url   String?
+  href            String
+  meta            String?
+  rank_order      Int              @default(0)
+  refreshed_at    DateTime         @default(now()) @db.Timestamptz(6)
+  category        ForumCategory    @relation(fields: [category_id], references: [id], onDelete: Cascade)
+  subCategory     ForumSubCategory @relation(fields: [sub_category_id], references: [id], onDelete: Cascade)
+
+  @@unique([category_id, sub_category_id, source_type, source_id], map: "forum_category_content_cache_unique")
+  @@index([category_id, sub_category_id, content_kind, rank_order], map: "forum_category_content_cache_lookup_idx")
+  @@map("forum_category_content_cache")
+}
+
+/// 管理者が大カテゴリ×面（サブカテゴリ）に手動で固定するコンテンツ。
+/// AI自動選定（ForumCategoryContentCache）より優先して先頭に表示する。
+model ForumPinnedContent {
+  id              String   @id @default(uuid()) @db.Uuid
+  category_id     String   @db.Uuid
+  sub_category_id String   @db.Uuid
+  content_kind    String
+  source_type     String
+  source_id       String
+  title           String
+  description     String   @default("")
+  thumbnail_url   String?
+  href            String
+  meta            String?
+  rank_order      Int      @default(0)
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @updatedAt @db.Timestamptz(6)
+
+  @@unique([category_id, sub_category_id, source_type, source_id], map: "forum_pinned_content_unique")
+  @@index([category_id, sub_category_id, rank_order], map: "forum_pinned_content_lookup_idx")
+  @@map("forum_pinned_content")
+}
+
 model ForumRoom {
-  id                      String           @id
+  id                      String            @id
   name                    String
-  description             String           @default("")
-  emoji                   String           @default("")
-  weekly_topic            String           @default("")
-  ai_discussion           Boolean          @default(false)
-  ai_weekly_topic_enabled Boolean          @default(false)
-  is_hidden               Boolean          @default(false)
-  created_by              String?          @db.Uuid
-  created_at              DateTime         @default(now())
-  updated_at              DateTime         @updatedAt
-  creator                 Profile?         @relation(fields: [created_by], references: [id], onDelete: SetNull)
+  description             String            @default("")
+  emoji                   String            @default("")
+  weekly_topic            String            @default("")
+  ai_discussion           Boolean           @default(false)
+  ai_weekly_topic_enabled Boolean           @default(false)
+  is_hidden               Boolean           @default(false)
+  /// 管理者による炎マークの手動上書き。null=自動判定 / true=強制ON / false=強制OFF
+  hot_override            Boolean?
+  category_id             String?           @db.Uuid
+  sub_category_id         String?           @db.Uuid
+  created_by              String?           @db.Uuid
+  created_at              DateTime          @default(now())
+  updated_at              DateTime          @updatedAt
+  creator                 Profile?          @relation(fields: [created_by], references: [id], onDelete: SetNull)
+  category                ForumCategory?    @relation(fields: [category_id], references: [id], onDelete: SetNull)
+  subCategory             ForumSubCategory? @relation(fields: [sub_category_id], references: [id], onDelete: SetNull)
   posts                   ForumPost[]
   roomTopics              ForumRoomTopic[]
 
@@ -469,6 +792,10 @@ model ForumPost {
   is_pinned           Boolean         @default(false)
   is_hidden           Boolean         @default(false)
   ai_kentei_passed    Boolean         @default(false)
+  /// トーン分類（"" =問題なし / negative / non_constructive / harsh）。掲載は可だが警告バッジを表示。
+  tone_flag           String          @default("")
+  /// トーン判定の理由（バッジのツールチップ用）
+  tone_reason         String          @default("")
   created_at          DateTime        @default(now())
   updated_at          DateTime        @updatedAt
   room                ForumRoom       @relation(fields: [room_id], references: [id], onDelete: Cascade)
@@ -489,6 +816,9 @@ model ForumReply {
   author_role      String    @default("一般")
   body             String
   ai_kentei_passed Boolean   @default(false)
+  /// トーン分類（"" =問題なし / negative / non_constructive / harsh）
+  tone_flag        String    @default("")
+  tone_reason      String    @default("")
   created_at       DateTime  @default(now())
   post             ForumPost @relation(fields: [post_id], references: [id], onDelete: Cascade)
   author           Profile?  @relation(fields: [author_id], references: [id], onDelete: SetNull)
@@ -509,6 +839,58 @@ model ForumLike {
   @@unique([target_id, target_type, user_id], map: "forum_likes_user_unique_idx")
   @@index([target_id, target_type])
   @@map("forum_likes")
+}
+
+/// 管理者が投稿するYouTube動画。ユーザーが閲覧・コメントできる。
+model Video {
+  id          String          @id @default(cuid())
+  title       String
+  description String          @default("")
+  /// 運営向け内部メモ（公開ページには表示しない）
+  notes       String?
+  youtube_url String
+  /// YouTube動画ID（埋め込みURLや thumbnail生成に使用）
+  youtube_id  String
+  /// OpenAI で生成されたAI要約（管理画面から生成）
+  ai_summary  String?
+  /// PUBLIC=一覧表示 / UNLISTED=リンクを知る人のみ / PRIVATE=非公開（管理者のみ）
+  visibility  VideoVisibility @default(PRIVATE)
+  author_id   String?         @db.Uuid
+  created_at  DateTime        @default(now())
+  updated_at  DateTime        @updatedAt
+  author      Profile?        @relation(fields: [author_id], references: [id], onDelete: SetNull)
+  comments    VideoComment[]
+
+  @@index([visibility, created_at(sort: Desc)])
+  @@map("videos")
+}
+
+/// 動画への一般ユーザーコメント（返信は parent_id で表現するスレッド型）
+model VideoComment {
+  id          String   @id @default(cuid())
+  video_id    String
+  parent_id   String?
+  author_id   String?  @db.Uuid
+  author_name String
+  author_role String   @default("一般")
+  body        String
+  is_hidden   Boolean  @default(false)
+  created_at  DateTime @default(now())
+
+  video   Video          @relation(fields: [video_id], references: [id], onDelete: Cascade)
+  parent  VideoComment?  @relation("VideoCommentReplies", fields: [parent_id], references: [id], onDelete: Cascade)
+  replies VideoComment[] @relation("VideoCommentReplies")
+  author  Profile?       @relation(fields: [author_id], references: [id], onDelete: SetNull)
+
+  @@index([video_id, created_at(sort: Asc)])
+  @@index([parent_id])
+  @@map("video_comments")
+}
+
+enum VideoVisibility {
+  PUBLIC
+  UNLISTED
+  PRIVATE
 }
 
 enum Role {
@@ -536,38 +918,38 @@ enum ServiceSortOrderTier {
 
 /// トップページのニュースタブ分類
 enum HomeNewsTab {
-  NONE         /// どのタブにも表示しない
-  DOMESTIC     /// 国内ニュース
+  NONE /// どのタブにも表示しない
+  DOMESTIC /// 国内ニュース
   INTERNATIONAL /// 海外ニュース
-  WEEKLY       /// 週間ニュース
+  WEEKLY /// 週間ニュース
 }
 
 /// 教育公的文書などのナレッジ文書（RAG参照源）
 model KnowledgeDocument {
-  id                  String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  title               String
+  id                String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title             String
   /// curriculum_elementary | curriculum_middle | curriculum_high | mext_giga | mext_digital | mext_special | mext_guideline | oecd_learning | oecd_teaching | oecd_other | school_standard | education_plan | cue_answer | law_education | other
-  source_type         String
+  source_type       String
   /// source_type = 'other' のときの自由記述
-  source_type_other   String?
-  source_url          String?
-  description         String?
-  created_at          DateTime         @default(now()) @db.Timestamptz(6)
-  chunks              KnowledgeChunk[]
+  source_type_other String?
+  source_url        String?
+  description       String?
+  created_at        DateTime         @default(now()) @db.Timestamptz(6)
+  chunks            KnowledgeChunk[]
 
   @@map("knowledge_documents")
 }
 
 /// 文書をチャンク分割したテキスト断片（ベクトル埋め込み付き）
 model KnowledgeChunk {
-  id          String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  document_id String            @db.Uuid
+  id          String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  document_id String                       @db.Uuid
   chunk_index Int
   content     String
   /// pgvector vector(1536) — Prisma では Unsupported として管理し、挿入は Supabase client 経由で行う
   embedding   Unsupported("vector(1536)")?
-  created_at  DateTime          @default(now()) @db.Timestamptz(6)
-  document    KnowledgeDocument @relation(fields: [document_id], references: [id], onDelete: Cascade)
+  created_at  DateTime                     @default(now()) @db.Timestamptz(6)
+  document    KnowledgeDocument            @relation(fields: [document_id], references: [id], onDelete: Cascade)
 
   @@unique([document_id, chunk_index])
   @@index([document_id])
@@ -576,7 +958,7 @@ model KnowledgeChunk {
 
 /// アプリ内コンテンツのチャンク（RAG検索用）
 model AppContentChunk {
-  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id                String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   /// "service" | "post" | "review" | "forum_post" | "seminar_event" | "site_update"
   source_table      String
   source_id         String
@@ -585,14 +967,14 @@ model AppContentChunk {
   /// "サービス" | "記事" | "レビュー" | "フォーラム投稿" | "セミナー・イベント" | "更新情報"
   source_type_label String?
   /// 投稿者 ID（ユーザーコンテンツの場合）
-  author_id         String?           @db.Uuid
+  author_id         String?                      @db.Uuid
   chunk_index       Int
   content           String
   /// pgvector vector(1536)
   embedding         Unsupported("vector(1536)")?
-  is_published      Boolean           @default(true)
-  created_at        DateTime          @default(now()) @db.Timestamptz(6)
-  updated_at        DateTime          @updatedAt @db.Timestamptz(6)
+  is_published      Boolean                      @default(true)
+  created_at        DateTime                     @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime                     @updatedAt @db.Timestamptz(6)
 
   @@unique([source_table, source_id, chunk_index])
   @@index([source_table, source_id])
@@ -630,4 +1012,40 @@ model TextOverride {
   @@unique([pathname, text_key])
   @@index([pathname])
   @@map("text_overrides")
+}
+
+/// スポンサーPR（広告枠）。ADMINが管理画面から登録し、トップページなどに表示する。
+model SponsorAd {
+  id          String           @id @default(cuid())
+  /// スポンサー名・PRタイトル
+  title       String
+  /// バナー説明文（任意・キャッチコピー等）
+  description String?
+  /// バナー画像URL（Supabase Storage）
+  image_url   String
+  /// クリック遷移先URL
+  link_url    String
+  /// 表示位置
+  placement   SponsorPlacement @default(HOME_MAIN)
+  /// 表示ON/OFF
+  is_active   Boolean          @default(true)
+  /// 表示順（小さいほど先頭）
+  position    Int              @default(0)
+  /// 掲載開始日時（任意・未設定なら即時）
+  starts_at   DateTime?
+  /// 掲載終了日時（任意・未設定なら無期限）
+  ends_at     DateTime?
+  /// クリック数（簡易計測）
+  click_count Int              @default(0)
+  created_at  DateTime         @default(now())
+  updated_at  DateTime         @updatedAt
+
+  @@index([placement, is_active, position])
+  @@map("sponsor_ads")
+}
+
+/// スポンサーPRの表示位置
+enum SponsorPlacement {
+  HOME_MAIN /// トップページのメインカラム（スライダー下のバナー）
+  HOME_SIDEBAR /// トップページ右サイドバー
 }

@@ -3,21 +3,22 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { HomeSliderItem } from "@/app/_actions/home";
 
 const PLACEHOLDER = "https://placehold.co/1200x500/e0f2fe/0369a1?text=No+Image";
 const INTERVAL_MS = 5000;
 
-function typeLabel(item: HomeSliderItem): string {
-  if (item.type === "site_update") return "お知らせ";
-  if (item.type === "article") return "記事";
-  return "サービス";
-}
-
 type Props = { items: HomeSliderItem[]; isAdmin?: boolean };
 
 export function HeroSlider({ items, isAdmin }: Props) {
+  const t = useTranslations("home");
+  const typeLabel = (item: HomeSliderItem): string => {
+    if (item.type === "site_update") return t("typeAnnouncement");
+    if (item.type === "article") return t("typeArticle");
+    return t("typeService");
+  };
   const [index, setIndex] = useState(0);
   const len = items.length;
 
@@ -30,6 +31,10 @@ export function HeroSlider({ items, isAdmin }: Props) {
   );
 
   useEffect(() => {
+    setIndex((i) => (len <= 0 ? 0 : Math.min(i, len - 1)));
+  }, [len]);
+
+  useEffect(() => {
     if (len <= 1) return;
     const id = setInterval(() => go(1), INTERVAL_MS);
     return () => clearInterval(id);
@@ -38,7 +43,7 @@ export function HeroSlider({ items, isAdmin }: Props) {
   if (items.length === 0) {
     return (
       <section className="rounded-xl overflow-hidden bg-muted border mb-6 min-h-[200px] flex items-center justify-center">
-        <p className="text-muted-foreground">表示するコンテンツがありません</p>
+        <p className="text-muted-foreground">{t("noContent")}</p>
       </section>
     );
   }
@@ -71,7 +76,7 @@ export function HeroSlider({ items, isAdmin }: Props) {
             href="/admin/home-slider"
             className="absolute bottom-3 right-3 z-20 rounded bg-black/60 px-3 py-1.5 text-xs font-medium text-white hover:bg-black/80 transition-colors"
           >
-            記事を選択する
+            {t("selectArticle")}
           </Link>
         )}
       </section>
@@ -118,7 +123,7 @@ export function HeroSlider({ items, isAdmin }: Props) {
         type="button"
         onClick={() => go(-1)}
         className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/50 text-white flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity hover:bg-black/70"
-        aria-label="前へ"
+        aria-label={t("prev")}
       >
         <ChevronLeft className="w-5 h-5" />
       </button>
@@ -126,7 +131,7 @@ export function HeroSlider({ items, isAdmin }: Props) {
         type="button"
         onClick={() => go(1)}
         className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/50 text-white flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity hover:bg-black/70"
-        aria-label="次へ"
+        aria-label={t("next")}
       >
         <ChevronRight className="w-5 h-5" />
       </button>
@@ -141,7 +146,7 @@ export function HeroSlider({ items, isAdmin }: Props) {
             className={`w-2 h-2 rounded-full transition-colors ${
               i === index ? "bg-white scale-125" : "bg-white/60 hover:bg-white/80"
             }`}
-            aria-label={`スライド ${i + 1}`}
+            aria-label={t("slide", { n: i + 1 })}
           />
         ))}
       </div>
@@ -152,7 +157,7 @@ export function HeroSlider({ items, isAdmin }: Props) {
           href="/admin/home-slider"
           className="absolute bottom-3 right-3 z-20 rounded bg-black/60 px-3 py-1.5 text-xs font-medium text-white hover:bg-black/80 transition-colors"
         >
-          記事を選択する
+          {t("selectArticle")}
         </Link>
       )}
     </section>

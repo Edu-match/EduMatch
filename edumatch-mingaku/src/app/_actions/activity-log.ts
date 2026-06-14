@@ -25,7 +25,8 @@ export type ActivityTargetType =
   | "AI_CHAT_PROMPT"
   | "HOME_SLIDER"
   | "HOME_TOPICS"
-  | "TEXT_OVERRIDE";
+  | "TEXT_OVERRIDE"
+  | "SPONSOR_AD";
 
 export interface ActivityLogEntry {
   id: string;

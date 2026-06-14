@@ -26,9 +26,11 @@ import {
   MapPin,
   ImageIcon,
   Loader2,
+  Sparkles,
 } from "lucide-react";
 import { updateProfile } from "@/app/_actions";
 import { uploadImage } from "@/app/_actions";
+import { generatePersonaAndAvatar } from "@/app/_actions";
 import {
   ORGANIZATION_TYPE_OPTIONS,
   formatOrganizationTypeDisplay,
@@ -145,6 +147,11 @@ export function ProfileRegisterForm({
   );
   const [bio, setBio] = useState(initialProfile?.bio ?? "");
   const [website, setWebsite] = useState(initialProfile?.website ?? "");
+  // AIアバター生成（マインド/価値観からアバターとパーソナルAIペルソナを生成）
+  const [mindset, setMindset] = useState("");
+  const [personaGenerating, setPersonaGenerating] = useState(false);
+  const [personaError, setPersonaError] = useState<string | null>(null);
+  const [personaInfo, setPersonaInfo] = useState<{ expertise: string[]; valuesText: string } | null>(null);
   const [notificationEmail2, setNotificationEmail2] = useState(initialProfile?.notification_email_2 ?? "");
   const [notificationEmail3, setNotificationEmail3] = useState(initialProfile?.notification_email_3 ?? "");
   const [talentMatchingEnabled, setTalentMatchingEnabled] = useState(
@@ -256,6 +263,74 @@ export function ProfileRegisterForm({
                 </div>
               </div>
             </div>
+
+            {/* AIアバター生成：マインド/価値観から自動でアバターとAIペルソナを作る */}
+            <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
+              <label className="text-sm font-medium flex items-center gap-1.5">
+                <Sparkles className="h-4 w-4 text-primary" />
+                AIアバターを生成（任意）
+              </label>
+              <p className="text-[11px] text-muted-foreground">
+                あなたの価値観・大切にしていること・関心を書くと、AIが似合うアバター画像を生成してアイコンに設定します。
+              </p>
+              <textarea
+                value={mindset}
+                onChange={(e) => setMindset(e.target.value)}
+                rows={3}
+                placeholder="例：子ども一人ひとりの「好き」を起点にした学びを大切にしたい。テクノロジーは手段で、主役は人だと思っている。"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={personaGenerating}
+                onClick={async () => {
+                  setPersonaGenerating(true);
+                  setPersonaError(null);
+                  try {
+                    const result = await generatePersonaAndAvatar({
+                      name: (legalName || name || "").trim(),
+                      bio: bio || undefined,
+                      mindset: mindset || undefined,
+                      interests: selectedInterests,
+                      organization: organization || undefined,
+                      role: roleOther || role || undefined,
+                    });
+                    if (result.success && result.avatarUrl) {
+                      setAvatarUrl(result.avatarUrl);
+                      setPersonaInfo({
+                        expertise: result.persona?.expertise ?? [],
+                        valuesText: result.persona?.valuesText ?? "",
+                      });
+                    } else {
+                      setPersonaError(result.error ?? "生成に失敗しました");
+                    }
+                  } catch {
+                    setPersonaError("生成に失敗しました");
+                  } finally {
+                    setPersonaGenerating(false);
+                  }
+                }}
+              >
+                {personaGenerating ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Sparkles className="h-4 w-4 mr-2" />
+                )}
+                {personaGenerating ? "生成中…（30秒ほど）" : "AIアバターを生成"}
+              </Button>
+              {personaError && <p className="text-[11px] text-red-500">{personaError}</p>}
+              {personaInfo && (
+                <div className="text-[11px] text-muted-foreground space-y-1">
+                  <p>✅ アバターを生成してアイコンに設定しました。</p>
+                  {personaInfo.expertise.length > 0 && (
+                    <p>得意分野: {personaInfo.expertise.join("、")}</p>
+                  )}
+                </div>
+              )}
+            </div>
+
             <div className="space-y-2">
               <label className="text-sm font-medium">
                 {isProvider ? "代表者名" : "名前"} <span className="text-red-500">*</span>

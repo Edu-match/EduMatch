@@ -1,0 +1,281 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e4]:
+        - link "エデュマッチ" [ref=e5] [cursor=pointer]:
+          - /url: /
+          - img "エデュマッチ" [ref=e6]
+        - navigation [ref=e7]:
+          - generic [ref=e8]:
+            - link "記事一覧" [ref=e9] [cursor=pointer]:
+              - /url: /articles
+            - link "サービス一覧" [ref=e10] [cursor=pointer]:
+              - /url: /services
+            - link "セミナー・イベント情報" [ref=e11] [cursor=pointer]:
+              - /url: /events
+            - link "井戸端会議" [ref=e12] [cursor=pointer]:
+              - /url: /forum
+            - link "掲載企業" [ref=e13] [cursor=pointer]:
+              - /url: /companies
+            - link "サービスのお気に入り" [ref=e14] [cursor=pointer]:
+              - /url: /request-info/list
+              - img [ref=e15]
+              - generic [ref=e18]: サービスのお気に入り
+          - button "チュートリアルを見る" [ref=e19]:
+            - img
+          - generic [ref=e21]:
+            - link "ログイン" [ref=e22] [cursor=pointer]:
+              - /url: /login
+              - img
+              - text: ログイン
+            - link "新規登録" [ref=e23] [cursor=pointer]:
+              - /url: /login
+              - img
+              - text: 新規登録
+    - generic [ref=e24]:
+      - complementary [ref=e25]:
+        - generic [ref=e26]:
+          - button "サイドメニューを閉じる" [ref=e27]:
+            - img [ref=e28]
+          - complementary [ref=e30]:
+            - generic [ref=e31]:
+              - heading "メニュー" [level=2] [ref=e33]
+              - navigation [ref=e34]:
+                - link "ホーム" [ref=e35] [cursor=pointer]:
+                  - /url: /
+                  - img [ref=e36]
+                  - generic [ref=e39]: ホーム
+                - link "サービス一覧" [ref=e40] [cursor=pointer]:
+                  - /url: /services
+                  - img [ref=e41]
+                  - generic [ref=e44]: サービス一覧
+                - link "記事一覧" [ref=e45] [cursor=pointer]:
+                  - /url: /articles
+                  - img [ref=e46]
+                  - generic [ref=e49]: 記事一覧
+                - link "セミナー・イベント情報" [ref=e50] [cursor=pointer]:
+                  - /url: /events
+                  - img [ref=e51]
+                  - generic [ref=e53]: セミナー・イベント情報
+                - link "井戸端会議" [ref=e54] [cursor=pointer]:
+                  - /url: /forum
+                  - img [ref=e55]
+                  - generic [ref=e57]: 井戸端会議
+                - link "学びの動画" [ref=e58] [cursor=pointer]:
+                  - /url: /videos
+                  - img [ref=e59]
+                  - generic [ref=e62]: 学びの動画
+                - link "掲載企業一覧" [ref=e63] [cursor=pointer]:
+                  - /url: /companies
+                  - img [ref=e64]
+                  - generic [ref=e68]: 掲載企業一覧
+                - link "サービス比較" [ref=e69] [cursor=pointer]:
+                  - /url: /compare
+                  - img [ref=e70]
+                  - generic [ref=e74]: サービス比較
+                - link "AI検定" [ref=e75] [cursor=pointer]:
+                  - /url: /ai-kentei
+                  - img [ref=e76]
+                  - generic [ref=e79]: AI検定
+                - link "ヘルプ" [ref=e80] [cursor=pointer]:
+                  - /url: /help
+                  - img [ref=e81]
+                  - generic [ref=e84]: ヘルプ
+      - main [ref=e85]:
+        - generic [ref=e89]:
+          - main [ref=e90]:
+            - paragraph [ref=e92]: 表示するコンテンツがありません
+            - region "スポンサーPR" [ref=e93]:
+              - generic [ref=e94]:
+                - generic [ref=e95]: PR
+                - generic [ref=e96]: スポンサー
+              - link "エデュマッチ スポンサー枠（デモ） エデュマッチ スポンサー枠（デモ） こちらはデモ用のスポンサーバナーです。実際の広告に差し替えてご利用ください。" [ref=e98] [cursor=pointer]:
+                - /url: /api/sponsors/demo-sponsor-001/click
+                - img "エデュマッチ スポンサー枠（デモ）" [ref=e100]
+                - generic [ref=e101]:
+                  - paragraph [ref=e102]: エデュマッチ スポンサー枠（デモ）
+                  - paragraph [ref=e103]: こちらはデモ用のスポンサーバナーです。実際の広告に差し替えてご利用ください。
+            - generic [ref=e104]:
+              - heading "トピックス" [level=2] [ref=e106]
+              - generic [ref=e107]:
+                - tablist [ref=e109]:
+                  - tab "すべて" [selected] [ref=e110]
+                  - tab "国内のニュース" [ref=e111]
+                  - tab "世界のニュース" [ref=e112]
+                - tabpanel "すべて" [ref=e114]:
+                  - link "学校向けAI英会話アプリでスピーキング強化！アイード社が今春「AIed English」提供へ～英語×AIツールは続々とリリース 学校向けAI英会話アプリでスピーキング強化！アイード社が今春「AIed English」提供へ～英語×AIツールは続々とリリース 2026/04/18" [ref=e115] [cursor=pointer]:
+                    - /url: /articles/cmo3oqplj0001m2dspmcft41x
+                    - img "学校向けAI英会話アプリでスピーキング強化！アイード社が今春「AIed English」提供へ～英語×AIツールは続々とリリース" [ref=e117]
+                    - generic [ref=e118]:
+                      - heading "学校向けAI英会話アプリでスピーキング強化！アイード社が今春「AIed English」提供へ～英語×AIツールは続々とリリース" [level=3] [ref=e120]
+                      - generic [ref=e122]: 2026/04/18
+                  - link "調査結果！保護者の5割が子どものAI利用に前向き～一方で6割超が「AI依存」を懸念 調査結果！保護者の5割が子どものAI利用に前向き～一方で6割超が「AI依存」を懸念 2026/04/17" [ref=e123] [cursor=pointer]:
+                    - /url: /articles/cmo1nngy40001f22t0p5f15n0
+                    - img "調査結果！保護者の5割が子どものAI利用に前向き～一方で6割超が「AI依存」を懸念" [ref=e125]
+                    - generic [ref=e126]:
+                      - heading "調査結果！保護者の5割が子どものAI利用に前向き～一方で6割超が「AI依存」を懸念" [level=3] [ref=e128]
+                      - generic [ref=e130]: 2026/04/17
+                  - link "文科省発！今年度より「AI for Science」大型公募へ～1,000件へ向け解説動画と無料相談＆4/17より公募開始 文科省発！今年度より「AI for Science」大型公募へ～1,000件へ向け解説動画と無料相談＆4/17より公募開始 2026/04/15" [ref=e131] [cursor=pointer]:
+                    - /url: /articles/cmo049ul50001g0cpunh3x5lr
+                    - img "文科省発！今年度より「AI for Science」大型公募へ～1,000件へ向け解説動画と無料相談＆4/17より公募開始" [ref=e133]
+                    - generic [ref=e134]:
+                      - heading "文科省発！今年度より「AI for Science」大型公募へ～1,000件へ向け解説動画と無料相談＆4/17より公募開始" [level=3] [ref=e136]
+                      - generic [ref=e138]: 2026/04/15
+                  - link "文科省発！不登校児童生徒の出席扱い・成績評価で保護者＆教員向けリーフレット今春公開～現代の学習評価の周知に向けて 文科省発！不登校児童生徒の出席扱い・成績評価で保護者＆教員向けリーフレット今春公開～現代の学習評価の周知に向けて 2026/04/15" [ref=e139] [cursor=pointer]:
+                    - /url: /articles/cmnz4whu5000111yozf8n6sli
+                    - img "文科省発！不登校児童生徒の出席扱い・成績評価で保護者＆教員向けリーフレット今春公開～現代の学習評価の周知に向けて" [ref=e141]
+                    - generic [ref=e142]:
+                      - heading "文科省発！不登校児童生徒の出席扱い・成績評価で保護者＆教員向けリーフレット今春公開～現代の学習評価の周知に向けて" [level=3] [ref=e144]
+                      - generic [ref=e146]: 2026/04/15
+                  - link "【4/22オンライン配信】データで読み解く！N-E.X.T.ハイスクール構想の実務セミナー開催へ 【4/22オンライン配信】データで読み解く！N-E.X.T.ハイスクール構想の実務セミナー開催へ 2026/04/14" [ref=e147] [cursor=pointer]:
+                    - /url: /articles/cmnxqhemm0001jmtyn1efjtca
+                    - img "【4/22オンライン配信】データで読み解く！N-E.X.T.ハイスクール構想の実務セミナー開催へ" [ref=e149]
+                    - generic [ref=e150]:
+                      - heading "【4/22オンライン配信】データで読み解く！N-E.X.T.ハイスクール構想の実務セミナー開催へ" [level=3] [ref=e152]
+                      - generic [ref=e154]: 2026/04/14
+                  - link "注目AIニュース15選（2026年4月6日～4月12日） 注目AIニュース15選（2026年4月6日～4月12日） 2026/04/13" [ref=e155] [cursor=pointer]:
+                    - /url: /articles/cmnwdfonc0001kc8eso7vamy9
+                    - img "注目AIニュース15選（2026年4月6日～4月12日）" [ref=e157]
+                    - generic [ref=e158]:
+                      - heading "注目AIニュース15選（2026年4月6日～4月12日）" [level=3] [ref=e160]
+                      - generic [ref=e162]: 2026/04/13
+                  - link "AI搭載の入試小論文対策！問題集「赤本AIシリーズ」今年4月から発売～教学社とみんがく社が共同開発 AI搭載の入試小論文対策！問題集「赤本AIシリーズ」今年4月から発売～教学社とみんがく社が共同開発 2026/04/12" [ref=e163] [cursor=pointer]:
+                    - /url: /articles/cmnui5mv80001xtr3y6d24e3w
+                    - img "AI搭載の入試小論文対策！問題集「赤本AIシリーズ」今年4月から発売～教学社とみんがく社が共同開発" [ref=e165]
+                    - generic [ref=e166]:
+                      - heading "AI搭載の入試小論文対策！問題集「赤本AIシリーズ」今年4月から発売～教学社とみんがく社が共同開発" [level=3] [ref=e168]
+                      - generic [ref=e170]: 2026/04/12
+                  - link "【4/20オンライン】学校のAI活用を語る！「AI共育ラボ」コミュニティイベント新年度初開催～テーマはAIはじめの一歩 【4/20オンライン】学校のAI活用を語る！「AI共育ラボ」コミュニティイベント新年度初開催～テーマはAIはじめの一歩 2026/04/11" [ref=e171] [cursor=pointer]:
+                    - /url: /articles/cmnt2hjvw000310z28ceklurd
+                    - img "【4/20オンライン】学校のAI活用を語る！「AI共育ラボ」コミュニティイベント新年度初開催～テーマはAIはじめの一歩" [ref=e173]
+                    - generic [ref=e174]:
+                      - heading "【4/20オンライン】学校のAI活用を語る！「AI共育ラボ」コミュニティイベント新年度初開催～テーマはAIはじめの一歩" [level=3] [ref=e176]
+                      - generic [ref=e178]: 2026/04/11
+                  - link "教育現場向け「AI活用術35選」を無料公開！授業・校務の実践プロンプト集～AIUEOとJCによる共同プロジェクトで 教育現場向け「AI活用術35選」を無料公開！授業・校務の実践プロンプト集～AIUEOとJCによる共同プロジェクトで 2026/04/10" [ref=e179] [cursor=pointer]:
+                    - /url: /articles/cmnt06bs3000110z2aj16mwj5
+                    - img "教育現場向け「AI活用術35選」を無料公開！授業・校務の実践プロンプト集～AIUEOとJCによる共同プロジェクトで" [ref=e181]
+                    - generic [ref=e182]:
+                      - heading "教育現場向け「AI活用術35選」を無料公開！授業・校務の実践プロンプト集～AIUEOとJCによる共同プロジェクトで" [level=3] [ref=e184]
+                      - generic [ref=e186]: 2026/04/10
+                  - link "新年度に教育AIガイド本出版！インプレス社『教育現場向け生成AI活用ガイド2026』を今春発売～全国の教育委員会へ無償提供も 新年度に教育AIガイド本出版！インプレス社『教育現場向け生成AI活用ガイド2026』を今春発売～全国の教育委員会へ無償提供も 2026/04/08" [ref=e187] [cursor=pointer]:
+                    - /url: /articles/cmnq64l2o0001ci7i56gnxv2a
+                    - img "新年度に教育AIガイド本出版！インプレス社『教育現場向け生成AI活用ガイド2026』を今春発売～全国の教育委員会へ無償提供も" [ref=e189]
+                    - generic [ref=e190]:
+                      - heading "新年度に教育AIガイド本出版！インプレス社『教育現場向け生成AI活用ガイド2026』を今春発売～全国の教育委員会へ無償提供も" [level=3] [ref=e192]
+                      - generic [ref=e194]: 2026/04/08
+              - link "記事一覧を見る" [ref=e196] [cursor=pointer]:
+                - /url: /articles
+          - complementary [ref=e197]:
+            - complementary [ref=e198]:
+              - generic [ref=e199]:
+                - generic [ref=e200]:
+                  - img [ref=e201]
+                  - heading "[PR]スポンサー" [level=3] [ref=e204]
+                - link "サイドバースポンサー（デモ） サイドバースポンサー（デモ） サイドバー枠のデモバナーです。" [ref=e206] [cursor=pointer]:
+                  - /url: /api/sponsors/demo-sponsor-002/click
+                  - img "サイドバースポンサー（デモ）" [ref=e208]
+                  - paragraph [ref=e209]: サイドバースポンサー（デモ）
+                  - paragraph [ref=e210]: サイドバー枠のデモバナーです。
+              - generic [ref=e211]:
+                - generic [ref=e212]:
+                  - img [ref=e213]
+                  - heading "[PR]注目のサービス" [level=3] [ref=e216]
+                - paragraph [ref=e218]: サービスがありません
+                - link "もっと見る" [ref=e220] [cursor=pointer]:
+                  - /url: /services
+                  - text: もっと見る
+                  - img [ref=e221]
+              - generic [ref=e223]:
+                - generic [ref=e224]:
+                  - img [ref=e225]
+                  - heading "セミナー・イベント情報" [level=3] [ref=e227]
+                - list [ref=e229]:
+                  - listitem [ref=e230]:
+                    - link "2026-05-30 「探究型×AI」で深い学びを実現する授業づくりセミナー" [ref=e231] [cursor=pointer]:
+                      - /url: /events/cmmhpe3o3000sqolrfcsngpvk
+                      - paragraph [ref=e232]: 2026-05-30
+                      - paragraph [ref=e233]: 「探究型×AI」で深い学びを実現する授業づくりセミナー
+                  - listitem [ref=e234]:
+                    - link "2026-06-01 1EdTech Learning Impact 2026" [ref=e235] [cursor=pointer]:
+                      - /url: /events/cmmhpqosz000yzndcdwsmufux
+                      - paragraph [ref=e236]: 2026-06-01
+                      - paragraph [ref=e237]: 1EdTech Learning Impact 2026
+                  - listitem [ref=e238]:
+                    - link "2026-06-03 九州教育現場支援EXPO" [ref=e239] [cursor=pointer]:
+                      - /url: /events/cmmhpe3o3000vqolrb8jte9s8
+                      - paragraph [ref=e240]: 2026-06-03
+                      - paragraph [ref=e241]: 九州教育現場支援EXPO
+                  - listitem [ref=e242]:
+                    - link "2026-06-04 NEW EDUCATION EXPO 2026 東京" [ref=e243] [cursor=pointer]:
+                      - /url: /events/cmmhpe3o3000tqolrqj2ff524
+                      - paragraph [ref=e244]: 2026-06-04
+                      - paragraph [ref=e245]: NEW EDUCATION EXPO 2026 東京
+                  - listitem [ref=e246]:
+                    - link "2026-06-09 Global Education Summit 2026（GPE）" [ref=e247] [cursor=pointer]:
+                      - /url: /events/cmmhpqosz0011zndc3h841jt5
+                      - paragraph [ref=e248]: 2026-06-09
+                      - paragraph [ref=e249]: Global Education Summit 2026（GPE）
+                - link "もっと見る" [ref=e251] [cursor=pointer]:
+                  - /url: /events
+                  - text: もっと見る
+                  - img [ref=e252]
+      - generic [ref=e256]:
+        - separator "AIパネル幅を変更" [ref=e257]
+        - generic [ref=e258]:
+          - generic [ref=e259]:
+            - img [ref=e261]
+            - generic [ref=e265]: AIナビゲーター
+            - button "閉じる" [ref=e267]:
+              - img
+          - generic [ref=e268]:
+            - img [ref=e270]
+            - paragraph [ref=e273]:
+              - text: AIチャットは会員限定です。
+              - text: ログインまたは会員登録するとご利用いただけます。
+            - link "ログイン・会員登録" [ref=e274] [cursor=pointer]:
+              - /url: /auth/login
+    - contentinfo [ref=e275]:
+      - generic [ref=e276]:
+        - generic [ref=e277]:
+          - generic [ref=e278]:
+            - link "エデュマッチ" [ref=e279] [cursor=pointer]:
+              - /url: /
+              - generic [ref=e280]: エデュマッチ
+            - paragraph [ref=e281]: 教育の未来を見つける、つながる
+          - generic [ref=e282]:
+            - heading "プロダクト" [level=3] [ref=e283]
+            - list [ref=e284]:
+              - listitem [ref=e285]:
+                - link "記事一覧" [ref=e286] [cursor=pointer]:
+                  - /url: /articles
+              - listitem [ref=e287]:
+                - link "サービス一覧" [ref=e288] [cursor=pointer]:
+                  - /url: /services
+              - listitem [ref=e289]:
+                - link "セミナー・イベント情報" [ref=e290] [cursor=pointer]:
+                  - /url: /events
+              - listitem [ref=e291]:
+                - link "井戸端会議" [ref=e292] [cursor=pointer]:
+                  - /url: /forum
+          - generic [ref=e293]:
+            - heading "会社情報" [level=3] [ref=e294]
+            - list [ref=e295]:
+              - listitem [ref=e296]:
+                - link "運営について" [ref=e297] [cursor=pointer]:
+                  - /url: /about
+              - listitem [ref=e298]:
+                - link "お問い合わせ" [ref=e299] [cursor=pointer]:
+                  - /url: /contact
+          - generic [ref=e300]:
+            - heading "法的情報" [level=3] [ref=e301]
+            - list [ref=e302]:
+              - listitem [ref=e303]:
+                - link "利用規約" [ref=e304] [cursor=pointer]:
+                  - /url: /terms
+              - listitem [ref=e305]:
+                - link "プライバシーポリシー" [ref=e306] [cursor=pointer]:
+                  - /url: /privacy
+        - paragraph [ref=e308]: © 2026 エデュマッチ（運営：株式会社スタディパーク／協力：一般社団法人教育AI活用協会）. All rights reserved.
+  - generic: Ver1.4792 (video-dev)
+  - region "Notifications alt+T"
+  - alert [ref=e309]

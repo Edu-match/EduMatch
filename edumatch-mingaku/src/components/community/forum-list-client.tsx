@@ -2,21 +2,18 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   ArrowUpRight,
   Bot,
-  Compass,
   LayoutGrid,
   LayoutList,
   Loader2,
   MessageSquare,
-  Plus,
-  Save,
   Search,
   Clock,
   Filter,
   Flame,
-  Sparkles,
   TrendingUp,
   Users,
   Zap,
@@ -25,24 +22,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { OpenAiChatButton } from "@/components/ui/open-ai-chat-button";
 import { cn } from "@/lib/utils";
-import { SettingToggleRow } from "@/components/ui/toggle-switch";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
 import type { ForumRoom } from "@/lib/mock-forum";
 import { RelativeTime } from "@/components/community/relative-time";
 import { ForumRoomIcon, ROOM_BG_COLORS } from "@/components/community/forum-room-icon";
-import { ForumBubbleView } from "@/components/community/forum-bubble-view";
+import { ForumCategoryExplorer } from "@/components/community/forum-category-explorer";
 
 type SortKey = "popular" | "newest" | "participants";
 type CategoryKey = "all" | "innovation" | "practice" | "management";
@@ -90,7 +76,7 @@ function RoomCard({ room, isFeatured }: { room: ForumRoom; isFeatured?: boolean 
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <div className={`shrink-0 rounded-xl border p-2 ${ROOM_BG_COLORS[room.id] ?? "bg-muted border-border"}`}>
-                <ForumRoomIcon roomId={room.id} size={28} />
+                <ForumRoomIcon roomId={room.id} emoji={room.emoji} size={28} />
               </div>
               <div className="min-w-0">
                 <h2 className="text-base font-bold leading-tight group-hover:text-primary transition-colors">
@@ -118,21 +104,11 @@ function RoomCard({ room, isFeatured }: { room: ForumRoom; isFeatured?: boolean 
                 <Zap className="h-2.5 w-2.5" />AIディスカッション
               </span>
             )}
-            {room.aiWeeklyTopicEnabled && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700">
-                <Sparkles className="h-2.5 w-2.5" />AI週次お題
-              </span>
-            )}
           </div>
 
-          <div className="rounded-lg bg-primary/5 px-3.5 py-2.5 border border-primary/10">
-            <p className="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-primary/70">
-              <Sparkles className="h-3 w-3" />今週のお題
-            </p>
-            <p className="text-xs font-medium leading-5 text-foreground line-clamp-2">
-              {room.weeklyTopic}
-            </p>
-          </div>
+          {room.description ? (
+            <p className="text-xs text-muted-foreground line-clamp-2">{room.description}</p>
+          ) : null}
 
           <div className="mt-auto flex items-center justify-between text-xs text-muted-foreground">
             <div className="flex items-center gap-3">
@@ -156,148 +132,11 @@ function RoomCard({ room, isFeatured }: { room: ForumRoom; isFeatured?: boolean 
   );
 }
 
-// ─── 新規ルーム作成ダイアログ ─────────────────────────────
-
-type NewRoomDraft = {
-  name: string;
-  description: string;
-  weeklyTopic: string;
-  aiDiscussion: boolean;
-  aiWeeklyTopicEnabled: boolean;
-};
-
-function CreateRoomDialog({
-  onCreated,
-  hero = false,
-}: {
-  onCreated: (room: ForumRoom) => void;
-  hero?: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [draft, setDraft] = useState<NewRoomDraft>({
-    name: "",
-    description: "",
-    weeklyTopic: "",
-    aiDiscussion: true,
-    aiWeeklyTopicEnabled: true,
-  });
-
-  const isValid = draft.name.trim();
-
-  const handleCreate = async () => {
-    if (!isValid || saving) return;
-    setSaving(true);
-    try {
-      const res = await fetch("/api/forum/rooms", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          name: draft.name.trim(),
-          description: draft.description.trim(),
-          weeklyTopic: draft.aiWeeklyTopicEnabled ? "" : draft.weeklyTopic.trim(),
-          aiDiscussion: draft.aiDiscussion,
-          aiWeeklyTopicEnabled: draft.aiWeeklyTopicEnabled,
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        onCreated(data.room as ForumRoom);
-        setDraft({
-          name: "",
-          description: "",
-          weeklyTopic: "",
-          aiDiscussion: true,
-          aiWeeklyTopicEnabled: true,
-        });
-        setOpen(false);
-      }
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          type="button"
-          size={hero ? "lg" : "sm"}
-          variant={hero ? "default" : "outline"}
-          className={cn(hero ? "min-h-11 gap-2 px-6 text-base font-semibold shadow-sm" : "gap-1.5")}
-          data-tutorial="forum-thread-create"
-        >
-          <Plus className={hero ? "h-5 w-5" : "h-4 w-4"} />
-          {hero ? "新しい部屋を作成" : "部屋を作成"}
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>新しい部屋を作成</DialogTitle>
-          <DialogDescription>フォーラムに新しいテーマ部屋を追加します</DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>部屋名 <span className="text-destructive">*</span></Label>
-            <Input value={draft.name} onChange={(e) => setDraft((p) => ({ ...p, name: e.target.value }))} placeholder="例: 保護者・家庭教育" />
-          </div>
-          <div className="space-y-1.5">
-            <Label>説明文</Label>
-            <Textarea rows={2} value={draft.description} onChange={(e) => setDraft((p) => ({ ...p, description: e.target.value }))} className="resize-none" placeholder="この部屋のテーマを簡潔に説明してください" />
-          </div>
-          <SettingToggleRow
-            checked={draft.aiWeeklyTopicEnabled}
-            onCheckedChange={(aiWeeklyTopicEnabled) => setDraft((p) => ({ ...p, aiWeeklyTopicEnabled }))}
-            icon={Sparkles}
-            title="AI が週次で「今週のお題」を設定する"
-            description="部屋名と説明をもとに、お題を自動で作成します。"
-            activeClassName="border-sky-300 bg-sky-50"
-            iconClassName={draft.aiWeeklyTopicEnabled ? "text-sky-600" : undefined}
-          />
-
-          {!draft.aiWeeklyTopicEnabled && (
-            <div className="space-y-1.5">
-              <Label>
-                今週のお題{" "}
-                <span className="text-xs text-muted-foreground">（任意・後から設定可）</span>
-              </Label>
-              <Textarea
-                rows={3}
-                value={draft.weeklyTopic}
-                onChange={(e) => setDraft((p) => ({ ...p, weeklyTopic: e.target.value }))}
-                className="resize-none"
-                placeholder="参加者への問いかけを入力してください"
-              />
-            </div>
-          )}
-
-          <SettingToggleRow
-            checked={draft.aiDiscussion}
-            onCheckedChange={(aiDiscussion) => setDraft((p) => ({ ...p, aiDiscussion }))}
-            icon={Zap}
-            title="AIディスカッション"
-            description="投稿にAIファシリテーターが返信し、議論をサポートします。"
-            activeClassName="border-violet-300 bg-violet-50"
-            iconClassName={draft.aiDiscussion ? "text-violet-600" : undefined}
-          />
-
-          <div className="flex justify-end gap-2 pt-1">
-            <Button variant="outline" onClick={() => setOpen(false)}>キャンセル</Button>
-            <Button onClick={handleCreate} disabled={!isValid || saving}>
-              {saving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1" />}
-              作成する
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 // ─── メインコンポーネント ─────────────────────────────────
 
 export function ForumListClient() {
+  const searchParams = useSearchParams();
+  const catParam = searchParams.get("cat") ?? undefined;
   const [sort, setSort] = useState<SortKey>("popular");
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<CategoryKey>("all");
@@ -305,6 +144,7 @@ export function ForumListClient() {
   const [rooms, setRooms] = useState<ForumRoom[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    if (catParam) return "bubble";
     if (typeof window === "undefined") return "bubble";
     const saved = localStorage.getItem("forum_view_mode") as ViewMode | null;
     return saved === "list" || saved === "bubble" ? saved : "bubble";
@@ -314,6 +154,11 @@ export function ForumListClient() {
     setViewMode(mode);
     localStorage.setItem("forum_view_mode", mode);
   };
+
+  // ?cat= で遷移してきたときはマップビューを表示
+  useEffect(() => {
+    if (catParam) setViewMode("bubble");
+  }, [catParam]);
 
   // 部屋一覧取得
   useEffect(() => {
@@ -330,7 +175,7 @@ export function ForumListClient() {
     const q = query.trim().toLowerCase();
     return rooms.filter((room) => {
       const inCategory = category === "all" || (ROOM_CATEGORIES[room.id] ?? []).includes(category);
-      const inSearch = !q || room.name.toLowerCase().includes(q) || room.description.toLowerCase().includes(q) || room.weeklyTopic.toLowerCase().includes(q);
+      const inSearch = !q || room.name.toLowerCase().includes(q) || room.description.toLowerCase().includes(q);
       const inActivity = activeOnly ? room.postCount >= 5 : true;
       return inCategory && inSearch && inActivity;
     });
@@ -350,55 +195,17 @@ export function ForumListClient() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
 
-      {/* ─── ヒーローセクション ─── */}
-      <section
-        className="relative overflow-hidden border-b bg-gradient-to-br from-primary/8 via-primary/4 to-background"
-        data-tutorial="forum-hero-section"
-      >
-        <div className="container py-10 md:py-14">
-          <div className="mx-auto max-w-3xl text-center">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border bg-background/80 px-4 py-1.5 text-xs text-muted-foreground backdrop-blur-sm">
-              <MessageSquare className="h-3.5 w-3.5 text-primary" />
-              AIUEO コミュニティ
-            </div>
-            <h1 className="mb-3 text-3xl font-bold tracking-tight md:text-4xl">
-              AIUEO 井戸端会議
-            </h1>
-            <p className="mb-6 text-sm leading-7 text-muted-foreground">
-              教育に関わるすべての人が、テーマ別の「部屋」でざっくばらんに語り合う場。
-              <br className="hidden sm:block" />
-              教員・専門家・保護者・企業、立場を超えてつながりましょう。
-            </p>
-
-            <div className="flex flex-wrap items-center justify-center gap-3 text-sm">
-              <span className="rounded-full border bg-background/80 px-4 py-2 backdrop-blur-sm">
-                <strong>{rooms.length}</strong> 部屋
-              </span>
-              <span className="rounded-full border bg-background/80 px-4 py-2 backdrop-blur-sm">
-                投稿 <strong>{totalPosts.toLocaleString()}</strong> 件
-              </span>
-              <span className="rounded-full border bg-background/80 px-4 py-2 backdrop-blur-sm">
-                参加者 <strong>{totalParticipants}</strong> 人
-              </span>
-            </div>
-
-            <div className="mt-7 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center sm:gap-4">
-              <CreateRoomDialog onCreated={(r) => setRooms((prev) => [...prev, r])} hero />
-              <Button asChild variant="outline" size="lg" className="min-h-11 border-2 px-6 text-base font-semibold">
-                <a href="#forum-rooms" className="inline-flex items-center gap-2.5">
-                  <Compass className="h-5 w-5 shrink-0" />
-                  <span className="flex flex-col items-start text-left leading-tight">
-                    <span>部屋を探す</span>
-                    <span className="text-xs font-normal text-muted-foreground">キーワードやカテゴリで選ぶ</span>
-                  </span>
-                </a>
-              </Button>
-            </div>
+      {/* ─── タイトルバー ─── */}
+      <div className="border-b bg-background/80 backdrop-blur-sm" data-tutorial="forum-hero-section">
+        <div className="container flex items-center gap-3 py-4">
+          <MessageSquare className="h-5 w-5 text-primary" />
+          <h1 className="text-lg font-bold tracking-tight">井戸端会議</h1>
+          <div className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
+            <span><strong className="text-foreground">{rooms.length}</strong> 部屋</span>
+            <span>投稿 <strong className="text-foreground">{totalPosts.toLocaleString()}</strong> 件</span>
           </div>
         </div>
-        <div className="pointer-events-none absolute -top-20 -right-20 h-80 w-80 rounded-full bg-primary/5 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-10 -left-10 h-60 w-60 rounded-full bg-primary/5 blur-2xl" />
-      </section>
+      </div>
 
       {/* ─── コンテンツエリア ─── */}
       <div id="forum-rooms" className="container space-y-6 py-8">
@@ -506,10 +313,10 @@ export function ForumListClient() {
           </div>
         ) : (
           <div data-tutorial="forum-room-list">
-            {/* ─── バブルビュー ─── */}
+            {/* ─── マップビュー（大カテゴリ → サブカテゴリ） ─── */}
             {viewMode === "bubble" && (
-              <section aria-label="バブルビュー">
-                <ForumBubbleView rooms={sortedRooms.length > 0 ? sortedRooms : rooms} />
+              <section aria-label="カテゴリマップ">
+                <ForumCategoryExplorer initialCategorySlug={catParam} />
               </section>
             )}
 

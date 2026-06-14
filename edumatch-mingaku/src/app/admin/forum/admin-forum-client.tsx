@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, BarChart3, Eye, ExternalLink, EyeOff, Heart, Loader2, MessageSquare, PenSquare, Pin, PinOff, Plus, Save, Search, Sparkles, Trash2, Zap } from "lucide-react";
+import { ArrowLeft, BarChart3, Eye, ExternalLink, EyeOff, Heart, Loader2, MessageSquare, PenSquare, Pin, PinOff, Plus, Save, Search, Trash2, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,14 +15,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import type { ForumPost, ForumRoom } from "@/lib/mock-forum";
 import { SettingToggleRow } from "@/components/ui/toggle-switch";
+import { AdminForumCategories } from "./admin-forum-categories";
 
 type PostFilter = "all" | "pinned" | "no-reply" | "hidden";
 type NewRoomDraft = {
   name: string;
   description: string;
-  weeklyTopic: string;
   aiDiscussion: boolean;
-  aiWeeklyTopicEnabled: boolean;
 };
 
 // ─── 部屋作成ダイアログ ───────────────────────────────────
@@ -33,9 +32,7 @@ function CreateRoomDialog({ onCreated }: { onCreated: (room: ForumRoom) => void 
   const [draft, setDraft] = useState<NewRoomDraft>({
     name: "",
     description: "",
-    weeklyTopic: "",
     aiDiscussion: true,
-    aiWeeklyTopicEnabled: true,
   });
   const isValid = draft.name.trim();
 
@@ -50,9 +47,9 @@ function CreateRoomDialog({ onCreated }: { onCreated: (room: ForumRoom) => void 
         body: JSON.stringify({
           name: draft.name.trim(),
           description: draft.description.trim(),
-          weeklyTopic: draft.aiWeeklyTopicEnabled ? "" : draft.weeklyTopic.trim(),
+          weeklyTopic: "",
           aiDiscussion: draft.aiDiscussion,
-          aiWeeklyTopicEnabled: draft.aiWeeklyTopicEnabled,
+          aiWeeklyTopicEnabled: false,
         }),
       });
       if (res.ok) {
@@ -61,9 +58,7 @@ function CreateRoomDialog({ onCreated }: { onCreated: (room: ForumRoom) => void 
         setDraft({
           name: "",
           description: "",
-          weeklyTopic: "",
           aiDiscussion: true,
-          aiWeeklyTopicEnabled: true,
         });
         setOpen(false);
       } else {
@@ -93,32 +88,6 @@ function CreateRoomDialog({ onCreated }: { onCreated: (room: ForumRoom) => void 
             <Label>説明文</Label>
             <Textarea rows={2} value={draft.description} onChange={(e) => setDraft((p) => ({ ...p, description: e.target.value }))} className="resize-none" placeholder="この部屋のテーマを簡潔に" />
           </div>
-          <SettingToggleRow
-            checked={draft.aiWeeklyTopicEnabled}
-            onCheckedChange={(aiWeeklyTopicEnabled) => setDraft((p) => ({ ...p, aiWeeklyTopicEnabled }))}
-            icon={Sparkles}
-            title="AI が週次で「今週のお題」を設定する"
-            description="部屋名と説明をもとに、お題を自動で作成します。"
-            activeClassName="border-sky-300 bg-sky-50"
-            iconClassName={draft.aiWeeklyTopicEnabled ? "text-sky-600" : undefined}
-          />
-
-          {!draft.aiWeeklyTopicEnabled && (
-            <div className="space-y-1.5">
-              <Label>
-                今週のお題{" "}
-                <span className="text-xs text-muted-foreground">（任意・後から設定可）</span>
-              </Label>
-              <Textarea
-                rows={3}
-                value={draft.weeklyTopic}
-                onChange={(e) => setDraft((p) => ({ ...p, weeklyTopic: e.target.value }))}
-                className="resize-none"
-                placeholder="参加者への問いかけを入力してください"
-              />
-            </div>
-          )}
-
           <SettingToggleRow
             checked={draft.aiDiscussion}
             onCheckedChange={(aiDiscussion) => setDraft((p) => ({ ...p, aiDiscussion }))}
@@ -153,9 +122,6 @@ export function AdminForumClient() {
   const [postKeyword, setPostKeyword] = useState("");
   const [selectedRoom, setSelectedRoom] = useState("all");
   const [postFilter, setPostFilter] = useState<PostFilter>("all");
-  const [editingTopicRoomId, setEditingTopicRoomId] = useState<string | null>(null);
-  const [topicDraft, setTopicDraft] = useState("");
-  const [savingTopic, setSavingTopic] = useState(false);
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
   const [roomNameDraft, setRoomNameDraft] = useState("");
   const [roomDescDraft, setRoomDescDraft] = useState("");
@@ -193,7 +159,7 @@ export function AdminForumClient() {
   const filteredRooms = useMemo(() => {
     const keyword = roomKeyword.trim().toLowerCase();
     if (!keyword) return rooms;
-    return rooms.filter((room) => [room.name, room.description, room.weeklyTopic].some((t) => t.toLowerCase().includes(keyword)));
+    return rooms.filter((room) => [room.name, room.description].some((t) => (t ?? "").toLowerCase().includes(keyword)));
   }, [roomKeyword, rooms]);
 
   const filteredPosts = useMemo(() => {
@@ -275,27 +241,6 @@ export function AdminForumClient() {
       alert("再表示設定に失敗しました");
     }
   }, []);
-
-  const handleSaveTopic = useCallback(async (roomId: string) => {
-    if (savingTopic) return;
-    setSavingTopic(true);
-    try {
-      const res = await fetch(`/api/forum/rooms/${roomId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ weeklyTopic: topicDraft.trim() }),
-      });
-      if (res.ok) {
-        setRooms((prev) => prev.map((r) => r.id === roomId ? { ...r, weeklyTopic: topicDraft.trim() } : r));
-        setEditingTopicRoomId(null);
-      } else {
-        alert("お題の更新に失敗しました");
-      }
-    } finally {
-      setSavingTopic(false);
-    }
-  }, [savingTopic, topicDraft]);
 
   const handleSaveRoom = useCallback(async (roomId: string) => {
     if (savingRoom || !roomNameDraft.trim()) return;
@@ -395,17 +340,22 @@ export function AdminForumClient() {
       )}
 
       <Tabs defaultValue="rooms" className="mt-6 gap-4">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="rooms">部屋管理</TabsTrigger>
+          <TabsTrigger value="categories">カテゴリ管理</TabsTrigger>
           <TabsTrigger value="posts">投稿管理</TabsTrigger>
           <TabsTrigger value="insights">分析</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="categories">
+          <AdminForumCategories />
+        </TabsContent>
 
         <TabsContent value="rooms" className="space-y-3">
           <div className="flex gap-2">
             <div className="relative flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input value={roomKeyword} onChange={(e) => setRoomKeyword(e.target.value)} className="pl-9" placeholder="部屋名・説明・お題で検索" />
+              <Input value={roomKeyword} onChange={(e) => setRoomKeyword(e.target.value)} className="pl-9" placeholder="部屋名・説明で検索" />
             </div>
             <CreateRoomDialog onCreated={handleCreateRoom} />
           </div>
@@ -449,36 +399,6 @@ export function AdminForumClient() {
                     )}
                   </div>
                   {editingRoomId !== room.id && <p className="text-xs text-muted-foreground line-clamp-2">{room.description || "説明なし"}</p>}
-                  {editingTopicRoomId === room.id ? (
-                    <div className="mt-2 space-y-2">
-                      <Textarea
-                        rows={3}
-                        value={topicDraft}
-                        onChange={(e) => setTopicDraft(e.target.value)}
-                        className="resize-none text-xs"
-                        placeholder="今週のお題を入力"
-                        autoFocus
-                      />
-                      <div className="flex justify-end gap-2">
-                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditingTopicRoomId(null)}>キャンセル</Button>
-                        <Button size="sm" className="h-7 text-xs" disabled={savingTopic} onClick={() => handleSaveTopic(room.id)}>
-                          {savingTopic ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : null}保存
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="mt-1 flex items-start gap-1">
-                      <p className="text-xs text-muted-foreground line-clamp-2 flex-1">{room.weeklyTopic || "お題未設定"}</p>
-                      <button
-                        type="button"
-                        onClick={() => { setTopicDraft(room.weeklyTopic); setEditingTopicRoomId(room.id); }}
-                        className="shrink-0 p-0.5 text-muted-foreground hover:text-primary transition-colors"
-                        title="お題を編集"
-                      >
-                        <PenSquare className="h-3 w-3" />
-                      </button>
-                    </div>
-                  )}
                   <div className="mt-2 flex items-center justify-between">
                     <Link href={`/forum/${room.id}`} target="_blank" className="text-xs text-primary hover:underline"><ExternalLink className="mr-1 inline h-3 w-3" />表示</Link>
                     {editingRoomId !== room.id && (

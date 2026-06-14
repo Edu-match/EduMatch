@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import {
   Home,
   Search,
@@ -20,35 +21,43 @@ import {
   Activity,
   ArrowUpDown,
   MessageSquare,
+  Video,
+  Megaphone,
+  MapPin,
 } from "lucide-react";
 
-/** 一般ユーザー向けメニュー（全員閲覧用） */
+/** 一般ユーザー向けメニュー（全員閲覧用）。labelKey は sideMenu namespace のキー */
 const generalItems = [
-  { href: "/", label: "ホーム", icon: Home },
-  { href: "/services", label: "サービス一覧", icon: Search },
-  { href: "/articles", label: "記事一覧", icon: Newspaper },
-  { href: "/events", label: "セミナー・イベント情報", icon: Calendar },
-  { href: "/forum", label: "井戸端会議", icon: MessageSquare },
-  { href: "/companies", label: "掲載企業一覧", icon: Building2 },
-  { href: "/compare", label: "サービス比較", icon: Scale },
-  { href: "/ai-kentei", label: "AI検定", icon: Award },
-  { href: "/help", label: "ヘルプ", icon: HelpCircle },
+  { href: "/", labelKey: "home", icon: Home },
+  { href: "/services", labelKey: "services", icon: Search },
+  { href: "/articles", labelKey: "articles", icon: Newspaper },
+  // 井戸端会議：NEXT_PUBLIC_IDOBATA_NAV=1 で常設マップ版（/idobata）へ切替
+  { href: process.env.NEXT_PUBLIC_IDOBATA_NAV === "1" ? "/idobata" : "/forum", labelKey: "forum", icon: MessageSquare },
+  { href: "/videos", labelKey: "videos", icon: Video },
+  { href: "/events", labelKey: "events", icon: Calendar },
+  { href: "/companies", labelKey: "companies", icon: Building2 },
+  { href: "/compare", labelKey: "compare", icon: Scale },
+  { href: "/ai-kentei", labelKey: "aiKentei", icon: Award },
+  { href: "/help", labelKey: "help", icon: HelpCircle },
 ];
 
 /** 投稿・管理者向けメニュー（下段: ADMIN のみ） */
 const bottomItems = [
-  { href: "/articles/create", label: "記事を投稿", icon: PenSquare, roles: ["ADMIN"] },
-  { href: "/services/create", label: "サービスを投稿", icon: PenSquare, roles: ["ADMIN"] },
-  { href: "/admin/approvals", label: "承認キュー", icon: FileText, roles: ["ADMIN"] },
-  { href: "/admin/site-updates", label: "運営記事を書く", icon: PenSquare, roles: ["ADMIN"] },
-  { href: "/admin/events", label: "セミナー・イベントを管理", icon: Calendar, roles: ["ADMIN"] },
-  { href: "/admin/forum", label: "井戸端会議を管理", icon: MessageSquare, roles: ["ADMIN"] },
-  { href: "/admin/pages", label: "固定ページ・表示設定", icon: FileText, roles: ["ADMIN"] },
-  { href: "/admin/ai-kentei/questions", label: "AI検定の問題を管理", icon: ListChecks, roles: ["ADMIN"] },
-  { href: "/dashboard/admin/knowledge", label: "ナレッジ文書管理", icon: BookOpen, roles: ["ADMIN"] },
-  { href: "/admin/ai-chat", label: "AIチャット管理", icon: Bot, roles: ["ADMIN"] },
-  { href: "/admin/services/display-order", label: "サービス表示順を管理", icon: ArrowUpDown, roles: ["ADMIN"] },
-  { href: "/admin/activity-log", label: "操作ログ", icon: Activity, roles: ["ADMIN"] },
+  { href: "/articles/create", labelKey: "createArticle", icon: PenSquare, roles: ["ADMIN"] },
+  { href: "/services/create", labelKey: "createService", icon: PenSquare, roles: ["ADMIN"] },
+  { href: "/admin/approvals", labelKey: "approvals", icon: FileText, roles: ["ADMIN"] },
+  { href: "/admin/site-updates", labelKey: "writeSiteUpdate", icon: PenSquare, roles: ["ADMIN"] },
+  { href: "/admin/events", labelKey: "manageEvents", icon: Calendar, roles: ["ADMIN"] },
+  { href: "/admin/forum", labelKey: "manageForum", icon: MessageSquare, roles: ["ADMIN"] },
+  { href: "/admin/videos", labelKey: "manageVideos", icon: Video, roles: ["ADMIN"] },
+  { href: "/admin/sponsors", labelKey: "manageSponsors", icon: Megaphone, roles: ["ADMIN"] },
+  { href: "/admin/pages", labelKey: "managePages", icon: FileText, roles: ["ADMIN"] },
+  { href: "/admin/interop", labelKey: "manageInterop", icon: MapPin, roles: ["ADMIN"] },
+  { href: "/admin/ai-kentei/questions", labelKey: "manageAiKentei", icon: ListChecks, roles: ["ADMIN"] },
+  { href: "/dashboard/admin/knowledge", labelKey: "knowledge", icon: BookOpen, roles: ["ADMIN"] },
+  { href: "/admin/ai-chat", labelKey: "aiChat", icon: Bot, roles: ["ADMIN"] },
+  { href: "/admin/services/display-order", labelKey: "serviceOrder", icon: ArrowUpDown, roles: ["ADMIN"] },
+  { href: "/admin/activity-log", labelKey: "activityLog", icon: Activity, roles: ["ADMIN"] },
 ];
 
 type MenuItem = (typeof generalItems)[number] | (typeof bottomItems)[number];
@@ -60,6 +69,7 @@ function MenuItemLink({
   item: MenuItem;
   hasBorder: boolean;
 }) {
+  const t = useTranslations("sideMenu");
   const Icon = item.icon;
 
   let tutorialAttr: string | undefined;
@@ -76,12 +86,13 @@ function MenuItemLink({
       }`}
     >
       <Icon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-      <span className="hover:text-[#1d4ed8] transition-colors">{item.label}</span>
+      <span className="hover:text-[#1d4ed8] transition-colors">{t(item.labelKey)}</span>
     </Link>
   );
 }
 
 export function SideMenu() {
+  const t = useTranslations("sideMenu");
   const [role, setRole] = useState<string | null>(null);
 
   useEffect(() => {
@@ -102,7 +113,7 @@ export function SideMenu() {
       {/* 一般メニュー（ブロック） */}
       <div className="border rounded-lg bg-card overflow-hidden">
         <div className="p-3 border-b">
-          <h2 className="text-sm font-bold">メニュー</h2>
+          <h2 className="text-sm font-bold">{t("menu")}</h2>
         </div>
         <nav>
           {generalItems.map((item, index) => (
@@ -121,7 +132,7 @@ export function SideMenu() {
           <div className="px-3 py-2.5 bg-amber-400 flex items-center gap-2">
             <ShieldCheck className="h-4 w-4 text-amber-900 flex-shrink-0" />
             <h2 className="text-sm font-bold text-amber-900">
-              {role === "ADMIN" ? "管理者メニュー" : "投稿者メニュー"}
+              {role === "ADMIN" ? t("adminMenu") : t("posterMenu")}
             </h2>
           </div>
           <nav>

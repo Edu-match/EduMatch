@@ -203,15 +203,40 @@ export const ROOM_BUBBLE_COLORS: Record<string, { from: string; to: string; bord
 
 export function ForumRoomIcon({
   roomId,
+  emoji,
   size = 40,
   className,
 }: {
   roomId: string;
+  emoji?: string;
   size?: number;
   className?: string;
 }) {
+  const trimmedEmoji = emoji?.trim();
+  if (trimmedEmoji) {
+    return (
+      <span
+        className={className}
+        style={{ fontSize: Math.round(size * 0.65), lineHeight: 1 }}
+        aria-hidden
+      >
+        {trimmedEmoji}
+      </span>
+    );
+  }
+
   const Icon = ICON_MAP[roomId];
   const colorClass = ROOM_ACCENT_COLORS[roomId] ?? "text-primary";
-  if (!Icon) return null;
+  if (!Icon) {
+    return (
+      <span
+        className={className}
+        style={{ fontSize: Math.round(size * 0.65), lineHeight: 1 }}
+        aria-hidden
+      >
+        💬
+      </span>
+    );
+  }
   return <Icon size={size} className={className ?? colorClass} />;
 }

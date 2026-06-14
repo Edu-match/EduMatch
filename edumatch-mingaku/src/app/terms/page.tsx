@@ -4,6 +4,9 @@ import { getSitePage } from "@/app/_actions/site-pages";
 import Link from "next/link";
 import { getCurrentProfile } from "@/lib/auth";
 import { getOperatorInfo } from "@/app/_actions/operator-info";
+import { getTranslations, getLocale } from "next-intl/server";
+import { translateText } from "@/lib/translate";
+import type { Locale } from "@/i18n/config";
 
 const DEFAULT_TERMS_INTRO = (
   <>
@@ -26,22 +29,28 @@ const DEFAULT_TERMS_INTRO = (
 );
 
 export default async function TermsPage() {
+  const t = await getTranslations("legal");
+  const locale = (await getLocale()) as Locale;
   const page = await getSitePage("terms");
   const profile = await getCurrentProfile();
   const operatorInfo = await getOperatorInfo();
   const useDbContent = !!page.body?.trim();
+  const pageTitle = page.title?.trim()
+    ? await translateText(page.title, locale)
+    : t("termsTitle");
+  const translatedBody = useDbContent ? await translateText(page.body, locale) : null;
 
   return (
     <div className="container py-8">
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold">{page.title || "利用規約"}</h1>
+          <h1 className="text-3xl font-bold">{pageTitle}</h1>
           {profile?.role === "ADMIN" && (
             <Link
               href="/admin/pages/terms/edit"
               className="text-sm text-primary hover:underline"
             >
-              編集
+              {t("edit")}
             </Link>
           )}
         </div>
@@ -50,17 +59,17 @@ export default async function TermsPage() {
           <CardContent className="p-6">
             <h2 className="text-lg font-bold mb-2">{operatorInfo.sectionTitle}</h2>
             <p className="text-muted-foreground">
-              主催：{operatorInfo.organizer}<br />
-              運営：{operatorInfo.operator}<br />
-              設立年：{operatorInfo.established}
+              {t("organizer")}{operatorInfo.organizer}<br />
+              {t("operator")}{operatorInfo.operator}<br />
+              {t("established")}{operatorInfo.established}
             </p>
           </CardContent>
         </Card>
 
-        {useDbContent ? (
+        {useDbContent && translatedBody ? (
           <Card>
             <CardContent className="p-8 prose prose-slate max-w-none">
-              <ContentRenderer content={page.body} />
+              <ContentRenderer content={translatedBody} />
             </CardContent>
           </Card>
         ) : (

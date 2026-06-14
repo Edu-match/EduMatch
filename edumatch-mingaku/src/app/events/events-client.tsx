@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations, useLocale } from "next-intl";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -39,12 +40,14 @@ type Props = {
   isAdmin: boolean;
 };
 
-const WEEKDAY_HEADERS = ["日", "月", "火", "水", "木", "金", "土"] as const;
+function localeTag(locale: string): string {
+  return locale === "en" ? "en-US" : "ja-JP";
+}
 
-function formatEventDate(dateStr: string | null): string {
-  if (!dateStr) return "日程未定";
+function formatEventDate(dateStr: string | null, locale: string, tbd: string): string {
+  if (!dateStr) return tbd;
   try {
-    return new Date(dateStr + "T00:00:00").toLocaleDateString("ja-JP", {
+    return new Date(dateStr + "T00:00:00").toLocaleDateString(localeTag(locale), {
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -55,8 +58,8 @@ function formatEventDate(dateStr: string | null): string {
   }
 }
 
-function formatShortDay(date: Date): string {
-  return date.toLocaleDateString("ja-JP", { month: "numeric", day: "numeric", weekday: "short" });
+function formatShortDay(date: Date, locale: string): string {
+  return date.toLocaleDateString(localeTag(locale), { month: "numeric", day: "numeric", weekday: "short" });
 }
 
 function toYmd(d: Date): string {
@@ -97,26 +100,27 @@ function daysFromToday(dateStr: string | null): number | null {
 }
 
 function DaysLabel({ dateStr }: { dateStr: string | null }) {
+  const t = useTranslations("events");
   const days = daysFromToday(dateStr);
   if (days === null) return null;
   if (days === 0)
     return (
-      <span className="text-xs font-semibold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">本日</span>
+      <span className="text-xs font-semibold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">{t("today")}</span>
     );
   if (days === 1)
     return (
-      <span className="text-xs font-semibold text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded">明日</span>
+      <span className="text-xs font-semibold text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded">{t("tomorrow")}</span>
     );
   if (days <= 7)
     return (
       <span className="text-xs font-semibold text-yellow-600 bg-yellow-50 px-1.5 py-0.5 rounded">
-        あと{days}日
+        {t("daysLeft", { days })}
       </span>
     );
   if (days <= 30)
     return (
       <span className="text-xs font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-        あと{days}日
+        {t("daysLeft", { days })}
       </span>
     );
   return null;
@@ -167,6 +171,9 @@ export default function EventsClient({
   search,
   isAdmin,
 }: Props) {
+  const t = useTranslations("events");
+  const locale = useLocale();
+  const weekdays = t.raw("weekdays") as string[];
   const router = useRouter();
   const [inputValue, setInputValue] = useState(search);
   const [, startTransition] = useTransition();
@@ -195,13 +202,16 @@ export default function EventsClient({
   }
 
   const weekEnd = addDays(weekAnchor, 6);
-  const weekLabel = `${weekAnchor.toLocaleDateString("ja-JP", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  })} 〜 ${weekEnd.toLocaleDateString("ja-JP", { month: "long", day: "numeric" })}`;
+  const weekLabel = t("weekRange", {
+    start: weekAnchor.toLocaleDateString(localeTag(locale), {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }),
+    end: weekEnd.toLocaleDateString(localeTag(locale), { month: "long", day: "numeric" }),
+  });
 
-  const monthYearLabel = monthCursor.toLocaleDateString("ja-JP", { year: "numeric", month: "long" });
+  const monthYearLabel = monthCursor.toLocaleDateString(localeTag(locale), { year: "numeric", month: "long" });
 
   const monthGridDays: ({ date: Date; inMonth: boolean } | null)[] = useMemo(() => {
     const first = startOfMonth(monthCursor);
@@ -225,20 +235,20 @@ export default function EventsClient({
         <div className="container py-10">
           <div className="flex items-center gap-3 mb-3">
             <CalendarDays className="h-8 w-8 text-primary" />
-            <h1 className="text-3xl md:text-4xl font-bold">セミナー・イベント情報</h1>
+            <h1 className="text-3xl md:text-4xl font-bold">{t("title")}</h1>
           </div>
-          <p className="text-muted-foreground mb-1">教育関連のセミナー・イベント情報をお届けします。</p>
+          <p className="text-muted-foreground mb-1">{t("lead")}</p>
           <p className="text-sm text-muted-foreground">
-            掲載されていないイベント情報は
+            {t("contactPrefix")}
             <Link href="/contact" className="text-primary hover:underline font-medium mx-1">
-              お問い合わせフォーム
+              {t("contactLink")}
             </Link>
-            からご連絡ください。
+            {t("contactSuffix")}
           </p>
           {isAdmin && (
             <div className="mt-4">
               <Button asChild size="sm" variant="outline">
-                <Link href="/admin/events">セミナー・イベントを管理</Link>
+                <Link href="/admin/events">{t("manage")}</Link>
               </Button>
             </div>
           )}
@@ -252,14 +262,14 @@ export default function EventsClient({
               <div className="relative flex-1 w-full">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="イベント名・主催者・会場で検索..."
+                  placeholder={t("searchPlaceholder")}
                   value={inputValue}
                   onChange={(e) => handleSearch(e.target.value)}
                   className="pl-10 h-11"
                 />
               </div>
               <p className="text-sm text-muted-foreground whitespace-nowrap shrink-0">
-                <span className="font-semibold text-foreground">{total}</span> 件表示中
+                <span className="font-semibold text-foreground">{total}</span> {t("showingCount")}
               </p>
             </div>
           </CardContent>
@@ -273,15 +283,15 @@ export default function EventsClient({
           <TabsList className="grid w-full grid-cols-3 sm:w-fit sm:inline-flex h-auto sm:h-9 p-1">
             <TabsTrigger value="list" className="gap-1.5 py-2 sm:py-1">
               <List className="h-4 w-4" />
-              一覧
+              {t("tabList")}
             </TabsTrigger>
             <TabsTrigger value="week" className="gap-1.5 py-2 sm:py-1">
               <CalendarRange className="h-4 w-4" />
-              週
+              {t("tabWeek")}
             </TabsTrigger>
             <TabsTrigger value="month" className="gap-1.5 py-2 sm:py-1">
               <LayoutGrid className="h-4 w-4" />
-              月
+              {t("tabMonth")}
             </TabsTrigger>
           </TabsList>
 
@@ -295,14 +305,14 @@ export default function EventsClient({
                         <div className="sm:w-40 lg:w-48 shrink-0 bg-primary/5 border-b sm:border-b-0 sm:border-r flex flex-col items-center justify-center px-4 py-4 gap-1 text-center">
                           <Calendar className="h-5 w-5 text-primary/70 mb-1" />
                           <p className="text-sm font-semibold text-foreground leading-snug">
-                            {formatEventDate(event.event_date)}
+                            {formatEventDate(event.event_date, locale, t("tbd"))}
                           </p>
                           <DaysLabel dateStr={event.event_date} />
                         </div>
                         <div className="flex-1 min-w-0 p-4 sm:p-5 flex flex-col gap-3">
                           <div className="flex flex-wrap items-start gap-2">
                             <Badge className="bg-green-500 hover:bg-green-600 text-white text-xs shrink-0">
-                              開催予定
+                              {t("upcoming")}
                             </Badge>
                             <h3 className="text-base font-bold leading-snug min-w-0 break-words">{event.title}</h3>
                           </div>
@@ -334,13 +344,13 @@ export default function EventsClient({
                                   rel="noopener noreferrer"
                                   className="inline-flex items-center gap-1.5"
                                 >
-                                  詳細を見る・申し込み
+                                  {t("viewAndApply")}
                                   <ExternalLink className="h-3.5 w-3.5" />
                                 </a>
                               </Button>
                             ) : (
                               <Button asChild size="sm" variant="outline" className="shrink-0">
-                                <Link href="/contact?subject=イベント問い合わせ">お問い合わせ</Link>
+                                <Link href="/contact?subject=イベント問い合わせ">{t("contact")}</Link>
                               </Button>
                             )}
                           </div>
@@ -354,7 +364,7 @@ export default function EventsClient({
               <div className="text-center py-20">
                 <CalendarDays className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
                 <p className="text-muted-foreground font-medium">
-                  {search ? "条件に一致するイベントが見つかりませんでした" : "現在、開催予定のイベントはありません"}
+                  {search ? t("noResults") : t("noUpcoming")}
                 </p>
               </div>
             )}
@@ -375,19 +385,19 @@ export default function EventsClient({
                   type="button"
                   variant="outline"
                   size="icon"
-                  aria-label="前の週"
+                  aria-label={t("prevWeek")}
                   onClick={() => setWeekAnchor((w) => addDays(w, -7))}
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <Button type="button" variant="secondary" size="sm" onClick={() => setWeekAnchor(startOfSundayWeek(new Date()))}>
-                  今週
+                  {t("thisWeek")}
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   size="icon"
-                  aria-label="次の週"
+                  aria-label={t("nextWeek")}
                   onClick={() => setWeekAnchor((w) => addDays(w, 7))}
                 >
                   <ChevronRight className="h-4 w-4" />
@@ -395,11 +405,11 @@ export default function EventsClient({
               </div>
             </div>
             {calendarEvents.length === 0 ? (
-              <div className="text-center py-16 text-muted-foreground">該当するイベントはありません</div>
+              <div className="text-center py-16 text-muted-foreground">{t("noMatchingEvents")}</div>
             ) : (
               <>
                 <div className="hidden md:grid md:grid-cols-7 gap-2">
-                  {WEEKDAY_HEADERS.map((label) => (
+                  {weekdays.map((label) => (
                     <div key={label} className="text-center text-xs font-semibold text-muted-foreground py-1">
                       {label}
                     </div>
@@ -419,7 +429,7 @@ export default function EventsClient({
                       >
                         <CardContent className="p-2 space-y-1.5">
                           <p className={cn("text-xs font-semibold", isToday ? "text-primary" : "text-foreground")}>
-                            {formatShortDay(day)}
+                            {formatShortDay(day, locale)}
                           </p>
                           <div className="space-y-1">
                             {dayEvents.length === 0 ? (
@@ -446,10 +456,10 @@ export default function EventsClient({
                       >
                         <CardContent className="p-3 space-y-2">
                           <p className={cn("text-sm font-semibold", isToday ? "text-primary" : "text-foreground")}>
-                            {formatShortDay(day)}
+                            {formatShortDay(day, locale)}
                           </p>
                           {dayEvents.length === 0 ? (
-                            <p className="text-xs text-muted-foreground">予定なし</p>
+                            <p className="text-xs text-muted-foreground">{t("noPlans")}</p>
                           ) : (
                             <ul className="space-y-1">
                               {dayEvents.map((ev) => (
@@ -467,7 +477,7 @@ export default function EventsClient({
               </>
             )}
             {calendarCapped && (
-              <p className="text-xs text-muted-foreground">※ カレンダーは直近の開催予定 {calendarEvents.length} 件まで表示しています。</p>
+              <p className="text-xs text-muted-foreground">{t("calendarCapped", { count: calendarEvents.length })}</p>
             )}
           </TabsContent>
 
@@ -479,7 +489,7 @@ export default function EventsClient({
                   type="button"
                   variant="outline"
                   size="icon"
-                  aria-label="前の月"
+                  aria-label={t("prevMonth")}
                   onClick={() =>
                     setMonthCursor((m) => new Date(m.getFullYear(), m.getMonth() - 1, 1))
                   }
@@ -492,13 +502,13 @@ export default function EventsClient({
                   size="sm"
                   onClick={() => setMonthCursor(startOfMonth(new Date()))}
                 >
-                  今月
+                  {t("thisMonth")}
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   size="icon"
-                  aria-label="次の月"
+                  aria-label={t("nextMonth")}
                   onClick={() =>
                     setMonthCursor((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1))
                   }
@@ -508,11 +518,11 @@ export default function EventsClient({
               </div>
             </div>
             {calendarEvents.length === 0 ? (
-              <div className="text-center py-16 text-muted-foreground">該当するイベントはありません</div>
+              <div className="text-center py-16 text-muted-foreground">{t("noMatchingEvents")}</div>
             ) : (
               <div className="border rounded-lg overflow-hidden bg-card">
                 <div className="grid grid-cols-7 border-b bg-muted/50">
-                  {WEEKDAY_HEADERS.map((label) => (
+                  {weekdays.map((label) => (
                     <div
                       key={label}
                       className="text-center text-[11px] sm:text-xs font-semibold text-muted-foreground py-2 border-r last:border-r-0"
@@ -561,7 +571,7 @@ export default function EventsClient({
               </div>
             )}
             {calendarCapped && (
-              <p className="text-xs text-muted-foreground">※ カレンダーは直近の開催予定 {calendarEvents.length} 件まで表示しています。</p>
+              <p className="text-xs text-muted-foreground">{t("calendarCapped", { count: calendarEvents.length })}</p>
             )}
           </TabsContent>
         </Tabs>

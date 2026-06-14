@@ -5,7 +5,9 @@ import { getAiKenteiDb } from "@/lib/ai-kentei-db";
 import { getForumAuthorRoleForUser } from "@/lib/forum-author-profile";
 import { mapForumReplyForApi } from "@/lib/forum-ai-reply";
 import { notifyAdminsForumHumanActivityMilestones } from "@/lib/forum-article-notify";
+import { moderateAndNotify } from "@/lib/post-moderation";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 20;
@@ -81,6 +83,8 @@ export async function GET(
       isHidden: post.is_hidden,
       relatedArticleUrl: post.related_article_url ?? undefined,
       aiKenteiPassed: post.ai_kentei_passed,
+      toneFlag: post.tone_flag || undefined,
+      toneReason: post.tone_reason || undefined,
       replies: post.replies.map((r, replyIndex) =>
         mapForumReplyForApi(r, {
           post: {
@@ -166,12 +170,16 @@ export async function POST(
     let resolvedAuthorRole = "一般";
     if (isAnon) {
       resolvedAuthorRole = "匿名";
-    } else if (profile?.id) {
-      resolvedAuthorRole = await getForumAuthorRoleForUser(profile.id);
     } else {
-      const guest = authorRole?.trim();
-      resolvedAuthorRole =
-        guest && guest.length <= 120 && guest !== "匿名" ? guest : "一般";
+      const customRole = authorRole?.trim();
+      const hasCustomRole = customRole && customRole.length <= 120 && customRole !== "一般" && customRole !== "匿名";
+      if (hasCustomRole) {
+        resolvedAuthorRole = customRole;
+      } else if (profile?.id) {
+        resolvedAuthorRole = await getForumAuthorRoleForUser(profile.id);
+      } else {
+        resolvedAuthorRole = customRole || "一般";
+      }
     }
 
     let resolvedTopicId: string | null = topicId?.trim() || null;
@@ -191,6 +199,42 @@ export async function POST(
       resolvedTopicId = latest?.id ?? null;
     }
 
+    // モデレーション: AI判定で投稿可否を確認し、必要なら Slack へ通知
+    const url = new URL(req.url);
+    const origin = `${url.protocol}//${url.host}`;
+    const moderation = await moderateAndNotify({
+      text: postBody.trim(),
+      kind: "comment",
+      featureLabel: "井戸端会議",
+      userId: user.id,
+      userName: profile.name || user.email?.split("@")[0] || "（不明）",
+      contextUrl: `${origin}/forum/${roomId}`,
+    });
+    if (moderation.skipped) {
+      return NextResponse.json(
+        { error: "サーバー設定が不足しています。" },
+        { status: 503 }
+      );
+    }
+    if (!moderation.allowed) {
+      if (moderation.source === "error") {
+        return NextResponse.json(
+          {
+            error:
+              "投稿内容の確認中にエラーが発生しました。しばらく経ってからお試しください。",
+          },
+          { status: 503 }
+        );
+      }
+      return NextResponse.json(
+        {
+          error:
+            "この内容はコミュニティガイドラインに適合しないため投稿できません。表現を見直してください。",
+        },
+        { status: 400 }
+      );
+    }
+
     const post = await prisma.forumPost.create({
       data: {
         room_id: roomId,
@@ -201,6 +245,9 @@ export async function POST(
         body: postBody.trim(),
         related_article_url: relatedArticleUrl?.trim() || null,
         ai_kentei_passed: aiKenteiPassed,
+        // 掲載は可だが「キツい/非建設的/ネガ」なトーンは警告バッジ用に保存
+        tone_flag: moderation.toneFlag === "ok" ? "" : moderation.toneFlag,
+        tone_reason: moderation.toneFlag === "ok" ? "" : moderation.toneReason,
       },
       include: { topic: { select: { id: true, title: true } } },
     });
@@ -225,6 +272,8 @@ export async function POST(
         isPinned: post.is_pinned,
         relatedArticleUrl: post.related_article_url ?? undefined,
         aiKenteiPassed: post.ai_kentei_passed,
+        toneFlag: post.tone_flag || undefined,
+        toneReason: post.tone_reason || undefined,
         replies: [],
       },
     }, { status: 201 });

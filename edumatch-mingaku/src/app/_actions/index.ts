@@ -118,3 +118,6 @@ export {
   type ProviderArticle,
   type ProviderService,
 } from "./provider-content";
+
+// AI Persona / Avatar (パーソナルAIペルソナ・AIアバター生成)
+export { generatePersonaAndAvatar, type GeneratePersonaResult } from "./persona";
