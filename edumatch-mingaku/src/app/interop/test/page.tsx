@@ -67,11 +67,64 @@ export default function InteropAiTestPage() {
   const [result, setResult] = useState<RunResult | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
+  // ── パーソナルAIペルソナ（管理者の自動返信） ──
+  const [persona, setPersona] = useState<{
+    id: string;
+    display_name?: string;
+    is_active: boolean;
+    reply_daily_limit: number;
+  } | null>(null);
+  const [personaMsg, setPersonaMsg] = useState<string | null>(null);
+  const [personaBusy, setPersonaBusy] = useState(false);
+
+  function loadPersona() {
+    fetch("/api/interop/admin/persona-activate")
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((d) => setPersona(d.persona))
+      .catch(() => setPersona(null));
+  }
+
+  async function togglePersona() {
+    setPersonaBusy(true);
+    setPersonaMsg(null);
+    try {
+      const res = await fetch("/api/interop/admin/persona-activate", { method: "POST" });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || `HTTP ${res.status}`);
+      loadPersona();
+      setPersonaMsg(d.persona?.is_active ? "自動返信を有効化しました" : "自動返信を無効化しました");
+    } catch (e) {
+      setPersonaMsg(e instanceof Error ? e.message : "更新失敗");
+    } finally {
+      setPersonaBusy(false);
+    }
+  }
+
+  async function runPersonaReply() {
+    setPersonaBusy(true);
+    setPersonaMsg(null);
+    try {
+      const res = await fetch("/api/interop/admin/persona-reply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ limitPerPersona: 3 }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || `HTTP ${res.status}`);
+      setPersonaMsg(`返信を ${d.created} 件生成しました${d.note ? `（${d.note}）` : ""}`);
+    } catch (e) {
+      setPersonaMsg(e instanceof Error ? e.message : "実行失敗");
+    } finally {
+      setPersonaBusy(false);
+    }
+  }
+
   useEffect(() => {
     fetch("/api/interop/admin/test-ai")
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
       .then(setHealth)
       .catch(() => setErr("ヘルスチェック取得失敗（本番は管理者ログインが必要）"));
+    loadPersona();
   }, []);
 
   async function run() {
@@ -234,6 +287,48 @@ export default function InteropAiTestPage() {
             </div>
           </section>
         )}
+
+        {/* パーソナルAIペルソナ自動返信（管理者のみ） */}
+        <section className="rounded-xl border border-indigo-800/60 bg-indigo-950/30 p-4 space-y-3">
+          <h2 className="text-sm font-semibold text-indigo-200">
+            パーソナルAIペルソナ 自動返信（管理者）
+          </h2>
+          <p className="text-xs text-slate-400">
+            プロフィール登録でAIアバターを生成すると、あなたのマインドに基づくAIペルソナが作られます。
+            ここで自動返信を有効化すると、ペルソナが投稿へ本人として返信します（現状は管理者のみ）。
+          </p>
+          {persona ? (
+            <div className="space-y-2 text-sm">
+              <p>
+                ペルソナ: <span className="font-semibold">{persona.display_name ?? "（あなた）"}</span>{" "}
+                <Badge ok={persona.is_active}>自動返信</Badge>{" "}
+                <span className="text-slate-400">上限 {persona.reply_daily_limit}/日</span>
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={togglePersona}
+                  disabled={personaBusy}
+                  className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
+                >
+                  {persona.is_active ? "自動返信を無効化" : "自動返信を有効化"}
+                </button>
+                <button
+                  onClick={runPersonaReply}
+                  disabled={personaBusy || !persona.is_active}
+                  className="rounded-lg border border-indigo-500 px-3 py-1.5 text-xs font-semibold text-indigo-200 hover:bg-indigo-900/50 disabled:opacity-50"
+                >
+                  今すぐ返信を生成（最大3件）
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-amber-300">
+              ペルソナ未作成です。プロフィール登録ページでAIアバターを生成してください。
+              （管理者ログインが必要）
+            </p>
+          )}
+          {personaMsg && <p className="text-xs text-emerald-300">{personaMsg}</p>}
+        </section>
       </div>
     </main>
   );

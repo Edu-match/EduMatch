@@ -58,6 +58,8 @@ model Profile {
   forum_likes                     ForumLike[]
   videos                          Video[]
   video_comments                  VideoComment[]
+  ai_persona                      UserAiPersona?
+  interop_posts                   InteropPost[]        @relation("InteropPostAuthor")
 
   @@index([email])
   @@index([stripe_customer_id])
@@ -428,33 +430,33 @@ model ActivityLogComment {
 }
 
 model ForumCategory {
-  id          String      @id @default(uuid()) @db.Uuid
-  name        String
-  slug        String      @unique
-  description String      @default("")
-  color       String      @default("#FFB5C8")
-  tags        String[]    @default([])
-  sort_order  Int         @default(0)
-  is_active   Boolean     @default(true)
-  created_at  DateTime    @default(now()) @db.Timestamptz(6)
-  updated_at  DateTime    @updatedAt @db.Timestamptz(6)
-  rooms       ForumRoom[]
+  id           String                      @id @default(uuid()) @db.Uuid
+  name         String
+  slug         String                      @unique
+  description  String                      @default("")
+  color        String                      @default("#FFB5C8")
+  tags         String[]                    @default([])
+  sort_order   Int                         @default(0)
+  is_active    Boolean                     @default(true)
+  created_at   DateTime                    @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime                    @updatedAt @db.Timestamptz(6)
+  rooms        ForumRoom[]
   contentCache ForumCategoryContentCache[]
 
   @@map("forum_categories")
 }
 
 model ForumSubCategory {
-  id           String      @id @default(uuid()) @db.Uuid
+  id           String                      @id @default(uuid()) @db.Uuid
   name         String
-  slug         String      @unique
+  slug         String                      @unique
   icon         String?
   /// community = 純粋な掲示板 / article / service / media / events-info = DBコンテンツ表示
-  content_kind String      @default("community")
-  sort_order   Int         @default(0)
-  is_active    Boolean     @default(true)
-  created_at   DateTime    @default(now()) @db.Timestamptz(6)
-  updated_at   DateTime    @updatedAt @db.Timestamptz(6)
+  content_kind String                      @default("community")
+  sort_order   Int                         @default(0)
+  is_active    Boolean                     @default(true)
+  created_at   DateTime                    @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime                    @updatedAt @db.Timestamptz(6)
   rooms        ForumRoom[]
   contentCache ForumCategoryContentCache[]
 
@@ -481,25 +483,25 @@ model InteropCategory {
 
 /// Interop特設ページ専用サブカテゴリ（カテゴリ配下）
 model InteropSubCategory {
-  id           String          @id @default(uuid()) @db.Uuid
-  category_id  String          @db.Uuid
-  category     InteropCategory @relation(fields: [category_id], references: [id], onDelete: Cascade)
-  name         String
-  slug         String          @unique
-  description  String          @default("")
-  sort_order   Int             @default(0)
-  is_active    Boolean         @default(true)
+  id            String              @id @default(uuid()) @db.Uuid
+  category_id   String              @db.Uuid
+  category      InteropCategory     @relation(fields: [category_id], references: [id], onDelete: Cascade)
+  name          String
+  slug          String              @unique
+  description   String              @default("")
+  sort_order    Int                 @default(0)
+  is_active     Boolean             @default(true)
   /// サテライト/掲示板の概要下にサムネ表示する参考URL（任意）
-  url          String          @default("")
+  url           String              @default("")
   /// 本体エデュマッチから自動抽出する種別（article/service/media/events-info）。空なら自動抽出オフ。
-  content_kinds String[]       @default([])
+  content_kinds String[]            @default([])
   /// 自動抽出のキーワード上書き（空ならカテゴリ名＋サブカテゴリ名）
-  content_query String         @default("")
-  created_at   DateTime        @default(now()) @db.Timestamptz(6)
-  updated_at   DateTime        @updatedAt @db.Timestamptz(6)
-  posts        InteropPost[]
-  contentPins  InteropContentPin[]
-  boardTopics  InteropBoardTopic[]
+  content_query String              @default("")
+  created_at    DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime            @updatedAt @db.Timestamptz(6)
+  posts         InteropPost[]
+  contentPins   InteropContentPin[]
+  boardTopics   InteropBoardTopic[]
 
   @@map("interop_sub_categories")
 }
@@ -580,13 +582,57 @@ model InteropPost {
   /// 所属トピック（サブカテゴリにトピックが設定されている場合のみセット）
   topic_id        String?            @db.Uuid
   topic           InteropBoardTopic? @relation(fields: [topic_id], references: [id], onDelete: SetNull)
+  /// ログインユーザーの投稿なら Profile に紐付け（匿名投稿は NULL）
+  author_id       String?            @db.Uuid
+  author          Profile?           @relation("InteropPostAuthor", fields: [author_id], references: [id], onDelete: SetNull)
+  /// パーソナルAIペルソナによる発話なら紐付け（人間の投稿は NULL）
+  persona_id      String?            @db.Uuid
+  persona         UserAiPersona?     @relation(fields: [persona_id], references: [id], onDelete: SetNull)
   created_at      DateTime           @default(now()) @db.Timestamptz(6)
   likes           InteropPostLike[]
 
   @@index([sub_category_id, created_at])
   @@index([parent_post_id])
   @@index([topic_id])
+  @@index([author_id])
   @@map("interop_posts")
+}
+
+/// パーソナルAIペルソナ（Profile と 1:1・オプトイン）。
+/// 登録時のマインド/価値観から persona_prompt・アバター画像を生成し、
+/// そのマインドに基づいて投稿へ自動返信する発話主体になる。
+model UserAiPersona {
+  id                String        @id @default(uuid()) @db.Uuid
+  profile_id        String        @unique @db.Uuid
+  profile           Profile       @relation(fields: [profile_id], references: [id], onDelete: Cascade)
+  /// 表示名（既定はユーザー名）
+  display_name      String
+  /// 生成されたアバター画像URL
+  avatar_url        String?
+  /// AIが本人らしく振る舞うためのシステムプロンプト（マインド要約）
+  persona_prompt    String        @default("")
+  /// 専門・得意分野タグ
+  expertise         String[]      @default([])
+  /// 価値観・大切にしていること（自由記述の要約）
+  values_text       String        @default("")
+  /// 返信を許可するトピックID（空なら全許可）
+  allowed_topic_ids String[]      @default([])
+  /// 1日あたりの自動返信上限
+  reply_daily_limit Int           @default(5)
+  /// 自動返信を有効化しているか（オプトイン）
+  is_active         Boolean       @default(false)
+  /// 運営による一時停止
+  is_suspended      Boolean       @default(false)
+  xp                Int           @default(0)
+  level             Int           @default(1)
+  stage             Int           @default(0)
+  last_replied_at   DateTime?     @db.Timestamptz(6)
+  created_at        DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime      @updatedAt @db.Timestamptz(6)
+  interop_posts     InteropPost[]
+
+  @@index([is_active, is_suspended])
+  @@map("user_ai_personas")
 }
 
 /// Interop掲示板の投稿いいね（来場者はログイン不要・voter_key で端末単位に1回）
@@ -629,23 +675,23 @@ model InteropSetting {
 /// トップマップの28話題玉（旧 INTEROP_PRIORITY_TOPICS をDB管理化）。
 /// major(A〜F)で色グループ、axis_x/yで2軸配置、room_idで井戸端ルームに接続。
 model InteropTopic {
-  id         String   @id @default(uuid()) @db.Uuid
-  no         Int      @unique // 軸キー・既存番号
-  major      String   @default("F") // A〜F の色グループ
-  name       String // 玉のラベル（旧 category）
-  room_id    String   @default("") // /forum/{room_id}
-  topic1     String   @default("")
-  topic2     String   @default("")
-  topic3     String   @default("")
-  url        String   @default("") // (旧)玉単位の参考URL。現在は point_links を使用。
+  id          String   @id @default(uuid()) @db.Uuid
+  no          Int      @unique // 軸キー・既存番号
+  major       String   @default("F") // A〜F の色グループ
+  name        String // 玉のラベル（旧 category）
+  room_id     String   @default("") // /forum/{room_id}
+  topic1      String   @default("")
+  topic2      String   @default("")
+  topic3      String   @default("")
+  url         String   @default("") // (旧)玉単位の参考URL。現在は point_links を使用。
   /// 各論点(topic1..3)に対応する参考リンク [{url, on}]。on=true でその論点の投稿ページにサムネ表示。
-  point_links Json    @default("[]")
-  axis_x     Float    @default(0) // -1..1（人間↔技術）
-  axis_y     Float    @default(0) // -1..1（現場↔制度）
-  sort_order Int      @default(0)
-  is_active  Boolean  @default(true)
-  created_at DateTime @default(now()) @db.Timestamptz(6)
-  updated_at DateTime @updatedAt @db.Timestamptz(6)
+  point_links Json     @default("[]")
+  axis_x      Float    @default(0) // -1..1（人間↔技術）
+  axis_y      Float    @default(0) // -1..1（現場↔制度）
+  sort_order  Int      @default(0)
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime @updatedAt @db.Timestamptz(6)
 
   @@map("interop_topics")
 }
@@ -970,7 +1016,7 @@ model TextOverride {
 
 /// スポンサーPR（広告枠）。ADMINが管理画面から登録し、トップページなどに表示する。
 model SponsorAd {
-  id          String          @id @default(cuid())
+  id          String           @id @default(cuid())
   /// スポンサー名・PRタイトル
   title       String
   /// バナー説明文（任意・キャッチコピー等）
