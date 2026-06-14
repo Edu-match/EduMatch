@@ -108,12 +108,10 @@ export function InteropBoard({
   const [replyBody, setReplyBody] = useState("");
   const [replySubmitting, setReplySubmitting] = useState(false);
   const replyFormRef = useRef<HTMLDivElement>(null);
-  /** 下部の新規投稿欄（デフォルトは閉じる） */
-  const [composeOpen, setComposeOpen] = useState(false);
   const listTopRef = useRef<HTMLDivElement>(null);
   const composeRef = useRef<HTMLDivElement>(null);
   // 固定投稿欄の実高に合わせて下余白を動的に確保（pb-28 固定だと最下部が隠れる）
-  const [composePad, setComposePad] = useState(72);
+  const [composePad, setComposePad] = useState(160);
   // マップの吹き出しから「投稿を見る」で来たときに該当投稿へスクロール＆ハイライト
   const searchParams = useSearchParams();
   const focusPostId = searchParams.get("post");
@@ -153,7 +151,7 @@ export function InteropBoard({
     const ro = new ResizeObserver(syncPad);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [composeOpen]);
+  }, []);
 
   function toggleThread(postId: string) {
     setExpandedThreads((prev) => {
@@ -658,7 +656,7 @@ export function InteropBoard({
         </div>
       </div>
 
-      {/* ════ 最下部：新規投稿欄（デフォルト閉じ・タップで展開） ════ */}
+      {/* ════ 最下部：投稿欄（固定・常時表示） ════ */}
       <div
         ref={composeRef}
         className="fixed inset-x-0 bottom-0 z-20 border-t border-white/10 bg-[#070a1c]/95 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur"
@@ -666,72 +664,45 @@ export function InteropBoard({
         <div className="mx-auto w-full max-w-2xl px-4 py-3 sm:px-6">
           {error && <p className="mb-2 text-xs text-rose-300">{error}</p>}
           {notice && <p className="mb-2 text-xs text-emerald-300">{notice}</p>}
-          {composeOpen ? (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-white/70">新しい投稿</span>
-                <button
-                  type="button"
-                  onClick={() => setComposeOpen(false)}
-                  className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] text-white/45 transition hover:bg-white/8 hover:text-white/70"
-                >
-                  <ChevronDown className="h-3.5 w-3.5" />
-                  閉じる
-                </button>
+          <div className="flex items-end gap-2">
+            <div className="flex-1 space-y-2">
+              <div className="flex gap-2">
+                <input
+                  value={name}
+                  onChange={(e) => updateName(e.target.value)}
+                  placeholder="ニックネーム（必須）"
+                  maxLength={40}
+                  className="w-full rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-white/30 focus:outline-none"
+                />
+                <input
+                  value={role}
+                  onChange={(e) => updateRole(e.target.value)}
+                  placeholder="肩書き（必須）"
+                  maxLength={60}
+                  className="w-full rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-white/30 focus:outline-none"
+                />
               </div>
-              <div className="flex items-end gap-2">
-                <div className="flex-1 space-y-2">
-                  <div className="flex gap-2">
-                    <input
-                      value={name}
-                      onChange={(e) => updateName(e.target.value)}
-                      placeholder="ニックネーム（必須）"
-                      maxLength={40}
-                      className="w-full rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-white/30 focus:outline-none"
-                    />
-                    <input
-                      value={role}
-                      onChange={(e) => updateRole(e.target.value)}
-                      placeholder="肩書き（必須）"
-                      maxLength={60}
-                      className="w-full rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-white/30 focus:outline-none"
-                    />
-                  </div>
-                  <textarea
-                    value={bodyText}
-                    onChange={(e) => setBodyText(e.target.value)}
-                    onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") submit(); }}
-                    placeholder="ひとこと書く…"
-                    rows={2}
-                    maxLength={1000}
-                    className="w-full resize-none rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-white/30 focus:outline-none"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={submit}
-                  disabled={!canSubmit}
-                  className="grid h-11 w-11 shrink-0 place-items-center rounded-xl font-bold text-white transition disabled:opacity-40"
-                  style={{ background: accent }}
-                  aria-label="投稿する"
-                >
-                  {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
-                </button>
-              </div>
+              <textarea
+                value={bodyText}
+                onChange={(e) => setBodyText(e.target.value)}
+                onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") submit(); }}
+                placeholder="ひとこと書く…"
+                rows={2}
+                maxLength={1000}
+                className="w-full resize-none rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-white/30 focus:outline-none"
+              />
             </div>
-          ) : (
             <button
               type="button"
-              onClick={() => setComposeOpen(true)}
-              className="flex w-full items-center justify-between gap-3 rounded-xl border border-white/12 bg-white/[0.04] px-4 py-3 text-left transition hover:border-white/22 hover:bg-white/[0.07]"
+              onClick={submit}
+              disabled={!canSubmit}
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-xl font-bold text-white transition disabled:opacity-40"
+              style={{ background: accent }}
+              aria-label="投稿する"
             >
-              <span className="flex items-center gap-2 text-sm text-white/55">
-                <MessageCircle className="h-4 w-4 shrink-0" style={{ color: accent }} />
-                新しい投稿を書く…
-              </span>
-              <ChevronUp className="h-4 w-4 shrink-0 text-white/35" />
+              {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
             </button>
-          )}
+          </div>
         </div>
       </div>
 
