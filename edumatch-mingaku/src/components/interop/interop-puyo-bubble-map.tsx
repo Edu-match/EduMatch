@@ -1350,18 +1350,40 @@ export function InteropPuyoBubbleMap({
             }}
           />
           <span
-            className="relative flex h-full w-full flex-col items-center justify-center rounded-full transition-transform duration-200 group-hover:scale-[1.06] group-active:scale-95"
+            className="relative flex h-full w-full flex-col items-center justify-center overflow-hidden rounded-full transition-transform duration-200 group-hover:scale-[1.06] group-active:scale-95"
             style={{
-              // ほぼ不透明な発光球なので backdrop-filter は不要（centerPulse のスケールで
-              // 毎フレーム再ブラーになり最重量だったため除去）。
-              background: "radial-gradient(circle at 36% 26%, rgba(255,255,255,0.97) 0%, rgba(218,228,255,0.92) 38%, rgba(150,172,255,0.88) 100%)",
-              border: "2px solid rgba(200,218,255,0.80)",
-              boxShadow: "0 0 36px rgba(130,160,255,0.50), 0 8px 24px rgba(0,0,0,0.28), inset 0 2px 12px rgba(255,255,255,0.55)",
+              // 透明感のあるガラス球。半透明レイヤーを重ねて虹色のグラデーションを表現する。
+              // backdrop-filter は centerPulse のスケールで毎フレーム再ブラーになり最重量のため不使用、
+              // 代わりにアルファ付きグラデーションで透明感を出す。
+              background:
+                "radial-gradient(circle at 34% 24%, rgba(255,255,255,0.90) 0%, rgba(216,234,255,0.55) 26%, rgba(170,198,255,0.40) 52%, rgba(152,156,255,0.36) 74%, rgba(128,134,248,0.48) 100%)",
+              border: "1.5px solid rgba(214,228,255,0.62)",
+              boxShadow:
+                "0 0 40px rgba(130,170,255,0.45), 0 0 72px rgba(150,120,255,0.28), 0 8px 26px rgba(0,0,0,0.30), inset 0 2px 14px rgba(255,255,255,0.55), inset 0 -10px 24px rgba(110,130,255,0.32)",
             }}
           >
+            {/* 虹色イリデッセンス層（conic）。screen 合成で光沢にきらめきを与える */}
+            <span
+              className="pointer-events-none absolute inset-0 rounded-full"
+              style={{
+                background:
+                  "conic-gradient(from 210deg at 50% 50%, rgba(120,220,255,0.42), rgba(168,150,255,0.40), rgba(255,170,225,0.32), rgba(150,210,255,0.40), rgba(120,220,255,0.42))",
+                mixBlendMode: "screen",
+                opacity: 0.6,
+                filter: "blur(3px)",
+              }}
+            />
+            {/* 下方の冷色グロー（球の奥行き・透明感を強調） */}
+            <span
+              className="pointer-events-none absolute inset-0 rounded-full"
+              style={{
+                background: "radial-gradient(circle at 72% 80%, rgba(120,96,255,0.42) 0%, transparent 54%)",
+                mixBlendMode: "screen",
+              }}
+            />
             <span
               className="pointer-events-none absolute rounded-full"
-              style={{ top: "10%", left: "14%", width: "44%", height: "34%", background: "rgba(255,255,255,0.90)", filter: "blur(4px)" }}
+              style={{ top: "10%", left: "14%", width: "44%", height: "34%", background: "rgba(255,255,255,0.85)", filter: "blur(4px)" }}
             />
             <InteropIcon className="relative z-10 text-[#1a3a8a]" strokeWidth={1.9} style={{ width: Math.round(centerSize * 0.22), height: Math.round(centerSize * 0.22) }} />
             {(() => {

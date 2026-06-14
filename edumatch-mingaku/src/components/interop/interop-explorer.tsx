@@ -282,6 +282,14 @@ export function InteropExplorer({
   }, [embedded]);
 
   const satellites = useMemo<InteropSatellite[]>(() => {
+    // 中心が「議員会館」のときは中心の玉以外（最新ニュース／登壇者への質問／ご意見BOX）を出さない。
+    const center =
+      categories.find((c) => c.isPrimary) ??
+      categories.find((c) => c.slug === "giin-kaikan") ??
+      categories.find((c) => c.slug === "interop") ??
+      categories[0];
+    if (center?.slug === "giin-kaikan") return [];
+
     const defs = [
       { slug: "interop-latest-news", visible: showLatestNews, nameHints: ["最新ニュース", "ニュース"], label: "最新ニュース", place: "topLeft" as const, color: "#7dd4fc", icon: Newspaper },
       { slug: "interop-speaker-qa", visible: showSpeakerQa, nameHints: ["登壇者への質問", "登壇", "質問"], label: "登壇者への質問", place: "topRight" as const, color: "#fcd34d", icon: Mic },
@@ -305,7 +313,7 @@ export function InteropExplorer({
       });
     }
     return result;
-  }, [allSubs, activityBySub, router, showLatestNews, showSpeakerQa, showOpinionBox]);
+  }, [categories, allSubs, activityBySub, router, showLatestNews, showSpeakerQa, showOpinionBox]);
 
   // 中心ハブは is_primary 優先（DBで議員会館に付け替え可能）。後方互換で giin-kaikan / interop もフォールバック。
   const interopCat = useMemo(

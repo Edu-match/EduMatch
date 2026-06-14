@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, Bot, Check, Eye, Loader2, ShieldAlert, Trash2 } from "lucide-react";
+import { AlertTriangle, Bot, Eye, EyeOff, Loader2, ShieldAlert, Trash2 } from "lucide-react";
 
 type FlaggedPost = {
   id: string;
@@ -27,6 +27,8 @@ export function InteropModerationAdmin() {
   const [posts, setPosts] = useState<FlaggedPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
+  // 全投稿表示モード（要確認のみ ↔ 全投稿の表示/非表示管理）
+  const [showAll, setShowAll] = useState(false);
   // 既存投稿へのAI返信バックフィル
   const [backfilling, setBackfilling] = useState(false);
   const [backfillMsg, setBackfillMsg] = useState<string | null>(null);
@@ -48,21 +50,33 @@ export function InteropModerationAdmin() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data } = await api("/api/interop/admin/flagged-posts");
+    const { data } = await api(`/api/interop/admin/flagged-posts${showAll ? "?all=1" : ""}`);
     setPosts(Array.isArray(data.posts) ? data.posts : []);
     setLoading(false);
-  }, []);
+  }, [showAll]);
 
+  // マウント時・showAll 切替時に一覧を取得（取得中ローディング表示のため意図的に setState する）
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void load(); }, [load]);
 
-  const publish = async (id: string) => {
+  // 表示/非表示の切替。全投稿モードでは一覧に残してフラグだけ更新、
+  // 要確認モードでは「公開」したら一覧から外す。
+  const setHidden = async (id: string, hidden: boolean) => {
     setBusy(id);
     const { ok } = await api(`/api/interop/posts/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isHidden: false }),
+      body: JSON.stringify({ isHidden: hidden }),
     });
-    if (ok) setPosts((prev) => prev.filter((p) => p.id !== id));
+    if (ok) {
+      if (showAll) {
+        setPosts((prev) =>
+          prev.map((p) => (p.id === id ? { ...p, isHidden: hidden, autoFlagged: hidden ? p.autoFlagged : false } : p))
+        );
+      } else if (!hidden) {
+        setPosts((prev) => prev.filter((p) => p.id !== id));
+      }
+    }
     setBusy(null);
   };
 
@@ -96,14 +110,21 @@ export function InteropModerationAdmin() {
       </div>
 
     <div className="rounded-xl border border-white/10 bg-white/[0.06] p-4 backdrop-blur-sm">
-      <div className="mb-3 flex items-center gap-2">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
         <ShieldAlert className="h-5 w-5 text-amber-300" />
-        <h3 className="text-base font-bold text-white">AIモデレーション要確認</h3>
-        <span className="text-xs text-white/45">自動非表示・非表示中の投稿</span>
+        <h3 className="text-base font-bold text-white">{showAll ? "全投稿の表示管理" : "AIモデレーション要確認"}</h3>
+        <span className="text-xs text-white/45">{showAll ? "すべての投稿を表示/非表示" : "自動非表示・非表示中の投稿"}</span>
+        <button
+          type="button"
+          onClick={() => setShowAll((v) => !v)}
+          className="ml-auto rounded-lg border border-white/15 px-2.5 py-1 text-xs font-bold text-white/80 hover:bg-white/10 hover:text-white"
+        >
+          {showAll ? "要確認のみ表示" : "全投稿を表示"}
+        </button>
         <button
           type="button"
           onClick={() => void load()}
-          className="ml-auto rounded-lg border border-white/15 px-2.5 py-1 text-xs text-white/70 hover:bg-white/10 hover:text-white"
+          className="rounded-lg border border-white/15 px-2.5 py-1 text-xs text-white/70 hover:bg-white/10 hover:text-white"
         >
           再読込
         </button>
@@ -114,7 +135,7 @@ export function InteropModerationAdmin() {
           <Loader2 className="h-6 w-6 animate-spin" />
         </div>
       ) : posts.length === 0 ? (
-        <p className="py-10 text-center text-sm text-white/45">要確認の投稿はありません。</p>
+        <p className="py-10 text-center text-sm text-white/45">{showAll ? "投稿がありません。" : "要確認の投稿はありません。"}</p>
       ) : (
         <ul className="space-y-3">
           {posts.map((p) => (
@@ -143,15 +164,27 @@ export function InteropModerationAdmin() {
               )}
 
               <div className="mt-3 flex gap-2">
-                <button
-                  type="button"
-                  disabled={busy === p.id}
-                  onClick={() => publish(p.id)}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-400/40 bg-emerald-400/15 px-3 py-1.5 text-xs font-bold text-emerald-200 transition hover:bg-emerald-400/25 disabled:opacity-40"
-                >
-                  {busy === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                  公開する（問題なし）
-                </button>
+                {p.isHidden ? (
+                  <button
+                    type="button"
+                    disabled={busy === p.id}
+                    onClick={() => setHidden(p.id, false)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-400/40 bg-emerald-400/15 px-3 py-1.5 text-xs font-bold text-emerald-200 transition hover:bg-emerald-400/25 disabled:opacity-40"
+                  >
+                    {busy === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Eye className="h-3.5 w-3.5" />}
+                    公開する
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={busy === p.id}
+                    onClick={() => setHidden(p.id, true)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-amber-400/40 bg-amber-400/15 px-3 py-1.5 text-xs font-bold text-amber-200 transition hover:bg-amber-400/25 disabled:opacity-40"
+                  >
+                    {busy === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <EyeOff className="h-3.5 w-3.5" />}
+                    非表示にする
+                  </button>
+                )}
                 <button
                   type="button"
                   disabled={busy === p.id}
@@ -161,7 +194,7 @@ export function InteropModerationAdmin() {
                   <Trash2 className="h-3.5 w-3.5" /> 削除
                 </button>
                 <span className="ml-auto inline-flex items-center gap-1 text-[11px] text-white/30">
-                  <Eye className="h-3 w-3" /> 公開すると一般来場者に表示されます
+                  <Eye className="h-3 w-3" /> {p.isHidden ? "公開すると一般来場者に表示されます" : "表示中"}
                 </span>
               </div>
             </li>
