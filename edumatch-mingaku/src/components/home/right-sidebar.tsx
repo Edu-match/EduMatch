@@ -4,6 +4,7 @@ import { Crown } from "lucide-react";
 import { getPopularServicesByEngagement } from "@/app/_actions/popularity";
 import { createClient } from "@/utils/supabase/server";
 import { ThumbnailOrTitle } from "@/components/ui/thumbnail-or-title";
+import { ForumMapSidebarWidget } from "@/components/community/forum-map-sidebar-widget";
 
 const rankColors = [
   "bg-[#ef4444] text-white", // 1位: 赤
@@ -26,6 +27,9 @@ export async function RightSidebar() {
 
   return (
     <aside className="space-y-4">
+      {/* 井戸端マップ（PR枠）— /forum の本物マップへ誘導 */}
+      <ForumMapSidebarWidget />
+
       {/* ログイン・登録エリア（未ログイン時のみ表示） */}
       {!isAuthenticated && (
         <div className="border rounded-lg bg-card p-4">

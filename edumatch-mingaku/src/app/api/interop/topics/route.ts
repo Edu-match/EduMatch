@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { dbRowToTopic } from "@/lib/interop-priority-topics";
+import { getTopicEdges } from "@/lib/interop-axis-db";
 
 export const dynamic = "force-dynamic";
 
@@ -34,10 +35,12 @@ export async function GET(req: NextRequest) {
       pointLinks: Array.isArray(r.point_links) ? r.point_links : [],
       axisX: r.axis_x, axisY: r.axis_y, sortOrder: r.sort_order, isActive: r.is_active,
     }));
-    return NextResponse.json({ topics, positions, rawTopics });
+    // 内容ベースのノード接続（Gemma生成。未生成なら空＝マップは幾何接続にフォールバック）
+    const edges = await getTopicEdges();
+    return NextResponse.json({ topics, positions, rawTopics, edges });
   } catch (err) {
     console.error("[interop/topics GET]", err);
-    return NextResponse.json({ topics: [], positions: {}, rawTopics: [] }, { status: 200 });
+    return NextResponse.json({ topics: [], positions: {}, rawTopics: [], edges: [] }, { status: 200 });
   }
 }
 

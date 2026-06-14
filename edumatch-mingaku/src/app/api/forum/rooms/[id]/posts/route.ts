@@ -83,6 +83,8 @@ export async function GET(
       isHidden: post.is_hidden,
       relatedArticleUrl: post.related_article_url ?? undefined,
       aiKenteiPassed: post.ai_kentei_passed,
+      toneFlag: post.tone_flag || undefined,
+      toneReason: post.tone_reason || undefined,
       replies: post.replies.map((r, replyIndex) =>
         mapForumReplyForApi(r, {
           post: {
@@ -243,6 +245,9 @@ export async function POST(
         body: postBody.trim(),
         related_article_url: relatedArticleUrl?.trim() || null,
         ai_kentei_passed: aiKenteiPassed,
+        // 掲載は可だが「キツい/非建設的/ネガ」なトーンは警告バッジ用に保存
+        tone_flag: moderation.toneFlag === "ok" ? "" : moderation.toneFlag,
+        tone_reason: moderation.toneFlag === "ok" ? "" : moderation.toneReason,
       },
       include: { topic: { select: { id: true, title: true } } },
     });
@@ -267,6 +272,8 @@ export async function POST(
         isPinned: post.is_pinned,
         relatedArticleUrl: post.related_article_url ?? undefined,
         aiKenteiPassed: post.ai_kentei_passed,
+        toneFlag: post.tone_flag || undefined,
+        toneReason: post.tone_reason || undefined,
         replies: [],
       },
     }, { status: 201 });

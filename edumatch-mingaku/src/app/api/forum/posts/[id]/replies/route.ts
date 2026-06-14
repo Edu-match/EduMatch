@@ -134,6 +134,8 @@ export async function POST(
     const isAiFacilitator = trimmedName === FORUM_AI_FACILITATOR_NAME;
 
     // AIファシリテーター以外はモデレーション対象
+    let toneFlag = "";
+    let toneReason = "";
     if (!isAiFacilitator) {
       const url = new URL(req.url);
       const origin = `${url.protocol}//${url.host}`;
@@ -145,6 +147,10 @@ export async function POST(
         userName: profile.name || user.email?.split("@")[0] || "（不明）",
         contextUrl: `${origin}/forum/${post.room_id}`,
       });
+      if (moderation.toneFlag !== "ok") {
+        toneFlag = moderation.toneFlag;
+        toneReason = moderation.toneReason;
+      }
       if (moderation.skipped) {
         return NextResponse.json(
           { error: "サーバー設定が不足しています。" },
@@ -194,6 +200,8 @@ export async function POST(
         author_role: resolvedAuthorRole,
         body: replyBody.trim(),
         ai_kentei_passed: isAiFacilitator ? false : aiKenteiPassed,
+        tone_flag: toneFlag,
+        tone_reason: toneReason,
       },
     });
 

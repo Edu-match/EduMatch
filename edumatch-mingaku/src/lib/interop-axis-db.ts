@@ -49,3 +49,35 @@ export async function saveAxisConfig(c: AxisConfig): Promise<void> {
     SET x_left = ${c.xLeft}, x_right = ${c.xRight}, y_top = ${c.yTop}, y_bottom = ${c.yBottom}, updated_at = now()
     WHERE id = 1`;
 }
+
+export type TopicEdge = { a: number; b: number; weight: number };
+
+/** トピック間の内容ベース関連（Gemmaが日次で生成）。テーブル未作成なら空配列。 */
+export async function getTopicEdges(): Promise<TopicEdge[]> {
+  try {
+    const rows = await prisma.$queryRaw<
+      Array<{ topic_no_a: number; topic_no_b: number; weight: number }>
+    >`SELECT topic_no_a, topic_no_b, weight FROM interop_topic_edges`;
+    return rows.map((r) => ({ a: Number(r.topic_no_a), b: Number(r.topic_no_b), weight: Number(r.weight) }));
+  } catch {
+    return [];
+  }
+}
+
+/** 関連エッジを総入れ替え（a<b に正規化・重複排除）。 */
+export async function saveTopicEdges(edges: Array<{ a: number; b: number; weight?: number }>): Promise<void> {
+  const norm = new Map<string, TopicEdge>();
+  for (const e of edges) {
+    const a = Math.min(e.a, e.b);
+    const b = Math.max(e.a, e.b);
+    if (a === b || !Number.isFinite(a) || !Number.isFinite(b)) continue;
+    norm.set(`${a}:${b}`, { a, b, weight: Number.isFinite(e.weight) ? Number(e.weight) : 1 });
+  }
+  await prisma.$executeRaw`DELETE FROM interop_topic_edges`;
+  for (const e of norm.values()) {
+    await prisma.$executeRaw`
+      INSERT INTO interop_topic_edges (topic_no_a, topic_no_b, weight, updated_at)
+      VALUES (${e.a}, ${e.b}, ${e.weight}, now())
+      ON CONFLICT (topic_no_a, topic_no_b) DO UPDATE SET weight = ${e.weight}, updated_at = now()`;
+  }
+}

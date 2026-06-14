@@ -185,6 +185,8 @@ export async function POST(req: NextRequest) {
     // 自動で非表示(is_hidden)＋フラグ(auto_flagged)にして保存し、管理画面で確認・解除できるようにする。
     let autoHidden = false;
     let flagReason = "";
+    let toneFlag = "";
+    let toneReason = "";
     if (!isAdmin) {
       const url = new URL(req.url);
       const origin = `${url.protocol}//${url.host}`;
@@ -200,6 +202,11 @@ export async function POST(req: NextRequest) {
       if (moderation && !moderation.skipped && !moderation.allowed) {
         autoHidden = true;
         flagReason = moderation.slackSummaryJa || "AIが不適切の可能性を検知";
+      }
+      // 掲載は可だが配慮が要るトーンは警告用に保存（非表示にはしない）
+      if (moderation && !moderation.skipped && moderation.allowed && moderation.toneFlag !== "ok") {
+        toneFlag = moderation.toneFlag;
+        toneReason = moderation.toneReason;
       }
     }
 
@@ -228,6 +235,8 @@ export async function POST(req: NextRequest) {
         is_hidden: autoHidden,
         auto_flagged: autoHidden,
         flag_reason: flagReason,
+        tone_flag: toneFlag,
+        tone_reason: toneReason,
       },
     });
 

@@ -41,6 +41,7 @@ export default async function HomePage() {
                     initialInteropActivity={initialActivity.interop}
                     initialForumActivity={initialActivity.forum}
                     showChat={false}
+                    embedded
                   />
                 </Suspense>
               </div>

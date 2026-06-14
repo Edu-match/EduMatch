@@ -568,6 +568,9 @@ model InteropPost {
   auto_flagged    Boolean            @default(false)
   /// AI判定の理由（管理者レビュー用）
   flag_reason     String             @default("")
+  /// トーン分類（"" =問題なし / negative / non_constructive / harsh）。掲載は可だが警告バッジを表示。
+  tone_flag       String             @default("")
+  tone_reason     String             @default("")
   /// AIファシリテーターによる返信かどうか
   is_ai_reply     Boolean            @default(false)
   /// 元投稿ID（AIファシリテーター返信の場合のみセット）
@@ -597,6 +600,21 @@ model InteropPostLike {
   @@unique([post_id, voter_key])
   @@index([post_id])
   @@map("interop_post_likes")
+}
+
+/// 教育AIサミット＠議員会館 特設ページ「ご意見・要望」の書き込み（来場者・ログイン不要）。
+/// 既存テーブルへのFK追加なしの独立テーブル（additive）。
+model KaikanVoice {
+  id          String   @id @default(uuid()) @db.Uuid
+  /// 任意の表示名（未入力なら空）
+  author_name String   @default("")
+  body        String
+  /// 管理者が非表示にした場合 true
+  is_hidden   Boolean  @default(false)
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([created_at])
+  @@map("kaikan_voices")
 }
 
 /// Interop特設ページのサイト設定（テキスト・テーマ等のkey-value）
@@ -728,6 +746,10 @@ model ForumPost {
   is_pinned           Boolean         @default(false)
   is_hidden           Boolean         @default(false)
   ai_kentei_passed    Boolean         @default(false)
+  /// トーン分類（"" =問題なし / negative / non_constructive / harsh）。掲載は可だが警告バッジを表示。
+  tone_flag           String          @default("")
+  /// トーン判定の理由（バッジのツールチップ用）
+  tone_reason         String          @default("")
   created_at          DateTime        @default(now())
   updated_at          DateTime        @updatedAt
   room                ForumRoom       @relation(fields: [room_id], references: [id], onDelete: Cascade)
@@ -748,6 +770,9 @@ model ForumReply {
   author_role      String    @default("一般")
   body             String
   ai_kentei_passed Boolean   @default(false)
+  /// トーン分類（"" =問題なし / negative / non_constructive / harsh）
+  tone_flag        String    @default("")
+  tone_reason      String    @default("")
   created_at       DateTime  @default(now())
   post             ForumPost @relation(fields: [post_id], references: [id], onDelete: Cascade)
   author           Profile?  @relation(fields: [author_id], references: [id], onDelete: SetNull)

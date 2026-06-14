@@ -165,6 +165,7 @@ export function InteropExplorer({
   initialInteropActivity = null,
   initialForumActivity = null,
   showChat = true,
+  embedded = false,
 }: {
   themeMode?: InteropThemeMode;
   guideText?: string;
@@ -172,6 +173,9 @@ export function InteropExplorer({
   initialForumActivity?: { rooms?: ForumRoomActivityPayload[] } | null;
   /** 来場者向けAIチャット(fixed配置)を出すか。井戸端会議・ホーム埋め込みでは false。 */
   showChat?: boolean;
+  /** ホーム等への埋め込みプレビュー。true ならライブポーリング（activity/recent-posts）を止め、
+   *  SSR初期値のみで表示する（ホーム遷移を軽くするため）。 */
+  embedded?: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -212,12 +216,14 @@ export function InteropExplorer({
   // DB管理の話題玉（28玉）。空ならマップ側がハードコードのデフォルトにフォールバック。
   const [dbTopics, setDbTopics] = useState<InteropPriorityTopic[] | undefined>(undefined);
   const [dbTopicPositions, setDbTopicPositions] = useState<Record<number, AxisPoint> | undefined>(undefined);
+  const [topicEdges, setTopicEdges] = useState<Array<{ a: number; b: number }>>([]);
   useEffect(() => {
     fetch("/api/interop/topics")
       .then((r) => r.json())
       .then((d) => {
         if (Array.isArray(d.topics) && d.topics.length > 0) setDbTopics(d.topics);
         if (d.positions && Object.keys(d.positions).length > 0) setDbTopicPositions(d.positions);
+        if (Array.isArray(d.edges)) setTopicEdges(d.edges);
       })
       .catch(() => {});
   }, []);
@@ -240,6 +246,12 @@ export function InteropExplorer({
   const [livePosts, setLivePosts] = useState<Array<{ id: string; body: string; authorName: string; subId?: string }>>([]);
   const [livePostsReady, setLivePostsReady] = useState(false);
   useEffect(() => {
+    // 埋め込みプレビューではライブ投稿(オレンジ吹き出し)のポーリングを行わない。
+    // ready だけ立て、マップ側のサンプルコメント演出は通常通り動かす。
+    if (embedded) {
+      setLivePostsReady(true);
+      return;
+    }
     const load = () =>
       fetch("/api/interop/recent-posts")
         .then((r) => r.json())
@@ -251,7 +263,7 @@ export function InteropExplorer({
     load();
     const t = window.setInterval(load, 5_000);
     return () => window.clearInterval(t);
-  }, []);
+  }, [embedded]);
 
   const satellites = useMemo<InteropSatellite[]>(() => {
     const defs = [
@@ -306,10 +318,13 @@ export function InteropExplorer({
   }, []);
 
   useEffect(() => {
+    // 埋め込みプレビューは SSR 初期値(initialMaps)のみで表示し、定期ポーリングしない
+    // （ホームを開くたびの activity/forum-rooms 取得を止めて遷移を軽くする）。
+    if (embedded) return;
     loadActivity();
     const timer = window.setInterval(loadActivity, ACTIVITY_POLL_MS);
     return () => window.clearInterval(timer);
-  }, [loadActivity]);
+  }, [loadActivity, embedded]);
 
   useEffect(() => {
     let cancelled = false;
@@ -397,9 +412,11 @@ export function InteropExplorer({
             axisConfig={axis.config}
             topics={dbTopics}
             topicPositions={topicPositions}
+            topicEdges={topicEdges}
             satellites={satellites}
             livePosts={livePosts}
             livePostsReady={livePostsReady}
+            aiBarReserved={showChat}
             iconFor={iconFor}
             onSelectCategory={handleSelectFromMap}
             onSelectTopic={handleSelectTopic}

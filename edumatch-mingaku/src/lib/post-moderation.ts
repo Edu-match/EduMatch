@@ -48,6 +48,8 @@ export async function moderateAndNotify(
       slackAlert: false,
       slackSummaryJa: "OPENAI_API_KEY 未設定",
       source: "error",
+      toneFlag: "ok",
+      toneReason: "",
       skipped: true,
     };
   }
@@ -66,6 +68,8 @@ export async function moderateAndNotify(
       userName: args.userName,
       blocked: !outcome.allowed,
       contextUrl: args.contextUrl,
+      toneFlag: outcome.toneFlag,
+      toneReason: outcome.toneReason,
     };
     void sendSlackCommunityAlert(webhook, payload);
   }

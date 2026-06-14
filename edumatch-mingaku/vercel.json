@@ -11,6 +11,18 @@
     {
       "path": "/api/cron/forum-ai-delayed-replies",
       "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/interop-axis-positions",
+      "schedule": "20 15 * * *"
+    },
+    {
+      "path": "/api/cron/interop-topic-edges",
+      "schedule": "40 15 * * *"
+    },
+    {
+      "path": "/api/cron/interop-axis-config",
+      "schedule": "0 16 * * 1"
     }
   ]
 }

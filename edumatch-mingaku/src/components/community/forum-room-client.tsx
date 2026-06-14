@@ -17,9 +17,12 @@ import {
   List,
   ListOrdered,
   Loader2,
+  AlertTriangle,
   LogIn,
+  MessageCircle,
   MessageSquare,
   PenSquare,
+  Send,
   Pin,
   Plus,
   Quote,
@@ -78,6 +81,18 @@ import { FORUM_AI_FACILITATOR_NAME } from "@/lib/forum-constants";
 import { isForumAiFacilitatorReply } from "@/lib/forum-ai-reply";
 import { ForumCategoryContentPanel } from "@/components/community/forum-category-content-panel";
 import type { CategoryContentItem } from "@/lib/forum-category-content";
+import { InteropBackdrop } from "@/components/interop/interop-backdrop";
+
+// ─── 特設ページ（interop-board）に合わせたダークテーマ共通スタイル ───
+/** 投稿カード等の半透明ガラス面（特設ページと同一） */
+const POST_SURFACE = {
+  background: "linear-gradient(145deg, rgba(14,20,52,0.62) 0%, rgba(8,12,36,0.72) 100%)",
+  backdropFilter: "blur(16px) saturate(1.15)",
+  WebkitBackdropFilter: "blur(16px) saturate(1.15)",
+  boxShadow: "0 8px 32px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.12)",
+} as const;
+/** アクセントカラー（井戸端会議＝インディゴ系） */
+const ACCENT = "#8da2e8";
 
 /** カテゴリルーム（大カテゴリ×サブカテゴリ）で上部に表示するコンテキスト */
 export type ForumCategoryContext = {
@@ -199,33 +214,34 @@ function CommunityRoomsSection({
   };
 
   return (
-    <div className="border-b bg-muted/20">
+    <div className="border-b border-white/10">
       <div className="container py-6">
-        <div className="mx-auto max-w-5xl space-y-4">
-          <p className="text-sm font-semibold text-foreground">このコミュニティの部屋</p>
+        <div className="mx-auto max-w-2xl space-y-4">
+          <p className="text-sm font-semibold text-white/85">このコミュニティの部屋</p>
 
           {/* 部屋カード一覧 */}
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             {rooms.map((r) => (
               <Link
                 key={r.id}
                 href={`/forum/${r.id}`}
-                className="group flex items-start gap-3 rounded-xl border bg-background p-3 transition-all hover:border-primary/30 hover:shadow-sm"
+                className="group flex items-start gap-3 rounded-xl border border-white/12 p-3 transition-all hover:border-white/25"
+                style={POST_SURFACE}
               >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-muted/30">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04]">
                   <ForumRoomIcon roomId={r.id} emoji={r.emoji} size={36} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold group-hover:text-primary">{r.name}</p>
+                  <p className="truncate text-sm font-semibold text-white/90">{r.name}</p>
                   {r.description ? (
-                    <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{r.description}</p>
+                    <p className="mt-0.5 line-clamp-1 text-xs text-white/55">{r.description}</p>
                   ) : null}
-                  <div className="mt-1.5 flex items-center gap-2 text-[11px] text-muted-foreground">
+                  <div className="mt-1.5 flex items-center gap-2 text-[11px] text-white/50">
                     <span className="flex items-center gap-0.5"><MessageSquare className="h-3 w-3" />{r.postCount}</span>
                     <span className="flex items-center gap-0.5"><Users className="h-3 w-3" />{r.participantCount}</span>
                   </div>
                 </div>
-                <ArrowLeft className="mt-0.5 h-3.5 w-3.5 shrink-0 rotate-180 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-primary/60" />
+                <ArrowLeft className="mt-0.5 h-3.5 w-3.5 shrink-0 rotate-180 text-white/30 transition-transform group-hover:translate-x-0.5 group-hover:text-white/60" />
               </Link>
             ))}
 
@@ -234,19 +250,19 @@ function CommunityRoomsSection({
               <button
                 type="button"
                 onClick={handleOpenCreate}
-                className="flex items-center justify-center gap-2 rounded-xl border-2 border-dashed bg-background/60 p-4 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+                className="flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-white/20 bg-white/[0.03] p-4 text-sm font-medium text-white/55 transition-colors hover:border-white/35 hover:text-white"
               >
                 <Plus className="h-4 w-4" />
                 {isLoggedIn ? "新しい部屋を作る" : "ログインして部屋を作る"}
               </button>
             ) : (
-              <div className="rounded-xl border-2 border-primary/30 bg-background p-4 space-y-3">
-                <p className="text-sm font-semibold text-foreground">新しい部屋</p>
+              <div className="rounded-xl border-2 p-4 space-y-3" style={{ ...POST_SURFACE, borderColor: `${ACCENT}55` }}>
+                <p className="text-sm font-semibold text-white/90">新しい部屋</p>
                 <Input
                   value={roomName}
                   onChange={(e) => { setRoomName(e.target.value); setError(null); }}
                   placeholder="部屋名（例: 授業実践シェア）"
-                  className="text-sm"
+                  className="border-white/15 bg-white/[0.04] text-sm text-white placeholder:text-white/35"
                   autoFocus
                   onKeyDown={(e) => e.key === "Enter" && handleCreate()}
                 />
@@ -254,18 +270,19 @@ function CommunityRoomsSection({
                   rows={2}
                   value={roomDesc}
                   onChange={(e) => setRoomDesc(e.target.value)}
-                  className="resize-none text-sm"
+                  className="resize-none border-white/15 bg-white/[0.04] text-sm text-white placeholder:text-white/35"
                   placeholder="説明（省略可）"
                 />
                 <ForumEmojiPicker value={roomEmoji} onChange={setRoomEmoji} />
                 {error && (
-                  <p className="text-xs font-medium text-destructive">{error}</p>
+                  <p className="text-xs font-medium text-rose-400">{error}</p>
                 )}
                 <div className="flex justify-end gap-2">
                   <Button
                     type="button"
                     size="sm"
                     variant="ghost"
+                    className="text-white/60 hover:bg-white/10 hover:text-white"
                     onClick={() => {
                       setCreateOpen(false);
                       setRoomName("");
@@ -281,6 +298,8 @@ function CommunityRoomsSection({
                     size="sm"
                     onClick={handleCreate}
                     disabled={!roomName.trim() || saving}
+                    className="border-0 text-white"
+                    style={{ background: ACCENT }}
                   >
                     {saving ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1 h-3.5 w-3.5" />}
                     作成して入室
@@ -301,12 +320,12 @@ const ROLE_STYLES: Record<
   ForumOccupationVisual,
   { bg: string; text: string; border: string; icon: string }
 > = {
-  教員: { bg: "bg-blue-100", text: "text-blue-700", border: "border-blue-200", icon: "🎓" },
-  学生: { bg: "bg-green-100", text: "text-green-700", border: "border-green-200", icon: "📚" },
-  専門家: { bg: "bg-purple-100", text: "text-purple-700", border: "border-purple-200", icon: "🔬" },
-  企業: { bg: "bg-orange-100", text: "text-orange-700", border: "border-orange-200", icon: "🏢" },
-  一般: { bg: "bg-gray-100", text: "text-gray-600", border: "border-gray-200", icon: "👤" },
-  匿名: { bg: "bg-gray-50", text: "text-gray-500", border: "border-gray-100", icon: "🎭" },
+  教員: { bg: "bg-sky-400/15", text: "text-sky-200", border: "border-sky-300/30", icon: "🎓" },
+  学生: { bg: "bg-emerald-400/15", text: "text-emerald-200", border: "border-emerald-300/30", icon: "📚" },
+  専門家: { bg: "bg-violet-400/15", text: "text-violet-200", border: "border-violet-300/30", icon: "🔬" },
+  企業: { bg: "bg-amber-400/15", text: "text-amber-200", border: "border-amber-300/30", icon: "🏢" },
+  一般: { bg: "bg-white/8", text: "text-white/70", border: "border-white/20", icon: "👤" },
+  匿名: { bg: "bg-white/5", text: "text-white/50", border: "border-white/12", icon: "🎭" },
 };
 
 function forumRolePreviewFromProfile(
@@ -335,7 +354,7 @@ function OccupationBadge({ storedAuthorRole }: { storedAuthorRole: string }) {
 
 function AiBadge() {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-0.5 text-xs font-semibold text-violet-700">
+    <span className="inline-flex items-center gap-1 rounded-full border border-indigo-300/35 bg-indigo-400/15 px-2.5 py-0.5 text-xs font-semibold text-indigo-200">
       <Bot className="h-3 w-3" />
       AI
     </span>
@@ -346,10 +365,30 @@ function AiKenteiBadge() {
   return (
     <span
       title="AI検定 合格者"
-      className="inline-flex items-center gap-0.5 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700"
+      className="inline-flex items-center gap-0.5 rounded-full border border-amber-300/40 bg-amber-400/15 px-2 py-0.5 text-[10px] font-bold text-amber-200"
     >
       <Sparkles className="h-2.5 w-2.5" />
       AI検定合格
+    </span>
+  );
+}
+
+const TONE_BADGE_LABEL: Record<string, string> = {
+  negative: "ネガティブ表現の可能性",
+  non_constructive: "非建設的な否定の可能性",
+  harsh: "キツい表現の可能性",
+};
+
+/** 掲載は可だが配慮が要るトーンの警告バッジ（モデレーションAIが付与） */
+function ToneBadge({ flag, reason }: { flag?: string; reason?: string }) {
+  if (!flag || !(flag in TONE_BADGE_LABEL)) return null;
+  return (
+    <span
+      title={reason || TONE_BADGE_LABEL[flag]}
+      className="inline-flex items-center gap-0.5 rounded-full border border-orange-300/40 bg-orange-400/15 px-2 py-0.5 text-[10px] font-bold text-orange-200"
+    >
+      <AlertTriangle className="h-2.5 w-2.5" />
+      {TONE_BADGE_LABEL[flag]}
     </span>
   );
 }
@@ -370,7 +409,7 @@ function Avatar({
   const textSize = size === "sm" ? "text-xs" : "text-sm";
   if (isAi) {
     return (
-      <div className={`flex ${dim} shrink-0 items-center justify-center rounded-full border border-violet-200 bg-violet-100 text-violet-700`}>
+      <div className={`flex ${dim} shrink-0 items-center justify-center rounded-full border border-indigo-300/35 bg-indigo-400/20 text-indigo-200`}>
         <Bot className={iconSize} />
       </div>
     );
@@ -390,21 +429,21 @@ function Avatar({
 function AiStreamingReply({ streamText }: { streamText: string }) {
   return (
     <div className="relative pl-7">
-      <span aria-hidden className="absolute left-3 top-0 bottom-0 w-px bg-violet-200" />
-      <span aria-hidden className="absolute left-2.5 top-5 h-1.5 w-1.5 rounded-full bg-violet-400" />
+      <span aria-hidden className="absolute left-3 top-0 bottom-0 w-px bg-indigo-300/30" />
+      <span aria-hidden className="absolute left-2.5 top-5 h-1.5 w-1.5 rounded-full bg-indigo-300/70" />
       <div className="flex gap-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-violet-200 bg-violet-100 text-violet-700">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-indigo-300/35 bg-indigo-400/20 text-indigo-200">
           <Bot className="h-4 w-4" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2 mb-1">
-            <span className="text-sm font-semibold text-violet-800">AIファシリテーター</span>
+            <span className="text-sm font-semibold text-indigo-200">AIファシリテーター</span>
             <AiBadge />
-            <span className="text-xs text-muted-foreground">たった今</span>
+            <span className="text-xs text-white/40">たった今</span>
           </div>
-          <p className="text-sm leading-7 whitespace-pre-wrap text-foreground">
+          <p className="text-sm leading-7 whitespace-pre-wrap text-white/85">
             {streamText}
-            <span className="inline-block w-0.5 h-4 bg-violet-500 ml-0.5 animate-pulse align-text-bottom" />
+            <span className="inline-block w-0.5 h-4 bg-indigo-300 ml-0.5 animate-pulse align-text-bottom" />
           </p>
         </div>
       </div>
@@ -480,24 +519,24 @@ function ReplyCard({
 
   return (
     <div className="relative pl-7">
-      <span aria-hidden className={`absolute left-3 top-0 bottom-0 w-px ${isAiReply ? "bg-violet-200" : "bg-muted"}`} />
-      <span aria-hidden className={`absolute left-2.5 top-5 h-1.5 w-1.5 rounded-full ${isAiReply ? "bg-violet-400" : "bg-muted-foreground/40"}`} />
+      <span aria-hidden className={`absolute left-3 top-0 bottom-0 w-px ${isAiReply ? "bg-indigo-300/30" : "bg-white/12"}`} />
+      <span aria-hidden className={`absolute left-2.5 top-5 h-1.5 w-1.5 rounded-full ${isAiReply ? "bg-indigo-300/70" : "bg-white/30"}`} />
       <div className="flex gap-3">
         <Avatar name={displayAuthorName} storedAuthorRole={reply.authorRole} isAi={isAiReply} size="sm" />
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2 mb-1">
-            <span className={`text-sm font-semibold ${isAiReply ? "text-violet-800" : ""}`}>{displayAuthorName}</span>
+            <span className={`text-sm font-semibold ${isAiReply ? "text-indigo-200" : "text-white/85"}`}>{displayAuthorName}</span>
             {isAiReply ? <AiBadge /> : <OccupationBadge storedAuthorRole={reply.authorRole} />}
             {!isAiReply && reply.aiKenteiPassed && <AiKenteiBadge />}
-            <span className="text-xs text-muted-foreground"><RelativeTime iso={reply.postedAt} /></span>
+            <span className="text-xs text-white/40"><RelativeTime iso={reply.postedAt} /></span>
           </div>
-          <p className="text-sm leading-7 whitespace-pre-wrap">{reply.body}</p>
+          <p className="text-sm leading-7 whitespace-pre-wrap text-white/80">{reply.body}</p>
           <button
             type="button"
             onClick={toggleLike}
-            className={`mt-2 flex items-center gap-1 text-xs transition-colors ${liked ? "text-pink-500" : "text-muted-foreground hover:text-pink-500"}`}
+            className={`mt-2 flex items-center gap-1 text-xs transition-colors ${liked ? "text-pink-400" : "text-white/45 hover:text-pink-400"}`}
           >
-            <Heart className={`h-3.5 w-3.5 ${liked ? "fill-pink-500" : ""}`} />
+            <Heart className={`h-3.5 w-3.5 ${liked ? "fill-pink-400" : ""}`} />
             {likeCount}
           </button>
         </div>
@@ -638,33 +677,40 @@ function PostCardWithStream({
   };
 
   return (
-    <div className={`overflow-hidden rounded-xl border bg-card shadow-xs transition-shadow hover:shadow-sm ${post.isPinned ? "border-amber-300 bg-amber-50/60 shadow-amber-100/60" : ""}`}>
+    <div
+      className="overflow-hidden rounded-2xl border transition-all"
+      style={
+        post.isPinned
+          ? { ...POST_SURFACE, borderColor: `${ACCENT}55`, background: `linear-gradient(145deg, rgba(14,20,52,0.68) 0%, ${ACCENT}1e 100%)` }
+          : { ...POST_SURFACE, borderColor: "rgba(255,255,255,0.16)" }
+      }
+    >
       {/* 注目バナー */}
       {post.isPinned && (
-        <div className="flex items-center gap-2 border-b border-amber-200 bg-amber-100/70 px-5 py-2">
-          <Pin className="h-3.5 w-3.5 fill-amber-500 text-amber-500" aria-hidden />
-          <span className="text-xs font-bold uppercase tracking-wider text-amber-700">注目</span>
-          <span className="ml-1 text-xs text-amber-600/80">運営ピックアップ</span>
+        <div className="flex items-center gap-2 border-b border-white/10 px-5 py-2" style={{ background: `${ACCENT}1f` }}>
+          <Pin className="h-3.5 w-3.5" style={{ color: ACCENT, fill: ACCENT }} aria-hidden />
+          <span className="text-xs font-bold uppercase tracking-wider" style={{ color: ACCENT }}>注目</span>
+          <span className="ml-1 text-xs text-white/55">運営ピックアップ</span>
         </div>
       )}
 
       {/* AI要約（AIファシリテーターの最初の返信を要約として上部に表示） */}
       {aiReply && (
-        <div className="border-b bg-violet-50/70 px-5 py-3">
+        <div className="border-b border-indigo-400/20 bg-indigo-950/30 px-5 py-3">
           <div className="flex items-start gap-2">
             <div className="flex shrink-0 items-center gap-1.5 pt-0.5">
-              <Bot className="h-3.5 w-3.5 text-violet-600" />
-              <span className="text-[11px] font-bold text-violet-700 uppercase tracking-wide">AI要約</span>
+              <Bot className="h-3.5 w-3.5 text-indigo-300" />
+              <span className="text-[11px] font-bold text-indigo-200 uppercase tracking-wide">AI要約</span>
             </div>
             <div className="min-w-0 flex-1">
-              <p className={`text-xs leading-relaxed text-violet-800 ${aiSummaryExpanded ? "" : "line-clamp-2"}`}>
+              <p className={`text-xs leading-relaxed text-indigo-100/90 ${aiSummaryExpanded ? "" : "line-clamp-2"}`}>
                 {aiReply.body}
               </p>
               {aiReply.body.length > 100 && (
                 <button
                   type="button"
                   onClick={() => setAiSummaryExpanded((v) => !v)}
-                  className="mt-1 text-[11px] text-violet-600 hover:underline"
+                  className="mt-1 text-[11px] text-indigo-300 hover:underline"
                 >
                   {aiSummaryExpanded ? "閉じる" : "続きを読む"}
                 </button>
@@ -679,38 +725,39 @@ function PostCardWithStream({
           <Avatar name={post.authorName} storedAuthorRole={post.authorRole} />
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2 mb-1">
-              <span className="text-sm font-semibold">{post.authorName}</span>
+              <span className="text-sm font-semibold text-white/90">{post.authorName}</span>
               <OccupationBadge storedAuthorRole={post.authorRole} />
               {post.aiKenteiPassed && <AiKenteiBadge />}
-              <span className="text-xs text-muted-foreground"><RelativeTime iso={post.postedAt} /></span>
+              <ToneBadge flag={post.toneFlag} reason={post.toneReason} />
+              <span className="text-xs text-white/40"><RelativeTime iso={post.postedAt} /></span>
             </div>
-            <p className="text-sm leading-7 whitespace-pre-wrap">{post.body}</p>
+            <p className="text-sm leading-7 whitespace-pre-wrap text-white/85">{post.body}</p>
             {post.relatedArticleUrl && (
               <a href={post.relatedArticleUrl} target="_blank" rel="noopener noreferrer"
-                className="mt-2 inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                className="mt-2 inline-flex items-center gap-1 text-xs hover:underline" style={{ color: ACCENT }}>
                 <Link2 className="h-3 w-3" />関連記事
               </a>
             )}
             <div className="mt-3 flex items-center gap-4">
               <button type="button" onClick={toggleLike}
-                className={`flex items-center gap-1 text-xs transition-colors ${liked ? "text-pink-500" : "text-muted-foreground hover:text-pink-500"}`}>
-                <Heart className={`h-3.5 w-3.5 ${liked ? "fill-pink-500" : ""}`} />
+                className={`flex items-center gap-1 text-xs transition-colors ${liked ? "text-pink-400" : "text-white/45 hover:text-pink-400"}`}>
+                <Heart className={`h-3.5 w-3.5 ${liked ? "fill-pink-400" : ""}`} />
                 {likeCount}
               </button>
               {hasReplies || isStreaming ? (
                 <button type="button" onClick={() => setRepliesOpen((v) => !v)}
-                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                  className="flex items-center gap-1 text-xs text-white/55 hover:text-white transition-colors">
                   <MessageSquare className="h-3.5 w-3.5" />
                   {replies.length + (isStreaming ? 1 : 0)} 件の返信
                   {autoOpenReplies ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                 </button>
               ) : (
-                <span className="flex items-center gap-1 text-xs text-muted-foreground/60">
+                <span className="flex items-center gap-1 text-xs text-white/35">
                   <MessageSquare className="h-3.5 w-3.5" />返信 0
                 </span>
               )}
               <button type="button" onClick={() => setShowReplyForm((v) => !v)}
-                className="text-xs text-primary hover:underline">返信する</button>
+                className="text-xs hover:underline" style={{ color: ACCENT }}>返信する</button>
               {post.authorUserId && currentUserId && post.authorUserId !== currentUserId && (
                 <ReportForumContentButton targetType="post" targetId={post.id} />
               )}
@@ -719,13 +766,13 @@ function PostCardWithStream({
         </div>
 
         {showReplyForm && (
-          <div className="mt-4 ml-12 overflow-hidden rounded-xl border bg-card">
-            <div className="flex items-center gap-2.5 border-b bg-muted/20 px-4 py-2.5">
+          <div className="mt-4 ml-12 overflow-hidden rounded-xl border border-white/12 bg-white/[0.03]">
+            <div className="flex items-center gap-2.5 border-b border-white/10 bg-white/[0.04] px-4 py-2.5">
               <UserAvatar name={isAnonReply ? "匿名" : (isLoggedIn ? userName : "ゲスト")} avatarUrl={isAnonReply ? null : avatarUrl} size={26} isAnon={isAnonReply} />
-              <span className="text-xs font-medium text-foreground">{isAnonReply ? "匿名ユーザー" : (isLoggedIn ? userName : "ゲスト")}</span>
+              <span className="text-xs font-medium text-white/85">{isAnonReply ? "匿名ユーザー" : (isLoggedIn ? userName : "ゲスト")}</span>
               {!isAnonReply && (
                 <>
-                  <span className="text-muted-foreground/40">·</span>
+                  <span className="text-white/30">·</span>
                   <OccupationBadge storedAuthorRole={replyPreviewRole} />
                   {aiKenteiPassed && <AiKenteiBadge />}
                 </>
@@ -737,7 +784,7 @@ function PostCardWithStream({
                   className={["rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors",
                     isAnonReply
                       ? `${ROLE_STYLES["匿名"].bg} ${ROLE_STYLES["匿名"].text} ${ROLE_STYLES["匿名"].border}`
-                      : "border-transparent text-muted-foreground hover:bg-muted",
+                      : "border-transparent text-white/45 hover:bg-white/10",
                   ].join(" ")}
                 >{ROLE_STYLES["匿名"].icon} 匿名</button>
               </div>
@@ -747,12 +794,12 @@ function PostCardWithStream({
               onChange={(e) => setReplyText(e.target.value)}
               placeholder="返信を入力…"
               rows={3}
-              className="w-full resize-none bg-transparent px-4 py-3 text-sm leading-6 outline-none placeholder:text-muted-foreground/50"
+              className="w-full resize-none bg-transparent px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-white/35"
               autoFocus
             />
-            <div className="flex items-center justify-end gap-2 border-t bg-muted/20 px-4 py-2">
-              <Button variant="ghost" size="sm" onClick={() => { setShowReplyForm(false); setReplyText(""); }} className="h-7 text-xs">キャンセル</Button>
-              <Button size="sm" onClick={submitReply} disabled={!canSubmitReply} className="h-7 rounded-full px-4 text-xs gap-1.5">
+            <div className="flex items-center justify-end gap-2 border-t border-white/10 bg-white/[0.04] px-4 py-2">
+              <Button variant="ghost" size="sm" onClick={() => { setShowReplyForm(false); setReplyText(""); }} className="h-7 text-xs text-white/60 hover:bg-white/10 hover:text-white">キャンセル</Button>
+              <Button size="sm" onClick={submitReply} disabled={!canSubmitReply} className="h-7 rounded-full px-4 text-xs gap-1.5 border-0 text-white" style={{ background: ACCENT }}>
                 {submittingReply && <Loader2 className="h-3 w-3 animate-spin" />}
                 返信する
               </Button>
@@ -763,7 +810,7 @@ function PostCardWithStream({
 
       {/* 返信 + AIストリーミング */}
       {(autoOpenReplies && (hasReplies || isStreaming)) && (
-        <div className="border-t bg-muted/10 px-5 py-4 space-y-4">
+        <div className="border-t border-white/10 bg-black/15 px-5 py-4 space-y-4">
           {replies.map((reply, replyIndex) => (
             <ReplyCard
               key={reply.id}
@@ -780,17 +827,17 @@ function PostCardWithStream({
           {isStreaming && streamText !== null && (
             streamText === "" ? (
               <div className="relative pl-7">
-                <span aria-hidden className="absolute left-3 top-0 bottom-0 w-px bg-violet-200" />
-                <span aria-hidden className="absolute left-2.5 top-5 h-1.5 w-1.5 rounded-full bg-violet-400" />
+                <span aria-hidden className="absolute left-3 top-0 bottom-0 w-px bg-indigo-300/30" />
+                <span aria-hidden className="absolute left-2.5 top-5 h-1.5 w-1.5 rounded-full bg-indigo-300/70" />
                 <div className="flex gap-3">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-violet-200 bg-violet-100 text-violet-700">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-indigo-300/35 bg-indigo-400/20 text-indigo-200">
                     <Bot className="h-4 w-4" />
                   </div>
                   <div className="flex items-center gap-2 py-2">
-                    <span className="text-xs text-violet-600 font-medium">AIファシリテーターが考えています</span>
+                    <span className="text-xs text-indigo-200 font-medium">AIファシリテーターが考えています</span>
                     <span className="flex gap-1">
                       {[0, 1, 2].map((i) => (
-                        <span key={i} className="inline-block h-1.5 w-1.5 rounded-full bg-violet-400 animate-bounce"
+                        <span key={i} className="inline-block h-1.5 w-1.5 rounded-full bg-indigo-300 animate-bounce"
                           style={{ animationDelay: `${i * 0.15}s` }} />
                       ))}
                     </span>
@@ -822,7 +869,7 @@ function UserAvatar({
 }) {
   if (isAnon) {
     return (
-      <div style={{ width: size, height: size }} className="flex shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground text-sm">
+      <div style={{ width: size, height: size }} className="flex shrink-0 items-center justify-center rounded-full bg-white/10 text-white/60 text-sm">
         <span aria-hidden>🎭</span>
       </div>
     );
@@ -830,11 +877,11 @@ function UserAvatar({
   if (avatarUrl) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
-      <img src={avatarUrl} alt={name} style={{ width: size, height: size }} className="shrink-0 rounded-full object-cover ring-2 ring-primary/10" />
+      <img src={avatarUrl} alt={name} style={{ width: size, height: size }} className="shrink-0 rounded-full object-cover ring-2 ring-white/15" />
     );
   }
   return (
-    <div style={{ width: size, height: size, fontSize: size * 0.38 }} className="flex shrink-0 items-center justify-center rounded-full bg-primary/10 font-bold text-primary">
+    <div style={{ width: size, height: size, fontSize: size * 0.38, background: `${ACCENT}33`, color: "#dfe6ff" }} className="flex shrink-0 items-center justify-center rounded-full font-bold">
       {name.charAt(0) || "?"}
     </div>
   );
@@ -891,18 +938,18 @@ function FormatToolbar({
   ];
 
   return (
-    <div className="flex items-center gap-0.5 border-t bg-muted/20 px-3 py-1.5">
+    <div className="flex items-center gap-0.5 border-t border-white/10 bg-white/[0.03] px-3 py-1.5">
       {tools.map((tool, i) => (
         <>
           {(i === 4 || i === 5 || i === 7) && (
-            <span key={`sep-${i}`} className="mx-1 h-4 w-px bg-border" />
+            <span key={`sep-${i}`} className="mx-1 h-4 w-px bg-white/15" />
           )}
           <button
             key={tool.label}
             type="button"
             title={tool.label}
             onClick={tool.action}
-            className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="flex h-6 w-6 items-center justify-center rounded text-white/50 transition-colors hover:bg-white/10 hover:text-white"
           >
             {tool.icon}
           </button>
@@ -1004,13 +1051,13 @@ function NewPostComposer({
 
   if (!isLoggedIn) {
     return (
-      <div className="rounded-2xl border border-dashed bg-muted/20 p-5">
+      <div className="rounded-2xl border border-dashed border-white/20 bg-white/[0.04] p-5" style={POST_SURFACE}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm font-semibold">投稿するにはログインしてください</p>
-            <p className="mt-1 text-xs text-muted-foreground">井戸端会議への投稿は会員限定です。</p>
+            <p className="text-sm font-semibold text-white/90">投稿するにはログインしてください</p>
+            <p className="mt-1 text-xs text-white/55">井戸端会議への投稿は会員限定です。</p>
           </div>
-          <Button asChild className="gap-1.5">
+          <Button asChild className="gap-1.5 border-0 text-white" style={{ background: ACCENT }}>
             <Link href="/auth/login"><LogIn className="h-4 w-4" />ログインする</Link>
           </Button>
         </div>
@@ -1019,39 +1066,39 @@ function NewPostComposer({
   }
 
   return (
-    <div id="new-post" ref={rootRef} className="overflow-hidden rounded-2xl border bg-card shadow-xs">
+    <div id="new-post" ref={rootRef} className="overflow-hidden rounded-2xl border" style={{ ...POST_SURFACE, borderColor: `${ACCENT}40` }}>
       {/* ヘッダー */}
-      <div className="border-b bg-muted/20 px-4 py-3">
-        <p className="text-sm font-semibold">投稿する</p>
+      <div className="border-b border-white/10 bg-white/[0.04] px-4 py-3">
+        <p className="text-sm font-semibold text-white/90">投稿する</p>
         {roomLabel ? (
-          <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">{roomLabel}</p>
+          <p className="mt-0.5 text-xs text-white/55 line-clamp-1">{roomLabel}</p>
         ) : null}
       </div>
 
       {/* AIドラフト通知 */}
       {draftFromAiLoaded && (
-        <div className="flex items-center justify-between border-b bg-violet-50/80 px-4 py-2.5">
-          <p className="text-xs text-violet-800">AIで整理した下書きを反映しました。</p>
-          <Button type="button" size="sm" variant="ghost" className="h-7 text-xs text-violet-700 hover:bg-violet-100" onClick={() => setDraftFromAiLoaded(false)}>
+        <div className="flex items-center justify-between border-b border-indigo-400/20 bg-indigo-950/40 px-4 py-2.5">
+          <p className="text-xs text-indigo-100">AIで整理した下書きを反映しました。</p>
+          <Button type="button" size="sm" variant="ghost" className="h-7 text-xs text-indigo-200 hover:bg-white/10" onClick={() => setDraftFromAiLoaded(false)}>
             <X className="h-3 w-3" />
           </Button>
         </div>
       )}
 
       {/* 投稿者バー */}
-      <div className="border-b bg-muted/10 px-4 py-2 space-y-1.5">
+      <div className="border-b border-white/10 bg-white/[0.02] px-4 py-2 space-y-1.5">
         <div className="flex items-center gap-2">
           <UserAvatar name={displayName} avatarUrl={isAnon ? null : avatarUrl} size={26} isAnon={isAnon} />
-          <span className="text-xs font-medium">{displayName}</span>
+          <span className="text-xs font-medium text-white/85">{displayName}</span>
           {!isAnon && customTitle.trim() && (
             <>
-              <span className="text-muted-foreground/40">·</span>
-              <span className="text-[11px] text-muted-foreground">{customTitle.trim()}</span>
+              <span className="text-white/30">·</span>
+              <span className="text-[11px] text-white/55">{customTitle.trim()}</span>
             </>
           )}
           {!isAnon && !customTitle.trim() && (
             <>
-              <span className="text-muted-foreground/40">·</span>
+              <span className="text-white/30">·</span>
               <OccupationBadge storedAuthorRole={postPreviewRole} />
               {aiKenteiPassed && <AiKenteiBadge />}
             </>
@@ -1062,7 +1109,7 @@ function NewPostComposer({
             className={["ml-auto rounded-full border px-2.5 py-0.5 text-[10px] font-medium transition-colors",
               isAnon
                 ? `${ROLE_STYLES["匿名"].bg} ${ROLE_STYLES["匿名"].text} ${ROLE_STYLES["匿名"].border}`
-                : "border-transparent text-muted-foreground hover:bg-muted",
+                : "border-transparent text-white/45 hover:bg-white/10",
             ].join(" ")}
           >{ROLE_STYLES["匿名"].icon} 匿名</button>
         </div>
@@ -1074,7 +1121,7 @@ function NewPostComposer({
               onChange={(e) => setCustomNickname(e.target.value)}
               placeholder={userName || "ニックネーム（任意）"}
               maxLength={30}
-              className="h-6 flex-1 rounded border border-input bg-background px-2 text-[11px] text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
+              className="h-6 flex-1 rounded border border-white/12 bg-white/[0.04] px-2 text-[11px] text-white placeholder:text-white/35 focus:outline-none focus:ring-1 focus:ring-white/30"
             />
             <input
               type="text"
@@ -1082,7 +1129,7 @@ function NewPostComposer({
               onChange={(e) => setCustomTitle(e.target.value)}
               placeholder="肩書・属性（任意）"
               maxLength={40}
-              className="h-6 flex-1 rounded border border-input bg-background px-2 text-[11px] text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
+              className="h-6 flex-1 rounded border border-white/12 bg-white/[0.04] px-2 text-[11px] text-white placeholder:text-white/35 focus:outline-none focus:ring-1 focus:ring-white/30"
             />
           </div>
         )}
@@ -1097,17 +1144,17 @@ function NewPostComposer({
           placeholder="あなたの意見や経験を書いてください…"
           rows={6}
           maxLength={MAX_BODY + 50}
-          className="w-full resize-none bg-transparent text-sm leading-7 outline-none placeholder:text-muted-foreground/60"
+          className="w-full resize-none bg-transparent text-sm leading-7 text-white outline-none placeholder:text-white/40"
         />
         {showUrl && (
-          <div className="mb-3 flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
-            <Link2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <div className="mb-3 flex items-center gap-2 rounded-lg border border-white/12 bg-white/[0.04] px-3 py-2">
+            <Link2 className="h-3.5 w-3.5 shrink-0 text-white/45" />
             <Input
               type="url"
               value={relatedArticleUrl}
               onChange={(e) => setRelatedArticleUrl(e.target.value)}
               placeholder="https://... （関連記事URL）"
-              className="h-7 border-0 bg-transparent p-0 text-xs shadow-none focus-visible:ring-0"
+              className="h-7 border-0 bg-transparent p-0 text-xs text-white shadow-none placeholder:text-white/35 focus-visible:ring-0"
             />
           </div>
         )}
@@ -1117,22 +1164,23 @@ function NewPostComposer({
       <FormatToolbar textareaRef={textareaRef} body={body} setBody={setBody} />
 
       {/* 送信フッター */}
-      <div className="flex items-center justify-between gap-3 border-t bg-muted/10 px-4 py-2.5">
+      <div className="flex items-center justify-between gap-3 border-t border-white/10 bg-white/[0.02] px-4 py-2.5">
         <button
           type="button"
           title="関連記事URLを追加"
           onClick={() => setShowUrl((v) => !v)}
           className={["rounded-full border p-1.5 transition-colors",
-            showUrl ? "border-primary/40 bg-primary/5 text-primary" : "border-transparent text-muted-foreground hover:bg-muted",
+            showUrl ? "text-white" : "border-transparent text-white/45 hover:bg-white/10",
           ].join(" ")}
+          style={showUrl ? { borderColor: `${ACCENT}66`, background: `${ACCENT}1f`, color: ACCENT } : undefined}
         >
           <Link2 className="h-3 w-3" />
         </button>
         <div className="flex items-center gap-3">
-          <span className={`text-[11px] tabular-nums ${remaining < 0 ? "text-destructive font-semibold" : remaining < 50 ? "text-amber-500" : "text-muted-foreground/60"}`}>
+          <span className={`text-[11px] tabular-nums ${remaining < 0 ? "text-rose-400 font-semibold" : remaining < 50 ? "text-amber-300" : "text-white/40"}`}>
             {remaining}
           </span>
-          <Button onClick={handleSubmit} disabled={!canSubmit} size="sm" className="gap-1.5 rounded-full px-5">
+          <Button onClick={handleSubmit} disabled={!canSubmit} size="sm" className="gap-1.5 rounded-full px-5 border-0 text-white" style={{ background: ACCENT }}>
             {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PenSquare className="h-3.5 w-3.5" />}
             投稿する
           </Button>
@@ -1152,20 +1200,20 @@ function AiHelperSidebar({
   body?: string;
 }) {
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border bg-card p-4 shadow-xs">
+    <div className="flex flex-col gap-3 rounded-2xl border border-indigo-400/25 p-4" style={POST_SURFACE}>
       <div className="flex items-center gap-2">
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-violet-100">
-          <Bot className="h-3.5 w-3.5 text-violet-600" />
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-400/20">
+          <Bot className="h-3.5 w-3.5 text-indigo-200" />
         </div>
-        <p className="text-sm font-semibold leading-snug">投稿内容に迷っていますか？</p>
+        <p className="text-sm font-semibold leading-snug text-white/90">投稿内容に迷っていますか？</p>
       </div>
-      <p className="text-xs leading-relaxed text-muted-foreground">
+      <p className="text-xs leading-relaxed text-white/60">
         AIと対話することで、あなたの考えを整理して投稿文を作れます。
       </p>
       <div className="flex-1" />
       <OpenAiChatButton
         variant="outline"
-        className="w-full border-violet-200 text-violet-700 hover:bg-violet-50"
+        className="w-full border-indigo-300/40 bg-indigo-400/10 text-indigo-100 hover:bg-indigo-400/20"
         initialMessage={
           body?.trim()
             ? `以下の投稿下書きを、井戸端会議向けに深めたいです。\n\n${body.trim()}`
@@ -1333,91 +1381,107 @@ export function ForumRoomClient({
   const aiEnabled = !!room.aiDiscussion;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
-      {/* ─── 部屋ヘッダー ─── */}
-      <section className="relative overflow-hidden border-b bg-gradient-to-br from-primary/8 via-primary/4 to-background">
-        <div className="container py-8 md:py-10">
+    <div className="relative min-h-screen w-full bg-[#070a1c] text-white">
+      {/* 時刻連動の星空背景（特設ページと共通） */}
+      <InteropBackdrop themeMode="auto" />
+
+      {/* ─── 部屋ヘッダー（中央1カラム・角丸カード） ─── */}
+      <section className="relative z-10">
+        <div className="mx-auto w-full max-w-2xl px-4 pt-4 sm:px-6">
           <Link
             href={
               categoryContext
                 ? `/forum?cat=${encodeURIComponent(categoryContext.categorySlug)}`
                 : "/forum"
             }
-            className="mb-5 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="inline-flex w-fit items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-bold text-white/85 backdrop-blur transition-colors hover:brightness-110"
+            style={{ background: `${ACCENT}22`, borderColor: `${ACCENT}66` }}
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-3.5 w-3.5" />
             {categoryContext ? "サブカテゴリの選択に戻る" : "AIUEO 井戸端会議"}
           </Link>
 
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <header
+            className="mt-4 rounded-3xl border px-5 py-6"
+            style={{
+              ...POST_SURFACE,
+              borderColor: `${ACCENT}55`,
+              boxShadow: `0 8px 32px rgba(0,0,0,0.28), 0 0 24px ${ACCENT}1a, inset 0 1px 0 rgba(255,255,255,0.14)`,
+            }}
+          >
             <div className="flex items-start gap-4">
-              <div className={`shrink-0 rounded-2xl border p-3 ${ROOM_BG_COLORS[room.id] ?? "bg-muted border-border"}`}>
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/12 bg-white/[0.05]">
                 <ForumRoomIcon roomId={room.id} emoji={room.emoji} size={36} />
               </div>
-              <div>
-                <div className="flex flex-wrap items-center gap-2 mb-1">
-                  <h1 className="text-2xl font-bold md:text-3xl">{room.name}</h1>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-2xl font-bold leading-tight">{room.name}</h1>
                   {aiEnabled && (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-0.5 text-xs font-semibold text-violet-700">
+                    <span className="inline-flex items-center gap-1 rounded-full border border-indigo-300/35 bg-indigo-400/15 px-2.5 py-0.5 text-xs font-semibold text-indigo-200">
                       <Zap className="h-3 w-3" />AIディスカッション
                     </span>
                   )}
                 </div>
-                <p className="mt-1 text-sm text-muted-foreground">{room.description}</p>
-                <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                {room.description && (
+                  <p className="mt-2 text-sm leading-relaxed text-white/70">{room.description}</p>
+                )}
+                <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-white/50">
                   <span className="flex items-center gap-1"><MessageSquare className="h-3.5 w-3.5" />{posts.length} 投稿</span>
                   <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{room.participantCount} 人参加</span>
                 </div>
               </div>
             </div>
             {auth.role === "ADMIN" && (
-              <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-[220px] sm:items-end">
-                {highlightFromNotify && (
-                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+              <div className="mt-4 flex flex-col gap-2 border-t border-white/10 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                {highlightFromNotify ? (
+                  <div className="rounded-lg border border-amber-300/30 bg-amber-400/10 px-3 py-2 text-xs text-amber-100">
                     このルームの人間の発言がしきい値を超えました。記事化のタイミングを検討できます。
                   </div>
-                )}
-                <Button asChild size="sm" className="gap-2 shadow-sm">
+                ) : <span className="text-xs text-white/40">運営メニュー</span>}
+                <Button asChild size="sm" className="shrink-0 gap-2 border-0 text-white" style={{ background: ACCENT }}>
                   <Link href={`/articles/create?forumRoom=${encodeURIComponent(room.id)}`}>
                     <FileText className="h-4 w-4" />この話題を記事にする
                   </Link>
                 </Button>
               </div>
             )}
-          </div>
+          </header>
         </div>
-        <div className="pointer-events-none absolute -top-20 -right-20 h-80 w-80 rounded-full bg-primary/5 blur-3xl" />
       </section>
 
-      {/* ─── カテゴリ別の関連コンテンツ ─── */}
+      {/* ─── カテゴリ別の関連コンテンツ（コンテンツ表示機能） ─── */}
       {categoryContext && categoryContext.contentKind !== "community" && (
-        <ForumCategoryContentPanel
-          items={categoryContext.items}
-          contentKind={categoryContext.contentKind}
-          categorySlug={categoryContext.categorySlug}
-          subCategorySlug={categoryContext.subCategorySlug}
-        />
+        <div className="relative z-10 mt-4">
+          <ForumCategoryContentPanel
+            items={categoryContext.items}
+            contentKind={categoryContext.contentKind}
+            categorySlug={categoryContext.categorySlug}
+            subCategorySlug={categoryContext.subCategorySlug}
+          />
+        </div>
       )}
 
       {/* ─── コミュニティ: 部屋一覧・作成（投稿欄は出さない） ─── */}
       {categoryContext?.contentKind === "community" && (
-        <CommunityRoomsSection
-          categoryId={categoryContext.categoryId}
-          subCategoryId={categoryContext.subCategoryId}
-          categorySlug={categoryContext.categorySlug}
-          subCategorySlug={categoryContext.subCategorySlug}
-          mainRoomId={room.id}
-          isLoggedIn={auth.isLoggedIn}
-        />
+        <div className="relative z-10 mt-4">
+          <CommunityRoomsSection
+            categoryId={categoryContext.categoryId}
+            subCategoryId={categoryContext.subCategoryId}
+            categorySlug={categoryContext.categorySlug}
+            subCategorySlug={categoryContext.subCategorySlug}
+            mainRoomId={room.id}
+            isLoggedIn={auth.isLoggedIn}
+          />
+        </div>
       )}
 
       {/* ─── メインコンテンツ（コミュニティページでは表示しない） ─── */}
       {categoryContext?.contentKind === "community" ? null : (
-      <div className="container py-8">
-        <div className="mx-auto max-w-5xl space-y-8">
+      <div className="relative z-10 mx-auto w-full max-w-2xl px-4 py-6 sm:px-6">
+        <div className="space-y-6">
 
-          {/* 投稿フォーム ＋ AI壁打ちサイドバー */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_260px]">
+          {/* 投稿フォーム ＋ AI投稿サポートブロック（縦積み） */}
+          <div className="space-y-3">
             <NewPostComposer
               onSubmit={handleNewPost}
               roomId={room.id}
@@ -1436,7 +1500,7 @@ export function ForumRoomClient({
           {/* 投稿一覧 */}
           {loading ? (
             <div className="flex items-center justify-center py-16">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <Loader2 className="h-8 w-8 animate-spin text-white/50" />
             </div>
           ) : (
             <div className="space-y-6">
@@ -1468,21 +1532,21 @@ export function ForumRoomClient({
               {/* ソート＋通常投稿 */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm text-muted-foreground">{regularPosts.length} 件の投稿</p>
+                  <p className="text-sm font-bold text-white/80">みんなの投稿 <span className="ml-1 font-normal text-white/40">{regularPosts.length}件</span></p>
                   <Tabs value={sort} onValueChange={(v) => setSort(v as SortKey)}>
-                    <TabsList className="h-8">
-                      <TabsTrigger value="newest" className="h-6 px-3 text-xs">新着順</TabsTrigger>
-                      <TabsTrigger value="popular" className="h-6 px-3 text-xs">人気順</TabsTrigger>
+                    <TabsList className="h-8 border border-white/12 bg-white/[0.05] text-white/60">
+                      <TabsTrigger value="newest" className="h-6 px-3 text-xs data-[state=active]:bg-white/15 data-[state=active]:text-white">新着順</TabsTrigger>
+                      <TabsTrigger value="popular" className="h-6 px-3 text-xs data-[state=active]:bg-white/15 data-[state=active]:text-white">人気順</TabsTrigger>
                     </TabsList>
                   </Tabs>
                 </div>
 
                 {regularPosts.length === 0 ? (
-                  <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed bg-muted/20 py-16 text-center">
-                    <MessageSquare className="h-12 w-12 text-muted-foreground/30" />
+                  <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-white/15 bg-white/[0.02] py-16 text-center">
+                    <MessageSquare className="h-12 w-12 text-white/20" />
                     <div>
-                      <p className="text-base font-medium">まだ投稿がありません</p>
-                      <p className="mt-1 text-sm text-muted-foreground">最初の投稿者になりましょう</p>
+                      <p className="text-base font-medium text-white/80">まだ投稿がありません</p>
+                      <p className="mt-1 text-sm text-white/45">最初の投稿者になりましょう</p>
                     </div>
                   </div>
                 ) : (
@@ -1516,14 +1580,14 @@ export function ForumRoomClient({
       )}
 
       <Dialog open={loginDialogOpen} onOpenChange={setLoginDialogOpen}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent className="border-white/12 bg-[#0c1024] text-white sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>ログインが必要です</DialogTitle>
-            <DialogDescription>返信やいいねを利用するには、ログインまたは会員登録をお願いします。</DialogDescription>
+            <DialogTitle className="text-white">ログインが必要です</DialogTitle>
+            <DialogDescription className="text-white/60">返信やいいねを利用するには、ログインまたは会員登録をお願いします。</DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:justify-end">
-            <Button variant="outline" onClick={() => setLoginDialogOpen(false)}>閉じる</Button>
-            <Button asChild onClick={() => setLoginDialogOpen(false)}>
+            <Button variant="outline" className="border-white/20 bg-transparent text-white/80 hover:bg-white/10 hover:text-white" onClick={() => setLoginDialogOpen(false)}>閉じる</Button>
+            <Button asChild onClick={() => setLoginDialogOpen(false)} className="border-0 text-white" style={{ background: ACCENT }}>
               <Link href="/auth/login">ログイン・会員登録</Link>
             </Button>
           </DialogFooter>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, MessageCircle, type LucideIcon } from "lucide-react";
 import {
   computeSubOrbDiameter,
@@ -77,16 +77,20 @@ function SubTopicOrb({
   total,
   orbitRadius,
   accent,
+  sizeScale = 1,
 }: {
   item: InteropOrbitItem;
   index: number;
   total: number;
   orbitRadius: number;
   accent: string;
+  /** コンテナに収めるための玉サイズ倍率（小さい枠ほど縮小） */
+  sizeScale?: number;
 }) {
   const pos = orbitPosition(index, total, orbitRadius);
   const stats = item.stats;
-  const baseSize = item.topicOrb ? computeTopicOrbDiameter(stats) : computeSubOrbDiameter(stats);
+  const rawSize = item.topicOrb ? computeTopicOrbDiameter(stats) : computeSubOrbDiameter(stats);
+  const baseSize = Math.max(40, Math.round(rawSize * sizeScale));
   const hot = isInteropHot(stats);
   const isRecent = isInteropRecentPost(stats);
   const hint = formatActivityHint(stats);
@@ -202,10 +206,43 @@ export function InteropSubOrbit({
       ),
     [items]
   );
-  const { containerSize, orbitRadius } = useMemo(
+  const { orbitRadius } = useMemo(
     () => getOrbitLayoutForMaxOrb(count, maxOrbPx),
     [count, maxOrbPx]
   );
+
+  // ── 親コンテナの実寸を計測して「必ず枠内に収まる」正方形サイズ・玉倍率を算出 ──
+  // ビューポート単位(vmin/vw)だと埋め込み枠(480px等)からはみ出すため、実測ベースにする。
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [avail, setAvail] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
+  useLayoutEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const sync = () => setAvail({ w: el.clientWidth, h: el.clientHeight });
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const { containerPx, orbScale } = useMemo(() => {
+    const w = avail.w;
+    const h = avail.h;
+    if (!w || !h) return { containerPx: 0, orbScale: 1 };
+    const radiusFrac = orbitRadius / 100;
+    const availHalf = Math.min(w, h) / 2;
+    const labelH = 46; // 玉下のラベル＋余白
+    const gap = 10; // 玉どうしの最小間隔
+    const n = Math.max(count, 1);
+    // リング上に n 個の玉が重ならず並べられる最大玉径（中心角ベース）
+    const orbFitByRing = ((2 * Math.PI) / n) * (availHalf - labelH) / (1 + Math.PI / n) - gap;
+    const orb = Math.min(maxOrbPx, Math.max(40, orbFitByRing));
+    // その玉径で「玉の外縁＋ラベル」が枠内に収まる最大の正方形サイズ
+    let S = radiusFrac > 0 ? (availHalf - orb / 2 - labelH) / radiusFrac : availHalf * 2;
+    S = Math.max(180, Math.min(S, 820));
+    return { containerPx: Math.round(S), orbScale: Math.min(1, orb / maxOrbPx) };
+  }, [avail, count, maxOrbPx, orbitRadius]);
+
   const hint =
     centerHint ??
     (count === 0
@@ -214,15 +251,16 @@ export function InteropSubOrbit({
 
   return (
     <div
-      className="absolute inset-0 flex items-center justify-center px-3 pb-8 pt-16 sm:pt-20"
+      ref={rootRef}
+      className="absolute inset-0 flex items-center justify-center px-3 pb-6 pt-14 sm:pt-20"
       style={{ animation: "itmFadeIn 0.4s ease-out both" }}
     >
       <style>{FX_CSS}</style>
       <style>{INTEROP_PUYO_CSS}</style>
 
       <div
-        className="relative aspect-square w-full shrink-0"
-        style={{ width: containerSize, height: containerSize, maxHeight: "min(76vh, 680px)" }}
+        className="relative aspect-square shrink-0"
+        style={{ width: containerPx || "min(86vmin, 520px)", height: containerPx || "min(86vmin, 520px)" }}
       >
         {/* 軌道リング */}
         <span
@@ -245,7 +283,7 @@ export function InteropSubOrbit({
           }}
         />
 
-        <div className="absolute left-1/2 top-1/2 z-20 w-[min(32%,200px)] min-w-[128px] -translate-x-1/2 -translate-y-1/2">
+        <div className="absolute left-1/2 top-1/2 z-20 w-[min(36%,184px)] min-w-[104px] -translate-x-1/2 -translate-y-1/2">
           {/* 中央グロー */}
           <span
             className="pointer-events-none absolute inset-[-20px] rounded-full"
@@ -284,6 +322,7 @@ export function InteropSubOrbit({
             total={count}
             orbitRadius={orbitRadius}
             accent={accent}
+            sizeScale={orbScale}
           />
         ))}
       </div>

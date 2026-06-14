@@ -21,6 +21,9 @@ export type ForumPost = {
   isHidden?: boolean; // 非表示（削除せず記録を残す）
   relatedArticleUrl?: string;
   aiKenteiPassed?: boolean;
+  /** トーン警告（"" / undefined =問題なし / negative / non_constructive / harsh） */
+  toneFlag?: string;
+  toneReason?: string;
   replies?: ForumReply[];
 };
 

@@ -1,18 +1,20 @@
-import OpenAI from "openai";
 import { prisma } from "@/lib/prisma";
 import { INTEROP_PRIORITY_TOPICS } from "@/lib/interop-priority-topics";
 import { getAxisConfig, saveAxisConfig, saveTopicPosition } from "@/lib/interop-axis-db";
+import { getLocalLLM, extractJson } from "@/lib/local-llm";
 
 const clamp1 = (v: number) => Math.max(-1, Math.min(1, v));
 
 /**
  * 日次：各トピックのコメント・返信を集約し、現在の軸に沿って2軸座標をLLMで再計算→DB保存。
  * コメントが無いトピックはスキップ（初期座標を維持）。
+ *
+ * 判定は安価LLMで行う。JSON抽出は寛容に（モデルによってはjson_object未対応のことがある）。
  */
 export async function recomputeTopicPositions(): Promise<{ updated: number; skipped: number }> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return { updated: 0, skipped: INTEROP_PRIORITY_TOPICS.length };
-  const openai = new OpenAI({ apiKey });
+  const llm = getLocalLLM();
+  if (!llm) return { updated: 0, skipped: INTEROP_PRIORITY_TOPICS.length };
+  const { client, model } = llm;
   const axis = await getAxisConfig();
 
   let updated = 0;
@@ -38,27 +40,25 @@ export async function recomputeTopicPositions(): Promise<{ updated: number; skip
       .slice(0, 3000);
 
     try {
-      const completion = await openai.chat.completions.create({
-        model: "gpt-5.4",
+      const completion = await client.chat.completions.create({
+        model,
         temperature: 0.2,
-        response_format: { type: "json_object" },
         messages: [
           {
             role: "system",
             content:
               `教育トピックを2軸で位置づける。横軸x: -1=「${axis.xLeft}」 ↔ +1=「${axis.xRight}」。` +
               `縦軸y: -1=「${axis.yBottom}」 ↔ +1=「${axis.yTop}」。` +
-              `議論内容の重心がどこに寄るかを判断する。出力JSONは {"x": number, "y": number} のみ。各 -1.0〜1.0。`,
+              `議論内容の重心がどこに寄るかを判断する。説明や前置きは書かず、JSONだけを出力する: {"x": number, "y": number}（各 -1.0〜1.0）。`,
           },
           { role: "user", content: `トピック: ${topic.category}\n投稿・返信:\n${text}` },
         ],
       });
-      const raw = completion.choices[0]?.message?.content;
-      if (!raw) {
+      const j = extractJson<{ x?: number; y?: number }>(completion.choices[0]?.message?.content);
+      if (!j) {
         skipped++;
         continue;
       }
-      const j = JSON.parse(raw) as { x?: number; y?: number };
       await saveTopicPosition(topic.no, clamp1(Number(j.x ?? 0)), clamp1(Number(j.y ?? 0)));
       updated++;
     } catch (e) {
@@ -74,9 +74,9 @@ export async function recomputeTopicPositions(): Promise<{ updated: number; skip
  * 軸を更新したら座標も再計算する。
  */
 export async function reevaluateAxisConfig(): Promise<{ changed: boolean }> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return { changed: false };
-  const openai = new OpenAI({ apiKey });
+  const llm = getLocalLLM();
+  if (!llm) return { changed: false };
+  const { client, model } = llm;
   const current = await getAxisConfig();
 
   const samples: string[] = [];
@@ -98,16 +98,15 @@ export async function reevaluateAxisConfig(): Promise<{ changed: boolean }> {
   if (samples.length < 4) return { changed: false };
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-5.4",
+    const completion = await client.chat.completions.create({
+      model,
       temperature: 0.4,
-      response_format: { type: "json_object" },
       messages: [
         {
           role: "system",
           content:
             "教育トピック群を2次元に分布させる軸を設計する。現状の議論内容がバランスよく四方に散らばり、対立的で直感的に分かりやすい2軸を提案する。" +
-            "出力JSONは {\"xLeft\":\"\",\"xRight\":\"\",\"yTop\":\"\",\"yBottom\":\"\"} のみ。各ラベルは4〜10文字の簡潔な日本語。",
+            "説明や前置きは書かず、JSONだけを出力する: {\"xLeft\":\"\",\"xRight\":\"\",\"yTop\":\"\",\"yBottom\":\"\"}。各ラベルは4〜10文字の簡潔な日本語。",
         },
         {
           role: "user",
@@ -117,9 +116,10 @@ export async function reevaluateAxisConfig(): Promise<{ changed: boolean }> {
         },
       ],
     });
-    const raw = completion.choices[0]?.message?.content;
-    if (!raw) return { changed: false };
-    const j = JSON.parse(raw) as { xLeft?: string; xRight?: string; yTop?: string; yBottom?: string };
+    const j = extractJson<{ xLeft?: string; xRight?: string; yTop?: string; yBottom?: string }>(
+      completion.choices[0]?.message?.content
+    );
+    if (!j) return { changed: false };
     if (j.xLeft && j.xRight && j.yTop && j.yBottom) {
       await saveAxisConfig({
         xLeft: j.xLeft.slice(0, 16),

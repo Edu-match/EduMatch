@@ -17,7 +17,7 @@ import {
   type AxisConfig,
   type AxisPoint,
 } from "@/lib/interop-topic-axis";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type GroupStyleEntry = {
@@ -101,14 +101,6 @@ const SATELLITE_POS: Record<InteropSatellite["place"], { x: number; y: number }>
   bottom: { x: 50, y: 66 },
 };
 
-/** サテライト玉＋グロー＋ラベル分の占有半径(%) — 反発ゾーン用 */
-function satelliteFootprintPct(orbPx: number, place: InteropSatellite["place"], containerW: number): number {
-  const w = Math.max(containerW, 320);
-  const orbR = pxToPctRadius(orbPx / 2 + 28, w);
-  const labelExtra = place === "bottom" ? pxToPctRadius(40, w) : pxToPctRadius(32, w);
-  return orbR + labelExtra + 5;
-}
-
 /** 拡大時は中心から外側へアンカーを少しずらし、中心ハブ・隣接サテライトとの被りを抑える */
 function adjustSatelliteAnchor(
   place: InteropSatellite["place"],
@@ -141,24 +133,20 @@ function popupXExtra(xPct: number): number {
   return 0;
 }
 
-/** 描画サイズ（グロー・ラベル・バッジ）込みの反発用半径(%) — containerW は実際のマップ幅(px) */
-function orbCollisionRadiusPct(diameterPx: number, containerW: number, labelMargin: number): number {
-  const w = Math.max(containerW, 320);
-  // ラベルは assignLabelSides で空いた向きへ逃がすため、当たり判定では控えめに予約
-  // （ここを大きく取ると全体が間延びして縦パンが増える）。
-  // bodyAndGlow=玉本体どうしを離す主因（重なり防止）。labelExt は assignLabelSides が
-  // 空き方向へ逃がすため控えめでよい。
-  const bodyAndGlow = pxToPctRadius(diameterPx / 2 + 18, w);
-  const labelExt = pxToPctRadius(diameterPx < 56 ? 11 : 20, w);
-  const badgeExt = pxToPctRadius(9, w);
-  return bodyAndGlow + labelExt + badgeExt + labelMargin + 1.0;
+/** 玉どうしの反発用半径(px)。物理計算はピクセル空間で行う
+ *  （x=幅%・y=高さ%を混在させるとアスペクト比で分布が崩れるため）。
+ *
+ *  ★重要: 半径は「玉本体＋わずかな余白」のみ。以前はラベル・バッジの固定px拡張まで含めて
+ *  いたため、小さな玉でも中心間124px等の過大間隔を要求し、狭い画面では28玉が物理的に
+ *  収まらず必ず重なっていた。ラベルの被りは assignLabelSides が空き方向へ逃がして吸収する。 */
+function orbCollisionRadiusPx(diameterPx: number): number {
+  return diameterPx / 2 + 12;
 }
 
 function pxToPctRadius(px: number, containerW: number): number {
   return (Math.max(0, px) / containerW) * 100;
 }
 
-/** topic ごとの軸座標を画面配置に変換。近接玉は反発で分散（被り回避）。 */
 function detectSentimentColor(body: string): string {
   if (/課題|問題|困って|難し|大変|壁|不満|不安|できな|なんで|なぜ/.test(body)) return "#9bc4ff";
   if (/提言|すべき|べきで|提案|改善|必要|変えるべき|実現|目指す|したい|増やし|減らし/.test(body)) return "#7de8a0";
@@ -168,48 +156,92 @@ function detectSentimentColor(body: string): string {
   return "rgba(255,255,255,0.88)";
 }
 
+/**
+ * topic ごとの軸座標(-1..1) を画面配置に変換する。
+ *
+ * 【設計の要点】
+ * 物理計算はすべて **ピクセル空間** で行う。以前は「%」で計算していたが、x は幅基準%・
+ * y は高さ基準% という別単位を反発の距離計算で同一視していたため、ブラウザ幅・アスペクト比
+ * が変わると分布が大きく崩れていた。px に統一することで縦横の見た目の距離が一致し、比率が
+ * 変わっても分布の形が安定する。
+ *
+ * さらに各玉を「軸が示すターゲット座標」へ引き戻す**アンカーばね**を毎反復かける。これにより
+ * 重なりを解消しつつも、技術寄りは右・制度寄りは上…という軸の意味を保った分布になる
+ * （以前は反発だけが強く、軸の意味が消えて団子状になっていた）。
+ *
+ * @param radiiPx  各玉の反発用半径(px)
+ * @param mapW/mapH コンテナ実寸(px)
+ * @param *Pct      クランプ範囲（%指定。内部で px へ変換）
+ */
 function computeAxisPlacements(
   topics: InteropPriorityTopic[],
   axisMap: Record<number, AxisPoint>,
-  obstacles: Obstacle[] = [],
-  radii: number[] = [],
-  yMin = 9,
-  yMax = 90,
-  xMin = 5,
-  xMax = 95
+  obstaclesPct: Obstacle[] = [],
+  radiiPx: number[] = [],
+  mapW = 1200,
+  mapH = 600,
+  yMinPct = 9,
+  yMaxPct = 90,
+  xMinPct = 5,
+  xMaxPct = 95
 ): Placement[] {
-  const rOf = (i: number) => radii[i] ?? 8;
+  const W = Math.max(mapW, 320);
+  const H = Math.max(mapH, 320);
+  const rOf = (i: number) => radiiPx[i] ?? 26;
   const axisOf = (no: number) => axisMap[no] ?? DEFAULT_TOPIC_AXIS[no] ?? { x: 0, y: 0 };
-  const ORB_GAP = 3.0;
+  const GAP = 5; // 玉どうしの最小間隔(px)
 
-  const pts = topics.map((t, i) => {
+  // 軸中心(px)。W/H は固定リファレンス寸法（呼び出し側が m.layoutW/H を渡す）なので、
+  // ここで得られる %座標はコンテナサイズに依存しない＝凍結された安定配置になる。
+  const cx = (AXIS_CX / 100) * W;
+  const cy = (AXIS_CY / 100) * H;
+  // 広がりは W/H に比例。target% = AXIS_CX + a.x*AXIS_RX（= 50 + 33·a.x）となり、
+  // W に依らず一定の%に着地する（縦も同様）。
+  const rx = (AXIS_RX / 100) * W;
+  const ry = (AXIS_RY / 100) * H;
+
+  // クランプ範囲(px)
+  const xMin = (xMinPct / 100) * W;
+  const xMax = (xMaxPct / 100) * W;
+  const yMin = (yMinPct / 100) * H;
+  const yMax = (yMaxPct / 100) * H;
+
+  // 障害物(%; x=幅基準・y=高さ基準・r=幅基準) → px
+  const obstacles = obstaclesPct.map((o) => ({
+    x: (o.x / 100) * W,
+    y: (o.y / 100) * H,
+    r: (o.r / 100) * W,
+  }));
+
+  // 軸が示す目標座標(px)。ばねでここへ引き戻す＝分布が軸の意味を保つ。
+  const target = topics.map((t) => {
     const a = axisOf(t.no);
-    return { x: AXIS_CX + a.x * AXIS_RX, y: AXIS_CY - a.y * AXIS_RY, idx: i, no: t.no };
+    return { x: cx + a.x * rx, y: cy - a.y * ry };
   });
+  const pts = target.map((t, i) => ({ x: t.x, y: t.y, idx: i, no: topics[i].no }));
 
-  // 同一座標の玉は黄金角で初期分散（反発前処理）
+  // 同一目標の玉は黄金角で初期分散（重なり初期値からの脱出を速める）
   const bucket = new Map<string, number>();
-  for (const p of pts) {
-    const key = `${p.x.toFixed(2)}:${p.y.toFixed(2)}`;
+  for (let i = 0; i < pts.length; i++) {
+    const key = `${Math.round(target[i].x)}:${Math.round(target[i].y)}`;
     const n = bucket.get(key) ?? 0;
     if (n > 0) {
       const ang = (n * 137.508 * Math.PI) / 180;
-      const rad = (rOf(p.idx) + ORB_GAP + 1.5) * n;
-      p.x += Math.cos(ang) * rad;
-      p.y += Math.sin(ang) * rad;
+      const rad = (rOf(i) + GAP) * 0.85 * n;
+      pts[i].x += Math.cos(ang) * rad;
+      pts[i].y += Math.sin(ang) * rad;
     }
     bucket.set(key, n + 1);
   }
 
-  const dist = (i: number, j: number) =>
-    Math.hypot(pts[j].x - pts[i].x, pts[j].y - pts[i].y);
+  const dist = (i: number, j: number) => Math.hypot(pts[j].x - pts[i].x, pts[j].y - pts[i].y);
 
   const separatePair = (i: number, j: number, strength = 1) => {
-    const minD = rOf(i) + rOf(j) + ORB_GAP;
+    const minD = rOf(i) + rOf(j) + GAP;
     let dx = pts[j].x - pts[i].x;
     let dy = pts[j].y - pts[i].y;
     let d = Math.hypot(dx, dy);
-    if (d < 0.02) {
+    if (d < 0.5) {
       const ang = (((pts[i].no + 1) * 97 + (pts[j].no + 1) * 53) % 360) * (Math.PI / 180);
       dx = Math.cos(ang);
       dy = Math.sin(ang);
@@ -226,7 +258,7 @@ function computeAxisPlacements(
   const repelObstacles = (strength = 1) => {
     for (let i = 0; i < pts.length; i++) {
       for (const o of obstacles) {
-        const clearance = o.r + rOf(i) + ORB_GAP;
+        const clearance = o.r + rOf(i) + GAP;
         const dx = pts[i].x - o.x;
         const dy = pts[i].y - o.y;
         const d = Math.hypot(dx, dy) || 0.01;
@@ -239,6 +271,14 @@ function computeAxisPlacements(
     }
   };
 
+  // 軸ターゲットへ引き戻すばね（分布の軸らしさを保つ）
+  const springToTarget = (k: number) => {
+    for (let i = 0; i < pts.length; i++) {
+      pts[i].x += (target[i].x - pts[i].x) * k;
+      pts[i].y += (target[i].y - pts[i].y) * k;
+    }
+  };
+
   const keepInBounds = () => {
     for (let i = 0; i < pts.length; i++) {
       const ri = rOf(i);
@@ -247,21 +287,25 @@ function computeAxisPlacements(
     }
   };
 
-  for (let k = 0; k < 500; k++) {
+  // フェーズ1: 軸配置＋分離を両立（ばねで軸の形を保ちつつ、重なりを押し返す）
+  for (let k = 0; k < 260; k++) {
     for (let i = 0; i < pts.length; i++) {
-      for (let j = i + 1; j < pts.length; j++) separatePair(i, j, 1.2);
+      for (let j = i + 1; j < pts.length; j++) separatePair(i, j, 1.1);
     }
     repelObstacles(1.1);
+    springToTarget(0.06);
     keepInBounds();
   }
 
-  // 重なりゼロまで追い込み（軸位置より分離を優先）
-  for (let k = 0; k < 600; k++) {
+  // フェーズ2: 重なりゼロを保証する純分離（★ばね無し）。ばねが残ると重なる目標へ
+  // 引き戻し続けて残留重なりが消えないため、ここでは分離だけに専念する。
+  // 軸の大局的な形はフェーズ1で既に決まっているので、ここでの移動は局所的で済む。
+  for (let k = 0; k < 320; k++) {
     let overlapped = false;
     for (let i = 0; i < pts.length; i++) {
       for (let j = i + 1; j < pts.length; j++) {
-        if (dist(i, j) < rOf(i) + rOf(j) + ORB_GAP - 0.02) {
-          separatePair(i, j, 1.8);
+        if (dist(i, j) < rOf(i) + rOf(j) + GAP - 0.5) {
+          separatePair(i, j, 1.6);
           overlapped = true;
         }
       }
@@ -271,14 +315,15 @@ function computeAxisPlacements(
     if (!overlapped) break;
   }
 
+  // px → %（x=幅基準・y=高さ基準）。dir は中心からの放射方向（%差分でよい）。
   return pts.map((p) => {
-    const x = p.x;
-    const y = p.y;
-    const dx = x - AXIS_CX;
-    const dy = y - AXIS_CY;
+    const xPct = (p.x / W) * 100;
+    const yPct = (p.y / H) * 100;
+    const dx = xPct - AXIS_CX;
+    const dy = yPct - AXIS_CY;
     const len = Math.hypot(dx, dy) || 1;
     return {
-      pos: [+x.toFixed(2), +y.toFixed(2)] as [number, number],
+      pos: [+xPct.toFixed(2), +yPct.toFixed(2)] as [number, number],
       dir: [dx / len, dy / len] as [number, number],
     };
   });
@@ -432,12 +477,22 @@ type MapMetrics = {
   xMin: number;        // 配置の左端クランプ(%)
   xMax: number;        // 配置の右端クランプ(%)
   panLimY: number;     // 縦パンの可動域(px)
-  aiBtn: { x: number; y: number; r: number }; // AIチャットボタン（右下固定）の占有ゾーン(%)
+  // ★レイアウト固定用リファレンス寸法(px)。配置計算は実際のコンテナ寸法ではなく
+  //   常にこの寸法で行い、%座標を凍結する。実コンテナがこれ以上に大きい限り
+  //   px間隔は広がるだけ＝重なりは増えず、リサイズで配置が動かない（分布が安定する）。
+  //   想定される最小コンテナ相当に設定する。
+  layoutW: number;
+  layoutH: number;
 };
 // スマホは1画面に玉が多すぎてゴチャつくため、縦に大きく展開して画面あたりの玉数を減らし、
 // 下へパンして探索できるようにする。
-const METRICS_DESKTOP: MapMetrics = { base: 40, max: 132, refW: 1300, labelMargin: 2.2, centerSize: 132, satOrb: 84, satOrbMax: 200, centerR: 20, ys: 0.62, yMin: 14, yMax: 142, xMin: 6, xMax: 92, panLimY: 840, aiBtn: { x: 93, y: 90, r: 12 } };
-const METRICS_MOBILE: MapMetrics  = { base: 30, max: 80,  refW: 400,  labelMargin: 0.8, centerSize: 72,  satOrb: 44, satOrbMax: 80,  centerR: 16, ys: 0.5, yMin: 16, yMax: 280, xMin: 5, xMax: 95, panLimY: 1700, aiBtn: { x: 90, y: 93, r: 14 } };
+// ★layoutW/H は「配置を1回だけ解く仮想キャンバス寸法」。実描画はこの仮想キャンバスを
+//   コンテナへ contain で一律スケールするので、ここで重なりゼロに収束する寸法・比率を選ぶ。
+//   yMax は仮想キャンバス内(≤100%)に収め、全玉が画面内に入るようにする（パン不要）。
+const METRICS_DESKTOP: MapMetrics = { base: 40, max: 132, refW: 1300, labelMargin: 2.2, centerSize: 132, satOrb: 84, satOrbMax: 200, centerR: 20, ys: 0.62, yMin: 14, yMax: 97, xMin: 6, xMax: 92, panLimY: 840, layoutW: 1100, layoutH: 780 };
+const METRICS_MOBILE: MapMetrics  = { base: 30, max: 80,  refW: 400,  labelMargin: 0.8, centerSize: 72,  satOrb: 44, satOrbMax: 80,  centerR: 16, ys: 0.5, yMin: 16, yMax: 97, xMin: 5, xMax: 95, panLimY: 1700, layoutW: 560, layoutH: 820 };
+// 短い埋め込み枠（トップページの 480px など）用。中心ハブ・玉を小さくし、ほぼ1画面に収める。
+const METRICS_COMPACT: MapMetrics  = { base: 26, max: 72,  refW: 720,  labelMargin: 1.0, centerSize: 92,  satOrb: 50, satOrbMax: 104, centerR: 15, ys: 0.58, yMin: 13, yMax: 97, xMin: 5, xMax: 95, panLimY: 320, layoutW: 820, layoutH: 560 };
 
 
 function PuyoBubble({
@@ -658,9 +713,11 @@ export function InteropPuyoBubbleMap({
   axisConfig = DEFAULT_AXIS_CONFIG,
   topicPositions,
   topics: topicsProp,
+  topicEdges,
   satellites = [],
   livePosts = [],
   livePostsReady = false,
+  aiBarReserved = false,
   onSelectCategory,
   onSelectTopic,
   iconFor,
@@ -671,7 +728,11 @@ export function InteropPuyoBubbleMap({
   topicPositions?: Record<number, AxisPoint>;
   /** DB管理の話題玉（未指定/空ならハードコードのデフォルトを使用） */
   topics?: InteropPriorityTopic[];
+  /** 内容ベースのノード接続（Gemma生成。未指定/空なら幾何的な近さで接続） */
+  topicEdges?: Array<{ a: number; b: number }>;
   satellites?: InteropSatellite[];
+  /** 右端の縦長AIバー(48px)が存在するか。false ならその余白・障害物を予約しない */
+  aiBarReserved?: boolean;
   /** リアルタイム投稿（オレンジ枠の吹き出しで表示）。subId があればその投稿ページへ飛べる */
   livePosts?: Array<{ id: string; body: string; authorName: string; subId?: string }>;
   /** 初回の recent-posts 取得完了後に true（既存投稿を新着扱いしないため） */
@@ -697,7 +758,6 @@ export function InteropPuyoBubbleMap({
     mq.addEventListener("change", apply);
     return () => mq.removeEventListener("change", apply);
   }, []);
-  const m = isMobile ? METRICS_MOBILE : METRICS_DESKTOP;
 
   // ── パン＆ズーム（ドラッグ移動・ホイール/ピンチ拡縮）──
   const MIN_SCALE = 0.55;
@@ -707,28 +767,49 @@ export function InteropPuyoBubbleMap({
   const dragRef = useRef({ active: false, lastX: 0, lastY: 0, moved: 0 });
   const wasDragRef = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const legendRef = useRef<HTMLDivElement>(null);
+  const zoomRef = useRef<HTMLDivElement>(null);
   const [mapW, setMapW] = useState(1200);
-  useLayoutEffect(() => {
+  const [mapH, setMapH] = useState(600);
+  // 実測した枠の高さで寸法セットを選ぶ。短い枠（トップの埋め込み等）はコンパクト寸法で
+  // ほぼ1画面に収める。配置自体はメトリクスの固定リファレンス寸法で凍結されるため、
+  // mapW/mapH はメトリクス選択とパン制限のためだけに使う（配置は再計算されない）。
+  const compact = mapH <= 560;
+  const m = compact ? METRICS_COMPACT : isMobile ? METRICS_MOBILE : METRICS_DESKTOP;
+  const measure = useCallback(() => {
     const el = containerRef.current;
-    if (el) setMapW(Math.max(el.clientWidth, 320));
+    if (!el) return;
+    setMapW(Math.max(el.clientWidth, 320));
+    setMapH(Math.max(el.clientHeight, 320));
   }, []);
+  useLayoutEffect(() => {
+    measure();
+  }, [measure]);
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const sync = () => setMapW(Math.max(el.clientWidth, 320));
-    sync();
-    const ro = new ResizeObserver(sync);
+    measure();
+    const ro = new ResizeObserver(() => measure());
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [measure]);
   // 複数ポインタ追跡（ピンチ用）
   const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
   const pinchRef = useRef<{ dist: number; cx: number; cy: number } | null>(null);
 
+  // 仮想キャンバス(m.layoutW×layoutH)をコンテナへ contain で収める基準スケール。
+  // これに view.scale（ユーザーのピンチ/ホイール拡縮）を掛けたものが実表示倍率。
+  // 一律スケールなので玉サイズも位置も同率で拡縮し、重なりは原理的に発生しない。
+  const fitScale = Math.min(mapW / m.layoutW, mapH / m.layoutH);
+
+  // パン可動域：拡大表示でコンテンツがコンテナをはみ出した分だけ動かせる（はみ出しが
+  // 無いときはほぼ動かない＝中央固定）。
   const clampPan = (x: number, y: number, scale: number) => {
-    const lim = 560 * scale;
-    const limY = m.panLimY * scale;
-    return { x: Math.max(-lim, Math.min(lim, x)), y: Math.max(-limY, Math.min(limY, y)) };
+    const sw = m.layoutW * fitScale * scale;
+    const sh = m.layoutH * fitScale * scale;
+    const limX = Math.max(0, (sw - mapW) / 2 + 30);
+    const limY = Math.max(0, (sh - mapH) / 2 + 30);
+    return { x: Math.max(-limX, Math.min(limX, x)), y: Math.max(-limY, Math.min(limY, y)) };
   };
 
   const zoomAt = (factor: number, originX: number, originY: number) => {
@@ -858,47 +939,89 @@ export function InteropPuyoBubbleMap({
     [satellites, satelliteSizes, m.satOrb]
   );
 
-  // 中心ハブ＋実在するサテライト＋UI要素（AIチャットボタン）を「占有ゾーン」として
-  // 反発に渡す（玉がヘッダー／AIボタンの下に潜らないようにする）。
+  // 中心ハブ＋サテライト＋固定UI（凡例・ズーム・ガイドピル）を「占有ゾーン」として反発に渡す。
+  // ★安定化のため、実コンテナ寸法ではなく固定リファレンス寸法(m.layoutW/H)で計算する。
+  //   位置は%（x=幅基準・y=高さ基準）／半径は「幅に対する%」。コンテナサイズに依存しないので
+  //   配置がリサイズで動かない。凡例等の固定UIは実測ではなく余裕を持った固定ゾーンで予約する
+  //   （実コンテナが大きいほどUIは%的に小さくなるため、固定ゾーンは安全側の過大予約になる）。
   const obstacles = useMemo<Obstacle[]>(() => {
-    const w = Math.max(mapW, 320);
+    const w = m.layoutW;
+    const h = m.layoutH;
+    const pxX = (px: number) => (px / w) * 100;
+    const pxY = (px: number) => (px / h) * 100;
     const maxSat = satelliteSizes.length > 0 ? Math.max(...satelliteSizes) : m.satOrb;
-    const centerFootprint = pxToPctRadius(m.centerSize / 2 + 32, w) + 5;
-    const centerBoost = pxToPctRadius(Math.max(0, maxSat - m.satOrb) * 0.35, w);
+    // 中心ハブ・サテライトの占有半径は「実体サイズ＋わずかな余白」のみ。過大予約すると
+    // 中央にリングができて密集バンドの玉が入りきらず重なり残りが出るため控えめにする。
+    const centerFootprint = pxToPctRadius(m.centerSize / 2 + 12, w);
+    const centerBoost = pxToPctRadius(Math.max(0, maxSat - m.satOrb) * 0.3, w);
     const list: Obstacle[] = [{ x: CENTER_POS.x, y: CENTER_POS.y, r: Math.max(m.centerR, centerFootprint + centerBoost) }];
     satellites.forEach((s, i) => {
       const anchor = satelliteAnchors[i] ?? SATELLITE_POS[s.place];
       const orbPx = satelliteSizes[i] ?? m.satOrb;
-      list.push({ x: anchor.x, y: anchor.y, r: satelliteFootprintPct(orbPx, s.place, w) });
+      list.push({ x: anchor.x, y: anchor.y, r: pxToPctRadius(orbPx / 2 + 18, w) });
     });
-    list.push({ x: m.aiBtn.x, y: m.aiBtn.y, r: m.aiBtn.r });
+
+    // ── 固定UI（凡例＝左下の横帯／ズーム＝右下）の反発ゾーン（固定ゾーンで近似）──
+    const legendR = pxX(20);
+    const legendY = pxY(h - 22);
+    list.push({ x: pxX(50), y: legendY, r: legendR });
+    list.push({ x: pxX(130), y: legendY, r: legendR });
+    list.push({ x: pxX(210), y: legendY, r: legendR });
+    // ズーム操作（右下）
+    list.push({ x: 100 - pxX(30), y: pxY(h - 64), r: pxX(30) });
+
+    // 上部中央のガイドピル（sm以上で表示）。上端中央に玉を寄せない。
+    if (!isMobile) {
+      list.push({ x: 50, y: pxY(70), r: pxX(110) });
+    }
     return list;
-  }, [satellites, satelliteSizes, satelliteAnchors, m.centerR, m.centerSize, m.satOrb, m.aiBtn, mapW]);
+  }, [satellites, satelliteSizes, satelliteAnchors, m.centerR, m.centerSize, m.satOrb, m.layoutW, m.layoutH, isMobile]);
   const sizes = useMemo(
     () => topics.map((t) => bubbleSizeFor(activityByRoom.get(t.roomId)?.postCount ?? 0, m.base, m.max, ranking.avg)),
     [topics, activityByRoom, m.base, m.max, ranking.avg]
   );
-  const placeRadii = useMemo(
-    () => sizes.map((px) => orbCollisionRadiusPct(px, mapW, m.labelMargin)),
-    [sizes, mapW, m.labelMargin]
+  const placeRadiiPx = useMemo(
+    () => sizes.map((px) => orbCollisionRadiusPx(px)),
+    [sizes]
   );
+  // ★配置計算は固定リファレンス寸法(m.layoutW/H)で実施。実コンテナ mapW/mapH には依存しない
+  //   ＝リサイズで再計算・再配置されず、分布が凍結されて安定する。
   const placements = useMemo(
-    () => computeAxisPlacements(topics, topicPositions ?? DEFAULT_TOPIC_AXIS, obstacles, placeRadii, m.yMin, m.yMax, m.xMin, m.xMax),
-    [topics, topicPositions, obstacles, placeRadii, m.yMin, m.yMax, m.xMin, m.xMax]
+    () => computeAxisPlacements(topics, topicPositions ?? DEFAULT_TOPIC_AXIS, obstacles, placeRadiiPx, m.layoutW, m.layoutH, m.yMin, m.yMax, m.xMin, m.xMax),
+    [topics, topicPositions, obstacles, placeRadiiPx, m.layoutW, m.layoutH, m.yMin, m.yMax, m.xMin, m.xMax]
   );
   // 各玉のラベル向き（玉本体半径ぶん外側へ出し、近隣と被らない側を選ぶ）
   const bodyRadiiPct = useMemo(
-    () => sizes.map((px) => pxToPctRadius(px / 2 + 6, mapW)),
-    [sizes, mapW]
+    () => sizes.map((px) => pxToPctRadius(px / 2 + 6, m.layoutW)),
+    [sizes, m.layoutW]
   );
   const labelSides = useMemo(
     () => assignLabelSides(placements.map((p) => p.pos), bodyRadiiPct, m.yMin, m.yMax, m.xMin, m.xMax),
     [placements, bodyRadiiPct, m.yMin, m.yMax, m.xMin, m.xMax]
   );
-  // 関連カテゴリのノード接続線（座標が近いトピック同士を結ぶ）
+  // ノード接続線。Gemma生成の「内容ベース」エッジ(topicEdges)があればそれを優先し、
+  // 無ければ従来どおり「座標が近いトピック同士」を幾何的に結ぶ。
   const connections = useMemo(() => {
     const pts = placements.map((p) => p.pos);
     const res: Array<{ a: [number, number]; b: [number, number] }> = [];
+
+    if (topicEdges && topicEdges.length > 0) {
+      // topic.no → placement index
+      const idxByNo = new Map<number, number>();
+      topics.forEach((t, i) => idxByNo.set(t.no, i));
+      const seen = new Set<string>();
+      for (const e of topicEdges) {
+        const i = idxByNo.get(e.a);
+        const j = idxByNo.get(e.b);
+        if (i == null || j == null || i === j) continue;
+        const key = i < j ? `${i}:${j}` : `${j}:${i}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        if (pts[i] && pts[j]) res.push({ a: pts[i], b: pts[j] });
+      }
+      return res;
+    }
+
     for (let i = 0; i < pts.length; i++) {
       const near = pts
         .map((q, j) => ({ j, d: Math.hypot(q[0] - pts[i][0], (q[1] - pts[i][1]) * 0.55) }))
@@ -910,7 +1033,7 @@ export function InteropPuyoBubbleMap({
       }
     }
     return res;
-  }, [placements]);
+  }, [placements, topicEdges, topics]);
 
   // 自動コメント吹き出し（来場者向けの賑わい演出・ユーザー操作なし）
   const [comments, setComments] = useState<Array<{ roomId: string; body: string; authorName: string }>>([]);
@@ -1014,8 +1137,8 @@ export function InteropPuyoBubbleMap({
   return (
     <div
       ref={containerRef}
-      // PCは右端の縦長AIバー(48px)分だけ右を空け、玉・ラベルがバーに潜らないようにする
-      className={`absolute inset-y-0 left-0 right-0 overflow-hidden select-none touch-none sm:right-12 ${grabbing ? "cursor-grabbing" : "cursor-grab"}`}
+      // 右端の縦長AIバー(48px)がある時だけ右を空け、玉・ラベルがバーに潜らないようにする
+      className={`absolute inset-y-0 left-0 right-0 overflow-hidden select-none touch-none ${aiBarReserved ? "sm:right-12" : ""} ${grabbing ? "cursor-grabbing" : "cursor-grab"}`}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -1023,11 +1146,17 @@ export function InteropPuyoBubbleMap({
       onClickCapture={onClickCapture}
     >
       <style>{PUYO_CSS}{INTEROP_PUYO_CSS}</style>
-      {/* パン＆ズーム可能なキャンバス */}
+      {/* 仮想キャンバスをコンテナ中央に置き、contain で一律スケールする外枠 */}
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+      {/* パン＆ズーム可能な仮想キャンバス（固定サイズ m.layoutW×layoutH）。
+          配置はこの仮想座標で凍結され、fitScale で画面に合わせて一括拡縮されるので、
+          ブラウザサイズが変わっても分布は不変・重なりゼロ。 */}
       <div
-        className="absolute inset-0"
+        className="pointer-events-auto relative shrink-0"
         style={{
-          transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})`,
+          width: m.layoutW,
+          height: m.layoutH,
+          transform: `translate(${view.x}px, ${view.y}px) scale(${fitScale * view.scale})`,
           transformOrigin: "center center",
           transition: dragRef.current.active ? "none" : "transform 0.12s ease-out",
         }}
@@ -1206,11 +1335,11 @@ export function InteropPuyoBubbleMap({
           <span
             className="relative flex h-full w-full flex-col items-center justify-center rounded-full transition-transform duration-200 group-hover:scale-[1.06] group-active:scale-95"
             style={{
-              background: "radial-gradient(circle at 36% 26%, rgba(255,255,255,0.96) 0%, rgba(218,228,255,0.88) 38%, rgba(150,172,255,0.82) 100%)",
+              // ほぼ不透明な発光球なので backdrop-filter は不要（centerPulse のスケールで
+              // 毎フレーム再ブラーになり最重量だったため除去）。
+              background: "radial-gradient(circle at 36% 26%, rgba(255,255,255,0.97) 0%, rgba(218,228,255,0.92) 38%, rgba(150,172,255,0.88) 100%)",
               border: "2px solid rgba(200,218,255,0.80)",
               boxShadow: "0 0 36px rgba(130,160,255,0.50), 0 8px 24px rgba(0,0,0,0.28), inset 0 2px 12px rgba(255,255,255,0.55)",
-              backdropFilter: "blur(12px)",
-              WebkitBackdropFilter: "blur(12px)",
             }}
           >
             <span
@@ -1296,10 +1425,11 @@ export function InteropPuyoBubbleMap({
         );
       })}
 
-      </div>{/* /パン可能キャンバス */}
+      </div>{/* /仮想キャンバス */}
+      </div>{/* /centeringラッパー */}
 
-      {/* ズーム＆リセット操作（右下・固定）。PCは右端の縦長AIバー(48px)を避けて左へ寄せる */}
-      <div className="absolute bottom-24 right-3 z-40 flex flex-col gap-1.5 md:bottom-6 md:right-16">
+      {/* ズーム＆リセット操作（右下・固定）。AIバーがある時だけ左へ寄せる */}
+      <div ref={zoomRef} className={`absolute bottom-24 right-3 z-40 flex flex-col gap-1.5 md:bottom-6 ${aiBarReserved ? "md:right-16" : "md:right-6"}`}>
         <button
           type="button"
           onClick={() => zoomAt(1.2, (containerRef.current?.getBoundingClientRect().left ?? 0) + (containerRef.current?.clientWidth ?? 0) / 2, (containerRef.current?.getBoundingClientRect().top ?? 0) + (containerRef.current?.clientHeight ?? 0) / 2)}
@@ -1331,10 +1461,10 @@ export function InteropPuyoBubbleMap({
         </button>
       </div>
 
-      {/* 凡例：1つのまとまったガラスバーに収めて下部のごちゃつきを解消。
-          スマホ＝横スクロール1行／PC＝折返し */}
-      <div className="pointer-events-none absolute bottom-3 left-3 right-16 z-30 md:bottom-5 md:left-5 md:right-20">
-        <div className="pointer-events-auto inline-flex max-w-full flex-nowrap items-center gap-1.5 overflow-x-auto rounded-2xl border border-white/10 px-2.5 py-1.5 [scrollbar-width:none] md:pointer-events-none md:flex-wrap md:overflow-visible"
+      {/* 凡例：常に横1行のスクロールバーに収める（折返しで縦に伸びて玉と重なるのを防ぐ）。
+          高さが一定なので反発ゾーンの計測も安定する。 */}
+      <div className={`pointer-events-none absolute bottom-3 left-3 z-30 md:bottom-5 md:left-5 ${aiBarReserved ? "right-16 md:right-20" : "right-14 md:right-16"}`}>
+        <div ref={legendRef} className="pointer-events-auto inline-flex max-w-full flex-nowrap items-center gap-1.5 overflow-x-auto rounded-2xl border border-white/10 px-2.5 py-1.5 [scrollbar-width:none]"
           style={{ background: "rgba(6,9,24,0.72)" }}>
           {Object.entries(GROUP_STYLE).map(([major, sty]) => (
             <GroupChip key={major} label={sty.label} sty={sty} />
