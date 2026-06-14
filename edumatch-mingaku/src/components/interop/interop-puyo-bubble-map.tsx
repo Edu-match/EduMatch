@@ -349,8 +349,8 @@ function assignLabelSides(
   for (let i = 0; i < n; i++) {
     const [x, y] = pts[i];
     const r = bodyR[i] ?? 6;
-    const offV = r + 4;
-    const offH = r + 7;
+    const offV = r + 6;
+    const offH = r + 9;
     const cands: Array<{ side: LabelSide; cx: number; cy: number }> = [
       { side: "down", cx: x, cy: y + offV },
       { side: "up", cx: x, cy: y - offV },
@@ -368,6 +368,12 @@ function assignLabelSides(
         if (j === i) continue;
         const dx = c.cx - pts[j][0];
         const dy = (c.cy - pts[j][1]) * yAspect;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        // 相手の玉の「縁」までの距離。ラベル中心が他の玉の本体に重なる候補は強く排除する
+        // （タイトルが玉に被る不具合の主因。中心間距離だけだと半径を無視して被っていた）。
+        const edge = dist - (bodyR[j] ?? 6);
+        if (edge < 2.5) score -= 500;
+        else if (edge < 5) score -= 90;
         score -= 70 / (dx * dx + dy * dy + 1.5);
       }
       for (const p of placed) {
@@ -709,6 +715,8 @@ export type InteropSatellite = {
 /** トップ：28ぷよぷよ玉 + 中心インタロップ（中心から放射状配置） */
 export function InteropPuyoBubbleMap({
   interopCat,
+  centerLabel,
+  groupFilter,
   activityByRoom,
   axisConfig = DEFAULT_AXIS_CONFIG,
   topicPositions,
@@ -723,6 +731,10 @@ export function InteropPuyoBubbleMap({
   iconFor,
 }: {
   interopCat: InteropCategory | undefined;
+  /** 中心の玉に表示する文言（未指定なら interopCat.name → "インタロップ"）。長文は折返し表示。 */
+  centerLabel?: string;
+  /** 指定時、その major(A〜F)のトピックだけに絞り込む（ミニマップからのフォーカス遷移用）。 */
+  groupFilter?: string;
   activityByRoom: Map<string, InteropActivityStats>;
   axisConfig?: AxisConfig;
   topicPositions?: Record<number, AxisPoint>;
@@ -742,10 +754,12 @@ export function InteropPuyoBubbleMap({
   iconFor: (slug: string) => LucideIcon;
 }) {
   const router = useRouter();
-  const topics = useMemo(
-    () => sortTopicsForBurst(topicsProp && topicsProp.length > 0 ? topicsProp : INTEROP_PRIORITY_TOPICS),
-    [topicsProp]
-  );
+  const topics = useMemo(() => {
+    const base = topicsProp && topicsProp.length > 0 ? topicsProp : INTEROP_PRIORITY_TOPICS;
+    const scoped = groupFilter ? base.filter((t) => t.major === groupFilter) : base;
+    // 念のため：絞り込み結果が空なら全件にフォールバック（不正なgroup値対策）
+    return sortTopicsForBurst(scoped.length > 0 ? scoped : base);
+  }, [topicsProp, groupFilter]);
   const InteropIcon = interopCat ? iconFor(interopCat.slug) : Network;
   const ranking = useMemo(() => computeBubbleRanking(topics, activityByRoom), [topics, activityByRoom]);
 
@@ -992,7 +1006,9 @@ export function InteropPuyoBubbleMap({
   );
   // 各玉のラベル向き（玉本体半径ぶん外側へ出し、近隣と被らない側を選ぶ）
   const bodyRadiiPct = useMemo(
-    () => sizes.map((px) => pxToPctRadius(px / 2 + 6, m.layoutW)),
+    // 物理衝突半径(px/2+12)と揃える。ラベル逃がしの基準が小さい(+6)と、玉の縁ぎりぎりに
+    // ラベルが置かれて被って見えるため、外縁をしっかり取る。
+    () => sizes.map((px) => pxToPctRadius(px / 2 + 12, m.layoutW)),
     [sizes, m.layoutW]
   );
   const labelSides = useMemo(
@@ -1297,7 +1313,7 @@ export function InteropPuyoBubbleMap({
             height: centerSize,
             animation: `centerPulse 8s ease-in-out infinite`,
           }}
-          aria-label="インタロップ"
+          aria-label={centerLabel ?? interopCat?.name ?? "インタロップ"}
         >
           {/* 放射するパルスリング（2本・時差） */}
           <span
@@ -1347,7 +1363,25 @@ export function InteropPuyoBubbleMap({
               style={{ top: "10%", left: "14%", width: "44%", height: "34%", background: "rgba(255,255,255,0.90)", filter: "blur(4px)" }}
             />
             <InteropIcon className="relative z-10 text-[#1a3a8a]" strokeWidth={1.9} style={{ width: Math.round(centerSize * 0.22), height: Math.round(centerSize * 0.22) }} />
-            <span className="relative z-10 mt-0.5 whitespace-nowrap font-bold leading-tight text-[#1a3a8a]" style={{ fontSize: Math.max(10, Math.round(centerSize * 0.13)) }}>インタロップ</span>
+            {(() => {
+              const label = centerLabel ?? interopCat?.name ?? "インタロップ";
+              const isLong = label.length > 6;
+              return (
+                <span
+                  className="relative z-10 mt-0.5 px-1 text-center font-bold leading-[1.15] text-[#1a3a8a] [word-break:keep-all]"
+                  style={{
+                    // 長文は玉幅に収めて折返し・小フォント。短い名称は従来サイズ。
+                    fontSize: isLong
+                      ? Math.max(8, Math.round(centerSize * 0.092))
+                      : Math.max(10, Math.round(centerSize * 0.13)),
+                    maxWidth: isLong ? centerSize * 0.92 : undefined,
+                    whiteSpace: isLong ? "normal" : "nowrap",
+                  }}
+                >
+                  {label}
+                </span>
+              );
+            })()}
           </span>
         </button>
       )}

@@ -123,6 +123,30 @@ export function InteropSettingsEditor() {
             </label>
 
             <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
+              <p className="mb-2 text-sm font-bold text-white/80">トップマップのサテライト表示</p>
+              <div className="flex flex-col gap-2">
+                <label className="flex items-center gap-2 text-sm text-white/75">
+                  <input type="checkbox" checked={settings.showLatestNews}
+                    onChange={(e) => setSettings((s) => ({ ...s, showLatestNews: e.target.checked }))} />
+                  最新ニュース（左上）
+                </label>
+                <label className="flex items-center gap-2 text-sm text-white/75">
+                  <input type="checkbox" checked={settings.showSpeakerQa}
+                    onChange={(e) => setSettings((s) => ({ ...s, showSpeakerQa: e.target.checked }))} />
+                  登壇者への質問（右上）
+                </label>
+                <label className="flex items-center gap-2 text-sm text-white/75">
+                  <input type="checkbox" checked={settings.showOpinionBox}
+                    onChange={(e) => setSettings((s) => ({ ...s, showOpinionBox: e.target.checked }))} />
+                  ご意見BOX（下）
+                </label>
+              </div>
+              <p className="mt-1.5 text-xs text-white/40">
+                特設由来の3面。オフにするとマップ上のその玉を隠します（投稿データは保持）。
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
               <label className="flex items-center gap-2 text-sm font-bold text-white/80">
                 <input type="checkbox" checked={settings.geofenceEnabled}
                   onChange={(e) => setSettings((s) => ({ ...s, geofenceEnabled: e.target.checked }))} />

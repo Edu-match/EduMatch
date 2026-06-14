@@ -52,6 +52,9 @@ export default async function InteropPage() {
           guideText={settings.guideText}
           initialInteropActivity={initialActivity.interop}
           initialForumActivity={initialActivity.forum}
+          showLatestNews={settings.showLatestNews}
+          showSpeakerQa={settings.showSpeakerQa}
+          showOpinionBox={settings.showOpinionBox}
         />
       </Suspense>
 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, getCurrentProfile } from "@/lib/auth";
 import { createAiWeeklyTopicForRoom } from "@/lib/forum-weekly-topic-ai";
@@ -79,31 +80,30 @@ export async function GET(req: NextRequest) {
         ? roomsWithCounts
         : roomsWithCounts.filter((r: { is_hidden?: boolean }) => !r.is_hidden);
 
-    // 参加者数 = 各部屋の投稿でユニークな author_id の数（ゲスト除く）
-    const participantCounts = await Promise.all(
-      rooms.map(async (room) => {
-        const distinct = await prisma.forumPost.findMany({
-          where: { room_id: room.id, is_hidden: false, author_id: { not: null } },
-          select: { author_id: true },
-          distinct: ["author_id"],
-        });
-        return { id: room.id, count: distinct.length };
-      })
-    );
-
-    const lastPostedAts = await Promise.all(
-      rooms.map(async (room) => {
-        const latest = await prisma.forumPost.findFirst({
-          where: { room_id: room.id, is_hidden: false },
-          orderBy: { created_at: "desc" },
-          select: { created_at: true },
-        });
-        return { id: room.id, at: latest?.created_at?.toISOString() ?? null };
-      })
-    );
-
-    const participantMap = Object.fromEntries(participantCounts.map((c) => [c.id, c.count]));
-    const lastPostedMap = Object.fromEntries(lastPostedAts.map((l) => [l.id, l.at]));
+    // 参加者数(ユニークauthor_id) と 最終投稿日 を、部屋ごとの個別クエリ(N+1)ではなく
+    // 各1本のGROUP BYで一括集計する。以前は部屋数×2回(数百クエリ)でSSRの主要遅延だった。
+    const roomIds = rooms.map((r) => r.id);
+    let participantMap: Record<string, number> = {};
+    let lastPostedMap: Record<string, string | null> = {};
+    if (roomIds.length > 0) {
+      const idList = Prisma.join(roomIds);
+      const [participantRows, lastRows] = await Promise.all([
+        prisma.$queryRaw<Array<{ room_id: string; c: number }>>`
+          SELECT room_id, COUNT(DISTINCT author_id)::int AS c
+          FROM forum_posts
+          WHERE is_hidden = false AND author_id IS NOT NULL AND room_id IN (${idList})
+          GROUP BY room_id`,
+        prisma.$queryRaw<Array<{ room_id: string; at: Date | null }>>`
+          SELECT room_id, MAX(created_at) AS at
+          FROM forum_posts
+          WHERE is_hidden = false AND room_id IN (${idList})
+          GROUP BY room_id`,
+      ]);
+      participantMap = Object.fromEntries(participantRows.map((r) => [r.room_id, Number(r.c)]));
+      lastPostedMap = Object.fromEntries(
+        lastRows.map((r) => [r.room_id, r.at ? new Date(r.at).toISOString() : null]),
+      );
+    }
 
     const result = rooms.map((room) => ({
       id: room.id,

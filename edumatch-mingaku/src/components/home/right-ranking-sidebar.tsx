@@ -5,6 +5,7 @@ import { getPopularServicesByEngagement } from "@/app/_actions/popularity";
 import { getUpcomingEvents } from "@/app/_actions/events";
 import { RankingServiceImage } from "./ranking-service-image";
 import { SponsorSidebarCard } from "./sponsor-sidebar-card";
+import { ForumMapSidebarWidget } from "@/components/community/forum-map-sidebar-widget";
 
 /** トップページ右サイドバー：ランキング（上位5社）＋セミナー・イベント情報 */
 export async function RightRankingSidebar() {
@@ -16,6 +17,9 @@ export async function RightRankingSidebar() {
 
   return (
     <aside className="lg:sticky lg:top-20 flex flex-col gap-6 min-w-0 w-full">
+      {/* 井戸端マップ（PR枠）— /forum の本物マップへ誘導 */}
+      <ForumMapSidebarWidget />
+
       {/* スポンサーPR（登録があれば表示） */}
       <SponsorSidebarCard />
 

@@ -13,10 +13,17 @@ import {
   MessageCircle,
   Network,
   Sparkles,
+  Trophy,
   type LucideIcon,
 } from "lucide-react";
 import { InteropBackdrop } from "@/components/interop/interop-backdrop";
-import { InteropPuyoBubbleMap, type InteropSatellite } from "@/components/interop/interop-puyo-bubble-map";
+import dynamic from "next/dynamic";
+import type { InteropSatellite } from "@/components/interop/interop-puyo-bubble-map";
+// 69KBの重量級マップは初期バンドルから外し、クライアントで遅延ロード（/forum遷移の体感軽量化）。
+const InteropPuyoBubbleMap = dynamic(
+  () => import("@/components/interop/interop-puyo-bubble-map").then((m) => m.InteropPuyoBubbleMap),
+  { ssr: false },
+);
 import { InteropChatWidget } from "@/components/interop/interop-chat-widget";
 import type { InteropCategory } from "@/components/interop/interop-category-bubble-map";
 import { Mic, Newspaper, MessagesSquare } from "lucide-react";
@@ -166,6 +173,9 @@ export function InteropExplorer({
   initialForumActivity = null,
   showChat = true,
   embedded = false,
+  showLatestNews = true,
+  showSpeakerQa = true,
+  showOpinionBox = true,
 }: {
   themeMode?: InteropThemeMode;
   guideText?: string;
@@ -173,6 +183,10 @@ export function InteropExplorer({
   initialForumActivity?: { rooms?: ForumRoomActivityPayload[] } | null;
   /** 来場者向けAIチャット(fixed配置)を出すか。井戸端会議・ホーム埋め込みでは false。 */
   showChat?: boolean;
+  /** トップマップのサテライト表示（管理画面のトグルで切替）。 */
+  showLatestNews?: boolean;
+  showSpeakerQa?: boolean;
+  showOpinionBox?: boolean;
   /** ホーム等への埋め込みプレビュー。true ならライブポーリング（activity/recent-posts）を止め、
    *  SSR初期値のみで表示する（ホーム遷移を軽くするため）。 */
   embedded?: boolean;
@@ -182,6 +196,7 @@ export function InteropExplorer({
   const catParam = searchParams.get("cat");
   const topicParam = searchParams.get("topic"); // フォーラムから「論点ビュー」へ戻る（roomId）
   const hubParam = searchParams.get("hub"); // フォーラム(井戸端)から「ハブ」へ戻る
+  const groupParam = searchParams.get("group"); // ミニマップから major(A〜F)で絞り込み
 
   const [categories, setCategories] = useState<InteropCategory[]>([]);
   const [subCategories, setSubCategories] = useState<InteropSubCategory[]>([]);
@@ -267,12 +282,13 @@ export function InteropExplorer({
 
   const satellites = useMemo<InteropSatellite[]>(() => {
     const defs = [
-      { slug: "interop-latest-news", nameHints: ["最新ニュース", "ニュース"], label: "最新ニュース", place: "topLeft" as const, color: "#7dd4fc", icon: Newspaper },
-      { slug: "interop-speaker-qa", nameHints: ["登壇者への質問", "登壇", "質問"], label: "登壇者への質問", place: "topRight" as const, color: "#fcd34d", icon: Mic },
-      { slug: "interop-opinion-box", nameHints: ["ご意見BOX", "ご意見", "意見"], label: "ご意見BOX", place: "bottom" as const, color: "#86efac", icon: MessagesSquare },
+      { slug: "interop-latest-news", visible: showLatestNews, nameHints: ["最新ニュース", "ニュース"], label: "最新ニュース", place: "topLeft" as const, color: "#7dd4fc", icon: Newspaper },
+      { slug: "interop-speaker-qa", visible: showSpeakerQa, nameHints: ["登壇者への質問", "登壇", "質問"], label: "登壇者への質問", place: "topRight" as const, color: "#fcd34d", icon: Mic },
+      { slug: "interop-opinion-box", visible: showOpinionBox, nameHints: ["ご意見BOX", "ご意見", "意見"], label: "ご意見BOX", place: "bottom" as const, color: "#86efac", icon: MessagesSquare },
     ];
     const result: InteropSatellite[] = [];
     for (const d of defs) {
+      if (!d.visible) continue; // 管理画面のトグルで非表示
       const sub =
         allSubs.find((s) => s.slug === d.slug) ??
         allSubs.find((s) => d.nameHints.some((h) => s.name.includes(h)));
@@ -288,12 +304,14 @@ export function InteropExplorer({
       });
     }
     return result;
-  }, [allSubs, activityBySub, router]);
+  }, [allSubs, activityBySub, router, showLatestNews, showSpeakerQa, showOpinionBox]);
 
+  // 中心ハブは is_primary 優先（DBで議員会館に付け替え可能）。後方互換で giin-kaikan / interop もフォールバック。
   const interopCat = useMemo(
     () =>
-      categories.find((c) => c.slug === "interop") ??
       categories.find((c) => c.isPrimary) ??
+      categories.find((c) => c.slug === "giin-kaikan") ??
+      categories.find((c) => c.slug === "interop") ??
       categories[0],
     [categories]
   );
@@ -301,6 +319,52 @@ export function InteropExplorer({
     () => categories.filter((c) => c.id !== interopCat?.id),
     [categories, interopCat]
   );
+  // 中心が「議員会館」のとき、ハブの中身は佐藤さん指定の3点（/kaikanと同じ）。
+  // インフォメーション/AIチャンピオンシップは外部リンク（onActivateでwindow.open）、
+  // ご意見・要望は既存のご意見BOX掲示板へ（書き込み可）。
+  const isGiinKaikanCenter = interopCat?.slug === "giin-kaikan";
+  const giinKaikanItems = useMemo(() => {
+    const opinionSub =
+      allSubs.find((s) => s.slug === "interop-opinion-box") ??
+      allSubs.find((s) => s.name.includes("ご意見"));
+    return [
+      {
+        id: "giin-information",
+        name: "インフォメーション",
+        icon: Info,
+        accentColor: "#7dd4fc",
+        stats: EMPTY_STATS,
+        onActivate: () =>
+          window.open(
+            "https://prtimes.jp/main/html/rd/p/000000046.000161501.html",
+            "_blank",
+            "noopener,noreferrer",
+          ),
+      },
+      {
+        id: "giin-championship",
+        name: "AIチャンピオンシップ",
+        icon: Trophy,
+        accentColor: "#fcd34d",
+        stats: EMPTY_STATS,
+        onActivate: () =>
+          window.open(
+            "https://ai-ueo.org/2026/04/01/u18-ai-championship-2026/",
+            "_blank",
+            "noopener,noreferrer",
+          ),
+      },
+      {
+        id: "giin-opinion",
+        name: "ご意見・要望",
+        icon: MessagesSquare,
+        accentColor: "#86efac",
+        stats: opinionSub ? activityBySub.get(opinionSub.id) ?? EMPTY_STATS : EMPTY_STATS,
+        onActivate: () =>
+          opinionSub ? router.push(`/interop/t/${opinionSub.id}`) : router.push("/kaikan"),
+      },
+    ];
+  }, [allSubs, activityBySub, router]);
 
   const loadActivity = useCallback(() => {
     Promise.all([
@@ -336,7 +400,12 @@ export function InteropExplorer({
         // booth ページからの戻り（/?cat=xxx）で該当階層を復元
         if (catParam) {
           const match = d.categories.find((c: InteropCategory) => c.id === catParam);
-          if (match) setView(match.slug === "interop" ? { kind: "hub" } : { kind: "category", cat: match });
+          if (match)
+            setView(
+              match.isPrimary || match.slug === "giin-kaikan" || match.slug === "interop"
+                ? { kind: "hub" }
+                : { kind: "category", cat: match },
+            );
         }
       })
       .catch(console.error)
@@ -375,9 +444,9 @@ export function InteropExplorer({
   // トップマップで選べるのは中心のインタロップのみ → ハブへ。念のため他カテゴリはカテゴリ表示にフォールバック。
   const handleSelectFromMap = useCallback(
     (cat: InteropCategory) => {
-      setView(cat.slug === "interop" ? { kind: "hub" } : { kind: "category", cat });
+      setView(cat.id === interopCat?.id ? { kind: "hub" } : { kind: "category", cat });
     },
-    []
+    [interopCat?.id]
   );
 
   const handleSelectTopic = useCallback(
@@ -408,6 +477,8 @@ export function InteropExplorer({
         <>
           <InteropPuyoBubbleMap
             interopCat={interopCat}
+            centerLabel={isGiinKaikanCenter ? "教育AIサミット＠衆議院第一議員会館" : interopCat?.name}
+            groupFilter={groupParam ?? undefined}
             activityByRoom={activityByRoom}
             axisConfig={axis.config}
             topics={dbTopics}
@@ -437,22 +508,39 @@ export function InteropExplorer({
               {guideText}
             </div>
           </div>
+          {groupParam && (
+            <button
+              type="button"
+              onClick={() => router.push("/forum")}
+              className="absolute left-3 top-16 z-30 inline-flex items-center gap-1 rounded-full border border-white/25 bg-black/50 px-3 py-1.5 text-xs font-bold text-white/90 backdrop-blur transition-colors hover:bg-black/70 hover:text-white sm:top-20"
+            >
+              ← すべてのテーマ
+            </button>
+          )}
         </>
       ) : view.kind === "hub" ? (
         <>
           <InteropSubOrbit
             centerLabel={interopCat?.name ?? "インタロップ"}
             centerIcon={iconFor(interopCat?.slug ?? "interop")}
-            centerHint={`${exhibitionCats.length}つのエリア · タップして展示・情報へ`}
+            centerHint={
+              isGiinKaikanCenter
+                ? "インフォメーション · AIチャンピオンシップ · ご意見"
+                : `${exhibitionCats.length}つのエリア · タップして展示・情報へ`
+            }
             accent={interopCat?.color || "#9fb4e8"}
-            items={exhibitionCats.map((cat) => ({
-              id: cat.id,
-              name: cat.name,
-              icon: iconFor(cat.slug),
-              accentColor: cat.color || "#9fb4e8",
-              stats: activityByCategory.get(cat.id) ?? EMPTY_STATS,
-              onActivate: () => setView({ kind: "category", cat }),
-            }))}
+            items={
+              isGiinKaikanCenter
+                ? giinKaikanItems
+                : exhibitionCats.map((cat) => ({
+                    id: cat.id,
+                    name: cat.name,
+                    icon: iconFor(cat.slug),
+                    accentColor: cat.color || "#9fb4e8",
+                    stats: activityByCategory.get(cat.id) ?? EMPTY_STATS,
+                    onActivate: () => setView({ kind: "category", cat }),
+                  }))
+            }
             backLabel="マップに戻る"
             onBack={() => setView({ kind: "map" })}
           />

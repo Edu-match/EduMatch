@@ -35,6 +35,14 @@ export type InteropSettings = {
   /** 背景テーマ（auto＝時刻で自動切替） */
   themeMode: InteropThemeMode;
 
+  /* ───── トップマップのサテライト表示（特設由来の3面） ───── */
+  /** 最新ニュース（左上） */
+  showLatestNews: boolean;
+  /** 登壇者への質問（右上） */
+  showSpeakerQa: boolean;
+  /** ご意見BOX（下） */
+  showOpinionBox: boolean;
+
   /* ───── ジオフェンス（会場を出たときの演出） ───── */
   /** 会場退出演出を有効にするか */
   geofenceEnabled: boolean;
@@ -63,6 +71,10 @@ export const DEFAULT_INTEROP_SETTINGS: InteropSettings = {
   guideText: "気になるエリアをタップして、セミナー・展示・登壇情報を探そう",
   footerCredit: "青楓館高等学院 / みんがく / AI検定協会 / AI部 © 2026",
   themeMode: "auto",
+
+  showLatestNews: true,
+  showSpeakerQa: true,
+  showOpinionBox: true,
 
   geofenceEnabled: true,
   venueLat: 35.6485, // 幕張メッセ

@@ -226,8 +226,11 @@ export function MaintenanceAwareLayout({
     !!pathname?.startsWith("/interop") ||
     // 井戸端会議 常設ルート（middleware で /interop に内部 rewrite される並行ルート）
     !!pathname?.startsWith("/idobata") ||
-    isSpecialHost ||
-    (!!pathname?.startsWith("/forum") && fromInterop);
+    isSpecialHost;
+  // 注: 以前は「/forum を ?from=interop で開くと bare（chrome無し）」にしていたが、
+  // 投稿ページで本サイトのヘッダー/ナビが消えて文脈を失うため廃止。
+  // 特設キオスクの没入表示は special.* の host 判定(isSpecialHost)で別途維持される。
+  void fromInterop;
 
   if (isBareLayout) {
     return (
