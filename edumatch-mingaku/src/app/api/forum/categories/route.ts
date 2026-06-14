@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentProfile } from "@/lib/auth";
 import { uniqueForumSlug } from "@/lib/forum-slug";
@@ -89,14 +89,20 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // 全サブカテゴリのルーム生成＋コンテンツ紐付けを事前実行
-    // （タップ先ルームと関連コンテンツのボタンを即座に反応させる）
-    await provisionCategoryRooms({
-      id: category.id,
-      name: category.name,
-      slug: category.slug,
-      description: category.description,
-      color: category.color,
+    // 全サブカテゴリのルーム生成＋コンテンツ紐付けは重く、await するとカテゴリ作成UIが固まる。
+    // レスポンスは即返し、ルーム生成は after() でバックグラウンド実行する。
+    after(async () => {
+      try {
+        await provisionCategoryRooms({
+          id: category.id,
+          name: category.name,
+          slug: category.slug,
+          description: category.description,
+          color: category.color,
+        });
+      } catch (e) {
+        console.error("[forum/categories POST] provisionCategoryRooms", e);
+      }
     });
 
     return NextResponse.json(

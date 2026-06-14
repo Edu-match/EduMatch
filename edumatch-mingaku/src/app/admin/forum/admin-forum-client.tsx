@@ -115,46 +115,45 @@ function CreateRoomDialog({ onCreated }: { onCreated: (room: ForumRoom) => void 
 
 export function AdminForumClient() {
   const [rooms, setRooms] = useState<ForumRoom[]>([]);
+  // 投稿は「選択した部屋ぶんだけ」遅延ロード（以前は全部屋を一括fetchして固まっていた）。
   const [posts, setPosts] = useState<(ForumPost & { is_hidden?: boolean; isHidden?: boolean })[]>([]);
+  const [stats, setStats] = useState<{ pinned: number; noReply: number; hidden: number } | null>(null);
   const [loadingRooms, setLoadingRooms] = useState(true);
-  const [loadingPosts, setLoadingPosts] = useState(true);
+  const [loadingPosts, setLoadingPosts] = useState(false);
   const [roomKeyword, setRoomKeyword] = useState("");
   const [postKeyword, setPostKeyword] = useState("");
-  const [selectedRoom, setSelectedRoom] = useState("all");
+  const [selectedRoom, setSelectedRoom] = useState(""); // "" = 未選択（部屋を選ぶと投稿を取得）
   const [postFilter, setPostFilter] = useState<PostFilter>("all");
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
   const [roomNameDraft, setRoomNameDraft] = useState("");
   const [roomDescDraft, setRoomDescDraft] = useState("");
   const [savingRoom, setSavingRoom] = useState(false);
 
-  // 部屋一覧取得（非表示含む・管理者モード）
+  // 部屋一覧＋上部集計のみマウント時に取得（軽量・即時表示）
   useEffect(() => {
     fetch("/api/forum/rooms?includeHidden=true", { credentials: "include" })
       .then((r) => r.json())
       .then((data) => { if (data.rooms) setRooms(data.rooms); })
       .catch(console.error)
       .finally(() => setLoadingRooms(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    fetch("/api/admin/forum/stats", { credentials: "include" })
+      .then((r) => r.json())
+      .then((d) => { if (typeof d.pinned === "number") setStats(d); })
+      .catch(console.error);
   }, []);
 
-  // 全投稿取得（全部屋分・非表示含む）
+  // 選択された部屋の投稿だけを遅延取得（投稿管理タブで部屋を選んだとき）
   useEffect(() => {
-    if (loadingRooms) return;
-    if (rooms.length === 0) {
-      setLoadingPosts(false);
-      return;
-    }
-    Promise.all(
-      rooms.map((room) =>
-        fetch(`/api/forum/rooms/${room.id}/posts?page=1&includeHidden=true`, { credentials: "include" })
-          .then((r) => r.json())
-          .then((d) => (d.posts ?? []) as ForumPost[])
-          .catch(() => [] as ForumPost[])
-      )
-    ).then((allPosts) => {
-      setPosts(allPosts.flat());
-    }).finally(() => setLoadingPosts(false));
-  }, [rooms, loadingRooms]);
+    if (!selectedRoom) { setPosts([]); return; }
+    let cancelled = false;
+    setLoadingPosts(true);
+    fetch(`/api/forum/rooms/${selectedRoom}/posts?page=1&includeHidden=true`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled) setPosts((d.posts ?? []) as ForumPost[]); })
+      .catch(() => { if (!cancelled) setPosts([]); })
+      .finally(() => { if (!cancelled) setLoadingPosts(false); });
+    return () => { cancelled = true; };
+  }, [selectedRoom]);
 
   const filteredRooms = useMemo(() => {
     const keyword = roomKeyword.trim().toLowerCase();
@@ -162,10 +161,10 @@ export function AdminForumClient() {
     return rooms.filter((room) => [room.name, room.description].some((t) => (t ?? "").toLowerCase().includes(keyword)));
   }, [roomKeyword, rooms]);
 
+  // posts は選択中の部屋のみ。キーワード＋状態フィルタだけ適用する。
   const filteredPosts = useMemo(() => {
     const keyword = postKeyword.trim().toLowerCase();
     return posts.filter((post) => {
-      const inRoom = selectedRoom === "all" || post.roomId === selectedRoom;
       const inKeyword = !keyword || post.authorName.toLowerCase().includes(keyword) || post.body.toLowerCase().includes(keyword);
       const replies = post.replies?.length ?? post.replyCount ?? 0;
       const isHidden = Boolean(post.isHidden || post.is_hidden);
@@ -174,13 +173,14 @@ export function AdminForumClient() {
         : postFilter === "pinned" ? Boolean(post.isPinned) && !isHidden
         : postFilter === "hidden" ? isHidden
         : replies === 0 && !isHidden;
-      return inRoom && inKeyword && inFilter;
+      return inKeyword && inFilter;
     });
-  }, [postFilter, postKeyword, posts, selectedRoom]);
+  }, [postFilter, postKeyword, posts]);
 
-  const pinnedCount = posts.filter((post) => post.isPinned).length;
-  const noReplyCount = posts.filter((post) => (post.replies?.length ?? post.replyCount ?? 0) === 0 && !post.isHidden && !post.is_hidden).length;
-  const hiddenCount = posts.filter((post) => post.isHidden || post.is_hidden).length;
+  // 上部集計は全件countのstatsから（全投稿fetchは廃止）。
+  const pinnedCount = stats?.pinned ?? 0;
+  const noReplyCount = stats?.noReply ?? 0;
+  const hiddenCount = stats?.hidden ?? 0;
   const topRooms = [...rooms].sort((a, b) => b.postCount - a.postCount).slice(0, 5);
 
   const handleCreateRoom = (room: ForumRoom) => {
@@ -316,7 +316,7 @@ export function AdminForumClient() {
     }
   }, []);
 
-  const isLoading = loadingRooms || loadingPosts;
+  const isLoading = loadingRooms;
 
   return (
     <div className="container max-w-5xl py-8">
@@ -424,16 +424,23 @@ export function AdminForumClient() {
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input value={postKeyword} onChange={(e) => setPostKeyword(e.target.value)} className="pl-9" placeholder="投稿本文・投稿者で検索" />
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant={selectedRoom === "all" ? "default" : "outline"} onClick={() => setSelectedRoom("all")}>全ルーム</Button>
+          <p className="text-xs text-muted-foreground">部屋を選ぶと、その部屋の投稿だけを読み込みます（全件一括取得をやめ高速化）。</p>
+          <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
             {rooms.map((room) => <Button key={room.id} size="sm" variant={selectedRoom === room.id ? "default" : "outline"} onClick={() => setSelectedRoom(room.id)}>{room.name}</Button>)}
           </div>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant={postFilter === "all" ? "default" : "outline"} onClick={() => setPostFilter("all")}>すべて</Button>
             <Button size="sm" variant={postFilter === "pinned" ? "default" : "outline"} onClick={() => setPostFilter("pinned")}>注目</Button>
             <Button size="sm" variant={postFilter === "no-reply" ? "default" : "outline"} onClick={() => setPostFilter("no-reply")}>返信待ち</Button>
-            <Button size="sm" variant={postFilter === "hidden" ? "default" : "outline"} onClick={() => setPostFilter("hidden")}><EyeOff className="mr-1 h-3.5 w-3.5" />非表示 {hiddenCount > 0 && `(${hiddenCount})`}</Button>
+            <Button size="sm" variant={postFilter === "hidden" ? "default" : "outline"} onClick={() => setPostFilter("hidden")}><EyeOff className="mr-1 h-3.5 w-3.5" />非表示</Button>
           </div>
+          {!selectedRoom ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">上の部屋を選んでください。</p>
+          ) : loadingPosts ? (
+            <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+          ) : filteredPosts.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">この条件の投稿はありません。</p>
+          ) : (
           <div className="space-y-2">
             {filteredPosts.map((post) => {
               const isHiddenPost = Boolean(post.isHidden || post.is_hidden);
@@ -472,6 +479,7 @@ export function AdminForumClient() {
               );
             })}
           </div>
+          )}
         </TabsContent>
 
         <TabsContent value="insights">
