@@ -19,9 +19,15 @@ export function ForumMapSidebarWidget() {
         </div>
       </div>
 
-      {/* 本物の井戸端UIをミニマップサイズに切り抜き（操作はさせずタップで開く） */}
+      {/* 本物の井戸端UIを“原寸のまま”ミニマップの大きさに切り抜く（縮小はしない）。
+          内側を大きく描画し、外側の枠(overflow-hidden)で中心付近だけを窓のように見せる。 */}
       <div className="relative h-64 w-full overflow-hidden bg-[#070a1c]">
-        <InteropExplorer embedded showChat={false} guideText="" />
+        <div
+          className="absolute left-1/2 -translate-x-1/2"
+          style={{ width: 700, height: 480, top: -90 }}
+        >
+          <InteropExplorer embedded showChat={false} guideText="" />
+        </div>
 
         {/* マップ操作を無効化し、タップで井戸端会議を開くオーバーレイ */}
         <Link
