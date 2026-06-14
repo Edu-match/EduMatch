@@ -4,9 +4,8 @@ import { InteropExplorer } from "@/components/interop/interop-explorer";
 
 /**
  * サイドバーの「井戸端会議マップ」ミニ。
- * 本物の井戸端マップ(InteropExplorer)を原寸のまま描画し、外枠(overflow-hidden)で
- * 中心（議員会館）付近を窓のように切り抜く。マップは操作可能：ドラッグでパン・泡タップで話題へ。
- * 右上の「ひらく」で全画面の /forum を開く。
+ * 本物の井戸端マップ(InteropExplorer)を拡大表示し、ドラッグでパン・泡タップで話題へ。
+ * 右上「ひらく」で全画面の /forum。明るめテーマ＋初期ズームで暗さ/可動域の狭さを解消。
  */
 export function ForumMapSidebarWidget() {
   return (
@@ -28,20 +27,19 @@ export function ForumMapSidebarWidget() {
         </Link>
       </div>
 
-      {/* 操作できる原寸マップを“のぞき窓”に切り抜き */}
-      <div className="relative h-72 w-full overflow-hidden bg-[#070a1c]">
-        {/* 原寸の井戸端マップ（中心＝議員会館 を窓の中央付近に）。ドラッグでパン可能 */}
-        <div
-          className="absolute left-1/2 -translate-x-1/2"
-          style={{ width: 760, height: 520, top: -100 }}
-        >
-          <InteropExplorer embedded showChat={false} guideText="" />
-        </div>
-
-        {/* 縁を軽く落として“のぞき窓”感（操作は邪魔しない） */}
+      {/* 本物マップを拡大表示（ドラッグでパン・泡タップで話題へ）。明るめテーマで暗さを解消 */}
+      <div className="relative h-72 w-full overflow-hidden bg-[#16224f]">
+        <InteropExplorer
+          embedded
+          showChat={false}
+          guideText=""
+          themeMode="day"
+          initialScale={2.4}
+        />
+        {/* ごく薄い縁（暗くしすぎない） */}
         <div
           className="pointer-events-none absolute inset-0"
-          style={{ boxShadow: "inset 0 0 38px 12px rgba(7,10,28,0.6)" }}
+          style={{ boxShadow: "inset 0 0 28px 4px rgba(7,10,28,0.3)" }}
         />
       </div>
     </div>

@@ -124,6 +124,7 @@ export function AdminForumClient() {
   const [postKeyword, setPostKeyword] = useState("");
   const [selectedRoom, setSelectedRoom] = useState(""); // "" = 未選択（部屋を選ぶと投稿を取得）
   const [postFilter, setPostFilter] = useState<PostFilter>("all");
+  const [roomSort, setRoomSort] = useState<"posts" | "recent" | "name">("posts");
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
   const [roomNameDraft, setRoomNameDraft] = useState("");
   const [roomDescDraft, setRoomDescDraft] = useState("");
@@ -157,9 +158,15 @@ export function AdminForumClient() {
 
   const filteredRooms = useMemo(() => {
     const keyword = roomKeyword.trim().toLowerCase();
-    if (!keyword) return rooms;
-    return rooms.filter((room) => [room.name, room.description].some((t) => (t ?? "").toLowerCase().includes(keyword)));
-  }, [roomKeyword, rooms]);
+    const base = keyword
+      ? rooms.filter((room) => [room.name, room.description].some((t) => (t ?? "").toLowerCase().includes(keyword)))
+      : [...rooms];
+    const lastAt = (r: ForumRoom) => new Date((r as { lastPostedAt?: string }).lastPostedAt ?? 0).getTime();
+    if (roomSort === "posts") base.sort((a, b) => (b.postCount ?? 0) - (a.postCount ?? 0));
+    else if (roomSort === "name") base.sort((a, b) => a.name.localeCompare(b.name, "ja"));
+    else base.sort((a, b) => lastAt(b) - lastAt(a));
+    return base;
+  }, [roomKeyword, rooms, roomSort]);
 
   // posts は選択中の部屋のみ。キーワード＋状態フィルタだけ適用する。
   const filteredPosts = useMemo(() => {
@@ -352,13 +359,19 @@ export function AdminForumClient() {
         </TabsContent>
 
         <TabsContent value="rooms" className="space-y-3">
-          <div className="flex gap-2">
-            <div className="relative flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative min-w-[180px] flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input value={roomKeyword} onChange={(e) => setRoomKeyword(e.target.value)} className="pl-9" placeholder="部屋名・説明で検索" />
             </div>
+            <div className="flex items-center gap-1">
+              {([["posts", "投稿数"], ["recent", "新着"], ["name", "名前"]] as const).map(([v, label]) => (
+                <Button key={v} size="sm" variant={roomSort === v ? "default" : "outline"} onClick={() => setRoomSort(v)}>{label}</Button>
+              ))}
+            </div>
             <CreateRoomDialog onCreated={handleCreateRoom} />
           </div>
+          <p className="text-xs text-muted-foreground">{filteredRooms.length}部屋</p>
           <div className="grid gap-3 sm:grid-cols-2">
             {filteredRooms.map((room) => (
               <Card key={room.id}>
@@ -399,6 +412,12 @@ export function AdminForumClient() {
                     )}
                   </div>
                   {editingRoomId !== room.id && <p className="text-xs text-muted-foreground line-clamp-2">{room.description || "説明なし"}</p>}
+                  {editingRoomId !== room.id && (
+                    <div className="mt-1.5 flex items-center gap-3 text-[11px] text-muted-foreground">
+                      <span className="inline-flex items-center gap-1"><MessageSquare className="h-3 w-3" />{room.postCount ?? 0}</span>
+                      {room.isHidden && <Badge variant="outline" className="border-dashed text-[10px] text-muted-foreground"><EyeOff className="mr-1 h-3 w-3" />非表示</Badge>}
+                    </div>
+                  )}
                   <div className="mt-2 flex items-center justify-between">
                     <Link href={`/forum/${room.id}`} target="_blank" className="text-xs text-primary hover:underline"><ExternalLink className="mr-1 inline h-3 w-3" />表示</Link>
                     {editingRoomId !== room.id && (
