@@ -361,7 +361,7 @@ export function InteropExplorer({
         accentColor: "#86efac",
         stats: opinionSub ? activityBySub.get(opinionSub.id) ?? EMPTY_STATS : EMPTY_STATS,
         onActivate: () =>
-          opinionSub ? router.push(`/interop/t/${opinionSub.id}`) : router.push("/kaikan"),
+          opinionSub ? router.push(`/interop/t/${opinionSub.id}`) : router.push("/forum"),
       },
     ];
   }, [allSubs, activityBySub, router]);
