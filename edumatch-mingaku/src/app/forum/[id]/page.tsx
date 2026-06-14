@@ -4,6 +4,7 @@ import { ForumRoomClientDynamic } from "@/components/community/forum-room-client
 import { FORUM_ROOMS } from "@/lib/mock-forum";
 import type { ForumRoom } from "@/lib/mock-forum";
 import { prisma } from "@/lib/prisma";
+import { ensureInteropForumRoom } from "@/lib/ensure-interop-forum-room";
 
 export const dynamicParams = true;
 
@@ -76,7 +77,7 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const room = await getRoomFromDb(id);
+  const room = (await getRoomFromDb(id)) ?? (await ensureInteropForumRoom(id));
   if (!room) return {};
   return {
     title: `${room.name} | AIUEO 井戸端会議 | エデュマッチ`,
@@ -93,7 +94,7 @@ export default async function ForumRoomPage({
 }) {
   const { id } = await params;
   const sp = await searchParams;
-  const room = await getRoomFromDb(id);
+  const room = (await getRoomFromDb(id)) ?? (await ensureInteropForumRoom(id));
   if (!room) notFound();
 
   return (

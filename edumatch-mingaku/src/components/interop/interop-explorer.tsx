@@ -16,6 +16,7 @@ import {
   Trophy,
   type LucideIcon,
 } from "lucide-react";
+import { interopBoardPath } from "@/lib/interop-paths";
 import { InteropBackdrop } from "@/components/interop/interop-backdrop";
 import dynamic from "next/dynamic";
 import type { InteropSatellite } from "@/components/interop/interop-puyo-bubble-map";
@@ -300,7 +301,7 @@ export function InteropExplorer({
         color: d.color,
         icon: d.icon,
         postCount: activityBySub.get(sub.id)?.postCount,
-        onActivate: () => router.push(`/interop/t/${sub.id}`),
+        onActivate: () => router.push(interopBoardPath(sub.id)),
       });
     }
     return result;
@@ -361,7 +362,7 @@ export function InteropExplorer({
         accentColor: "#86efac",
         stats: opinionSub ? activityBySub.get(opinionSub.id) ?? EMPTY_STATS : EMPTY_STATS,
         onActivate: () =>
-          opinionSub ? router.push(`/interop/t/${opinionSub.id}`) : router.push("/forum"),
+          opinionSub ? router.push(interopBoardPath(opinionSub.id)) : router.push("/forum"),
       },
     ];
   }, [allSubs, activityBySub, router]);
@@ -609,7 +610,7 @@ export function InteropExplorer({
             icon: MessageCircle,
             accentColor: view.cat.color || "#9fb4e8",
             stats: activityBySub.get(sub.id) ?? EMPTY_STATS,
-            onActivate: () => router.push(`/interop/t/${sub.id}`),
+            onActivate: () => router.push(interopBoardPath(sub.id)),
           }))}
           backLabel="インタロップに戻る"
           onBack={() => setView({ kind: "hub" })}

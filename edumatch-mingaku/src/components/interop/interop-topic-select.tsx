@@ -7,6 +7,7 @@ import { InteropBackdrop } from "@/components/interop/interop-backdrop";
 import { InteropChatWidget } from "@/components/interop/interop-chat-widget";
 import { InteropSubOrbit } from "@/components/interop/interop-sub-orbit";
 import type { InteropThemeMode } from "@/lib/interop-settings";
+import { interopBoardPath } from "@/lib/interop-paths";
 
 export type SelectableTopic = {
   id: string;
@@ -68,7 +69,7 @@ export function InteropTopicSelect({
             participantCount: 0,
             lastPostedAt: t.lastPostedAt ?? null,
           },
-          onActivate: () => router.push(`/interop/t/${sub.id}/topic/${t.id}`),
+          onActivate: () => router.push(interopBoardPath(sub.id, { topicId: t.id })),
         }))}
         backLabel="マップに戻る"
         onBack={() => router.push("/interop")}

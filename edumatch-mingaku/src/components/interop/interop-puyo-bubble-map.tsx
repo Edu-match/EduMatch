@@ -10,6 +10,7 @@ import {
 import type { InteropCategory } from "@/components/interop/interop-category-bubble-map";
 import { ForumHotFlame } from "@/components/community/forum-hot-flame";
 import { isInteropRecentPost, type InteropActivityStats } from "@/lib/interop-activity";
+import { interopBoardPath } from "@/lib/interop-paths";
 import { computePuyoIntensity, INTEROP_PUYO_CSS, puyoAnimationStyle } from "@/lib/interop-puyopuyo";
 import {
   DEFAULT_AXIS_CONFIG,
@@ -1110,7 +1111,7 @@ export function InteropPuyoBubbleMap({
       const id = `live-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
       const dir: "above" | "below" = pos[1] < 32 ? "below" : "above";
       const xExtra = popupXExtra(pos[0]);
-      const href = c.subId ? `/interop/t/${c.subId}?post=${c.id}` : undefined;
+      const href = c.subId ? interopBoardPath(c.subId, { postId: c.id }) : undefined;
       setPopups([{ id, body: c.body, author: c.authorName, pos, size, xExtra, dir, sentimentColor: "#ffd9a8", live: true, href }]);
       window.setTimeout(() => setPopups((prev) => prev.filter((p) => p.id !== id)), 6000);
     };

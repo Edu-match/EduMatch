@@ -8,6 +8,7 @@ import { getInteropVoterKey } from "@/lib/interop-voter";
 import { InteropBackdrop } from "@/components/interop/interop-backdrop";
 import { InteropContentCarousel } from "@/components/interop/interop-content-carousel";
 import { InteropChatWidget } from "@/components/interop/interop-chat-widget";
+import { interopBoardPath } from "@/lib/interop-paths";
 import type { InteropThemeMode } from "@/lib/interop-settings";
 
 type AiReply = { body: string; postedAt: string };
@@ -333,7 +334,7 @@ export function InteropBoard({
           {topic ? (
             <>
               <Link
-                href={`/interop/t/${sub.id}`}
+                href={interopBoardPath(sub.id)}
                 prefetch={false}
                 className="inline-flex w-fit items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-bold text-white/85 backdrop-blur transition-colors hover:brightness-110"
                 style={{ background: `${accent}22`, borderColor: `${accent}66` }}
