@@ -36,29 +36,16 @@ export function ForumMapSidebarWidget() {
           <InteropExplorer embedded showChat={false} guideText="" />
         </div>
 
-        {/* 縁のビネット（窓っぽさ・中心への視線誘導） */}
+        {/* 縁を軽く落として“のぞき窓”感（中心の議員会館へ視線誘導） */}
         <div
           className="pointer-events-none absolute inset-0"
-          style={{ boxShadow: "inset 0 0 46px 16px rgba(7,10,28,0.92)" }}
+          style={{ boxShadow: "inset 0 0 40px 14px rgba(7,10,28,0.78)" }}
         />
-        <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/10" />
 
-        {/* ライブ表示 */}
-        <div className="pointer-events-none absolute left-2.5 top-2.5 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/45 px-2 py-0.5 backdrop-blur">
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-70" />
-            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
-          </span>
-          <span className="text-[9px] font-bold tracking-wide text-white/85">
-            リアルタイム議論
-          </span>
-        </div>
-
-        {/* 下部グラデ＋CTA（常時表示・ホバーで強調） */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center bg-gradient-to-t from-black/85 via-black/25 to-transparent pb-3 pt-10">
-          <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-3.5 py-1.5 text-xs font-bold text-[#1a3a8a] shadow-lg transition-transform duration-200 group-hover:scale-105">
-            井戸端をひらく
-            <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+        {/* 下部にだけ控えめなCTA（要素を減らしてスッキリ） */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center bg-gradient-to-t from-black/80 to-transparent pb-2.5 pt-9">
+          <span className="inline-flex items-center gap-1 text-xs font-bold text-white/95">
+            ひらく <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
           </span>
         </div>
       </Link>

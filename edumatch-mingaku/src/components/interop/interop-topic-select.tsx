@@ -72,7 +72,7 @@ export function InteropTopicSelect({
           onActivate: () => router.push(interopBoardPath(sub.id, { topicId: t.id })),
         }))}
         backLabel="マップに戻る"
-        onBack={() => router.push("/interop")}
+        onBack={() => router.push("/forum")}
       />
 
       <InteropChatWidget context={`${sub.categoryName}｜${sub.name}（トピック一覧）`} />
