@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { ForumPost, ForumRoom } from "@/lib/mock-forum";
 import { SettingToggleRow } from "@/components/ui/toggle-switch";
 import { AdminForumCategories } from "./admin-forum-categories";
+import { AdminForumSatellites } from "./admin-forum-satellites";
 
 type PostFilter = "all" | "pinned" | "no-reply" | "hidden";
 type NewRoomDraft = {
@@ -347,15 +348,20 @@ export function AdminForumClient() {
       )}
 
       <Tabs defaultValue="rooms" className="mt-6 gap-4">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="rooms">部屋管理</TabsTrigger>
           <TabsTrigger value="categories">カテゴリ管理</TabsTrigger>
+          <TabsTrigger value="satellites">サテライト</TabsTrigger>
           <TabsTrigger value="posts">投稿管理</TabsTrigger>
           <TabsTrigger value="insights">分析</TabsTrigger>
         </TabsList>
 
         <TabsContent value="categories">
           <AdminForumCategories />
+        </TabsContent>
+
+        <TabsContent value="satellites">
+          <AdminForumSatellites />
         </TabsContent>
 
         <TabsContent value="rooms" className="space-y-3">
