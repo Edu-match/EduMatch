@@ -1241,10 +1241,8 @@ export function InteropPuyoBubbleMap({
               background: "linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.15) 30%, rgba(255,255,255,0.15) 70%, rgba(255,255,255,0.02))",
             }}
           />
-          <span className="pointer-events-none absolute z-[5] -translate-x-1/2 whitespace-nowrap text-[11px] font-bold tracking-wide text-white/55" style={{ left: `${AXIS_CX}%`, top: "5.5%" }}>↑ {axisConfig.yTop}</span>
-          <span className="pointer-events-none absolute z-[5] -translate-x-1/2 whitespace-nowrap text-[11px] font-bold tracking-wide text-white/55" style={{ left: `${AXIS_CX}%`, bottom: "8.5%" }}>{axisConfig.yBottom} ↓</span>
-          <span className="pointer-events-none absolute z-[5] -translate-y-1/2 whitespace-nowrap text-[11px] font-bold tracking-wide text-white/55" style={{ top: `${AXIS_CY}%`, left: "1.5%" }}>← {axisConfig.xLeft}</span>
-          <span className="pointer-events-none absolute z-[5] -translate-y-1/2 whitespace-nowrap text-[11px] font-bold tracking-wide text-white/55" style={{ top: `${AXIS_CY}%`, right: "1.5%" }}>{axisConfig.xRight} →</span>
+          {/* 軸ラベルはここ(パン領域内)では描かない。ドラッグで隠れないよう、
+              下のコンテナ固定オーバーレイで端に常時表示する。 */}
         </>
       )}
 
@@ -1528,6 +1526,17 @@ export function InteropPuyoBubbleMap({
 
       </div>{/* /仮想キャンバス */}
       </div>{/* /centeringラッパー */}
+
+      {/* 2軸ラベル（現場↔制度 × 人間↔技術）。パン/ズームで隠れないよう、コンテナ端に固定表示。
+          ミニマップ(compact)では渋滞回避のため非表示。 */}
+      {!compact && (
+        <div className="pointer-events-none absolute inset-0 z-[15]">
+          <span className="absolute left-1/2 top-2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#070a1c]/55 px-2 py-0.5 text-[11px] font-bold tracking-wide text-white/65">↑ {axisConfig.yTop}</span>
+          <span className="absolute bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#070a1c]/55 px-2 py-0.5 text-[11px] font-bold tracking-wide text-white/65">{axisConfig.yBottom} ↓</span>
+          <span className="absolute left-2 top-1/2 -translate-y-1/2 whitespace-nowrap rounded-full bg-[#070a1c]/55 px-2 py-0.5 text-[11px] font-bold tracking-wide text-white/65">← {axisConfig.xLeft}</span>
+          <span className="absolute right-2 top-1/2 -translate-y-1/2 whitespace-nowrap rounded-full bg-[#070a1c]/55 px-2 py-0.5 text-[11px] font-bold tracking-wide text-white/65">{axisConfig.xRight} →</span>
+        </div>
+      )}
 
       {/* ズーム＆リセット操作（右下・固定）。AIバーがある時だけ左へ寄せる。ミニマップ(compact)では非表示 */}
       {!compact && (

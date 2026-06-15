@@ -1,13 +1,17 @@
 import Link from "next/link";
 import { MessagesSquare, ArrowUpRight } from "lucide-react";
 import { InteropExplorer } from "@/components/interop/interop-explorer";
+import { getInteropSettings } from "@/lib/interop-settings.server";
 
 /**
  * サイドバーの「井戸端会議マップ」ミニ。
  * 本物の井戸端マップ(InteropExplorer)を拡大表示し、ドラッグでパン・泡タップで話題へ。
  * 右上「ひらく」で全画面の /forum。明るめテーマ＋初期ズームで暗さ/可動域の狭さを解消。
+ * サテライト(最新ニュース/登壇者への質問/ご意見BOX)の表示可否は管理画面のトグルに従う
+ * （以前は未指定でデフォルトtrueになり、管理画面でOFFにしてもミニマップに出ていた）。
  */
-export function ForumMapSidebarWidget() {
+export async function ForumMapSidebarWidget() {
+  const settings = await getInteropSettings();
   return (
     <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
       {/* ヘッダー（タイトル＋ひらくボタン） */}
@@ -35,6 +39,9 @@ export function ForumMapSidebarWidget() {
           guideText=""
           themeMode="auto"
           initialScale={2.2}
+          showLatestNews={settings.showLatestNews}
+          showSpeakerQa={settings.showSpeakerQa}
+          showOpinionBox={settings.showOpinionBox}
         />
         {/* ごく薄い縁（暗くしすぎない） */}
         <div
