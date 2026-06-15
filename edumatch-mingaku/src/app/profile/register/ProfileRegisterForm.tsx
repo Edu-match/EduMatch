@@ -90,6 +90,28 @@ const interests = [
 ];
 
 const INTEREST_OTHER_MAX = 100;
+
+// AIアバター生成をアンケート形式にするための選択肢（自由記述しなくても作れるように）。
+const PERSONA_VALUE_OPTIONS = [
+  "子ども一人ひとりの個性を尊重",
+  "対話・協働を大切にする",
+  "挑戦と失敗を歓迎する",
+  "データ・エビデンス重視",
+  "テクノロジーは手段・主役は人",
+  "現場・実践から学ぶ",
+  "多様性・インクルージョン",
+  "探究・好奇心を起点にする",
+  "地域・社会とのつながり",
+  "自律・自己決定を促す",
+];
+const PERSONA_TONE_OPTIONS = [
+  "やわらかい・親しみやすい",
+  "知的・落ち着いた",
+  "元気・エネルギッシュ",
+  "クリエイティブ・カラフル",
+  "誠実・信頼感のある",
+  "ナチュラル・温かい",
+];
 const AVATAR_TEMPLATES = [
   "/avatars/templates/1.svg",
   "/avatars/templates/2.svg",
@@ -147,8 +169,10 @@ export function ProfileRegisterForm({
   );
   const [bio, setBio] = useState(initialProfile?.bio ?? "");
   const [website, setWebsite] = useState(initialProfile?.website ?? "");
-  // AIアバター生成（マインド/価値観からアバターとパーソナルAIペルソナを生成）
-  const [mindset, setMindset] = useState("");
+  // AIアバター生成（アンケート形式：価値観・雰囲気を選択＋自由キーワードはカンマ区切り）
+  const [personaValues, setPersonaValues] = useState<string[]>([]);
+  const [personaTone, setPersonaTone] = useState<string>("");
+  const [mindset, setMindset] = useState(""); // 任意の自由記述（カンマ区切りキーワード）
   const [personaGenerating, setPersonaGenerating] = useState(false);
   const [personaError, setPersonaError] = useState<string | null>(null);
   const [personaInfo, setPersonaInfo] = useState<{ expertise: string[]; valuesText: string } | null>(null);
@@ -271,28 +295,80 @@ export function ProfileRegisterForm({
                 AIアバターを生成（任意）
               </label>
               <p className="text-[11px] text-muted-foreground">
-                あなたの価値観・大切にしていること・関心を書くと、AIが似合うアバター画像を生成してアイコンに設定します。
+                当てはまるものを選ぶだけでOK（自由記述は任意）。選んだ内容からAIが似合うアバター画像を生成してアイコンに設定します。
               </p>
-              <textarea
-                value={mindset}
-                onChange={(e) => setMindset(e.target.value)}
-                rows={3}
-                placeholder="例：子ども一人ひとりの「好き」を起点にした学びを大切にしたい。テクノロジーは手段で、主役は人だと思っている。"
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              />
+
+              {/* 価値観・大切にしていること（複数選択） */}
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium">大切にしていること（複数選択可）</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {PERSONA_VALUE_OPTIONS.map((v) => {
+                    const on = personaValues.includes(v);
+                    return (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => setPersonaValues((prev) => on ? prev.filter((x) => x !== v) : [...prev, v])}
+                        className={`rounded-full border px-2.5 py-1 text-[11px] transition-colors ${on ? "border-primary bg-primary/15 text-primary font-medium" : "border-input bg-background text-muted-foreground hover:bg-muted"}`}
+                      >
+                        {on ? "✓ " : ""}{v}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* アバターの雰囲気（単一選択） */}
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium">アバターの雰囲気（1つ）</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {PERSONA_TONE_OPTIONS.map((t) => {
+                    const on = personaTone === t;
+                    return (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setPersonaTone(on ? "" : t)}
+                        className={`rounded-full border px-2.5 py-1 text-[11px] transition-colors ${on ? "border-primary bg-primary/15 text-primary font-medium" : "border-input bg-background text-muted-foreground hover:bg-muted"}`}
+                      >
+                        {on ? "✓ " : ""}{t}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 自由記述（任意・カンマ区切り） */}
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium">その他のキーワード（任意・カンマ区切り）</p>
+                <input
+                  type="text"
+                  value={mindset}
+                  onChange={(e) => setMindset(e.target.value)}
+                  placeholder="例：探究学習, 不登校支援, STEAM, 対話重視"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+              </div>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                disabled={personaGenerating}
+                disabled={personaGenerating || (personaValues.length === 0 && !personaTone && !mindset.trim())}
                 onClick={async () => {
                   setPersonaGenerating(true);
                   setPersonaError(null);
+                  // アンケートの選択＋自由記述をまとめて mindset 文字列に（カンマ区切りキーワードも分解）。
+                  const freeKeywords = mindset.split(/[,、]/).map((s) => s.trim()).filter(Boolean);
+                  const mindsetText = [
+                    personaValues.length ? `大切にしていること：${personaValues.join("、")}` : "",
+                    personaTone ? `雰囲気：${personaTone}` : "",
+                    freeKeywords.length ? `キーワード：${freeKeywords.join("、")}` : "",
+                  ].filter(Boolean).join("。 ");
                   try {
                     const result = await generatePersonaAndAvatar({
                       name: (legalName || name || "").trim(),
                       bio: bio || undefined,
-                      mindset: mindset || undefined,
+                      mindset: mindsetText || undefined,
                       interests: selectedInterests,
                       organization: organization || undefined,
                       role: roleOther || role || undefined,
