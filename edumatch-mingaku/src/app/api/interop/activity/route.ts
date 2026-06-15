@@ -34,6 +34,8 @@ export async function GET() {
       JOIN interop_sub_categories s ON s.id = p.sub_category_id
       WHERE p.is_hidden = false
         AND p.is_pinned = false
+        AND p.is_ai_reply = false
+        AND p.parent_post_id IS NULL
         AND s.is_active = true
       GROUP BY p.sub_category_id, s.category_id
     `;
