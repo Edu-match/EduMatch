@@ -1365,6 +1365,8 @@ export function InteropPuyoBubbleMap({
               width: centerSize,
               height: centerSize,
               border: "2px solid rgba(170,200,255,0.55)",
+              // 基準で中央寄せ。アニメ未適用（遷移直後/reduced-motion）でも中心からズレない。
+              transform: "translate(-50%,-50%)",
               animation: "centerRing 3.6s ease-out infinite",
             }}
           />
@@ -1374,6 +1376,7 @@ export function InteropPuyoBubbleMap({
               width: centerSize,
               height: centerSize,
               border: "2px solid rgba(170,200,255,0.45)",
+              transform: "translate(-50%,-50%)",
               animation: "centerRing 3.6s ease-out 1.8s infinite",
             }}
           />
@@ -1473,13 +1476,13 @@ export function InteropPuyoBubbleMap({
                 keyframe側で translate(-50%,-50%) するので基準点だけ orb 中心に置く */}
             <span
               className="pointer-events-none absolute transition-[width,height] duration-500 ease-out"
-              style={{ left: "50%", top: ORB / 2, width: ORB, height: ORB,
+              style={{ left: "50%", top: ORB / 2, width: ORB, height: ORB, transform: "translate(-50%,-50%)",
                 borderRadius: "9999px", border: `${borderW}px solid ${s.color}`,
                 animation: `satRing 3.2s ease-out ${si * 0.5}s infinite` }}
             />
             <span
               className="pointer-events-none absolute transition-[width,height] duration-500 ease-out"
-              style={{ left: "50%", top: ORB / 2, width: ORB, height: ORB,
+              style={{ left: "50%", top: ORB / 2, width: ORB, height: ORB, transform: "translate(-50%,-50%)",
                 borderRadius: "9999px", border: `${borderW}px solid ${s.color}`,
                 animation: `satRing 3.2s ease-out ${si * 0.5 + 1.6}s infinite` }}
             />

@@ -576,7 +576,6 @@ function PostCardWithStream({
   const [repliesOpen, setRepliesOpen] = useState(false);
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [replyText, setReplyText] = useState("");
-  const [isAnonReplyState, setIsAnonReplyState] = useState(false);
   const [submittingReply, setSubmittingReply] = useState(false);
   const [aiSummaryExpanded, setAiSummaryExpanded] = useState(false);
 
@@ -637,14 +636,14 @@ function PostCardWithStream({
     }
   };
 
-  const isAnonReply = isAnonReplyState;
-  const replyAuthorRoleForApi = isAnonReply ? "匿名" : "一般";
+  // 返信も匿名投稿は廃止。常に実アカウント名で投稿する。
+  const replyAuthorRoleForApi = "一般";
   const canSubmitReply = !!replyText.trim() && !submittingReply;
 
   const submitReply = async () => {
     if (!canSubmitReply) return;
     setSubmittingReply(true);
-    const authorName = isAnonReply ? "匿名ユーザー" : (isLoggedIn && userName ? userName : "ゲスト");
+    const authorName = isLoggedIn && userName ? userName : "ゲスト";
     try {
       const res = await fetch(`/api/forum/posts/${post.id}/replies`, {
         method: "POST",
@@ -760,26 +759,11 @@ function PostCardWithStream({
         {showReplyForm && (
           <div className="mt-4 ml-12 overflow-hidden rounded-xl border border-white/12 bg-white/[0.03]">
             <div className="flex items-center gap-2.5 border-b border-white/10 bg-white/[0.04] px-4 py-2.5">
-              <UserAvatar name={isAnonReply ? "匿名" : (isLoggedIn ? userName : "ゲスト")} avatarUrl={isAnonReply ? null : avatarUrl} size={26} isAnon={isAnonReply} />
-              <span className="text-xs font-medium text-white/85">{isAnonReply ? "匿名ユーザー" : (isLoggedIn ? userName : "ゲスト")}</span>
-              {!isAnonReply && (
-                <>
-                  <span className="text-white/30">·</span>
-                  <OccupationBadge storedAuthorRole={replyPreviewRole} />
-                  {aiKenteiPassed && <AiKenteiBadge />}
-                </>
-              )}
-              <div className="ml-auto">
-                <button
-                  type="button"
-                  onClick={() => setIsAnonReplyState((v) => !v)}
-                  className={["rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors",
-                    isAnonReply
-                      ? `${ROLE_STYLES["匿名"].bg} ${ROLE_STYLES["匿名"].text} ${ROLE_STYLES["匿名"].border}`
-                      : "border-transparent text-white/45 hover:bg-white/10",
-                  ].join(" ")}
-                >{ROLE_STYLES["匿名"].icon} 匿名</button>
-              </div>
+              <UserAvatar name={isLoggedIn ? userName : "ゲスト"} avatarUrl={avatarUrl} size={26} isAnon={false} />
+              <span className="text-xs font-medium text-white/85">{isLoggedIn ? userName : "ゲスト"}</span>
+              <span className="text-white/30">·</span>
+              <OccupationBadge storedAuthorRole={replyPreviewRole} />
+              {aiKenteiPassed && <AiKenteiBadge />}
             </div>
             <textarea
               value={replyText}
