@@ -19,7 +19,8 @@ export async function GET() {
 
     const [rooms, total, pinned, hidden, noReply] = await Promise.all([
       prisma.forumRoom.count(),
-      prisma.forumPost.count(),
+      // 総投稿数は非表示(is_hidden=true)を除いた公開投稿のみを数える
+      prisma.forumPost.count({ where: { is_hidden: false } }),
       prisma.forumPost.count({ where: { is_pinned: true, is_hidden: false } }),
       prisma.forumPost.count({ where: { is_hidden: true } }),
       // 返信待ち = 返信が1件も付いていない（非表示を除く）投稿

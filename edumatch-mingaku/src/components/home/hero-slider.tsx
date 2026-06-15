@@ -52,7 +52,7 @@ export function HeroSlider({ items, isAdmin }: Props) {
     const item = items[0];
     return (
       <section className="rounded-xl overflow-hidden border mb-6 relative">
-        <Link href={item.url} className="block relative w-full aspect-[1200/500] max-h-[320px] overflow-hidden bg-muted">
+        <Link href={item.url} className="block relative w-full aspect-[16/9] overflow-hidden bg-muted">
           <Image
             src={item.thumbnailUrl || PLACEHOLDER}
             alt={item.title}
@@ -62,7 +62,7 @@ export function HeroSlider({ items, isAdmin }: Props) {
             priority
             unoptimized
           />
-          <div className="absolute inset-0 bg-black/30 flex items-end p-6">
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/25 to-transparent flex items-end p-6">
             <div>
               <span className="text-xs font-medium text-white/90 bg-primary/80 px-2 py-0.5 rounded">
                 {typeLabel(item)}
@@ -87,7 +87,7 @@ export function HeroSlider({ items, isAdmin }: Props) {
 
   return (
     <section className="rounded-xl overflow-hidden border mb-6 relative group">
-      <div className="relative w-full aspect-[1200/500] max-h-[320px] overflow-hidden bg-muted">
+      <div className="relative w-full aspect-[16/9] overflow-hidden bg-muted">
         {items.map((item, i) => (
           <Link
             key={`${item.type}-${item.id}`}
@@ -106,7 +106,7 @@ export function HeroSlider({ items, isAdmin }: Props) {
               priority={i === 0}
               unoptimized
             />
-            <div className="absolute inset-0 bg-black/35 flex items-end p-6">
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/25 to-transparent flex items-end p-6">
               <div>
                 <span className="text-xs font-medium text-white/90 bg-primary/80 px-2 py-0.5 rounded">
                   {typeLabel(item)}
