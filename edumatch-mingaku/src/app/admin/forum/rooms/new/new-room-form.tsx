@@ -41,7 +41,10 @@ export function NewRoomForm() {
         }),
       });
       if (res.ok) {
-        router.push("/admin/forum");
+        const data = await res.json().catch(() => ({}));
+        const id = data?.room?.id;
+        // 作成後はそのまま編集ページへ（関連コンテンツの紐付けに続けられる）。
+        router.push(id ? `/admin/forum/rooms/${id}/edit` : "/admin/forum");
       } else {
         alert("部屋の作成に失敗しました");
       }
@@ -82,7 +85,7 @@ export function NewRoomForm() {
             <Button asChild variant="outline"><Link href="/admin/forum">キャンセル</Link></Button>
             <Button onClick={handleCreate} disabled={!canSave}>
               {saving ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1 h-3.5 w-3.5" />}
-              作成する
+              作成して編集へ
             </Button>
           </div>
         </CardContent>
