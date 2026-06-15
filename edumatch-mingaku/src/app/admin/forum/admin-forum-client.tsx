@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import type { ForumPost, ForumRoom } from "@/lib/mock-forum";
 import { AdminForumSatellites } from "./admin-forum-satellites";
+import { AdminLlmTestButton } from "./admin-llm-test-button";
 
 type PostFilter = "all" | "pinned" | "no-reply" | "hidden";
 const ROOMS_PER_PAGE = 20;
@@ -506,6 +507,9 @@ export function AdminForumClient() {
         </TabsContent>
 
         <TabsContent value="insights" className="space-y-4">
+          {/* 裏方LLM（Groq等）の接続テスト */}
+          <AdminLlmTestButton />
+
           {/* サマリ */}
           <div className="grid gap-3 sm:grid-cols-4">
             <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">総投稿</p><p className="text-2xl font-bold">{totalPosts}</p></CardContent></Card>
