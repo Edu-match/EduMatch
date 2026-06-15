@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentProfile } from "@/lib/auth";
 import { generatePersonaReplyText } from "@/lib/persona-reply";
 import { isInteropAiReplyDisabled } from "@/lib/interop-ai-reply-policy";
+import { getInteropSettings } from "@/lib/interop-settings.server";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -75,6 +76,12 @@ export async function POST(req: NextRequest) {
   const profile = await getCurrentProfile().catch(() => null);
   if (profile?.role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // 全体マスタースイッチ。OFF の間は個々のペルソナが有効でも自動返信しない。
+  const settings = await getInteropSettings();
+  if (!settings.personaAutoReplyEnabled) {
+    return NextResponse.json({ created: 0, note: "自動返信が全体OFFです（管理画面のマスタースイッチで有効化してください）" });
   }
 
   let limitPerPersona = 3;

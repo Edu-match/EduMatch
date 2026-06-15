@@ -43,6 +43,11 @@ export type InteropSettings = {
   /** ご意見BOX（下） */
   showOpinionBox: boolean;
 
+  /* ───── AI自動返信（管理者ペルソナ） ───── */
+  /** 管理者ペルソナによる自動返信エンジンの全体マスタースイッチ。
+   *  OFF の間は、各管理者が自分のペルソナを有効化していても自動返信は一切行われない。 */
+  personaAutoReplyEnabled: boolean;
+
   /* ───── ジオフェンス（会場を出たときの演出） ───── */
   /** 会場退出演出を有効にするか */
   geofenceEnabled: boolean;
@@ -75,6 +80,9 @@ export const DEFAULT_INTEROP_SETTINGS: InteropSettings = {
   showLatestNews: true,
   showSpeakerQa: true,
   showOpinionBox: true,
+
+  // 既定OFF（安全側）。明示的にONにしたときだけ自動返信エンジンが動く。
+  personaAutoReplyEnabled: false,
 
   geofenceEnabled: true,
   venueLat: 35.6485, // 幕張メッセ
