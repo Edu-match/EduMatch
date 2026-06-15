@@ -285,14 +285,8 @@ export function InteropExplorer({
   }, [embedded]);
 
   const satellites = useMemo<InteropSatellite[]>(() => {
-    // 中心が「議員会館」のときは中心の玉以外（最新ニュース／登壇者への質問／ご意見BOX）を出さない。
-    const center =
-      categories.find((c) => c.isPrimary) ??
-      categories.find((c) => c.slug === "giin-kaikan") ??
-      categories.find((c) => c.slug === "interop") ??
-      categories[0];
-    if (center?.slug === "giin-kaikan") return [];
-
+    // サテライト（最新ニュース／登壇者への質問／ご意見BOX）は、議員会館中心でも表示する。
+    // 表示可否は管理画面のトグル(showLatestNews等)＋サブの有効状態で制御する。
     const defs = [
       { slug: "interop-latest-news", visible: showLatestNews, nameHints: ["最新ニュース", "ニュース"], label: "最新ニュース", place: "topLeft" as const, color: "#7dd4fc", icon: Newspaper },
       { slug: "interop-speaker-qa", visible: showSpeakerQa, nameHints: ["登壇者への質問", "登壇", "質問"], label: "登壇者への質問", place: "topRight" as const, color: "#fcd34d", icon: Mic },
