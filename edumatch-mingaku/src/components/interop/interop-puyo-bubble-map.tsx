@@ -514,6 +514,7 @@ function PuyoBubble({
   stats,
   isHot,
   onActivate,
+  hideLabel = false,
 }: {
   topic: InteropPriorityTopic;
   pos: [number, number];
@@ -526,6 +527,8 @@ function PuyoBubble({
   /** 炎・盛り上がり配色（全体平均より投稿が多い） */
   isHot: boolean;
   onActivate: () => void;
+  /** ミニマップ等の小表示でタイトル渋滞を避けるためラベルを隠す */
+  hideLabel?: boolean;
 }) {
   const hot = isHot;
   // 件数表示（炎マークは付けない）。直近24hに新着があれば「！」を出す。
@@ -653,7 +656,8 @@ function PuyoBubble({
         )}
       </span>
 
-      {/* Label — 常時表示・塊の外向き（放射状）に配置 */}
+      {/* Label — 塊の外向き（放射状）に配置。ミニマップ(hideLabel)では渋滞回避のため非表示 */}
+      {!hideLabel && (
       <span
         className="pointer-events-none absolute text-center transition-transform duration-150 group-hover:scale-[1.06]"
         style={{
@@ -678,6 +682,7 @@ function PuyoBubble({
       >
         {topic.category}
       </span>
+      )}
     </button>
   );
 }
@@ -1185,8 +1190,8 @@ export function InteropPuyoBubbleMap({
         }}
       >
 
-      {/* 2軸の線とラベル（現場↔制度 × 人間↔技術）。スマホでも初期ビューの方位ガイドとして表示。 */}
-      {(
+      {/* 2軸の線とラベル（現場↔制度 × 人間↔技術）。ミニマップ(compact)では渋滞回避のため非表示。 */}
+      {!compact && (
         <>
           <div
             className="pointer-events-none absolute"
@@ -1239,14 +1244,15 @@ export function InteropPuyoBubbleMap({
             pos={place.pos}
             side={labelSides[i] ?? "down"}
             index={i}
+            hideLabel={compact}
             size={sizes[i] ?? m.base}
             onActivate={() => onSelectTopic(topic)}
           />
         );
       })}
 
-      {/* 自動コメント吹き出し（玉の上or下に浮かぶ雲形バブル） */}
-      {popups.map((p) => {
+      {/* 自動コメント吹き出し（玉の上or下に浮かぶ雲形バブル）。ミニマップ(compact)では渋滞するため非表示 */}
+      {!compact && popups.map((p) => {
         const isAbove = p.dir === "above";
         // テイルを元の玉位置へ向ける（吹き出し内に収まるようクランプ）
         const tailOffset = Math.max(-66, Math.min(66, -p.xExtra * 0.55));
@@ -1491,7 +1497,8 @@ export function InteropPuyoBubbleMap({
       </div>{/* /仮想キャンバス */}
       </div>{/* /centeringラッパー */}
 
-      {/* ズーム＆リセット操作（右下・固定）。AIバーがある時だけ左へ寄せる */}
+      {/* ズーム＆リセット操作（右下・固定）。AIバーがある時だけ左へ寄せる。ミニマップ(compact)では非表示 */}
+      {!compact && (
       <div ref={zoomRef} className={`absolute bottom-24 right-3 z-40 flex flex-col gap-1.5 md:bottom-6 ${aiBarReserved ? "md:right-16" : "md:right-6"}`}>
         <button
           type="button"
@@ -1523,9 +1530,11 @@ export function InteropPuyoBubbleMap({
           <RotateCcw className="h-4 w-4" />
         </button>
       </div>
+      )}
 
       {/* 凡例：常に横1行のスクロールバーに収める（折返しで縦に伸びて玉と重なるのを防ぐ）。
-          高さが一定なので反発ゾーンの計測も安定する。 */}
+          高さが一定なので反発ゾーンの計測も安定する。ミニマップ(compact)では非表示。 */}
+      {!compact && (
       <div className={`pointer-events-none absolute bottom-3 left-3 z-30 md:bottom-5 md:left-5 ${aiBarReserved ? "right-16 md:right-20" : "right-14 md:right-16"}`}>
         <div ref={legendRef} className="pointer-events-auto inline-flex max-w-full flex-nowrap items-center gap-1.5 overflow-x-auto rounded-2xl border border-white/10 px-2.5 py-1.5 [scrollbar-width:none]"
           style={{ background: "rgba(6,9,24,0.72)" }}>
@@ -1534,6 +1543,7 @@ export function InteropPuyoBubbleMap({
           ))}
         </div>
       </div>
+      )}
     </div>
   );
 }

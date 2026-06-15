@@ -113,23 +113,16 @@ export function AdminForumSatellites() {
 
               {flags && (
                 <SettingToggleRow
-                  checked={flags[sat.flag]}
-                  onCheckedChange={(v) => setFlag(sat.flag, v)}
+                  checked={flags[sat.flag] && sub?.isActive !== false}
+                  onCheckedChange={(v) => { setFlag(sat.flag, v); if (sub) patchSub(sub, { isActive: v }); }}
                   icon={Icon}
-                  title="マップに表示"
-                  description="トップ/井戸端マップにこのサテライトの泡を出します。"
+                  title="表示する"
+                  description="マップに泡を出し、掲示板も有効化します（オフで両方とも非表示・投稿受付も停止）。"
                 />
               )}
 
               {sub && (
                 <>
-                  <SettingToggleRow
-                    checked={sub.isActive !== false}
-                    onCheckedChange={(v) => patchSub(sub, { isActive: v })}
-                    icon={Icon}
-                    title="有効（掲示板を開けるようにする）"
-                    description="無効にすると一覧から外れ、投稿の受付も止まります。"
-                  />
                   <div className="grid gap-2 sm:grid-cols-2">
                     <label className="text-xs">
                       <span className="mb-1 block text-muted-foreground">表示名</span>
