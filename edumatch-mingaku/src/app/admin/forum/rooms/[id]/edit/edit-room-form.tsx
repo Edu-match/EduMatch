@@ -181,8 +181,8 @@ export function EditRoomForm({ room }: { room: RoomInput }) {
             icon={Zap}
             title="AIディスカッション"
             description="投稿にAIファシリテーターが返信し、議論をサポートします。"
-            activeClassName="border-violet-300 bg-violet-50"
-            iconClassName={aiDiscussion ? "text-violet-600" : undefined}
+            activeClassName="border-violet-400/50 bg-violet-500/15"
+            iconClassName={aiDiscussion ? "text-violet-300" : undefined}
           />
           <div className="flex items-center justify-end gap-3">
             {savedMsg && <span className="text-xs text-emerald-400">保存しました</span>}

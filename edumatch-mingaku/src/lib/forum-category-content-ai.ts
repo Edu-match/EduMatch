@@ -1,5 +1,5 @@
-import OpenAI from "openai";
 import { prisma } from "@/lib/prisma";
+import { getLocalLLM, extractJson } from "@/lib/local-llm";
 import { findPublishedServicesLegacy, isPrismaMissingColumn } from "@/lib/prisma-schema-fallback";
 import type { CategoryContentItem } from "@/lib/forum-category-content";
 
@@ -217,8 +217,9 @@ export async function pickCategoryContentWithAI(params: {
   if (params.candidates.length === 0) return [];
   if (params.candidates.length <= limit) return params.candidates.slice(0, limit);
 
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
+  // 検索（コンテンツ選定）はローカルAI（Gemma等のOpenAI互換）を優先。未設定時はOpenAIにフォールバック。
+  const llm = getLocalLLM({ fallbackModel: "gpt-4o-mini" });
+  if (!llm) {
     return params.candidates.slice(0, limit);
   }
 
@@ -232,11 +233,10 @@ export async function pickCategoryContentWithAI(params: {
     tags: c.tags.slice(0, 8),
   }));
 
-  const openai = new OpenAI({ apiKey });
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+  const completion = await llm.client.chat.completions.create({
+    model: llm.model,
     temperature: 0.2,
-    response_format: { type: "json_object" },
+    // ローカルモデル(Gemma等)はJSONモード非対応のことがあるため response_format は付けず、extractJson で寛容に抽出。
     messages: [
       {
         role: "system",
@@ -260,12 +260,8 @@ ${JSON.stringify(list, null, 0)}`,
   });
 
   const raw = completion.choices[0]?.message?.content;
-  if (!raw) return params.candidates.slice(0, limit);
-
-  try {
-    const parsed = JSON.parse(raw) as {
-      picks?: { key?: string; score?: number }[];
-    };
+  const parsed = extractJson<{ picks?: { key?: string; score?: number }[] }>(raw);
+  if (parsed) {
     const byKey = new Map(params.candidates.map((c) => [candidateKey(c), c]));
     const picked: ContentCandidate[] = [];
     for (const p of parsed.picks ?? []) {
@@ -275,8 +271,6 @@ ${JSON.stringify(list, null, 0)}`,
       if (picked.length >= limit) break;
     }
     if (picked.length > 0) return picked;
-  } catch {
-    // fall through
   }
 
   return params.candidates.slice(0, limit);
