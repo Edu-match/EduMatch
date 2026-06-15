@@ -110,6 +110,17 @@ const PERSONA_COLOR_OPTIONS = [
   { label: "ピンク系", dot: "#ec4899" },
   { label: "モノトーン", dot: "#64748b" },
 ];
+// MBTIから生成（任意）。コード＋日本語の通称でわかりやすく。
+const PERSONA_MBTI_OPTIONS: { code: string; name: string }[] = [
+  { code: "INTJ", name: "建築家" }, { code: "INTP", name: "論理学者" },
+  { code: "ENTJ", name: "指揮官" }, { code: "ENTP", name: "討論者" },
+  { code: "INFJ", name: "提唱者" }, { code: "INFP", name: "仲介者" },
+  { code: "ENFJ", name: "主人公" }, { code: "ENFP", name: "運動家" },
+  { code: "ISTJ", name: "管理者" }, { code: "ISFJ", name: "擁護者" },
+  { code: "ESTJ", name: "幹部" }, { code: "ESFJ", name: "領事" },
+  { code: "ISTP", name: "巨匠" }, { code: "ISFP", name: "冒険家" },
+  { code: "ESTP", name: "起業家" }, { code: "ESFP", name: "エンターテイナー" },
+];
 const AVATAR_TEMPLATES = [
   "/avatars/templates/1.svg",
   "/avatars/templates/2.svg",
@@ -171,6 +182,7 @@ export function ProfileRegisterForm({
   const [personaTraits, setPersonaTraits] = useState<string[]>([]);
   const [personaTone, setPersonaTone] = useState<string>("");
   const [personaColor, setPersonaColor] = useState<string>("");
+  const [personaMbti, setPersonaMbti] = useState<string>("");
   const [mindset, setMindset] = useState(""); // 任意の自由記述（カンマ区切りキーワード）
   const [personaGenerating, setPersonaGenerating] = useState(false);
   const [personaError, setPersonaError] = useState<string | null>(null);
@@ -365,6 +377,27 @@ export function ProfileRegisterForm({
                 </div>
               </div>
 
+              {/* MBTIから生成（任意・単一選択） */}
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold">MBTIから <span className="font-normal text-muted-foreground">（任意・1つ）</span></p>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {PERSONA_MBTI_OPTIONS.map((m) => {
+                    const on = personaMbti === m.code;
+                    return (
+                      <button
+                        key={m.code}
+                        type="button"
+                        onClick={() => setPersonaMbti(on ? "" : m.code)}
+                        className={`flex flex-col items-center rounded-lg border px-1 py-1.5 transition-all active:scale-95 ${on ? "border-primary bg-primary text-primary-foreground shadow-sm" : "border-input bg-background text-foreground/70 hover:border-primary/40 hover:bg-primary/5"}`}
+                      >
+                        <span className="text-xs font-bold tracking-wide">{m.code}</span>
+                        <span className={`text-[9px] ${on ? "text-primary-foreground/80" : "text-muted-foreground"}`}>{m.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* 自由記述（任意・カンマ区切り） */}
               <div className="space-y-1.5">
                 <p className="text-xs font-semibold">好きなもの・キーワード <span className="font-normal text-muted-foreground">（任意・カンマ区切り）</span></p>
@@ -381,13 +414,15 @@ export function ProfileRegisterForm({
                 type="button"
                 size="sm"
                 className="w-full"
-                disabled={personaGenerating || (personaTraits.length === 0 && !personaTone && !personaColor && !mindset.trim())}
+                disabled={personaGenerating || (personaTraits.length === 0 && !personaTone && !personaColor && !personaMbti && !mindset.trim())}
                 onClick={async () => {
                   setPersonaGenerating(true);
                   setPersonaError(null);
                   // アンケートの選択＋自由記述をまとめて mindset 文字列に（カンマ区切りキーワードも分解）。
                   const freeKeywords = mindset.split(/[,、]/).map((s) => s.trim()).filter(Boolean);
+                  const mbtiName = PERSONA_MBTI_OPTIONS.find((m) => m.code === personaMbti)?.name;
                   const mindsetText = [
+                    personaMbti ? `MBTI：${personaMbti}${mbtiName ? `（${mbtiName}）` : ""}（この性格タイプらしさを反映）` : "",
                     personaTraits.length ? `性格・タイプ：${personaTraits.join("、")}` : "",
                     personaTone ? `雰囲気：${personaTone}` : "",
                     personaColor ? `好きな色：${personaColor}` : "",
