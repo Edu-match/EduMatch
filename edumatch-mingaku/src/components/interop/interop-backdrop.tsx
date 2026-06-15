@@ -231,7 +231,14 @@ const FX = `
 `;
 
 /** 時間帯で配色が変わる、朝日/夕陽/月の美しい背景 */
-export function InteropBackdrop({ themeMode = "auto" }: { themeMode?: InteropThemeMode }) {
+export function InteropBackdrop({
+  themeMode = "auto",
+  showCityscape = true,
+}: {
+  themeMode?: InteropThemeMode;
+  /** 下部のシティスケープ（時間帯別アクティビティの棒/ビル）を出すか。管理画面など可読性優先の面では false。 */
+  showCityscape?: boolean;
+}) {
   const [period, setPeriod] = useState<Period>(
     themeMode === "auto" ? "night" : (themeMode as Period)
   );
@@ -302,8 +309,8 @@ export function InteropBackdrop({ themeMode = "auto" }: { themeMode?: InteropThe
       <div className="absolute inset-0" style={{ background: pal.horizon }} />
       {pal.haze && <div className="absolute inset-0" style={{ background: pal.haze }} />}
 
-      {/* 24時間帯別リアルデータ シティスケープ */}
-      <CityscapeLayer period={period} />
+      {/* 24時間帯別リアルデータ シティスケープ（可読性優先の面では非表示） */}
+      {showCityscape && <CityscapeLayer period={period} />}
 
       {/* ビネット */}
       <div className="absolute inset-0" style={{ background: pal.vignette }} />
