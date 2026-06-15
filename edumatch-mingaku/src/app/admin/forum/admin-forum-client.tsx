@@ -2,115 +2,18 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, BarChart3, Eye, ExternalLink, EyeOff, Heart, Loader2, MessageSquare, PenSquare, Pin, PinOff, Plus, Save, Search, Trash2, Zap } from "lucide-react";
+import { ArrowLeft, BarChart3, Eye, ExternalLink, EyeOff, Heart, Loader2, MessageSquare, PenSquare, Pin, PinOff, Plus, Search, Trash2, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import type { ForumPost, ForumRoom } from "@/lib/mock-forum";
-import { SettingToggleRow } from "@/components/ui/toggle-switch";
 import { AdminForumSatellites } from "./admin-forum-satellites";
 
 type PostFilter = "all" | "pinned" | "no-reply" | "hidden";
 const ROOMS_PER_PAGE = 20;
-type NewRoomDraft = {
-  name: string;
-  description: string;
-  aiDiscussion: boolean;
-};
-
-// ─── 部屋作成ダイアログ ───────────────────────────────────
-
-function CreateRoomDialog({ onCreated }: { onCreated: (room: ForumRoom) => void }) {
-  const [open, setOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [draft, setDraft] = useState<NewRoomDraft>({
-    name: "",
-    description: "",
-    aiDiscussion: true,
-  });
-  const isValid = draft.name.trim();
-
-  const handleCreate = async () => {
-    if (!isValid || saving) return;
-    setSaving(true);
-    try {
-      const res = await fetch("/api/forum/rooms", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          name: draft.name.trim(),
-          description: draft.description.trim(),
-          weeklyTopic: "",
-          aiDiscussion: draft.aiDiscussion,
-          aiWeeklyTopicEnabled: false,
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        onCreated(data.room as ForumRoom);
-        setDraft({
-          name: "",
-          description: "",
-          aiDiscussion: true,
-        });
-        setOpen(false);
-      } else {
-        alert("部屋の作成に失敗しました");
-      }
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" className="gap-1.5"><Plus className="h-4 w-4" />部屋を追加</Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>新しい部屋を作成</DialogTitle>
-          <DialogDescription>フォーラムに新しいテーマ部屋を追加します</DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>部屋名 <span className="text-destructive">*</span></Label>
-            <Input value={draft.name} onChange={(e) => setDraft((p) => ({ ...p, name: e.target.value }))} placeholder="例: 保護者・家庭教育" />
-          </div>
-          <div className="space-y-1.5">
-            <Label>説明文</Label>
-            <Textarea rows={2} value={draft.description} onChange={(e) => setDraft((p) => ({ ...p, description: e.target.value }))} className="resize-none" placeholder="この部屋のテーマを簡潔に" />
-          </div>
-          <SettingToggleRow
-            checked={draft.aiDiscussion}
-            onCheckedChange={(aiDiscussion) => setDraft((p) => ({ ...p, aiDiscussion }))}
-            icon={Zap}
-            title="AIディスカッション"
-            description="投稿にAIファシリテーターが返信し、議論をサポートします。"
-            activeClassName="border-violet-300 bg-violet-50"
-            iconClassName={draft.aiDiscussion ? "text-violet-600" : undefined}
-          />
-
-          <div className="flex justify-end gap-2 pt-1">
-            <Button variant="outline" onClick={() => setOpen(false)}>キャンセル</Button>
-            <Button onClick={handleCreate} disabled={!isValid || saving}>
-              {saving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1" />}
-              作成する
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 // ─── メインクライアントコンポーネント ─────────────────────
 
@@ -247,10 +150,6 @@ export function AdminForumClient() {
   const totalPosts = stats?.total ?? rooms.reduce((s, r) => s + (r.postCount ?? 0), 0);
   const activeRooms = rooms.filter((r) => (r.postCount ?? 0) > 0).length;
   const maxRoomPosts = topRooms[0]?.postCount ?? 0;
-
-  const handleCreateRoom = (room: ForumRoom) => {
-    setRooms((prev) => [...prev, room]);
-  };
 
   const handleDeleteRoom = useCallback(async (roomId: string) => {
     if (!window.confirm("部屋を削除します。関連投稿もすべて削除されます。")) return;
@@ -442,7 +341,7 @@ export function AdminForumClient() {
                 <Button key={v} size="sm" variant={roomSort === v ? "default" : "outline"} onClick={() => setRoomSort(v)}>{label}</Button>
               ))}
             </div>
-            <CreateRoomDialog onCreated={handleCreateRoom} />
+            <Button asChild size="sm" className="gap-1.5"><Link href="/admin/forum/rooms/new"><Plus className="h-4 w-4" />部屋を追加</Link></Button>
           </div>
           <p className="text-xs text-muted-foreground">
             {filteredRooms.length}部屋
