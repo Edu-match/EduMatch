@@ -15,7 +15,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import type { ForumPost, ForumRoom } from "@/lib/mock-forum";
 import { SettingToggleRow } from "@/components/ui/toggle-switch";
-import { AdminForumCategories } from "./admin-forum-categories";
 import { AdminForumSatellites } from "./admin-forum-satellites";
 
 type PostFilter = "all" | "pinned" | "no-reply" | "hidden";
@@ -368,24 +367,29 @@ export function AdminForumClient() {
         </div>
       )}
 
-      <Tabs defaultValue="rooms" className="mt-6 gap-4">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="rooms">部屋管理</TabsTrigger>
-          <TabsTrigger value="categories">カテゴリ管理</TabsTrigger>
-          <TabsTrigger value="satellites">サテライト</TabsTrigger>
+      <Tabs defaultValue="boards" className="mt-6 gap-4">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="boards">掲示板管理</TabsTrigger>
           <TabsTrigger value="posts">投稿管理</TabsTrigger>
           <TabsTrigger value="insights">分析</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="categories">
-          <AdminForumCategories />
-        </TabsContent>
+        <TabsContent value="boards" className="space-y-6">
+          {/* 階層① 中心インタロップ直行のサテライト */}
+          <section className="space-y-3">
+            <div>
+              <h2 className="text-base font-bold">サテライト（中心インタロップ直行）</h2>
+              <p className="text-xs text-muted-foreground">最新ニュース・登壇者への質問・ご意見BOX。マップ中心の周りに固定表示される特別な掲示板です。</p>
+            </div>
+            <AdminForumSatellites />
+          </section>
 
-        <TabsContent value="satellites">
-          <AdminForumSatellites />
-        </TabsContent>
-
-        <TabsContent value="rooms" className="space-y-3">
+          {/* 階層② テーマ別の部屋（一般の掲示板） */}
+          <section className="space-y-3">
+            <div>
+              <h2 className="text-base font-bold">テーマ別の部屋</h2>
+              <p className="text-xs text-muted-foreground">マップ上に話題の泡として並ぶ、テーマごとの掲示板です。</p>
+            </div>
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative min-w-[180px] flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -473,6 +477,7 @@ export function AdminForumClient() {
               <Button size="sm" variant="outline" disabled={safeRoomPage >= totalRoomPages} onClick={() => setRoomPage((p) => Math.min(totalRoomPages, p + 1))}>次へ</Button>
             </div>
           )}
+          </section>
         </TabsContent>
 
         <TabsContent value="posts" className="space-y-3">
