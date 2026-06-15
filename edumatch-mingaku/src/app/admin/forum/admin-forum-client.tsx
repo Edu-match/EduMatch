@@ -131,12 +131,15 @@ export function AdminForumClient() {
     });
   }, [postFilter, postKeyword, posts]);
 
-  // 投稿管理のソース一覧（テーマ部屋 or サテライト・特設）をキーワードで絞り込み。
+  // 投稿管理のソース一覧（テーマ部屋 or サテライト・特設）。掲示板管理タブと同じ「投稿数の多い順」
+  // で並べ、両タブの見え方を一致させる（以前は取得順のままで、片方に無いように見えていた）。
   const postSourceList = useMemo(() => {
     const kw = sourceKeyword.trim().toLowerCase();
     const base = sourceType === "interop"
       ? interopSubs.map((s) => ({ id: s.id, name: s.name }))
-      : rooms.map((r) => ({ id: r.id, name: r.name }));
+      : [...rooms]
+          .sort((a, b) => (b.postCount ?? 0) - (a.postCount ?? 0))
+          .map((r) => ({ id: r.id, name: r.name }));
     return kw ? base.filter((s) => s.name.toLowerCase().includes(kw)) : base;
   }, [sourceType, sourceKeyword, interopSubs, rooms]);
   const selectedSourceName =
