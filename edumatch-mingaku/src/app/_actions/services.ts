@@ -658,6 +658,7 @@ export async function updateService(
       where: { id },
       select: {
         provider_id: true,
+        title: true,
         status: true,
         is_published: true,
         sort_order: true,
@@ -675,7 +676,7 @@ export async function updateService(
 
     const profile = await prisma.profile.findUnique({
       where: { id: user.id },
-      select: { role: true },
+      select: { role: true, name: true },
     });
     const isAdmin = profile?.role === ("ADMIN" as Role);
     if (existingService.provider_id !== user.id && !isAdmin) {
@@ -738,6 +739,16 @@ export async function updateService(
     revalidatePath("/services");
     revalidatePath(`/services/${id}`);
     revalidatePath("/provider-dashboard");
+
+    void logActivity({
+      actorId: user.id,
+      actorName: profile?.name ?? user.email?.split("@")[0] ?? "ユーザー",
+      action: !isApproved && input.publishType === "submit" ? "SUBMIT" : "UPDATE",
+      targetType: "SERVICE",
+      targetId: id,
+      targetTitle: input.title || existingService.title,
+      detail: !isApproved && input.publishType === "submit" ? "承認申請" : undefined,
+    });
 
     return { success: true, serviceId: id };
   } catch (e) {
@@ -956,14 +967,27 @@ export async function updateServiceDisplayOrder(
   }
 
   try {
-    await prisma.service.update({
-      where: { id: serviceId },
-      data: { display_order: Math.floor(displayOrder) },
-    });
+    const [service, actor] = await Promise.all([
+      prisma.service.update({
+        where: { id: serviceId },
+        data: { display_order: Math.floor(displayOrder) },
+        select: { title: true },
+      }),
+      prisma.profile.findUnique({ where: { id: auth.userId }, select: { name: true } }),
+    ]);
     revalidatePath("/");
     revalidatePath("/services");
     revalidatePath(`/services/${serviceId}`);
     revalidatePath("/admin/services/display-order");
+    void logActivity({
+      actorId: auth.userId,
+      actorName: actor?.name ?? "管理者",
+      action: "UPDATE",
+      targetType: "SERVICE",
+      targetId: serviceId,
+      targetTitle: service.title,
+      detail: `表示順を ${Math.floor(displayOrder)} に変更`,
+    });
     return { success: true };
   } catch (e) {
     console.error("Error updating service display_order:", e);

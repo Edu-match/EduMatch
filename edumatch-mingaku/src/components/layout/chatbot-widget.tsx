@@ -39,6 +39,8 @@ import { useAiPanel } from "@/components/layout/ai-panel-context";
 import { AI_KENTEI_CHAT_BLOCKED_MESSAGE } from "@/lib/ai-kentei-exam-guard-shared";
 import { useAiKenteiExamBlocksChat } from "@/hooks/use-ai-kentei-exam-blocks-chat";
 import { TUTORIAL_EVENT_NAME } from "@/components/tutorial/tutorial-steps";
+import { ChatActivityIndicator, type ChatActivityStep } from "@/components/layout/chat-activity-indicator";
+import type { ChatStreamEvent } from "@/lib/ai-chat-stream";
 
 const AI_NAV_DISCLAIMER_PATH = "/help/ai-navigator-disclaimer";
 const CHAT_USAGE_LIMIT_PATH = "/help/chat-usage-limit";
@@ -52,6 +54,8 @@ type ChatMsg = {
   ragKnowledgeHits?: number;
   siteContextHits?: number;
   ragDocRefs?: { title: string; url: string | null }[];
+  activitySteps?: ChatActivityStep[];
+  webSources?: { title: string; url: string }[];
   yesNo?: {
     question: string;
     articleId: string;
@@ -103,25 +107,6 @@ type AssistantPrompt = {
   allowMultiple: boolean;
 };
 
-function parseRagDocRefsHeader(raw: string | null): { title: string; url: string | null }[] {
-  if (!raw) return [];
-  try {
-    const decoded = decodeURIComponent(raw);
-    const parsed = JSON.parse(decoded) as unknown;
-    if (!Array.isArray(parsed)) return [];
-    return parsed
-      .filter(
-        (x): x is { title: string; url: string | null } =>
-          x != null &&
-          typeof x === "object" &&
-          typeof (x as { title?: string }).title === "string" &&
-          ((x as { url?: unknown }).url === null || typeof (x as { url?: unknown }).url === "string")
-      )
-      .slice(0, 8);
-  } catch {
-    return [];
-  }
-}
 
 const MODE_LABELS: Record<ChatMode, string> = {
   navigator: "ナビゲーターモード",
@@ -356,19 +341,59 @@ function AgreementScreen({
   );
 }
 
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function processInlineLinks(text: string): string {
+  const linkHtml: string[] = [];
+  const placeholder = (index: number) => `__CHAT_LINK_${index}__`;
+
+  let processed = text;
+
+  processed = processed.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, label, url) => {
+    const index = linkHtml.length;
+    const safeUrl = escapeHtml(url.trim());
+    const safeLabel = escapeHtml(label);
+    linkHtml.push(
+      `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline break-all">${safeLabel}</a>`
+    );
+    return placeholder(index);
+  });
+
+  processed = processed.replace(/(https?:\/\/[^\s<>\[\]()]+)/g, (url) => {
+    let href = url;
+    while (/[.,;:!?）】\]}>]+$/.test(href)) href = href.slice(0, -1);
+    if (!href) return url;
+    const index = linkHtml.length;
+    const safeHref = escapeHtml(href);
+    linkHtml.push(
+      `<a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline break-all">${safeHref}</a>`
+    );
+    return placeholder(index);
+  });
+
+  let escaped = escapeHtml(processed);
+  linkHtml.forEach((html, index) => {
+    escaped = escaped.replace(placeholder(index), html);
+  });
+  return escaped;
+}
+
 function MarkdownContent({ text }: { text: string }) {
   const html = useMemo(() => {
-    let result = text
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
+    let result = processInlineLinks(text);
 
     result = result.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
     result = result.replace(
       /(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g,
       "<em>$1</em>"
     );
-    result = result.replace(/`([^`]+)`/g, '<code class="bg-black/10 dark:bg-white/10 px-1.5 py-0.5 rounded text-xs font-mono">$1</code>');
+    result = result.replace(/`([^`]+)`/g, '<code class="bg-black/10 dark:bg-white/10 px-1.5 py-0.5 rounded text-xs font-mono break-all">$1</code>');
 
     const lines = result.split("\n");
     const processed: string[] = [];
@@ -431,7 +456,7 @@ function MarkdownContent({ text }: { text: string }) {
 
   return (
     <div
-      className="text-sm leading-relaxed [&_p]:mb-0.5 [&_ul]:mb-1 [&_ol]:mb-1 [&_br]:leading-tight prose prose-sm dark:prose-invert max-w-none"
+      className="text-sm leading-relaxed min-w-0 max-w-full break-words [overflow-wrap:anywhere] [&_p]:mb-0.5 [&_p]:break-words [&_ul]:mb-1 [&_ol]:mb-1 [&_br]:leading-tight [&_a]:break-all prose prose-sm dark:prose-invert max-w-none"
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );
@@ -476,6 +501,8 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
   const [askOtherActive, setAskOtherActive] = useState<Record<string, boolean>>({});
   const [askOtherText, setAskOtherText] = useState<Record<string, string>>({});
   const [openedRagRefsMessageId, setOpenedRagRefsMessageId] = useState<string | null>(null);
+  const [expandedActivityMsgIds, setExpandedActivityMsgIds] = useState<Set<string>>(new Set());
+  const [openedWebSourcesMsgId, setOpenedWebSourcesMsgId] = useState<string | null>(null);
   const [forumComposeAssist, setForumComposeAssist] = useState<{
     active: boolean;
     topic: string;
@@ -487,6 +514,8 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
   const listRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  /** ユーザーが自分でスクロール操作をしていない（= 下端付近にいる）かどうか */
+  const isNearBottomRef = useRef(true);
 
   const pageContext = useMemo(() => parsePageContext(pathname), [pathname]);
   const forumRoomId = useMemo(() => parseForumRoomId(pathname), [pathname]);
@@ -658,14 +687,28 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
     clearActivation();
   }, [pendingActivation, hasAgreed, chatMode, clearActivation]);
 
-  const scrollToBottom = useCallback(() => {
+  /** リスト上でスクロールが起きたとき、下端付近かどうかを更新 */
+  const handleListScroll = useCallback(() => {
+    const el = listRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    isNearBottomRef.current = distanceFromBottom < 80;
+  }, []);
+
+  /**
+   * @param force true のとき isNearBottomRef を無視して強制スクロール
+   *              （新しいメッセージ追加時など、ユーザーの意図に沿うケース）
+   */
+  const scrollToBottom = useCallback((force = false) => {
+    if (!force && !isNearBottomRef.current) return;
     requestAnimationFrame(() => {
       listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
     });
   }, []);
 
   useEffect(() => {
-    scrollToBottom();
+    // 新しいメッセージが追加された（= 送信 or 受信開始）ときは強制スクロール
+    scrollToBottom(true);
   }, [messages.length, scrollToBottom]);
 
   useEffect(() => {
@@ -902,6 +945,8 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
     if (!overrideText) setInput("");
     setEditingMessageId(null);
     setIsStreaming(true);
+    // 送信時は返答を見せるためスクロールを下端にリセット
+    isNearBottomRef.current = true;
     if (textareaRef.current) textareaRef.current.style.height = "auto";
 
     // Notify the tutorial system that the user has sent a chat message.
@@ -947,36 +992,138 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
         return;
       }
 
-      const ragHits = parseInt(resp.headers.get("X-RAG-Knowledge-Hits") ?? "0", 10);
-      const siteHits = parseInt(resp.headers.get("X-Site-Context-Hits") ?? "0", 10);
-      const ragDocRefs = parseRagDocRefsHeader(resp.headers.get("X-RAG-Doc-Refs"));
-      if (ragHits > 0) {
-        setMessages((prev) =>
-          prev.map((m) => (m.id === botMsgId ? { ...m, ragKnowledgeHits: ragHits, ragDocRefs } : m))
-        );
-      }
-      if (siteHits > 0) {
-        setMessages((prev) =>
-          prev.map((m) => (m.id === botMsgId ? { ...m, siteContextHits: siteHits } : m))
-        );
-      }
-
+      // SSE ストリームを行単位でパースし、イベント種別ごとに処理する
       const reader = resp.body?.getReader();
       if (!reader) throw new Error("No reader");
       const decoder = new TextDecoder();
+      let lineBuffer = "";
       let accumulated = "";
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        accumulated += decoder.decode(value, { stream: true });
-        setMessages((prev) => prev.map((m) => (m.id === botMsgId ? { ...m, content: accumulated } : m)));
-        scrollToBottom();
+        lineBuffer += decoder.decode(value, { stream: true });
+
+        // 改行で区切り、不完全な末尾行はバッファに残す
+        const lines = lineBuffer.split("\n");
+        lineBuffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const dataStr = line.slice(6).trim();
+          if (dataStr === "[DONE]") continue;
+
+          let event: ChatStreamEvent;
+          try {
+            event = JSON.parse(dataStr) as ChatStreamEvent;
+          } catch {
+            continue;
+          }
+
+          switch (event.type) {
+            case "status": {
+              const step: ChatActivityStep = {
+                id: event.id,
+                phase: event.phase,
+                message: event.message,
+                submessage: event.submessage,
+                status: "active",
+              };
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === botMsgId
+                    ? { ...m, activitySteps: [...(m.activitySteps ?? []), step] }
+                    : m
+                )
+              );
+              scrollToBottom();
+              break;
+            }
+
+            case "status_update": {
+              const { id: updateId, message: updateMsg, submessage: updateSub, status: updateStatus } = event;
+              setMessages((prev) =>
+                prev.map((m) => {
+                  if (m.id !== botMsgId) return m;
+                  return {
+                    ...m,
+                    activitySteps: (m.activitySteps ?? []).map((step) =>
+                      step.id === updateId
+                        ? {
+                            ...step,
+                            ...(updateMsg !== undefined && { message: updateMsg }),
+                            ...(updateSub !== undefined && { submessage: updateSub }),
+                            status: updateStatus,
+                          }
+                        : step
+                    ),
+                  };
+                })
+              );
+              break;
+            }
+
+            case "meta": {
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === botMsgId
+                    ? {
+                        ...m,
+                        ragKnowledgeHits: event.ragKnowledgeHits,
+                        siteContextHits: event.siteContextHits,
+                        ragDocRefs: event.ragDocRefs,
+                        webSources: event.webSources,
+                      }
+                    : m
+                )
+              );
+              break;
+            }
+
+            case "delta": {
+              accumulated += event.content;
+              setMessages((prev) =>
+                prev.map((m) => (m.id === botMsgId ? { ...m, content: accumulated } : m))
+              );
+              scrollToBottom();
+              break;
+            }
+
+            case "error": {
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === botMsgId
+                    ? { ...m, content: event.message, streaming: false }
+                    : m
+                )
+              );
+              setIsStreaming(false);
+              return;
+            }
+
+            case "done": {
+              setMessages((prev) => {
+                const updated = prev.map((m) =>
+                  m.id === botMsgId
+                    ? {
+                        ...m,
+                        streaming: false,
+                        // 残っている active ステップをすべて done に
+                        activitySteps: (m.activitySteps ?? []).map((s) =>
+                          s.status === "active" ? { ...s, status: "done" as const } : s
+                        ),
+                      }
+                    : m
+                );
+                saveSession(updated);
+                return updated;
+              });
+              break;
+            }
+          }
+        }
       }
-      setMessages((prev) => {
-        const updated = prev.map((m) => (m.id === botMsgId ? { ...m, streaming: false } : m));
-        saveSession(updated);
-        return updated;
-      });
+
       fetch("/api/chat").then((r) => r.json()).then((d) => {
         if (typeof d.used === "number" && typeof d.limit === "number") setUsage({ used: d.used, limit: d.limit, resetAt: d.resetAt ?? null });
       }).catch(() => {});
@@ -1178,7 +1325,7 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
       {/* ---- Chat view ---- */}
       {view === "chat" && userId && hasAgreed && chatMode && (
         <>
-          <div ref={listRef} className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 min-h-0">
+          <div ref={listRef} onScroll={handleListScroll} className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 min-h-0">
             <div className="space-y-4">
               {messages.length === 0 && (
                 <>
@@ -1209,7 +1356,7 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
                 const assistantPrompt = parsed?.prompt ?? null;
                 const assistantBody = m.role === "assistant" ? (parsed?.body ?? "") : "";
                 return (
-                <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start items-start gap-0"}`}>
+                <div key={m.id} className={`flex min-w-0 w-full ${m.role === "user" ? "justify-end" : "justify-start items-start gap-0"}`}>
                   {/* YES/NO question card */}
                   {m.yesNo && !m.yesNo.answered ? (
                     <div className="max-w-[92%] w-full flex flex-col gap-3 rounded-2xl rounded-tl-md rounded-bl-none bg-muted/80 px-4 py-3 shadow-sm">
@@ -1257,7 +1404,7 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
                         <div className="w-3 h-3 shrink-0 mt-5 rounded-bl-full bg-muted/80" aria-hidden />
                       )}
                       <div
-                        className={`max-w-[88%] px-4 py-2.5 rounded-2xl ${
+                        className={`min-w-0 max-w-[88%] overflow-hidden break-words [overflow-wrap:anywhere] px-4 py-2.5 rounded-2xl ${
                           m.role === "user"
                             ? "bg-primary text-primary-foreground rounded-tr-md shadow-sm group relative"
                             : m.yesNo?.answered
@@ -1267,67 +1414,117 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
                       >
                         {m.role === "assistant" ? (
                           <>
-                            {m.streaming && !m.content && (
-                              <div className="flex items-center gap-1.5 py-0.5">
-                                <span className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce [animation-delay:0ms]" />
-                                <span className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce [animation-delay:150ms]" />
-                                <span className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce [animation-delay:300ms]" />
-                              </div>
+                            {/* アクティビティタイムライン（進捗UI）*/}
+                            {m.activitySteps && m.activitySteps.length > 0 ? (
+                              <ChatActivityIndicator
+                                steps={m.activitySteps}
+                                isStreaming={!!m.streaming}
+                                isExpanded={expandedActivityMsgIds.has(m.id)}
+                                onToggle={() =>
+                                  setExpandedActivityMsgIds((prev) => {
+                                    const next = new Set(prev);
+                                    if (next.has(m.id)) next.delete(m.id);
+                                    else next.add(m.id);
+                                    return next;
+                                  })
+                                }
+                              />
+                            ) : (
+                              /* activitySteps がまだ届いていない場合のみ3点バウンス */
+                              m.streaming && !m.content && (
+                                <div className="flex items-center gap-1.5 py-0.5">
+                                  <span className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce [animation-delay:0ms]" />
+                                  <span className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce [animation-delay:150ms]" />
+                                  <span className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce [animation-delay:300ms]" />
+                                </div>
+                              )
                             )}
-                            {m.ragKnowledgeHits !== undefined && m.ragKnowledgeHits > 0 && (
-                              <div className="mb-1.5">
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setOpenedRagRefsMessageId((prev) => (prev === m.id ? null : m.id))
-                                  }
-                                  className="flex items-center gap-1 text-[11px] text-indigo-600 dark:text-indigo-400 font-medium hover:underline"
-                                >
-                                  <BookOpen className="h-3 w-3 shrink-0" />
-                                  <span>
-                                    {m.streaming
-                                      ? "公的文書を閲覧しています..."
-                                      : `公的文書を参照して回答 (${m.ragKnowledgeHits}件)`}
-                                  </span>
-                                </button>
-                                {!m.streaming && openedRagRefsMessageId === m.id && (
-                                  <div className="mt-1 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50/60 dark:bg-indigo-950/30 p-2 space-y-1">
-                                    <p className="text-[11px] font-medium text-indigo-700 dark:text-indigo-300">参照した文書</p>
-                                    {(m.ragDocRefs ?? []).length === 0 ? (
-                                      <p className="text-[11px] text-muted-foreground">文書名を取得できませんでした</p>
-                                    ) : (
-                                      (m.ragDocRefs ?? []).map((ref) => (
-                                        <div key={ref.title} className="text-[11px]">
-                                          <p className="font-medium text-foreground">{ref.title}</p>
-                                          {ref.url ? (
-                                            <Link
-                                              href={ref.url}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="text-indigo-600 dark:text-indigo-400 underline hover:no-underline break-all"
-                                            >
-                                              添付ファイル/リンクを開く
-                                            </Link>
-                                          ) : (
-                                            <p className="text-muted-foreground">リンク未登録</p>
-                                          )}
-                                        </div>
-                                      ))
+
+                            {/* ── バッジ類（ストリーミング完了後のみ表示）── */}
+                            {!m.streaming && (
+                              <>
+                                {m.ragKnowledgeHits !== undefined && m.ragKnowledgeHits > 0 && (
+                                  <div className="mb-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setOpenedRagRefsMessageId((prev) => (prev === m.id ? null : m.id))
+                                      }
+                                      className="flex items-center gap-1 text-[11px] text-indigo-600 dark:text-indigo-400 font-medium hover:underline"
+                                    >
+                                      <BookOpen className="h-3 w-3 shrink-0" />
+                                      <span>公的文書を参照して回答 ({m.ragKnowledgeHits}件)</span>
+                                    </button>
+                                    {openedRagRefsMessageId === m.id && (
+                                      <div className="mt-1 min-w-0 max-w-full overflow-hidden rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50/60 dark:bg-indigo-950/30 p-2 space-y-1">
+                                        <p className="text-[11px] font-medium text-indigo-700 dark:text-indigo-300">参照した文書</p>
+                                        {(m.ragDocRefs ?? []).length === 0 ? (
+                                          <p className="text-[11px] text-muted-foreground">文書名を取得できませんでした</p>
+                                        ) : (
+                                          (m.ragDocRefs ?? []).map((ref) => (
+                                            <div key={ref.title} className="min-w-0 text-[11px]">
+                                              <p className="font-medium text-foreground">{ref.title}</p>
+                                              {ref.url ? (
+                                                <Link
+                                                  href={ref.url}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="text-indigo-600 dark:text-indigo-400 underline hover:no-underline break-all"
+                                                >
+                                                  添付ファイル/リンクを開く
+                                                </Link>
+                                              ) : (
+                                                <p className="text-muted-foreground">リンク未登録</p>
+                                              )}
+                                            </div>
+                                          ))
+                                        )}
+                                      </div>
                                     )}
                                   </div>
                                 )}
-                              </div>
+
+                                {m.siteContextHits !== undefined && m.siteContextHits > 0 && (
+                                  <div className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 mb-1.5 font-medium">
+                                    <Paperclip className="h-3 w-3 shrink-0" />
+                                    <span>記事・サービスを参照して回答 ({m.siteContextHits}件)</span>
+                                  </div>
+                                )}
+
+                                {m.webSources && m.webSources.length > 0 && (
+                                  <div className="mb-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setOpenedWebSourcesMsgId((prev) => (prev === m.id ? null : m.id))
+                                      }
+                                      className="flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 font-medium hover:underline"
+                                    >
+                                      <BookOpen className="h-3 w-3 shrink-0" />
+                                      <span>Web 検索結果を参照して回答 ({m.webSources.length}件)</span>
+                                    </button>
+                                    {openedWebSourcesMsgId === m.id && (
+                                      <div className="mt-1 min-w-0 max-w-full overflow-hidden rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/30 p-2 space-y-1">
+                                        <p className="text-[11px] font-medium text-amber-700 dark:text-amber-300">参照した Web ページ</p>
+                                        {m.webSources.map((src) => (
+                                          <div key={src.url} className="min-w-0 text-[11px]">
+                                            <Link
+                                              href={src.url}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="text-amber-700 dark:text-amber-400 underline hover:no-underline break-all"
+                                            >
+                                              {src.title || src.url}
+                                            </Link>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </>
                             )}
-                            {m.siteContextHits !== undefined && m.siteContextHits > 0 && (
-                              <div className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 mb-1.5 font-medium">
-                                <Paperclip className="h-3 w-3 shrink-0" />
-                                <span>
-                                  {m.streaming
-                                    ? "関連する記事・サービスを閲覧しています..."
-                                    : `記事・サービスを参照して回答 (${m.siteContextHits}件)`}
-                                </span>
-                              </div>
-                            )}
+
                             {assistantBody ? <MarkdownContent text={assistantBody} /> : null}
                             {assistantPrompt && !m.streaming && (
                               <div className="mt-2.5 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2">
@@ -1414,7 +1611,7 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
                           </>
                         ) : (
                           <>
-                            <div className="text-sm leading-relaxed whitespace-pre-wrap pr-8">{m.content}</div>
+                            <div className="text-sm leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] pr-8">{m.content}</div>
                             {!isStreaming && (
                               <button
                                 type="button"

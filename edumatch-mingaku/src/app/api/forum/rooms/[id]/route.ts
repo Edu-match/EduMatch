@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentProfile } from "@/lib/auth";
 import { createAiWeeklyTopicForRoom } from "@/lib/forum-weekly-topic-ai";
+import { logActivity } from "@/app/_actions/activity-log";
 
 export const dynamic = "force-dynamic";
 
@@ -81,6 +82,27 @@ export async function PATCH(
       }
     }
 
+    if (room && isAdmin) {
+      const action = isHidden === true ? "HIDE" : isHidden === false ? "SHOW" : "UPDATE";
+      const detailParts = [
+        name !== undefined ? "部屋名" : null,
+        description !== undefined ? "説明文" : null,
+        weeklyTopic !== undefined ? "今週のお題" : null,
+        aiDiscussion !== undefined ? "AIディスカッション" : null,
+        aiWeeklyTopicEnabled !== undefined ? "AI週次お題" : null,
+        isHidden !== undefined ? (isHidden ? "非表示" : "再表示") : null,
+      ].filter(Boolean);
+      void logActivity({
+        actorId: profile.id,
+        actorName: profile.name,
+        action,
+        targetType: "FORUM_ROOM",
+        targetId: id,
+        targetTitle: room.name,
+        detail: detailParts.length > 0 ? detailParts.join(" / ") : null,
+      });
+    }
+
     return NextResponse.json({ room });
   } catch (err) {
     console.error("[forum/rooms/:id PATCH]", err);
@@ -100,7 +122,16 @@ export async function DELETE(
     }
 
     const { id } = await params;
+    const room = await prisma.forumRoom.findUnique({ where: { id }, select: { name: true } });
     await prisma.forumRoom.delete({ where: { id } });
+    void logActivity({
+      actorId: profile.id,
+      actorName: profile.name,
+      action: "DELETE",
+      targetType: "FORUM_ROOM",
+      targetId: id,
+      targetTitle: room?.name ?? id,
+    });
 
     return NextResponse.json({ ok: true });
   } catch (err) {

@@ -6,6 +6,7 @@ import {
   resetAiChatPrompt,
   saveAiChatPrompt,
 } from "@/lib/ai-chat-prompts";
+import { logActivity } from "@/app/_actions/activity-log";
 
 export const dynamic = "force-dynamic";
 
@@ -47,17 +48,36 @@ export async function PATCH(request: Request) {
   if (!prompt) return NextResponse.json({ error: "prompt は必須です" }, { status: 400 });
 
   await saveAiChatPrompt(mode, prompt, profile?.id);
+  void logActivity({
+    actorId: profile?.id,
+    actorName: profile?.name ?? "管理者",
+    action: "UPDATE",
+    targetType: "AI_CHAT_PROMPT",
+    targetId: mode,
+    targetTitle: `${mode} プロンプト`,
+    detail: "AIチャットのプロンプトを保存",
+  });
   return NextResponse.json({ ok: true });
 }
 
 export async function DELETE(request: Request) {
   const authError = await requireAdminApi();
   if (authError) return authError;
+  const profile = await getCurrentProfile();
 
   const { searchParams } = new URL(request.url);
   const mode = searchParams.get("mode") ?? "";
   if (!isAiMode(mode)) return NextResponse.json({ error: "mode が不正です" }, { status: 400 });
 
   await resetAiChatPrompt(mode);
+  void logActivity({
+    actorId: profile?.id,
+    actorName: profile?.name ?? "管理者",
+    action: "DELETE",
+    targetType: "AI_CHAT_PROMPT",
+    targetId: mode,
+    targetTitle: `${mode} プロンプト`,
+    detail: "AIチャットのプロンプトをリセット",
+  });
   return NextResponse.json({ ok: true });
 }

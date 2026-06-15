@@ -20,6 +20,7 @@ import { ThumbnailOrTitle } from "@/components/ui/thumbnail-or-title";
 import { FEATURES } from "@/lib/features";
 import { ImageWithUrlError } from "@/components/ui/image-with-url-error";
 import { shouldShowMaterialRequestButton } from "@/lib/service-material-request";
+import { ServiceCategoryBadges } from "@/components/services/service-category-badges";
 
 export const dynamic = "force-dynamic";
 
@@ -106,8 +107,11 @@ export default async function ServiceDetailPage({
         <div className="container py-8">
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
             <div className="lg:col-span-3">
-              <div className="flex items-center gap-3 mb-4 flex-wrap">
-                <Badge className="text-sm px-3 py-1">{service.category}</Badge>
+              <div className="flex items-center gap-3 mb-4 flex-wrap min-w-0">
+                <ServiceCategoryBadges
+                  category={service.category}
+                  badgeClassName="text-sm px-3 py-1"
+                />
                 {service.tags?.length ? (
                   <div className="flex flex-wrap gap-1.5">
                     {service.tags.map((tag) => (
@@ -361,8 +365,8 @@ export default async function ServiceDetailPage({
           </div>
 
           {/* サイドバー（スティッキー） */}
-          <div className="space-y-6 hidden lg:block">
-            <div className="sticky top-24 space-y-6">
+          <div className="space-y-6 hidden lg:block min-w-0">
+            <div className="sticky top-24 space-y-6 min-w-0">
               {/* CTA Card：「なし」でも料金・お気に入り・共有・特典は表示、資料請求のみ条件付き */}
               <Card className="border-2 border-primary/20 shadow-2xl overflow-hidden">
                 <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-background p-6">
@@ -425,14 +429,15 @@ export default async function ServiceDetailPage({
               </Card>
 
               {/* カテゴリカード */}
-              <Card className="border-2 shadow-lg">
+              <Card className="border-2 shadow-lg overflow-hidden">
                 <CardHeader>
                   <CardTitle className="text-lg">{t("category")}</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <Badge className="text-base px-4 py-2">
-                    {service.category}
-                  </Badge>
+                <CardContent className="min-w-0">
+                  <ServiceCategoryBadges
+                    category={service.category}
+                    badgeClassName="text-base px-4 py-2"
+                  />
                 </CardContent>
               </Card>
 
@@ -501,9 +506,11 @@ export default async function ServiceDetailPage({
                         />
                       </div>
                       <CardContent className="p-4">
-                        <Badge variant="outline" className="mb-3">
-                          {relatedService.category}
-                        </Badge>
+                        <ServiceCategoryBadges
+                          category={relatedService.category}
+                          variant="outline"
+                          badgeClassName="mb-3"
+                        />
                         <h3 className="font-bold line-clamp-2 mb-2 group-hover:text-primary transition-colors">
                           {relatedService.title}
                         </h3>

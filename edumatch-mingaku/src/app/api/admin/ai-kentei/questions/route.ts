@@ -1,6 +1,7 @@
 import { getAiKenteiDb } from '@/lib/ai-kentei-db'
 import { NextResponse } from 'next/server'
 import { getCurrentUser, getCurrentProfile } from '@/lib/auth'
+import { logActivity } from '@/app/_actions/activity-log'
 
 export const dynamic = 'force-dynamic'
 
@@ -101,6 +102,16 @@ export async function POST(request: Request) {
     console.error('admin ai-kentei questions POST:', error)
     return NextResponse.json({ error: '作成に失敗しました' }, { status: 500 })
   }
+
+  void logActivity({
+    actorId: profile.id,
+    actorName: profile.name,
+    action: 'CREATE',
+    targetType: 'AI_KENTEI_QUESTION',
+    targetId: String(row.id),
+    targetTitle: question_text.trim().slice(0, 80),
+    detail: `ステータス: ${statusVal}`,
+  })
 
   return NextResponse.json({ question: row })
 }

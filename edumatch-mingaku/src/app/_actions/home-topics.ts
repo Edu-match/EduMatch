@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserRole } from "./user";
+import { getCurrentProfile } from "@/lib/auth";
+import { logActivity } from "@/app/_actions/activity-log";
 import type { HomeNewsTab } from "@prisma/client";
 
 export type HomeTopicsAdminPost = {
@@ -40,17 +42,27 @@ type UpdateResult = { success: boolean; error?: string };
 
 /** ADMIN 用: 単一記事のニュースタブ分類を更新 */
 export async function updateHomeNewsTab(postId: string, tab: HomeNewsTab): Promise<UpdateResult> {
-  const role = await getCurrentUserRole();
-  if (role !== "ADMIN") {
+  const actor = await getCurrentProfile();
+  if (!actor || actor.role !== "ADMIN") {
     return { success: false, error: "管理者権限が必要です" };
   }
 
   try {
-    await prisma.post.update({
+    const post = await prisma.post.update({
       where: { id: postId },
       data: { home_news_tab: tab },
+      select: { title: true },
     });
     revalidatePath("/");
+    void logActivity({
+      actorId: actor.id,
+      actorName: actor.name,
+      action: "UPDATE",
+      targetType: "HOME_TOPICS",
+      targetId: postId,
+      targetTitle: post.title,
+      detail: `ニュースタブを ${tab} に変更`,
+    });
     return { success: true };
   } catch (error) {
     console.error("Failed to update home_news_tab:", error);
@@ -80,14 +92,19 @@ export type BulkUpdateItem = { id: string; tab: HomeNewsTab };
 export async function updateHomeNewsTabBulkAction(
   updates: BulkUpdateItem[]
 ): Promise<{ success: boolean; count?: number; error?: string }> {
-  const role = await getCurrentUserRole();
-  if (role !== "ADMIN") {
+  const actor = await getCurrentProfile();
+  if (!actor || actor.role !== "ADMIN") {
     return { success: false, error: "管理者権限が必要です" };
   }
   if (!updates.length) {
     return { success: true, count: 0 };
   }
   try {
+    const posts = await prisma.post.findMany({
+      where: { id: { in: updates.map((u) => u.id) } },
+      select: { id: true, title: true },
+    });
+    const titleById = new Map(posts.map((post) => [post.id, post.title]));
     await prisma.$transaction(
       updates.map(({ id, tab }) =>
         prisma.post.update({
@@ -97,6 +114,17 @@ export async function updateHomeNewsTabBulkAction(
       )
     );
     revalidatePath("/");
+    for (const { id, tab } of updates) {
+      void logActivity({
+        actorId: actor.id,
+        actorName: actor.name,
+        action: "UPDATE",
+        targetType: "HOME_TOPICS",
+        targetId: id,
+        targetTitle: titleById.get(id) ?? id,
+        detail: `ニュースタブを ${tab} に変更（一括保存）`,
+      });
+    }
     return { success: true, count: updates.length };
   } catch (error) {
     console.error("Failed to update home_news_tab bulk:", error);

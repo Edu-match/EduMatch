@@ -1,6 +1,7 @@
 import { getAiKenteiDb } from '@/lib/ai-kentei-db'
 import { NextResponse } from 'next/server'
 import { getCurrentUser, getCurrentProfile } from '@/lib/auth'
+import { logActivity } from '@/app/_actions/activity-log'
 
 export const dynamic = 'force-dynamic'
 
@@ -78,6 +79,16 @@ export async function PATCH(
     return NextResponse.json({ error: '問題が見つかりません' }, { status: 404 })
   }
 
+  void logActivity({
+    actorId: profile.id,
+    actorName: profile.name,
+    action: 'UPDATE',
+    targetType: 'AI_KENTEI_QUESTION',
+    targetId: id,
+    targetTitle: String(row.question_text ?? id).slice(0, 80),
+    detail: Object.keys(update).join(', '),
+  })
+
   return NextResponse.json({ question: row })
 }
 
@@ -96,6 +107,11 @@ export async function DELETE(
 
   const { id } = await params
   const supabase = await getAiKenteiDb()
+  const { data: existing } = await supabase
+    .from('ai_kentei_questions')
+    .select('question_text')
+    .eq('id', id)
+    .maybeSingle()
 
   const { error } = await supabase.from('ai_kentei_questions').delete().eq('id', id)
 
@@ -103,6 +119,15 @@ export async function DELETE(
     console.error('admin ai-kentei questions DELETE:', error)
     return NextResponse.json({ error: '削除に失敗しました' }, { status: 500 })
   }
+
+  void logActivity({
+    actorId: profile.id,
+    actorName: profile.name,
+    action: 'DELETE',
+    targetType: 'AI_KENTEI_QUESTION',
+    targetId: id,
+    targetTitle: String(existing?.question_text ?? id).slice(0, 80),
+  })
 
   return NextResponse.json({ ok: true })
 }

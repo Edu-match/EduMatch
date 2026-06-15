@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { getCurrentProfile } from "@/lib/auth";
+import { logActivity } from "@/app/_actions/activity-log";
 import { normalizeImageUrl } from "@/lib/image-url-utils";
 import type { PublishStatus } from "@prisma/client";
 
@@ -198,33 +200,50 @@ export async function getHomeSliderArticlesForAdmin() {
 
 /** ADMIN用: スライダーに記事を追加 */
 export async function addHomeSliderArticle(postId: string) {
-  const { getCurrentUserRole } = await import("./user");
-  const role = await getCurrentUserRole();
-  if (role !== "ADMIN") return { success: false, error: "権限がありません" };
+  const actor = await getCurrentProfile();
+  if (!actor || actor.role !== "ADMIN") return { success: false, error: "権限がありません" };
   const max = await prisma.homeSliderArticle.aggregate({ _max: { position: true } });
   const position = (max._max.position ?? -1) + 1;
+  const post = await prisma.post.findUnique({ where: { id: postId }, select: { title: true } });
   await prisma.homeSliderArticle.create({
     data: { post_id: postId, position },
   });
   revalidatePath("/");
+  void logActivity({
+    actorId: actor.id,
+    actorName: actor.name,
+    action: "SHOW",
+    targetType: "HOME_SLIDER",
+    targetId: postId,
+    targetTitle: post?.title ?? postId,
+    detail: "記事をトップスライダーに追加",
+  });
   return { success: true };
 }
 
 /** ADMIN用: スライダーから記事を削除 */
 export async function removeHomeSliderArticle(postId: string) {
-  const { getCurrentUserRole } = await import("./user");
-  const role = await getCurrentUserRole();
-  if (role !== "ADMIN") return { success: false, error: "権限がありません" };
+  const actor = await getCurrentProfile();
+  if (!actor || actor.role !== "ADMIN") return { success: false, error: "権限がありません" };
+  const post = await prisma.post.findUnique({ where: { id: postId }, select: { title: true } });
   await prisma.homeSliderArticle.deleteMany({ where: { post_id: postId } });
   revalidatePath("/");
+  void logActivity({
+    actorId: actor.id,
+    actorName: actor.name,
+    action: "HIDE",
+    targetType: "HOME_SLIDER",
+    targetId: postId,
+    targetTitle: post?.title ?? postId,
+    detail: "記事をトップスライダーから削除",
+  });
   return { success: true };
 }
 
 /** ADMIN用: スライダー記事の並び順を更新 */
 export async function reorderHomeSliderArticles(orderedPostIds: string[]) {
-  const { getCurrentUserRole } = await import("./user");
-  const role = await getCurrentUserRole();
-  if (role !== "ADMIN") return { success: false, error: "権限がありません" };
+  const actor = await getCurrentProfile();
+  if (!actor || actor.role !== "ADMIN") return { success: false, error: "権限がありません" };
   await prisma.$transaction(
     orderedPostIds.map((post_id, index) =>
       prisma.homeSliderArticle.updateMany({
@@ -234,5 +253,14 @@ export async function reorderHomeSliderArticles(orderedPostIds: string[]) {
     )
   );
   revalidatePath("/");
+  void logActivity({
+    actorId: actor.id,
+    actorName: actor.name,
+    action: "UPDATE",
+    targetType: "HOME_SLIDER",
+    targetId: "home-slider",
+    targetTitle: "トップスライダー",
+    detail: `表示順を ${orderedPostIds.length} 件更新`,
+  });
   return { success: true };
 }

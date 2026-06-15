@@ -8,13 +8,13 @@ import { localizeServiceCategory } from "@/lib/category-i18n";
 import type { Locale } from "@/i18n/config";
 import { ThumbnailOrTitle } from "@/components/ui/thumbnail-or-title";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/ui/pagination";
 import { Search, ExternalLink } from "lucide-react";
 import { AddToRequestListButton } from "@/components/request-list/add-to-request-list-button";
 import type { ServiceForList } from "./page";
 import { isFreeServiceSortOrder } from "@/lib/service-material-request";
+import { ServiceCategoryBadges } from "@/components/services/service-category-badges";
 
 const PAGE_SIZE = 30;
 
@@ -199,10 +199,12 @@ export function ServicesClient({
                   )}
 
                   {/* カテゴリバッジ（画像上） */}
-                  <div className="absolute top-3 right-3">
-                    <Badge className="bg-white/95 text-foreground border shadow-lg">
-                      {localizeServiceCategory(service.category, locale)}
-                    </Badge>
+                  <div className="absolute top-3 right-3 left-3 flex justify-end min-w-0">
+                    <ServiceCategoryBadges
+                      category={service.category}
+                      compact
+                      badgeClassName="bg-white/95 text-foreground border shadow-lg"
+                    />
                   </div>
 
                   {/* ホバー時のアイコン */}

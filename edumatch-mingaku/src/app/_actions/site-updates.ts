@@ -258,17 +258,27 @@ export async function toggleSiteUpdateSlider(
   id: string,
   showInSlider: boolean
 ): Promise<{ success: boolean; error?: string }> {
-  const role = await getCurrentUserRole();
-  if (role !== "ADMIN") {
+  const actor = await getCurrentProfile();
+  if (!actor || actor.role !== "ADMIN") {
     return { success: false, error: "管理者権限が必要です" };
   }
   try {
-    await prisma.siteUpdate.update({
+    const row = await prisma.siteUpdate.update({
       where: { id },
       data: { show_in_slider: showInSlider },
+      select: { title: true },
     });
     revalidatePath("/");
     revalidatePath("/admin/site-updates");
+    void logActivity({
+      actorId: actor.id,
+      actorName: actor.name,
+      action: showInSlider ? "SHOW" : "HIDE",
+      targetType: "SITE_UPDATE",
+      targetId: id,
+      targetTitle: row.title,
+      detail: showInSlider ? "トップスライダーに表示" : "トップスライダーから非表示",
+    });
     return { success: true };
   } catch (error) {
     console.error("Failed to toggle site update slider:", error);

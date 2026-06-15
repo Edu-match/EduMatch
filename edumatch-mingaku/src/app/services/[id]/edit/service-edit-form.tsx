@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { ServiceCategoryBadges } from "@/components/services/service-category-badges";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ContentEditorWithImport } from "@/components/content/content-editor-with-import";
 import { BlocksContentPreview } from "@/components/content/blocks-content-preview";
@@ -502,17 +503,7 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
                   <h1 className="text-3xl font-bold">{title || "タイトル未設定"}</h1>
                   {description && <p className="text-lg text-muted-foreground">{description}</p>}
                   {category && (
-                    <div className="flex flex-wrap gap-2">
-                      {category
-                        .split(",")
-                        .map((token) => token.trim())
-                        .filter(Boolean)
-                        .map((token) => (
-                          <Badge key={token} variant="outline">
-                            {token.startsWith("その他:") ? token.replace("その他:", "その他（") + "）" : token}
-                          </Badge>
-                        ))}
-                    </div>
+                    <ServiceCategoryBadges category={category} variant="outline" />
                   )}
                   <div className="border-t pt-6">
                     <BlocksContentPreview content={content} />
