@@ -68,6 +68,7 @@ import {
 } from "@/components/community/forum-emoji-picker";
 import { useAuthUser } from "@/components/community/answer-section";
 import { OpenAiChatButton } from "@/components/ui/open-ai-chat-button";
+import { ForumRoomRelatedContent } from "@/components/community/forum-room-related-content";
 import { ReportForumContentButton } from "@/components/community/report-forum-content-button";
 import { FORUM_AI_FACILITATOR_NAME } from "@/lib/forum-constants";
 import { isForumAiFacilitatorReply } from "@/lib/forum-ai-reply";
@@ -1352,6 +1353,9 @@ export function ForumRoomClient({
       {categoryContext?.contentKind === "community" ? null : (
       <div className="relative z-10 mx-auto w-full max-w-3xl px-4 py-6 sm:px-6">
         <div className="space-y-6">
+
+          {/* 関連コンテンツ（管理者が紐付けた記事・サービス。0件なら非表示） */}
+          <ForumRoomRelatedContent roomId={room.id} />
 
           {/* 投稿フォーム（左）＋ AI投稿サポートブロック（右・縦長）。狭い画面では縦積み。 */}
           <div className="flex flex-col gap-3 lg:flex-row lg:items-stretch">

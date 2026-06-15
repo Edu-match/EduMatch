@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, BarChart3, Eye, ExternalLink, EyeOff, Heart, Loader2, MessageSquare, PenSquare, Pin, PinOff, Plus, Search, Trash2, Zap } from "lucide-react";
+import { ArrowLeft, BarChart3, Eye, ExternalLink, EyeOff, Heart, Loader2, MessageSquare, PenSquare, Pin, PinOff, Plus, Search, Sparkles, Trash2, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -397,7 +397,10 @@ export function AdminForumClient() {
                     <Link href={`/forum/${room.id}`} target="_blank" className="text-xs text-primary hover:underline"><ExternalLink className="mr-1 inline h-3 w-3" />表示</Link>
                     {editingRoomId !== room.id && (
                       <div className="flex items-center gap-1">
-                        <Button size="sm" variant="ghost" title="部屋名・説明を編集" onClick={() => { setRoomNameDraft(room.name); setRoomDescDraft(room.description ?? ""); setEditingRoomId(room.id); }}>
+                        <Button asChild size="sm" variant="ghost" title="詳細編集（関連コンテンツの紐付け）">
+                          <Link href={`/admin/forum/rooms/${room.id}/edit`}><Sparkles className="h-3.5 w-3.5 text-muted-foreground" /></Link>
+                        </Button>
+                        <Button size="sm" variant="ghost" title="部屋名・説明をその場で編集" onClick={() => { setRoomNameDraft(room.name); setRoomDescDraft(room.description ?? ""); setEditingRoomId(room.id); }}>
                           <PenSquare className="h-3.5 w-3.5 text-muted-foreground" />
                         </Button>
                         <Button size="sm" variant="ghost" title={room.isHidden ? "再表示" : "非表示"} onClick={() => handleToggleRoomHide(room.id, !!room.isHidden)}>
