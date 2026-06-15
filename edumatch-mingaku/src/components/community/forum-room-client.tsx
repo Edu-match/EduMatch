@@ -5,17 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
-  Bold,
   Bot,
   ChevronDown,
   ChevronUp,
   FileText,
   Heart,
-  Image as ImageIcon,
-  Italic,
   Link2,
-  List,
-  ListOrdered,
   Loader2,
   AlertTriangle,
   LogIn,
@@ -25,11 +20,8 @@ import {
   Send,
   Pin,
   Plus,
-  Quote,
   Save,
   Sparkles,
-  Strikethrough,
-  Underline,
   Users,
   X,
   Zap,
@@ -887,77 +879,6 @@ function UserAvatar({
   );
 }
 
-// ─── フォーマットツールバー ─────────────────────────────
-
-function FormatToolbar({
-  textareaRef,
-  body,
-  setBody,
-}: {
-  textareaRef: React.RefObject<HTMLTextAreaElement | null>;
-  body: string;
-  setBody: (v: string) => void;
-}) {
-  const applyInline = (prefix: string, suffix: string = prefix) => {
-    const el = textareaRef.current;
-    if (!el) return;
-    const start = el.selectionStart;
-    const end = el.selectionEnd;
-    const selected = body.slice(start, end);
-    const newText = body.slice(0, start) + prefix + selected + suffix + body.slice(end);
-    setBody(newText);
-    requestAnimationFrame(() => {
-      el.setSelectionRange(start + prefix.length, end + prefix.length);
-      el.focus();
-    });
-  };
-
-  const applyLinePrefix = (prefix: string) => {
-    const el = textareaRef.current;
-    if (!el) return;
-    const start = el.selectionStart;
-    const lineStart = body.lastIndexOf("\n", start - 1) + 1;
-    const newText = body.slice(0, lineStart) + prefix + body.slice(lineStart);
-    setBody(newText);
-    requestAnimationFrame(() => {
-      el.setSelectionRange(start + prefix.length, start + prefix.length);
-      el.focus();
-    });
-  };
-
-  const tools: { icon: React.ReactNode; label: string; action: () => void }[] = [
-    { icon: <Bold className="h-3.5 w-3.5" />, label: "太字", action: () => applyInline("**") },
-    { icon: <Italic className="h-3.5 w-3.5" />, label: "斜体", action: () => applyInline("*") },
-    { icon: <Underline className="h-3.5 w-3.5" />, label: "下線", action: () => applyInline("__") },
-    { icon: <Strikethrough className="h-3.5 w-3.5" />, label: "取消線", action: () => applyInline("~~") },
-    { icon: <Link2 className="h-3.5 w-3.5" />, label: "リンク", action: () => applyInline("[", "](url)") },
-    { icon: <ListOrdered className="h-3.5 w-3.5" />, label: "番号リスト", action: () => applyLinePrefix("1. ") },
-    { icon: <List className="h-3.5 w-3.5" />, label: "箇条書き", action: () => applyLinePrefix("- ") },
-    { icon: <Quote className="h-3.5 w-3.5" />, label: "引用", action: () => applyLinePrefix("> ") },
-    { icon: <ImageIcon className="h-3.5 w-3.5" />, label: "画像", action: () => applyInline("![画像](", ")") },
-  ];
-
-  return (
-    <div className="flex items-center gap-0.5 border-t border-white/10 bg-white/[0.03] px-3 py-1.5">
-      {tools.map((tool, i) => (
-        <>
-          {(i === 4 || i === 5 || i === 7) && (
-            <span key={`sep-${i}`} className="mx-1 h-4 w-px bg-white/15" />
-          )}
-          <button
-            key={tool.label}
-            type="button"
-            title={tool.label}
-            onClick={tool.action}
-            className="flex h-6 w-6 items-center justify-center rounded text-white/50 transition-colors hover:bg-white/10 hover:text-white"
-          >
-            {tool.icon}
-          </button>
-        </>
-      ))}
-    </div>
-  );
-}
 
 // ─── 投稿フォーム ────────────────────────────────────────
 
@@ -994,6 +915,7 @@ function NewPostComposer({
   onSubmit,
   roomId,
   userName,
+  legalName,
   avatarUrl,
   isLoggedIn,
   roomLabel,
@@ -1005,6 +927,8 @@ function NewPostComposer({
   onSubmit: (draft: PostDraft) => Promise<void>;
   roomId: string;
   userName: string;
+  /** アカウント登録の本名（GeneralProfile/CorporateProfile.legal_name）。本名表示を選んだときに使う */
+  legalName?: string | null;
   avatarUrl?: string | null;
   isLoggedIn: boolean;
   roomLabel: string;
@@ -1013,18 +937,18 @@ function NewPostComposer({
   organizationTypeOther?: string | null;
   aiKenteiPassed?: boolean;
 }) {
+  // 肩書・属性はアカウント登録の所属種別から自動で決定（ユーザーには入力させない）。
   const postPreviewRole = forumRolePreviewFromProfile(organizationType, organizationTypeOther);
   const [body, setBody] = useState("");
-  const [isAnon, setIsAnon] = useState(false);
-  const [customNickname, setCustomNickname] = useState("");
-  const [customTitle, setCustomTitle] = useState("");
-  const [relatedArticleUrl, setRelatedArticleUrl] = useState("");
-  const [showUrl, setShowUrl] = useState(false);
+  // 投稿者名は「ニックネーム（既定）」か「本名」を選ぶ。匿名投稿は廃止。
+  const [nameSource, setNameSource] = useState<"nickname" | "real">("nickname");
   const [draftFromAiLoaded, setDraftFromAiLoaded] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  const displayName = isAnon ? "匿名ユーザー" : (customNickname.trim() || userName || "ゲスト");
+  const hasRealName = !!legalName?.trim();
+  const displayName =
+    nameSource === "real" && hasRealName ? legalName!.trim() : (userName || "ゲスト");
   const remaining = MAX_BODY - body.length;
   const canSubmit = body.trim().length > 0 && body.length <= MAX_BODY && !submitting;
 
@@ -1043,10 +967,15 @@ function NewPostComposer({
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
-    await onSubmit({ body, authorRole: isAnon ? "匿名" : "一般", relatedArticleUrl, displayName, customTitle: isAnon ? "" : customTitle.trim() });
+    // 肩書きはアカウントの属性(postPreviewRole)を customTitle 経由で渡す（親が authorRole に反映）。
+    await onSubmit({
+      body,
+      authorRole: "一般",
+      relatedArticleUrl: "",
+      displayName,
+      customTitle: postPreviewRole === "一般" ? "" : postPreviewRole,
+    });
     setBody("");
-    setRelatedArticleUrl("");
-    setShowUrl(false);
   };
 
   if (!isLoggedIn) {
@@ -1085,54 +1014,37 @@ function NewPostComposer({
         </div>
       )}
 
-      {/* 投稿者バー */}
+      {/* 投稿者バー。肩書・属性はアカウント登録のものを自動表示。名前はニックネーム/本名を選択（既定=ニックネーム）。 */}
       <div className="border-b border-white/10 bg-white/[0.02] px-4 py-2 space-y-1.5">
         <div className="flex items-center gap-2">
-          <UserAvatar name={displayName} avatarUrl={isAnon ? null : avatarUrl} size={26} isAnon={isAnon} />
+          <UserAvatar name={displayName} avatarUrl={avatarUrl} size={26} isAnon={false} />
           <span className="text-xs font-medium text-white/85">{displayName}</span>
-          {!isAnon && customTitle.trim() && (
-            <>
-              <span className="text-white/30">·</span>
-              <span className="text-[11px] text-white/55">{customTitle.trim()}</span>
-            </>
-          )}
-          {!isAnon && !customTitle.trim() && (
-            <>
-              <span className="text-white/30">·</span>
-              <OccupationBadge storedAuthorRole={postPreviewRole} />
-              {aiKenteiPassed && <AiKenteiBadge />}
-            </>
-          )}
-          <button
-            type="button"
-            onClick={() => setIsAnon((v) => !v)}
-            className={["ml-auto rounded-full border px-2.5 py-0.5 text-[10px] font-medium transition-colors",
-              isAnon
-                ? `${ROLE_STYLES["匿名"].bg} ${ROLE_STYLES["匿名"].text} ${ROLE_STYLES["匿名"].border}`
-                : "border-transparent text-white/45 hover:bg-white/10",
-            ].join(" ")}
-          >{ROLE_STYLES["匿名"].icon} 匿名</button>
+          <span className="text-white/30">·</span>
+          <OccupationBadge storedAuthorRole={postPreviewRole} />
+          {aiKenteiPassed && <AiKenteiBadge />}
         </div>
-        {!isAnon && (
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={customNickname}
-              onChange={(e) => setCustomNickname(e.target.value)}
-              placeholder={userName || "ニックネーム（任意）"}
-              maxLength={30}
-              className="h-6 flex-1 rounded border border-white/12 bg-white/[0.04] px-2 text-[11px] text-white placeholder:text-white/35 focus:outline-none focus:ring-1 focus:ring-white/30"
-            />
-            <input
-              type="text"
-              value={customTitle}
-              onChange={(e) => setCustomTitle(e.target.value)}
-              placeholder="肩書・属性（任意）"
-              maxLength={40}
-              className="h-6 flex-1 rounded border border-white/12 bg-white/[0.04] px-2 text-[11px] text-white placeholder:text-white/35 focus:outline-none focus:ring-1 focus:ring-white/30"
-            />
+        {/* 表示名の選択：ニックネーム（既定）／本名 */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] text-white/40">表示名</span>
+          <div className="inline-flex overflow-hidden rounded-full border border-white/12">
+            <button
+              type="button"
+              onClick={() => setNameSource("nickname")}
+              className={`px-2.5 py-0.5 text-[10px] font-medium transition-colors ${
+                nameSource === "nickname" ? "bg-white/15 text-white" : "text-white/45 hover:bg-white/8"
+              }`}
+            >ニックネーム</button>
+            <button
+              type="button"
+              onClick={() => hasRealName && setNameSource("real")}
+              disabled={!hasRealName}
+              title={hasRealName ? undefined : "アカウントに本名が登録されていません"}
+              className={`px-2.5 py-0.5 text-[10px] font-medium transition-colors ${
+                nameSource === "real" ? "bg-white/15 text-white" : "text-white/45 hover:bg-white/8"
+              } ${!hasRealName ? "cursor-not-allowed opacity-40" : ""}`}
+            >本名</button>
           </div>
-        )}
+        </div>
       </div>
 
       {/* テキストエリア */}
@@ -1146,36 +1058,10 @@ function NewPostComposer({
           maxLength={MAX_BODY + 50}
           className="w-full resize-none bg-transparent text-sm leading-7 text-white outline-none placeholder:text-white/40"
         />
-        {showUrl && (
-          <div className="mb-3 flex items-center gap-2 rounded-lg border border-white/12 bg-white/[0.04] px-3 py-2">
-            <Link2 className="h-3.5 w-3.5 shrink-0 text-white/45" />
-            <Input
-              type="url"
-              value={relatedArticleUrl}
-              onChange={(e) => setRelatedArticleUrl(e.target.value)}
-              placeholder="https://... （関連記事URL）"
-              className="h-7 border-0 bg-transparent p-0 text-xs text-white shadow-none placeholder:text-white/35 focus-visible:ring-0"
-            />
-          </div>
-        )}
       </div>
 
-      {/* フォーマットツールバー */}
-      <FormatToolbar textareaRef={textareaRef} body={body} setBody={setBody} />
-
-      {/* 送信フッター */}
-      <div className="flex items-center justify-between gap-3 border-t border-white/10 bg-white/[0.02] px-4 py-2.5">
-        <button
-          type="button"
-          title="関連記事URLを追加"
-          onClick={() => setShowUrl((v) => !v)}
-          className={["rounded-full border p-1.5 transition-colors",
-            showUrl ? "text-white" : "border-transparent text-white/45 hover:bg-white/10",
-          ].join(" ")}
-          style={showUrl ? { borderColor: `${ACCENT}66`, background: `${ACCENT}1f`, color: ACCENT } : undefined}
-        >
-          <Link2 className="h-3 w-3" />
-        </button>
+      {/* 送信フッター（書式ツールバー・リンク添付は廃止。プレーンテキスト投稿に統一） */}
+      <div className="flex items-center justify-end gap-3 border-t border-white/10 bg-white/[0.02] px-4 py-2.5">
         <div className="flex items-center gap-3">
           <span className={`text-[11px] tabular-nums ${remaining < 0 ? "text-rose-400 font-semibold" : remaining < 50 ? "text-amber-300" : "text-white/40"}`}>
             {remaining}
@@ -1200,7 +1086,7 @@ function AiHelperSidebar({
   body?: string;
 }) {
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-indigo-400/25 p-4" style={POST_SURFACE}>
+    <div className="flex h-full flex-col gap-3 rounded-2xl border border-indigo-400/25 p-4" style={POST_SURFACE}>
       <div className="flex items-center gap-2">
         <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-400/20">
           <Bot className="h-3.5 w-3.5 text-indigo-200" />
@@ -1477,24 +1363,29 @@ export function ForumRoomClient({
 
       {/* ─── メインコンテンツ（コミュニティページでは表示しない） ─── */}
       {categoryContext?.contentKind === "community" ? null : (
-      <div className="relative z-10 mx-auto w-full max-w-2xl px-4 py-6 sm:px-6">
+      <div className="relative z-10 mx-auto w-full max-w-3xl px-4 py-6 sm:px-6">
         <div className="space-y-6">
 
-          {/* 投稿フォーム ＋ AI投稿サポートブロック（縦積み） */}
-          <div className="space-y-3">
-            <NewPostComposer
-              onSubmit={handleNewPost}
-              roomId={room.id}
-              userName={auth.name}
-              avatarUrl={auth.avatarUrl}
-              isLoggedIn={auth.isLoggedIn}
-              roomLabel={roomDiscussionContext}
-              submitting={submitting}
-              organizationType={auth.organizationType}
-              organizationTypeOther={auth.organizationTypeOther}
-              aiKenteiPassed={auth.aiKenteiPassed}
-            />
-            <AiHelperSidebar roomTheme={roomDiscussionContext} body={composerBody} />
+          {/* 投稿フォーム（左）＋ AI投稿サポートブロック（右・縦長）。狭い画面では縦積み。 */}
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-stretch">
+            <div className="min-w-0 lg:flex-1">
+              <NewPostComposer
+                onSubmit={handleNewPost}
+                roomId={room.id}
+                userName={auth.name}
+                legalName={auth.legalName}
+                avatarUrl={auth.avatarUrl}
+                isLoggedIn={auth.isLoggedIn}
+                roomLabel={roomDiscussionContext}
+                submitting={submitting}
+                organizationType={auth.organizationType}
+                organizationTypeOther={auth.organizationTypeOther}
+                aiKenteiPassed={auth.aiKenteiPassed}
+              />
+            </div>
+            <div className="lg:w-60 lg:shrink-0">
+              <AiHelperSidebar roomTheme={roomDiscussionContext} body={composerBody} />
+            </div>
           </div>
 
           {/* 投稿一覧 */}

@@ -21,16 +21,29 @@ export async function GET() {
       { status: 200 }
     );
   }
-  const hasCorpRow = !!(await prisma.corporateProfile.findUnique({
-    where: { id: profile.id },
-    select: { id: true },
-  }));
+  const [corpRow, generalRow] = await Promise.all([
+    prisma.corporateProfile.findUnique({
+      where: { id: profile.id },
+      select: { id: true, legal_name: true, job_title: true, organization_type: true, organization_type_other: true },
+    }),
+    prisma.generalProfile.findUnique({
+      where: { id: profile.id },
+      select: { legal_name: true, organization_type: true, organization_type_other: true },
+    }),
+  ]);
   const treatAsCorporate = effectiveIsCorporateProfile(
     profile.role,
     profile.manual_profile_kind,
-    hasCorpRow
+    !!corpRow
   );
   const uiRole = canAccessPosterFeatures(profile.role) ? "ADMIN" : "VIEWER";
+
+  // 井戸端の投稿者表示に使う「アカウント登録の属性・本名」。法人/一般どちらの拡張行からでも拾う。
+  const ext = treatAsCorporate ? corpRow : generalRow;
+  const legalName = ext?.legal_name ?? null;
+  const organizationType = ext?.organization_type ?? null;
+  const organizationTypeOther = ext?.organization_type_other ?? null;
+  const jobTitle = corpRow?.job_title ?? null;
 
   return NextResponse.json({
     profile: {
@@ -40,6 +53,10 @@ export async function GET() {
       avatar_url: profile.avatar_url,
       role: uiRole,
       is_corporate_profile: treatAsCorporate,
+      legal_name: legalName,
+      organization_type: organizationType,
+      organization_type_other: organizationTypeOther,
+      job_title: jobTitle,
     },
     ai_navigator_agreed: !!profile.ai_navigator_agreed_at,
   });
