@@ -458,6 +458,8 @@ const PUYO_CSS = `
 // ── 玉サイズ：全体平均(avg)を基準に、平均以下は base のまま／平均を超えた分だけ拡大 ──
 // 「件数が少ないうちは現状サイズ・増えたら大きく」。平均を1件超えるごとに直径 +11%。
 const BUBBLE_GROWTH_PER_POST = 0.11;
+// 浮遊する自動コメント吹き出しは玉/タイトルと被るため既定オフ（賑わい演出より視認性優先）。
+const SHOW_FLOATING_COMMENTS = false;
 function bubbleSizeFor(postCount: number, base: number, max: number, avg = 0): number {
   const over = Math.max(0, postCount - avg);
   const factor = 1 + over * BUBBLE_GROWTH_PER_POST;
@@ -570,6 +572,7 @@ function PuyoBubble({
         animation: `puyoAnim ${dur}s ease-in-out ${delay}s infinite`,
       }}
       aria-label={topic.category}
+      title={topic.category}
     >
       {/* Glow halo（常時・分類色を維持。盛り上がりでもオレンジにしない） */}
       <span
@@ -1027,6 +1030,37 @@ export function InteropPuyoBubbleMap({
     () => assignLabelSides(placements.map((p) => p.pos), bodyRadiiPct, m.yMin, m.yMax, m.xMin, m.xMax),
     [placements, bodyRadiiPct, m.yMin, m.yMax, m.xMin, m.xMax]
   );
+  // ★タイトル渋滞の根本対策：ラベルの配置後に「ラベル同士の被り」を検出し、被るものは
+  //   優先度の低い側(=玉が小さい)を非表示にする。隠れたタイトルはホバー(title属性)で確認できる。
+  //   これで「表示されているタイトルは互いに重ならない」を保証する。
+  const labelVisible = useMemo(() => {
+    const n = placements.length;
+    const labelHalfW = pxToPctRadius(50, m.layoutW); // ラベル横半幅 ~50px
+    const labelHalfH = pxToPctRadius(13, m.layoutW); // ラベル縦半幅 ~13px(高さ基準もlayoutWで近似)
+    const centers: Array<[number, number]> = placements.map((p, i) => {
+      const [x, y] = p.pos;
+      const off = (bodyRadiiPct[i] ?? 6) + 5;
+      const side = labelSides[i] ?? "down";
+      if (side === "up") return [x, y - off];
+      if (side === "right") return [x + off, y];
+      if (side === "left") return [x - off, y];
+      return [x, y + off];
+    });
+    const order = [...Array(n).keys()].sort((a, b) => (sizes[b] ?? 0) - (sizes[a] ?? 0));
+    const visible = new Array(n).fill(true);
+    const kept: number[] = [];
+    for (const i of order) {
+      const [cx, cy] = centers[i];
+      let clash = false;
+      for (const j of kept) {
+        const [px, py] = centers[j];
+        // ラベル矩形の重なり（yは表示比率 m.ys で圧縮して評価）
+        if (Math.abs(cx - px) < labelHalfW * 2 && Math.abs(cy - py) * m.ys < labelHalfH * 2) { clash = true; break; }
+      }
+      if (clash) visible[i] = false; else kept.push(i);
+    }
+    return visible as boolean[];
+  }, [placements, labelSides, bodyRadiiPct, sizes, m.layoutW, m.ys]);
   // ノード接続線。Gemma生成の「内容ベース」エッジ(topicEdges)があればそれを優先し、
   // 無ければ従来どおり「座標が近いトピック同士」を幾何的に結ぶ。
   const connections = useMemo(() => {
@@ -1244,15 +1278,15 @@ export function InteropPuyoBubbleMap({
             pos={place.pos}
             side={labelSides[i] ?? "down"}
             index={i}
-            hideLabel={compact}
+            hideLabel={compact || !labelVisible[i]}
             size={sizes[i] ?? m.base}
             onActivate={() => onSelectTopic(topic)}
           />
         );
       })}
 
-      {/* 自動コメント吹き出し（玉の上or下に浮かぶ雲形バブル）。ミニマップ(compact)では渋滞するため非表示 */}
-      {!compact && popups.map((p) => {
+      {/* 自動コメント吹き出し（玉の上or下に浮かぶ雲形バブル）。被り解消のため既定オフ＋ミニマップでも非表示 */}
+      {SHOW_FLOATING_COMMENTS && !compact && popups.map((p) => {
         const isAbove = p.dir === "above";
         // テイルを元の玉位置へ向ける（吹き出し内に収まるようクランプ）
         const tailOffset = Math.max(-66, Math.min(66, -p.xExtra * 0.55));
