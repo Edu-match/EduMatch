@@ -78,8 +78,8 @@ export function NewRoomForm() {
             icon={Zap}
             title="AIディスカッション"
             description="投稿にAIファシリテーターが返信し、議論をサポートします。"
-            activeClassName="border-violet-300 bg-violet-50"
-            iconClassName={aiDiscussion ? "text-violet-600" : undefined}
+            activeClassName="border-violet-400/50 bg-violet-500/15"
+            iconClassName={aiDiscussion ? "text-violet-300" : undefined}
           />
           <div className="flex justify-end gap-2 pt-1">
             <Button asChild variant="outline"><Link href="/admin/forum">キャンセル</Link></Button>

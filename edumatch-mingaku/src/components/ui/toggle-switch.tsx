@@ -70,7 +70,7 @@ export function SettingToggleRow({
           {title}
         </p>
         <p className="text-xs text-muted-foreground leading-5">{description}</p>
-        <p className={cn("text-[11px] font-medium", checked ? "text-emerald-700" : "text-muted-foreground")}>
+        <p className={cn("text-[11px] font-medium", checked ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground")}>
           {checked ? "オン — 有効" : "オフ — 無効"}
         </p>
       </div>
