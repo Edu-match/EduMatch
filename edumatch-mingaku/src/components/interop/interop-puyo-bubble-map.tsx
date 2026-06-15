@@ -457,20 +457,21 @@ const PUYO_CSS = `
 
 // ── 玉サイズ：全体平均(avg)を基準に、平均以下は base のまま／平均を超えた分だけ拡大 ──
 // 「件数が少ないうちは現状サイズ・増えたら大きく」。平均を1件超えるごとに直径 +11%。
-const BUBBLE_GROWTH_PER_POST = 0.11;
+const BUBBLE_GROWTH_PER_POST = 0.05; // 拡大が強すぎたので緩める
+const BUBBLE_GROWTH_MAX_FACTOR = 1.55; // 最大でも base の1.55倍まで（大きくなりすぎ防止）
 // 浮遊する自動コメント吹き出しは玉/タイトルと被るため既定オフ（賑わい演出より視認性優先）。
 const SHOW_FLOATING_COMMENTS = false;
 function bubbleSizeFor(postCount: number, base: number, max: number, avg = 0): number {
   const over = Math.max(0, postCount - avg);
-  const factor = 1 + over * BUBBLE_GROWTH_PER_POST;
+  const factor = Math.min(BUBBLE_GROWTH_MAX_FACTOR, 1 + over * BUBBLE_GROWTH_PER_POST);
   return Math.min(max, Math.round(base * factor));
 }
 
-// サテライト（最新ニュース等）：投稿が増えるほど目立つよう、トピック玉より速く・大きく拡大
-const SATELLITE_GROWTH_PER_POST = 0.09;
+// サテライト（最新ニュース等）：トピック玉よりやや速く拡大（ただし上限は控えめに）
+const SATELLITE_GROWTH_PER_POST = 0.045;
 function satelliteSizeFor(postCount: number, base: number, max: number): number {
   const bucketed = Math.floor(Math.max(0, postCount) / 2) * 2;
-  const factor = 1 + bucketed * SATELLITE_GROWTH_PER_POST;
+  const factor = Math.min(1.6, 1 + bucketed * SATELLITE_GROWTH_PER_POST);
   return Math.min(max, Math.round(base * factor));
 }
 // 端末別のレイアウト寸法（スマホは画面が狭いので全体を小さく＆間隔を広く取る）
@@ -1044,16 +1045,26 @@ export function InteropPuyoBubbleMap({
       if (side === "left") return [x - off, y];
       return [x, y + off];
     });
+    const pts = placements.map((p) => p.pos);
     const order = [...Array(n).keys()].sort((a, b) => (sizes[b] ?? 0) - (sizes[a] ?? 0));
     const visible = new Array(n).fill(true);
     const kept: number[] = [];
     for (const i of order) {
       const [cx, cy] = centers[i];
       let clash = false;
+      // (1) 既に表示中のラベルと被る → 隠す
       for (const j of kept) {
         const [px, py] = centers[j];
-        // ラベル矩形の重なり（yは表示比率 m.ys で圧縮して評価）
         if (Math.abs(cx - px) < labelHalfW * 2 && Math.abs(cy - py) * m.ys < labelHalfH * 2) { clash = true; break; }
+      }
+      // (2) いずれかの玉本体と被る → 隠す（自分の玉は除く）。画像の「タイトルが玉に重なる」対策。
+      if (!clash) {
+        for (let j = 0; j < n; j++) {
+          if (j === i) continue;
+          const [bx, by] = pts[j];
+          const br = bodyRadiiPct[j] ?? 6;
+          if (Math.abs(cx - bx) < labelHalfW + br && Math.abs(cy - by) * m.ys < (labelHalfH + br) * m.ys) { clash = true; break; }
+        }
       }
       if (clash) visible[i] = false; else kept.push(i);
     }
