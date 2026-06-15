@@ -1071,11 +1071,14 @@ function AiHelperSidebar({
 }) {
   return (
     <div className="flex h-full flex-col gap-3 rounded-2xl border border-indigo-400/25 p-4" style={POST_SURFACE}>
-      <div className="flex items-center gap-2">
+      <div className="flex items-start gap-2">
         <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-400/20">
           <Bot className="h-3.5 w-3.5 text-indigo-200" />
         </div>
-        <p className="text-sm font-semibold leading-snug text-white/90">投稿内容に迷っていますか？</p>
+        <p className="pt-0.5 text-sm font-semibold leading-snug text-white/90">
+          投稿内容に<wbr />
+          <span className="whitespace-nowrap">迷っていますか？</span>
+        </p>
       </div>
       <p className="text-xs leading-relaxed text-white/60">
         AIと対話することで、あなたの考えを整理して投稿文を作れます。
@@ -1083,7 +1086,7 @@ function AiHelperSidebar({
       <div className="flex-1" />
       <OpenAiChatButton
         variant="outline"
-        className="w-full border-indigo-300/40 bg-indigo-400/10 text-indigo-100 hover:bg-indigo-400/20"
+        className="h-auto w-full justify-center gap-1.5 whitespace-normal py-2.5 text-xs leading-snug border-indigo-300/40 bg-indigo-400/10 text-indigo-100 hover:bg-indigo-400/20"
         initialMessage={
           body?.trim()
             ? `以下の投稿下書きを、井戸端会議向けに深めたいです。\n\n${body.trim()}`
@@ -1093,8 +1096,8 @@ function AiHelperSidebar({
         launchContext="forum-compose"
         forumTopic={roomTheme}
       >
-        <Bot className="mr-1.5 h-3.5 w-3.5" />
-        AIであなたの意見を整理する
+        <Bot className="h-3.5 w-3.5 shrink-0" />
+        <span>AIで意見を整理する</span>
       </OpenAiChatButton>
     </div>
   );
