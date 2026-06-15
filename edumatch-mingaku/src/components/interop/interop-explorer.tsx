@@ -327,12 +327,12 @@ export function InteropExplorer({
   );
   // 中心が「議員会館」のとき、ハブの中身は佐藤さん指定の3点（/kaikanと同じ）。
   // インフォメーション/AIチャンピオンシップは外部リンク（onActivateでwindow.open）、
-  // ご意見・要望は既存のご意見BOX掲示板へ（書き込み可）。
+  // ご意見・要望は議員会館専用の掲示板(giin-opinion)へ（サテライトのご意見BOXとは独立）。
   const isGiinKaikanCenter = interopCat?.slug === "giin-kaikan";
   const giinKaikanItems = useMemo(() => {
     const opinionSub =
-      allSubs.find((s) => s.slug === "interop-opinion-box") ??
-      allSubs.find((s) => s.name.includes("ご意見"));
+      allSubs.find((s) => s.slug === "giin-opinion") ??
+      allSubs.find((s) => s.slug === "interop-opinion-box");
     return [
       {
         id: "giin-information",
