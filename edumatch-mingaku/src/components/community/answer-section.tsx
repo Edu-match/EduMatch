@@ -21,6 +21,8 @@ import { cn } from "@/lib/utils";
 export function useAuthUser() {
   const [auth, setAuth] = useState<{
     name: string;
+    /** アカウント登録の本名（GeneralProfile/CorporateProfile.legal_name）。投稿者名の「本名」表示用 */
+    legalName: string | null;
     avatarUrl: string | null;
     organizationType: string | null;
     organizationTypeOther: string | null;
@@ -32,6 +34,7 @@ export function useAuthUser() {
     isLoggedIn: boolean;
   }>({
     name: "",
+    legalName: null,
     avatarUrl: null,
     organizationType: null,
     organizationTypeOther: null,
@@ -48,6 +51,7 @@ export function useAuthUser() {
       .then((data) => {
         const name =
           data?.profile?.name ?? data?.user?.email?.split("@")[0] ?? null;
+        const legalName = data?.profile?.legal_name ?? null;
         const avatarUrl = data?.profile?.avatar_url ?? null;
         const organizationType = data?.profile?.organization_type ?? null;
         const organizationTypeOther = data?.profile?.organization_type_other ?? null;
@@ -57,6 +61,7 @@ export function useAuthUser() {
         const userId = typeof data?.profile?.id === "string" ? data.profile.id : null;
         setAuth({
           name: name ?? "",
+          legalName,
           avatarUrl,
           organizationType,
           organizationTypeOther,
@@ -70,6 +75,7 @@ export function useAuthUser() {
       .catch(() =>
         setAuth({
           name: "",
+          legalName: null,
           avatarUrl: null,
           organizationType: null,
           organizationTypeOther: null,
