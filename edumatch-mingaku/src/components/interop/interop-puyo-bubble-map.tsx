@@ -144,7 +144,7 @@ function orbCollisionRadiusPx(diameterPx: number): number {
   // 小さい玉は従来どおり「本体＋わずかな余白(12)」のみ（28玉が画面に収まる前提を維持）。
   // 投稿増で大きく育った玉だけ、隣やラベルと被らないよう余白を比例して上乗せする
   // （70pxを超えた分の0.16倍。基準サイズの玉には影響しない）。
-  return diameterPx / 2 + 12 + Math.max(0, diameterPx - 70) * 0.16;
+  return diameterPx / 2 + 18 + Math.max(0, diameterPx - 64) * 0.22;
 }
 
 function pxToPctRadius(px: number, containerW: number): number {
@@ -659,10 +659,9 @@ function PuyoBubble({
         )}
       </span>
 
-      {/* Label — 塊の外向き（放射状）に配置。ミニマップ(hideLabel)では渋滞回避のため非表示 */}
-      {!hideLabel && (
+      {/* Label — 通常は常時表示。hideLabel(ミニマップ/被り回避)のときはホバーで出す。 */}
       <span
-        className="pointer-events-none absolute text-center transition-transform duration-150 group-hover:scale-[1.06]"
+        className={`pointer-events-none absolute text-center transition-all duration-150 group-hover:scale-[1.06] ${hideLabel ? "opacity-0 group-hover:opacity-100 group-hover:z-[70]" : ""}`}
         style={{
           ...labelPos,
           width: "max-content",
@@ -685,7 +684,6 @@ function PuyoBubble({
       >
         {topic.category}
       </span>
-      )}
     </button>
   );
 }
@@ -1035,8 +1033,8 @@ export function InteropPuyoBubbleMap({
   //   これで「表示されているタイトルは互いに重ならない」を保証する。
   const labelVisible = useMemo(() => {
     const n = placements.length;
-    const labelHalfW = pxToPctRadius(50, m.layoutW); // ラベル横半幅 ~50px
-    const labelHalfH = pxToPctRadius(13, m.layoutW); // ラベル縦半幅 ~13px(高さ基準もlayoutWで近似)
+    const labelHalfW = pxToPctRadius(66, m.layoutW); // ラベル横半幅 ~66px（広めに取り隙間を確保）
+    const labelHalfH = pxToPctRadius(17, m.layoutW); // ラベル縦半幅 ~17px
     const centers: Array<[number, number]> = placements.map((p, i) => {
       const [x, y] = p.pos;
       const off = (bodyRadiiPct[i] ?? 6) + 5;
