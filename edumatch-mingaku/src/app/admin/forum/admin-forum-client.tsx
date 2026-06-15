@@ -123,7 +123,11 @@ export function AdminForumClient() {
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [roomKeyword, setRoomKeyword] = useState("");
   const [postKeyword, setPostKeyword] = useState("");
-  const [selectedRoom, setSelectedRoom] = useState(""); // "" = 未選択（部屋を選ぶと投稿を取得）
+  const [selectedRoom, setSelectedRoom] = useState(""); // "" = 未選択（ソースを選ぶと投稿を取得）
+  // 投稿管理のソース種別：テーマ部屋(forum) かサテライト・特設(interop)。
+  const [sourceType, setSourceType] = useState<"room" | "interop">("room");
+  const [interopSubs, setInteropSubs] = useState<{ id: string; name: string; slug: string }[]>([]);
+  const [sourceKeyword, setSourceKeyword] = useState(""); // ソース一覧の絞り込み
   const [postFilter, setPostFilter] = useState<PostFilter>("all");
   const [roomSort, setRoomSort] = useState<"posts" | "recent" | "name">("posts");
   const [roomPage, setRoomPage] = useState(1);
@@ -143,20 +147,47 @@ export function AdminForumClient() {
       .then((r) => r.json())
       .then((d) => { if (typeof d.pinned === "number") setStats(d); })
       .catch(console.error);
+    // サテライト・特設（interop サブカテゴリ）一覧も取得して、投稿管理のソースに出す。
+    fetch("/api/interop/sub-categories?all=true", { credentials: "include" })
+      .then((r) => r.json())
+      .then((d) => { if (Array.isArray(d.subCategories)) setInteropSubs(d.subCategories.map((s: { id: string; name: string; slug: string }) => ({ id: s.id, name: s.name, slug: s.slug }))); })
+      .catch(console.error);
   }, []);
 
-  // 選択された部屋の投稿だけを遅延取得（投稿管理タブで部屋を選んだとき）
+  // 選択されたソース（部屋 or interopサブ）の投稿だけを遅延取得。
   useEffect(() => {
     if (!selectedRoom) { setPosts([]); return; }
     let cancelled = false;
     setLoadingPosts(true);
-    fetch(`/api/forum/rooms/${selectedRoom}/posts?page=1&includeHidden=true`, { credentials: "include" })
+    const url = sourceType === "interop"
+      ? `/api/interop/posts?subCategoryId=${selectedRoom}&includeHidden=true`
+      : `/api/forum/rooms/${selectedRoom}/posts?page=1&includeHidden=true`;
+    fetch(url, { credentials: "include" })
       .then((r) => r.json())
-      .then((d) => { if (!cancelled) setPosts((d.posts ?? []) as ForumPost[]); })
+      .then((d) => {
+        if (cancelled) return;
+        const raw = (d.posts ?? []) as Array<Record<string, unknown>>;
+        // interop と forum で形が違うので共通形へ正規化する。
+        setPosts(raw.map((p) => ({
+          ...(p as object),
+          id: p.id as string,
+          authorName: (p.authorName ?? p.author_name ?? "匿名") as string,
+          body: (p.body ?? "") as string,
+          isPinned: Boolean(p.isPinned ?? p.is_pinned),
+          isHidden: Boolean(p.isHidden ?? p.is_hidden),
+          is_hidden: Boolean(p.isHidden ?? p.is_hidden),
+          likeCount: (p.likeCount ?? p.like_count ?? 0) as number,
+          replyCount: (p.replyCount ?? (Array.isArray(p.replies) ? p.replies.length : 0)) as number,
+          roomId: selectedRoom,
+        })) as (ForumPost & { is_hidden?: boolean; isHidden?: boolean })[]);
+      })
       .catch(() => { if (!cancelled) setPosts([]); })
       .finally(() => { if (!cancelled) setLoadingPosts(false); });
     return () => { cancelled = true; };
-  }, [selectedRoom]);
+  }, [selectedRoom, sourceType]);
+
+  // ソース種別ごとの投稿モデレーションAPIのベースパス（hide/pin/delete 共通形）
+  const postApiBase = sourceType === "interop" ? "/api/interop/posts" : "/api/forum/posts";
 
   const filteredRooms = useMemo(() => {
     const keyword = roomKeyword.trim().toLowerCase();
@@ -197,6 +228,17 @@ export function AdminForumClient() {
     });
   }, [postFilter, postKeyword, posts]);
 
+  // 投稿管理のソース一覧（テーマ部屋 or サテライト・特設）をキーワードで絞り込み。
+  const postSourceList = useMemo(() => {
+    const kw = sourceKeyword.trim().toLowerCase();
+    const base = sourceType === "interop"
+      ? interopSubs.map((s) => ({ id: s.id, name: s.name }))
+      : rooms.map((r) => ({ id: r.id, name: r.name }));
+    return kw ? base.filter((s) => s.name.toLowerCase().includes(kw)) : base;
+  }, [sourceType, sourceKeyword, interopSubs, rooms]);
+  const selectedSourceName =
+    (sourceType === "interop" ? interopSubs : rooms).find((s) => s.id === selectedRoom)?.name ?? "";
+
   // 上部集計は全件countのstatsから（全投稿fetchは廃止）。
   const pinnedCount = stats?.pinned ?? 0;
   const noReplyCount = stats?.noReply ?? 0;
@@ -231,7 +273,7 @@ export function AdminForumClient() {
   const handleHidePost = useCallback(async (postId: string) => {
     if (!window.confirm("この投稿を非表示にしますか？（削除ではなく非表示になります）")) return;
     try {
-      const res = await fetch(`/api/forum/posts/${postId}`, {
+      const res = await fetch(`${postApiBase}/${postId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -245,11 +287,11 @@ export function AdminForumClient() {
     } catch {
       alert("非表示設定に失敗しました");
     }
-  }, []);
+  }, [postApiBase]);
 
   const handleUnhidePost = useCallback(async (postId: string) => {
     try {
-      const res = await fetch(`/api/forum/posts/${postId}`, {
+      const res = await fetch(`${postApiBase}/${postId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -263,7 +305,7 @@ export function AdminForumClient() {
     } catch {
       alert("再表示設定に失敗しました");
     }
-  }, []);
+  }, [postApiBase]);
 
   const handleSaveRoom = useCallback(async (roomId: string) => {
     if (savingRoom || !roomNameDraft.trim()) return;
@@ -289,7 +331,7 @@ export function AdminForumClient() {
   const handleDeletePost = useCallback(async (postId: string) => {
     if (!window.confirm("この投稿を完全に削除しますか？元に戻せません。")) return;
     try {
-      const res = await fetch(`/api/forum/posts/${postId}`, {
+      const res = await fetch(`${postApiBase}/${postId}`, {
         method: "DELETE",
         credentials: "include",
       });
@@ -301,7 +343,7 @@ export function AdminForumClient() {
     } catch {
       alert("削除に失敗しました");
     }
-  }, []);
+  }, [postApiBase]);
 
   const handleToggleRoomHide = useCallback(async (roomId: string, currentHidden: boolean) => {
     try {
@@ -323,7 +365,7 @@ export function AdminForumClient() {
 
   const handleTogglePin = useCallback(async (postId: string, currentPinned: boolean) => {
     try {
-      const res = await fetch(`/api/forum/posts/${postId}`, {
+      const res = await fetch(`${postApiBase}/${postId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -337,7 +379,7 @@ export function AdminForumClient() {
     } catch {
       alert("ピン留め操作に失敗しました");
     }
-  }, []);
+  }, [postApiBase]);
 
   const isLoading = loadingRooms;
 
@@ -485,9 +527,24 @@ export function AdminForumClient() {
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input value={postKeyword} onChange={(e) => setPostKeyword(e.target.value)} className="pl-9" placeholder="投稿本文・投稿者で検索" />
           </div>
-          <p className="text-xs text-muted-foreground">部屋を選ぶと、その部屋の投稿だけを読み込みます（全件一括取得をやめ高速化）。</p>
-          <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
-            {rooms.map((room) => <Button key={room.id} size="sm" variant={selectedRoom === room.id ? "default" : "outline"} onClick={() => setSelectedRoom(room.id)}>{room.name}</Button>)}
+          {/* ソース種別切替（テーマ部屋 / サテライト・特設）。サテライト・特設＝中心インタロップ直行＋議員会館ご意見などの掲示板も管理できる。 */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex overflow-hidden rounded-lg border">
+              <button type="button" onClick={() => { setSourceType("room"); setSelectedRoom(""); }} className={`px-3 py-1.5 text-xs font-semibold transition ${sourceType === "room" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}>テーマ部屋</button>
+              <button type="button" onClick={() => { setSourceType("interop"); setSelectedRoom(""); }} className={`px-3 py-1.5 text-xs font-semibold transition ${sourceType === "interop" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}>サテライト・特設</button>
+            </div>
+            <div className="relative min-w-[160px] flex-1">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input value={sourceKeyword} onChange={(e) => setSourceKeyword(e.target.value)} className="h-8 pl-8 text-xs" placeholder={sourceType === "room" ? "部屋を絞り込み" : "サテライト・特設を絞り込み"} />
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">ソースを選ぶと、その掲示板の投稿だけを読み込みます（非表示・固定も含む）。</p>
+          <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto rounded-lg border bg-muted/30 p-2">
+            {postSourceList.length === 0 ? (
+              <p className="px-1 py-2 text-xs text-muted-foreground">該当するソースがありません。</p>
+            ) : postSourceList.map((s) => (
+              <Button key={s.id} size="sm" variant={selectedRoom === s.id ? "default" : "outline"} onClick={() => setSelectedRoom(s.id)}>{s.name}</Button>
+            ))}
           </div>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant={postFilter === "all" ? "default" : "outline"} onClick={() => setPostFilter("all")}>すべて</Button>
@@ -496,7 +553,7 @@ export function AdminForumClient() {
             <Button size="sm" variant={postFilter === "hidden" ? "default" : "outline"} onClick={() => setPostFilter("hidden")}><EyeOff className="mr-1 h-3.5 w-3.5" />非表示</Button>
           </div>
           {!selectedRoom ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">上の部屋を選んでください。</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">上のソースを選んでください。</p>
           ) : loadingPosts ? (
             <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
           ) : filteredPosts.length === 0 ? (
@@ -508,7 +565,7 @@ export function AdminForumClient() {
               return (
                 <Card key={post.id} className={isHiddenPost ? "opacity-60" : ""}><CardContent className="p-4">
                   <div className="mb-1 flex items-center gap-2">
-                    <Badge variant="secondary">{rooms.find((r) => r.id === post.roomId)?.name ?? post.roomId}</Badge>
+                    <Badge variant="secondary">{selectedSourceName || post.roomId}</Badge>
                     <span className="text-xs">{post.authorName}</span>
                     {isHiddenPost && <Badge variant="outline" className="text-[10px] text-muted-foreground border-dashed"><EyeOff className="mr-1 h-3 w-3" />非表示中</Badge>}
                   </div>
