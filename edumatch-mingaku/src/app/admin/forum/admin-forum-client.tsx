@@ -19,6 +19,7 @@ import { AdminForumCategories } from "./admin-forum-categories";
 import { AdminForumSatellites } from "./admin-forum-satellites";
 
 type PostFilter = "all" | "pinned" | "no-reply" | "hidden";
+const ROOMS_PER_PAGE = 20;
 type NewRoomDraft = {
   name: string;
   description: string;
@@ -126,6 +127,7 @@ export function AdminForumClient() {
   const [selectedRoom, setSelectedRoom] = useState(""); // "" = 未選択（部屋を選ぶと投稿を取得）
   const [postFilter, setPostFilter] = useState<PostFilter>("all");
   const [roomSort, setRoomSort] = useState<"posts" | "recent" | "name">("posts");
+  const [roomPage, setRoomPage] = useState(1);
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
   const [roomNameDraft, setRoomNameDraft] = useState("");
   const [roomDescDraft, setRoomDescDraft] = useState("");
@@ -168,6 +170,17 @@ export function AdminForumClient() {
     else base.sort((a, b) => lastAt(b) - lastAt(a));
     return base;
   }, [roomKeyword, rooms, roomSort]);
+
+  // 部屋一覧は20件ごとにページ分割（多すぎて縦に伸びるのを防ぐ）
+  const totalRoomPages = Math.max(1, Math.ceil(filteredRooms.length / ROOMS_PER_PAGE));
+  const safeRoomPage = Math.min(roomPage, totalRoomPages);
+  const pagedRooms = useMemo(
+    () => filteredRooms.slice((safeRoomPage - 1) * ROOMS_PER_PAGE, safeRoomPage * ROOMS_PER_PAGE),
+    [filteredRooms, safeRoomPage],
+  );
+
+  // 検索語・並び替えが変わったら1ページ目に戻す
+  useEffect(() => { setRoomPage(1); }, [roomKeyword, roomSort]);
 
   // posts は選択中の部屋のみ。キーワード＋状態フィルタだけ適用する。
   const filteredPosts = useMemo(() => {
@@ -385,9 +398,12 @@ export function AdminForumClient() {
             </div>
             <CreateRoomDialog onCreated={handleCreateRoom} />
           </div>
-          <p className="text-xs text-muted-foreground">{filteredRooms.length}部屋</p>
+          <p className="text-xs text-muted-foreground">
+            {filteredRooms.length}部屋
+            {totalRoomPages > 1 && `（${safeRoomPage} / ${totalRoomPages}ページ）`}
+          </p>
           <div className="grid gap-3 sm:grid-cols-2">
-            {filteredRooms.map((room) => (
+            {pagedRooms.map((room) => (
               <Card key={room.id}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-2 mb-1">
@@ -450,6 +466,13 @@ export function AdminForumClient() {
               </Card>
             ))}
           </div>
+          {totalRoomPages > 1 && (
+            <div className="flex items-center justify-center gap-2 pt-2">
+              <Button size="sm" variant="outline" disabled={safeRoomPage <= 1} onClick={() => setRoomPage((p) => Math.max(1, p - 1))}>前へ</Button>
+              <span className="text-xs text-muted-foreground tabular-nums">{safeRoomPage} / {totalRoomPages}</span>
+              <Button size="sm" variant="outline" disabled={safeRoomPage >= totalRoomPages} onClick={() => setRoomPage((p) => Math.min(totalRoomPages, p + 1))}>次へ</Button>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="posts" className="space-y-3">
