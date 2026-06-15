@@ -118,7 +118,7 @@ export function AdminForumClient() {
   const [rooms, setRooms] = useState<ForumRoom[]>([]);
   // 投稿は「選択した部屋ぶんだけ」遅延ロード（以前は全部屋を一括fetchして固まっていた）。
   const [posts, setPosts] = useState<(ForumPost & { is_hidden?: boolean; isHidden?: boolean })[]>([]);
-  const [stats, setStats] = useState<{ pinned: number; noReply: number; hidden: number } | null>(null);
+  const [stats, setStats] = useState<{ total: number; pinned: number; noReply: number; hidden: number } | null>(null);
   const [loadingRooms, setLoadingRooms] = useState(true);
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [roomKeyword, setRoomKeyword] = useState("");
@@ -189,7 +189,10 @@ export function AdminForumClient() {
   const pinnedCount = stats?.pinned ?? 0;
   const noReplyCount = stats?.noReply ?? 0;
   const hiddenCount = stats?.hidden ?? 0;
-  const topRooms = [...rooms].sort((a, b) => b.postCount - a.postCount).slice(0, 5);
+  const topRooms = [...rooms].sort((a, b) => b.postCount - a.postCount).slice(0, 20);
+  const totalPosts = stats?.total ?? rooms.reduce((s, r) => s + (r.postCount ?? 0), 0);
+  const activeRooms = rooms.filter((r) => (r.postCount ?? 0) > 0).length;
+  const maxRoomPosts = topRooms[0]?.postCount ?? 0;
 
   const handleCreateRoom = (room: ForumRoom) => {
     setRooms((prev) => [...prev, room]);
@@ -328,11 +331,16 @@ export function AdminForumClient() {
 
   return (
     <div className="container max-w-5xl py-8">
-      <Button asChild variant="ghost" size="sm" className="mb-3 -ml-2 text-muted-foreground">
-        <Link href="/provider-dashboard"><ArrowLeft className="mr-1 h-4 w-4" />ダッシュボード</Link>
-      </Button>
+      <div className="mb-3 flex items-center justify-between">
+        <Button asChild variant="ghost" size="sm" className="-ml-2 text-muted-foreground">
+          <Link href="/provider-dashboard"><ArrowLeft className="mr-1 h-4 w-4" />ダッシュボード</Link>
+        </Button>
+        <Button asChild variant="outline" size="sm">
+          <Link href="/forum" target="_blank"><ExternalLink className="mr-1 h-4 w-4" />井戸端会議を開く</Link>
+        </Button>
+      </div>
       <h1 className="text-2xl font-bold">井戸端会議 管理</h1>
-      <p className="mt-1 text-sm text-muted-foreground">部屋・投稿の管理。非表示は削除ではなく is_hidden フラグで管理します。</p>
+      <p className="mt-1 text-sm text-muted-foreground">部屋・カテゴリ・サテライト・投稿をまとめて管理。非表示は削除ではなく is_hidden フラグで管理します。</p>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-4">
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">部屋</p><p className="text-2xl font-bold">{rooms.length}</p></CardContent></Card>
@@ -507,16 +515,33 @@ export function AdminForumClient() {
           )}
         </TabsContent>
 
-        <TabsContent value="insights">
+        <TabsContent value="insights" className="space-y-4">
+          {/* サマリ */}
+          <div className="grid gap-3 sm:grid-cols-4">
+            <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">総投稿</p><p className="text-2xl font-bold">{totalPosts}</p></CardContent></Card>
+            <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">稼働部屋</p><p className="text-2xl font-bold">{activeRooms}<span className="ml-1 text-sm font-normal text-muted-foreground">/ {rooms.length}</span></p></CardContent></Card>
+            <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">1部屋平均</p><p className="text-2xl font-bold">{rooms.length ? Math.round((totalPosts / rooms.length) * 10) / 10 : 0}</p></CardContent></Card>
+            <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">返信待ち</p><p className="text-2xl font-bold">{noReplyCount}</p></CardContent></Card>
+          </div>
+
+          {/* 投稿数ランキング TOP20（横棒） */}
           <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2 text-base"><BarChart3 className="h-4 w-4 text-primary" />投稿数ランキング</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              {topRooms.map((room) => (
-                <div key={room.id} className="flex items-center justify-between text-sm">
-                  <span>{room.name}</span>
-                  <span className="text-muted-foreground">{room.postCount} 投稿</span>
-                </div>
-              ))}
+            <CardHeader><CardTitle className="flex items-center gap-2 text-base"><BarChart3 className="h-4 w-4 text-primary" />投稿数ランキング TOP20</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              {topRooms.map((room, i) => {
+                const pct = maxRoomPosts > 0 ? Math.round(((room.postCount ?? 0) / maxRoomPosts) * 100) : 0;
+                return (
+                  <div key={room.id} className="flex items-center gap-2 text-sm">
+                    <span className="w-5 shrink-0 text-right text-xs font-bold text-muted-foreground">{i + 1}</span>
+                    <span className="w-32 shrink-0 truncate sm:w-44" title={room.name}>{room.name}</span>
+                    <div className="relative h-4 flex-1 overflow-hidden rounded-full bg-muted">
+                      <div className="absolute inset-y-0 left-0 rounded-full bg-primary/70" style={{ width: `${Math.max(pct, room.postCount ? 4 : 0)}%` }} />
+                    </div>
+                    <span className="w-12 shrink-0 text-right text-xs tabular-nums text-muted-foreground">{room.postCount ?? 0}</span>
+                  </div>
+                );
+              })}
+              {topRooms.length === 0 && <p className="py-4 text-center text-sm text-muted-foreground">データがありません。</p>}
             </CardContent>
           </Card>
         </TabsContent>

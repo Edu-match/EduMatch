@@ -33,8 +33,8 @@ export function ForumMapSidebarWidget() {
           embedded
           showChat={false}
           guideText=""
-          themeMode="day"
-          initialScale={2.4}
+          themeMode="auto"
+          initialScale={2.2}
         />
         {/* ごく薄い縁（暗くしすぎない） */}
         <div
