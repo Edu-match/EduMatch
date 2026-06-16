@@ -505,7 +505,7 @@ type MapMetrics = {
 const METRICS_DESKTOP: MapMetrics = { base: 40, max: 132, refW: 1300, labelMargin: 2.2, centerSize: 132, satOrb: 84, satOrbMax: 200, centerR: 20, ys: 0.62, yMin: 11, yMax: 99, xMin: 4, xMax: 96, panLimY: 840, labelGapPx: 46, layoutW: 1300, layoutH: 910 };
 const METRICS_MOBILE: MapMetrics  = { base: 30, max: 80,  refW: 400,  labelMargin: 0.8, centerSize: 72,  satOrb: 44, satOrbMax: 80,  centerR: 16, ys: 0.5, yMin: 16, yMax: 97, xMin: 5, xMax: 95, panLimY: 1700, labelGapPx: 26, layoutW: 560, layoutH: 820 };
 // 短い埋め込み枠（トップページの 480px など）用。中心ハブ・玉を小さくし、ほぼ1画面に収める。
-const METRICS_COMPACT: MapMetrics  = { base: 40, max: 96,  refW: 720,  labelMargin: 1.0, centerSize: 104, satOrb: 60, satOrbMax: 120, centerR: 16, ys: 0.62, yMin: 10, yMax: 98, xMin: 4, xMax: 96, panLimY: 600, labelGapPx: 34, layoutW: 1180, layoutH: 860 };
+const METRICS_COMPACT: MapMetrics  = { base: 48, max: 110, refW: 720,  labelMargin: 1.0, centerSize: 120, satOrb: 70, satOrbMax: 134, centerR: 16, ys: 0.62, yMin: 10, yMax: 98, xMin: 4, xMax: 96, panLimY: 640, labelGapPx: 36, layoutW: 1180, layoutH: 860 };
 
 
 function PuyoBubble({
