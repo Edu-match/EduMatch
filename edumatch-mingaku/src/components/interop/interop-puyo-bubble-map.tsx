@@ -1329,10 +1329,17 @@ export function InteropPuyoBubbleMap({
           style={{
             width: centerSize,
             height: centerSize,
-            animation: `centerPulse 8s ease-in-out infinite`,
           }}
           aria-label={centerLabel ?? interopCat?.name ?? "インタロップ"}
         >
+          {/* パルス(scale)は内側ラッパーに適用する。
+              ★ボタン自体に animation:scale を当てると keyframe の transform が
+                -translate-x/y-1/2（中央寄せ）を打ち消し、当たり判定が視覚位置からズレて
+                「中心が押しにくい」不具合になるため、ここで分離する。 */}
+          <span
+            className="pointer-events-none absolute inset-0"
+            style={{ animation: "centerPulse 8s ease-in-out infinite" }}
+          >
           {/* 放射するパルスリング（2本・時差） */}
           <span
             className="pointer-events-none absolute left-1/2 top-1/2 rounded-full"
@@ -1425,6 +1432,7 @@ export function InteropPuyoBubbleMap({
                 </span>
               );
             })()}
+          </span>
           </span>
         </button>
       )}
