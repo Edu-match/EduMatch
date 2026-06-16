@@ -227,7 +227,7 @@ function CommentThread({ logId, initialCount, currentUserId }: {
 // ── LogItem ───────────────────────────────────────────────────────────────
 function LogItem({ log, currentUserId }: { log: LogEntry; currentUserId: string }) {
   const meta = ACTION_META[log.action] ?? ACTION_META.UPDATE;
-  const Icon = meta.icon;
+  const Icon = meta.icon as React.ComponentType<{ className?: string }>;
   const targetHref = getTargetHref(log.target_type, log.target_id);
   const targetLabel = TARGET_LABELS[log.target_type] ?? log.target_type;
 

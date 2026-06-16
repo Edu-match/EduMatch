@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import { InteropExplorer } from "@/components/interop/interop-explorer";
+import { ForumMapMode } from "@/components/interop/forum-map-mode";
 import { getInteropSettings } from "@/lib/interop-settings.server";
 import { fetchInteropInitialActivity } from "@/lib/interop-explorer.server";
 
@@ -21,7 +21,7 @@ export default async function ForumPage() {
   return (
     <main className="relative h-[calc(100dvh-4rem)] w-full overflow-hidden bg-[#070a1c] text-white">
       <Suspense fallback={<div className="absolute inset-0 bg-[#070a1c]" />}>
-        <InteropExplorer
+        <ForumMapMode
           themeMode={settings.themeMode}
           guideText="中央のハブをタップして話題へ · 周囲の◎トピックをタップして井戸端へ"
           initialInteropActivity={initialActivity.interop}
