@@ -141,10 +141,9 @@ function popupXExtra(xPct: number): number {
  *  いたため、小さな玉でも中心間124px等の過大間隔を要求し、狭い画面では28玉が物理的に
  *  収まらず必ず重なっていた。ラベルの被りは assignLabelSides が空き方向へ逃がして吸収する。 */
 function orbCollisionRadiusPx(diameterPx: number): number {
-  // 小さい玉は従来どおり「本体＋わずかな余白(12)」のみ（28玉が画面に収まる前提を維持）。
-  // 投稿増で大きく育った玉だけ、隣やラベルと被らないよう余白を比例して上乗せする
-  // （70pxを超えた分の0.16倍。基準サイズの玉には影響しない）。
-  return diameterPx / 2 + 18 + Math.max(0, diameterPx - 64) * 0.22;
+  // 全タイトルを常時表示するため、ラベル幅ぶんの余白を確保して玉どうしを離す
+  // （画面外にはみ出してもよい＝ドラッグで探索。重なりを絶対に出さないことを優先）。
+  return diameterPx / 2 + 46 + Math.max(0, diameterPx - 64) * 0.22;
 }
 
 function pxToPctRadius(px: number, containerW: number): number {
@@ -502,10 +501,10 @@ type MapMetrics = {
 // ★layoutW/H は「配置を1回だけ解く仮想キャンバス寸法」。実描画はこの仮想キャンバスを
 //   コンテナへ contain で一律スケールするので、ここで重なりゼロに収束する寸法・比率を選ぶ。
 //   yMax は仮想キャンバス内(≤100%)に収め、全玉が画面内に入るようにする（パン不要）。
-const METRICS_DESKTOP: MapMetrics = { base: 40, max: 132, refW: 1300, labelMargin: 2.2, centerSize: 132, satOrb: 84, satOrbMax: 200, centerR: 20, ys: 0.62, yMin: 14, yMax: 97, xMin: 6, xMax: 92, panLimY: 840, layoutW: 1100, layoutH: 780 };
+const METRICS_DESKTOP: MapMetrics = { base: 40, max: 132, refW: 1300, labelMargin: 2.2, centerSize: 132, satOrb: 84, satOrbMax: 200, centerR: 20, ys: 0.62, yMin: 11, yMax: 99, xMin: 4, xMax: 96, panLimY: 840, layoutW: 1300, layoutH: 910 };
 const METRICS_MOBILE: MapMetrics  = { base: 30, max: 80,  refW: 400,  labelMargin: 0.8, centerSize: 72,  satOrb: 44, satOrbMax: 80,  centerR: 16, ys: 0.5, yMin: 16, yMax: 97, xMin: 5, xMax: 95, panLimY: 1700, layoutW: 560, layoutH: 820 };
 // 短い埋め込み枠（トップページの 480px など）用。中心ハブ・玉を小さくし、ほぼ1画面に収める。
-const METRICS_COMPACT: MapMetrics  = { base: 26, max: 72,  refW: 720,  labelMargin: 1.0, centerSize: 92,  satOrb: 50, satOrbMax: 104, centerR: 15, ys: 0.58, yMin: 13, yMax: 97, xMin: 5, xMax: 95, panLimY: 320, layoutW: 820, layoutH: 560 };
+const METRICS_COMPACT: MapMetrics  = { base: 26, max: 72,  refW: 720,  labelMargin: 1.0, centerSize: 92,  satOrb: 50, satOrbMax: 104, centerR: 15, ys: 0.58, yMin: 9, yMax: 99, xMin: 3, xMax: 97, panLimY: 320, layoutW: 1180, layoutH: 820 };
 
 
 function PuyoBubble({
@@ -1029,47 +1028,9 @@ export function InteropPuyoBubbleMap({
     () => assignLabelSides(placements.map((p) => p.pos), bodyRadiiPct, m.yMin, m.yMax, m.xMin, m.xMax),
     [placements, bodyRadiiPct, m.yMin, m.yMax, m.xMin, m.xMax]
   );
-  // ★タイトル渋滞の根本対策：ラベルの配置後に「ラベル同士の被り」を検出し、被るものは
-  //   優先度の低い側(=玉が小さい)を非表示にする。隠れたタイトルはホバー(title属性)で確認できる。
-  //   これで「表示されているタイトルは互いに重ならない」を保証する。
-  const labelVisible = useMemo(() => {
-    const n = placements.length;
-    const labelHalfW = pxToPctRadius(66, m.layoutW); // ラベル横半幅 ~66px（広めに取り隙間を確保）
-    const labelHalfH = pxToPctRadius(17, m.layoutW); // ラベル縦半幅 ~17px
-    const centers: Array<[number, number]> = placements.map((p, i) => {
-      const [x, y] = p.pos;
-      const off = (bodyRadiiPct[i] ?? 6) + 5;
-      const side = labelSides[i] ?? "down";
-      if (side === "up") return [x, y - off];
-      if (side === "right") return [x + off, y];
-      if (side === "left") return [x - off, y];
-      return [x, y + off];
-    });
-    const pts = placements.map((p) => p.pos);
-    const order = [...Array(n).keys()].sort((a, b) => (sizes[b] ?? 0) - (sizes[a] ?? 0));
-    const visible = new Array(n).fill(true);
-    const kept: number[] = [];
-    for (const i of order) {
-      const [cx, cy] = centers[i];
-      let clash = false;
-      // (1) 既に表示中のラベルと被る → 隠す
-      for (const j of kept) {
-        const [px, py] = centers[j];
-        if (Math.abs(cx - px) < labelHalfW * 2 && Math.abs(cy - py) * m.ys < labelHalfH * 2) { clash = true; break; }
-      }
-      // (2) いずれかの玉本体と被る → 隠す（自分の玉は除く）。画像の「タイトルが玉に重なる」対策。
-      if (!clash) {
-        for (let j = 0; j < n; j++) {
-          if (j === i) continue;
-          const [bx, by] = pts[j];
-          const br = bodyRadiiPct[j] ?? 6;
-          if (Math.abs(cx - bx) < labelHalfW + br && Math.abs(cy - by) * m.ys < (labelHalfH + br) * m.ys) { clash = true; break; }
-        }
-      }
-      if (clash) visible[i] = false; else kept.push(i);
-    }
-    return visible as boolean[];
-  }, [placements, labelSides, bodyRadiiPct, sizes, m.layoutW, m.ys]);
+  // 全タイトルを常時表示する方針に変更したため、ラベル非表示判定は廃止。
+  // 被りは玉どうしの間隔(orbCollisionRadiusPx にラベル幅ぶんの余白)で防ぎ、入りきらない分は
+  // 画面外＝ドラッグで探索する。ラベルの向きは assignLabelSides(labelSides) で空き方向へ。
   // ノード接続線。Gemma生成の「内容ベース」エッジ(topicEdges)があればそれを優先し、
   // 無ければ従来どおり「座標が近いトピック同士」を幾何的に結ぶ。
   const connections = useMemo(() => {
@@ -1285,8 +1246,9 @@ export function InteropPuyoBubbleMap({
             pos={place.pos}
             side={labelSides[i] ?? "down"}
             index={i}
-            // トップ(大マップ)は全タイトル表示。ミニマップ(compact)は被らない分だけ表示（吹き出しは出さない）。
-            hideLabel={compact ? !labelVisible[i] : false}
+            // 全カテゴリのタイトルを常時表示（トップもミニマップも）。玉の間隔をラベル幅ぶん広げて
+            // 被りを防ぎ、入りきらない分は画面外＝ドラッグで探索する方針。
+            hideLabel={false}
             size={sizes[i] ?? m.base}
             onActivate={() => onSelectTopic(topic)}
           />
