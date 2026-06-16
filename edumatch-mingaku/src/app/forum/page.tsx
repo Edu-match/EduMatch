@@ -27,6 +27,7 @@ export default async function ForumPage() {
           initialInteropActivity={initialActivity.interop}
           initialForumActivity={initialActivity.forum}
           showChat={false}
+          initialScale={1.35}
           showLatestNews={settings.showLatestNews}
           showSpeakerQa={settings.showSpeakerQa}
           showOpinionBox={settings.showOpinionBox}
