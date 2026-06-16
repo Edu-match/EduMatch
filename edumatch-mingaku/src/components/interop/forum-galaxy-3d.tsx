@@ -28,34 +28,39 @@ function topicScale(posts: number): number {
   return 1 + Math.min(3.6, posts * 0.14);
 }
 
-function Moon({ topic, color, posts, onSelect }: { topic: InteropPriorityTopic; color: string; posts: number; onSelect: () => void }) {
+function Moon({ topic, color, posts, onHover, onSelect }: { topic: InteropPriorityTopic; color: string; posts: number; onHover: (v: boolean) => void; onSelect: () => void }) {
   const [hover, setHover] = useState(false);
   const s = topicScale(posts);
+  const hitR = Math.max(1.2, 0.5 * s * 1.35); // 当たり判定は広めに（小さい玉も押しやすく）
+  const over = (e: { stopPropagation: () => void }) => { e.stopPropagation(); setHover(true); onHover(true); document.body.style.cursor = "pointer"; };
+  const out = () => { setHover(false); onHover(false); document.body.style.cursor = "auto"; };
   return (
     <group>
-      <mesh
-        scale={s * (hover ? 1.18 : 1)}
-        onPointerOver={(e) => { e.stopPropagation(); setHover(true); document.body.style.cursor = "pointer"; }}
-        onPointerOut={() => { setHover(false); document.body.style.cursor = "auto"; }}
-        onClick={(e) => { e.stopPropagation(); onSelect(); }}
-      >
+      {/* 透明な広い当たり判定（回転停止＋これで押しやすく） */}
+      <mesh onPointerOver={over} onPointerOut={out} onClick={(e) => { e.stopPropagation(); onSelect(); }}>
+        <sphereGeometry args={[hitR, 12, 12]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
+      {/* 見た目の玉 */}
+      <mesh scale={s * (hover ? 1.15 : 1)} raycast={() => null}>
         <sphereGeometry args={[0.5, 16, 16]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={hover ? 1.4 : 0.65} roughness={0.4} toneMapped={false} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={hover ? 1.5 : 0.7} roughness={0.4} toneMapped={false} />
       </mesh>
       <Html center distanceFactor={hover ? 16 : 22} position={[0, 0.5 * s + 0.5, 0]} style={{ pointerEvents: "none" }} zIndexRange={[10, 0]}>
-        <div style={labelStyle(color, hover ? 12 : 10.5)}>{topic.category}{posts > 0 ? ` · ${posts}` : ""}</div>
+        <div style={labelStyle(color, hover ? 12.5 : 10.5)}>{topic.category}{posts > 0 ? ` · ${posts}` : ""}</div>
       </Html>
     </group>
   );
 }
 
 function PlanetSystem({
-  major, planetRadius, angle0, topics, counts, onSelect,
-}: { major: string; planetRadius: number; angle0: number; topics: InteropPriorityTopic[]; counts: Map<string, number>; onSelect: (t: InteropPriorityTopic) => void }) {
+  major, planetRadius, angle0, topics, counts, pausedRef, onHover, onSelect,
+}: { major: string; planetRadius: number; angle0: number; topics: InteropPriorityTopic[]; counts: Map<string, number>; pausedRef: React.MutableRefObject<boolean>; onHover: (v: boolean) => void; onSelect: (t: InteropPriorityTopic) => void }) {
   const orbitRef = useRef<THREE.Group>(null);
   const moonsRef = useRef<THREE.Group>(null);
   const color = MAJOR_META[major]?.color ?? "#C9D4F6";
   useFrame((_, dt) => {
+    if (pausedRef.current) return; // ホバー中は止めて押しやすく
     if (orbitRef.current) orbitRef.current.rotation.y += dt * 0.025;
     if (moonsRef.current) moonsRef.current.rotation.y += dt * 0.16;
   });
@@ -78,7 +83,7 @@ function PlanetSystem({
             return (
               <group key={t.no} rotation={[0, a, 0]}>
                 <group position={[r, y, 0]}>
-                  <Moon topic={t} color={color} posts={posts} onSelect={() => onSelect(t)} />
+                  <Moon topic={t} color={color} posts={posts} onHover={onHover} onSelect={() => onSelect(t)} />
                 </group>
               </group>
             );
@@ -94,6 +99,10 @@ function Scene({ centerLabel, counts, onSelect }: { centerLabel: string; counts:
     () => MAJORS.map((m) => ({ major: m, topics: INTEROP_PRIORITY_TOPICS.filter((t) => t.major === m) })),
     [],
   );
+  // ホバー中は全公転＋自動回転を止める（動く的を押す問題の解消）。
+  const pausedRef = useRef(false);
+  const [autoRotate, setAutoRotate] = useState(true);
+  const onHover = (v: boolean) => { pausedRef.current = v; setAutoRotate(!v); };
   return (
     <>
       <ambientLight intensity={0.5} />
@@ -119,12 +128,14 @@ function Scene({ centerLabel, counts, onSelect }: { centerLabel: string; counts:
             angle0={(i / MAJORS.length) * Math.PI * 2}
             topics={g.topics}
             counts={counts}
+            pausedRef={pausedRef}
+            onHover={onHover}
             onSelect={onSelect}
           />
         ))}
       </group>
 
-      <OrbitControls enablePan={false} minDistance={8} maxDistance={120} autoRotate autoRotateSpeed={0.28} />
+      <OrbitControls enablePan={false} minDistance={8} maxDistance={120} autoRotate={autoRotate} autoRotateSpeed={0.28} />
 
       <EffectComposer>
         <Bloom intensity={1.0} luminanceThreshold={0.3} luminanceSmoothing={0.9} mipmapBlur radius={0.65} />
