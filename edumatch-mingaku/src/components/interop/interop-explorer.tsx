@@ -178,9 +178,12 @@ export function InteropExplorer({
   showSpeakerQa = true,
   showOpinionBox = true,
   initialScale,
+  centerLabel: centerLabelOverride,
 }: {
   themeMode?: InteropThemeMode;
   guideText?: string;
+  /** 中心ハブの表示名（管理画面の表示設定で編集）。未指定なら従来のロジック。 */
+  centerLabel?: string;
   initialInteropActivity?: ActivityPayload | null;
   initialForumActivity?: { rooms?: ForumRoomActivityPayload[] } | null;
   /** 来場者向けAIチャット(fixed配置)を出すか。井戸端会議・ホーム埋め込みでは false。 */
@@ -483,7 +486,7 @@ export function InteropExplorer({
         <>
           <InteropPuyoBubbleMap
             interopCat={interopCat}
-            centerLabel={isGiinKaikanCenter ? "教育AIサミット＠衆議院第一議員会館" : interopCat?.name}
+            centerLabel={centerLabelOverride?.trim() || (isGiinKaikanCenter ? "教育AIサミット＠衆議院第一議員会館" : interopCat?.name)}
             groupFilter={groupParam ?? undefined}
             initialScale={initialScale}
             activityByRoom={activityByRoom}

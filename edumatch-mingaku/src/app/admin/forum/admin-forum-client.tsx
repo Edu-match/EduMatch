@@ -317,17 +317,25 @@ export function AdminForumClient() {
       )}
 
       <Tabs defaultValue="boards" className="mt-6 gap-4">
-        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6">
-          <TabsTrigger value="boards">掲示板管理</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5">
+          <TabsTrigger value="boards">掲示板・マップ</TabsTrigger>
           <TabsTrigger value="posts">投稿管理</TabsTrigger>
           <TabsTrigger value="insights">分析</TabsTrigger>
-          <TabsTrigger value="map">マップ</TabsTrigger>
           <TabsTrigger value="moderation">モデレーション</TabsTrigger>
-          <TabsTrigger value="settings">サイト設定</TabsTrigger>
+          <TabsTrigger value="settings">表示設定</TabsTrigger>
         </TabsList>
 
         <TabsContent value="boards" className="space-y-6">
-          {/* 階層① 中心インタロップ直行のサテライト */}
+          {/* 階層① マップの話題玉（分類→玉→論点） */}
+          <section className="space-y-3">
+            <div>
+              <h2 className="text-base font-bold">マップの話題玉</h2>
+              <p className="text-xs text-muted-foreground">マップに並ぶ分類・話題玉・論点を管理します。</p>
+            </div>
+            <InteropMapAdmin />
+          </section>
+
+          {/* 階層② 中心インタロップ直行のサテライト */}
           <section className="space-y-3">
             <div>
               <h2 className="text-base font-bold">サテライト（中心インタロップ直行）</h2>
@@ -548,7 +556,6 @@ export function AdminForumClient() {
         </TabsContent>
 
         {/* 旧「教育AIサミット管理」から統合したタブ */}
-        <TabsContent value="map"><InteropMapAdmin /></TabsContent>
         <TabsContent value="moderation"><InteropModerationAdmin /></TabsContent>
         <TabsContent value="settings"><InteropSettingsEditor /></TabsContent>
       </Tabs>

@@ -30,6 +30,8 @@ export type InteropSettings = {
   registerLabel: string;
   /** マップ上部のガイド文 */
   guideText: string;
+  /** 中心ハブ（中央の玉）の表示名。空なら中心カテゴリ名にフォールバック。 */
+  centerLabel: string;
   /** フッターのクレジット */
   footerCredit: string;
   /** 背景テーマ（auto＝時刻で自動切替） */
@@ -74,6 +76,7 @@ export const DEFAULT_INTEROP_SETTINGS: InteropSettings = {
   registerUrl: "https://www.interop.jp/",
   registerLabel: "来場登録（無料）",
   guideText: "気になるエリアをタップして、セミナー・展示・登壇情報を探そう",
+  centerLabel: "教育AIサミット＠衆議院第一議員会館",
   footerCredit: "青楓館高等学院 / みんがく / AI検定協会 / AI部 © 2026",
   themeMode: "auto",
 
