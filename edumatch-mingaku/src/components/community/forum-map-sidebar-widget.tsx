@@ -40,6 +40,7 @@ export async function ForumMapSidebarWidget() {
           themeMode="auto"
           initialScale={2.0}
           centerLabel={settings.centerLabel}
+          centerHubItems={settings.centerHubItems}
           showLatestNews={settings.showLatestNews}
           showSpeakerQa={settings.showSpeakerQa}
           showOpinionBox={settings.showOpinionBox}

@@ -3,6 +3,17 @@
 
 export type InteropThemeMode = "auto" | "dawn" | "day" | "dusk" | "night";
 
+/** 中心ハブをタップしたときに出る項目。リンク先遷移(link) か 投稿ページ(board) を選べる。 */
+export type CenterHubItem = {
+  id: string;
+  name: string;
+  kind: "link" | "board";
+  /** kind=link のとき：外部/内部URL */
+  url?: string;
+  /** kind=board のとき：interopサブカテゴリID（その掲示板へ遷移） */
+  subId?: string;
+};
+
 /**
  * 外部リンクを安全に正規化する。
  * - 空なら fallback
@@ -32,6 +43,8 @@ export type InteropSettings = {
   guideText: string;
   /** 中心ハブ（中央の玉）の表示名。空なら中心カテゴリ名にフォールバック。 */
   centerLabel: string;
+  /** 中心ハブをタップしたときに出る項目。空なら既定（インフォメーション/AIチャンピオンシップ/ご意見）。 */
+  centerHubItems: CenterHubItem[];
   /** フッターのクレジット */
   footerCredit: string;
   /** 背景テーマ（auto＝時刻で自動切替） */
@@ -77,6 +90,7 @@ export const DEFAULT_INTEROP_SETTINGS: InteropSettings = {
   registerLabel: "来場登録（無料）",
   guideText: "気になるエリアをタップして、セミナー・展示・登壇情報を探そう",
   centerLabel: "教育AIサミット＠衆議院第一議員会館",
+  centerHubItems: [],
   footerCredit: "青楓館高等学院 / みんがく / AI検定協会 / AI部 © 2026",
   themeMode: "auto",
 

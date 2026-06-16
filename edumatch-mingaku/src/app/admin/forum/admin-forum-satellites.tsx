@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Bot, ExternalLink, Loader2, Save, Newspaper, Mic, MessagesSquare } from "lucide-react";
+import { ExternalLink, Loader2, Save, Newspaper, Mic, MessagesSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -28,8 +28,6 @@ type FlagKey = (typeof SATS)[number]["flag"];
 export function AdminForumSatellites() {
   const [subs, setSubs] = useState<Sub[]>([]);
   const [flags, setFlags] = useState<Record<FlagKey, boolean> | null>(null);
-  // 管理者ペルソナ自動返信の全体マスタースイッチ
-  const [personaAutoReply, setPersonaAutoReply] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   // 編集中の name/url ドラフト（id単位）
@@ -50,19 +48,8 @@ export function AdminForumSatellites() {
         showSpeakerQa: settings.showSpeakerQa ?? true,
         showOpinionBox: settings.showOpinionBox ?? true,
       });
-      setPersonaAutoReply(settings.personaAutoReplyEnabled ?? false);
     }).finally(() => setLoading(false));
   }, []);
-
-  const setMasterAutoReply = async (value: boolean) => {
-    setPersonaAutoReply(value);
-    await fetch("/api/interop/settings", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ personaAutoReplyEnabled: value }),
-    }).catch(() => {});
-  };
 
   const subOf = (slug: string) =>
     subs.find((s) => s.slug === slug) ?? subs.find((s) => s.name.includes(slug.replace("interop-", "")));
@@ -100,19 +87,6 @@ export function AdminForumSatellites() {
 
   return (
     <div className="space-y-3">
-      {/* 管理者ペルソナ自動返信の全体マスタースイッチ。OFFなら個別有効でも自動返信しない。 */}
-      {personaAutoReply !== null && (
-        <SettingToggleRow
-          checked={personaAutoReply}
-          onCheckedChange={setMasterAutoReply}
-          icon={Bot}
-          title="管理者ペルソナの自動返信（全体）"
-          description="オンにすると、自動返信を有効化している管理者ペルソナが投稿へ返信します。オフの間は誰の設定に関わらず自動返信しません。"
-          activeClassName="border-violet-400/50 bg-violet-500/15"
-          iconClassName={personaAutoReply ? "text-violet-300" : undefined}
-        />
-      )}
-
       <p className="text-sm text-muted-foreground">
         トップマップ直行の3サテライト。「マップに表示」で泡の表示を切り替え、名前・参考URLも編集できます。
       </p>

@@ -29,6 +29,7 @@ export default async function ForumPage() {
           showChat={false}
           initialScale={1.35}
           centerLabel={settings.centerLabel}
+          centerHubItems={settings.centerHubItems}
           showLatestNews={settings.showLatestNews}
           showSpeakerQa={settings.showSpeakerQa}
           showOpinionBox={settings.showOpinionBox}
