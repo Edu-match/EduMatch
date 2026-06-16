@@ -39,6 +39,7 @@ export async function ForumMapSidebarWidget() {
           guideText=""
           themeMode="auto"
           initialScale={2.5}
+          centerLabel={settings.centerLabel}
           showLatestNews={settings.showLatestNews}
           showSpeakerQa={settings.showSpeakerQa}
           showOpinionBox={settings.showOpinionBox}
