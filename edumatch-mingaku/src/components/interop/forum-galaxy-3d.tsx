@@ -31,38 +31,48 @@ function topicScale(posts: number): number {
 function Moon({ topic, color, posts, onHover, onSelect }: { topic: InteropPriorityTopic; color: string; posts: number; onHover: (v: boolean) => void; onSelect: () => void }) {
   const [hover, setHover] = useState(false);
   const s = topicScale(posts);
-  const hitR = Math.max(1.2, 0.5 * s * 1.35); // 当たり判定は広めに（小さい玉も押しやすく）
-  const over = (e: { stopPropagation: () => void }) => { e.stopPropagation(); setHover(true); onHover(true); document.body.style.cursor = "pointer"; };
-  const out = () => { setHover(false); onHover(false); document.body.style.cursor = "auto"; };
+  const hitR = Math.max(2.0, 0.55 * s * 1.5); // 当たり判定はかなり広めに
+  const enter = () => { setHover(true); onHover(true); document.body.style.cursor = "pointer"; };
+  const leave = () => { setHover(false); onHover(false); document.body.style.cursor = "auto"; };
   return (
     <group>
-      {/* 透明な広い当たり判定（回転停止＋これで押しやすく） */}
-      <mesh onPointerOver={over} onPointerOut={out} onClick={(e) => { e.stopPropagation(); onSelect(); }}>
+      {/* 透明の広い当たり判定（玉そのものを押しても反応） */}
+      <mesh onPointerOver={(e) => { e.stopPropagation(); enter(); }} onPointerOut={leave} onClick={(e) => { e.stopPropagation(); onSelect(); }}>
         <sphereGeometry args={[hitR, 12, 12]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
-      {/* 見た目の玉 */}
-      <mesh scale={s * (hover ? 1.15 : 1)} raycast={() => null}>
-        <sphereGeometry args={[0.5, 16, 16]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={hover ? 1.5 : 0.7} roughness={0.4} toneMapped={false} />
+      {/* 見た目の玉（クリックは当たり判定とラベルに任せる） */}
+      <mesh scale={s * (hover ? 1.2 : 1)} raycast={() => null}>
+        <sphereGeometry args={[0.55, 16, 16]} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={hover ? 1.6 : 0.75} roughness={0.4} toneMapped={false} />
       </mesh>
-      <Html center distanceFactor={hover ? 16 : 22} position={[0, 0.5 * s + 0.5, 0]} style={{ pointerEvents: "none" }} zIndexRange={[10, 0]}>
-        <div style={labelStyle(color, hover ? 12.5 : 10.5)}>{topic.category}{posts > 0 ? ` · ${posts}` : ""}</div>
+      {/* ★タイトル＝クリック可能なボタン（DOMなので確実に押せる）。これが主なクリック手段。 */}
+      <Html center distanceFactor={hover ? 14 : 20} position={[0, 0.55 * s + 0.6, 0]} zIndexRange={[16, 2]} style={{ pointerEvents: "auto" }}>
+        <button
+          type="button"
+          onMouseEnter={enter}
+          onMouseLeave={leave}
+          onClick={(e) => { e.stopPropagation(); onSelect(); }}
+          style={{ ...labelStyle(color, hover ? 12.5 : 10.5), cursor: "pointer", appearance: "none" }}
+        >
+          {topic.category}{posts > 0 ? ` · ${posts}` : ""}
+        </button>
       </Html>
     </group>
   );
 }
 
 function PlanetSystem({
-  major, planetRadius, angle0, topics, counts, pausedRef, onHover, onSelect,
-}: { major: string; planetRadius: number; angle0: number; topics: InteropPriorityTopic[]; counts: Map<string, number>; pausedRef: React.MutableRefObject<boolean>; onHover: (v: boolean) => void; onSelect: (t: InteropPriorityTopic) => void }) {
+  major, planetRadius, angle0, topics, counts, spin, pausedRef, onHover, onSelect,
+}: { major: string; planetRadius: number; angle0: number; topics: InteropPriorityTopic[]; counts: Map<string, number>; spin: boolean; pausedRef: React.MutableRefObject<boolean>; onHover: (v: boolean) => void; onSelect: (t: InteropPriorityTopic) => void }) {
   const orbitRef = useRef<THREE.Group>(null);
   const moonsRef = useRef<THREE.Group>(null);
   const color = MAJOR_META[major]?.color ?? "#C9D4F6";
+  // 既定では公転を止めて「動かない＝押しやすい」状態に（回転ONのときだけゆっくり公転）。
   useFrame((_, dt) => {
-    if (pausedRef.current) return; // ホバー中は止めて押しやすく
-    if (orbitRef.current) orbitRef.current.rotation.y += dt * 0.025;
-    if (moonsRef.current) moonsRef.current.rotation.y += dt * 0.16;
+    if (!spin || pausedRef.current) return;
+    if (orbitRef.current) orbitRef.current.rotation.y += dt * 0.012;
+    if (moonsRef.current) moonsRef.current.rotation.y += dt * 0.05;
   });
   return (
     <group ref={orbitRef} rotation={[0, angle0, 0]}>
@@ -94,15 +104,15 @@ function PlanetSystem({
   );
 }
 
-function Scene({ centerLabel, counts, onSelect }: { centerLabel: string; counts: Map<string, number>; onSelect: (t: InteropPriorityTopic) => void }) {
+function Scene({ centerLabel, counts, spin, onSelect }: { centerLabel: string; counts: Map<string, number>; spin: boolean; onSelect: (t: InteropPriorityTopic) => void }) {
   const grouped = useMemo(
     () => MAJORS.map((m) => ({ major: m, topics: INTEROP_PRIORITY_TOPICS.filter((t) => t.major === m) })),
     [],
   );
-  // ホバー中は全公転＋自動回転を止める（動く的を押す問題の解消）。
+  // ホバー中は公転＋自動回転を止める（回転ONのとき用）。
   const pausedRef = useRef(false);
-  const [autoRotate, setAutoRotate] = useState(true);
-  const onHover = (v: boolean) => { pausedRef.current = v; setAutoRotate(!v); };
+  const [paused, setPaused] = useState(false);
+  const onHover = (v: boolean) => { pausedRef.current = v; setPaused(v); };
   return (
     <>
       <ambientLight intensity={0.5} />
@@ -128,6 +138,7 @@ function Scene({ centerLabel, counts, onSelect }: { centerLabel: string; counts:
             angle0={(i / MAJORS.length) * Math.PI * 2}
             topics={g.topics}
             counts={counts}
+            spin={spin}
             pausedRef={pausedRef}
             onHover={onHover}
             onSelect={onSelect}
@@ -135,7 +146,7 @@ function Scene({ centerLabel, counts, onSelect }: { centerLabel: string; counts:
         ))}
       </group>
 
-      <OrbitControls enablePan={false} minDistance={8} maxDistance={120} autoRotate={autoRotate} autoRotateSpeed={0.28} />
+      <OrbitControls enablePan={false} minDistance={8} maxDistance={120} autoRotate={spin && !paused} autoRotateSpeed={0.12} />
 
       <EffectComposer>
         <Bloom intensity={1.0} luminanceThreshold={0.3} luminanceSmoothing={0.9} mipmapBlur radius={0.65} />
@@ -147,6 +158,7 @@ function Scene({ centerLabel, counts, onSelect }: { centerLabel: string; counts:
 export default function ForumGalaxy3D({ centerLabel }: { centerLabel?: string }) {
   const router = useRouter();
   const [counts, setCounts] = useState<Map<string, number>>(new Map());
+  const [spin, setSpin] = useState(false); // 既定は静止（押しやすさ優先）。トグルで回転。
 
   useEffect(() => {
     let cancelled = false;
@@ -169,9 +181,19 @@ export default function ForumGalaxy3D({ centerLabel }: { centerLabel?: string })
         <Scene
           centerLabel={centerLabel?.trim() || "議員会館"}
           counts={counts}
+          spin={spin}
           onSelect={(t) => { if (t.roomId) router.push(`/forum/${t.roomId}?from=interop`); }}
         />
       </Canvas>
+      {/* 回転 ON/OFF（既定OFF＝静止で押しやすい。ドラッグで自由に回せます） */}
+      <button
+        type="button"
+        onClick={() => setSpin((v) => !v)}
+        className="absolute bottom-4 right-4 z-40 rounded-full border border-white/15 bg-[#0a1024]/80 px-3 py-1.5 text-xs font-bold text-white/80 backdrop-blur transition hover:text-white"
+      >
+        {spin ? "⏸ 回転を止める" : "▶ 回転"}
+      </button>
+      <p className="pointer-events-none absolute bottom-4 left-4 z-40 text-[11px] text-white/45">ドラッグで回転・ホイールで拡大／玉やタイトルをタップで掲示板へ</p>
     </div>
   );
 }
