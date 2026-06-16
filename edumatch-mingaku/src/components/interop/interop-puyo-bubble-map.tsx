@@ -1285,7 +1285,8 @@ export function InteropPuyoBubbleMap({
             pos={place.pos}
             side={labelSides[i] ?? "down"}
             index={i}
-            hideLabel={compact || !labelVisible[i]}
+            // トップ(大マップ)は全タイトル表示。ミニマップ(compact)は被らない分だけ表示（吹き出しは出さない）。
+            hideLabel={compact ? !labelVisible[i] : false}
             size={sizes[i] ?? m.base}
             onActivate={() => onSelectTopic(topic)}
           />
