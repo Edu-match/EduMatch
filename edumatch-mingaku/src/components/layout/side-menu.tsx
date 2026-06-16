@@ -23,7 +23,6 @@ import {
   MessageSquare,
   Video,
   Megaphone,
-  MapPin,
 } from "lucide-react";
 
 /** 一般ユーザー向けメニュー（全員閲覧用）。labelKey は sideMenu namespace のキー */
@@ -52,7 +51,7 @@ const bottomItems = [
   { href: "/admin/videos", labelKey: "manageVideos", icon: Video, roles: ["ADMIN"] },
   { href: "/admin/sponsors", labelKey: "manageSponsors", icon: Megaphone, roles: ["ADMIN"] },
   { href: "/admin/pages", labelKey: "managePages", icon: FileText, roles: ["ADMIN"] },
-  { href: "/admin/interop", labelKey: "manageInterop", icon: MapPin, roles: ["ADMIN"] },
+  // 「教育AIサミット管理(/admin/interop)」は井戸端会議 管理(/admin/forum)へ統合したため削除。
   { href: "/admin/ai-kentei/questions", labelKey: "manageAiKentei", icon: ListChecks, roles: ["ADMIN"] },
   { href: "/dashboard/admin/knowledge", labelKey: "knowledge", icon: BookOpen, roles: ["ADMIN"] },
   { href: "/admin/ai-chat", labelKey: "aiChat", icon: Bot, roles: ["ADMIN"] },

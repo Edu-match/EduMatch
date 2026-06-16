@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, BarChart3, Eye, ExternalLink, EyeOff, Heart, Loader2, MessageSquare, PenSquare, Pin, PinOff, Plus, Search, Settings, Sparkles, Trash2, Zap } from "lucide-react";
+import { ArrowLeft, BarChart3, Eye, ExternalLink, EyeOff, Heart, Loader2, MessageSquare, PenSquare, Pin, PinOff, Plus, Search, Sparkles, Trash2, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +12,10 @@ import { Textarea } from "@/components/ui/textarea";
 import type { ForumPost, ForumRoom } from "@/lib/mock-forum";
 import { AdminForumSatellites } from "./admin-forum-satellites";
 import { AdminLlmTestButton } from "./admin-llm-test-button";
+// 旧「教育AIサミット管理」(/interop/admin) のタブをここに統合（管理画面を1つに）。
+import { InteropMapAdmin } from "@/components/interop/interop-map-admin";
+import { InteropModerationAdmin } from "@/components/interop/interop-moderation-admin";
+import { InteropSettingsEditor } from "@/components/interop/interop-settings-editor";
 
 type PostFilter = "all" | "pinned" | "no-reply" | "hidden";
 const ROOMS_PER_PAGE = 20;
@@ -297,15 +301,7 @@ export function AdminForumClient() {
         </Button>
       </div>
       <h1 className="text-2xl font-bold">井戸端会議 管理</h1>
-      <p className="mt-1 text-sm text-muted-foreground">部屋・サテライト・投稿の管理。非表示は削除ではなく is_hidden フラグで管理します。</p>
-      {/* 役割分担の明示：マップ/軸/サイト設定/モデレーションは「教育AIサミット管理」側。 */}
-      <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-dashed bg-muted/30 px-3 py-2 text-xs">
-        <span className="text-muted-foreground">マップの軸・トピック配置・サイト設定・モデレーションは</span>
-        <Button asChild size="sm" variant="secondary" className="h-7">
-          <Link href="/interop/admin"><Settings className="mr-1 h-3.5 w-3.5" />教育AIサミット管理</Link>
-        </Button>
-        <span className="text-muted-foreground">で。（同じ井戸端/インタロップの管理を、掲示板まわり＝こちら／マップまわり＝あちら、で分担）</span>
-      </div>
+      <p className="mt-1 text-sm text-muted-foreground">部屋・サテライト・投稿・マップ・サイト設定・モデレーションをここで一括管理します。</p>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-4">
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">部屋</p><p className="text-2xl font-bold">{rooms.length}</p></CardContent></Card>
@@ -321,10 +317,13 @@ export function AdminForumClient() {
       )}
 
       <Tabs defaultValue="boards" className="mt-6 gap-4">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6">
           <TabsTrigger value="boards">掲示板管理</TabsTrigger>
           <TabsTrigger value="posts">投稿管理</TabsTrigger>
           <TabsTrigger value="insights">分析</TabsTrigger>
+          <TabsTrigger value="map">マップ</TabsTrigger>
+          <TabsTrigger value="moderation">モデレーション</TabsTrigger>
+          <TabsTrigger value="settings">サイト設定</TabsTrigger>
         </TabsList>
 
         <TabsContent value="boards" className="space-y-6">
@@ -547,6 +546,11 @@ export function AdminForumClient() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* 旧「教育AIサミット管理」から統合したタブ */}
+        <TabsContent value="map"><InteropMapAdmin /></TabsContent>
+        <TabsContent value="moderation"><InteropModerationAdmin /></TabsContent>
+        <TabsContent value="settings"><InteropSettingsEditor /></TabsContent>
       </Tabs>
     </div>
   );
