@@ -140,10 +140,10 @@ function popupXExtra(xPct: number): number {
  *  ★重要: 半径は「玉本体＋わずかな余白」のみ。以前はラベル・バッジの固定px拡張まで含めて
  *  いたため、小さな玉でも中心間124px等の過大間隔を要求し、狭い画面では28玉が物理的に
  *  収まらず必ず重なっていた。ラベルの被りは assignLabelSides が空き方向へ逃がして吸収する。 */
-function orbCollisionRadiusPx(diameterPx: number): number {
-  // 全タイトルを常時表示するため、ラベル幅ぶんの余白を確保して玉どうしを離す
-  // （画面外にはみ出してもよい＝ドラッグで探索。重なりを絶対に出さないことを優先）。
-  return diameterPx / 2 + 46 + Math.max(0, diameterPx - 64) * 0.22;
+function orbCollisionRadiusPx(diameterPx: number, gapPx: number): number {
+  // 全タイトルを常時表示するためのラベル余白(gapPx)を玉どうしの間隔に足す。
+  // 大マップは広め、ミニマップは詰めて「ちゃんと玉が並んで見える」ようにする。
+  return diameterPx / 2 + gapPx + Math.max(0, diameterPx - 64) * 0.22;
 }
 
 function pxToPctRadius(px: number, containerW: number): number {
@@ -489,6 +489,7 @@ type MapMetrics = {
   xMin: number;        // 配置の左端クランプ(%)
   xMax: number;        // 配置の右端クランプ(%)
   panLimY: number;     // 縦パンの可動域(px)
+  labelGapPx: number;  // 玉どうしの最小間隔に足すラベル余白(px)。大マップは広め、ミニマップは詰める
   // ★レイアウト固定用リファレンス寸法(px)。配置計算は実際のコンテナ寸法ではなく
   //   常にこの寸法で行い、%座標を凍結する。実コンテナがこれ以上に大きい限り
   //   px間隔は広がるだけ＝重なりは増えず、リサイズで配置が動かない（分布が安定する）。
@@ -501,10 +502,10 @@ type MapMetrics = {
 // ★layoutW/H は「配置を1回だけ解く仮想キャンバス寸法」。実描画はこの仮想キャンバスを
 //   コンテナへ contain で一律スケールするので、ここで重なりゼロに収束する寸法・比率を選ぶ。
 //   yMax は仮想キャンバス内(≤100%)に収め、全玉が画面内に入るようにする（パン不要）。
-const METRICS_DESKTOP: MapMetrics = { base: 40, max: 132, refW: 1300, labelMargin: 2.2, centerSize: 132, satOrb: 84, satOrbMax: 200, centerR: 20, ys: 0.62, yMin: 11, yMax: 99, xMin: 4, xMax: 96, panLimY: 840, layoutW: 1300, layoutH: 910 };
-const METRICS_MOBILE: MapMetrics  = { base: 30, max: 80,  refW: 400,  labelMargin: 0.8, centerSize: 72,  satOrb: 44, satOrbMax: 80,  centerR: 16, ys: 0.5, yMin: 16, yMax: 97, xMin: 5, xMax: 95, panLimY: 1700, layoutW: 560, layoutH: 820 };
+const METRICS_DESKTOP: MapMetrics = { base: 40, max: 132, refW: 1300, labelMargin: 2.2, centerSize: 132, satOrb: 84, satOrbMax: 200, centerR: 20, ys: 0.62, yMin: 11, yMax: 99, xMin: 4, xMax: 96, panLimY: 840, labelGapPx: 46, layoutW: 1300, layoutH: 910 };
+const METRICS_MOBILE: MapMetrics  = { base: 30, max: 80,  refW: 400,  labelMargin: 0.8, centerSize: 72,  satOrb: 44, satOrbMax: 80,  centerR: 16, ys: 0.5, yMin: 16, yMax: 97, xMin: 5, xMax: 95, panLimY: 1700, labelGapPx: 26, layoutW: 560, layoutH: 820 };
 // 短い埋め込み枠（トップページの 480px など）用。中心ハブ・玉を小さくし、ほぼ1画面に収める。
-const METRICS_COMPACT: MapMetrics  = { base: 30, max: 78,  refW: 720,  labelMargin: 1.0, centerSize: 84,  satOrb: 48, satOrbMax: 100, centerR: 14, ys: 0.58, yMin: 9, yMax: 99, xMin: 3, xMax: 97, panLimY: 320, layoutW: 1040, layoutH: 740 };
+const METRICS_COMPACT: MapMetrics  = { base: 24, max: 64,  refW: 720,  labelMargin: 1.0, centerSize: 72,  satOrb: 40, satOrbMax: 88, centerR: 13, ys: 0.6, yMin: 12, yMax: 96, xMin: 5, xMax: 95, panLimY: 320, labelGapPx: 13, layoutW: 760, layoutH: 560 };
 
 
 function PuyoBubble({
@@ -1008,8 +1009,8 @@ export function InteropPuyoBubbleMap({
     [topics, activityByRoom, m.base, m.max, ranking.avg]
   );
   const placeRadiiPx = useMemo(
-    () => sizes.map((px) => orbCollisionRadiusPx(px)),
-    [sizes]
+    () => sizes.map((px) => orbCollisionRadiusPx(px, m.labelGapPx)),
+    [sizes, m.labelGapPx]
   );
   // ★配置計算は固定リファレンス寸法(m.layoutW/H)で実施。実コンテナ mapW/mapH には依存しない
   //   ＝リサイズで再計算・再配置されず、分布が凍結されて安定する。

@@ -38,7 +38,7 @@ export async function ForumMapSidebarWidget() {
           showChat={false}
           guideText=""
           themeMode="auto"
-          initialScale={2.5}
+          initialScale={1.55}
           centerLabel={settings.centerLabel}
           showLatestNews={settings.showLatestNews}
           showSpeakerQa={settings.showSpeakerQa}
