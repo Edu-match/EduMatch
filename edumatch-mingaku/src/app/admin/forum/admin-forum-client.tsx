@@ -14,7 +14,6 @@ import { AdminForumSatellites } from "./admin-forum-satellites";
 import { AdminCenterHub } from "./admin-center-hub";
 import { AdminLlmTestButton } from "./admin-llm-test-button";
 // 旧「教育AIサミット管理」(/interop/admin) のタブをここに統合（管理画面を1つに）。
-import { InteropMapAdmin } from "@/components/interop/interop-map-admin";
 import { InteropModerationAdmin } from "@/components/interop/interop-moderation-admin";
 import { InteropSettingsEditor } from "@/components/interop/interop-settings-editor";
 
@@ -345,20 +344,12 @@ export function AdminForumClient() {
             <AdminForumSatellites />
           </section>
 
-          {/* ③ 話題玉（＝各掲示板） */}
-          <section className="space-y-3">
-            <div>
-              <h2 className="text-base font-bold">③ 話題玉（分類 → 玉 → 論点）＝各掲示板</h2>
-              <p className="text-xs text-muted-foreground">マップに並ぶ玉。各玉はタップで開く「掲示板」で、ここでは名前・論点・分類・位置を管理します。投稿のモデレーションは「投稿管理」タブ、関連コンテンツ等の詳細は下の「掲示板（部屋）の詳細」で。</p>
-            </div>
-            <InteropMapAdmin />
-          </section>
 
-          {/* ④ 各掲示板（部屋）の詳細 */}
+          {/* ③ 掲示板（話題玉＝掲示板） */}
           <section className="space-y-3">
             <div>
-              <h2 className="text-base font-bold">④ 各掲示板（部屋）の詳細</h2>
-              <p className="text-xs text-muted-foreground">話題玉から開く掲示板の本体。名前・説明の編集、表示/非表示、関連コンテンツ（記事・サービス）の紐付けはここで。</p>
+              <h2 className="text-base font-bold">③ 掲示板</h2>
+              <p className="text-xs text-muted-foreground">マップの話題玉はタップで開く掲示板そのものです。名前・説明の編集、表示/非表示、関連コンテンツ（記事・サービス）の紐付けはここで。投稿のモデレーションは「投稿管理」タブで。</p>
             </div>
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative min-w-[180px] flex-1">
