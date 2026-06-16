@@ -39,6 +39,9 @@ export function AdminForumClient() {
   const [postFilter, setPostFilter] = useState<PostFilter>("all");
   const [roomSort, setRoomSort] = useState<"posts" | "recent" | "name">("posts");
   const [roomPage, setRoomPage] = useState(1);
+  // 話題玉に紐づく掲示板(room_id)の集合。これ以外（旧カテゴリ自動生成のレガシー部屋）は既定で隠す。
+  const [topicRoomIds, setTopicRoomIds] = useState<Set<string>>(new Set());
+  const [showLegacyRooms, setShowLegacyRooms] = useState(false);
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
   const [roomNameDraft, setRoomNameDraft] = useState("");
   const [roomDescDraft, setRoomDescDraft] = useState("");
@@ -59,6 +62,14 @@ export function AdminForumClient() {
     fetch("/api/interop/sub-categories?all=true", { credentials: "include" })
       .then((r) => r.json())
       .then((d) => { if (Array.isArray(d.subCategories)) setInteropSubs(d.subCategories.map((s: { id: string; name: string; slug: string }) => ({ id: s.id, name: s.name, slug: s.slug }))); })
+      .catch(console.error);
+    // 話題玉(=掲示板)に紐づく room_id を取得。掲示板一覧をこの28件に絞り、レガシー部屋を隠す。
+    fetch("/api/interop/topics?all=true", { credentials: "include" })
+      .then((r) => r.json())
+      .then((d) => {
+        const ids = (d.topics ?? []).map((t: { roomId?: string }) => t.roomId).filter(Boolean) as string[];
+        if (ids.length) setTopicRoomIds(new Set(ids));
+      })
       .catch(console.error);
   }, []);
 
@@ -99,15 +110,19 @@ export function AdminForumClient() {
 
   const filteredRooms = useMemo(() => {
     const keyword = roomKeyword.trim().toLowerCase();
+    // 既定では話題玉に紐づく掲示板だけ（レガシー部屋を隠す）。トグルONで全件。
+    const scoped = showLegacyRooms || topicRoomIds.size === 0
+      ? rooms
+      : rooms.filter((room) => topicRoomIds.has(room.id));
     const base = keyword
-      ? rooms.filter((room) => [room.name, room.description].some((t) => (t ?? "").toLowerCase().includes(keyword)))
-      : [...rooms];
+      ? scoped.filter((room) => [room.name, room.description].some((t) => (t ?? "").toLowerCase().includes(keyword)))
+      : [...scoped];
     const lastAt = (r: ForumRoom) => new Date((r as { lastPostedAt?: string }).lastPostedAt ?? 0).getTime();
     if (roomSort === "posts") base.sort((a, b) => (b.postCount ?? 0) - (a.postCount ?? 0));
     else if (roomSort === "name") base.sort((a, b) => a.name.localeCompare(b.name, "ja"));
     else base.sort((a, b) => lastAt(b) - lastAt(a));
     return base;
-  }, [roomKeyword, rooms, roomSort]);
+  }, [roomKeyword, rooms, roomSort, showLegacyRooms, topicRoomIds]);
 
   // 部屋一覧は20件ごとにページ分割（多すぎて縦に伸びるのを防ぐ）
   const totalRoomPages = Math.max(1, Math.ceil(filteredRooms.length / ROOMS_PER_PAGE));
@@ -363,10 +378,17 @@ export function AdminForumClient() {
             </div>
             <Button asChild size="sm" className="gap-1.5"><Link href="/admin/forum/rooms/new"><Plus className="h-4 w-4" />部屋を追加</Link></Button>
           </div>
-          <p className="text-xs text-muted-foreground">
-            {filteredRooms.length}部屋
-            {totalRoomPages > 1 && `（${safeRoomPage} / ${totalRoomPages}ページ）`}
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-muted-foreground">
+              {filteredRooms.length}件の掲示板
+              {totalRoomPages > 1 && `（${safeRoomPage} / ${totalRoomPages}ページ）`}
+              {!showLegacyRooms && topicRoomIds.size > 0 && "（話題玉に紐づくもののみ）"}
+            </p>
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <input type="checkbox" checked={showLegacyRooms} onChange={(e) => setShowLegacyRooms(e.target.checked)} />
+              旧カテゴリのレガシー部屋も表示
+            </label>
+          </div>
           <div className="grid gap-3 sm:grid-cols-2">
             {pagedRooms.map((room) => (
               <Card key={room.id}>
