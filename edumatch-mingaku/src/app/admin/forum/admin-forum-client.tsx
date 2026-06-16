@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, BarChart3, Eye, ExternalLink, EyeOff, Heart, Loader2, MessageSquare, PenSquare, Pin, PinOff, Plus, Search, Sparkles, Trash2, Zap } from "lucide-react";
+import { ArrowLeft, BarChart3, ChevronDown, ChevronUp, Eye, ExternalLink, EyeOff, Heart, Loader2, MessageSquare, PenSquare, Pin, PinOff, Plus, Search, Sparkles, Trash2, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,13 +12,29 @@ import { Textarea } from "@/components/ui/textarea";
 import type { ForumPost, ForumRoom } from "@/lib/mock-forum";
 import { AdminForumSatellites } from "./admin-forum-satellites";
 import { AdminCenterHub } from "./admin-center-hub";
+import { AdminPersonaAutoReply } from "./admin-persona-auto-reply";
 import { AdminLlmTestButton } from "./admin-llm-test-button";
-// 旧「教育AIサミット管理」(/interop/admin) のタブをここに統合（管理画面を1つに）。
+// 旧「教育AIサミット管理」(/interop/admin) のモデレーションをここに統合（管理画面を1つに）。
 import { InteropModerationAdmin } from "@/components/interop/interop-moderation-admin";
-import { InteropSettingsEditor } from "@/components/interop/interop-settings-editor";
 
 type PostFilter = "all" | "pinned" | "no-reply" | "hidden";
 const ROOMS_PER_PAGE = 20;
+
+/** トグルで開閉できるセクション。 */
+function CollapsibleSection({ title, desc, open, onToggle, children }: { title: string; desc?: string; open: boolean; onToggle: () => void; children: React.ReactNode }) {
+  return (
+    <section className="rounded-lg border bg-card">
+      <button type="button" onClick={onToggle} className="flex w-full items-center gap-2 px-4 py-3 text-left">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold">{title}</p>
+          {desc && <p className="text-xs text-muted-foreground">{desc}</p>}
+        </div>
+        {open ? <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />}
+      </button>
+      {open && <div className="space-y-3 border-t p-4">{children}</div>}
+    </section>
+  );
+}
 
 // ─── メインクライアントコンポーネント ─────────────────────
 
@@ -42,6 +58,10 @@ export function AdminForumClient() {
   // 話題玉に紐づく掲示板(room_id)の集合。これ以外（旧カテゴリ自動生成のレガシー部屋）は既定で隠す。
   const [topicRoomIds, setTopicRoomIds] = useState<Set<string>>(new Set());
   const [showLegacyRooms, setShowLegacyRooms] = useState(false);
+  // 掲示板・マップタブの各セクションの開閉
+  const [openHub, setOpenHub] = useState(true);
+  const [openSat, setOpenSat] = useState(false);
+  const [openBoards, setOpenBoards] = useState(false);
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
   const [roomNameDraft, setRoomNameDraft] = useState("");
   const [roomDescDraft, setRoomDescDraft] = useState("");
@@ -332,40 +352,34 @@ export function AdminForumClient() {
       )}
 
       <Tabs defaultValue="boards" className="mt-6 gap-4">
-        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="boards">掲示板・マップ</TabsTrigger>
           <TabsTrigger value="posts">投稿管理</TabsTrigger>
           <TabsTrigger value="insights">分析</TabsTrigger>
           <TabsTrigger value="moderation">モデレーション</TabsTrigger>
-          <TabsTrigger value="settings">表示設定</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="boards" className="space-y-6">
-          <p className="rounded-lg border border-dashed bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-            マップの構成順（中央 → サテライト → 話題玉）で管理します。
-            <strong className="text-foreground">マップの「話題玉」はタップすると開く「掲示板」そのもの</strong>です（玉＝掲示板）。
-            投稿の表示/非表示は「投稿管理」タブで行います。
-          </p>
+        <TabsContent value="boards" className="space-y-3">
+          {/* 中心ハブ（中央の玉） */}
+          <AdminCenterHub open={openHub} onToggle={() => setOpenHub((v) => !v)} />
 
-          {/* ① 中心ハブ（中央の玉） */}
-          <AdminCenterHub />
-
-          {/* ② サテライト（中央の周り・3面） */}
-          <section className="space-y-3">
-            <div>
-              <h2 className="text-base font-bold">② サテライト（中央の周り・3面）</h2>
-              <p className="text-xs text-muted-foreground">最新ニュース・登壇者への質問・ご意見BOX。中央の玉をタップすると展開する特別な掲示板です。</p>
-            </div>
+          {/* サテライト（中央の周り） */}
+          <CollapsibleSection
+            title="サテライト（中央の周り）"
+            desc="中央の玉をタップすると展開する掲示板。編集・追加ができます。"
+            open={openSat}
+            onToggle={() => setOpenSat((v) => !v)}
+          >
             <AdminForumSatellites />
-          </section>
+          </CollapsibleSection>
 
-
-          {/* ③ 掲示板（話題玉＝掲示板） */}
-          <section className="space-y-3">
-            <div>
-              <h2 className="text-base font-bold">③ 掲示板</h2>
-              <p className="text-xs text-muted-foreground">マップの話題玉はタップで開く掲示板そのものです。名前・説明の編集、表示/非表示、関連コンテンツ（記事・サービス）の紐付けはここで。投稿のモデレーションは「投稿管理」タブで。</p>
-            </div>
+          {/* 掲示板（各カテゴリ＝話題玉） */}
+          <CollapsibleSection
+            title="掲示板（各カテゴリ）"
+            desc="マップの話題玉はタップで開く掲示板そのもの。名前・説明・表示/非表示・関連コンテンツの紐付け。投稿の管理は「投稿管理」タブ。"
+            open={openBoards}
+            onToggle={() => setOpenBoards((v) => !v)}
+          >
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative min-w-[180px] flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -463,7 +477,7 @@ export function AdminForumClient() {
               <Button size="sm" variant="outline" disabled={safeRoomPage >= totalRoomPages} onClick={() => setRoomPage((p) => Math.min(totalRoomPages, p + 1))}>次へ</Button>
             </div>
           )}
-          </section>
+          </CollapsibleSection>
         </TabsContent>
 
         <TabsContent value="posts" className="space-y-3">
@@ -578,9 +592,11 @@ export function AdminForumClient() {
           </Card>
         </TabsContent>
 
-        {/* 旧「教育AIサミット管理」から統合したタブ */}
-        <TabsContent value="moderation"><InteropModerationAdmin /></TabsContent>
-        <TabsContent value="settings"><InteropSettingsEditor /></TabsContent>
+        <TabsContent value="moderation" className="space-y-4">
+          {/* 管理者ペルソナの自動返信（全体マスタースイッチ）— AI挙動なのでモデレーションに集約 */}
+          <AdminPersonaAutoReply />
+          <InteropModerationAdmin />
+        </TabsContent>
       </Tabs>
     </div>
   );

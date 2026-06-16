@@ -27,14 +27,15 @@ const InteropPuyoBubbleMap = dynamic(
 );
 import { InteropChatWidget } from "@/components/interop/interop-chat-widget";
 import type { InteropCategory } from "@/components/interop/interop-category-bubble-map";
-import { Mic, Newspaper, MessagesSquare } from "lucide-react";
+import { Mic, Newspaper, MessagesSquare, ExternalLink } from "lucide-react";
 import {
   InteropSubOrbit,
   type InteropSubCategory,
 } from "@/components/interop/interop-sub-orbit";
 import type { InteropActivityStats } from "@/lib/interop-activity";
 import { INTEROP_PRIORITY_TOPICS, type InteropPriorityTopic } from "@/lib/interop-priority-topics";
-import type { InteropThemeMode } from "@/lib/interop-settings";
+import type { InteropThemeMode, CenterHubItem } from "@/lib/interop-settings";
+import { ensureExternalUrl } from "@/lib/interop-settings";
 import { DEFAULT_TOPIC_AXIS, type AxisConfig, type AxisPoint } from "@/lib/interop-topic-axis";
 
 // インタロップハブ内「自由記入」コミュニティトピック
@@ -179,11 +180,14 @@ export function InteropExplorer({
   showOpinionBox = true,
   initialScale,
   centerLabel: centerLabelOverride,
+  centerHubItems,
 }: {
   themeMode?: InteropThemeMode;
   guideText?: string;
   /** 中心ハブの表示名（管理画面の表示設定で編集）。未指定なら従来のロジック。 */
   centerLabel?: string;
+  /** 中心ハブの項目（管理画面で編集）。空/未指定なら既定の3項目。 */
+  centerHubItems?: CenterHubItem[];
   initialInteropActivity?: ActivityPayload | null;
   initialForumActivity?: { rooms?: ForumRoomActivityPayload[] } | null;
   /** 来場者向けAIチャット(fixed配置)を出すか。井戸端会議・ホーム埋め込みでは false。 */
@@ -336,6 +340,26 @@ export function InteropExplorer({
     const opinionSub =
       allSubs.find((s) => s.slug === "giin-opinion") ??
       allSubs.find((s) => s.slug === "interop-opinion-box");
+
+    // 管理画面で設定された項目があればそれを使う（リンク or 掲示板）。
+    if (centerHubItems && centerHubItems.length > 0) {
+      const palette = ["#7dd4fc", "#fcd34d", "#86efac", "#c4b5fd", "#fca5a5", "#93c5fd"];
+      return centerHubItems
+        .filter((it) => it.name?.trim())
+        .map((it, i) => ({
+          id: it.id,
+          name: it.name,
+          icon: it.kind === "board" ? MessagesSquare : ExternalLink,
+          accentColor: palette[i % palette.length],
+          stats: it.kind === "board" && it.subId ? activityBySub.get(it.subId) ?? EMPTY_STATS : EMPTY_STATS,
+          onActivate: () => {
+            if (it.kind === "board" && it.subId) router.push(interopBoardPath(it.subId));
+            else if (it.url) window.open(ensureExternalUrl(it.url), "_blank", "noopener,noreferrer");
+          },
+        }));
+    }
+
+    // 既定（後方互換）
     return [
       {
         id: "giin-information",
@@ -373,7 +397,7 @@ export function InteropExplorer({
           opinionSub ? router.push(interopBoardPath(opinionSub.id)) : router.push("/forum"),
       },
     ];
-  }, [allSubs, activityBySub, router]);
+  }, [allSubs, activityBySub, router, centerHubItems]);
 
   const loadActivity = useCallback(() => {
     Promise.all([
