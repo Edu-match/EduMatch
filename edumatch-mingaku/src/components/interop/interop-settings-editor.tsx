@@ -69,17 +69,7 @@ export function InteropSettingsEditor() {
               </p>
             )}
 
-            {/* 中心ハブ（中央の玉）の表示名 */}
-            <label className="block text-sm">
-              <span className="mb-1 block text-white/55">中心ハブ（中央の玉）の表示名</span>
-              <Input
-                value={settings.centerLabel}
-                onChange={(e) => setSettings((s) => ({ ...s, centerLabel: e.target.value }))}
-                placeholder="例：教育AIサミット＠衆議院第一議員会館"
-                className={di}
-              />
-              <span className="mt-1 block text-xs text-white/40">マップ中央の大きな玉に表示される名前です。</span>
-            </label>
+            <p className="text-xs text-white/40">中心ハブ（中央の玉）の名前は「掲示板・マップ」タブで管理します。</p>
 
             {/* マップ上部のガイド文 */}
             <label className="block text-sm">
