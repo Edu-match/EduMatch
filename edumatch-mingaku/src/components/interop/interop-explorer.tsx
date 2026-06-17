@@ -210,14 +210,17 @@ export function InteropExplorer({
   const hubParam = searchParams.get("hub"); // フォーラム(井戸端)から「ハブ」へ戻る
   const groupParam = searchParams.get("group"); // ミニマップから major(A〜F)で絞り込み
 
-  // サブカテゴリのタップ遷移：link_url があれば外部リンク、無ければ掲示板へ。
+  // サブカテゴリのタップ遷移。
+  // ・ミニマップ（embedded）：常に該当の井戸端会議ボードへ直行（トップ以降のリンク/外部遷移は紐付けない）。
+  // ・フル表示：link_url があれば外部リンク、無ければ掲示板へ（ノード毎のリンク/掲示板選択を尊重）。
   const openSubCategory = useCallback(
     (sub: { id: string; linkUrl?: string }) => {
+      if (embedded) { router.push(interopBoardPath(sub.id)); return; }
       const link = sub.linkUrl?.trim();
       if (link) window.open(ensureExternalUrl(link, link), "_blank", "noopener,noreferrer");
       else router.push(interopBoardPath(sub.id));
     },
-    [router],
+    [router, embedded],
   );
 
   const [categories, setCategories] = useState<InteropCategory[]>([]);
