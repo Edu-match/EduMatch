@@ -110,6 +110,9 @@ const PERSONA_COLOR_OPTIONS = [
   { label: "ピンク系", dot: "#ec4899" },
   { label: "モノトーン", dot: "#64748b" },
 ];
+// MBTIの説明リンク（非認知層の離脱防止）。サイト内記事を用意したら差し替え可能（管理者がURL変更できる設計）。
+const MBTI_GUIDE_URL = "https://www.16personalities.com/ja";
+
 // MBTIから生成（任意）。コード＋日本語の通称でわかりやすく。
 const PERSONA_MBTI_OPTIONS: { code: string; name: string }[] = [
   { code: "INTJ", name: "建築家" }, { code: "INTP", name: "論理学者" },
@@ -155,6 +158,8 @@ export function ProfileRegisterForm({
   const [age, setAge] = useState(initialProfile?.age ?? "");
   const [name, setName] = useState(initialProfile?.name ?? "");
   const [avatarUrl, setAvatarUrl] = useState(initialProfile?.avatar_url ?? "");
+  // アイコンの決め方：アップロード/テンプレート or AI生成（混同防止のためタブで分離）
+  const [avatarMode, setAvatarMode] = useState<"upload" | "ai">("upload");
   const [email] = useState(initialProfile?.email ?? "");
   const [phone, setPhone] = useState(initialProfile?.phone ?? "");
   const [organization, setOrganization] = useState(initialProfile?.organization ?? "");
@@ -229,6 +234,12 @@ export function ProfileRegisterForm({
       case 1:
         return (
           <div className="space-y-4">
+            {/* アイコンの決め方を「アップロード」と「AIで生成」に分離（混同防止） */}
+            <div className="inline-flex rounded-lg border bg-muted/40 p-0.5 text-xs font-medium">
+              <button type="button" onClick={() => setAvatarMode("upload")} className={`rounded-md px-3 py-1.5 transition ${avatarMode === "upload" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}>画像をアップロード／テンプレート</button>
+              <button type="button" onClick={() => setAvatarMode("ai")} className={`rounded-md px-3 py-1.5 transition ${avatarMode === "ai" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}>AIで生成</button>
+            </div>
+            {avatarMode === "upload" && (
             <div className="space-y-2">
               <label className="text-sm font-medium">プロフィール画像（アイコン）</label>
               <div className="flex items-center gap-4">
@@ -298,8 +309,10 @@ export function ProfileRegisterForm({
                 </div>
               </div>
             </div>
+            )}
 
             {/* AIアバター生成：アンケートに答えるだけでアバター＆AIペルソナを作る */}
+            {avatarMode === "ai" && (
             <div className="space-y-4 rounded-xl border bg-gradient-to-br from-primary/[0.06] to-violet-500/[0.06] p-4">
               <div className="flex items-start gap-2.5">
                 <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
@@ -380,6 +393,9 @@ export function ProfileRegisterForm({
               {/* MBTIから生成（任意・単一選択） */}
               <div className="space-y-1.5">
                 <p className="text-xs font-semibold">MBTIから <span className="font-normal text-muted-foreground">（任意・1つ）</span></p>
+                <a href={MBTI_GUIDE_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[11px] text-primary underline underline-offset-2 hover:opacity-80">
+                  MBTIとは？ タイプ診断・解説を見る ↗
+                </a>
                 <div className="grid grid-cols-4 gap-1.5">
                   {PERSONA_MBTI_OPTIONS.map((m) => {
                     const on = personaMbti === m.code;
@@ -470,6 +486,7 @@ export function ProfileRegisterForm({
                 </div>
               )}
             </div>
+            )}
 
             <div className="space-y-2">
               <label className="text-sm font-medium">
