@@ -101,6 +101,8 @@ export function InteropBoard({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // AIモデレーション：投稿が審査保留になったとき、結果（診断中/公開/非公開/人手審査）を明示する常設カード
+  const [reviewPending, setReviewPending] = useState<string | null>(null);
   /** 返信スレッドを展開している投稿ID */
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
   /** 開いている返信フォーム（postId + 宛先名。宛先なし＝投稿者宛） */
@@ -225,12 +227,13 @@ export function InteropBoard({
       if (!res.ok) { setError(data.error || "投稿に失敗しました"); return; }
       setBodyText("");
       if (data.pendingReview || !data.post) {
-        // AIモデレーションで自動非表示 → 投稿者には確認中と伝える（理由は晒さない）
+        // AIモデレーションで自動非表示 → 審査中を常設カードで明示（理由は晒さない）
         setError(null);
-        setNotice(data.message || "投稿ありがとうございます。内容を確認のうえ公開されます。");
-        setTimeout(() => setNotice(null), 5000);
+        setNotice(null);
+        setReviewPending(data.message || "投稿ありがとうございます。AIが内容を確認しています。");
         return;
       }
+      setReviewPending(null);
       setPosts((prev) => [data.post, ...prev]);
       listTopRef.current?.scrollIntoView({ behavior: "smooth" });
     } catch {
@@ -298,8 +301,7 @@ export function InteropBoard({
       const data = await res.json();
       if (!res.ok) { setError(data.error || "返信に失敗しました"); return; }
       if (data.pendingReview || !data.post) {
-        setNotice(data.message || "返信ありがとうございます。内容を確認のうえ公開されます。");
-        setTimeout(() => setNotice(null), 5000);
+        setReviewPending(data.message || "返信ありがとうございます。AIが内容を確認しています。");
         closeReply();
         return;
       }
@@ -662,6 +664,17 @@ export function InteropBoard({
         className="fixed inset-x-0 bottom-0 z-20 border-t border-white/10 bg-[#070a1c]/95 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur"
       >
         <div className="mx-auto w-full max-w-2xl px-4 py-3 sm:px-6">
+          {reviewPending && (
+            <div className="mb-2 flex items-start gap-2 rounded-xl border border-amber-300/30 bg-amber-400/10 px-3 py-2 text-[11px] leading-relaxed text-amber-100">
+              <Loader2 className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin text-amber-300" />
+              <div className="min-w-0 flex-1">
+                <p className="font-bold text-amber-200">AIが内容を診断中です</p>
+                <p className="text-amber-100/80">{reviewPending}</p>
+                <p className="mt-0.5 text-amber-100/60">問題なければ自動で公開されます。規約に反する場合は公開されないことがあり、判断が難しい内容は運営が確認します。</p>
+              </div>
+              <button type="button" onClick={() => setReviewPending(null)} className="shrink-0 rounded-full p-0.5 text-amber-200/70 hover:text-amber-100" aria-label="閉じる"><X className="h-3.5 w-3.5" /></button>
+            </div>
+          )}
           {error && <p className="mb-2 text-xs text-rose-300">{error}</p>}
           {notice && <p className="mb-2 text-xs text-emerald-300">{notice}</p>}
           <div className="flex items-end gap-2">
