@@ -74,6 +74,7 @@ type SubCategory = {
   slug: string;
   description: string;
   url?: string;
+  linkUrl?: string;
   sortOrder: number;
   isActive: boolean;
   contentKinds?: string[];
@@ -242,6 +243,7 @@ function SubRow({ sub, onChanged, onMsg }: { sub: SubCategory; onChanged: () => 
   const [name, setName] = useState(sub.name);
   const [desc, setDesc] = useState(sub.description);
   const [url, setUrl] = useState(sub.url ?? "");
+  const [linkUrl, setLinkUrl] = useState(sub.linkUrl ?? "");
   const [kinds, setKinds] = useState<string[]>(sub.contentKinds ?? []);
   const [query, setQuery] = useState(sub.contentQuery ?? "");
   const [busy, setBusy] = useState(false);
@@ -250,7 +252,7 @@ function SubRow({ sub, onChanged, onMsg }: { sub: SubCategory; onChanged: () => 
     setBusy(true);
     const { ok } = await api(`/api/interop/sub-categories/${sub.id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, description: desc, url, contentKinds: kinds, contentQuery: query }),
+      body: JSON.stringify({ name, description: desc, url, linkUrl, contentKinds: kinds, contentQuery: query }),
     });
     setBusy(false);
     if (ok) { onMsg("サブカテゴリを更新しました。", true); setEditing(false); onChanged(); } else onMsg("更新に失敗しました。", false);
@@ -281,7 +283,7 @@ function SubRow({ sub, onChanged, onMsg }: { sub: SubCategory; onChanged: () => 
         <span className="flex-1 font-medium text-white/90">
           {sub.name}
           {!sub.isActive && <span className="ml-1.5 rounded bg-white/10 px-1.5 text-[10px] font-normal text-white/45">非公開</span>}
-          {sub.url && <span className="ml-1.5 rounded bg-sky-400/15 px-1.5 text-[10px] font-normal text-sky-200">リンク</span>}
+          {sub.linkUrl?.trim() && <span className="ml-1.5 rounded bg-sky-400/15 px-1.5 text-[10px] font-normal text-sky-200">リンク遷移</span>}
           {(sub.contentKinds?.length ?? 0) > 0 && <span className="ml-1.5 rounded bg-emerald-400/15 px-1.5 text-[10px] font-normal text-emerald-200">検索{sub.contentKinds!.length}</span>}
         </span>
         <button type="button" onClick={() => setShowTopics((v) => !v)} className={pill(showTopics)} title="トピックを管理（設定すると投稿前に選択画面が出ます）">
@@ -308,6 +310,11 @@ function SubRow({ sub, onChanged, onMsg }: { sub: SubCategory; onChanged: () => 
           </div>
           <label className="block text-xs"><span className="mb-1 block text-white/55">参考リンクURL（概要下にサムネ表示）</span>
             <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." className={`h-8 w-full text-xs ${darkInput}`} /></label>
+          <label className="block text-xs">
+            <span className="mb-1 block text-white/55">
+              タップ時の遷移先（空＝掲示板へ／URL設定＝外部リンクへ）
+            </span>
+            <Input value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} placeholder="https://...（設定すると掲示板ではなくリンクに遷移）" className={`h-8 w-full text-xs ${darkInput}`} /></label>
           <ContentSearchPanel subId={sub.id}
             kinds={kinds} query={query}
             onKindsChange={setKinds} onQueryChange={setQuery}

@@ -23,6 +23,8 @@ export type InteropSubCategory = {
   name: string;
   slug: string;
   description: string;
+  /** タップ時の遷移先。空=掲示板へ。設定時=この外部リンクへ。 */
+  linkUrl?: string;
 };
 
 /** 軌道に並べる汎用アイテム（ハブ＝展示カテゴリ／カテゴリ＝サブカテゴリ で共用） */

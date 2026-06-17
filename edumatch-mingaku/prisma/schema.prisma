@@ -493,6 +493,8 @@ model InteropSubCategory {
   is_active     Boolean             @default(true)
   /// サテライト/掲示板の概要下にサムネ表示する参考URL（任意）
   url           String              @default("")
+  /// タップ時の遷移先。空=掲示板（投稿ページ）へ。設定時=この外部リンクへ遷移。
+  link_url      String              @default("")
   /// 本体エデュマッチから自動抽出する種別（article/service/media/events-info）。空なら自動抽出オフ。
   content_kinds String[]            @default([])
   /// 自動抽出のキーワード上書き（空ならカテゴリ名＋サブカテゴリ名）

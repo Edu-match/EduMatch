@@ -32,6 +32,7 @@ import {
   InteropSubOrbit,
   type InteropSubCategory,
 } from "@/components/interop/interop-sub-orbit";
+import { InteropCategoryList } from "@/components/interop/interop-category-list";
 import type { InteropActivityStats } from "@/lib/interop-activity";
 import { INTEROP_PRIORITY_TOPICS, type InteropPriorityTopic } from "@/lib/interop-priority-topics";
 import type { InteropThemeMode, CenterHubItem } from "@/lib/interop-settings";
@@ -209,6 +210,16 @@ export function InteropExplorer({
   const hubParam = searchParams.get("hub"); // フォーラム(井戸端)から「ハブ」へ戻る
   const groupParam = searchParams.get("group"); // ミニマップから major(A〜F)で絞り込み
 
+  // サブカテゴリのタップ遷移：link_url があれば外部リンク、無ければ掲示板へ。
+  const openSubCategory = useCallback(
+    (sub: { id: string; linkUrl?: string }) => {
+      const link = sub.linkUrl?.trim();
+      if (link) window.open(ensureExternalUrl(link, link), "_blank", "noopener,noreferrer");
+      else router.push(interopBoardPath(sub.id));
+    },
+    [router],
+  );
+
   const [categories, setCategories] = useState<InteropCategory[]>([]);
   const [subCategories, setSubCategories] = useState<InteropSubCategory[]>([]);
   const [loadingCats, setLoadingCats] = useState(true);
@@ -313,11 +324,11 @@ export function InteropExplorer({
         color: d.color,
         icon: d.icon,
         postCount: activityBySub.get(sub.id)?.postCount,
-        onActivate: () => router.push(interopBoardPath(sub.id)),
+        onActivate: () => openSubCategory(sub),
       });
     }
     return result;
-  }, [categories, allSubs, activityBySub, router, showLatestNews, showSpeakerQa, showOpinionBox]);
+  }, [allSubs, activityBySub, openSubCategory, showLatestNews, showSpeakerQa, showOpinionBox]);
 
   // 中心ハブは is_primary 優先（DBで議員会館に付け替え可能）。後方互換で giin-kaikan / interop もフォールバック。
   const interopCat = useMemo(
@@ -633,18 +644,25 @@ export function InteropExplorer({
           <Loader2 className="h-6 w-6 animate-spin" />
         </div>
       ) : (
-        <InteropSubOrbit
-          centerLabel={view.cat.name}
-          centerIcon={iconFor(view.cat.slug)}
+        // 一般カテゴリ：アイコン中心の周回ではなく一覧表示。行タップで掲示板/論点（または外部リンク）へ。
+        <InteropCategoryList
+          title={view.cat.name}
           accent={view.cat.color || "#9fb4e8"}
-          items={subCategories.map((sub) => ({
-            id: sub.id,
-            name: sub.name,
-            icon: MessageCircle,
-            accentColor: view.cat.color || "#9fb4e8",
-            stats: activityBySub.get(sub.id) ?? EMPTY_STATS,
-            onActivate: () => router.push(interopBoardPath(sub.id)),
-          }))}
+          items={subCategories.map((sub) => {
+            const stats = activityBySub.get(sub.id) ?? EMPTY_STATS;
+            return {
+              id: sub.id,
+              name: sub.name,
+              description: sub.description,
+              postCount: stats.postCount,
+              participantCount: stats.participantCount,
+              isLink: !!sub.linkUrl?.trim(),
+            };
+          })}
+          onSelect={(item) => {
+            const sub = subCategories.find((s) => s.id === item.id);
+            if (sub) openSubCategory(sub);
+          }}
           backLabel="インタロップに戻る"
           onBack={() => setView({ kind: "hub" })}
         />
