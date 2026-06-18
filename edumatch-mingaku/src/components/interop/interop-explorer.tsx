@@ -489,18 +489,22 @@ export function InteropExplorer({
   }, [activeCategoryId]);
 
   // トップマップで選べるのは中心のインタロップのみ → ハブへ。念のため他カテゴリはカテゴリ表示にフォールバック。
+  // ミニマップ(embedded)では内部ビューに潜らず、本井戸端(/forum)へリダイレクト（移動=パンは維持）。
   const handleSelectFromMap = useCallback(
     (cat: InteropCategory) => {
+      if (embedded) { router.push("/forum"); return; }
       setView(cat.id === interopCat?.id ? { kind: "hub" } : { kind: "category", cat });
     },
-    [interopCat?.id]
+    [interopCat?.id, embedded, router]
   );
 
   const handleSelectTopic = useCallback(
     (topic: InteropPriorityTopic) => {
+      // ミニマップからは該当トピックの井戸端ボードへ直行。
+      if (embedded) { router.push(topic.roomId ? `/forum/${topic.roomId}?from=interop` : "/forum"); return; }
       setView({ kind: "topic", topic });
     },
-    []
+    [embedded, router]
   );
 
   return (
