@@ -245,7 +245,7 @@ export default function ForumGalaxy3D({ centerLabel }: { centerLabel?: string })
           counts={counts}
           threeAxis={threeAxis}
           onSelectTopic={(t) => { if (t.roomId) router.push(`/forum/${t.roomId}?from=interop`); }}
-          onSelectCenter={() => router.push("/kaikan/tickets")}
+          onSelectCenter={() => router.push("/kaikan")}
         />
       </Canvas>
 
