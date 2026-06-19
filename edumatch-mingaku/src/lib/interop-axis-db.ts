@@ -43,7 +43,7 @@ export type Axis3 = { label: string; values: Record<number, number> };
 
 /** 第3軸の意味（ラベル）＋各トピックの値（0..1）。テーブル未作成・空なら既定。 */
 export async function getAxis3(): Promise<Axis3> {
-  let label = "停滞 ↔ 活発";
+  let label = "短期 ↔ 長期";
   const values: Record<number, number> = {};
   try {
     const meta = await prisma.$queryRaw<Array<{ label: string }>>`

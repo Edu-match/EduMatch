@@ -17,7 +17,7 @@ export async function GET() {
   } catch (err) {
     console.error("[interop/axis GET]", err);
     return NextResponse.json(
-      { config: null, positions: {}, axis3: { label: "停滞 ↔ 活発", values: {} }, edges: [] },
+      { config: null, positions: {}, axis3: { label: "短期 ↔ 長期", values: {} }, edges: [] },
       { status: 200 }
     );
   }

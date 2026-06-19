@@ -4,7 +4,8 @@ import { saveAxis3Label, saveTopicAxis3 } from "@/lib/interop-axis-db";
 import { getLocalLLM, extractJson } from "@/lib/local-llm";
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, Number.isFinite(v) ? v : 0));
-const DEFAULT_AXIS3_LABEL = "停滞 ↔ 活発";
+// 第3軸の意味は週次Gemmaが設計する。LLM未設定/失敗時のみの暫定ラベル（活発さは“玉の大きさ”で表すため軸には使わない）。
+const DEFAULT_AXIS3_LABEL = "巡回待ち";
 
 /**
  * 週次：井戸端の議論を俯瞰し、3Dビューの「第3軸（高さ）」を設計する。
@@ -37,12 +38,12 @@ export async function recomputeAxis3(): Promise<{ label: string; updated: number
     stats.push({ no: t.no, name: t.category, week, snip });
   }
 
-  // フォールバック：今週の投稿数を 0..1 に正規化（活発さ）
+  // フォールバック：Gemma未設定/失敗時。活発さ（投稿数）は“玉の大きさ”で表すので軸には使わない。
+  // 意味づけが無い状態なので中立（0.5＝フラット）に置き、ラベルも暫定にする。
   const fallback = async () => {
-    const max = Math.max(1, ...stats.map((s) => s.week));
     let updated = 0;
     for (const s of stats) {
-      await saveTopicAxis3(s.no, s.week / max);
+      await saveTopicAxis3(s.no, 0.5);
       updated++;
     }
     await saveAxis3Label(DEFAULT_AXIS3_LABEL);
