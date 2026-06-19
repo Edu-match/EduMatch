@@ -30,7 +30,7 @@ export default async function KaikanApplyPage({ params }: { params: Promise<{ id
 
   return (
     <main className="mx-auto w-full max-w-xl px-4 py-8 sm:px-6">
-      <Link href="/kaikan/tickets" className="text-xs text-muted-foreground hover:text-foreground">← コンテンツ一覧へ</Link>
+      <Link href="/forum/kaikan" className="text-xs text-muted-foreground hover:text-foreground">← コンテンツ一覧へ</Link>
       <header className="mt-3 mb-5">
         <h1 className="text-2xl font-bold">{content.title}</h1>
         {(content.starts_at || content.location) && (

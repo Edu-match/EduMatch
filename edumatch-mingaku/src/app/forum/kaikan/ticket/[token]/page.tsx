@@ -64,7 +64,7 @@ export default async function KaikanTicketPage({ params }: { params: Promise<{ t
       </div>
 
       <div className="mt-4 text-center">
-        <Link href="/kaikan/tickets" className="text-xs text-muted-foreground hover:text-foreground">他のコンテンツを見る</Link>
+        <Link href="/forum/kaikan" className="text-xs text-muted-foreground hover:text-foreground">他のコンテンツを見る</Link>
       </div>
     </main>
   );

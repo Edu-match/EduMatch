@@ -25,7 +25,7 @@ export default async function HomePage() {
           <main className="lg:col-span-8 order-1 space-y-4 sm:space-y-6 lg:space-y-8 min-w-0">
             {/* 議員会館チケット申込導線（スライダー上部） */}
             <Link
-              href="/kaikan/tickets"
+              href="/forum/kaikan"
               className="group flex items-center justify-between gap-3 rounded-xl border border-primary/30 bg-gradient-to-r from-primary/10 to-violet-500/10 px-4 py-3 transition-colors hover:border-primary/50 hover:from-primary/15 hover:to-violet-500/15"
             >
               <span className="flex items-center gap-2.5 min-w-0">

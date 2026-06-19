@@ -1,137 +1,93 @@
 import { prisma } from "@/lib/prisma";
 import { INTEROP_PRIORITY_TOPICS } from "@/lib/interop-priority-topics";
-import { getAxisConfig, saveAxisConfig, saveTopicPosition } from "@/lib/interop-axis-db";
+import { saveAxis3Label, saveTopicAxis3 } from "@/lib/interop-axis-db";
 import { getLocalLLM, extractJson } from "@/lib/local-llm";
 
-const clamp1 = (v: number) => Math.max(-1, Math.min(1, v));
+const clamp01 = (v: number) => Math.max(0, Math.min(1, Number.isFinite(v) ? v : 0));
+const DEFAULT_AXIS3_LABEL = "停滞 ↔ 活発";
 
 /**
- * 日次：各トピックのコメント・返信を集約し、現在の軸に沿って2軸座標をLLMで再計算→DB保存。
- * コメントが無いトピックはスキップ（初期座標を維持）。
+ * 週次：井戸端の議論を俯瞰し、3Dビューの「第3軸（高さ）」を設計する。
+ *   - 第3軸の意味（label）をローカルLLM（Gemma）に推測させる
+ *   - 各トピックを 0.0〜1.0 で第3軸上に配置する
+ * 2軸（X/Z 平面）は固定なので触らない。動的に分布させるのは第3軸だけ。
  *
- * 判定は安価LLMで行う。JSON抽出は寛容に（モデルによってはjson_object未対応のことがある）。
+ * LLM 未設定・失敗時は「今週の投稿数（＝活発さ）」を正規化したフォールバックを使う。
  */
-export async function recomputeTopicPositions(): Promise<{ updated: number; skipped: number }> {
-  const llm = getLocalLLM();
-  if (!llm) return { updated: 0, skipped: INTEROP_PRIORITY_TOPICS.length };
-  const { client, model } = llm;
-  const axis = await getAxisConfig();
-
-  let updated = 0;
-  let skipped = 0;
-  for (const topic of INTEROP_PRIORITY_TOPICS) {
-    const posts = await prisma.forumPost.findMany({
-      where: {
-        room_id: topic.roomId,
-        is_hidden: false,
-        NOT: { body: { startsWith: "[AI]" } },
-      },
-      orderBy: { created_at: "desc" },
-      take: 24,
-      select: { body: true, replies: { select: { body: true }, take: 2 } },
-    });
-    if (posts.length === 0) {
-      skipped++;
-      continue;
-    }
-    const text = posts
-      .map((p) => p.body + p.replies.map((r) => ` / ${r.body}`).join(""))
-      .join("\n")
-      .slice(0, 3000);
-
+export async function recomputeAxis3(): Promise<{ label: string; updated: number; usedLLM: boolean }> {
+  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const stats: { no: number; name: string; week: number; snip: string }[] = [];
+  for (const t of INTEROP_PRIORITY_TOPICS) {
+    let week = 0;
+    let snip = "";
     try {
-      const completion = await client.chat.completions.create({
-        model,
-        temperature: 0.2,
-        messages: [
-          {
-            role: "system",
-            content:
-              `教育トピックを2軸で位置づける。横軸x: -1=「${axis.xLeft}」 ↔ +1=「${axis.xRight}」。` +
-              `縦軸y: -1=「${axis.yBottom}」 ↔ +1=「${axis.yTop}」。` +
-              `議論内容の重心がどこに寄るかを判断する。説明や前置きは書かず、JSONだけを出力する: {"x": number, "y": number}（各 -1.0〜1.0）。`,
-          },
-          { role: "user", content: `トピック: ${topic.category}\n投稿・返信:\n${text}` },
-        ],
+      week = await prisma.forumPost.count({
+        where: { room_id: t.roomId, is_hidden: false, created_at: { gte: since }, NOT: { body: { startsWith: "[AI]" } } },
       });
-      const j = extractJson<{ x?: number; y?: number }>(completion.choices[0]?.message?.content);
-      if (!j) {
-        skipped++;
-        continue;
-      }
-      await saveTopicPosition(topic.no, clamp1(Number(j.x ?? 0)), clamp1(Number(j.y ?? 0)));
+      const posts = await prisma.forumPost.findMany({
+        where: { room_id: t.roomId, is_hidden: false, NOT: { body: { startsWith: "[AI]" } } },
+        orderBy: { created_at: "desc" },
+        take: 3,
+        select: { body: true },
+      });
+      snip = posts.map((p) => p.body).join(" / ").slice(0, 140);
+    } catch {
+      /* 取得失敗時は件数0・断片なしで続行 */
+    }
+    stats.push({ no: t.no, name: t.category, week, snip });
+  }
+
+  // フォールバック：今週の投稿数を 0..1 に正規化（活発さ）
+  const fallback = async () => {
+    const max = Math.max(1, ...stats.map((s) => s.week));
+    let updated = 0;
+    for (const s of stats) {
+      await saveTopicAxis3(s.no, s.week / max);
       updated++;
-    } catch (e) {
-      console.error("[interop-axis-ai] recompute topic", topic.no, e);
-      skipped++;
     }
-  }
-  return { updated, skipped };
-}
+    await saveAxis3Label(DEFAULT_AXIS3_LABEL);
+    return { label: DEFAULT_AXIS3_LABEL, updated, usedLLM: false };
+  };
 
-/**
- * 週次：全トピックの議論を俯瞰し、分布がバランスよく散らばる2軸をLLMで再設計→DB保存。
- * 軸を更新したら座標も再計算する。
- */
-export async function reevaluateAxisConfig(): Promise<{ changed: boolean }> {
   const llm = getLocalLLM();
-  if (!llm) return { changed: false };
+  if (!llm) return fallback();
   const { client, model } = llm;
-  const current = await getAxisConfig();
 
-  const samples: string[] = [];
-  for (const topic of INTEROP_PRIORITY_TOPICS) {
-    const posts = await prisma.forumPost.findMany({
-      where: {
-        room_id: topic.roomId,
-        is_hidden: false,
-        NOT: { body: { startsWith: "[AI]" } },
-      },
-      orderBy: { created_at: "desc" },
-      take: 2,
-      select: { body: true },
-    });
-    if (posts.length > 0) {
-      samples.push(`【${topic.category}】${posts.map((p) => p.body).join(" / ").slice(0, 150)}`);
-    }
-  }
-  if (samples.length < 4) return { changed: false };
+  const lines = stats.map((s) => `${s.no}: ${s.name}（今週${s.week}件）${s.snip ? ` — ${s.snip}` : ""}`);
+  const prompt =
+    "井戸端会議の各トピックを縦方向（第3軸）に分布させたい。\n" +
+    "今週の議論を俯瞰し、トピックの違いが最もよく現れる「対立的で直感的な1軸」を1つ提案し、各トピックを0.0〜1.0で配置する。\n" +
+    "（軸の例:「停滞 ↔ 活発」「短期的 ↔ 長期的」「合意 ↔ 対立」など。必ず1つだけ選ぶ）\n" +
+    '説明や前置きは書かず、JSONだけを出力する: {"label":"A ↔ B","items":[{"no":番号,"v":0.0〜1.0}]}\n\n' +
+    `トピック:\n${lines.join("\n")}`;
 
   try {
     const completion = await client.chat.completions.create({
       model,
-      temperature: 0.4,
+      temperature: 0.3,
       messages: [
-        {
-          role: "system",
-          content:
-            "教育トピック群を2次元に分布させる軸を設計する。現状の議論内容がバランスよく四方に散らばり、対立的で直感的に分かりやすい2軸を提案する。" +
-            "説明や前置きは書かず、JSONだけを出力する: {\"xLeft\":\"\",\"xRight\":\"\",\"yTop\":\"\",\"yBottom\":\"\"}。各ラベルは4〜10文字の簡潔な日本語。",
-        },
-        {
-          role: "user",
-          content:
-            `現在の軸: 横[${current.xLeft} ↔ ${current.xRight}] / 縦[上:${current.yTop} 下:${current.yBottom}]\n` +
-            `トピックと議論サンプル:\n${samples.join("\n").slice(0, 4000)}`,
-        },
+        { role: "system", content: "井戸端の議論を俯瞰して第3軸を設計する分類器。指定のJSONだけを出力する。" },
+        { role: "user", content: prompt },
       ],
     });
-    const j = extractJson<{ xLeft?: string; xRight?: string; yTop?: string; yBottom?: string }>(
+    const j = extractJson<{ label?: string; items?: Array<{ no?: number; v?: number }> }>(
       completion.choices[0]?.message?.content
     );
-    if (!j) return { changed: false };
-    if (j.xLeft && j.xRight && j.yTop && j.yBottom) {
-      await saveAxisConfig({
-        xLeft: j.xLeft.slice(0, 16),
-        xRight: j.xRight.slice(0, 16),
-        yTop: j.yTop.slice(0, 16),
-        yBottom: j.yBottom.slice(0, 16),
-      });
-      await recomputeTopicPositions();
-      return { changed: true };
+    if (!j || !Array.isArray(j.items)) return fallback();
+    const valid = new Set(INTEROP_PRIORITY_TOPICS.map((t) => t.no));
+    let updated = 0;
+    for (const it of j.items) {
+      const no = Number(it.no);
+      if (!valid.has(no)) continue;
+      await saveTopicAxis3(no, clamp01(Number(it.v)));
+      updated++;
     }
+    if (updated === 0) return fallback();
+    const label = j.label && j.label.trim() ? j.label.trim().slice(0, 24) : DEFAULT_AXIS3_LABEL;
+    await saveAxis3Label(label);
+    return { label, updated, usedLLM: true };
   } catch (e) {
-    console.error("[interop-axis-ai] reevaluate", e);
+    console.error("[interop-axis-ai] recomputeAxis3", e);
+    return fallback();
   }
-  return { changed: false };
 }

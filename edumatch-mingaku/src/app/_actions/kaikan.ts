@@ -38,7 +38,7 @@ export async function applyForKaikanContent(formData: FormData) {
     data: { content_id: contentId, name, email, note, qr_token: token, profile_id: profileId },
   });
   revalidatePath("/admin/kaikan");
-  redirect(`/kaikan/tickets/ticket/${token}`);
+  redirect(`/forum/kaikan/ticket/${token}`);
 }
 
 /** 管理者：コンテンツ新設。 */
@@ -61,7 +61,7 @@ export async function createKaikanContent(formData: FormData) {
     },
   });
   revalidatePath("/admin/kaikan");
-  revalidatePath("/kaikan/tickets");
+  revalidatePath("/forum/kaikan");
 }
 
 /** 管理者：公開/非公開トグル。 */
@@ -72,7 +72,7 @@ export async function setKaikanContentPublished(formData: FormData) {
   if (!id) return;
   await prisma.kaikanContent.update({ where: { id }, data: { is_published: next } });
   revalidatePath("/admin/kaikan");
-  revalidatePath("/kaikan/tickets");
+  revalidatePath("/forum/kaikan");
 }
 
 /** 管理者：受付チェックイン（QR読み取り先）。 */

@@ -4,13 +4,13 @@ import OpenAI from "openai";
  * 安価なホスト型LLMクライアント（GPT を使うまでもない分類・判定タスク用）。
  *
  * 用途:
- *   - 軸座標の日次再計算 / 軸そのものの週次再設計（interop-axis-ai.ts）
+ *   - 第3軸（高さ）の週次再計算（interop-axis-ai.ts）
  *   - 玉同士の内容ベースのノード接続（interop-topic-edges-ai.ts）
  *
  * OpenAI 互換エンドポイントを env で差し替えて使う。
  *   LOCAL_LLM_BASE_URL  例: https://api.groq.com/openai/v1
- *   LOCAL_LLM_API_KEY   そのプロバイダのキー
- *   LOCAL_LLM_MODEL     例: llama-3.1-8b-instant（Groq） / google/gemma-2-9b-it（OpenRouter）
+ *   LOCAL_LLM_API_KEY   そのプロバイダのキー（Groq は gsk_ 始まり）
+ *   LOCAL_LLM_MODEL     例: gemma2-9b-it（Groq の Gemma）/ google/gemma-2-9b-it（OpenRouter）
  *
  * 未設定時は OPENAI_API_KEY があれば OpenAI へ自動フォールバックする
  * （fallbackModel を使用）。両方無ければ null。
@@ -22,12 +22,12 @@ export function getLocalLLM(opts?: { fallbackModel?: string }): LocalLLM | null 
   const model = process.env.LOCAL_LLM_MODEL?.trim();
   const key = process.env.LOCAL_LLM_API_KEY?.trim();
   if (baseURL && model) {
-    // OpenAI 互換エンドポイント（Gemma）。apiKey が不要なローカルもあるのでダミーを許容。
+    // OpenAI 互換エンドポイント（Gemma 等）。apiKey が不要なローカルもあるのでダミーを許容。
     return { client: new OpenAI({ baseURL, apiKey: key || "local" }), model, isLocal: true };
   }
   const openaiKey = process.env.OPENAI_API_KEY?.trim();
   if (openaiKey) {
-    return { client: new OpenAI({ apiKey: openaiKey }), model: opts?.fallbackModel ?? "gpt-5.4", isLocal: false };
+    return { client: new OpenAI({ apiKey: openaiKey }), model: opts?.fallbackModel ?? "gpt-4o-mini", isLocal: false };
   }
   return null;
 }

@@ -1,15 +1,16 @@
 import { NextResponse } from "next/server";
 import { getCurrentProfile } from "@/lib/auth";
 import { getLocalLLM } from "@/lib/local-llm";
-import { recomputeTopicPositions, reevaluateAxisConfig } from "@/lib/interop-axis-ai";
+import { recomputeAxis3 } from "@/lib/interop-axis-ai";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 /**
- * 週1で自動実行している「投稿を読んでマップ分布を見直す」処理を、管理者が手動実行する。
- * 実際に投稿本文をローカルLLM(Groq)に読ませて、2軸の意味の再評価＋各トピックの座標再計算を行う。
+ * 週1で自動実行している「投稿を読んで第3軸の分布を見直す」処理を、管理者が手動実行する。
+ * 実際に投稿本文をローカルLLM(Gemma)に読ませて、第3軸の意味の再評価＋各トピックの高さを再計算する。
  * → ローカルLLMが本当に動いているかを「具体的な処理件数」で確認できる。
+ * ※2軸（X/Z 平面）は固定方針のため、ここでは再分布しない。
  */
 export async function POST() {
   const profile = await getCurrentProfile().catch(() => null);
@@ -24,19 +25,17 @@ export async function POST() {
 
   const t0 = Date.now();
   try {
-    // 週次：2軸の意味そのものを再評価（投稿を俯瞰）
-    const axis = await reevaluateAxisConfig();
-    // 日次：各トピックを投稿内容に合わせて再配置
-    const positions = await recomputeTopicPositions();
+    // 週次：第3軸の意味を再評価＋各トピックの高さ(0..1)を再計算
+    const axis3 = await recomputeAxis3();
     return NextResponse.json({
       ok: true,
       isLocal: llm.isLocal,
-      provider: llm.isLocal ? "LOCAL_LLM（Groq等）" : "OpenAI（フォールバック）",
+      provider: llm.isLocal ? "LOCAL_LLM（Gemma/Groq）" : "OpenAI（フォールバック）",
       model: llm.model,
       latencyMs: Date.now() - t0,
-      axisChanged: axis.changed,
-      positionsUpdated: positions.updated,
-      positionsSkipped: positions.skipped,
+      axis3Label: axis3.label,
+      axis3Updated: axis3.updated,
+      axis3UsedLLM: axis3.usedLLM,
     });
   } catch (e) {
     return NextResponse.json({

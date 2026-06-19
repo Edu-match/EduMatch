@@ -49,9 +49,10 @@ export default async function KaikanTicketsPage() {
   const contents = await getContents();
   return (
     <main className="mx-auto w-full max-w-2xl px-4 py-8 sm:px-6">
-      <header className="mb-6">
-        <p className="text-xs font-bold tracking-wide text-primary">議員会館イベント</p>
-        <h1 className="mt-1 text-2xl font-bold">チケット申込</h1>
+      <Link href="/forum" className="text-xs text-muted-foreground hover:text-foreground">← 井戸端会議へ</Link>
+      <header className="mb-6 mt-3">
+        <p className="text-xs font-bold tracking-wide text-primary">井戸端会議 · 議員会館</p>
+        <h1 className="mt-1 text-2xl font-bold">コンテンツ／チケット申込</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           参加したいコンテンツを選んで申し込むと、受付用の電子チケット（QRコード）が発行されます。
         </p>
@@ -68,7 +69,7 @@ export default async function KaikanTicketsPage() {
             return (
               <li key={c.id}>
                 <Link
-                  href={`/kaikan/tickets/${c.id}`}
+                  href={`/forum/kaikan/${c.id}`}
                   className="block rounded-xl border bg-background p-4 transition-colors hover:border-primary/50 hover:bg-primary/[0.03]"
                 >
                   <div className="flex items-start justify-between gap-3">
