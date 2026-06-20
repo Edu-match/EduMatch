@@ -1,13 +1,16 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
+import { CalendarDays, MapPin, Users, Ticket, LogIn, ChevronLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { getCurrentProfile } from "@/lib/auth";
 import { applyForKaikanContent } from "@/app/_actions/kaikan";
 
 export const dynamic = "force-dynamic";
 
 function fmtDate(d: Date | null): string {
   if (!d) return "";
-  return new Intl.DateTimeFormat("ja-JP", { month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(d);
+  return new Intl.DateTimeFormat("ja-JP", { month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit" }).format(d);
 }
 
 export default async function KaikanApplyPage({ params }: { params: Promise<{ id: string }> }) {
@@ -27,47 +30,78 @@ export default async function KaikanApplyPage({ params }: { params: Promise<{ id
     applied = 0;
   }
   const full = content.capacity != null && applied >= content.capacity;
+  const remaining = content.capacity != null ? Math.max(0, content.capacity - applied) : null;
+
+  const profile = await getCurrentProfile().catch(() => null);
+  const loginHref = `/login?next=${encodeURIComponent(`/forum/kaikan/${id}`)}`;
 
   return (
     <main className="mx-auto w-full max-w-xl px-4 py-8 sm:px-6">
-      <Link href="/forum/kaikan" className="text-xs text-muted-foreground hover:text-foreground">← コンテンツ一覧へ</Link>
-      <header className="mt-3 mb-5">
-        <h1 className="text-2xl font-bold">{content.title}</h1>
-        {(content.starts_at || content.location) && (
-          <p className="mt-1 text-sm text-muted-foreground">
-            {[fmtDate(content.starts_at), content.location].filter(Boolean).join(" ・ ")}
-          </p>
-        )}
-        {content.description && <p className="mt-3 whitespace-pre-wrap text-sm text-foreground/85">{content.description}</p>}
-      </header>
+      <Link href="/forum?map=3d" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+        <ChevronLeft className="h-3.5 w-3.5" /> 井戸端会議へ
+      </Link>
 
-      {full ? (
-        <div className="rounded-xl border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
-          申込は定員に達しました。
-        </div>
-      ) : (
-        <form action={applyForKaikanContent} className="space-y-4 rounded-xl border bg-background p-5">
-          <input type="hidden" name="contentId" value={content.id} />
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">お名前 <span className="text-red-500">*</span></label>
-            <input name="name" required maxLength={60} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="山田 太郎" />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">メールアドレス <span className="text-muted-foreground">（任意）</span></label>
-            <input name="email" type="email" maxLength={120} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="you@example.com" />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">事前質問・期待すること <span className="text-muted-foreground">（任意）</span></label>
-            <textarea name="note" rows={3} maxLength={500} className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="登壇者に聞きたいこと、参加への期待など" />
-          </div>
-          <button type="submit" className="w-full rounded-md bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground transition hover:opacity-90">
-            この内容で申し込む（電子チケットを発行）
-          </button>
-          <p className="text-[11px] text-muted-foreground">
-            申込後、受付で提示するQRコードが表示されます。スクリーンショットの保存をおすすめします。
+      {/* イベントカード */}
+      <section className="mt-3 overflow-hidden rounded-2xl border bg-card shadow-sm">
+        <div className="bg-gradient-to-br from-primary/90 to-violet-600 px-5 py-4 text-white">
+          <p className="flex items-center gap-1.5 text-[11px] font-bold tracking-wide opacity-90">
+            <Ticket className="h-3.5 w-3.5" /> 議員会館イベント · 電子チケット申込
           </p>
-        </form>
-      )}
+          <h1 className="mt-1 text-xl font-bold leading-snug">{content.title}</h1>
+        </div>
+        <div className="space-y-3 px-5 py-4">
+          <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
+            {content.starts_at && <span className="inline-flex items-center gap-1.5"><CalendarDays className="h-4 w-4" />{fmtDate(content.starts_at)}</span>}
+            {content.location && <span className="inline-flex items-center gap-1.5"><MapPin className="h-4 w-4" />{content.location}</span>}
+            {content.capacity != null && (
+              <span className="inline-flex items-center gap-1.5"><Users className="h-4 w-4" />定員 {content.capacity}名{remaining != null && <span className={remaining <= 5 ? "font-bold text-amber-600" : ""}>（残り{remaining}）</span>}</span>
+            )}
+          </div>
+          {content.description && <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/85">{content.description}</p>}
+        </div>
+      </section>
+
+      {/* 申込 */}
+      <section className="mt-5">
+        {full ? (
+          <div className="rounded-2xl border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
+            申込は定員に達しました。
+          </div>
+        ) : !profile ? (
+          <div className="rounded-2xl border bg-card p-6 text-center">
+            <p className="text-sm text-muted-foreground">申込にはログインが必要です。<br />アカウントの登録情報でそのまま申し込めます。</p>
+            <Link href={loginHref} className="mt-4 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground transition hover:opacity-90">
+              <LogIn className="h-4 w-4" /> ログインして申し込む
+            </Link>
+          </div>
+        ) : (
+          <form action={applyForKaikanContent} className="space-y-4 rounded-2xl border bg-card p-5">
+            <input type="hidden" name="contentId" value={content.id} />
+            <p className="text-sm font-bold">この内容で申し込みます</p>
+            {/* アカウント情報（登録済み） */}
+            <div className="flex items-center gap-3 rounded-xl border bg-muted/30 p-3">
+              {profile.avatar_url ? (
+                <Image src={profile.avatar_url} alt="" width={44} height={44} className="h-11 w-11 shrink-0 rounded-full object-cover" />
+              ) : (
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-primary/15 text-base font-bold text-primary">{profile.name?.charAt(0) || "?"}</span>
+              )}
+              <div className="min-w-0">
+                <p className="truncate text-sm font-bold">{profile.name}</p>
+                {profile.email && <p className="truncate text-xs text-muted-foreground">{profile.email}</p>}
+              </div>
+              <span className="ml-auto shrink-0 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-bold text-emerald-700">アカウント情報</span>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">事前質問・期待すること <span className="text-muted-foreground">（任意）</span></label>
+              <textarea name="note" rows={3} maxLength={500} className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="登壇者に聞きたいこと、参加への期待など" />
+            </div>
+            <button type="submit" className="w-full rounded-full bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition hover:opacity-90">
+              このアカウントで申し込む（電子チケットを発行）
+            </button>
+            <p className="text-[11px] text-muted-foreground">申込後、受付で提示するQRコード付きの電子チケットが表示されます。</p>
+          </form>
+        )}
+      </section>
     </main>
   );
 }

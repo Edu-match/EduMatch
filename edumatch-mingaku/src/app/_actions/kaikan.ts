@@ -6,16 +6,25 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentProfile, requireAdmin } from "@/lib/auth";
 
-/** 来場者がコンテンツに申込→電子チケット(QR)を発行。ログイン不要。 */
+/** ログイン中アカウントでコンテンツに申込→電子チケット(QR)を発行。氏名/メールはアカウント情報を使用。 */
 export async function applyForKaikanContent(formData: FormData) {
   const contentId = String(formData.get("contentId") || "").trim();
-  const name = String(formData.get("name") || "").trim();
-  const email = String(formData.get("email") || "").trim();
   const note = String(formData.get("note") || "").trim();
-  if (!contentId || !name) throw new Error("お名前は必須です");
+  if (!contentId) throw new Error("コンテンツが不正です");
+
+  // 申込にはログイン必須。氏名・メールはアカウント登録情報を使う。
+  const profile = await getCurrentProfile();
+  if (!profile) throw new Error("申込にはログインが必要です");
 
   const content = await prisma.kaikanContent.findUnique({ where: { id: contentId } });
   if (!content || !content.is_published) throw new Error("受付を終了したか、存在しないコンテンツです");
+
+  // 同一アカウントの二重申込を防ぐ：既存があればそのチケットへ。
+  const existing = await prisma.kaikanApplication.findFirst({
+    where: { content_id: contentId, profile_id: profile.id, status: { not: "cancelled" } },
+    select: { qr_token: true },
+  });
+  if (existing) redirect(`/forum/kaikan/ticket/${existing.qr_token}`);
 
   if (content.capacity != null) {
     const count = await prisma.kaikanApplication.count({
@@ -24,18 +33,16 @@ export async function applyForKaikanContent(formData: FormData) {
     if (count >= content.capacity) throw new Error("定員に達しました");
   }
 
-  // ログインしていれば申込者を紐付け（任意）
-  let profileId: string | null = null;
-  try {
-    const profile = await getCurrentProfile();
-    profileId = profile?.id ?? null;
-  } catch {
-    profileId = null;
-  }
-
   const token = randomUUID().replace(/-/g, "");
   await prisma.kaikanApplication.create({
-    data: { content_id: contentId, name, email, note, qr_token: token, profile_id: profileId },
+    data: {
+      content_id: contentId,
+      name: profile.name,
+      email: profile.email ?? "",
+      note,
+      qr_token: token,
+      profile_id: profile.id,
+    },
   });
   revalidatePath("/admin/kaikan");
   redirect(`/forum/kaikan/ticket/${token}`);
