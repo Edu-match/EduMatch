@@ -1,8 +1,7 @@
 "use client";
 
-import { Canvas, useThree, useFrame } from "@react-three/fiber";
+import { Canvas, useThree } from "@react-three/fiber";
 import { Html, OrbitControls, Line, Stars } from "@react-three/drei";
-import { Bloom, EffectComposer } from "@react-three/postprocessing";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { INTEROP_PRIORITY_TOPICS, MAJOR_META, type InteropPriorityTopic } from "@/lib/interop-priority-topics";
@@ -25,57 +24,35 @@ function splitPoles(label: string): [string, string] {
 }
 
 const axisLabelStyle: React.CSSProperties = {
-  whiteSpace: "nowrap", fontSize: 12, fontWeight: 800, color: "rgba(190,225,255,0.85)",
-  background: "rgba(4,10,24,0.5)", border: "1px solid rgba(120,200,255,0.3)", borderRadius: 6, padding: "2px 8px",
+  whiteSpace: "nowrap", fontSize: 12, fontWeight: 800, color: "rgba(200,220,255,0.85)",
+  background: "rgba(6,12,28,0.55)", border: "1px solid rgba(120,160,235,0.3)", borderRadius: 6, padding: "2px 8px",
 };
 
 function nodeSize(posts: number): number {
-  return 0.7 + Math.min(1.05, posts * 0.06);
+  return 0.8 + Math.min(1.1, posts * 0.07);
 }
 
-// ── 大気グロー（fresnel）：惑星の縁が光るスターウォーズ風 ──
-const ATMO_VERT = `
-varying vec3 vN; varying vec3 vP;
-void main(){ vN = normalize(normalMatrix * normal); vec4 mv = modelViewMatrix * vec4(position,1.0); vP = mv.xyz; gl_Position = projectionMatrix * mv; }
-`;
-const ATMO_FRAG = `
-uniform vec3 uColor; uniform float uPower; uniform float uIntensity;
-varying vec3 vN; varying vec3 vP;
-void main(){ vec3 v = normalize(-vP); float f = pow(1.0 - abs(dot(vN, v)), uPower); gl_FragColor = vec4(uColor * uIntensity, f); }
-`;
-function Atmosphere({ color, radius, power = 2.4, intensity = 1.1 }: { color: string; radius: number; power?: number; intensity?: number }) {
-  const mat = useMemo(() => new THREE.ShaderMaterial({
-    vertexShader: ATMO_VERT, fragmentShader: ATMO_FRAG,
-    uniforms: { uColor: { value: new THREE.Color(color) }, uPower: { value: power }, uIntensity: { value: intensity } },
-    transparent: true, blending: THREE.AdditiveBlending, side: THREE.BackSide, depthWrite: false,
-  }), [color, power, intensity]);
+/** ホバー時だけ出るタイトル＋件数ラベル。 */
+function NodeLabel({ color, emoji, title, posts }: { color: string; emoji: string; title: string; posts: number }) {
   return (
-    <mesh raycast={() => null} material={mat}>
-      <sphereGeometry args={[radius, 32, 32]} />
-    </mesh>
-  );
-}
-
-function NodeChip({ color, emoji, title, posts, hover }: { color: string; emoji: string; title: string; posts: number; hover: boolean }) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, pointerEvents: "none" }}>
       <div style={{
         display: "inline-flex", alignItems: "center", gap: 6, whiteSpace: "nowrap",
-        padding: "3px 10px 3px 4px", borderRadius: 10, fontSize: hover ? 12.5 : 11, fontWeight: 700, color: "#eaf4ff",
-        background: "rgba(6,12,28,0.7)", border: `1px solid ${color}99`,
-        boxShadow: `0 0 12px ${color}40, 0 3px 12px rgba(0,0,0,0.4)`, textShadow: "0 1px 2px rgba(0,0,0,0.6)",
+        padding: "3px 10px 3px 4px", borderRadius: 10, fontSize: 12.5, fontWeight: 700, color: "#eef4ff",
+        background: "rgba(6,12,28,0.86)", border: `1px solid ${color}aa`,
+        boxShadow: "0 4px 14px rgba(0,0,0,0.5)", textShadow: "0 1px 2px rgba(0,0,0,0.6)",
       }}>
-        <span style={{ display: "grid", placeItems: "center", width: hover ? 20 : 18, height: hover ? 20 : 18, borderRadius: 6, fontSize: hover ? 12 : 10.5, background: `${color}30` }}>{emoji}</span>
+        <span style={{ display: "grid", placeItems: "center", width: 20, height: 20, borderRadius: 6, fontSize: 12, background: `${color}33` }}>{emoji}</span>
         <span>{title}</span>
       </div>
       {posts > 0 && (
-        <span style={{ fontSize: 9.5, fontWeight: 800, color: "#04101f", lineHeight: 1.2, padding: "1px 7px", borderRadius: 999, background: color, boxShadow: `0 0 10px ${color}aa` }}>{posts}件</span>
+        <span style={{ fontSize: 10, fontWeight: 800, color: "#06101f", lineHeight: 1.2, padding: "1px 7px", borderRadius: 999, background: color }}>{posts}件</span>
       )}
     </div>
   );
 }
 
-/** 1トピック＝発光する惑星オーブ（本体＋大気グロー）。 */
+/** 1トピック＝発光しないソリッドな球。タイトル/件数はホバー時のみ。 */
 function TopicNode({ topic, posts, position, onSelect }: { topic: InteropPriorityTopic; posts: number; position: [number, number, number]; onSelect: () => void }) {
   const [hover, setHover] = useState(false);
   const color = MAJOR_META[topic.major]?.color ?? "#C9D4F6";
@@ -86,24 +63,24 @@ function TopicNode({ topic, posts, position, onSelect }: { topic: InteropPriorit
   const leave = () => { setHover(false); document.body.style.cursor = "auto"; };
   return (
     <group position={position}>
-      <mesh onPointerOver={(e) => { e.stopPropagation(); enter(); }} onPointerOut={leave} onClick={(e) => { e.stopPropagation(); onSelect(); }}>
-        <sphereGeometry args={[r * 1.4, 16, 16]} />
-        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
-      </mesh>
-      {/* 惑星本体 */}
-      <mesh raycast={() => null} scale={hover ? 1.08 : 1}>
+      {/* 球本体＝当たり判定も兼ねる。発光なしのソリッド。 */}
+      <mesh
+        scale={hover ? 1.12 : 1}
+        onPointerOver={(e) => { e.stopPropagation(); enter(); }}
+        onPointerOut={leave}
+        onClick={(e) => { e.stopPropagation(); onSelect(); }}
+      >
         <sphereGeometry args={[r, 48, 48]} />
-        <meshStandardMaterial color={color} roughness={0.55} metalness={0.15} emissive={color} emissiveIntensity={hover ? 0.5 : 0.32} />
+        <meshStandardMaterial color={color} roughness={0.62} metalness={0.1} />
       </mesh>
-      {/* 大気グロー（fresnelの縁光） */}
-      <Atmosphere color={color} radius={r * 1.32} power={2.6} intensity={hover ? 1.5 : 1.05} />
       {/* 中心平面への細い垂線 */}
       <Line points={[[0, 0, 0], [0, dropToPlane, 0]]} color={color} lineWidth={1} transparent opacity={0.12} dashed dashScale={3} />
-      <Html center distanceFactor={hover ? 17 : 24} position={[0, r + 1.0, 0]} zIndexRange={[16, 2]} style={{ pointerEvents: "auto" }}>
-        <button type="button" onMouseEnter={enter} onMouseLeave={leave} onClick={(e) => { e.stopPropagation(); onSelect(); }} style={{ cursor: "pointer", appearance: "none", background: "none", border: "none", padding: 0 }}>
-          <NodeChip color={color} emoji={emoji} title={topic.category} posts={posts} hover={hover} />
-        </button>
-      </Html>
+      {/* タイトル＋件数（ホバー時のみ） */}
+      {hover && (
+        <Html center distanceFactor={16} position={[0, r + 1.0, 0]} zIndexRange={[30, 10]} style={{ pointerEvents: "none" }}>
+          <NodeLabel color={color} emoji={emoji} title={topic.category} posts={posts} />
+        </Html>
+      )}
     </group>
   );
 }
@@ -119,15 +96,15 @@ function TopicEdges({ edges, posById }: { edges: Edge[]; posById: Map<number, [n
   }, [edges, posById]);
   return (
     <group>
-      {segments.map((s) => (<Line key={s.key} points={[s.a, s.b]} color="#5fd0ff" lineWidth={1} transparent opacity={0.22} />))}
+      {segments.map((s) => (<Line key={s.key} points={[s.a, s.b]} color="#5f86c8" lineWidth={1} transparent opacity={0.18} />))}
     </group>
   );
 }
 
-/** 2軸（X/Z）をホログラム調で中央(CENTER_Y)に。第3軸は縦・両端ラベル。 */
+/** 2軸（X/Z）を中央(CENTER_Y)に。第3軸は縦・両端ラベル。 */
 function AxisFrame({ config, axis3Low, axis3High }: { config: AxisConfig; axis3Low: string; axis3High: string }) {
-  const axis = "#3f7fd0";
-  const v3 = "#5fd0ff";
+  const axis = "#46659c";
+  const v3 = "#6aa0d8";
   const cy = CENTER_Y;
   return (
     <group>
@@ -135,49 +112,41 @@ function AxisFrame({ config, axis3Low, axis3High }: { config: AxisConfig; axis3L
       <Line points={[[0, cy, S], [0, cy, -S]]} color={axis} lineWidth={1.25} transparent opacity={0.5} />
       <mesh raycast={() => null} position={[0, cy, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <ringGeometry args={[3.0, 3.16, 64]} />
-        <meshBasicMaterial color="#5fd0ff" transparent opacity={0.3} side={THREE.DoubleSide} depthWrite={false} />
+        <meshBasicMaterial color="#6aa0d8" transparent opacity={0.3} side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
       <Html center position={[S + 3, cy, 0]} style={{ pointerEvents: "none" }}><div style={axisLabelStyle}>{config.xRight} →</div></Html>
       <Html center position={[-S - 3, cy, 0]} style={{ pointerEvents: "none" }}><div style={axisLabelStyle}>← {config.xLeft}</div></Html>
       <Html center position={[0, cy, -S - 3]} style={{ pointerEvents: "none" }}><div style={axisLabelStyle}>{config.yTop} ↑</div></Html>
       <Html center position={[0, cy, S + 3]} style={{ pointerEvents: "none" }}><div style={axisLabelStyle}>{config.yBottom} ↓</div></Html>
-      <Line points={[[0, 0, 0], [0, MAXH, 0]]} color={v3} lineWidth={1.5} transparent opacity={0.5} />
-      <Html center position={[0, MAXH + 1.6, 0]} style={{ pointerEvents: "none" }}><div style={{ ...axisLabelStyle, color: "#d6f3ff", borderColor: "rgba(127,214,255,0.5)" }}>{axis3High || "（巡回待ち）"} ↑</div></Html>
+      <Line points={[[0, 0, 0], [0, MAXH, 0]]} color={v3} lineWidth={1.5} transparent opacity={0.45} />
+      <Html center position={[0, MAXH + 1.6, 0]} style={{ pointerEvents: "none" }}><div style={{ ...axisLabelStyle, color: "#cfe6ff", borderColor: "rgba(120,180,255,0.5)" }}>{axis3High || "（巡回待ち）"} ↑</div></Html>
       {axis3Low && (
-        <Html center position={[0, -1.6, 0]} style={{ pointerEvents: "none" }}><div style={{ ...axisLabelStyle, color: "#d6f3ff", borderColor: "rgba(127,214,255,0.4)" }}>↓ {axis3Low}</div></Html>
+        <Html center position={[0, -1.6, 0]} style={{ pointerEvents: "none" }}><div style={{ ...axisLabelStyle, color: "#cfe6ff", borderColor: "rgba(120,180,255,0.4)" }}>↓ {axis3Low}</div></Html>
       )}
     </group>
   );
 }
 
-/** 中心ハブ＝起点の輝く核（スター）。クリックで2Dと同じハブへ。 */
+/** 中心ハブ＝起点。発光しないソリッドな明色球。ラベルは常時（ハブの目印）。 */
 function CenterHub({ label, onSelect }: { label: string; onSelect: () => void }) {
   const [hover, setHover] = useState(false);
-  const coreRef = useRef<THREE.Mesh>(null);
   const enter = () => { setHover(true); document.body.style.cursor = "pointer"; };
   const leave = () => { setHover(false); document.body.style.cursor = "auto"; };
   const select = (e?: { stopPropagation?: () => void }) => { e?.stopPropagation?.(); onSelect(); };
-  useFrame(({ clock }) => {
-    if (coreRef.current) {
-      const s = 1 + Math.sin(clock.elapsedTime * 1.6) * 0.04;
-      coreRef.current.scale.setScalar((hover ? 1.08 : 1) * s);
-    }
-  });
   return (
     <group position={[0, CENTER_Y, 0]}>
-      <mesh onPointerOver={(e) => { e.stopPropagation(); enter(); }} onPointerOut={leave} onClick={(e) => select(e)}>
-        <sphereGeometry args={[2.8, 20, 20]} />
-        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      <mesh scale={hover ? 1.06 : 1} onPointerOver={(e) => { e.stopPropagation(); enter(); }} onPointerOut={leave} onClick={(e) => select(e)}>
+        <sphereGeometry args={[2.0, 48, 48]} />
+        <meshStandardMaterial color="#dfe9ff" roughness={0.5} metalness={0.2} />
       </mesh>
-      <mesh ref={coreRef} raycast={() => null}>
-        <sphereGeometry args={[1.9, 48, 48]} />
-        <meshStandardMaterial color="#eaf4ff" emissive="#a9d2ff" emissiveIntensity={hover ? 1.6 : 1.1} roughness={0.4} metalness={0.2} />
+      {/* 起点の細いリング（縦軸との交差を示す。発光ではない） */}
+      <mesh raycast={() => null} rotation={[Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[2.5, 2.62, 64]} />
+        <meshBasicMaterial color="#9db8ff" transparent opacity={0.4} side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
-      <Atmosphere color="#9fd0ff" radius={2.7} power={2.0} intensity={hover ? 1.8 : 1.3} />
-      <pointLight position={[0, 0, 0]} intensity={hover ? 40 : 28} distance={40} color="#bfe3ff" />
       <Html center distanceFactor={hover ? 21 : 28} position={[0, 3.2, 0]} zIndexRange={[60, 40]} style={{ pointerEvents: "auto" }}>
         <button type="button" onMouseEnter={enter} onMouseLeave={leave} onClick={(e) => select(e)}
-          style={{ cursor: "pointer", appearance: "none", whiteSpace: "nowrap", fontSize: 13, fontWeight: 800, color: "#eaf4ff", background: "rgba(6,12,28,0.78)", border: "1px solid #7fc4ffcc", borderRadius: 999, padding: "4px 12px", boxShadow: "0 0 16px rgba(127,196,255,0.5)" }}>
+          style={{ cursor: "pointer", appearance: "none", whiteSpace: "nowrap", fontSize: 13, fontWeight: 800, color: "#eef4ff", background: "rgba(6,12,28,0.82)", border: "1px solid #9db8ffcc", borderRadius: 999, padding: "4px 12px", boxShadow: "0 4px 14px rgba(0,0,0,0.5)" }}>
           🎫 {label}
         </button>
       </Html>
@@ -185,18 +154,35 @@ function CenterHub({ label, onSelect }: { label: string; onSelect: () => void })
   );
 }
 
+/** OrbitControls：ドラッグ=回転、Shift+ドラッグ=平行移動、ホイール=ズーム。
+ *  Shift状態を React state で持ち、mouseButtons を prop で切り替える（確実に反映）。 */
 function Controls() {
   const ref = useRef<any>(null);
-  const { gl } = useThree();
+  const [shift, setShift] = useState(false);
   useEffect(() => {
-    const c = ref.current;
-    if (c) c.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
-    const el = gl.domElement;
-    const onDown = (e: PointerEvent) => { if (ref.current) ref.current.mouseButtons.LEFT = e.shiftKey ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE; };
-    el.addEventListener("pointerdown", onDown, { capture: true });
-    return () => el.removeEventListener("pointerdown", onDown, { capture: true } as EventListenerOptions);
-  }, [gl]);
-  return <OrbitControls ref={ref} makeDefault enablePan screenSpacePanning minDistance={14} maxDistance={130} maxPolarAngle={Math.PI * 0.86} target={[0, CENTER_Y, 0]} enableDamping dampingFactor={0.08} />;
+    const down = (e: KeyboardEvent) => { if (e.key === "Shift") setShift(true); };
+    const up = (e: KeyboardEvent) => { if (e.key === "Shift") setShift(false); };
+    const blur = () => setShift(false);
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    window.addEventListener("blur", blur);
+    return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); window.removeEventListener("blur", blur); };
+  }, []);
+  return (
+    <OrbitControls
+      ref={ref}
+      makeDefault
+      enablePan
+      screenSpacePanning
+      mouseButtons={{ LEFT: shift ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN }}
+      minDistance={14}
+      maxDistance={130}
+      maxPolarAngle={Math.PI * 0.86}
+      target={[0, CENTER_Y, 0]}
+      enableDamping
+      dampingFactor={0.08}
+    />
+  );
 }
 
 function Scene({ centerLabel, config, positions, axis3, edges, counts, onSelectCenter, onSelectTopic }: {
@@ -246,12 +232,13 @@ function Scene({ centerLabel, config, positions, axis3, edges, counts, onSelectC
 
   return (
     <>
-      <color attach="background" args={["#03060f"]} />
-      <ambientLight intensity={0.35} />
-      <hemisphereLight args={["#9fc4ff", "#06101f", 0.5]} />
-      <directionalLight position={[18, 30, 16]} intensity={0.7} color="#dce9ff" />
-      {/* 宇宙の星々 */}
-      <Stars radius={150} depth={70} count={2200} factor={4} saturation={0} fade speed={0.3} />
+      <color attach="background" args={["#05080f"]} />
+      <ambientLight intensity={0.95} />
+      <hemisphereLight args={["#bcd2ff", "#0a1426", 0.7]} />
+      <directionalLight position={[18, 30, 18]} intensity={1.1} color="#ffffff" />
+      <directionalLight position={[-16, -8, -14]} intensity={0.4} color="#9fb6ff" />
+      {/* 背景の星（控えめ・玉は光らせない） */}
+      <Stars radius={150} depth={70} count={1500} factor={3} saturation={0} fade speed={0.2} />
       <AxisFrame config={config} axis3Low={axis3Low} axis3High={axis3High} />
       <TopicEdges edges={effectiveEdges} posById={posById} />
       <CenterHub label={centerLabel} onSelect={onSelectCenter} />
@@ -259,9 +246,6 @@ function Scene({ centerLabel, config, positions, axis3, edges, counts, onSelectC
         <TopicNode key={topic.no} topic={topic} posts={posts} position={position} onSelect={() => onSelectTopic(topic)} />
       ))}
       <Controls />
-      <EffectComposer multisampling={2}>
-        <Bloom intensity={0.9} luminanceThreshold={0.45} luminanceSmoothing={0.85} mipmapBlur radius={0.6} />
-      </EffectComposer>
     </>
   );
 }
@@ -303,7 +287,7 @@ export default function ForumGalaxy3D({ centerLabel, onSelectCenter, onSelectTop
         <Scene centerLabel={label} config={config} positions={positions} axis3={axis3} edges={edges} counts={counts} onSelectCenter={onSelectCenter} onSelectTopic={onSelectTopic} />
       </Canvas>
       <p className="pointer-events-none absolute bottom-4 left-4 z-40 text-[11px] leading-relaxed text-white/45">
-        ドラッグで回転・<span className="text-white/70">Shift+ドラッグで移動</span>・ホイールで拡大／玉の大きさ＝活発さ・高さ＝週次AI巡回の分析軸
+        ドラッグで回転・<span className="text-white/70">Shift+ドラッグで移動</span>・ホイールで拡大／玉にカーソルでタイトル・大きさ＝活発さ・高さ＝週次AI巡回の分析軸
       </p>
     </div>
   );
