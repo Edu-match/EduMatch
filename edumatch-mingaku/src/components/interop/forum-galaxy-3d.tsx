@@ -301,7 +301,8 @@ export default function ForumGalaxy3D({ centerLabel, onSelectCenter, onSelectTop
 
   return (
     <div className="absolute inset-0">
-      <Canvas camera={{ position: [0, 26, 86], fov: 46 }} dpr={[1, 2]} gl={{ antialias: true }}>
+      {/* 初期視点は斜め見下ろしの3/4ビュー（正面だと2Dに見えるため、奥行きと高さを見せる） */}
+      <Canvas camera={{ position: [62, 54, 78], fov: 46 }} dpr={[1, 2]} gl={{ antialias: true }}>
         <Scene centerLabel={label} config={config} positions={positions} axis3={axis3} edges={edges} counts={counts} onSelectCenter={onSelectCenter} onSelectTopic={onSelectTopic} />
       </Canvas>
       <p className="pointer-events-none absolute bottom-4 left-4 z-40 text-[11px] leading-relaxed text-white/45">
