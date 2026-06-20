@@ -1,22 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import dynamic from "next/dynamic";
-import { Box, Map as MapIcon, Loader2 } from "lucide-react";
+import { Box, Map as MapIcon } from "lucide-react";
 import { InteropExplorer } from "@/components/interop/interop-explorer";
 
-// 3Dビューは重い（three/fiber/drei）ので、3Dに切り替えたときだけ遅延ロードする。
-// → 初期バンドルは増えない（井戸端トップの表示速度を落とさない）。
-const ForumGalaxy3D = dynamic(() => import("@/components/interop/forum-galaxy-3d"), {
-  ssr: false,
-  loading: () => (
-    <div className="absolute inset-0 grid place-items-center text-sm text-white/60">
-      <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />3Dビューを読み込み中…</span>
-    </div>
-  ),
-});
-
-/** 井戸端トップ：2Dマップ ⇄ 3D銀河ビュー を切り替える。 */
+/** 井戸端トップ：トップマップだけを 2D ⇄ 3D で切り替える。
+ *  ドリルダウン（ハブ/カテゴリ/論点/コンテンツ）は 2D と完全に共有（同じ動作・同じ遷移）。 */
 const STORE_KEY = "forum-map-mode";
 
 export function ForumMapMode(props: React.ComponentProps<typeof InteropExplorer>) {
@@ -30,7 +19,7 @@ export function ForumMapMode(props: React.ComponentProps<typeof InteropExplorer>
 
   return (
     <>
-      {mode === "3d" ? <ForumGalaxy3D centerLabel={props.centerLabel} /> : <InteropExplorer {...props} />}
+      <InteropExplorer {...props} mapMode={mode} />
 
       {/* 2D / 3D 切替（右上） */}
       <div className="absolute right-3 top-3 z-40 inline-flex overflow-hidden rounded-full border border-white/15 bg-[#0a1024]/80 backdrop-blur">
