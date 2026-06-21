@@ -109,8 +109,8 @@ function TopicNode({ topic, posts, position, onSelect }: { topic: InteropPriorit
       </mesh>
       <Atmosphere color={color} radius={r * 1.28} power={3.0} intensity={hover ? 1.0 : 0.6} />
       <Line points={[[0, 0, 0], [0, dropToPlane, 0]]} color={color} lineWidth={1} transparent opacity={0.1} dashed dashScale={3} />
-      {/* ラベルは occlude：他の玉の裏に回ったら隠れて重なりを減らす */}
-      <Html center occlude="blending" distanceFactor={hover ? 20 : 28} position={[0, r + 1.4, 0]} zIndexRange={[hover ? 40 : 16, 2]} style={{ pointerEvents: "none" }}>
+      {/* ラベル（常時表示）。occludeは玉を切断する不具合があるため使わない。 */}
+      <Html center distanceFactor={hover ? 20 : 28} position={[0, r + 1.4, 0]} zIndexRange={[hover ? 40 : 16, 2]} style={{ pointerEvents: "none" }}>
         <NodeLabel color={color} emoji={emoji} title={topic.category} posts={posts} hover={hover} />
       </Html>
     </group>
@@ -145,16 +145,16 @@ function AxisFrame({ config, axis3Low, axis3High, showAxis3 }: { config: AxisCon
         <ringGeometry args={[3.4, 3.6, 64]} />
         <meshBasicMaterial color="#9fd0ff" transparent opacity={0.35} side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
-      <Html center occlude="blending" position={[S + 4, cy, 0]} style={{ pointerEvents: "none" }}><div style={axisLabelStyle}>{config.xRight} →</div></Html>
-      <Html center occlude="blending" position={[-S - 4, cy, 0]} style={{ pointerEvents: "none" }}><div style={axisLabelStyle}>← {config.xLeft}</div></Html>
-      <Html center occlude="blending" position={[0, cy, -S - 4]} style={{ pointerEvents: "none" }}><div style={axisLabelStyle}>{config.yTop} ↑</div></Html>
-      <Html center occlude="blending" position={[0, cy, S + 4]} style={{ pointerEvents: "none" }}><div style={axisLabelStyle}>{config.yBottom} ↓</div></Html>
+      <Html center position={[S + 4, cy, 0]} style={{ pointerEvents: "none" }}><div style={axisLabelStyle}>{config.xRight} →</div></Html>
+      <Html center position={[-S - 4, cy, 0]} style={{ pointerEvents: "none" }}><div style={axisLabelStyle}>← {config.xLeft}</div></Html>
+      <Html center position={[0, cy, -S - 4]} style={{ pointerEvents: "none" }}><div style={axisLabelStyle}>{config.yTop} ↑</div></Html>
+      <Html center position={[0, cy, S + 4]} style={{ pointerEvents: "none" }}><div style={axisLabelStyle}>{config.yBottom} ↓</div></Html>
       {showAxis3 && <Line points={[[0, 0, 0], [0, MAXH, 0]]} color={v3} lineWidth={1.5} transparent opacity={0.45} />}
       {showAxis3 && axis3High && (
-        <Html center occlude="blending" position={[0, MAXH + 1.6, 0]} style={{ pointerEvents: "none" }}><div style={{ ...axisLabelStyle, color: "#eaf6ff", borderColor: "rgba(150,200,255,0.6)" }}>{axis3High} ↑</div></Html>
+        <Html center position={[0, MAXH + 1.6, 0]} style={{ pointerEvents: "none" }}><div style={{ ...axisLabelStyle, color: "#eaf6ff", borderColor: "rgba(150,200,255,0.6)" }}>{axis3High} ↑</div></Html>
       )}
       {showAxis3 && axis3Low && (
-        <Html center occlude="blending" position={[0, -1.6, 0]} style={{ pointerEvents: "none" }}><div style={{ ...axisLabelStyle, color: "#eaf6ff", borderColor: "rgba(150,200,255,0.5)" }}>↓ {axis3Low}</div></Html>
+        <Html center position={[0, -1.6, 0]} style={{ pointerEvents: "none" }}><div style={{ ...axisLabelStyle, color: "#eaf6ff", borderColor: "rgba(150,200,255,0.5)" }}>↓ {axis3Low}</div></Html>
       )}
     </group>
   );

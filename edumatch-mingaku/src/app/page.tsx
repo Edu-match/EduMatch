@@ -26,18 +26,18 @@ export default async function HomePage() {
             {/* 議員会館チケット申込導線（スライダー上部） */}
             <Link
               href="/forum/kaikan"
-              className="group flex items-center justify-between gap-3 rounded-xl border border-primary/30 bg-gradient-to-r from-primary/10 to-violet-500/10 px-4 py-3 transition-colors hover:border-primary/50 hover:from-primary/15 hover:to-violet-500/15"
+              className="group flex items-center justify-between gap-3 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-4 py-3.5 text-white shadow-md shadow-orange-500/25 transition hover:to-amber-400 hover:shadow-lg"
             >
               <span className="flex items-center gap-2.5 min-w-0">
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/20">
                   <Ticket className="h-4 w-4" />
                 </span>
                 <span className="min-w-0">
                   <span className="block text-sm font-bold">教育AIサミット@衆議院第一会館 チケット申込はこちら！</span>
-                  <span className="block truncate text-[11px] text-muted-foreground">コンテンツを選んで申込・電子チケット（QR）を受け取る</span>
+                  <span className="block truncate text-[11px] text-white/85">コンテンツを選んで申込・電子チケット（QR）を受け取る</span>
                 </span>
               </span>
-              <span className="shrink-0 rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground transition group-hover:opacity-90">申込へ →</span>
+              <span className="shrink-0 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-orange-600 transition group-hover:bg-white/90">申込へ →</span>
             </Link>
 
             {/* スライダー：運営お知らせ → ADMIN選択記事 */}
