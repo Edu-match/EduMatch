@@ -96,11 +96,8 @@ type ActivityPayload = {
 type View =
   | { kind: "map" }
   | { kind: "hub" }
-  | { kind: "kaikan" }
   | { kind: "category"; cat: InteropCategory }
   | { kind: "topic"; topic: InteropPriorityTopic };
-
-type KaikanContent = { id: string; title: string };
 
 const ACTIVITY_POLL_MS = 45_000;
 const EMPTY_STATS: InteropActivityStats = { postCount: 0, participantCount: 0 };
@@ -236,7 +233,6 @@ export function InteropExplorer({
   const [loadingCats, setLoadingCats] = useState(true);
   const [loadingSubs, setLoadingSubs] = useState(false);
   const [view, setView] = useState<View>({ kind: "map" });
-  const [kaikanContents, setKaikanContents] = useState<KaikanContent[] | null>(null);
   // SSR の初期活動量で初期化（初回表示から盛り上がり演出を出す＝遅延解消）
   const [initialMaps] = useState(() => buildActivityMaps(initialInteropActivity, initialForumActivity));
   const [activityBySub, setActivityBySub] = useState<Map<string, InteropActivityStats>>(initialMaps.subMap);
@@ -367,7 +363,8 @@ export function InteropExplorer({
       icon: Ticket,
       accentColor: "#7dd4fc",
       stats: EMPTY_STATS,
-      onActivate: () => setView({ kind: "kaikan" }),
+      // 井戸端風オービットではなく、一般的な一覧ページ（複数選択申込）へ遷移
+      onActivate: () => router.push("/forum/kaikan"),
     };
     const opinionSub =
       allSubs.find((s) => s.slug === "giin-opinion") ??
@@ -506,17 +503,6 @@ export function InteropExplorer({
       cancelled = true;
     };
   }, [activeCategoryId]);
-
-  // 「コンテンツ」ビューに入ったら議員会館の申込コンテンツを取得。
-  useEffect(() => {
-    if (view.kind !== "kaikan" || kaikanContents !== null) return;
-    let cancelled = false;
-    fetch("/api/kaikan/contents")
-      .then((r) => r.json())
-      .then((d: { contents?: KaikanContent[] }) => { if (!cancelled) setKaikanContents(d.contents ?? []); })
-      .catch(() => { if (!cancelled) setKaikanContents([]); });
-    return () => { cancelled = true; };
-  }, [view.kind, kaikanContents]);
 
   // トップマップで選べるのは中心のインタロップのみ → ハブへ。念のため他カテゴリはカテゴリ表示にフォールバック。
   // ミニマップ(embedded)では内部ビューに潜らず、本井戸端(/forum)へリダイレクト（移動=パンは維持）。
@@ -660,23 +646,6 @@ export function InteropExplorer({
             ))}
           </div>
         </>
-      ) : view.kind === "kaikan" ? (
-        <InteropSubOrbit
-          centerLabel="コンテンツ"
-          centerIcon={Ticket}
-          centerHint={kaikanContents === null ? "読み込み中…" : `${kaikanContents.length}件のセッション · 選んで申込`}
-          accent="#7dd4fc"
-          items={(kaikanContents ?? []).map((c) => ({
-            id: c.id,
-            name: c.title,
-            icon: Ticket,
-            accentColor: "#7dd4fc",
-            stats: EMPTY_STATS,
-            onActivate: () => router.push(`/forum/kaikan/${c.id}`),
-          }))}
-          backLabel="議員会館に戻る"
-          onBack={() => setView({ kind: "hub" })}
-        />
       ) : view.kind === "topic" ? (
         <InteropSubOrbit
           centerLabel={view.topic.category}

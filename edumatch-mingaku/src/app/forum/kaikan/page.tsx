@@ -67,21 +67,21 @@ export default async function KaikanTicketsPage() {
           {/* アカウント情報トグル */}
           <details className="group rounded-xl border bg-muted/30">
             <summary className="flex cursor-pointer list-none items-center gap-3 p-3">
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/15 text-sm font-bold text-primary">{profile.name?.charAt(0) || "?"}</span>
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/15 text-sm font-bold text-primary">{(general?.legal_name || profile.name)?.charAt(0) || "?"}</span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-bold">{profile.name}</span>
+                <span className="block truncate text-sm font-bold">{general?.legal_name || profile.name}</span>
                 <span className="block text-[11px] text-muted-foreground">タップして登録情報を確認</span>
               </span>
               <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
             </summary>
             <dl className="space-y-2 border-t px-4 py-3 text-sm">
-              {[
-                ["本名", general?.legal_name || profile.name],
+              {([
+                ["表示名", profile.name],
                 ["メールアドレス", profile.email],
-                ["電話番号", profile.phone || "未登録"],
-                ["住所", [addr?.postal_code, addr?.address].filter(Boolean).join(" ") || "未登録"],
-                ["所属", general?.organization || "未登録"],
-              ].map(([k, v]) => (
+                ...(profile.phone ? [["電話番号", profile.phone]] : []),
+                ...((() => { const a = [addr?.postal_code, addr?.address].filter(Boolean).join(" "); return a ? [["住所", a]] : []; })()),
+                ...(general?.organization ? [["所属", general.organization]] : []),
+              ] as [string, string][]).map(([k, v]) => (
                 <div key={k} className="flex items-start justify-between gap-3">
                   <dt className="shrink-0 text-muted-foreground">{k}</dt>
                   <dd className="min-w-0 text-right font-medium">{v}</dd>
