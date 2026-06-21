@@ -36,6 +36,9 @@ export default async function KaikanApplyPage({ params }: { params: Promise<{ id
   const general = profile
     ? await prisma.generalProfile.findUnique({ where: { id: profile.id }, select: { legal_name: true, organization: true } }).catch(() => null)
     : null;
+  const addr = profile
+    ? await prisma.profile.findUnique({ where: { id: profile.id }, select: { postal_code: true, address: true } }).catch(() => null)
+    : null;
   const loginHref = `/login?next=${encodeURIComponent(`/forum/kaikan/${id}`)}`;
 
   return (
@@ -100,7 +103,7 @@ export default async function KaikanApplyPage({ params }: { params: Promise<{ id
                   ["本名", general?.legal_name || profile.name],
                   ["メールアドレス", profile.email],
                   ["電話番号", profile.phone || "未登録"],
-                  ["住所", "未登録"],
+                  ["住所", [addr?.postal_code, addr?.address].filter(Boolean).join(" ") || "未登録"],
                   ["所属", general?.organization || "未登録"],
                 ].map(([k, v]) => (
                   <div key={k} className="flex items-start justify-between gap-3">

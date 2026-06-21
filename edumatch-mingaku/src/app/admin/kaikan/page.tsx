@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { createKaikanContent, setKaikanContentPublished } from "@/app/_actions/kaikan";
+import { KaikanCheckinPanel } from "@/components/kaikan/kaikan-checkin-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -10,10 +11,12 @@ function fmtDate(d: Date | null): string {
   return new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(d);
 }
 
-export default async function AdminKaikanPage() {
+export default async function AdminKaikanPage({ searchParams }: { searchParams: Promise<{ tab?: string; token?: string }> }) {
   await requireAdmin();
+  const { tab, token } = await searchParams;
+  const isCheckin = tab === "checkin";
 
-  const contents = await prisma.kaikanContent.findMany({
+  const contents = isCheckin ? [] : await prisma.kaikanContent.findMany({
     orderBy: [{ sort_order: "asc" }, { created_at: "desc" }],
     include: {
       _count: { select: { applications: true } },
@@ -25,11 +28,25 @@ export default async function AdminKaikanPage() {
     },
   });
 
+  const tabCls = (active: boolean) => `rounded-full px-4 py-1.5 text-sm font-bold transition ${active ? "bg-primary text-primary-foreground" : "border text-muted-foreground hover:text-foreground"}`;
+
   return (
     <main className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6">
       <h1 className="text-2xl font-bold">議員会館チケット管理</h1>
-      <p className="mt-1 text-sm text-muted-foreground">コンテンツの作成・公開と、申込者の確認・受付状況。</p>
+      <p className="mt-1 text-sm text-muted-foreground">コンテンツの作成・公開と、申込者の確認・当日の受付。</p>
 
+      {/* タブ */}
+      <nav className="mt-4 flex gap-2">
+        <Link href="/admin/kaikan" className={tabCls(!isCheckin)}>コンテンツ管理</Link>
+        <Link href="/admin/kaikan?tab=checkin" className={tabCls(isCheckin)}>当日受付（QR/受付番号）</Link>
+      </nav>
+
+      {isCheckin ? (
+        <section className="mt-6">
+          <KaikanCheckinPanel initialToken={token} />
+        </section>
+      ) : (
+      <>
       {/* コンテンツ新設 */}
       <section className="mt-6 rounded-xl border bg-background p-5">
         <h2 className="mb-3 text-sm font-bold">コンテンツを新設</h2>
@@ -112,6 +129,8 @@ export default async function AdminKaikanPage() {
           ))
         )}
       </section>
+      </>
+      )}
     </main>
   );
 }

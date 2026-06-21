@@ -19,6 +19,8 @@ model Profile {
   created_at                      DateTime             @default(now())
   updated_at                      DateTime             @updatedAt
   phone                           String?
+  postal_code                     String?
+  address                         String?
   bio                             String?
   website                         String?
   subscription_plan               String?
@@ -1108,11 +1110,14 @@ model KaikanApplication {
   note          String        @default("")
   /// 受付QRに埋め込む不透明トークン
   qr_token      String        @unique
+  /// 1回の申込で複数セッションをまとめる共有トークン（=チケットのQR）。単独申込でも付与。
+  ticket_token  String?
   /// confirmed=確定 / checked_in=受付済 / cancelled=取消
   status        String        @default("confirmed")
   checked_in_at DateTime?     @db.Timestamptz(6)
   created_at    DateTime      @default(now()) @db.Timestamptz(6)
 
   @@index([content_id, created_at])
+  @@index([ticket_token])
   @@map("kaikan_applications")
 }

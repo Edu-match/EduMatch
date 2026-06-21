@@ -22,9 +22,9 @@ export async function applyForKaikanContent(formData: FormData) {
   // 同一アカウントの二重申込を防ぐ：既存があればそのチケットへ。
   const existing = await prisma.kaikanApplication.findFirst({
     where: { content_id: contentId, profile_id: profile.id, status: { not: "cancelled" } },
-    select: { qr_token: true },
+    select: { qr_token: true, ticket_token: true },
   });
-  if (existing) redirect(`/forum/kaikan/ticket/${existing.qr_token}`);
+  if (existing) redirect(`/forum/kaikan/ticket/${existing.ticket_token ?? existing.qr_token}`);
 
   if (content.capacity != null) {
     const count = await prisma.kaikanApplication.count({
@@ -41,11 +41,52 @@ export async function applyForKaikanContent(formData: FormData) {
       email: profile.email ?? "",
       note,
       qr_token: token,
+      ticket_token: token,
       profile_id: profile.id,
     },
   });
   revalidatePath("/admin/kaikan");
   redirect(`/forum/kaikan/ticket/${token}`);
+}
+
+/** 複数コンテンツをまとめて申込→1枚のチケット(共有ticket_token)に集約。受付はセッション単位。 */
+export async function applyForKaikanContents(formData: FormData) {
+  const contentIds = formData.getAll("contentId").map(String).map((s) => s.trim()).filter(Boolean);
+  const note = String(formData.get("note") || "").trim();
+  if (contentIds.length === 0) throw new Error("コンテンツを1つ以上選んでください");
+
+  const profile = await getCurrentProfile();
+  if (!profile) throw new Error("申込にはログインが必要です");
+
+  // 既存の自分の申込（このアカウント）を見て、チケットを流用しつつ二重を避ける
+  const existingApps = await prisma.kaikanApplication.findMany({
+    where: { profile_id: profile.id, status: { not: "cancelled" } },
+    select: { content_id: true, ticket_token: true },
+  });
+  const alreadyIds = new Set(existingApps.map((a) => a.content_id));
+  const ticketToken = existingApps.find((a) => a.ticket_token)?.ticket_token ?? randomUUID().replace(/-/g, "");
+
+  const toAdd = contentIds.filter((id) => !alreadyIds.has(id));
+  const contents = await prisma.kaikanContent.findMany({ where: { id: { in: toAdd }, is_published: true } });
+  for (const c of contents) {
+    if (c.capacity != null) {
+      const count = await prisma.kaikanApplication.count({ where: { content_id: c.id, status: { not: "cancelled" } } });
+      if (count >= c.capacity) continue; // 満員は除外
+    }
+    await prisma.kaikanApplication.create({
+      data: {
+        content_id: c.id,
+        name: profile.name,
+        email: profile.email ?? "",
+        note,
+        qr_token: randomUUID().replace(/-/g, ""),
+        ticket_token: ticketToken,
+        profile_id: profile.id,
+      },
+    });
+  }
+  revalidatePath("/admin/kaikan");
+  redirect(`/forum/kaikan/ticket/${ticketToken}`);
 }
 
 /** 管理者：コンテンツ新設。 */

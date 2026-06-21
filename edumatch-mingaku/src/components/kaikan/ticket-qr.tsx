@@ -3,12 +3,11 @@
 import { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 
-/** 受付チェックイン用QR。トークンから受付URLを生成して表示する。 */
+/** 受付チェックイン用QR。当日受付タブ(token付き)を開くURLをエンコード。 */
 export function TicketQR({ token }: { token: string }) {
-  const [url, setUrl] = useState(`/admin/kaikan/checkin/${token}`);
+  const [url, setUrl] = useState(`/admin/kaikan?tab=checkin&token=${token}`);
   useEffect(() => {
-    // 受付端末で読み取ったときに絶対URLで開けるよう origin を付与
-    setUrl(`${window.location.origin}/admin/kaikan/checkin/${token}`);
+    setUrl(`${window.location.origin}/admin/kaikan?tab=checkin&token=${token}`);
   }, [token]);
   return (
     <div className="inline-flex flex-col items-center gap-2 rounded-2xl bg-white p-4 shadow-sm">
