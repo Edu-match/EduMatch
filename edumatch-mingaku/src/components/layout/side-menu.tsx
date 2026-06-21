@@ -23,6 +23,7 @@ import {
   MessageSquare,
   Video,
   Megaphone,
+  QrCode,
 } from "lucide-react";
 
 /** 一般ユーザー向けメニュー（全員閲覧用）。labelKey は sideMenu namespace のキー */
@@ -48,6 +49,7 @@ const bottomItems = [
   { href: "/admin/site-updates", labelKey: "writeSiteUpdate", icon: PenSquare, roles: ["ADMIN"] },
   { href: "/admin/events", labelKey: "manageEvents", icon: Calendar, roles: ["ADMIN"] },
   { href: "/admin/forum", labelKey: "manageForum", icon: MessageSquare, roles: ["ADMIN"] },
+  { href: "/admin/kaikan?tab=checkin", labelKey: "kaikanCheckin", icon: QrCode, roles: ["ADMIN"] },
   { href: "/admin/videos", labelKey: "manageVideos", icon: Video, roles: ["ADMIN"] },
   { href: "/admin/sponsors", labelKey: "manageSponsors", icon: Megaphone, roles: ["ADMIN"] },
   { href: "/admin/pages", labelKey: "managePages", icon: FileText, roles: ["ADMIN"] },

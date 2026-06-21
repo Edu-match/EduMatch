@@ -40,6 +40,7 @@
     "serviceOrderAdmin": "Manage Service Order",
     "activityLog": "Activity Log",
     "userReports": "User Reports",
+    "kaikanCheckin": "Kaikan Check-in",
     "accountSettings": "Account Settings",
     "logout": "Log out",
     "login": "Log in",
@@ -110,7 +111,8 @@
     "knowledge": "Manage Knowledge Docs",
     "aiChat": "Manage AI Chat",
     "serviceOrder": "Manage Service Order",
-    "activityLog": "Activity Log"
+    "activityLog": "Activity Log",
+    "kaikanCheckin": "Kaikan Check-in"
   },
   "events": {
     "title": "Seminars & Events",

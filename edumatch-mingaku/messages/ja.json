@@ -40,6 +40,7 @@
     "serviceOrderAdmin": "サービス表示順管理",
     "activityLog": "操作ログ",
     "userReports": "ユーザー報告",
+    "kaikanCheckin": "議員会館 当日受付",
     "accountSettings": "アカウント設定",
     "logout": "ログアウト",
     "login": "ログイン",
@@ -110,7 +111,8 @@
     "knowledge": "ナレッジ文書管理",
     "aiChat": "AIチャット管理",
     "serviceOrder": "サービス表示順を管理",
-    "activityLog": "操作ログ"
+    "activityLog": "操作ログ",
+    "kaikanCheckin": "議員会館 当日受付"
   },
   "events": {
     "title": "セミナー・イベント情報",

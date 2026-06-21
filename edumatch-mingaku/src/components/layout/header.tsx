@@ -10,7 +10,7 @@ import {
   Menu, LogOut, User, LayoutDashboard, Settings, 
   ChevronDown, UserPlus, LogIn, FileText, Bell,
   CheckCircle, Calendar, Newspaper, BookOpen, Bot, Activity, Flag, ArrowUpDown,
-  MessageSquare, CircleHelp, Pencil
+  MessageSquare, CircleHelp, Pencil, QrCode
 } from "lucide-react";
 import { useRequestList } from "@/components/request-list/request-list-context";
 import { useTextEdit } from "@/components/text-edit/text-edit-context";
@@ -457,6 +457,13 @@ export function Header() {
                     >
                       <Flag className="mr-2 h-4 w-4 text-rose-600" />
                       {t("userReports")}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onSelect={() => router.push("/admin/kaikan?tab=checkin")}
+                    >
+                      <QrCode className="mr-2 h-4 w-4 text-sky-600" />
+                      {t("kaikanCheckin")}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                   </>
