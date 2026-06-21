@@ -33,7 +33,7 @@ export default async function HomePage() {
                   <Ticket className="h-4 w-4" />
                 </span>
                 <span className="min-w-0">
-                  <span className="block text-sm font-bold">議員会館イベント チケット申込</span>
+                  <span className="block text-sm font-bold">教育AIサミット@衆議院第一会館 チケット申込はこちら！</span>
                   <span className="block truncate text-[11px] text-muted-foreground">コンテンツを選んで申込・電子チケット（QR）を受け取る</span>
                 </span>
               </span>

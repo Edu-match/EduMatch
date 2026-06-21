@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { CalendarDays, MapPin, Users, Ticket, LogIn, ChevronLeft } from "lucide-react";
+import { CalendarDays, MapPin, Users, Ticket, LogIn, ChevronLeft, ChevronDown } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentProfile } from "@/lib/auth";
 import { applyForKaikanContent } from "@/app/_actions/kaikan";
@@ -33,6 +33,9 @@ export default async function KaikanApplyPage({ params }: { params: Promise<{ id
   const remaining = content.capacity != null ? Math.max(0, content.capacity - applied) : null;
 
   const profile = await getCurrentProfile().catch(() => null);
+  const general = profile
+    ? await prisma.generalProfile.findUnique({ where: { id: profile.id }, select: { legal_name: true, organization: true } }).catch(() => null)
+    : null;
   const loginHref = `/login?next=${encodeURIComponent(`/forum/kaikan/${id}`)}`;
 
   return (
@@ -78,19 +81,35 @@ export default async function KaikanApplyPage({ params }: { params: Promise<{ id
           <form action={applyForKaikanContent} className="space-y-4 rounded-2xl border bg-card p-5">
             <input type="hidden" name="contentId" value={content.id} />
             <p className="text-sm font-bold">この内容で申し込みます</p>
-            {/* アカウント情報（登録済み） */}
-            <div className="flex items-center gap-3 rounded-xl border bg-muted/30 p-3">
-              {profile.avatar_url ? (
-                <Image src={profile.avatar_url} alt="" width={44} height={44} className="h-11 w-11 shrink-0 rounded-full object-cover" />
-              ) : (
-                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-primary/15 text-base font-bold text-primary">{profile.name?.charAt(0) || "?"}</span>
-              )}
-              <div className="min-w-0">
-                <p className="truncate text-sm font-bold">{profile.name}</p>
-                {profile.email && <p className="truncate text-xs text-muted-foreground">{profile.email}</p>}
-              </div>
-              <span className="ml-auto shrink-0 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-bold text-emerald-700">アカウント情報</span>
-            </div>
+            {/* アカウント情報（登録済み・トグルで開閉） */}
+            <details className="group rounded-xl border bg-muted/30">
+              <summary className="flex cursor-pointer list-none items-center gap-3 p-3">
+                {profile.avatar_url ? (
+                  <Image src={profile.avatar_url} alt="" width={40} height={40} className="h-10 w-10 shrink-0 rounded-full object-cover" />
+                ) : (
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/15 text-base font-bold text-primary">{profile.name?.charAt(0) || "?"}</span>
+                )}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-bold">{profile.name}</span>
+                  <span className="block text-[11px] text-muted-foreground">タップして登録情報を確認</span>
+                </span>
+                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+              </summary>
+              <dl className="space-y-2 border-t px-4 py-3 text-sm">
+                {[
+                  ["本名", general?.legal_name || profile.name],
+                  ["メールアドレス", profile.email],
+                  ["電話番号", profile.phone || "未登録"],
+                  ["住所", "未登録"],
+                  ["所属", general?.organization || "未登録"],
+                ].map(([k, v]) => (
+                  <div key={k} className="flex items-start justify-between gap-3">
+                    <dt className="shrink-0 text-muted-foreground">{k}</dt>
+                    <dd className="min-w-0 text-right font-medium">{v}</dd>
+                  </div>
+                ))}
+              </dl>
+            </details>
             <div className="space-y-1.5">
               <label className="text-sm font-medium">事前質問・期待すること <span className="text-muted-foreground">（任意）</span></label>
               <textarea name="note" rows={3} maxLength={500} className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="登壇者に聞きたいこと、参加への期待など" />

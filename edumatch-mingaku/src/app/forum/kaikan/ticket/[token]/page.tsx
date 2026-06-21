@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { CalendarDays, MapPin, Ticket, CheckCircle2, Clock } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { TicketQR } from "@/components/kaikan/ticket-qr";
+import { TicketPrintButton } from "@/components/kaikan/ticket-print-button";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +40,9 @@ export default async function KaikanTicketPage({ params }: { params: Promise<{ t
 
   return (
     <main className="mx-auto w-full max-w-sm px-4 py-8 sm:px-6">
-      <div className="overflow-hidden rounded-3xl border bg-card shadow-lg">
+      {/* 印刷時はチケットカード(#ticket-print)だけ表示 */}
+      <style>{`@media print { body * { visibility: hidden !important; } #ticket-print, #ticket-print * { visibility: visible !important; } #ticket-print { position: absolute; inset: 0; margin: 24px auto; } .ticket-no-print { display: none !important; } }`}</style>
+      <div id="ticket-print" className="overflow-hidden rounded-3xl border bg-card shadow-lg">
         {/* チケット上段：イベント情報 */}
         <div className="relative bg-gradient-to-br from-primary to-violet-600 px-5 pb-5 pt-4 text-white">
           <p className="flex items-center gap-1.5 text-[11px] font-bold tracking-wide opacity-90">
@@ -84,7 +87,8 @@ export default async function KaikanTicketPage({ params }: { params: Promise<{ t
         </div>
       </div>
 
-      <div className="mt-4 text-center">
+      <div className="ticket-no-print mt-4 flex flex-col items-center gap-3">
+        <TicketPrintButton />
         <Link href="/forum?map=3d" className="text-xs text-muted-foreground hover:text-foreground">他のコンテンツを見る</Link>
       </div>
     </main>

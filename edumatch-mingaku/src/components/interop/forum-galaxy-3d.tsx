@@ -1,16 +1,24 @@
 "use client";
 
-import { Canvas, useThree } from "@react-three/fiber";
+import { Canvas } from "@react-three/fiber";
 import { Html, OrbitControls, Line, Stars } from "@react-three/drei";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import * as THREE from "three";
 import { INTEROP_PRIORITY_TOPICS, MAJOR_META, type InteropPriorityTopic } from "@/lib/interop-priority-topics";
 import { DEFAULT_AXIS_CONFIG, type AxisConfig, type AxisPoint } from "@/lib/interop-topic-axis";
 
 // 広めに展開して、どの視点でも玉/ラベルが重なりにくいようにする
-const S = 44;
-const MAXH = 30;
+const S = 36;
+const MAXH = 26;
 const CENTER_Y = MAXH / 2;
+
+// 時間帯で背景色を切り替え（2Dの時刻連動と揃える）。宇宙シーンなので暗めに保つ。
+function bgForHour(h: number): string {
+  if (h >= 5 && h < 10) return "#100a1a";   // 朝（淡い紫）
+  if (h >= 10 && h < 15) return "#0a1a30";  // 昼（やや明るい紺）
+  if ((h >= 15 && h < 17) || (h >= 4 && h < 5)) return "#160b18"; // 夕（紫マゼンタ）
+  return "#04060e";                          // 夜
+}
 const TOPIC_BY_NO = new Map(INTEROP_PRIORITY_TOPICS.map((t) => [t.no, t]));
 
 const MAJOR_EMOJI: Record<string, string> = { A: "🤖", B: "📊", C: "🛡️", D: "🌈", E: "🏫", F: "📚" };
@@ -172,29 +180,16 @@ function CenterHub({ label, onSelect }: { label: string; onSelect: () => void })
   );
 }
 
-/** OrbitControls：ドラッグ=回転、Shift+ドラッグ=平行移動、ホイール=ズーム。
- *  Shift状態をReact stateで持ち mouseButtons を prop で切替（確実に反映）。 */
+/** OrbitControls：ドラッグ=回転、Shift+ドラッグ=平行移動（OrbitControlsのネイティブ修飾キー機能）、ホイール=ズーム。
+ *  ※mouseButtonsを上書きするとネイティブの修飾キー判定が反転してShiftが効かなくなるため、上書きしない。 */
 function Controls() {
-  const ref = useRef<any>(null);
-  const [shift, setShift] = useState(false);
-  useEffect(() => {
-    const down = (e: KeyboardEvent) => { if (e.key === "Shift") setShift(true); };
-    const up = (e: KeyboardEvent) => { if (e.key === "Shift") setShift(false); };
-    const blur = () => setShift(false);
-    window.addEventListener("keydown", down);
-    window.addEventListener("keyup", up);
-    window.addEventListener("blur", blur);
-    return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); window.removeEventListener("blur", blur); };
-  }, []);
   return (
     <OrbitControls
-      ref={ref}
       makeDefault
       enablePan
       screenSpacePanning
-      mouseButtons={{ LEFT: shift ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN }}
-      minDistance={18}
-      maxDistance={220}
+      minDistance={16}
+      maxDistance={180}
       maxPolarAngle={Math.PI * 0.9}
       target={[0, CENTER_Y, 0]}
       enableDamping
@@ -203,8 +198,8 @@ function Controls() {
   );
 }
 
-function Scene({ centerLabel, config, positions, axis3, edges, counts, onSelectCenter, onSelectTopic }: {
-  centerLabel: string; config: AxisConfig; positions: Record<number, AxisPoint>; axis3: Axis3; edges: Edge[]; counts: Map<string, number>;
+function Scene({ centerLabel, bg, config, positions, axis3, edges, counts, onSelectCenter, onSelectTopic }: {
+  centerLabel: string; bg: string; config: AxisConfig; positions: Record<number, AxisPoint>; axis3: Axis3; edges: Edge[]; counts: Map<string, number>;
   onSelectCenter: () => void; onSelectTopic: (t: InteropPriorityTopic) => void;
 }) {
   const [axis3Low, axis3High] = useMemo(() => splitPoles(axis3.label), [axis3.label]);
@@ -251,7 +246,7 @@ function Scene({ centerLabel, config, positions, axis3, edges, counts, onSelectC
 
   return (
     <>
-      <color attach="background" args={["#05080f"]} />
+      <color attach="background" args={[bg]} />
       <ambientLight intensity={0.6} />
       <hemisphereLight args={["#bcd2ff", "#0a1426", 0.55]} />
       <directionalLight position={[24, 40, 24]} intensity={0.85} color="#ffffff" />
@@ -298,12 +293,13 @@ export default function ForumGalaxy3D({ centerLabel, onSelectCenter, onSelectTop
   }, []);
 
   const label = centerLabel?.trim() || "議員会館";
+  const bg = useMemo(() => bgForHour(new Date().getHours()), []);
 
   return (
     <div className="absolute inset-0">
       {/* 初期視点は斜め見下ろしの3/4ビュー（正面だと2Dに見えるため、奥行きと高さを見せる） */}
-      <Canvas camera={{ position: [62, 54, 78], fov: 46 }} dpr={[1, 2]} gl={{ antialias: true }}>
-        <Scene centerLabel={label} config={config} positions={positions} axis3={axis3} edges={edges} counts={counts} onSelectCenter={onSelectCenter} onSelectTopic={onSelectTopic} />
+      <Canvas camera={{ position: [46, 40, 58], fov: 46 }} dpr={[1, 2]} gl={{ antialias: true }}>
+        <Scene centerLabel={label} bg={bg} config={config} positions={positions} axis3={axis3} edges={edges} counts={counts} onSelectCenter={onSelectCenter} onSelectTopic={onSelectTopic} />
       </Canvas>
       <p className="pointer-events-none absolute bottom-4 left-4 z-40 text-[11px] leading-relaxed text-white/45">
         ドラッグで回転・<span className="text-white/70">Shift+ドラッグで移動</span>・ホイールで拡大／玉の大きさ＝活発さ・高さ＝週次AI巡回の分析軸
