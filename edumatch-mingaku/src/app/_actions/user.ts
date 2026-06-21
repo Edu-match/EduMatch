@@ -245,6 +245,8 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
           ...(input.name != null && { name: input.name }),
           ...(input.avatar_url !== undefined && { avatar_url: input.avatar_url || null }),
           ...(input.phone !== undefined && { phone: input.phone || null }),
+          // 住所はアカウント基礎情報として全ユーザーの Profile にも保存（議員会館チケット申込等で参照）。
+          ...(input.address !== undefined && { address: input.address?.trim() || null }),
           ...(input.bio !== undefined && { bio: input.bio || null }),
           ...(input.website !== undefined && { website: input.website || null }),
           ...(input.interests !== undefined && { interests: input.interests }),
