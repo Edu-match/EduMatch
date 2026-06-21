@@ -15,14 +15,13 @@ import {
   FileText,
   ShieldCheck,
   Award,
-  ListChecks,
   BookOpen,
   Bot,
   Activity,
   ArrowUpDown,
   MessageSquare,
   Video,
-  Megaphone,
+  Flag,
   QrCode,
 } from "lucide-react";
 
@@ -41,24 +40,18 @@ const generalItems = [
   { href: "/help", labelKey: "help", icon: HelpCircle },
 ];
 
-/** 投稿・管理者向けメニュー（下段: ADMIN のみ） */
+/** 投稿・管理者向けメニュー（下段: ADMIN のみ）。アカウントプルダウンの管理メニューと項目を揃える。 */
 const bottomItems = [
-  { href: "/articles/create", labelKey: "createArticle", icon: PenSquare, roles: ["ADMIN"] },
-  { href: "/services/create", labelKey: "createService", icon: PenSquare, roles: ["ADMIN"] },
   { href: "/admin/approvals", labelKey: "approvals", icon: FileText, roles: ["ADMIN"] },
-  { href: "/admin/site-updates", labelKey: "writeSiteUpdate", icon: PenSquare, roles: ["ADMIN"] },
   { href: "/admin/events", labelKey: "manageEvents", icon: Calendar, roles: ["ADMIN"] },
   { href: "/admin/forum", labelKey: "manageForum", icon: MessageSquare, roles: ["ADMIN"] },
-  { href: "/admin/kaikan?tab=checkin", labelKey: "kaikanCheckin", icon: QrCode, roles: ["ADMIN"] },
-  { href: "/admin/videos", labelKey: "manageVideos", icon: Video, roles: ["ADMIN"] },
-  { href: "/admin/sponsors", labelKey: "manageSponsors", icon: Megaphone, roles: ["ADMIN"] },
-  { href: "/admin/pages", labelKey: "managePages", icon: FileText, roles: ["ADMIN"] },
-  // 「教育AIサミット管理(/admin/interop)」は井戸端会議 管理(/admin/forum)へ統合したため削除。
-  { href: "/admin/ai-kentei/questions", labelKey: "manageAiKentei", icon: ListChecks, roles: ["ADMIN"] },
+  { href: "/admin/site-updates", labelKey: "writeSiteUpdate", icon: PenSquare, roles: ["ADMIN"] },
   { href: "/dashboard/admin/knowledge", labelKey: "knowledge", icon: BookOpen, roles: ["ADMIN"] },
   { href: "/admin/ai-chat", labelKey: "aiChat", icon: Bot, roles: ["ADMIN"] },
   { href: "/admin/services/display-order", labelKey: "serviceOrder", icon: ArrowUpDown, roles: ["ADMIN"] },
   { href: "/admin/activity-log", labelKey: "activityLog", icon: Activity, roles: ["ADMIN"] },
+  { href: "/admin/user-reports", labelKey: "userReports", icon: Flag, roles: ["ADMIN"] },
+  { href: "/admin/kaikan?tab=checkin", labelKey: "kaikanCheckin", icon: QrCode, roles: ["ADMIN"] },
 ];
 
 type MenuItem = (typeof generalItems)[number] | (typeof bottomItems)[number];

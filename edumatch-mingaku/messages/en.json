@@ -112,6 +112,7 @@
     "aiChat": "Manage AI Chat",
     "serviceOrder": "Manage Service Order",
     "activityLog": "Activity Log",
+    "userReports": "User Reports",
     "kaikanCheckin": "Kaikan Check-in"
   },
   "events": {
