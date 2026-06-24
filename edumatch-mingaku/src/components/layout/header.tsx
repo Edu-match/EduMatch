@@ -12,7 +12,6 @@ import {
   CheckCircle, Calendar, Newspaper, BookOpen, Bot, Activity, Flag, ArrowUpDown,
   MessageSquare, CircleHelp, Pencil, QrCode
 } from "lucide-react";
-import { KaikanCheckinModal } from "@/components/kaikan/kaikan-checkin-modal";
 import { useRequestList } from "@/components/request-list/request-list-context";
 import { useTextEdit } from "@/components/text-edit/text-edit-context";
 import { Button } from "@/components/ui/button";
@@ -52,7 +51,6 @@ export function Header() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
-  const [kaikanCheckinOpen, setKaikanCheckinOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [notifications, setNotifications] = useState<{
     list: {
@@ -399,7 +397,7 @@ export function Header() {
                     </DropdownMenuLabel>
                     <DropdownMenuItem
                       className="cursor-pointer"
-                      onSelect={() => setKaikanCheckinOpen(true)}
+                      onSelect={() => router.push("/admin/kaikan?tab=checkin")}
                     >
                       <QrCode className="mr-2 h-4 w-4 text-primary" />
                       電子チケット読み取り
@@ -683,7 +681,6 @@ export function Header() {
         </Sheet>
         </div>
       </div>
-      <KaikanCheckinModal open={kaikanCheckinOpen} onClose={() => setKaikanCheckinOpen(false)} />
     </header>
   );
 }

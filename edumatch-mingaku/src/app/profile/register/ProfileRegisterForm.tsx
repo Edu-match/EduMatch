@@ -65,8 +65,8 @@ export type InitialProfile = {
 };
 
 const steps = [
-  { id: 1, title: "アカウント", icon: User },
-  { id: 2, title: "所属情報", icon: Building2 },
+  { id: 1, title: "アカウント・所属", icon: User },
+  { id: 2, title: "AIアバター", icon: Sparkles },
   { id: 3, title: "連絡先（資料請求の通知先）", icon: MapPin },
   { id: 4, title: "関心・スキル", icon: GraduationCap },
   { id: 5, title: "人材マッチング", icon: Handshake },
@@ -230,7 +230,82 @@ export function ProfileRegisterForm({
     );
   };
 
-  // AIアバター生成ブロック（基本情報・関心の入力後＝ステップ4で表示）。
+  // アイコンのアップロード／テンプレート選択ブロック（アバターステップで表示）。
+  const renderAvatarUploader = () => (
+    <div className="space-y-2">
+      <label className="text-sm font-medium">画像をアップロード／テンプレートから選ぶ <span className="font-normal text-muted-foreground">（任意）</span></label>
+      <div className="flex items-center gap-4">
+        <div className="flex-shrink-0 w-20 h-20 rounded-full bg-muted border-2 flex items-center justify-center overflow-hidden">
+          {avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={avatarUrl}
+              alt="プロフィール"
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <User className="h-10 w-10 text-muted-foreground" />
+          )}
+        </div>
+        <div className="flex-1 space-y-2">
+          <input
+            ref={avatarFileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/gif,image/webp"
+            className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              setAvatarUploading(true);
+              const formData = new FormData();
+              formData.append("file", file);
+              const result = await uploadImage(formData);
+              setAvatarUploading(false);
+              if (result.success && result.url) setAvatarUrl(result.url);
+              e.target.value = "";
+            }}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={avatarUploading}
+            onClick={() => avatarFileInputRef.current?.click()}
+          >
+            {avatarUploading ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : (
+              <ImageIcon className="h-4 w-4 mr-2" />
+            )}
+            画像をアップロード
+          </Button>
+          <p className="text-[11px] text-muted-foreground">
+            またはテンプレートから選ぶ
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {AVATAR_TEMPLATES.map((url) => (
+              <button
+                key={url}
+                type="button"
+                onClick={() => setAvatarUrl(url)}
+                className={`h-11 w-11 rounded-full border-2 overflow-hidden shrink-0 transition-all ${
+                  avatarUrl === url
+                    ? "border-primary ring-2 ring-primary/30"
+                    : "border-muted hover:border-primary/50"
+                }`}
+                aria-label="テンプレート画像を選択"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={url} alt="" className="h-full w-full object-cover" />
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // AIアバター生成ブロック（アバターステップで表示）。
   const renderAvatarGenerator = () => (
     <div className="space-y-4 rounded-xl border bg-gradient-to-br from-primary/[0.06] to-violet-500/[0.06] p-4">
       <div className="flex items-start gap-2.5">
@@ -465,76 +540,6 @@ export function ProfileRegisterForm({
         return (
           <div className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">プロフィール画像（アイコン）<span className="font-normal text-muted-foreground">（任意・このあとAIアバターも作成できます）</span></label>
-              <div className="flex items-center gap-4">
-                <div className="flex-shrink-0 w-20 h-20 rounded-full bg-muted border-2 flex items-center justify-center overflow-hidden">
-                  {avatarUrl ? (
-                    <img
-                      src={avatarUrl}
-                      alt="プロフィール"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <User className="h-10 w-10 text-muted-foreground" />
-                  )}
-                </div>
-                <div className="flex-1 space-y-2">
-                  <input
-                    ref={avatarFileInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/gif,image/webp"
-                    className="hidden"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      setAvatarUploading(true);
-                      const formData = new FormData();
-                      formData.append("file", file);
-                      const result = await uploadImage(formData);
-                      setAvatarUploading(false);
-                      if (result.success && result.url) setAvatarUrl(result.url);
-                      e.target.value = "";
-                    }}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={avatarUploading}
-                    onClick={() => avatarFileInputRef.current?.click()}
-                  >
-                    {avatarUploading ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : (
-                      <ImageIcon className="h-4 w-4 mr-2" />
-                    )}
-                    画像をアップロード
-                  </Button>
-                  <p className="text-[11px] text-muted-foreground">
-                    またはテンプレートから選ぶ
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {AVATAR_TEMPLATES.map((url) => (
-                      <button
-                        key={url}
-                        type="button"
-                        onClick={() => setAvatarUrl(url)}
-                        className={`h-11 w-11 rounded-full border-2 overflow-hidden shrink-0 transition-all ${
-                          avatarUrl === url
-                            ? "border-primary ring-2 ring-primary/30"
-                            : "border-muted hover:border-primary/50"
-                        }`}
-                        aria-label="テンプレート画像を選択"
-                      >
-                        <img src={url} alt="" className="h-full w-full object-cover" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
               <label className="text-sm font-medium">
                 {isProvider ? "代表者名" : "名前"} <span className="text-red-500">*</span>
               </label>
@@ -585,12 +590,8 @@ export function ProfileRegisterForm({
                 />
               </div>
             )}
-          </div>
-        );
 
-      case 2:
-        return (
-          <div className="space-y-4">
+            {/* 所属情報（旧ステップ2をアカウントページに統合） */}
             <div className="space-y-2">
               <label className="text-sm font-medium">
                 {isProvider ? "事業者・団体名" : "所属"} <span className="text-red-500">*</span>
@@ -678,6 +679,22 @@ export function ProfileRegisterForm({
                 </div>
               </>
             )}
+          </div>
+        );
+
+      case 2:
+        return (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              アイコンを設定します。画像をアップロードするか、アンケートからAIアバター（あなたらしさ・好きなものを盛り込んだイラスト）を作成できます。どちらも任意です。
+            </p>
+            {renderAvatarUploader()}
+            <div className="flex items-center gap-2">
+              <span className="h-px flex-1 bg-border" />
+              <span className="text-xs font-semibold text-muted-foreground">または AIで生成</span>
+              <span className="h-px flex-1 bg-border" />
+            </div>
+            {renderAvatarGenerator()}
           </div>
         );
 
@@ -787,15 +804,6 @@ export function ProfileRegisterForm({
               </div>
             )}
 
-            {/* AIアバター生成（基本情報・関心の入力後にここで作成） */}
-            <div className="pt-2">
-              <div className="mb-2 flex items-center gap-2">
-                <span className="h-px flex-1 bg-border" />
-                <span className="text-xs font-semibold text-muted-foreground">AIアバター（任意）</span>
-                <span className="h-px flex-1 bg-border" />
-              </div>
-              {renderAvatarGenerator()}
-            </div>
           </div>
         );
 
@@ -1097,13 +1105,11 @@ export function ProfileRegisterForm({
         setValidationError("表示名を入力してください。");
         return;
       }
-      // プロフィール画像はこのステップでは必須にしない（後のステップでAIアバター生成も可能なため）。
-      // 最終保存時（handleSave）にアップロード/テンプレート/AI生成いずれかで設定済みであることを確認する。
       if (isProvider && !phone.trim()) {
         setValidationError("事業者・団体のTELを入力してください。");
         return;
       }
-    } else if (currentStep === 2) {
+      // 所属（旧ステップ2をアカウントページに統合）
       if (!organization.trim()) {
         setValidationError("所属を入力してください。");
         return;
@@ -1116,6 +1122,7 @@ export function ProfileRegisterForm({
         setValidationError("事業者・団体の所在地を入力してください。");
         return;
       }
+      // アイコンは次の「AIアバター」ステップで設定（アップロード/テンプレート/AI生成）。必須は最終保存時に確認。
     } else if (currentStep === 4 && isProvider && !website.trim()) {
       setValidationError("公式サイトURLを入力してください。");
       return;
@@ -1170,7 +1177,7 @@ export function ProfileRegisterForm({
       return;
     }
     if (isFirstTime && !avatarUrl.trim()) {
-      setValidationError("プロフィール画像を設定してください（最初のステップでアップロード／テンプレート、または「関心・スキル」のAIアバター生成で作成できます）。");
+      setValidationError("プロフィール画像を設定してください（「AIアバター」ステップで、アップロード／テンプレート、またはAIアバター生成で作成できます）。");
       return;
     }
     setSaving(true);

@@ -149,36 +149,54 @@ export function KaikanCheckinPanel({ initialToken }: { initialToken?: string }) 
       {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
       {notice && <p className="rounded-md bg-amber-50 px-3 py-2 text-sm font-bold text-amber-800">{notice}</p>}
 
-      {/* 照会結果 */}
+      {/* 照会結果（読み取り後の参加者情報をポップアップ表示） */}
       {result?.found && result.user && result.sessions && (
-        <div className="rounded-2xl border bg-card p-4">
-          <div className="flex items-center gap-2 text-base font-bold"><QrCode className="h-4 w-4 text-primary" /> 申込者情報</div>
-          <dl className="mt-3 grid grid-cols-1 gap-1.5 text-sm sm:grid-cols-2">
-            <div className="flex items-center gap-2"><User className="h-3.5 w-3.5 text-muted-foreground" />{result.user.name}</div>
-            <div className="flex items-center gap-2"><Mail className="h-3.5 w-3.5 text-muted-foreground" />{result.user.email || "—"}</div>
-            <div className="flex items-center gap-2"><Phone className="h-3.5 w-3.5 text-muted-foreground" />{result.user.phone || "—"}</div>
-            <div className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-muted-foreground" />{[result.user.postal, result.user.address].filter(Boolean).join(" ") || "—"}</div>
-          </dl>
+        <div
+          className="fixed inset-0 z-[110] flex items-start justify-center overflow-y-auto bg-black/50 p-4 sm:items-center"
+          role="dialog"
+          aria-modal="true"
+          aria-label="申込者情報"
+          onClick={() => { setResult(null); setNotice(null); }}
+        >
+          <div className="relative w-full max-w-md rounded-2xl border bg-card p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              onClick={() => { setResult(null); setNotice(null); }}
+              aria-label="閉じる"
+              className="absolute right-3 top-3 rounded-full p-1.5 text-muted-foreground transition hover:bg-muted"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <div className="flex items-center gap-2 text-base font-bold"><QrCode className="h-4 w-4 text-primary" /> 申込者情報</div>
+            <dl className="mt-3 grid grid-cols-1 gap-1.5 text-sm sm:grid-cols-2">
+              <div className="flex items-center gap-2"><User className="h-3.5 w-3.5 text-muted-foreground" />{result.user.name}</div>
+              <div className="flex items-center gap-2"><Mail className="h-3.5 w-3.5 text-muted-foreground" />{result.user.email || "—"}</div>
+              <div className="flex items-center gap-2"><Phone className="h-3.5 w-3.5 text-muted-foreground" />{result.user.phone || "—"}</div>
+              <div className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-muted-foreground" />{[result.user.postal, result.user.address].filter(Boolean).join(" ") || "—"}</div>
+            </dl>
 
-          <div className="mt-4 text-sm font-bold">参加プログラム（{result.sessions.length}件）</div>
-          <ul className="mt-2 space-y-2">
-            {result.sessions.map((s) => {
-              const done = s.status === "checked_in";
-              return (
-                <li key={s.id} className="flex items-center justify-between gap-3 rounded-lg border bg-background p-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-bold">{s.title}</p>
-                    <p className="text-[11px] text-muted-foreground">{[fmt(s.startsAt), s.location].filter(Boolean).join(" ・ ")}</p>
-                  </div>
-                  {done ? (
-                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-bold text-emerald-700"><CheckCircle2 className="h-3.5 w-3.5" /> 受付済{s.checkedInAt ? `（${fmt(s.checkedInAt)}）` : ""}</span>
-                  ) : (
-                    <button type="button" onClick={() => checkIn(s.id)} className="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary px-4 py-1.5 text-xs font-bold text-primary-foreground transition hover:opacity-90"><Clock className="h-3.5 w-3.5" /> 受付する</button>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
+            {notice && <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm font-bold text-amber-800">{notice}</p>}
+
+            <div className="mt-4 text-sm font-bold">参加プログラム（{result.sessions.length}件）</div>
+            <ul className="mt-2 space-y-2">
+              {result.sessions.map((s) => {
+                const done = s.status === "checked_in";
+                return (
+                  <li key={s.id} className="flex items-center justify-between gap-3 rounded-lg border bg-background p-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold">{s.title}</p>
+                      <p className="text-[11px] text-muted-foreground">{[fmt(s.startsAt), s.location].filter(Boolean).join(" ・ ")}</p>
+                    </div>
+                    {done ? (
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-bold text-emerald-700"><CheckCircle2 className="h-3.5 w-3.5" /> 受付済{s.checkedInAt ? `（${fmt(s.checkedInAt)}）` : ""}</span>
+                    ) : (
+                      <button type="button" onClick={() => checkIn(s.id)} className="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary px-4 py-1.5 text-xs font-bold text-primary-foreground transition hover:opacity-90"><Clock className="h-3.5 w-3.5" /> 受付する</button>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         </div>
       )}
     </div>

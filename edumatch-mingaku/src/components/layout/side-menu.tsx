@@ -25,7 +25,6 @@ import {
   Megaphone,
   QrCode,
 } from "lucide-react";
-import { KaikanCheckinModal } from "@/components/kaikan/kaikan-checkin-modal";
 
 /** 一般ユーザー向けメニュー（全員閲覧用）。labelKey は sideMenu namespace のキー */
 const generalItems = [
@@ -95,7 +94,6 @@ function MenuItemLink({
 export function SideMenu() {
   const t = useTranslations("sideMenu");
   const [role, setRole] = useState<string | null>(null);
-  const [kaikanCheckinOpen, setKaikanCheckinOpen] = useState(false);
 
   useEffect(() => {
     fetch("/api/auth/me", { credentials: "include" })
@@ -139,14 +137,13 @@ export function SideMenu() {
           </div>
           <nav>
             {role === "ADMIN" && (
-              <button
-                type="button"
-                onClick={() => setKaikanCheckinOpen(true)}
+              <Link
+                href="/admin/kaikan?tab=checkin"
                 className="flex w-full items-center gap-2 border-b border-amber-200 px-3 py-2.5 text-left text-sm transition-colors hover:bg-amber-100"
               >
                 <QrCode className="h-4 w-4 flex-shrink-0 text-amber-900" />
                 <span className="hover:text-[#1d4ed8] transition-colors">電子チケット読み取り</span>
-              </button>
+              </Link>
             )}
             {visibleBottomItems.map((item, index) => (
               <MenuItemLink
@@ -158,7 +155,6 @@ export function SideMenu() {
           </nav>
         </div>
       )}
-      <KaikanCheckinModal open={kaikanCheckinOpen} onClose={() => setKaikanCheckinOpen(false)} />
     </aside>
   );
 }
