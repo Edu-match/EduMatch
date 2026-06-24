@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 const AI_AUTHOR_NAME = "AIアシスタント";
 const AI_AUTHOR_ROLE = "AI";
 const PERSONA_AUTHOR_ROLE = "AIペルソナ";
-const MODEL = "gpt-5.2-mini";
+const MODEL = "gpt-5.4-mini";
 
 const SYSTEM_PROMPT = `あなたは日本の教育関係者向け動画プラットフォームのAIアシスタントです。
 視聴者のコメントに対して、動画の内容を踏まえながら丁寧に返信してください。

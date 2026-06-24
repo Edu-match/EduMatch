@@ -11,7 +11,7 @@ import OpenAI from "openai";
  * を合成し、続けてアバター画像（PNG）を生成する。
  */
 
-export const PERSONA_TEXT_MODEL = process.env.PERSONA_TEXT_MODEL?.trim() || "gpt-5.2-mini";
+export const PERSONA_TEXT_MODEL = process.env.PERSONA_TEXT_MODEL?.trim() || "gpt-5.4-mini";
 export const OPENAI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL?.trim() || "gpt-image-1";
 
 export type PersonaInput = {

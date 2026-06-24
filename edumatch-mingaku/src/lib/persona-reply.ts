@@ -6,7 +6,7 @@ import OpenAI from "openai";
  * 教育コミュニティにふさわしい建設的な返信を作る。
  */
 
-export const PERSONA_REPLY_MODEL = process.env.PERSONA_REPLY_MODEL?.trim() || "gpt-5.2-mini";
+export const PERSONA_REPLY_MODEL = process.env.PERSONA_REPLY_MODEL?.trim() || "gpt-5.4-mini";
 
 export type PersonaReplyInput = {
   personaPrompt: string;

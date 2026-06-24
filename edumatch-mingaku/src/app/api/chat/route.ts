@@ -511,7 +511,7 @@ export async function POST(req: NextRequest) {
           : [];
 
         const responseStream = await openai.responses.create({
-          model: "gpt-5.2-mini",
+          model: "gpt-5.4-mini",
           stream: true as const,
           instructions: systemPrompt,
           input: trimmedMessages,
