@@ -41,14 +41,14 @@ export type SynthesizedPersona = {
 };
 
 const SYSTEM = `あなたは教育コミュニティ「エデュマッチ／井戸端会議」のためにユーザーの分身AIペルソナを設計する専門家です。
-ユーザーの自己紹介・価値観・関心・性格から、本人らしく議論へ返信できる "人格" と、本人の雰囲気に合うリアルな顔写真アバターの英語プロンプトを作ります。
-与えられた情報は漏れなく人格設計に反映してください（MBTI・性格・雰囲気・関心・所属・役割・年代・見た目など）。
+ユーザーの自己紹介・価値観・関心・性格から、本人らしく議論へ返信できる "人格" と、本人を象徴する「イラスト風アバター」の英語プロンプトを作ります。
+与えられた情報は漏れなく反映してください（MBTI・性格・雰囲気・**関心や好きなもの（趣味・スポーツ・自由記述キーワード）**・所属・役割・年代・見た目など）。
 出力は説明や前置きを書かず、次のJSONのみ:
 {
   "persona_prompt": "本人として教育トピックに返信するためのシステムプロンプト（300〜500字・日本語）。必ず次を具体的に含める: ①一人称と口調（例：私／僕、です・ます or 親しみやすい口語）、②大切にする観点・議論スタンス、③得意な切り口や引き合いに出しがちな経験、④避けたい話題や言い回し。本人になりきって書く",
   "expertise": ["専門タグ", "3〜6個", "日本語短語"],
   "values_text": "価値観の要約（60〜120字・日本語）",
-  "image_prompt": "English prompt for a PHOTOREALISTIC head-and-shoulders portrait photograph of this person. Describe perceived age range, gender expression, hairstyle, clothing/atmosphere, facial expression and mood matching their personality and role. Natural studio lighting, shallow depth of field, soft neutral background. Photographic, realistic skin texture. ABSOLUTELY no text, no logos, no watermark, single person, centered."
+  "image_prompt": "English prompt for a FRIENDLY ILLUSTRATED CHARACTER AVATAR (NOT a photo, NOT an ID/passport photo). It is a stylized digital illustration of a person whose look matches their age, personality and role. CRITICAL: visibly weave in the person's hobbies / interests / favorite things (e.g. baseball, rugby, music, coffee, nature) as concrete visual elements — held objects, clothing/accessories, or themed background motifs and icons around the character. Cheerful flat/semi-flat illustration with clean lines and soft colors. Single character, centered, upper body. NO text, NO letters, NO logos, NO watermark."
 }`;
 
 export async function synthesizePersona(input: PersonaInput): Promise<SynthesizedPersona | null> {
@@ -95,7 +95,7 @@ export async function synthesizePersona(input: PersonaInput): Promise<Synthesize
       valuesText: (j.values_text ?? "").slice(0, 300),
       imagePrompt:
         (j.image_prompt ?? "").slice(0, 800) ||
-        "photorealistic head-and-shoulders portrait photograph of a friendly education professional, natural studio lighting, shallow depth of field, soft neutral background, realistic skin texture, single person, centered, no text, no logo, no watermark",
+        "friendly illustrated character avatar of a cheerful education enthusiast, cheerful flat illustration with clean lines and soft colors, hobby and interest motifs around the character, single character, centered, upper body, no text, no logo, no watermark",
     };
   } catch (e) {
     console.error("[persona-ai] synthesizePersona", e);
@@ -103,10 +103,11 @@ export async function synthesizePersona(input: PersonaInput): Promise<Synthesize
   }
 }
 
-const PHOTO_STYLE_SUFFIX =
-  `\nStyle: photorealistic portrait photograph, realistic skin texture and natural studio lighting, ` +
-  `friendly and professional, head-and-shoulders, centered, soft neutral background, ` +
-  `single person only, absolutely no text or letters or watermark or logo.`;
+const ILLUSTRATION_STYLE_SUFFIX =
+  `\nStyle: friendly stylized digital illustration (flat / semi-flat), clean lines and soft cheerful colors, ` +
+  `NOT a photo and NOT an ID photo. Upper body, centered, single character. ` +
+  `Visibly include the person's hobbies and interests as themed objects or background motifs. ` +
+  `Absolutely no text or letters or watermark or logo.`;
 
 function bufferToImageFile(buf: Buffer, name = "reference.png"): File {
   // OpenAI SDK は File / Blob を受け付ける。Node18+ のグローバル File を使用。
@@ -128,8 +129,8 @@ function extractImageBuffer(item: { b64_json?: string | null; url?: string | nul
 }
 
 /**
- * アバター画像（PNG Buffer）を生成する。フォトリアルな顔写真風アバターを返す。
- * referenceImage を渡すと、その写真をもとに「本人に似せた」リアルアバターを生成する
+ * アバター画像（PNG Buffer）を生成する。趣味・関心を盛り込んだイラスト風アバターを返す。
+ * referenceImage を渡すと、その写真の雰囲気を活かしつつ「イラスト化」したアバターを生成する
  * （gpt-image-1 の images.edit を使用）。gpt-image-1 / dall-e-3 の両レスポンス形式に対応。
  */
 export async function generateAvatarImage(
@@ -140,18 +141,18 @@ export async function generateAvatarImage(
   if (!apiKey) return null;
 
   const openai = new OpenAI({ apiKey });
-  const prompt = `${imagePrompt}${PHOTO_STYLE_SUFFIX}`;
+  const prompt = `${imagePrompt}${ILLUSTRATION_STYLE_SUFFIX}`;
 
   try {
-    // 本人写真がある場合は images.edit で似せて生成（gpt-image-1 のみ対応）。失敗時は通常生成にフォールバック。
+    // 本人写真がある場合は images.edit で雰囲気を活かしてイラスト化（gpt-image-1 のみ対応）。失敗時は通常生成にフォールバック。
     if (referenceImage && referenceImage.length > 0) {
       try {
         const edited = await openai.images.edit({
           model: "gpt-image-1",
           image: bufferToImageFile(referenceImage),
           prompt:
-            `Create a polished, photorealistic head-and-shoulders portrait avatar of the SAME person in this photo, ` +
-            `keeping their facial identity and features recognizable. ${prompt}`,
+            `Turn the person in this photo into a friendly STYLIZED ILLUSTRATION (not a photo), ` +
+            `keeping their general look recognizable. ${prompt}`,
           size: "1024x1024",
         });
         const buf = await extractImageBuffer(edited.data?.[0]);

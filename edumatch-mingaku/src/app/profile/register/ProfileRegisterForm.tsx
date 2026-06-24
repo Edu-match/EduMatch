@@ -158,8 +158,6 @@ export function ProfileRegisterForm({
   const [age, setAge] = useState(initialProfile?.age ?? "");
   const [name, setName] = useState(initialProfile?.name ?? "");
   const [avatarUrl, setAvatarUrl] = useState(initialProfile?.avatar_url ?? "");
-  // アイコンの決め方：アップロード/テンプレート or AI生成（混同防止のためタブで分離）
-  const [avatarMode, setAvatarMode] = useState<"upload" | "ai">("upload");
   const [email] = useState(initialProfile?.email ?? "");
   const [phone, setPhone] = useState(initialProfile?.phone ?? "");
   const [organization, setOrganization] = useState(initialProfile?.organization ?? "");
@@ -232,19 +230,242 @@ export function ProfileRegisterForm({
     );
   };
 
+  // AIアバター生成ブロック（基本情報・関心の入力後＝ステップ4で表示）。
+  const renderAvatarGenerator = () => (
+    <div className="space-y-4 rounded-xl border bg-gradient-to-br from-primary/[0.06] to-violet-500/[0.06] p-4">
+      <div className="flex items-start gap-2.5">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
+          <Sparkles className="h-4 w-4" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold">AIアバターを生成 <span className="font-normal text-muted-foreground">（任意）</span></p>
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            かんたんなアンケートに答えるだけ。あなたらしさ・好きなものを盛り込んだイラストをAIが作ります。
+          </p>
+        </div>
+      </div>
+
+      {/* 性格・タイプ（複数選択） */}
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-semibold">あなたのタイプ <span className="font-normal text-muted-foreground">（複数OK）</span></p>
+          {personaTraits.length > 0 && <span className="text-[10px] text-primary">{personaTraits.length}件選択中</span>}
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {PERSONA_TRAIT_OPTIONS.map((v) => {
+            const on = personaTraits.includes(v);
+            return (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setPersonaTraits((prev) => on ? prev.filter((x) => x !== v) : [...prev, v])}
+                className={`rounded-full border px-3 py-1.5 text-xs transition-all active:scale-95 ${on ? "border-primary bg-primary text-primary-foreground font-medium shadow-sm" : "border-input bg-background text-foreground/70 hover:border-primary/40 hover:bg-primary/5"}`}
+              >
+                {v}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 雰囲気（単一選択） */}
+      <div className="space-y-1.5">
+        <p className="text-xs font-semibold">アイコンの雰囲気 <span className="font-normal text-muted-foreground">（1つ）</span></p>
+        <div className="flex flex-wrap gap-1.5">
+          {PERSONA_TONE_OPTIONS.map((t) => {
+            const on = personaTone === t;
+            return (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setPersonaTone(on ? "" : t)}
+                className={`rounded-full border px-3 py-1.5 text-xs transition-all active:scale-95 ${on ? "border-primary bg-primary text-primary-foreground font-medium shadow-sm" : "border-input bg-background text-foreground/70 hover:border-primary/40 hover:bg-primary/5"}`}
+              >
+                {t}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 好きな色（単一選択・色ドット付き） */}
+      <div className="space-y-1.5">
+        <p className="text-xs font-semibold">好きな色 <span className="font-normal text-muted-foreground">（1つ・任意）</span></p>
+        <div className="flex flex-wrap gap-1.5">
+          {PERSONA_COLOR_OPTIONS.map((c) => {
+            const on = personaColor === c.label;
+            return (
+              <button
+                key={c.label}
+                type="button"
+                onClick={() => setPersonaColor(on ? "" : c.label)}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition-all active:scale-95 ${on ? "border-primary bg-primary/10 font-medium" : "border-input bg-background text-foreground/70 hover:border-primary/40 hover:bg-primary/5"}`}
+              >
+                <span className="h-2.5 w-2.5 rounded-full" style={{ background: c.dot }} />
+                {c.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* MBTIから生成（任意・単一選択） */}
+      <div className="space-y-1.5">
+        <p className="text-xs font-semibold">MBTIから <span className="font-normal text-muted-foreground">（任意・1つ）</span></p>
+        <a href={MBTI_GUIDE_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[11px] text-primary underline underline-offset-2 hover:opacity-80">
+          MBTIとは？ タイプ診断・解説を見る ↗
+        </a>
+        <div className="grid grid-cols-4 gap-1.5">
+          {PERSONA_MBTI_OPTIONS.map((m) => {
+            const on = personaMbti === m.code;
+            return (
+              <button
+                key={m.code}
+                type="button"
+                onClick={() => setPersonaMbti(on ? "" : m.code)}
+                className={`flex flex-col items-center rounded-lg border px-1 py-1.5 transition-all active:scale-95 ${on ? "border-primary bg-primary text-primary-foreground shadow-sm" : "border-input bg-background text-foreground/70 hover:border-primary/40 hover:bg-primary/5"}`}
+              >
+                <span className="text-xs font-bold tracking-wide">{m.code}</span>
+                <span className={`text-[9px] ${on ? "text-primary-foreground/80" : "text-muted-foreground"}`}>{m.name}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 自由記述（任意・カンマ区切り） */}
+      <div className="space-y-1.5">
+        <p className="text-xs font-semibold">好きなもの・キーワード <span className="font-normal text-muted-foreground">（任意・カンマ区切り）</span></p>
+        <input
+          type="text"
+          value={mindset}
+          onChange={(e) => setMindset(e.target.value)}
+          placeholder="例：野球, ラグビー, 読書, 音楽, 自然"
+          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+        />
+        <p className="text-[10px] text-muted-foreground">入力した好きなもの（例：野球・ラグビー）はアバターのイラストにモチーフとして反映されます。</p>
+      </div>
+
+      {/* 任意：本人写真をもとにイラスト化 */}
+      <div className="space-y-1.5">
+        <label className="text-xs font-medium text-muted-foreground">
+          本人写真（任意）— 指定すると写真の雰囲気を活かしたイラストを生成します
+        </label>
+        <div className="flex items-center gap-2">
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (!f) return;
+              if (f.size > 8 * 1024 * 1024) {
+                setPersonaError("画像は8MB以内にしてください");
+                return;
+              }
+              const reader = new FileReader();
+              reader.onload = () => {
+                setPersonaPhoto(typeof reader.result === "string" ? reader.result : null);
+                setPersonaPhotoName(f.name);
+              };
+              reader.readAsDataURL(f);
+            }}
+            className="text-xs file:mr-2 file:rounded-md file:border file:border-input file:bg-background file:px-2 file:py-1 file:text-xs"
+          />
+          {personaPhoto && (
+            <button
+              type="button"
+              className="text-[11px] text-muted-foreground underline"
+              onClick={() => { setPersonaPhoto(null); setPersonaPhotoName(""); }}
+            >
+              取り消す
+            </button>
+          )}
+        </div>
+        {personaPhotoName && (
+          <p className="truncate text-[11px] text-violet-600">添付: {personaPhotoName}</p>
+        )}
+      </div>
+
+      <Button
+        type="button"
+        size="sm"
+        className="w-full"
+        disabled={personaGenerating || (personaTraits.length === 0 && !personaTone && !personaColor && !personaMbti && !mindset.trim() && !personaPhoto)}
+        onClick={async () => {
+          setPersonaGenerating(true);
+          setPersonaError(null);
+          // アンケートの選択＋自由記述をまとめて mindset 文字列に（カンマ区切りキーワードも分解）。
+          const freeKeywords = mindset.split(/[,、]/).map((s) => s.trim()).filter(Boolean);
+          const mbtiName = PERSONA_MBTI_OPTIONS.find((m) => m.code === personaMbti)?.name;
+          const mindsetText = [
+            personaMbti ? `MBTI：${personaMbti}${mbtiName ? `（${mbtiName}）` : ""}（この性格タイプらしさを反映）` : "",
+            personaTraits.length ? `性格・タイプ：${personaTraits.join("、")}` : "",
+            personaTone ? `雰囲気：${personaTone}` : "",
+            personaColor ? `好きな色：${personaColor}` : "",
+            freeKeywords.length ? `好きなもの・趣味：${freeKeywords.join("、")}（アバターのイラストに反映）` : "",
+          ].filter(Boolean).join("。 ");
+          try {
+            const result = await generatePersonaAndAvatar({
+              name: (legalName || name || "").trim(),
+              bio: bio || undefined,
+              mindset: mindsetText || undefined,
+              interests: selectedInterests,
+              organization: organization || undefined,
+              role: roleOther || role || undefined,
+              appearance: personaTone || personaColor
+                ? [personaTone, personaColor && `好きな色：${personaColor}`].filter(Boolean).join("、")
+                : undefined,
+              photoBase64: personaPhoto || undefined,
+            });
+            if (result.success && result.avatarUrl) {
+              setAvatarUrl(result.avatarUrl);
+              setPersonaInfo({
+                expertise: result.persona?.expertise ?? [],
+                valuesText: result.persona?.valuesText ?? "",
+              });
+            } else {
+              setPersonaError(result.error ?? "生成に失敗しました");
+            }
+          } catch {
+            setPersonaError("生成に失敗しました");
+          } finally {
+            setPersonaGenerating(false);
+          }
+        }}
+      >
+        {personaGenerating ? (
+          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+        ) : (
+          <Sparkles className="h-4 w-4 mr-2" />
+        )}
+        {personaGenerating ? "生成中…（30秒ほど）" : "AIアバターを生成"}
+      </Button>
+      {personaError && <p className="text-[11px] text-red-500">{personaError}</p>}
+      {personaInfo && (
+        <div className="text-[11px] text-muted-foreground space-y-1">
+          <p>✅ アバターを生成してアイコンに設定しました。</p>
+          {personaInfo.expertise.length > 0 && (
+            <p>得意分野: {personaInfo.expertise.join("、")}</p>
+          )}
+        </div>
+      )}
+      {avatarUrl && (
+        <div className="flex items-center gap-3 rounded-lg border bg-background p-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={avatarUrl} alt="生成されたアバター" className="h-16 w-16 rounded-full object-cover" />
+          <p className="text-[11px] text-muted-foreground">現在のアイコンプレビュー</p>
+        </div>
+      )}
+    </div>
+  );
+
   const renderStep = () => {
     switch (currentStep) {
       case 1:
         return (
           <div className="space-y-4">
-            {/* アイコンの決め方を「アップロード」と「AIで生成」に分離（混同防止） */}
-            <div className="inline-flex rounded-lg border bg-muted/40 p-0.5 text-xs font-medium">
-              <button type="button" onClick={() => setAvatarMode("upload")} className={`rounded-md px-3 py-1.5 transition ${avatarMode === "upload" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}>画像をアップロード／テンプレート</button>
-              <button type="button" onClick={() => setAvatarMode("ai")} className={`rounded-md px-3 py-1.5 transition ${avatarMode === "ai" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}>AIで生成</button>
-            </div>
-            {avatarMode === "upload" && (
             <div className="space-y-2">
-              <label className="text-sm font-medium">プロフィール画像（アイコン）</label>
+              <label className="text-sm font-medium">プロフィール画像（アイコン）<span className="font-normal text-muted-foreground">（任意・このあとAIアバターも作成できます）</span></label>
               <div className="flex items-center gap-4">
                 <div className="flex-shrink-0 w-20 h-20 rounded-full bg-muted border-2 flex items-center justify-center overflow-hidden">
                   {avatarUrl ? (
@@ -312,228 +533,6 @@ export function ProfileRegisterForm({
                 </div>
               </div>
             </div>
-            )}
-
-            {/* AIアバター生成：アンケートに答えるだけでアバター＆AIペルソナを作る */}
-            {avatarMode === "ai" && (
-            <div className="space-y-4 rounded-xl border bg-gradient-to-br from-primary/[0.06] to-violet-500/[0.06] p-4">
-              <div className="flex items-start gap-2.5">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
-                  <Sparkles className="h-4 w-4" />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold">AIアバターを生成 <span className="font-normal text-muted-foreground">（任意）</span></p>
-                  <p className="text-[11px] leading-relaxed text-muted-foreground">
-                    かんたんなアンケートに答えるだけ。あなたらしさからAIがアイコン画像を作ります。
-                  </p>
-                </div>
-              </div>
-
-              {/* 性格・タイプ（複数選択） */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold">あなたのタイプ <span className="font-normal text-muted-foreground">（複数OK）</span></p>
-                  {personaTraits.length > 0 && <span className="text-[10px] text-primary">{personaTraits.length}件選択中</span>}
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {PERSONA_TRAIT_OPTIONS.map((v) => {
-                    const on = personaTraits.includes(v);
-                    return (
-                      <button
-                        key={v}
-                        type="button"
-                        onClick={() => setPersonaTraits((prev) => on ? prev.filter((x) => x !== v) : [...prev, v])}
-                        className={`rounded-full border px-3 py-1.5 text-xs transition-all active:scale-95 ${on ? "border-primary bg-primary text-primary-foreground font-medium shadow-sm" : "border-input bg-background text-foreground/70 hover:border-primary/40 hover:bg-primary/5"}`}
-                      >
-                        {v}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 雰囲気（単一選択） */}
-              <div className="space-y-1.5">
-                <p className="text-xs font-semibold">アイコンの雰囲気 <span className="font-normal text-muted-foreground">（1つ）</span></p>
-                <div className="flex flex-wrap gap-1.5">
-                  {PERSONA_TONE_OPTIONS.map((t) => {
-                    const on = personaTone === t;
-                    return (
-                      <button
-                        key={t}
-                        type="button"
-                        onClick={() => setPersonaTone(on ? "" : t)}
-                        className={`rounded-full border px-3 py-1.5 text-xs transition-all active:scale-95 ${on ? "border-primary bg-primary text-primary-foreground font-medium shadow-sm" : "border-input bg-background text-foreground/70 hover:border-primary/40 hover:bg-primary/5"}`}
-                      >
-                        {t}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 好きな色（単一選択・色ドット付き） */}
-              <div className="space-y-1.5">
-                <p className="text-xs font-semibold">好きな色 <span className="font-normal text-muted-foreground">（1つ・任意）</span></p>
-                <div className="flex flex-wrap gap-1.5">
-                  {PERSONA_COLOR_OPTIONS.map((c) => {
-                    const on = personaColor === c.label;
-                    return (
-                      <button
-                        key={c.label}
-                        type="button"
-                        onClick={() => setPersonaColor(on ? "" : c.label)}
-                        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition-all active:scale-95 ${on ? "border-primary bg-primary/10 font-medium" : "border-input bg-background text-foreground/70 hover:border-primary/40 hover:bg-primary/5"}`}
-                      >
-                        <span className="h-2.5 w-2.5 rounded-full" style={{ background: c.dot }} />
-                        {c.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* MBTIから生成（任意・単一選択） */}
-              <div className="space-y-1.5">
-                <p className="text-xs font-semibold">MBTIから <span className="font-normal text-muted-foreground">（任意・1つ）</span></p>
-                <a href={MBTI_GUIDE_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[11px] text-primary underline underline-offset-2 hover:opacity-80">
-                  MBTIとは？ タイプ診断・解説を見る ↗
-                </a>
-                <div className="grid grid-cols-4 gap-1.5">
-                  {PERSONA_MBTI_OPTIONS.map((m) => {
-                    const on = personaMbti === m.code;
-                    return (
-                      <button
-                        key={m.code}
-                        type="button"
-                        onClick={() => setPersonaMbti(on ? "" : m.code)}
-                        className={`flex flex-col items-center rounded-lg border px-1 py-1.5 transition-all active:scale-95 ${on ? "border-primary bg-primary text-primary-foreground shadow-sm" : "border-input bg-background text-foreground/70 hover:border-primary/40 hover:bg-primary/5"}`}
-                      >
-                        <span className="text-xs font-bold tracking-wide">{m.code}</span>
-                        <span className={`text-[9px] ${on ? "text-primary-foreground/80" : "text-muted-foreground"}`}>{m.name}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 自由記述（任意・カンマ区切り） */}
-              <div className="space-y-1.5">
-                <p className="text-xs font-semibold">好きなもの・キーワード <span className="font-normal text-muted-foreground">（任意・カンマ区切り）</span></p>
-                <input
-                  type="text"
-                  value={mindset}
-                  onChange={(e) => setMindset(e.target.value)}
-                  placeholder="例：読書, カフェ巡り, 音楽, 自然"
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                />
-              </div>
-
-              {/* 任意：本人写真からリアルアバターを生成 */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">
-                  本人写真（任意）— 指定すると写真に似せたリアルアバターを生成します
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (!f) return;
-                      if (f.size > 8 * 1024 * 1024) {
-                        setPersonaError("画像は8MB以内にしてください");
-                        return;
-                      }
-                      const reader = new FileReader();
-                      reader.onload = () => {
-                        setPersonaPhoto(typeof reader.result === "string" ? reader.result : null);
-                        setPersonaPhotoName(f.name);
-                      };
-                      reader.readAsDataURL(f);
-                    }}
-                    className="text-xs file:mr-2 file:rounded-md file:border file:border-input file:bg-background file:px-2 file:py-1 file:text-xs"
-                  />
-                  {personaPhoto && (
-                    <button
-                      type="button"
-                      className="text-[11px] text-muted-foreground underline"
-                      onClick={() => { setPersonaPhoto(null); setPersonaPhotoName(""); }}
-                    >
-                      取り消す
-                    </button>
-                  )}
-                </div>
-                {personaPhotoName && (
-                  <p className="truncate text-[11px] text-violet-600">添付: {personaPhotoName}</p>
-                )}
-              </div>
-
-              <Button
-                type="button"
-                size="sm"
-                className="w-full"
-                disabled={personaGenerating || (personaTraits.length === 0 && !personaTone && !personaColor && !personaMbti && !mindset.trim() && !personaPhoto)}
-                onClick={async () => {
-                  setPersonaGenerating(true);
-                  setPersonaError(null);
-                  // アンケートの選択＋自由記述をまとめて mindset 文字列に（カンマ区切りキーワードも分解）。
-                  const freeKeywords = mindset.split(/[,、]/).map((s) => s.trim()).filter(Boolean);
-                  const mbtiName = PERSONA_MBTI_OPTIONS.find((m) => m.code === personaMbti)?.name;
-                  const mindsetText = [
-                    personaMbti ? `MBTI：${personaMbti}${mbtiName ? `（${mbtiName}）` : ""}（この性格タイプらしさを反映）` : "",
-                    personaTraits.length ? `性格・タイプ：${personaTraits.join("、")}` : "",
-                    personaTone ? `雰囲気：${personaTone}` : "",
-                    personaColor ? `好きな色：${personaColor}` : "",
-                    freeKeywords.length ? `好きなもの：${freeKeywords.join("、")}` : "",
-                  ].filter(Boolean).join("。 ");
-                  try {
-                    const result = await generatePersonaAndAvatar({
-                      name: (legalName || name || "").trim(),
-                      bio: bio || undefined,
-                      mindset: mindsetText || undefined,
-                      interests: selectedInterests,
-                      organization: organization || undefined,
-                      role: roleOther || role || undefined,
-                      appearance: personaTone || personaColor
-                        ? [personaTone, personaColor && `好きな色：${personaColor}`].filter(Boolean).join("、")
-                        : undefined,
-                      photoBase64: personaPhoto || undefined,
-                    });
-                    if (result.success && result.avatarUrl) {
-                      setAvatarUrl(result.avatarUrl);
-                      setPersonaInfo({
-                        expertise: result.persona?.expertise ?? [],
-                        valuesText: result.persona?.valuesText ?? "",
-                      });
-                    } else {
-                      setPersonaError(result.error ?? "生成に失敗しました");
-                    }
-                  } catch {
-                    setPersonaError("生成に失敗しました");
-                  } finally {
-                    setPersonaGenerating(false);
-                  }
-                }}
-              >
-                {personaGenerating ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <Sparkles className="h-4 w-4 mr-2" />
-                )}
-                {personaGenerating ? "生成中…（30秒ほど）" : "AIアバターを生成"}
-              </Button>
-              {personaError && <p className="text-[11px] text-red-500">{personaError}</p>}
-              {personaInfo && (
-                <div className="text-[11px] text-muted-foreground space-y-1">
-                  <p>✅ アバターを生成してアイコンに設定しました。</p>
-                  {personaInfo.expertise.length > 0 && (
-                    <p>得意分野: {personaInfo.expertise.join("、")}</p>
-                  )}
-                </div>
-              )}
-            </div>
-            )}
 
             <div className="space-y-2">
               <label className="text-sm font-medium">
@@ -787,6 +786,16 @@ export function ProfileRegisterForm({
                 />
               </div>
             )}
+
+            {/* AIアバター生成（基本情報・関心の入力後にここで作成） */}
+            <div className="pt-2">
+              <div className="mb-2 flex items-center gap-2">
+                <span className="h-px flex-1 bg-border" />
+                <span className="text-xs font-semibold text-muted-foreground">AIアバター（任意）</span>
+                <span className="h-px flex-1 bg-border" />
+              </div>
+              {renderAvatarGenerator()}
+            </div>
           </div>
         );
 
@@ -1088,10 +1097,8 @@ export function ProfileRegisterForm({
         setValidationError("表示名を入力してください。");
         return;
       }
-      if (isFirstTime && !avatarUrl.trim()) {
-        setValidationError("プロフィール画像をアップロードするか、テンプレートから選んでください。");
-        return;
-      }
+      // プロフィール画像はこのステップでは必須にしない（後のステップでAIアバター生成も可能なため）。
+      // 最終保存時（handleSave）にアップロード/テンプレート/AI生成いずれかで設定済みであることを確認する。
       if (isProvider && !phone.trim()) {
         setValidationError("事業者・団体のTELを入力してください。");
         return;
@@ -1163,7 +1170,7 @@ export function ProfileRegisterForm({
       return;
     }
     if (isFirstTime && !avatarUrl.trim()) {
-      setValidationError("プロフィール画像をアップロードするか、テンプレートから選んでください。");
+      setValidationError("プロフィール画像を設定してください（最初のステップでアップロード／テンプレート、または「関心・スキル」のAIアバター生成で作成できます）。");
       return;
     }
     setSaving(true);

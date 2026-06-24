@@ -10,8 +10,9 @@ import {
   Menu, LogOut, User, LayoutDashboard, Settings, 
   ChevronDown, UserPlus, LogIn, FileText, Bell,
   CheckCircle, Calendar, Newspaper, BookOpen, Bot, Activity, Flag, ArrowUpDown,
-  MessageSquare, CircleHelp, Pencil
+  MessageSquare, CircleHelp, Pencil, QrCode
 } from "lucide-react";
+import { KaikanCheckinModal } from "@/components/kaikan/kaikan-checkin-modal";
 import { useRequestList } from "@/components/request-list/request-list-context";
 import { useTextEdit } from "@/components/text-edit/text-edit-context";
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,7 @@ export function Header() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [kaikanCheckinOpen, setKaikanCheckinOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [notifications, setNotifications] = useState<{
     list: {
@@ -397,6 +399,13 @@ export function Header() {
                     </DropdownMenuLabel>
                     <DropdownMenuItem
                       className="cursor-pointer"
+                      onSelect={() => setKaikanCheckinOpen(true)}
+                    >
+                      <QrCode className="mr-2 h-4 w-4 text-primary" />
+                      電子チケット読み取り
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="cursor-pointer"
                       onSelect={() => router.push("/admin/approvals")}
                     >
                       <CheckCircle className="mr-2 h-4 w-4 text-amber-600" />
@@ -674,6 +683,7 @@ export function Header() {
         </Sheet>
         </div>
       </div>
+      <KaikanCheckinModal open={kaikanCheckinOpen} onClose={() => setKaikanCheckinOpen(false)} />
     </header>
   );
 }
