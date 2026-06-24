@@ -192,6 +192,9 @@ export function ProfileRegisterForm({
   const [personaGenerating, setPersonaGenerating] = useState(false);
   const [personaError, setPersonaError] = useState<string | null>(null);
   const [personaInfo, setPersonaInfo] = useState<{ expertise: string[]; valuesText: string } | null>(null);
+  // 任意：本人写真（dataURL）。指定するとこの写真に似せたリアルアバターを生成。
+  const [personaPhoto, setPersonaPhoto] = useState<string | null>(null);
+  const [personaPhotoName, setPersonaPhotoName] = useState<string>("");
   const [notificationEmail2, setNotificationEmail2] = useState(initialProfile?.notification_email_2 ?? "");
   const [notificationEmail3, setNotificationEmail3] = useState(initialProfile?.notification_email_3 ?? "");
   const [talentMatchingEnabled, setTalentMatchingEnabled] = useState(
@@ -426,11 +429,51 @@ export function ProfileRegisterForm({
                 />
               </div>
 
+              {/* 任意：本人写真からリアルアバターを生成 */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">
+                  本人写真（任意）— 指定すると写真に似せたリアルアバターを生成します
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (!f) return;
+                      if (f.size > 8 * 1024 * 1024) {
+                        setPersonaError("画像は8MB以内にしてください");
+                        return;
+                      }
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        setPersonaPhoto(typeof reader.result === "string" ? reader.result : null);
+                        setPersonaPhotoName(f.name);
+                      };
+                      reader.readAsDataURL(f);
+                    }}
+                    className="text-xs file:mr-2 file:rounded-md file:border file:border-input file:bg-background file:px-2 file:py-1 file:text-xs"
+                  />
+                  {personaPhoto && (
+                    <button
+                      type="button"
+                      className="text-[11px] text-muted-foreground underline"
+                      onClick={() => { setPersonaPhoto(null); setPersonaPhotoName(""); }}
+                    >
+                      取り消す
+                    </button>
+                  )}
+                </div>
+                {personaPhotoName && (
+                  <p className="truncate text-[11px] text-violet-600">添付: {personaPhotoName}</p>
+                )}
+              </div>
+
               <Button
                 type="button"
                 size="sm"
                 className="w-full"
-                disabled={personaGenerating || (personaTraits.length === 0 && !personaTone && !personaColor && !personaMbti && !mindset.trim())}
+                disabled={personaGenerating || (personaTraits.length === 0 && !personaTone && !personaColor && !personaMbti && !mindset.trim() && !personaPhoto)}
                 onClick={async () => {
                   setPersonaGenerating(true);
                   setPersonaError(null);
@@ -452,6 +495,10 @@ export function ProfileRegisterForm({
                       interests: selectedInterests,
                       organization: organization || undefined,
                       role: roleOther || role || undefined,
+                      appearance: personaTone || personaColor
+                        ? [personaTone, personaColor && `好きな色：${personaColor}`].filter(Boolean).join("、")
+                        : undefined,
+                      photoBase64: personaPhoto || undefined,
                     });
                     if (result.success && result.avatarUrl) {
                       setAvatarUrl(result.avatarUrl);

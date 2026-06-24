@@ -60,7 +60,7 @@ ${postBody}
 `.trim();
 
     const stream = await openai.chat.completions.create({
-      model: "gpt-5.4",
+      model: "gpt-5.2-mini",
       stream: true,
       max_tokens: 400,
       temperature: 0.85,
