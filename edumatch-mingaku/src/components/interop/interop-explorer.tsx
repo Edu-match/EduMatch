@@ -27,7 +27,7 @@ const InteropPuyoBubbleMap = dynamic(
 );
 import { InteropChatWidget } from "@/components/interop/interop-chat-widget";
 import type { InteropCategory } from "@/components/interop/interop-category-bubble-map";
-import { Mic, Newspaper, MessagesSquare, ExternalLink } from "lucide-react";
+import { Mic, Newspaper, MessagesSquare, ExternalLink, Ticket } from "lucide-react";
 import {
   InteropSubOrbit,
   type InteropSubCategory,
@@ -351,6 +351,15 @@ export function InteropExplorer({
   // ご意見・要望は議員会館専用の掲示板(giin-opinion)へ（サテライトのご意見BOXとは独立）。
   const isGiinKaikanCenter = interopCat?.slug === "giin-kaikan";
   const giinKaikanItems = useMemo(() => {
+    // 先頭に「コンテンツ」（電子チケット申込）。2D/3Dで共通表示。一般ページ（複数選択申込）へ遷移。
+    const contentsItem = {
+      id: "kaikan-contents",
+      name: "コンテンツ",
+      icon: Ticket,
+      accentColor: "#7dd4fc",
+      stats: EMPTY_STATS,
+      onActivate: () => router.push("/forum/kaikan"),
+    };
     const opinionSub =
       allSubs.find((s) => s.slug === "giin-opinion") ??
       allSubs.find((s) => s.slug === "interop-opinion-box");
@@ -358,7 +367,7 @@ export function InteropExplorer({
     // 管理画面で設定された項目があればそれを使う（リンク or 掲示板）。
     if (centerHubItems && centerHubItems.length > 0) {
       const palette = ["#7dd4fc", "#fcd34d", "#86efac", "#c4b5fd", "#fca5a5", "#93c5fd"];
-      return centerHubItems
+      return [contentsItem, ...centerHubItems
         .filter((it) => it.name?.trim())
         .map((it, i) => ({
           id: it.id,
@@ -370,11 +379,12 @@ export function InteropExplorer({
             if (it.kind === "board" && it.subId) router.push(interopBoardPath(it.subId));
             else if (it.url) window.open(ensureExternalUrl(it.url), "_blank", "noopener,noreferrer");
           },
-        }));
+        }))];
     }
 
     // 既定（後方互換）
     return [
+      contentsItem,
       {
         id: "giin-information",
         name: "インフォメーション",
