@@ -119,11 +119,16 @@ export function PersonaCreator({
 
   return (
     <div className="space-y-5 rounded-xl border bg-gradient-to-br from-primary/[0.06] to-violet-500/[0.06] p-4">
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-start gap-2.5">
         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
           <Sparkles className="h-4 w-4" />
         </span>
-        <p className="text-sm font-semibold">AIペルソナ＆アバターを作成 <span className="font-normal text-muted-foreground">（任意）</span></p>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold">AIペルソナ＆アバターを作成 <span className="font-normal text-muted-foreground">（任意）</span></p>
+          <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+            あなたの「分身AI」を作る機能です。下の質問に答えると、あなたらしい考え方・口調を持ったAIと、似合うアイコン画像を生成。井戸端会議で“あなたらしく”返信できます。
+          </p>
+        </div>
       </div>
 
       {/* ① 人格の核：MBTI か 価値観診断 */}
