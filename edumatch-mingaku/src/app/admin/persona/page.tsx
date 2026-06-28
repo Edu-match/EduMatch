@@ -21,8 +21,12 @@ export default async function AdminPersonaPage() {
   const rawPosts = await prisma.interopPost.findMany({
     where: { parent_post_id: null, is_ai_reply: false, is_hidden: false },
     orderBy: { created_at: "desc" },
-    take: 20,
-    select: { id: true, author_name: true, body: true, created_at: true, subCategory: { select: { name: true } } },
+    take: 60,
+    select: {
+      id: true, author_name: true, body: true, created_at: true,
+      subCategory: { select: { name: true, category: { select: { name: true } } } },
+      _count: { select: { replies: true } },
+    },
   }).catch(() => []);
 
   const specialRows = await prisma.aiSpecialPersona.findMany({
@@ -44,7 +48,9 @@ export default async function AdminPersonaPage() {
     id: p.id,
     authorName: p.author_name,
     body: p.body,
+    categoryName: p.subCategory?.category?.name ?? "その他",
     subCategoryName: p.subCategory?.name ?? "井戸端",
+    replyCount: p._count?.replies ?? 0,
     createdAt: p.created_at.toISOString(),
   }));
 
