@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, Loader2, Plus, X } from "lucide-react";
+import { Sparkles, Loader2, Plus, X, ChevronLeft } from "lucide-react";
 import { generatePersonaAndAvatar } from "@/app/_actions";
 import { PERSONA_MBTI_OPTIONS, MBTI_GUIDE_URL } from "@/lib/persona-options";
 import { PERSONA_DIAGNOSTIC, summarizeDiagnostic, isDiagnosticComplete } from "@/lib/persona-diagnostic";
@@ -41,9 +41,10 @@ export function PersonaCreator({
   currentAvatarUrl?: string | null;
   onGenerated?: (r: PersonaGenerated) => void;
 }) {
-  const [mode, setMode] = useState<"mbti" | "diagnostic">("mbti");
+  const [mode, setMode] = useState<"mbti" | "diagnostic">("diagnostic");
   const [mbti, setMbti] = useState("");
   const [answers, setAnswers] = useState<Record<string, "A" | "B">>({});
+  const [dq, setDq] = useState(0); // 価値観診断の現在の質問インデックス
   const [interests, setInterests] = useState<string[]>([]);
   const [customInterest, setCustomInterest] = useState("");
   const [jobTitle, setJobTitle] = useState(defaults.role ?? "");
@@ -129,11 +130,69 @@ export function PersonaCreator({
       <div className="rounded-lg border bg-background/60 p-3">
         <p className="text-sm font-bold">① 人格の核を決める</p>
         <div className="mt-2 inline-flex rounded-lg border bg-muted/40 p-0.5 text-xs font-medium">
+          <button type="button" onClick={() => setMode("diagnostic")} className={`rounded-md px-3 py-1.5 transition ${mode === "diagnostic" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}>価値観診断（おすすめ）</button>
           <button type="button" onClick={() => setMode("mbti")} className={`rounded-md px-3 py-1.5 transition ${mode === "mbti" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}>MBTIを選ぶ</button>
-          <button type="button" onClick={() => setMode("diagnostic")} className={`rounded-md px-3 py-1.5 transition ${mode === "diagnostic" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}>価値観診断</button>
         </div>
 
-        {mode === "mbti" ? (
+        {mode === "diagnostic" ? (
+          <div className="mt-3">
+            {/* 進捗バー */}
+            <div className="mb-1 flex items-center justify-between text-[11px]">
+              <span className="font-medium text-foreground/70">直感でどちらか選んでください</span>
+              <span className="text-muted-foreground">{answeredCount}/{PERSONA_DIAGNOSTIC.length}</span>
+            </div>
+            <div className="mb-3 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+              <div className="h-full bg-primary transition-all" style={{ width: `${(answeredCount / PERSONA_DIAGNOSTIC.length) * 100}%` }} />
+            </div>
+
+            {diagnosticDone ? (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+                <p className="text-sm font-bold text-emerald-700">✅ 診断が完了しました</p>
+                <p className="mt-1 text-xs text-muted-foreground">{summarizeDiagnostic(answers)}</p>
+                <button type="button" onClick={() => { setAnswers({}); setDq(0); }} className="mt-2 text-xs text-primary underline underline-offset-2">最初からやり直す</button>
+              </div>
+            ) : (
+              (() => {
+                const q = PERSONA_DIAGNOSTIC[dq];
+                const cur = answers[q.id];
+                return (
+                  <div className="rounded-lg border bg-background p-3">
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                      <span>Q{dq + 1} / {PERSONA_DIAGNOSTIC.length}</span>
+                      {dq > 0 && (
+                        <button type="button" onClick={() => setDq((d) => Math.max(0, d - 1))} className="inline-flex items-center gap-0.5 hover:text-foreground">
+                          <ChevronLeft className="h-3 w-3" /> 戻る
+                        </button>
+                      )}
+                    </div>
+                    <p className="mt-1 text-sm font-medium">{q.text}</p>
+                    <div className="mt-3 space-y-2">
+                      {(["A", "B"] as const).map((opt) => {
+                        const on = cur === opt;
+                        return (
+                          <button
+                            key={opt}
+                            type="button"
+                            onClick={() => { setAnswers((prev) => ({ ...prev, [q.id]: opt })); setDq((d) => Math.min(PERSONA_DIAGNOSTIC.length - 1, d + 1)); }}
+                            className={`block w-full rounded-lg border px-3 py-3 text-left text-sm transition active:scale-[0.99] ${on ? "border-primary bg-primary/10 font-medium" : "border-input bg-background hover:border-primary/40 hover:bg-primary/5"}`}
+                          >
+                            {opt === "A" ? q.a : q.b}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {/* 進捗ドット（タップで移動） */}
+                    <div className="mt-3 flex flex-wrap justify-center gap-1">
+                      {PERSONA_DIAGNOSTIC.map((qq, i) => (
+                        <button key={qq.id} type="button" onClick={() => setDq(i)} aria-label={`質問${i + 1}へ`} className={`h-1.5 w-4 rounded-full transition ${answers[qq.id] ? "bg-primary" : i === dq ? "bg-primary/40" : "bg-muted"}`} />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()
+            )}
+          </div>
+        ) : (
           <div className="mt-3 space-y-2">
             <a href={MBTI_GUIDE_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary underline underline-offset-2 hover:opacity-80">
               MBTIタイプ診断・解説を見る ↗
@@ -149,28 +208,6 @@ export function PersonaCreator({
                 );
               })}
             </div>
-          </div>
-        ) : (
-          <div className="mt-3 space-y-2.5">
-            <p className="text-xs font-medium text-foreground/70">直感で選んでください（{answeredCount}/{PERSONA_DIAGNOSTIC.length}）</p>
-            {PERSONA_DIAGNOSTIC.map((q, i) => {
-              const cur = answers[q.id];
-              return (
-                <div key={q.id} className="rounded-lg border bg-background p-2.5">
-                  <p className="text-[13px] font-medium">{i + 1}. {q.text}</p>
-                  <div className="mt-1.5 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-                    {(["A", "B"] as const).map((opt) => {
-                      const on = cur === opt;
-                      return (
-                        <button key={opt} type="button" onClick={() => setAnswers((prev) => ({ ...prev, [q.id]: opt }))} className={`rounded-md border px-2.5 py-2 text-left text-[13px] transition active:scale-[0.99] ${on ? "border-primary bg-primary/10 font-medium" : "border-input bg-background text-foreground/70 hover:border-primary/40 hover:bg-primary/5"}`}>
-                          {opt === "A" ? q.a : q.b}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
           </div>
         )}
       </div>

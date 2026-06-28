@@ -73,25 +73,36 @@ export function KaikanCheckinPanel({ initialToken }: { initialToken?: string }) 
 
   async function startScan(preferredId?: string) {
     setError(null);
+
+    // カメラは https（またはlocalhost）でのみ起動可能。PCのhttpアクセス等を明示。
+    if (typeof window !== "undefined" && !window.isSecureContext) {
+      setError("カメラはセキュア接続（https）でのみ起動できます。プレビュー/本番の https URL でお試しください（受付番号での照会は可能です）。");
+      return;
+    }
+    if (typeof navigator === "undefined" || !navigator.mediaDevices) {
+      setError("このブラウザ/環境ではカメラを利用できません。別のブラウザ（Chrome/Edge等）でお試しください。");
+      return;
+    }
+
     try {
       const { Html5Qrcode } = await import("html5-qrcode");
 
-      // カメラ権限の取得＋一覧化（PCの内蔵/外付けカメラにも対応）。
-      let list: { id: string; label: string }[] = [];
+      // 先に権限を取得（PC含め、これをしないと getCameras がラベル無し/空になることがある）。
       try {
-        list = await Html5Qrcode.getCameras();
+        const s = await navigator.mediaDevices.getUserMedia({ video: true });
+        s.getTracks().forEach((t) => t.stop());
       } catch {
-        // getUserMedia を先に呼んで権限を促してから再試行（PCで権限未許可だと空になることがある）。
-        try {
-          const s = await navigator.mediaDevices.getUserMedia({ video: true });
-          s.getTracks().forEach((t) => t.stop());
-          list = await Html5Qrcode.getCameras();
-        } catch { /* noop */ }
+        setError("カメラの使用が許可されていません。ブラウザのカメラ権限を許可してください。");
+        return;
       }
+
+      // カメラ一覧（PCの内蔵/外付けカメラにも対応）。
+      let list: { id: string; label: string }[] = [];
+      try { list = await Html5Qrcode.getCameras(); } catch { /* noop */ }
       setCameras(list);
 
       if (!list || list.length === 0) {
-        setError("利用可能なカメラが見つかりませんでした（PCのカメラ接続・ブラウザのカメラ権限をご確認ください）。受付番号での照会もご利用いただけます。");
+        setError("利用可能なカメラが見つかりませんでした（PCのカメラ接続をご確認ください）。受付番号での照会もご利用いただけます。");
         return;
       }
 
@@ -100,9 +111,9 @@ export function KaikanCheckinPanel({ initialToken }: { initialToken?: string }) 
       const targetId = preferredId || cameraId || back?.id || list[0].id;
       setCameraId(targetId);
 
-      // DOM（リーダー要素）が表示されるのを待ってから start する。
+      // DOM（リーダー要素）が描画されるのを待ってから start する。
       setScanning(true);
-      await new Promise((r) => setTimeout(r, 0));
+      await new Promise((r) => setTimeout(r, 80));
       const el = document.getElementById("kaikan-qr-reader");
       if (!el) { setScanning(false); return; }
 

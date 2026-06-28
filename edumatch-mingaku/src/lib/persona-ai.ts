@@ -14,6 +14,16 @@ import OpenAI from "openai";
 export const PERSONA_TEXT_MODEL = process.env.PERSONA_TEXT_MODEL?.trim() || "gpt-5.4-mini";
 export const OPENAI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL?.trim() || "gpt-image-1";
 
+/** コードフェンスや前後テキストが混じっても JSON を取り出してパースする。 */
+export function parseLooseJson(s: string | null | undefined): unknown {
+  if (!s) return null;
+  const t = s.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim();
+  try { return JSON.parse(t); } catch { /* fallthrough */ }
+  const m = t.match(/\{[\s\S]*\}/);
+  if (m) { try { return JSON.parse(m[0]); } catch { /* noop */ } }
+  return null;
+}
+
 export type PersonaInput = {
   name: string;
   bio?: string;
@@ -74,23 +84,22 @@ export async function synthesizePersona(input: PersonaInput): Promise<Synthesize
 
   const openai = new OpenAI({ apiKey });
   try {
-    const completion = await openai.chat.completions.create({
+    // チャットと同じ Responses API を使用（gpt-5系の互換性確保）。
+    const res = await openai.responses.create({
       model: PERSONA_TEXT_MODEL,
+      instructions: SYSTEM,
+      input: userMsg || `名前: ${input.name}`,
       temperature: 0.7,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: SYSTEM },
-        { role: "user", content: userMsg || `名前: ${input.name}` },
-      ],
+      max_output_tokens: 2000,
     });
-    const raw = completion.choices[0]?.message?.content;
-    if (!raw) return null;
-    const j = JSON.parse(raw) as {
+    const raw = res.output_text;
+    const j = parseLooseJson(raw) as {
       persona_prompt?: string;
       expertise?: string[];
       values_text?: string;
       image_prompt?: string;
-    };
+    } | null;
+    if (!j) return null;
     return {
       displayName: input.name,
       personaPrompt: (j.persona_prompt ?? "").slice(0, 1200),

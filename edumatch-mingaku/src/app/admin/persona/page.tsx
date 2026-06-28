@@ -21,7 +21,7 @@ export default async function AdminPersonaPage() {
   const rawPosts = await prisma.interopPost.findMany({
     where: { parent_post_id: null, is_ai_reply: false, is_hidden: false },
     orderBy: { created_at: "desc" },
-    take: 60,
+    take: 300,
     select: {
       id: true, author_name: true, body: true, created_at: true,
       subCategory: { select: { name: true, category: { select: { name: true } } } },

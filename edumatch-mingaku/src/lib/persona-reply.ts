@@ -56,17 +56,15 @@ export async function generatePersonaReplyText(input: PersonaReplyInput): Promis
 
   const openai = new OpenAI({ apiKey });
   try {
-    const completion = await openai.chat.completions.create({
+    const res = await openai.responses.create({
       model: PERSONA_REPLY_MODEL,
-      max_tokens: 320,
+      instructions: system,
+      input: user,
       temperature: 0.9,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
+      max_output_tokens: 1200,
     });
-    const text = completion.choices[0]?.message?.content?.trim();
-    return text && text.length > 0 ? text : null;
+    const text = (res.output_text ?? "").trim();
+    return text.length > 0 ? text : null;
   } catch (e) {
     console.error("[persona-reply]", e);
     return null;

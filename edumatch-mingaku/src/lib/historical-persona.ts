@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { parseLooseJson } from "@/lib/persona-ai";
 
 /**
  * 歴史上の人物などの「特別ペルソナ」を、ネット検索で調べて作るためのサーバー専用ヘルパー。
@@ -31,18 +32,15 @@ export async function checkHistoricalPersonaLegal(name: string): Promise<LegalVe
 { "status": "ok" | "caution" | "blocked", "note": "理由と運用上の注意を日本語で120〜200字。最後に『※AIによる参考判定であり法的助言ではありません』を付す" }`;
 
   try {
-    const res = await openai.chat.completions.create({
+    const res = await openai.responses.create({
       model: HISTORICAL_TEXT_MODEL,
+      instructions: system,
+      input: `人物名: ${name}`,
       temperature: 0.2,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: `人物名: ${name}` },
-      ],
+      max_output_tokens: 1200,
     });
-    const raw = res.choices[0]?.message?.content;
-    if (!raw) return null;
-    const j = JSON.parse(raw) as { status?: string; note?: string };
+    const j = parseLooseJson(res.output_text) as { status?: string; note?: string } | null;
+    if (!j) return null;
     const status = j.status === "blocked" ? "blocked" : j.status === "caution" ? "caution" : "ok";
     return { status, note: (j.note ?? "").slice(0, 400) };
   } catch (e) {
