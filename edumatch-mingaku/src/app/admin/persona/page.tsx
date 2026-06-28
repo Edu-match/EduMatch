@@ -18,13 +18,14 @@ export default async function AdminPersonaPage() {
       }).catch(() => null)
     : null;
 
-  const rawPosts = await prisma.interopPost.findMany({
-    where: { parent_post_id: null, is_ai_reply: false, is_hidden: false },
+  // 井戸端会議の投稿（forum_posts）。一般カテゴリ→部屋(ルーム)→投稿 の構造。
+  const rawPosts = await prisma.forumPost.findMany({
+    where: { is_hidden: false },
     orderBy: { created_at: "desc" },
-    take: 300,
+    take: 400,
     select: {
       id: true, author_name: true, body: true, created_at: true,
-      subCategory: { select: { name: true, category: { select: { name: true } } } },
+      room: { select: { name: true, category: { select: { name: true } } } },
       _count: { select: { replies: true } },
     },
   }).catch(() => []);
@@ -48,8 +49,8 @@ export default async function AdminPersonaPage() {
     id: p.id,
     authorName: p.author_name,
     body: p.body,
-    categoryName: p.subCategory?.category?.name ?? "その他",
-    subCategoryName: p.subCategory?.name ?? "井戸端",
+    categoryName: p.room?.category?.name ?? "未分類",
+    subCategoryName: p.room?.name ?? "部屋",
     replyCount: p._count?.replies ?? 0,
     createdAt: p.created_at.toISOString(),
   }));

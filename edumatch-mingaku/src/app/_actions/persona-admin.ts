@@ -120,11 +120,11 @@ export async function generatePersonaReplyDraftForPost(
     return { ok: false, error: "先にあなたのAIペルソナを作成してください" };
   }
 
-  const post = await prisma.interopPost.findUnique({
+  const post = await prisma.forumPost.findUnique({
     where: { id: postId },
     select: {
       body: true,
-      subCategory: { select: { name: true, category: { select: { name: true } } } },
+      room: { select: { name: true, category: { select: { name: true } } } },
     },
   });
   if (!post) return { ok: false, error: "投稿が見つかりません" };
@@ -135,8 +135,8 @@ export async function generatePersonaReplyDraftForPost(
     expertise: persona.expertise,
     displayName: persona.display_name,
     postBody: post.body,
-    subCategoryName: post.subCategory.name,
-    categoryName: post.subCategory.category.name,
+    subCategoryName: post.room?.name ?? "井戸端",
+    categoryName: post.room?.category?.name ?? "井戸端",
   });
   if (!text) return { ok: false, error: "生成に失敗しました（OPENAI_API_KEY を確認）" };
   return { ok: true, text };
@@ -157,20 +157,16 @@ export async function postPersonaReplyToPost(
   const persona = await prisma.userAiPersona.findUnique({ where: { profile_id: profile.id } });
   if (!persona) return { ok: false, error: "AIペルソナがありません" };
 
-  const post = await prisma.interopPost.findUnique({
+  const post = await prisma.forumPost.findUnique({
     where: { id: postId },
-    select: { id: true, sub_category_id: true, topic_id: true },
+    select: { id: true },
   });
   if (!post) return { ok: false, error: "投稿が見つかりません" };
 
-  await prisma.interopPost.create({
+  await prisma.forumReply.create({
     data: {
-      sub_category_id: post.sub_category_id,
-      topic_id: post.topic_id,
-      parent_post_id: post.id,
-      persona_id: persona.id,
+      post_id: post.id,
       author_id: persona.profile_id,
-      is_ai_reply: true,
       author_name: persona.display_name,
       author_role: "AIペルソナ",
       body: text,
