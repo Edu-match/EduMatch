@@ -639,6 +639,29 @@ model UserAiPersona {
   @@map("user_ai_personas")
 }
 
+/// 歴史上の人物などの「特別AIペルソナ」。ネット検索で人物像を調べて生成し、
+/// 生成前にAIによる法的チェック（著作権・肖像権・パブリシティ権・名誉等）の結果を保持する。
+model AiSpecialPersona {
+  id             String   @id @default(uuid()) @db.Uuid
+  name           String
+  persona_prompt String   @default("")
+  values_text    String   @default("")
+  expertise      String[] @default([])
+  avatar_url     String?
+  /// 生成元の種別（historical 等）
+  source         String   @default("historical")
+  /// AI法的チェック結果: ok / caution / blocked
+  legal_status   String   @default("ok")
+  legal_note     String   @default("")
+  is_active      Boolean  @default(true)
+  /// 作成した管理者（Profile.id）
+  created_by     String?  @db.Uuid
+  created_at     DateTime @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime @updatedAt
+
+  @@map("ai_special_personas")
+}
+
 /// Interop掲示板の投稿いいね（来場者はログイン不要・voter_key で端末単位に1回）
 model InteropPostLike {
   id         String      @id @default(uuid()) @db.Uuid

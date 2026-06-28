@@ -1,0 +1,75 @@
+import OpenAI from "openai";
+
+/**
+ * 歴史上の人物などの「特別ペルソナ」を、ネット検索で調べて作るためのサーバー専用ヘルパー。
+ * 生成前にAIによる法的チェック（著作権・肖像権・パブリシティ権・名誉等）を行う。
+ * ※AIの判定は参考情報であり、法的助言ではない。
+ */
+
+export const HISTORICAL_TEXT_MODEL = process.env.HISTORICAL_PERSONA_MODEL?.trim() || "gpt-5.4";
+export const HISTORICAL_SEARCH_MODEL = process.env.HISTORICAL_SEARCH_MODEL?.trim() || "gpt-5.4";
+
+export type LegalVerdict = {
+  /** ok=問題が少ない / caution=要注意（運用配慮の上で可） / blocked=作成を避けるべき */
+  status: "ok" | "caution" | "blocked";
+  note: string;
+};
+
+/** 指定人物のAIペルソナ＋オリジナルイラストを作る際の法的リスクをAIが点検する。 */
+export async function checkHistoricalPersonaLegal(name: string): Promise<LegalVerdict | null> {
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  if (!apiKey) return null;
+  const openai = new OpenAI({ apiKey });
+
+  const system = `あなたは日本法に詳しい教育サービスの法務アシスタントです。次の人物について、教育コミュニティ向けに「AIペルソナ（本人を模した発言AI）」と「オリジナルのイラスト風アバター（実在の写真・肖像画を複製しない）」を作成・公開する場合の法的リスクを点検します。
+観点: ①著作権（本人の著作物の利用有無／引用の範囲）②肖像権・パブリシティ権（故人か存命か、没後経過、写真の複製有無）③名誉毀損・故人の名誉や遺族感情 ④なりすまし・誤情報の懸念。
+判定基準の目安:
+- 没後長期（おおむね歴史上の人物・パブリックドメイン）で、オリジナルイラスト＆史実ベースなら status="ok"。
+- 近年の故人・著名な実在人物で権利が残りうる、または誤情報・名誉の懸念があるなら status="caution"。
+- 存命の実在個人、著作権で保護されたフィクションのキャラクター、明らかに権利侵害・なりすましになる場合は status="blocked"。
+出力は次のJSONのみ（前置きなし）:
+{ "status": "ok" | "caution" | "blocked", "note": "理由と運用上の注意を日本語で120〜200字。最後に『※AIによる参考判定であり法的助言ではありません』を付す" }`;
+
+  try {
+    const res = await openai.chat.completions.create({
+      model: HISTORICAL_TEXT_MODEL,
+      temperature: 0.2,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: `人物名: ${name}` },
+      ],
+    });
+    const raw = res.choices[0]?.message?.content;
+    if (!raw) return null;
+    const j = JSON.parse(raw) as { status?: string; note?: string };
+    const status = j.status === "blocked" ? "blocked" : j.status === "caution" ? "caution" : "ok";
+    return { status, note: (j.note ?? "").slice(0, 400) };
+  } catch (e) {
+    console.error("[historical-persona] legal", e);
+    return null;
+  }
+}
+
+/** ネット検索で人物像（時代・立場・思想・口調・代表的な見解）を調べ、日本語要約を返す。 */
+export async function researchHistoricalFigure(name: string): Promise<string> {
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  if (!apiKey) return "";
+  const openai = new OpenAI({ apiKey });
+
+  const prompt = `「${name}」について、教育コミュニティで本人らしく発言するAIペルソナを作るための要点を、ネット検索で確認しながら日本語でまとめてください。
+含める項目: 生没年・時代背景／立場・役割／大切にした思想・価値観／よく語った主張やエピソード／口調や一人称の特徴（史料から推測される範囲で）／教育や学びに関連する考え。
+史実に基づき、不確かな点は「諸説あり」と明記。500〜800字程度。`;
+
+  try {
+    const res = await openai.responses.create({
+      model: HISTORICAL_SEARCH_MODEL,
+      tools: [{ type: "web_search" as const }],
+      input: prompt,
+    });
+    return (res.output_text ?? "").slice(0, 4000);
+  } catch (e) {
+    console.error("[historical-persona] research", e);
+    return "";
+  }
+}

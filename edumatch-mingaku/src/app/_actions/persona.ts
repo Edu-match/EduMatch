@@ -53,6 +53,8 @@ export type GeneratePersonaResult = {
 export async function generatePersonaAndAvatar(input: GeneratePersonaArgs): Promise<GeneratePersonaResult> {
   const profile = await getCurrentProfile().catch(() => null);
   if (!profile) return { success: false, error: "ログインが必要です" };
+  // AIペルソナ作成は管理者のみ。
+  if (profile.role !== "ADMIN") return { success: false, error: "AIペルソナの作成は管理者のみ利用できます" };
 
   const name = (input.name || profile.name || "").trim();
   if (!name) return { success: false, error: "名前が必要です" };

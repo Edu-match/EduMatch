@@ -413,25 +413,29 @@ export function ProfileRegisterForm({
         return (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              アイコンを設定します。画像をアップロードするか、アンケートからAIアバター（あなたらしさ・好きなものを盛り込んだイラスト）を作成できます。どちらも任意です。
+              アイコンを設定します。画像をアップロードするか、テンプレートから選べます。
             </p>
             {renderAvatarUploader()}
-            <div className="flex items-center gap-2">
-              <span className="h-px flex-1 bg-border" />
-              <span className="text-xs font-semibold text-muted-foreground">または AIで生成</span>
-              <span className="h-px flex-1 bg-border" />
-            </div>
-            <PersonaCreator
-              defaults={{
-                name: (legalName || name || "").trim(),
-                bio: bio || undefined,
-                organization: organization || undefined,
-                role: roleOther || role || undefined,
-                interests: selectedInterests,
-              }}
-              currentAvatarUrl={avatarUrl}
-              onGenerated={(r) => { if (r.avatarUrl) setAvatarUrl(r.avatarUrl); }}
-            />
+            {initialProfile?.role === "ADMIN" && (
+              <>
+                <div className="flex items-center gap-2">
+                  <span className="h-px flex-1 bg-border" />
+                  <span className="text-xs font-semibold text-muted-foreground">または AIで生成（管理者）</span>
+                  <span className="h-px flex-1 bg-border" />
+                </div>
+                <PersonaCreator
+                  defaults={{
+                    name: (legalName || name || "").trim(),
+                    bio: bio || undefined,
+                    organization: organization || undefined,
+                    role: roleOther || role || undefined,
+                    interests: selectedInterests,
+                  }}
+                  currentAvatarUrl={avatarUrl}
+                  onGenerated={(r) => { if (r.avatarUrl) setAvatarUrl(r.avatarUrl); }}
+                />
+              </>
+            )}
           </div>
         );
 
