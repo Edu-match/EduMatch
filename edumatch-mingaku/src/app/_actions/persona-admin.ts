@@ -163,11 +163,13 @@ export async function postPersonaReplyToPost(
   });
   if (!post) return { ok: false, error: "投稿が見つかりません" };
 
+  // 返信者名は「AI○○」とする（人間の発言と区別するため）。
+  const aiName = persona.display_name.startsWith("AI") ? persona.display_name : `AI${persona.display_name}`;
   await prisma.forumReply.create({
     data: {
       post_id: post.id,
       author_id: persona.profile_id,
-      author_name: persona.display_name,
+      author_name: aiName,
       author_role: "AIペルソナ",
       body: text,
     },

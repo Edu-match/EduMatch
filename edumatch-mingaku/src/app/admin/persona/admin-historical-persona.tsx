@@ -54,7 +54,7 @@ export function AdminHistoricalPersona({ existing }: { existing: SpecialPersonaR
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); create(); } }}
+            onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }}
             placeholder="例：吉田松陰"
             className="min-w-0 flex-1 rounded-md border border-input px-3 py-2 text-sm"
           />

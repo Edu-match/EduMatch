@@ -58,7 +58,11 @@ export function AdminPersonaReplyTool({ posts, hasPersona }: { posts: ReplyTarge
 
   const isOpen = (cat: string) => openCats[cat] ?? (query.trim() !== "");
 
-  function select(id: string) { setSelectedId(id); setDraft(""); setError(null); setDone(null); }
+  function select(id: string) {
+    // 同じ投稿をもう一度押したら選択解除。
+    if (selectedId === id) { setSelectedId(null); setDraft(""); setError(null); setDone(null); return; }
+    setSelectedId(id); setDraft(""); setError(null); setDone(null);
+  }
   async function generate() {
     if (!selectedId) return;
     setGenerating(true); setError(null); setDone(null);
