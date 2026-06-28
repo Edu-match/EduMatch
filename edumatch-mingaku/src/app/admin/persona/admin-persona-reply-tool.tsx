@@ -27,6 +27,7 @@ export function AdminPersonaReplyTool({ posts, hasPersona }: { posts: ReplyTarge
   const [done, setDone] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [openCats, setOpenCats] = useState<Record<string, boolean>>({});
+  const [openSubs, setOpenSubs] = useState<Record<string, boolean>>({});
 
   // カテゴリ→ボード(サブカテゴリ)→投稿 の2階層グルーピング＋検索。
   const groups = useMemo<CatGroup[]>(() => {
@@ -145,15 +146,23 @@ export function AdminPersonaReplyTool({ posts, hasPersona }: { posts: ReplyTarge
                 </button>
 
                 {open && (
-                  <div className="space-y-3 px-2.5 py-2.5">
-                    {g.subs.map((s) => (
-                      <div key={s.sub}>
-                        <p className="mb-1 px-1 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{s.sub}（{s.posts.length}）</p>
-                        <ul className="space-y-1.5">
-                          {s.posts.map((p) => postRow(p))}
-                        </ul>
-                      </div>
-                    ))}
+                  <div className="space-y-1.5 bg-muted/20 px-2 py-2">
+                    {g.subs.map((s) => {
+                      const subKey = `${g.cat}::${s.sub}`;
+                      const sOpen = openSubs[subKey] ?? (query.trim() !== "");
+                      return (
+                        <div key={s.sub} className="overflow-hidden rounded-lg border bg-background">
+                          <button type="button" onClick={() => setOpenSubs((prev) => ({ ...prev, [subKey]: !sOpen }))} className="flex w-full items-center justify-between gap-2 px-2.5 py-2 text-left">
+                            <span className="flex min-w-0 items-center gap-1.5 text-xs font-bold">
+                              {sOpen ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
+                              <span className="truncate">{s.sub}</span>
+                            </span>
+                            <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">{s.posts.length}</span>
+                          </button>
+                          {sOpen && <ul className="space-y-1.5 px-2 pb-2">{s.posts.map((p) => postRow(p))}</ul>}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>

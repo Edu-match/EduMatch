@@ -50,15 +50,15 @@ export function AdminHistoricalPersona({ existing }: { existing: SpecialPersonaR
         <p className="mt-1 text-xs text-muted-foreground">
           ネット検索で人物像を調べ、AIが著作権・肖像権等を点検したうえでペルソナとオリジナルイラストを生成します。
         </p>
-        <div className="mt-3 flex gap-2">
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); create(); } }}
             placeholder="例：吉田松陰"
-            className="flex-1 rounded-md border border-input px-3 py-2 text-sm"
+            className="min-w-0 flex-1 rounded-md border border-input px-3 py-2 text-sm"
           />
-          <button type="button" onClick={create} disabled={loading || !name.trim()} className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-bold text-primary-foreground transition hover:opacity-90 disabled:opacity-50">
+          <button type="button" onClick={create} disabled={loading || !name.trim()} className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-bold text-primary-foreground transition hover:opacity-90 disabled:opacity-50">
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} 法的チェック＆生成
           </button>
         </div>

@@ -159,7 +159,11 @@ export default async function AdminKaikanPage({ searchParams }: { searchParams: 
               </div>
 
               {c.applications.length > 0 && (
-                <div className="mt-3 overflow-x-auto">
+                <details className="mt-3 rounded-lg border bg-muted/20">
+                  <summary className="cursor-pointer select-none px-3 py-2 text-xs font-bold text-foreground/80 hover:bg-muted/40">
+                    申込者一覧を表示（{c._count.applications}名）
+                  </summary>
+                  <div className="overflow-x-auto px-3 pb-3">
                   <table className="w-full text-left text-xs">
                     <thead className="text-muted-foreground">
                       <tr>
@@ -190,7 +194,8 @@ export default async function AdminKaikanPage({ searchParams }: { searchParams: 
                       ))}
                     </tbody>
                   </table>
-                </div>
+                  </div>
+                </details>
               )}
             </div>
           ))
