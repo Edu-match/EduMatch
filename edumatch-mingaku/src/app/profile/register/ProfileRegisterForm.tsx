@@ -187,6 +187,7 @@ export function ProfileRegisterForm({
   const [personaColor, setPersonaColor] = useState<string>("");
   const [personaMbti, setPersonaMbti] = useState<string>("");
   const [mindset, setMindset] = useState(""); // 任意の自由記述（カンマ区切りキーワード）
+  const [personaActivities, setPersonaActivities] = useState(""); // 普段の活動・取り組み（返信のリアルさ向上）
   const [personaGenerating, setPersonaGenerating] = useState(false);
   const [personaError, setPersonaError] = useState<string | null>(null);
   const [personaInfo, setPersonaInfo] = useState<{ expertise: string[]; valuesText: string } | null>(null);
@@ -421,6 +422,19 @@ export function ProfileRegisterForm({
         <p className="text-[10px] text-muted-foreground">入力した好きなもの（例：野球・ラグビー）はアバターのイラストにモチーフとして反映されます。</p>
       </div>
 
+      {/* 活動・取り組み（任意・自由記述）：返信のリアルさ向上 */}
+      <div className="space-y-1.5">
+        <p className="text-xs font-semibold">普段の活動・取り組み <span className="font-normal text-muted-foreground">（任意）</span></p>
+        <textarea
+          value={personaActivities}
+          onChange={(e) => setPersonaActivities(e.target.value)}
+          rows={3}
+          placeholder="例：高校で探究学習の授業づくり、地域の子ども向けプログラミング教室の運営、部活動の改革 など"
+          className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm"
+        />
+        <p className="text-[10px] text-muted-foreground">あなたの活動・経験は、AIペルソナが「あなたらしく」返信する材料になります。</p>
+      </div>
+
       {/* 任意：本人写真をもとにイラスト化 */}
       <div className="space-y-1.5">
         <label className="text-xs font-medium text-muted-foreground">
@@ -465,7 +479,7 @@ export function ProfileRegisterForm({
         type="button"
         size="sm"
         className="w-full"
-        disabled={personaGenerating || (personaTraits.length === 0 && !personaTone && !personaColor && !personaMbti && !mindset.trim() && !personaPhoto)}
+        disabled={personaGenerating || (personaTraits.length === 0 && !personaTone && !personaColor && !personaMbti && !mindset.trim() && !personaActivities.trim() && !personaPhoto)}
         onClick={async () => {
           setPersonaGenerating(true);
           setPersonaError(null);
@@ -484,6 +498,7 @@ export function ProfileRegisterForm({
               name: (legalName || name || "").trim(),
               bio: bio || undefined,
               mindset: mindsetText || undefined,
+              activities: personaActivities.trim() || undefined,
               interests: selectedInterests,
               organization: organization || undefined,
               role: roleOther || role || undefined,

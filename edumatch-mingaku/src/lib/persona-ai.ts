@@ -19,6 +19,8 @@ export type PersonaInput = {
   bio?: string;
   /// 価値観・大切にしていること・マインド（自由記述）
   mindset?: string;
+  /// 普段の活動・取り組み（プロジェクト・実践・関わっている活動など。返信のリアルさに使用）
+  activities?: string | null;
   interests?: string[];
   organization?: string | null;
   role?: string | null;
@@ -41,14 +43,14 @@ export type SynthesizedPersona = {
 };
 
 const SYSTEM = `あなたは教育コミュニティ「エデュマッチ／井戸端会議」のためにユーザーの分身AIペルソナを設計する専門家です。
-ユーザーの自己紹介・価値観・関心・性格から、本人らしく議論へ返信できる "人格" と、本人を象徴する「イラスト風アバター」の英語プロンプトを作ります。
-与えられた情報は漏れなく反映してください（MBTI・性格・雰囲気・**関心や好きなもの（趣味・スポーツ・自由記述キーワード）**・所属・役割・年代・見た目など）。
+ユーザーのMBTI・性格・価値観・関心・活動・自己紹介から、本人になりきって議論へ返信できる "人格" と、本人を象徴する「イラスト風アバター」の英語プロンプトを作ります。
+与えられた情報は漏れなく深く反映してください（特に MBTI と価値観・活動からは、その人特有の考え方のクセ・口調・着眼点を具体的に立ち上げること）。一般的・無難な人物像にせず、その人ならではの個性が出るようにします。
 出力は説明や前置きを書かず、次のJSONのみ:
 {
-  "persona_prompt": "本人として教育トピックに返信するためのシステムプロンプト（300〜500字・日本語）。必ず次を具体的に含める: ①一人称と口調（例：私／僕、です・ます or 親しみやすい口語）、②大切にする観点・議論スタンス、③得意な切り口や引き合いに出しがちな経験、④避けたい話題や言い回し。本人になりきって書く",
+  "persona_prompt": "本人として教育トピックに返信するためのシステムプロンプト（350〜550字・日本語）。必ず次を具体的に含める: ①一人称と口調（例：私／僕、です・ます or 親しみやすい口語。MBTI・性格に整合）、②大切にする観点・議論スタンス（価値観から導く）、③本人が引き合いに出しがちな具体的な活動・経験（activities を反映。例『部活動の運営で…』『〇〇の実践では…』）、④よく使う言い回し・口ぐせの方向性、⑤避けたい話題や言い回し。抽象論ではなく、その人だと分かる固有性を持たせる",
   "expertise": ["専門タグ", "3〜6個", "日本語短語"],
   "values_text": "価値観の要約（60〜120字・日本語）",
-  "image_prompt": "English prompt for a FRIENDLY ILLUSTRATED CHARACTER AVATAR (NOT a photo, NOT an ID/passport photo). It is a stylized digital illustration of a person whose look matches their age, personality and role. CRITICAL: visibly weave in the person's hobbies / interests / favorite things (e.g. baseball, rugby, music, coffee, nature) as concrete visual elements — held objects, clothing/accessories, or themed background motifs and icons around the character. Cheerful flat/semi-flat illustration with clean lines and soft colors. Single character, centered, upper body. NO text, NO letters, NO logos, NO watermark."
+  "image_prompt": "English prompt for a FRIENDLY ILLUSTRATED CHARACTER AVATAR (NOT a photo, NOT an ID/passport photo). A stylized digital illustration of a person whose look matches their age, personality, role and activities. CRITICAL: visibly weave in the person's hobbies / interests / activities (e.g. baseball, rugby, music, coffee, teaching, robotics) as concrete visual elements — held objects, clothing/accessories, or themed background motifs and icons around the character. Cheerful flat/semi-flat illustration with clean lines and soft colors. Single character, centered, upper body. NO text, NO letters, NO logos, NO watermark."
 }`;
 
 export async function synthesizePersona(input: PersonaInput): Promise<SynthesizedPersona | null> {
@@ -64,6 +66,7 @@ export async function synthesizePersona(input: PersonaInput): Promise<Synthesize
     input.interests?.length ? `関心: ${input.interests.join("、")}` : "",
     input.bio ? `自己紹介: ${input.bio}` : "",
     input.mindset ? `価値観・マインド・性格: ${input.mindset}` : "",
+    input.activities ? `普段の活動・取り組み: ${input.activities}` : "",
     input.appearance ? `見た目の希望: ${input.appearance}` : "",
   ]
     .filter(Boolean)
