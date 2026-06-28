@@ -1,25 +1,5 @@
 // AIペルソナ／アバター生成のための選択肢（クライアント・サーバー共通で利用）。
 
-export const PERSONA_TRAIT_OPTIONS = [
-  "明るい・社交的", "落ち着いている", "好奇心旺盛", "論理的・冷静",
-  "面倒見がいい", "創造的・アイデア型", "行動派・エネルギッシュ",
-  "聞き上手・共感型", "まじめ・誠実", "マイペース", "ユーモアがある", "情熱的",
-];
-
-export const PERSONA_TONE_OPTIONS = [
-  "やわらかい・親しみやすい", "知的・落ち着いた", "元気・ポップ",
-  "クール・スタイリッシュ", "ナチュラル・温かい", "かわいい系",
-];
-
-export const PERSONA_COLOR_OPTIONS: { label: string; dot: string }[] = [
-  { label: "ブルー系", dot: "#3b82f6" },
-  { label: "グリーン系", dot: "#22c55e" },
-  { label: "イエロー・オレンジ系", dot: "#f59e0b" },
-  { label: "パープル系", dot: "#8b5cf6" },
-  { label: "ピンク系", dot: "#ec4899" },
-  { label: "モノトーン", dot: "#64748b" },
-];
-
 // MBTIの説明リンク（非認知層の離脱防止）。
 export const MBTI_GUIDE_URL = "https://www.16personalities.com/ja";
 
