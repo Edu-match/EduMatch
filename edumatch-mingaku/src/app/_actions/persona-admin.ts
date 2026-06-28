@@ -19,7 +19,10 @@ export type HistoricalPersonaResult = {
  * 歴史上の人物名から、AI法的チェック→ネット検索→ペルソナ＋オリジナルイラスト生成→保存。
  * blocked 判定の場合は生成せず理由を返す。
  */
-export async function createHistoricalPersona(name: string): Promise<HistoricalPersonaResult> {
+export async function createHistoricalPersona(
+  name: string,
+  permissionConfirmed = false,
+): Promise<HistoricalPersonaResult> {
   await requireAdmin();
   const profile = await getCurrentProfile();
   if (!profile) return { ok: false, error: "管理者のみ利用できます" };
@@ -30,8 +33,15 @@ export async function createHistoricalPersona(name: string): Promise<HistoricalP
   // 1) 法的チェック
   const legal = await checkHistoricalPersonaLegal(trimmed);
   if (!legal) return { ok: false, error: "法的チェックに失敗しました（OPENAI_API_KEY を確認）" };
-  if (legal.status === "blocked") {
-    return { ok: false, legal, error: "法的チェックの結果、このペルソナの作成は見送りが推奨されます。" };
+  // blocked（存命者含む）は原則作成不可。ただし管理者が本人・権利者の許可取得済みを明示確認した場合のみ続行。
+  if (legal.status === "blocked" && !permissionConfirmed) {
+    return {
+      ok: false,
+      legal,
+      error: legal.living
+        ? "存命の人物のため作成できません。本人・権利者の許可を取得済みの場合のみ、下の確認手順から作成してください。"
+        : "法的チェックの結果、このペルソナの作成は見送りが推奨されます。許可取得済みの場合のみ確認手順から作成できます。",
+    };
   }
 
   // 2) ネット検索で人物像を調査
@@ -75,7 +85,9 @@ export async function createHistoricalPersona(name: string): Promise<HistoricalP
         avatar_url: avatarUrl,
         source: "historical",
         legal_status: legal.status,
-        legal_note: legal.note,
+        legal_note: permissionConfirmed && legal.status === "blocked"
+          ? `${legal.note}\n【管理者確認】本人・権利者の許可取得済みとして作成。`
+          : legal.note,
         created_by: profile.id,
       },
       select: { id: true, name: true, expertise: true, values_text: true, avatar_url: true },
