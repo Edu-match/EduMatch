@@ -674,6 +674,8 @@ model KaikanContent {
   location     String              @default("")
   /// 開催日時（任意）
   starts_at    DateTime?           @db.Timestamptz(6)
+  /// 終了日時（任意。starts_at と合わせて時間重複の判定に使う）
+  ends_at      DateTime?           @db.Timestamptz(6)
   /// 定員（null=無制限）
   capacity     Int?
   is_published Boolean             @default(false)
@@ -707,6 +709,23 @@ model KaikanApplication {
   @@index([content_id, created_at])
   @@index([ticket_token])
   @@map("kaikan_applications")
+}
+
+/// 議員会館サミットの招待コード。Peatixで全体申込した人へ手動メールで配布し、
+/// エデュマッチで入力するとコンテンツの電子チケットを申し込めるようになる（申込者ごとの使い捨て）。
+model KaikanInviteCode {
+  id          String    @id @default(uuid()) @db.Uuid
+  /// 入力用コード（例: ABCD-2F7K）。一意。
+  code        String    @unique
+  /// 宛先名などのメモ（任意・管理用）
+  note        String    @default("")
+  /// 使用したアカウント（Profile.id）。未使用は NULL。
+  redeemed_by String?   @db.Uuid
+  redeemed_at DateTime? @db.Timestamptz(6)
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([redeemed_by])
+  @@map("kaikan_invite_codes")
 }
 
 /// Interop特設ページのサイト設定（テキスト・テーマ等のkey-value）

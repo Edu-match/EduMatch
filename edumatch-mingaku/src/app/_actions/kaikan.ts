@@ -1,10 +1,83 @@
 "use server";
 
-import { randomUUID } from "crypto";
+import { randomUUID, randomInt } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentProfile, requireAdmin } from "@/lib/auth";
+
+// 招待コード用の文字集合（紛らわしい O/0/I/1/L を除外）。
+const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+
+function generateInviteCode(len = 8): string {
+  let s = "";
+  for (let i = 0; i < len; i++) s += CODE_ALPHABET[randomInt(0, CODE_ALPHABET.length)];
+  return s;
+}
+
+/** 入力コードを正規化（英数のみ・大文字）。表示はハイフン入りでも入力は自由。 */
+function normalizeCode(raw: string): string {
+  return raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+/** 2つの時間帯が重なるか（両方に開始・終了がある場合のみ判定）。 */
+function timeOverlaps(
+  aStart: Date | null, aEnd: Date | null,
+  bStart: Date | null, bEnd: Date | null,
+): boolean {
+  if (!aStart || !aEnd || !bStart || !bEnd) return false;
+  return aStart.getTime() < bEnd.getTime() && bStart.getTime() < aEnd.getTime();
+}
+
+/** 指定アカウントが招待コードを使用済み（＝申込資格あり）か。 */
+export async function hasRedeemedInvite(profileId: string): Promise<boolean> {
+  const c = await prisma.kaikanInviteCode.findFirst({ where: { redeemed_by: profileId }, select: { id: true } });
+  return !!c;
+}
+
+/** 招待コードを入力して申込資格を有効化する（申込者ごとの使い捨て）。 */
+export async function redeemInviteCode(formData: FormData): Promise<{ ok: boolean; error?: string }> {
+  const code = normalizeCode(String(formData.get("code") || ""));
+  if (!code) return { ok: false, error: "招待コードを入力してください" };
+
+  const profile = await getCurrentProfile();
+  if (!profile) return { ok: false, error: "ログインが必要です" };
+
+  // 既に認証済みなら成功扱い。
+  if (await hasRedeemedInvite(profile.id)) {
+    revalidatePath("/forum/kaikan");
+    return { ok: true };
+  }
+
+  const invite = await prisma.kaikanInviteCode.findUnique({ where: { code } });
+  if (!invite) return { ok: false, error: "招待コードが正しくありません。メールに記載のコードをご確認ください。" };
+  if (invite.redeemed_by && invite.redeemed_by !== profile.id) {
+    return { ok: false, error: "この招待コードは既に使用されています。" };
+  }
+
+  await prisma.kaikanInviteCode.update({
+    where: { id: invite.id },
+    data: { redeemed_by: profile.id, redeemed_at: new Date() },
+  });
+  revalidatePath("/forum/kaikan");
+  return { ok: true };
+}
+
+/** 管理者：招待コードを一括生成する。 */
+export async function generateKaikanInviteCodes(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const countRaw = parseInt(String(formData.get("count") || ""), 10);
+  const count = Math.max(1, Math.min(500, Number.isNaN(countRaw) ? 10 : countRaw));
+  const note = String(formData.get("note") || "").trim();
+
+  const codes = new Set<string>();
+  while (codes.size < count) codes.add(generateInviteCode());
+  await prisma.kaikanInviteCode.createMany({
+    data: [...codes].map((code) => ({ code, note })),
+    skipDuplicates: true,
+  });
+  revalidatePath("/admin/kaikan");
+}
 
 /** ログイン中アカウントでコンテンツに申込→電子チケット(QR)を発行。氏名/メールはアカウント情報を使用。 */
 export async function applyForKaikanContent(formData: FormData) {
@@ -16,8 +89,27 @@ export async function applyForKaikanContent(formData: FormData) {
   const profile = await getCurrentProfile();
   if (!profile) throw new Error("申込にはログインが必要です");
 
+  // 招待コード必須。
+  if (!(await hasRedeemedInvite(profile.id))) {
+    throw new Error("申込には招待コードの入力が必要です。先に教育AIサミット全体（Peatix）へお申込みのうえ、届いた招待コードを入力してください。");
+  }
+
   const content = await prisma.kaikanContent.findUnique({ where: { id: contentId } });
   if (!content || !content.is_published) throw new Error("受付を終了したか、存在しないコンテンツです");
+
+  // 時間重複チェック：既存の申込と時間帯が重なる場合は不可。
+  const myApps = await prisma.kaikanApplication.findMany({
+    where: { profile_id: profile.id, status: { not: "cancelled" } },
+    select: { content_id: true },
+  });
+  if (myApps.length > 0) {
+    const others = await prisma.kaikanContent.findMany({
+      where: { id: { in: myApps.map((a) => a.content_id) } },
+      select: { title: true, starts_at: true, ends_at: true },
+    });
+    const clash = others.find((o) => timeOverlaps(content.starts_at, content.ends_at, o.starts_at, o.ends_at));
+    if (clash) throw new Error(`時間帯が重複しているため申し込めません：「${content.title}」と「${clash.title}」`);
+  }
 
   // 同一アカウントの二重申込を防ぐ：既存があればそのチケットへ。
   const existing = await prisma.kaikanApplication.findFirst({
@@ -58,6 +150,11 @@ export async function applyForKaikanContents(formData: FormData) {
   const profile = await getCurrentProfile();
   if (!profile) throw new Error("申込にはログインが必要です");
 
+  // 招待コード必須（Peatixで全体申込→メールのコードを入力済みであること）。
+  if (!(await hasRedeemedInvite(profile.id))) {
+    throw new Error("申込には招待コードの入力が必要です。先に教育AIサミット全体（Peatix）へお申込みのうえ、届いた招待コードを入力してください。");
+  }
+
   // 既存の自分の申込（このアカウント）を見て、チケットを流用しつつ二重を避ける
   const existingApps = await prisma.kaikanApplication.findMany({
     where: { profile_id: profile.id, status: { not: "cancelled" } },
@@ -68,6 +165,27 @@ export async function applyForKaikanContents(formData: FormData) {
 
   const toAdd = contentIds.filter((id) => !alreadyIds.has(id));
   const contents = await prisma.kaikanContent.findMany({ where: { id: { in: toAdd }, is_published: true } });
+
+  // 時間重複チェック：今回追加分 ＋ 既存申込分の中で、時間帯が重なる組み合わせがあれば申込不可。
+  const existingContents = existingApps.length > 0
+    ? await prisma.kaikanContent.findMany({
+        where: { id: { in: existingApps.map((a) => a.content_id) } },
+        select: { id: true, title: true, starts_at: true, ends_at: true },
+      })
+    : [];
+  const timeline = [
+    ...existingContents,
+    ...contents.map((c) => ({ id: c.id, title: c.title, starts_at: c.starts_at, ends_at: c.ends_at })),
+  ];
+  for (let i = 0; i < timeline.length; i++) {
+    for (let j = i + 1; j < timeline.length; j++) {
+      const a = timeline[i], b = timeline[j];
+      if (a.id !== b.id && timeOverlaps(a.starts_at, a.ends_at, b.starts_at, b.ends_at)) {
+        throw new Error(`時間帯が重複しているため同時に申し込めません：「${a.title}」と「${b.title}」`);
+      }
+    }
+  }
+
   for (const c of contents) {
     if (c.capacity != null) {
       const count = await prisma.kaikanApplication.count({ where: { content_id: c.id, status: { not: "cancelled" } } });
@@ -97,6 +215,7 @@ export async function createKaikanContent(formData: FormData) {
   const description = String(formData.get("description") || "").trim();
   const location = String(formData.get("location") || "").trim();
   const startsAtRaw = String(formData.get("starts_at") || "").trim();
+  const endsAtRaw = String(formData.get("ends_at") || "").trim();
   const capacityRaw = String(formData.get("capacity") || "").trim();
   await prisma.kaikanContent.create({
     data: {
@@ -104,6 +223,7 @@ export async function createKaikanContent(formData: FormData) {
       description,
       location,
       starts_at: startsAtRaw ? new Date(startsAtRaw) : null,
+      ends_at: endsAtRaw ? new Date(endsAtRaw) : null,
       capacity: capacityRaw ? Math.max(0, parseInt(capacityRaw, 10)) || null : null,
       is_published: formData.get("is_published") === "on",
     },

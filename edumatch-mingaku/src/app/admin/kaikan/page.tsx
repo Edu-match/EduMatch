@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
-import { createKaikanContent, setKaikanContentPublished } from "@/app/_actions/kaikan";
+import { createKaikanContent, setKaikanContentPublished, generateKaikanInviteCodes } from "@/app/_actions/kaikan";
 import { KaikanCheckinPanel } from "@/components/kaikan/kaikan-checkin-panel";
 
 export const dynamic = "force-dynamic";
@@ -15,8 +15,19 @@ export default async function AdminKaikanPage({ searchParams }: { searchParams: 
   await requireAdmin();
   const { tab, token } = await searchParams;
   const isCheckin = tab === "checkin";
+  const isInvites = tab === "invites";
 
-  const contents = isCheckin ? [] : await prisma.kaikanContent.findMany({
+  const inviteCodes = isInvites ? await prisma.kaikanInviteCode.findMany({
+    orderBy: { created_at: "desc" },
+    take: 1000,
+    select: { id: true, code: true, note: true, redeemed_by: true, redeemed_at: true, created_at: true },
+  }) : [];
+  const inviteStats = isInvites ? {
+    total: await prisma.kaikanInviteCode.count(),
+    used: await prisma.kaikanInviteCode.count({ where: { redeemed_by: { not: null } } }),
+  } : { total: 0, used: 0 };
+
+  const contents = (isCheckin || isInvites) ? [] : await prisma.kaikanContent.findMany({
     orderBy: [{ sort_order: "asc" }, { created_at: "desc" }],
     include: {
       _count: { select: { applications: true } },
@@ -36,14 +47,69 @@ export default async function AdminKaikanPage({ searchParams }: { searchParams: 
       <p className="mt-1 text-sm text-muted-foreground">コンテンツの作成・公開と、申込者の確認・当日の受付。</p>
 
       {/* タブ */}
-      <nav className="mt-4 flex gap-2">
-        <Link href="/admin/kaikan" className={tabCls(!isCheckin)}>コンテンツ管理</Link>
+      <nav className="mt-4 flex flex-wrap gap-2">
+        <Link href="/admin/kaikan" className={tabCls(!isCheckin && !isInvites)}>コンテンツ管理</Link>
         <Link href="/admin/kaikan?tab=checkin" className={tabCls(isCheckin)}>当日受付（QR/受付番号）</Link>
+        <Link href="/admin/kaikan?tab=invites" className={tabCls(isInvites)}>招待コード</Link>
       </nav>
 
       {isCheckin ? (
         <section className="mt-6">
           <KaikanCheckinPanel initialToken={token} />
+        </section>
+      ) : isInvites ? (
+        <section className="mt-6 space-y-6">
+          <div className="rounded-xl border bg-background p-5">
+            <h2 className="mb-1 text-sm font-bold">招待コードを生成</h2>
+            <p className="mb-3 text-xs text-muted-foreground">
+              Peatixで全体申込した方へ手動メールで配布する使い捨てコードです。生成後、下の一覧からコピーしてご利用ください（1コード＝1人）。
+            </p>
+            <form action={generateKaikanInviteCodes} className="flex flex-wrap items-end gap-2">
+              <label className="text-sm">
+                <span className="block text-xs text-muted-foreground">生成枚数（最大500）</span>
+                <input name="count" type="number" min={1} max={500} defaultValue={20} className="mt-1 w-32 rounded-md border border-input px-3 py-2 text-sm" />
+              </label>
+              <label className="text-sm flex-1 min-w-[180px]">
+                <span className="block text-xs text-muted-foreground">メモ（任意・一括付与）</span>
+                <input name="note" placeholder="例：6/28分" className="mt-1 w-full rounded-md border border-input px-3 py-2 text-sm" />
+              </label>
+              <button type="submit" className="rounded-md bg-primary px-4 py-2 text-sm font-bold text-primary-foreground">生成</button>
+            </form>
+          </div>
+
+          <div className="rounded-xl border bg-background p-5">
+            <h2 className="mb-3 text-sm font-bold">発行済みコード（{inviteStats.used} / {inviteStats.total} 使用済み）</h2>
+            {inviteCodes.length === 0 ? (
+              <p className="text-sm text-muted-foreground">まだコードがありません。上で生成してください。</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="text-muted-foreground">
+                    <tr>
+                      <th className="py-1 pr-3">コード</th>
+                      <th className="py-1 pr-3">メモ</th>
+                      <th className="py-1 pr-3">状態</th>
+                      <th className="py-1">発行日</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {inviteCodes.map((c) => (
+                      <tr key={c.id} className="border-t">
+                        <td className="py-1.5 pr-3 font-mono font-bold tracking-wider">{c.code}</td>
+                        <td className="py-1.5 pr-3 text-muted-foreground">{c.note || "—"}</td>
+                        <td className="py-1.5 pr-3">
+                          <span className={c.redeemed_by ? "text-muted-foreground" : "text-emerald-600 font-bold"}>
+                            {c.redeemed_by ? `使用済（${fmtDate(c.redeemed_at)}）` : "未使用"}
+                          </span>
+                        </td>
+                        <td className="py-1.5 text-muted-foreground">{fmtDate(c.created_at)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </section>
       ) : (
       <>
@@ -53,9 +119,10 @@ export default async function AdminKaikanPage({ searchParams }: { searchParams: 
         <form action={createKaikanContent} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <input name="title" required placeholder="タイトル（必須）" className="rounded-md border border-input px-3 py-2 text-sm sm:col-span-2" />
           <textarea name="description" placeholder="説明" rows={2} className="resize-none rounded-md border border-input px-3 py-2 text-sm sm:col-span-2" />
-          <input name="location" placeholder="場所（例：第一議員会館 大会議室）" className="rounded-md border border-input px-3 py-2 text-sm" />
-          <input name="starts_at" type="datetime-local" className="rounded-md border border-input px-3 py-2 text-sm" />
-          <input name="capacity" type="number" min={0} placeholder="定員（空欄=無制限）" className="rounded-md border border-input px-3 py-2 text-sm" />
+          <input name="location" placeholder="場所（例：第一議員会館 大会議室）" className="rounded-md border border-input px-3 py-2 text-sm sm:col-span-2" />
+          <label className="text-xs text-muted-foreground">開始<input name="starts_at" type="datetime-local" className="mt-1 block w-full rounded-md border border-input px-3 py-2 text-sm" /></label>
+          <label className="text-xs text-muted-foreground">終了（時間重複の判定に使用）<input name="ends_at" type="datetime-local" className="mt-1 block w-full rounded-md border border-input px-3 py-2 text-sm" /></label>
+          <input name="capacity" type="number" min={0} placeholder="定員（空欄=無制限）" className="rounded-md border border-input px-3 py-2 text-sm sm:col-span-2" />
           <label className="flex items-center gap-2 text-sm">
             <input name="is_published" type="checkbox" className="h-4 w-4" />
             すぐ公開する
@@ -75,7 +142,7 @@ export default async function AdminKaikanPage({ searchParams }: { searchParams: 
                 <div className="min-w-0">
                   <h3 className="font-bold">{c.title}</h3>
                   <p className="text-xs text-muted-foreground">
-                    {fmtDate(c.starts_at)} ・ {c.location || "場所未設定"} ・ 申込 {c._count.applications}
+                    {fmtDate(c.starts_at)}{c.ends_at ? `–${fmtDate(c.ends_at)}` : ""} ・ {c.location || "場所未設定"} ・ 申込 {c._count.applications}
                     {c.capacity != null ? ` / 定員 ${c.capacity}` : ""}
                   </p>
                 </div>
