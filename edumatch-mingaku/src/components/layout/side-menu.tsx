@@ -24,6 +24,7 @@ import {
   Video,
   Megaphone,
   QrCode,
+  Sparkles,
 } from "lucide-react";
 
 /** 一般ユーザー向けメニュー（全員閲覧用）。labelKey は sideMenu namespace のキー */
@@ -143,6 +144,15 @@ export function SideMenu() {
               >
                 <QrCode className="h-4 w-4 flex-shrink-0 text-amber-900" />
                 <span className="hover:text-[#1d4ed8] transition-colors">電子チケット読み取り</span>
+              </Link>
+            )}
+            {role === "ADMIN" && (
+              <Link
+                href="/admin/persona"
+                className="flex w-full items-center gap-2 border-b border-amber-200 px-3 py-2.5 text-left text-sm transition-colors hover:bg-amber-100"
+              >
+                <Sparkles className="h-4 w-4 flex-shrink-0 text-violet-700" />
+                <span className="hover:text-[#1d4ed8] transition-colors">AIペルソナ</span>
               </Link>
             )}
             {visibleBottomItems.map((item, index) => (

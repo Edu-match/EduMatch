@@ -10,7 +10,7 @@ import {
   Menu, LogOut, User, LayoutDashboard, Settings, 
   ChevronDown, UserPlus, LogIn, FileText, Bell,
   CheckCircle, Calendar, Newspaper, BookOpen, Bot, Activity, Flag, ArrowUpDown,
-  MessageSquare, CircleHelp, Pencil, QrCode
+  MessageSquare, CircleHelp, Pencil, QrCode, Sparkles
 } from "lucide-react";
 import { useRequestList } from "@/components/request-list/request-list-context";
 import { useTextEdit } from "@/components/text-edit/text-edit-context";
@@ -419,6 +419,13 @@ export function Header() {
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="cursor-pointer"
+                      onSelect={() => router.push("/admin/persona")}
+                    >
+                      <Sparkles className="mr-2 h-4 w-4 text-violet-600" />
+                      AIペルソナ
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="cursor-pointer"
                       onSelect={() => router.push("/admin/approvals")}
                     >
                       <CheckCircle className="mr-2 h-4 w-4 text-amber-600" />
@@ -630,6 +637,9 @@ export function Header() {
                         <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground pb-1">{t("adminMenu")}</p>
                         <Link href="/admin/kaikan?tab=checkin" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
                           <QrCode className="h-4 w-4 text-primary flex-shrink-0" />電子チケット読み取り
+                        </Link>
+                        <Link href="/admin/persona" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
+                          <Sparkles className="h-4 w-4 text-violet-600 flex-shrink-0" />AIペルソナ
                         </Link>
                         <Link href="/admin/approvals" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
                           <CheckCircle className="h-4 w-4 text-amber-600 flex-shrink-0" />{t("approvals")}
