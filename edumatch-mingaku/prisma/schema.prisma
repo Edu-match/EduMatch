@@ -39,8 +39,10 @@ model Profile {
   manual_profile_kind             String?
   /// 初回プロフィール設定完了日時。null の間は OAuth 後も登録ウィザードへ誘導する
   onboarding_completed_at         DateTime?
-  /// AI検定合格フラグ（井戸端会議・人材マッチングのバッジ表示用）
+  /// AI検定合格フラグ（教育のひろば・人材マッチングのバッジ表示用）
   ai_kentei_passed                Boolean              @default(false)
+  /// 人材マッチング名鑑への掲載オプトイン（既定 false = 非掲載。本人の明示同意でのみ公開）
+  directory_opt_in                Boolean              @default(false)
   material_requests               MaterialRequest[]
   posts                           Post[]
   reviews                         Review[]
@@ -65,6 +67,7 @@ model Profile {
 
   @@index([email])
   @@index([stripe_customer_id])
+  @@index([directory_opt_in])
 }
 
 /// 一般ユーザー向け拡張（所属・年代など）。Profile と 1:1

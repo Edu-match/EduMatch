@@ -26,6 +26,7 @@ import {
   Megaphone,
   Sparkles,
   ListChecks,
+  Users,
 } from "lucide-react";
 
 /** 一般ユーザー向けメニュー（全員閲覧用）。labelKey は sideMenu namespace のキー */
@@ -38,6 +39,7 @@ const generalItems = [
   { href: "/videos", labelKey: "videos", icon: Video },
   { href: "/events", labelKey: "events", icon: Calendar },
   { href: "/companies", labelKey: "companies", icon: Building2 },
+  { href: "/matching", labelKey: "matching", icon: Users },
   { href: "/compare", labelKey: "compare", icon: Scale },
   { href: "/ai-kentei", labelKey: "aiKentei", icon: Award },
   { href: "/help", labelKey: "help", icon: HelpCircle },
