@@ -1,172 +1,227 @@
 "use client";
 
-import { Canvas } from "@react-three/fiber";
-import { Html, OrbitControls, Line, Stars } from "@react-three/drei";
-import { EffectComposer, Bloom } from "@react-three/postprocessing";
-import { useEffect, useMemo, useState } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { Html, OrbitControls, Line, Stars, Sparkles, Trail } from "@react-three/drei";
+import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { INTEROP_PRIORITY_TOPICS, MAJOR_META, type InteropPriorityTopic } from "@/lib/interop-priority-topics";
-import { DEFAULT_AXIS_CONFIG, type AxisConfig, type AxisPoint } from "@/lib/interop-topic-axis";
 
-const S = 36;
-const MAXH = 26;
-const CENTER_Y = MAXH / 2;
-const TOPIC_BY_NO = new Map(INTEROP_PRIORITY_TOPICS.map((t) => [t.no, t]));
+/**
+ * 教育のひろば 3D「ギャラクシービュー」— 完全リライト版
+ *
+ * メタファー: 教育のひろば＝ひとつの太陽系。
+ * - 恒星（中央）= ハブ（電子チケット・案内）
+ * - 惑星 = 6つの大分類（A〜F）。活発なほど大きく輝く
+ * - 衛星 = 各◎トピック（クリックでそのテーマのひろばへ）
+ * - 惑星をクリックするとカメラがその惑星系へ滑らかにズームし、衛星ラベルが展開する
+ */
+
+type Tier = "high" | "low";
+type Caps = { webgl: boolean; tier: Tier; reduceMotion: boolean };
 
 const MAJOR_EMOJI: Record<string, string> = { A: "🤖", B: "📊", C: "🛡️", D: "🌈", E: "🏫", F: "📚" };
+const MAJORS = Object.keys(MAJOR_META);
 
-type Axis3 = { label: string; values: Record<number, number> };
-type Edge = { a: number; b: number; weight: number };
-type Tier = "high" | "low";
-
-/** 深い宇宙空間の背景（設計思想§2「宇宙＝探索体験」への回帰）。 */
 const SPACE_BG =
-  "radial-gradient(ellipse at 50% 32%, #16234d 0%, #0a1130 42%, #050815 72%, #02030a 100%)";
+  "radial-gradient(ellipse at 50% 30%, #131c42 0%, #0a1130 40%, #050815 72%, #02030a 100%)";
 
-function splitPoles(label: string): [string, string] {
-  const parts = label.split(/↔|⇔|<->|〜|~|→|↑/).map((s) => s.trim()).filter(Boolean);
-  if (parts.length >= 2) return [parts[0], parts[1]];
-  return ["", label.trim()];
-}
-function isRealAxis3(label: string): boolean {
-  const t = label.trim();
-  return t.length > 0 && t !== "巡回待ち" && t.includes("↔");
-}
+const CAM_START = new THREE.Vector3(0, 90, 210);
+const CAM_HOME = new THREE.Vector3(30, 24, 46);
 
-const axisLabelStyle: React.CSSProperties = {
-  whiteSpace: "nowrap", fontSize: 12, fontWeight: 800, color: "#fff",
-  background: "rgba(6,12,28,0.78)", border: "1px solid rgba(150,180,255,0.4)", borderRadius: 6, padding: "2px 8px",
-  textShadow: "0 1px 2px rgba(0,0,0,0.6)", boxShadow: "0 2px 8px rgba(0,0,0,0.35)",
+/** 大分類ごとの軌道パラメータ（半径・傾き・初期位相・公転速度） */
+type OrbitSpec = {
+  major: string;
+  rx: number;
+  rz: number;
+  tiltX: number;
+  tiltZ: number;
+  phase: number;
+  speed: number;
+  hasRing: boolean;
 };
+const ORBITS: OrbitSpec[] = MAJORS.map((major, i) => ({
+  major,
+  rx: 10.5 + i * 4.7,
+  rz: (10.5 + i * 4.7) * 0.94,
+  tiltX: [0.05, -0.08, 0.11, -0.05, 0.08, -0.11][i],
+  tiltZ: [0.03, -0.04, 0.02, 0.06, -0.03, 0.05][i],
+  phase: i * 2.39996, // 黄金角でばらす
+  speed: 0.055 / Math.sqrt(1 + i * 0.45),
+  hasRing: i === 2 || i === 4, // 土星風のリングを2つだけ（華やかさの差し色）
+}));
 
-function nodeSize(posts: number): number {
-  return 0.72 + Math.min(0.95, posts * 0.055);
+/* ---------- ユーティリティ ---------- */
+
+function ellipsePoints(rx: number, rz: number, n = 128): [number, number, number][] {
+  const pts: [number, number, number][] = [];
+  for (let i = 0; i <= n; i++) {
+    const a = (i / n) * Math.PI * 2;
+    pts.push([Math.cos(a) * rx, 0, Math.sin(a) * rz]);
+  }
+  return pts;
 }
 
-function jitter(no: number): [number, number, number] {
-  const fr = (x: number) => { const v = Math.sin(x) * 43758.5453; return v - Math.floor(v); };
-  return [(fr(no * 12.99) - 0.5) * 6, (fr(no * 78.23) - 0.5) * 7, (fr(no * 39.42) - 0.5) * 6];
-}
-
-// 縁が光る fresnel（宇宙空間で球が発光して見える）
+/** 縁が発光するフレネル殻（恒星・惑星の大気） */
 const ATMO_VERT = `varying vec3 vN; varying vec3 vP;
 void main(){ vN = normalize(normalMatrix * normal); vec4 mv = modelViewMatrix * vec4(position,1.0); vP = mv.xyz; gl_Position = projectionMatrix * mv; }`;
 const ATMO_FRAG = `uniform vec3 uColor; uniform float uPower; uniform float uIntensity;
 varying vec3 vN; varying vec3 vP;
 void main(){ vec3 v = normalize(-vP); float f = pow(1.0 - abs(dot(vN, v)), uPower); gl_FragColor = vec4(uColor * uIntensity, f); }`;
+
 function Atmosphere({ color, radius, power, intensity }: { color: string; radius: number; power: number; intensity: number }) {
-  const mat = useMemo(() => new THREE.ShaderMaterial({
-    vertexShader: ATMO_VERT, fragmentShader: ATMO_FRAG,
-    uniforms: { uColor: { value: new THREE.Color(color) }, uPower: { value: power }, uIntensity: { value: intensity } },
-    transparent: true, blending: THREE.AdditiveBlending, side: THREE.BackSide, depthWrite: false,
-  }), [color, power, intensity]);
-  return <mesh raycast={() => null} material={mat}><sphereGeometry args={[radius, 32, 32]} /></mesh>;
+  const mat = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        vertexShader: ATMO_VERT,
+        fragmentShader: ATMO_FRAG,
+        uniforms: {
+          uColor: { value: new THREE.Color(color) },
+          uPower: { value: power },
+          uIntensity: { value: intensity },
+        },
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        side: THREE.BackSide,
+        depthWrite: false,
+      }),
+    [color, power, intensity]
+  );
+  return (
+    <mesh raycast={() => null} material={mat}>
+      <sphereGeometry args={[radius, 32, 32]} />
+    </mesh>
+  );
 }
 
-function NodeLabel({ color, emoji, title, posts, hover }: { color: string; emoji: string; title: string; posts: number; hover: boolean }) {
+/** 星雲：Canvasグラデーションのスプライトを奥に漂わせる */
+function useNebulaTexture(inner: string, outer: string) {
+  return useMemo(() => {
+    const c = document.createElement("canvas");
+    c.width = c.height = 256;
+    const ctx = c.getContext("2d")!;
+    const g = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+    g.addColorStop(0, inner);
+    g.addColorStop(1, outer);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 256, 256);
+    const tex = new THREE.CanvasTexture(c);
+    tex.needsUpdate = true;
+    return tex;
+  }, [inner, outer]);
+}
+
+function Nebula({ position, scale, inner, opacity }: { position: [number, number, number]; scale: number; inner: string; opacity: number }) {
+  const tex = useNebulaTexture(inner, "rgba(0,0,0,0)");
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, pointerEvents: "none" }}>
-      <div style={{
-        display: "inline-flex", alignItems: "center", gap: 6, whiteSpace: "nowrap",
-        padding: "3px 10px 3px 4px", borderRadius: 10, fontSize: hover ? 12.5 : 11, fontWeight: 700, color: "#fff",
-        background: hover ? "rgba(8,14,32,0.95)" : "rgba(8,14,32,0.8)", border: `1px solid ${color}${hover ? "cc" : "99"}`,
-        boxShadow: "0 3px 12px rgba(0,0,0,0.5)", textShadow: "0 1px 2px rgba(0,0,0,0.65)",
-      }}>
-        <span style={{ display: "grid", placeItems: "center", width: hover ? 20 : 18, height: hover ? 20 : 18, borderRadius: 6, fontSize: hover ? 12 : 10.5, background: `${color}40` }}>{emoji}</span>
-        <span>{title}</span>
-      </div>
-      {posts > 0 && (
-        <span style={{ fontSize: 9.5, fontWeight: 800, color: "#06101f", lineHeight: 1.2, padding: "1px 7px", borderRadius: 999, background: color }}>{posts}件</span>
+    <sprite raycast={() => null} position={position} scale={[scale, scale, 1]}>
+      <spriteMaterial map={tex} transparent opacity={opacity} blending={THREE.AdditiveBlending} depthWrite={false} />
+    </sprite>
+  );
+}
+
+/* ---------- ラベル ---------- */
+
+const pillBase: React.CSSProperties = {
+  whiteSpace: "nowrap",
+  fontWeight: 700,
+  color: "#fff",
+  borderRadius: 999,
+  textShadow: "0 1px 2px rgba(0,0,0,0.65)",
+  boxShadow: "0 3px 14px rgba(0,0,0,0.5)",
+  pointerEvents: "none",
+};
+
+function PlanetLabel({ color, emoji, label, total, hover }: { color: string; emoji: string; label: string; total: number; hover: boolean }) {
+  return (
+    <div
+      style={{
+        ...pillBase,
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        fontSize: hover ? 13 : 12,
+        padding: "4px 12px 4px 6px",
+        background: hover ? "rgba(10,16,36,0.95)" : "rgba(10,16,36,0.8)",
+        border: `1px solid ${color}${hover ? "ee" : "88"}`,
+        transition: "all .18s ease",
+      }}
+    >
+      <span style={{ display: "grid", placeItems: "center", width: 20, height: 20, borderRadius: 999, fontSize: 12, background: `${color}44` }}>{emoji}</span>
+      <span>{label}</span>
+      {total > 0 && (
+        <span style={{ fontSize: 10, fontWeight: 800, color: "#0a1024", padding: "1px 7px", borderRadius: 999, background: color }}>{total}</span>
       )}
     </div>
   );
 }
 
-function TopicNode({ topic, posts, position, seg, onSelect }: { topic: InteropPriorityTopic; posts: number; position: [number, number, number]; seg: number; onSelect: () => void }) {
+function MoonLabel({ color, title, posts }: { color: string; title: string; posts: number }) {
+  return (
+    <div
+      style={{
+        ...pillBase,
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        fontSize: 11,
+        padding: "3px 10px",
+        background: "rgba(10,16,36,0.9)",
+        border: `1px solid ${color}bb`,
+      }}
+    >
+      <span>{title}</span>
+      {posts > 0 && (
+        <span style={{ fontSize: 9.5, fontWeight: 800, color: "#0a1024", padding: "0 6px", borderRadius: 999, background: color }}>{posts}</span>
+      )}
+    </div>
+  );
+}
+
+/* ---------- 天体 ---------- */
+
+type GalaxyClock = { orbit: number; moon: number };
+
+function Sun({ label, seg, reduceMotion, onSelect }: { label: string; seg: number; reduceMotion: boolean; onSelect: () => void }) {
+  const core = useRef<THREE.Mesh>(null);
   const [hover, setHover] = useState(false);
-  const color = MAJOR_META[topic.major]?.color ?? "#C9D4F6";
-  const emoji = MAJOR_EMOJI[topic.major] ?? "✨";
-  const r = nodeSize(posts);
-  const dropToPlane = CENTER_Y - position[1];
+  useFrame(({ clock }) => {
+    if (!core.current) return;
+    const t = clock.getElapsedTime();
+    const pulse = reduceMotion ? 1 : 1 + Math.sin(t * 1.3) * 0.035;
+    core.current.scale.setScalar(pulse * (hover ? 1.06 : 1));
+    if (!reduceMotion) core.current.rotation.y = t * 0.06;
+  });
   const enter = () => { setHover(true); document.body.style.cursor = "pointer"; };
   const leave = () => { setHover(false); document.body.style.cursor = "auto"; };
   return (
-    <group position={position}>
-      <mesh scale={hover ? 1.12 : 1} onPointerOver={(e) => { e.stopPropagation(); enter(); }} onPointerOut={leave} onClick={(e) => { e.stopPropagation(); onSelect(); }}>
-        <sphereGeometry args={[r, seg, seg]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={hover ? 0.9 : 0.6} roughness={0.4} metalness={0.15} toneMapped={false} />
-      </mesh>
-      <Atmosphere color={color} radius={r * 1.3} power={2.6} intensity={hover ? 1.25 : 0.75} />
-      <Line points={[[0, 0, 0], [0, dropToPlane, 0]]} color={color} lineWidth={1} transparent opacity={0.1} dashed dashScale={3} />
-      <Html center distanceFactor={hover ? 20 : 28} position={[0, r + 1.4, 0]} zIndexRange={[hover ? 40 : 16, 2]} style={{ pointerEvents: "none" }}>
-        <NodeLabel color={color} emoji={emoji} title={topic.category} posts={posts} hover={hover} />
-      </Html>
-    </group>
-  );
-}
-
-function TopicEdges({ edges, posById }: { edges: Edge[]; posById: Map<number, [number, number, number]> }) {
-  const segments = useMemo(() => {
-    const out: { key: string; a: [number, number, number]; b: [number, number, number] }[] = [];
-    for (const e of edges) {
-      const a = posById.get(e.a); const b = posById.get(e.b);
-      if (a && b) out.push({ key: `${e.a}-${e.b}`, a, b });
-    }
-    return out;
-  }, [edges, posById]);
-  return (
     <group>
-      {segments.map((s) => (<Line key={s.key} points={[s.a, s.b]} color="#9fb6ff" lineWidth={1} transparent opacity={0.2} />))}
-    </group>
-  );
-}
-
-function AxisFrame({ config, axis3Low, axis3High, showAxis3 }: { config: AxisConfig; axis3Low: string; axis3High: string; showAxis3: boolean }) {
-  const axis = "#8fb0ec";
-  const v3 = "#9fd0ff";
-  const cy = CENTER_Y;
-  return (
-    <group>
-      <Line points={[[-S, cy, 0], [S, cy, 0]]} color={axis} lineWidth={1.5} transparent opacity={0.5} />
-      <Line points={[[0, cy, S], [0, cy, -S]]} color={axis} lineWidth={1.5} transparent opacity={0.5} />
-      <mesh raycast={() => null} position={[0, cy, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[3.4, 3.6, 64]} />
-        <meshBasicMaterial color="#9fd0ff" transparent opacity={0.3} side={THREE.DoubleSide} depthWrite={false} />
+      <mesh ref={core} onPointerOver={(e) => { e.stopPropagation(); enter(); }} onPointerOut={leave} onClick={(e) => { e.stopPropagation(); onSelect(); }}>
+        <sphereGeometry args={[2.7, seg, seg]} />
+        <meshBasicMaterial color={hover ? "#fff6de" : "#ffedc2"} toneMapped={false} />
       </mesh>
-      <Html center position={[S + 4, cy, 0]} style={{ pointerEvents: "none" }}><div style={axisLabelStyle}>{config.xRight} →</div></Html>
-      <Html center position={[-S - 4, cy, 0]} style={{ pointerEvents: "none" }}><div style={axisLabelStyle}>← {config.xLeft}</div></Html>
-      <Html center position={[0, cy, -S - 4]} style={{ pointerEvents: "none" }}><div style={axisLabelStyle}>{config.yTop} ↑</div></Html>
-      <Html center position={[0, cy, S + 4]} style={{ pointerEvents: "none" }}><div style={axisLabelStyle}>{config.yBottom} ↓</div></Html>
-      {showAxis3 && <Line points={[[0, 0, 0], [0, MAXH, 0]]} color={v3} lineWidth={1.5} transparent opacity={0.45} />}
-      {showAxis3 && axis3High && (
-        <Html center position={[0, MAXH + 1.6, 0]} style={{ pointerEvents: "none" }}><div style={{ ...axisLabelStyle, color: "#eaf6ff", borderColor: "rgba(150,200,255,0.6)" }}>{axis3High} ↑</div></Html>
-      )}
-      {showAxis3 && axis3Low && (
-        <Html center position={[0, -1.6, 0]} style={{ pointerEvents: "none" }}><div style={{ ...axisLabelStyle, color: "#eaf6ff", borderColor: "rgba(150,200,255,0.5)" }}>↓ {axis3Low}</div></Html>
-      )}
-    </group>
-  );
-}
-
-function CenterHub({ label, seg, onSelect }: { label: string; seg: number; onSelect: () => void }) {
-  const [hover, setHover] = useState(false);
-  const enter = () => { setHover(true); document.body.style.cursor = "pointer"; };
-  const leave = () => { setHover(false); document.body.style.cursor = "auto"; };
-  const select = (e?: { stopPropagation?: () => void }) => { e?.stopPropagation?.(); onSelect(); };
-  return (
-    <group position={[0, CENTER_Y, 0]}>
-      <mesh scale={hover ? 1.06 : 1} onPointerOver={(e) => { e.stopPropagation(); enter(); }} onPointerOut={leave} onClick={(e) => select(e)}>
-        <sphereGeometry args={[2.2, seg, seg]} />
-        <meshStandardMaterial color="#f3f7ff" emissive="#cfe0ff" emissiveIntensity={hover ? 1.1 : 0.85} roughness={0.35} metalness={0.2} toneMapped={false} />
-      </mesh>
-      <Atmosphere color="#bcd6ff" radius={3.1} power={2.2} intensity={hover ? 1.5 : 1.05} />
-      <mesh raycast={() => null} rotation={[Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[2.8, 2.95, 64]} />
-        <meshBasicMaterial color="#bcd6ff" transparent opacity={0.4} side={THREE.DoubleSide} depthWrite={false} />
-      </mesh>
-      <Html center distanceFactor={hover ? 24 : 32} position={[0, 3.6, 0]} zIndexRange={[60, 40]} style={{ pointerEvents: "auto" }}>
-        <button type="button" onMouseEnter={enter} onMouseLeave={leave} onClick={(e) => select(e)}
-          style={{ cursor: "pointer", appearance: "none", whiteSpace: "nowrap", fontSize: 13, fontWeight: 800, color: "#fff", background: "rgba(8,14,32,0.86)", border: "1px solid #bcd6ffcc", borderRadius: 999, padding: "4px 12px", boxShadow: "0 2px 12px rgba(0,0,0,0.45)" }}>
+      <Atmosphere color="#ffd9a0" radius={3.6} power={2.1} intensity={1.3} />
+      <Atmosphere color="#ff9d5c" radius={4.9} power={3.4} intensity={0.9} />
+      <Html center distanceFactor={30} position={[0, 5.3, 0]} zIndexRange={[70, 50]} style={{ pointerEvents: "auto" }}>
+        <button
+          type="button"
+          onMouseEnter={enter}
+          onMouseLeave={leave}
+          onClick={(e) => { e.stopPropagation(); onSelect(); }}
+          style={{
+            cursor: "pointer",
+            appearance: "none",
+            whiteSpace: "nowrap",
+            fontSize: 13,
+            fontWeight: 800,
+            color: "#fff",
+            background: "rgba(10,16,36,0.88)",
+            border: "1px solid #ffd9a0cc",
+            borderRadius: 999,
+            padding: "5px 14px",
+            boxShadow: "0 2px 14px rgba(0,0,0,0.5)",
+          }}
+        >
           🎫 {label}
         </button>
       </Html>
@@ -174,87 +229,308 @@ function CenterHub({ label, seg, onSelect }: { label: string; seg: number; onSel
   );
 }
 
-function Controls() {
+function Moon({ topic, posts, planetR, index, count, clockRef, seg, showLabel, onSelect }: {
+  topic: InteropPriorityTopic;
+  posts: number;
+  planetR: number;
+  index: number;
+  count: number;
+  clockRef: React.MutableRefObject<GalaxyClock>;
+  seg: number;
+  showLabel: boolean;
+  onSelect: () => void;
+}) {
+  const group = useRef<THREE.Group>(null);
+  const [hover, setHover] = useState(false);
+  const color = MAJOR_META[topic.major]?.color ?? "#C9D4F6";
+  const r = 0.42 + Math.min(0.55, posts * 0.05);
+  const orbitR = planetR + 2.1 + (index % 2) * 0.75;
+  const speed = 0.38 + (index % 3) * 0.09;
+  const phase = (index / count) * Math.PI * 2;
+
+  useFrame(() => {
+    if (!group.current) return;
+    const t = clockRef.current.moon * speed + phase;
+    group.current.position.set(Math.cos(t) * orbitR, Math.sin(t * 1.7 + phase * 3) * 0.55, Math.sin(t) * orbitR);
+  });
+
+  const enter = () => { setHover(true); document.body.style.cursor = "pointer"; };
+  const leave = () => { setHover(false); document.body.style.cursor = "auto"; };
+  const visible = hover || showLabel;
+
   return (
-    <OrbitControls makeDefault enablePan screenSpacePanning minDistance={16} maxDistance={180} maxPolarAngle={Math.PI * 0.9} target={[0, CENTER_Y, 0]} enableDamping dampingFactor={0.08} />
+    <group ref={group}>
+      <mesh
+        scale={hover ? 1.3 : 1}
+        onPointerOver={(e) => { e.stopPropagation(); enter(); }}
+        onPointerOut={leave}
+        onClick={(e) => { e.stopPropagation(); onSelect(); }}
+      >
+        <sphereGeometry args={[r, seg, seg]} />
+        <meshBasicMaterial color={color} toneMapped={false} />
+      </mesh>
+      <Atmosphere color={color} radius={r * 1.45} power={2.6} intensity={hover ? 1.3 : 0.6} />
+      {visible && (
+        <Html center distanceFactor={16} position={[0, r + 0.9, 0]} zIndexRange={[hover ? 45 : 30, 10]} style={{ pointerEvents: "none" }}>
+          <MoonLabel color={color} title={topic.category} posts={posts} />
+        </Html>
+      )}
+    </group>
   );
 }
 
-function Scene({ centerLabel, config, positions, axis3, edges, counts, tier, onSelectCenter, onSelectTopic }: {
-  centerLabel: string; config: AxisConfig; positions: Record<number, AxisPoint>; axis3: Axis3; edges: Edge[]; counts: Map<string, number>; tier: Tier;
-  onSelectCenter: () => void; onSelectTopic: (t: InteropPriorityTopic) => void;
+function Planet({ spec, topics, counts, clockRef, seg, focused, anyFocused, positionsRef, reduceMotion, onFocus, onSelectTopic }: {
+  spec: OrbitSpec;
+  topics: InteropPriorityTopic[];
+  counts: Map<string, number>;
+  clockRef: React.MutableRefObject<GalaxyClock>;
+  seg: number;
+  focused: boolean;
+  anyFocused: boolean;
+  positionsRef: React.MutableRefObject<Record<string, THREE.Vector3>>;
+  reduceMotion: boolean;
+  onFocus: () => void;
+  onSelectTopic: (t: InteropPriorityTopic) => void;
 }) {
-  const [axis3Low, axis3High] = useMemo(() => splitPoles(axis3.label), [axis3.label]);
-  const showAxis3 = isRealAxis3(axis3.label);
+  const holder = useRef<THREE.Group>(null);
+  const body = useRef<THREE.Mesh>(null);
+  const [hover, setHover] = useState(false);
+  const meta = MAJOR_META[spec.major];
+  const color = meta?.color ?? "#C9D4F6";
+  const emoji = MAJOR_EMOJI[spec.major] ?? "✨";
+  const total = topics.reduce((acc, t) => acc + (counts.get(t.roomId) ?? 0), 0);
+  const planetR = 1.35 + Math.min(1.05, total * 0.02);
+
+  useFrame(() => {
+    if (!holder.current) return;
+    const t = clockRef.current.orbit * spec.speed + spec.phase;
+    holder.current.position.set(Math.cos(t) * spec.rx, 0, Math.sin(t) * spec.rz);
+    holder.current.getWorldPosition(positionsRef.current[spec.major] ?? (positionsRef.current[spec.major] = new THREE.Vector3()));
+    if (body.current && !reduceMotion) body.current.rotation.y += 0.0012;
+  });
+
+  const enter = () => { setHover(true); document.body.style.cursor = "pointer"; };
+  const leave = () => { setHover(false); document.body.style.cursor = "auto"; };
+  const dim = anyFocused && !focused;
+
+  return (
+    <group rotation={[spec.tiltX, 0, spec.tiltZ]}>
+      {/* 軌道 */}
+      <Line
+        points={ellipsePoints(spec.rx, spec.rz)}
+        color={color}
+        lineWidth={focused || hover ? 1.6 : 1}
+        transparent
+        opacity={dim ? 0.05 : focused || hover ? 0.4 : 0.16}
+      />
+      <group ref={holder}>
+        {/* 惑星本体 */}
+        <mesh
+          ref={body}
+          scale={hover ? 1.12 : 1}
+          onPointerOver={(e) => { e.stopPropagation(); enter(); }}
+          onPointerOut={leave}
+          onClick={(e) => { e.stopPropagation(); onFocus(); }}
+        >
+          <sphereGeometry args={[planetR, seg, seg]} />
+          <meshBasicMaterial color={color} transparent opacity={dim ? 0.35 : 1} toneMapped={false} />
+        </mesh>
+        <Atmosphere color={color} radius={planetR * 1.32} power={2.4} intensity={dim ? 0.3 : hover || focused ? 1.35 : 0.8} />
+        {/* リング（差し色） */}
+        {spec.hasRing && (
+          <mesh raycast={() => null} rotation={[Math.PI / 2.25, 0, 0]}>
+            <ringGeometry args={[planetR * 1.55, planetR * 2.15, 64]} />
+            <meshBasicMaterial color={color} transparent opacity={dim ? 0.08 : 0.3} side={THREE.DoubleSide} depthWrite={false} />
+          </mesh>
+        )}
+        {/* ラベル */}
+        {!dim && (
+          <Html center distanceFactor={focused ? 22 : 30} position={[0, planetR + 1.5, 0]} zIndexRange={[hover || focused ? 55 : 20, 5]} style={{ pointerEvents: "auto" }}>
+            <button
+              type="button"
+              onMouseEnter={enter}
+              onMouseLeave={leave}
+              onClick={(e) => { e.stopPropagation(); onFocus(); }}
+              style={{ appearance: "none", background: "none", border: "none", padding: 0, cursor: "pointer" }}
+            >
+              <PlanetLabel color={color} emoji={emoji} label={meta?.label ?? spec.major} total={total} hover={hover || focused} />
+            </button>
+          </Html>
+        )}
+        {/* 衛星（トピック） */}
+        {topics.map((t, i) => (
+          <Moon
+            key={t.no}
+            topic={t}
+            posts={counts.get(t.roomId) ?? 0}
+            planetR={planetR}
+            index={i}
+            count={topics.length}
+            clockRef={clockRef}
+            seg={Math.max(16, seg - 16)}
+            showLabel={focused}
+            onSelect={() => onSelectTopic(t)}
+          />
+        ))}
+      </group>
+    </group>
+  );
+}
+
+/** 彗星（高品質ティアのみ）：尾を引いて外周を横切るアクセント */
+function Comet() {
+  const head = useRef<THREE.Mesh>(null);
+  useFrame(({ clock }) => {
+    if (!head.current) return;
+    const t = clock.getElapsedTime() * 0.16;
+    head.current.position.set(Math.cos(t) * 40, Math.sin(t * 0.9) * 9 + 4, Math.sin(t) * 30 - 4);
+  });
+  return (
+    <Trail width={1.4} length={7} color="#bcd6ff" attenuation={(w) => w * w}>
+      <mesh ref={head} raycast={() => null}>
+        <sphereGeometry args={[0.22, 12, 12]} />
+        <meshBasicMaterial color="#eaf3ff" toneMapped={false} />
+      </mesh>
+    </Trail>
+  );
+}
+
+/* ---------- カメラ演出 ---------- */
+
+function CameraRig({ focusedMajor, positionsRef, reduceMotion }: {
+  focusedMajor: string | null;
+  positionsRef: React.MutableRefObject<Record<string, THREE.Vector3>>;
+  reduceMotion: boolean;
+}) {
+  const { camera, controls } = useThree() as unknown as { camera: THREE.PerspectiveCamera; controls: OrbitControlsImpl | null };
+  const intro = useRef(reduceMotion ? 1 : 0);
+  const tmpTarget = useRef(new THREE.Vector3());
+  const tmpCam = useRef(new THREE.Vector3());
+
+  useFrame((_, delta) => {
+    // 1) イントロ：宇宙の彼方からのフライイン
+    if (intro.current < 1) {
+      intro.current = Math.min(1, intro.current + delta / 2.4);
+      const e = 1 - Math.pow(1 - intro.current, 3); // easeOutCubic
+      camera.position.lerpVectors(CAM_START, CAM_HOME, e);
+      if (controls) {
+        controls.target.set(0, 0, 0);
+        controls.update();
+      }
+      return;
+    }
+    if (!controls) return;
+
+    // 2) フォーカス：選択した惑星系へ滑らかに寄る／解除で全景へ戻す
+    const k = 1 - Math.exp(-3.2 * delta);
+    if (focusedMajor) {
+      const p = positionsRef.current[focusedMajor];
+      if (p) {
+        tmpTarget.current.copy(p);
+        const dir = p.clone().normalize();
+        tmpCam.current.copy(p).addScaledVector(dir, 14.5).add(new THREE.Vector3(0, 6.2, 0));
+        controls.target.lerp(tmpTarget.current, k);
+        camera.position.lerp(tmpCam.current, k);
+        controls.update();
+      }
+    } else {
+      controls.target.lerp(tmpTarget.current.set(0, 0, 0), k * 0.8);
+      controls.update();
+    }
+  });
+  return null;
+}
+
+/* ---------- シーン ---------- */
+
+function Scene({ centerLabel, counts, caps, focusedMajor, onFocusMajor, onSelectCenter, onSelectTopic }: {
+  centerLabel: string;
+  counts: Map<string, number>;
+  caps: Caps;
+  focusedMajor: string | null;
+  onFocusMajor: (m: string | null) => void;
+  onSelectCenter: () => void;
+  onSelectTopic: (t: InteropPriorityTopic) => void;
+}) {
+  const { tier, reduceMotion } = caps;
   const seg = tier === "high" ? 48 : 24;
+  const clockRef = useRef<GalaxyClock>({ orbit: 0, moon: 0 });
+  const positionsRef = useRef<Record<string, THREE.Vector3>>({});
+  const focusedRef = useRef<string | null>(focusedMajor);
+  useEffect(() => {
+    focusedRef.current = focusedMajor;
+  }, [focusedMajor]);
 
-  const nodes = useMemo(() => {
-    const out: { topic: InteropPriorityTopic; posts: number; position: [number, number, number] }[] = [];
-    for (const [noStr, p] of Object.entries(positions)) {
-      const no = Number(noStr);
-      const topic = TOPIC_BY_NO.get(no);
-      if (!topic) continue;
-      const posts = counts.get(topic.roomId) ?? 0;
-      const [jx, jy, jz] = jitter(no);
-      const y = (axis3.values[no] ?? 0.5) * MAXH + jy;
-      out.push({ topic, posts, position: [p.x * S + jx, y, -p.y * S + jz] });
+  // 公転はフォーカス中に静止、衛星は常に周回（reduce-motion時は全て静止）
+  useFrame((_, delta) => {
+    if (reduceMotion) return;
+    if (!focusedRef.current) clockRef.current.orbit += delta;
+    clockRef.current.moon += delta;
+  });
+
+  const topicsByMajor = useMemo(() => {
+    const m = new Map<string, InteropPriorityTopic[]>();
+    for (const t of INTEROP_PRIORITY_TOPICS) {
+      const arr = m.get(t.major) ?? [];
+      arr.push(t);
+      m.set(t.major, arr);
     }
-    return out;
-  }, [positions, counts, axis3]);
-
-  const posById = useMemo(() => {
-    const m = new Map<number, [number, number, number]>();
-    for (const n of nodes) m.set(n.topic.no, n.position);
     return m;
-  }, [nodes]);
-
-  const effectiveEdges = useMemo<Edge[]>(() => {
-    if (edges.length) return edges;
-    const out: Edge[] = []; const seen = new Set<string>();
-    for (const n of nodes) {
-      let best: { no: number; d: number } | null = null;
-      for (const m of nodes) {
-        if (m.topic.no === n.topic.no || m.topic.major !== n.topic.major) continue;
-        const dx = n.position[0] - m.position[0]; const dz = n.position[2] - m.position[2];
-        const d = dx * dx + dz * dz;
-        if (!best || d < best.d) best = { no: m.topic.no, d };
-      }
-      if (best) {
-        const a = Math.min(n.topic.no, best.no); const b = Math.max(n.topic.no, best.no);
-        const k = `${a}-${b}`;
-        if (!seen.has(k)) { seen.add(k); out.push({ a, b, weight: 1 }); }
-      }
-    }
-    return out;
-  }, [edges, nodes]);
+  }, []);
 
   return (
     <>
-      {/* 宇宙空間：星雲状の環境光＋発光球体を引き立てる控えめなライティング */}
-      <ambientLight intensity={0.35} />
-      <hemisphereLight args={["#9fb6ff", "#0a1024", 0.4]} />
-      <directionalLight position={[24, 40, 24]} intensity={0.7} color="#eaf1ff" />
-      <directionalLight position={[-22, -10, -18]} intensity={0.25} color="#7d9dff" />
-      <Stars radius={140} depth={70} count={tier === "high" ? 4200 : 1200} factor={4} saturation={0} fade speed={0.5} />
-      <AxisFrame config={config} axis3Low={axis3Low} axis3High={axis3High} showAxis3={showAxis3} />
-      <TopicEdges edges={effectiveEdges} posById={posById} />
-      <CenterHub label={centerLabel} seg={seg} onSelect={onSelectCenter} />
-      {nodes.map(({ topic, posts, position }) => (
-        <TopicNode key={topic.no} topic={topic} posts={posts} position={position} seg={seg} onSelect={() => onSelectTopic(topic)} />
+      <color attach="background" args={["#060a1e"]} />
+      <Stars radius={160} depth={80} count={tier === "high" ? 5200 : 1400} factor={4} saturation={0} fade speed={reduceMotion ? 0 : 0.4} />
+      {/* 星雲（奥行きの色彩） */}
+      <Nebula position={[-55, 18, -70]} scale={95} inner="rgba(88,108,255,0.55)" opacity={0.5} />
+      <Nebula position={[65, -12, -85]} scale={110} inner="rgba(168,88,255,0.45)" opacity={0.42} />
+      <Nebula position={[10, 30, -95]} scale={80} inner="rgba(64,190,255,0.4)" opacity={0.36} />
+      {/* 微細な塵 */}
+      {tier === "high" && <Sparkles count={320} scale={[85, 26, 85]} size={1.8} speed={reduceMotion ? 0 : 0.28} opacity={0.5} color="#9fb6ff" />}
+      {tier === "high" && !reduceMotion && <Comet />}
+
+      <Sun label={centerLabel} seg={seg} reduceMotion={reduceMotion} onSelect={onSelectCenter} />
+      {ORBITS.map((spec) => (
+        <Planet
+          key={spec.major}
+          spec={spec}
+          topics={topicsByMajor.get(spec.major) ?? []}
+          counts={counts}
+          clockRef={clockRef}
+          seg={seg}
+          focused={focusedMajor === spec.major}
+          anyFocused={focusedMajor !== null}
+          positionsRef={positionsRef}
+          reduceMotion={reduceMotion}
+          onFocus={() => onFocusMajor(focusedMajor === spec.major ? null : spec.major)}
+          onSelectTopic={onSelectTopic}
+        />
       ))}
-      <Controls />
-      {tier === "high" && (
-        <EffectComposer>
-          <Bloom intensity={0.7} luminanceThreshold={0.3} luminanceSmoothing={0.9} mipmapBlur />
-        </EffectComposer>
-      )}
+
+      <OrbitControls
+        makeDefault
+        enablePan={false}
+        minDistance={8}
+        maxDistance={140}
+        maxPolarAngle={Math.PI * 0.88}
+        enableDamping
+        dampingFactor={0.07}
+        autoRotate={!reduceMotion && !focusedMajor}
+        autoRotateSpeed={0.35}
+      />
+      <CameraRig focusedMajor={focusedMajor} positionsRef={positionsRef} reduceMotion={reduceMotion} />
+
+      {/* 注: EffectComposer(Bloom/Vignette)は three r180 との組合せで画面が黒落ちするため不使用。
+          発光はフレネル大気シェーダー、ビネットはDOMオーバーレイで表現する。 */}
     </>
   );
 }
 
-/** WebGL 可否と描画品質ティア（モバイル/低スペックは軽量化）を判定。 */
-function useClientCapabilities(): { webgl: boolean; tier: Tier } | null {
-  const [caps, setCaps] = useState<{ webgl: boolean; tier: Tier } | null>(null);
+/* ---------- 能力判定・フォールバック ---------- */
+
+function useClientCapabilities(): Caps | null {
+  const [caps, setCaps] = useState<Caps | null>(null);
   useEffect(() => {
     let webgl = false;
     try {
@@ -268,17 +544,18 @@ function useClientCapabilities(): { webgl: boolean; tier: Tier } | null {
     const lowCores = (navigator.hardwareConcurrency ?? 8) <= 4;
     const lowMem = ((navigator as unknown as { deviceMemory?: number }).deviceMemory ?? 8) <= 4;
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const tier: Tier = isMobile || lowCores || lowMem || reduceMotion ? "low" : "high";
+    const tier: Tier = isMobile || lowCores || lowMem ? "low" : "high";
     // マウント後の一度きりのクライアント能力検出（外部環境→Reactへの同期）。
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setCaps({ webgl, tier });
+    setCaps({ webgl, tier, reduceMotion });
   }, []);
   return caps;
 }
 
 /** WebGL 非対応・描画不可時の 2D フォールバック（誰も広場から締め出さない）。 */
-function ForumGalaxy2DFallback({ centerLabel, onSelectCenter, onSelectTopic }: {
+function ForumGalaxy2DFallback({ centerLabel, counts, onSelectCenter, onSelectTopic }: {
   centerLabel: string;
+  counts: Map<string, number>;
   onSelectCenter: () => void;
   onSelectTopic: (t: InteropPriorityTopic) => void;
 }) {
@@ -297,31 +574,45 @@ function ForumGalaxy2DFallback({ centerLabel, onSelectCenter, onSelectTopic }: {
         <button
           type="button"
           onClick={onSelectCenter}
-          className="mb-5 w-full rounded-xl border border-sky-300/40 bg-white/10 px-4 py-3 text-left text-white backdrop-blur transition-colors hover:bg-white/20"
+          className="mb-6 flex w-full items-center gap-3 rounded-2xl border border-amber-200/40 bg-white/10 px-5 py-4 text-left text-white backdrop-blur transition hover:bg-white/[0.16]"
         >
-          <span className="text-base font-bold">🎫 {centerLabel}</span>
-          <span className="ml-2 text-sm text-white/70">中央のハブ（電子チケット・案内）</span>
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-amber-300/25 text-lg">🎫</span>
+          <span>
+            <span className="block text-base font-bold">{centerLabel}</span>
+            <span className="block text-xs text-white/65">中央ハブ（電子チケット・案内）</span>
+          </span>
         </button>
         {groups.map(([major, topics]) => {
           const meta = MAJOR_META[major];
+          const color = meta?.color ?? "#C9D4F6";
           return (
-            <div key={major} className="mb-5">
-              <h3 className="mb-2 flex items-center gap-2 text-sm font-bold text-white/90">
-                <span>{MAJOR_EMOJI[major] ?? "✨"}</span>
+            <div key={major} className="mb-6">
+              <h3 className="mb-2.5 flex items-center gap-2 text-sm font-bold text-white/90">
+                <span className="grid h-7 w-7 place-items-center rounded-full text-sm" style={{ background: `${color}33` }}>
+                  {MAJOR_EMOJI[major] ?? "✨"}
+                </span>
                 <span>{meta?.label ?? major}</span>
               </h3>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {topics.map((t) => (
-                  <button
-                    key={t.no}
-                    type="button"
-                    onClick={() => onSelectTopic(t)}
-                    className="rounded-lg border px-3 py-2 text-left text-sm text-white transition-transform hover:scale-[1.02]"
-                    style={{ borderColor: `${meta?.color ?? "#C9D4F6"}66`, background: `${meta?.color ?? "#C9D4F6"}1a` }}
-                  >
-                    {t.category}
-                  </button>
-                ))}
+                {topics.map((t) => {
+                  const posts = counts.get(t.roomId) ?? 0;
+                  return (
+                    <button
+                      key={t.no}
+                      type="button"
+                      onClick={() => onSelectTopic(t)}
+                      className="flex items-center justify-between gap-2 rounded-xl border px-3.5 py-2.5 text-left text-sm text-white transition hover:scale-[1.02]"
+                      style={{ borderColor: `${color}55`, background: `${color}14` }}
+                    >
+                      <span className="min-w-0 truncate">{t.category}</span>
+                      {posts > 0 && (
+                        <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold text-[#0a1024]" style={{ background: color }}>
+                          {posts}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           );
@@ -334,62 +625,101 @@ function ForumGalaxy2DFallback({ centerLabel, onSelectCenter, onSelectTopic }: {
   );
 }
 
+/* ---------- エントリ ---------- */
+
 export default function ForumGalaxy3D({ centerLabel, onSelectCenter, onSelectTopic }: {
   centerLabel?: string;
   onSelectCenter: () => void;
   onSelectTopic: (t: InteropPriorityTopic) => void;
 }) {
   const [counts, setCounts] = useState<Map<string, number>>(new Map());
-  const [config, setConfig] = useState<AxisConfig>(DEFAULT_AXIS_CONFIG);
-  const [positions, setPositions] = useState<Record<number, AxisPoint>>({});
-  const [axis3, setAxis3] = useState<Axis3>({ label: "巡回待ち", values: {} });
-  const [edges, setEdges] = useState<Edge[]>([]);
+  const [focusedMajor, setFocusedMajor] = useState<string | null>(null);
   const caps = useClientCapabilities();
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/interop/axis").then((r) => r.json()).then((d: { config?: AxisConfig; positions?: Record<number, AxisPoint>; axis3?: Axis3; edges?: Edge[] }) => {
-      if (cancelled) return;
-      if (d.config) setConfig(d.config);
-      if (d.positions && Object.keys(d.positions).length) setPositions(d.positions);
-      if (d.axis3?.label) setAxis3({ label: d.axis3.label, values: d.axis3.values ?? {} });
-      if (Array.isArray(d.edges)) setEdges(d.edges);
-    }).catch(() => {});
-    fetch("/api/forum/rooms?communityThemes=true").then((r) => r.json()).then((d: { rooms?: Array<{ id: string; postCount?: number }> }) => {
-      if (cancelled) return;
-      const m = new Map<string, number>();
-      for (const room of d.rooms ?? []) m.set(room.id, room.postCount ?? 0);
-      setCounts(m);
-    }).catch(() => {});
+    fetch("/api/forum/rooms?communityThemes=true")
+      .then((r) => r.json())
+      .then((d: { rooms?: Array<{ id: string; postCount?: number }> }) => {
+        if (cancelled) return;
+        const m = new Map<string, number>();
+        for (const room of d.rooms ?? []) m.set(room.id, room.postCount ?? 0);
+        setCounts(m);
+      })
+      .catch(() => {});
     return () => { cancelled = true; };
   }, []);
 
   const label = centerLabel?.trim() || "議員会館";
 
-  // 判定前は宇宙背景のみ（フラッシュ防止）
   if (!caps) {
     return <div className="absolute inset-0" style={{ background: SPACE_BG }} />;
   }
-
-  // WebGL 非対応 → 2D フォールバック（UX-002）
   if (!caps.webgl) {
-    return <ForumGalaxy2DFallback centerLabel={label} onSelectCenter={onSelectCenter} onSelectTopic={onSelectTopic} />;
+    return <ForumGalaxy2DFallback centerLabel={label} counts={counts} onSelectCenter={onSelectCenter} onSelectTopic={onSelectTopic} />;
   }
 
   return (
     <div className="absolute inset-0">
-      {/* 深宇宙の背景。Canvas は透過して星と発光球体を重ねる */}
       <div className="absolute inset-0" style={{ background: SPACE_BG }} />
       <Canvas
-        camera={{ position: [46, 40, 58], fov: 46 }}
+        camera={{ position: CAM_START.toArray() as [number, number, number], fov: 46 }}
         dpr={caps.tier === "high" ? [1, 2] : [1, 1.5]}
         gl={{ antialias: caps.tier === "high", alpha: true, powerPreference: "high-performance" }}
         style={{ background: "transparent" }}
       >
-        <Scene centerLabel={label} config={config} positions={positions} axis3={axis3} edges={edges} counts={counts} tier={caps.tier} onSelectCenter={onSelectCenter} onSelectTopic={onSelectTopic} />
+        <Scene
+          centerLabel={label}
+          counts={counts}
+          caps={caps}
+          focusedMajor={focusedMajor}
+          onFocusMajor={setFocusedMajor}
+          onSelectCenter={onSelectCenter}
+          onSelectTopic={onSelectTopic}
+        />
       </Canvas>
-      <p className="pointer-events-none absolute bottom-4 left-4 z-40 text-[11px] leading-relaxed text-white/55">
-        ドラッグで回転・<span className="text-white/80">Shift+ドラッグで移動</span>・ホイールで拡大／玉の大きさ＝活発さ・高さ＝週次AI巡回の分析軸
+
+      {/* シネマティックなビネット（CSS・ポストプロセス代替） */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        aria-hidden
+        style={{ background: "radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(2,3,10,0.55) 100%)" }}
+      />
+
+      {/* 大分類レジェンド（クリックでその惑星系へ） */}
+      <div className="pointer-events-auto absolute bottom-4 left-1/2 z-40 flex max-w-[94vw] -translate-x-1/2 flex-wrap items-center justify-center gap-1.5">
+        {focusedMajor && (
+          <button
+            type="button"
+            onClick={() => setFocusedMajor(null)}
+            className="rounded-full border border-white/30 bg-white/15 px-3.5 py-1.5 text-xs font-bold text-white backdrop-blur transition hover:bg-white/25"
+          >
+            ← 全体へ
+          </button>
+        )}
+        {MAJORS.map((m) => {
+          const meta = MAJOR_META[m];
+          const active = focusedMajor === m;
+          return (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setFocusedMajor(active ? null : m)}
+              className="rounded-full border px-3 py-1.5 text-xs font-bold backdrop-blur transition"
+              style={{
+                borderColor: `${meta.color}${active ? "ff" : "55"}`,
+                background: active ? `${meta.color}e6` : "rgba(10,16,36,0.6)",
+                color: active ? "#0a1024" : "#fff",
+              }}
+            >
+              {MAJOR_EMOJI[m]} {meta.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <p className="pointer-events-none absolute bottom-14 left-4 z-40 max-w-[240px] text-[11px] leading-relaxed text-white/55 sm:bottom-4 sm:max-w-none">
+        惑星＝カテゴリをタップで接近 · 衛星＝トピックをタップでひろばへ · ドラッグで回転
         {caps.tier === "low" && <span className="text-white/40">・軽量モード</span>}
       </p>
     </div>

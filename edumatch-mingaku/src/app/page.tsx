@@ -327,36 +327,31 @@ export default async function HomePage() {
                 </Link>
               </div>
             </Reveal>
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
               {services.map((s, i) => (
-                <Reveal key={s.id} delay={i * 70}>
+                <Reveal key={s.id} delay={i * 50}>
                   <Link
                     href={`/services/${s.id}`}
-                    className="card-lift group block overflow-hidden rounded-2xl border border-border/60 bg-white"
+                    className="card-lift group block overflow-hidden rounded-xl border border-border/60 bg-white"
                   >
-                    <div className="relative aspect-[16/9] overflow-hidden bg-muted">
+                    <div className="relative aspect-[16/10] overflow-hidden bg-muted">
                       {s.thumbnail_url ? (
                         <Image
                           src={s.thumbnail_url}
                           alt={s.title}
                           fill
                           unoptimized
-                          className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                          className="object-cover transition-transform duration-500 group-hover:scale-105"
                         />
                       ) : (
                         <div className="grid h-full w-full place-items-center text-muted-foreground/40">
-                          <Sparkles className="h-8 w-8" />
+                          <Sparkles className="h-5 w-5" />
                         </div>
                       )}
                     </div>
-                    <div className="p-5">
-                      <span className="inline-block rounded-full bg-accent px-2.5 py-0.5 text-xs font-medium text-accent-foreground">
-                        {s.category}
-                      </span>
-                      <h3 className="mt-2.5 line-clamp-1 font-semibold">{s.title}</h3>
-                      <p className="mt-1.5 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-                        {s.description}
-                      </p>
+                    <div className="p-3">
+                      <p className="text-[10px] font-medium text-primary">{s.category}</p>
+                      <h3 className="mt-0.5 line-clamp-2 text-xs font-semibold leading-snug">{s.title}</h3>
                     </div>
                   </Link>
                 </Reveal>
