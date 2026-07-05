@@ -260,7 +260,8 @@ async function generateChunksForContent(
         },
       });
 
-      if (!review) return [];
+      // 記事レビュー(service なし)はサービス索引の対象外
+      if (!review || !review.service) return [];
 
       const combined = chunksFromMultipleFields([
         `Review of ${review.service.title}`,

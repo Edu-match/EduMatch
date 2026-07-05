@@ -261,12 +261,19 @@ model Service {
 /// サービスへの口コミ・レビュー
 model Review {
   id            String   @id @default(cuid())
-  service_id    String
-  /// ログインユーザーのID（ゲスト投稿は null）
+  /// サービスへのレビュー対象。post_id と排他（アプリ側で保証）
+  service_id    String?
+  /// 記事(Post)へのレビュー対象。service_id と排他
+  post_id       String?
+  /// 返信スレッド用の親レビューID（トップレベルの口コミは null）
+  parent_id     String?
+  /// ログインユーザーのID（ゲスト投稿・AI返信は null）
   user_id       String?  @db.Uuid
   /// 投稿者表示名
   author_name   String
-  /// 評価（1〜5）。旧コメントは null
+  /// 立場バッジ・AI種別（"AI" / "AIペルソナ" / 教頭 等）。null=一般
+  author_role   String?
+  /// 評価（1〜5）。旧コメント・返信は null
   rating        Int?
   /// レビュー本文
   body          String
@@ -275,10 +282,15 @@ model Review {
   /// WordPress コメントID（重複インポート防止）
   wp_comment_id Int?
   created_at    DateTime @default(now()) @db.Timestamptz(6)
-  service       Service  @relation(fields: [service_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  service       Service? @relation(fields: [service_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  post          Post?    @relation(fields: [post_id], references: [id], onDelete: Cascade)
+  parent        Review?  @relation("ReviewReplies", fields: [parent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  replies       Review[] @relation("ReviewReplies")
   user          Profile? @relation(fields: [user_id], references: [id], onUpdate: NoAction)
 
   @@index([service_id])
+  @@index([post_id])
+  @@index([parent_id])
   @@index([user_id])
   @@index([created_at(sort: Desc)])
 }
@@ -313,6 +325,7 @@ model Post {
   home_news_tab       HomeNewsTab        @default(NONE)
   home_slider_entries HomeSliderArticle?
   provider            Profile            @relation(fields: [provider_id], references: [id], onDelete: Cascade)
+  reviews             Review[]
 
   @@index([provider_id])
   @@index([category])

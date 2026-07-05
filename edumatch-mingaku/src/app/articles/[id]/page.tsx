@@ -10,6 +10,8 @@ import { translateText, translateBatch } from "@/lib/translate";
 import { localizeArticleCategory } from "@/lib/category-i18n";
 import type { Locale } from "@/i18n/config";
 import { getPostById, getLatestPosts, recordView } from "@/app/_actions";
+import { getArticleReviews } from "@/app/_actions/article-reviews";
+import { ArticleReviews } from "@/components/articles/article-reviews";
 import { getCurrentUser, getCurrentProfile } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import { YouTubeEmbed } from "@/components/ui/youtube-embed";
@@ -44,6 +46,8 @@ export default async function ArticleDetailPage({
   if (!post) {
     notFound();
   }
+
+  const reviews = await getArticleReviews(id);
 
   const t = await getTranslations("article");
   const locale = (await getLocale()) as Locale;
@@ -240,6 +244,9 @@ export default async function ArticleDetailPage({
             </div>
           </CardContent>
         </Card>
+
+        {/* 口コミ・対話（AI返信・AIペルソナ返信対応） */}
+        <ArticleReviews postId={id} initialReviews={reviews} isLoggedIn={!!user} />
 
         {/* 関連記事 */}
         {filteredRelatedPosts.length > 0 && (
