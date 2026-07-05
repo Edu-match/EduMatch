@@ -173,7 +173,7 @@ function mergeTopicPositions(
 
 export function InteropExplorer({
   themeMode = "auto",
-  guideText = "中央のインタロップをタップして展示情報へ · 周囲の◎トピックをタップして論点・井戸端へ",
+  guideText = "中央のインタロップをタップして展示情報へ · 周囲の◎トピックをタップして論点・ひろばへ",
   initialInteropActivity = null,
   initialForumActivity = null,
   showChat = true,
@@ -650,7 +650,7 @@ export function InteropExplorer({
         <InteropSubOrbit
           centerLabel={view.topic.category}
           centerIcon={MessageCircle}
-          centerHint={`${view.topic.topics.length}つの論点 · タップで井戸端へ`}
+          centerHint={`${view.topic.topics.length}つの論点 · タップでひろばへ`}
           accent={view.topic.color}
           items={view.topic.topics.map((t, idx) => {
             const topicId = `${view.topic.roomId}-t${idx + 1}`;

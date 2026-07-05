@@ -23,7 +23,7 @@ export default async function ForumPage() {
       <Suspense fallback={<div className="absolute inset-0 bg-[#070a1c]" />}>
         <ForumMapMode
           themeMode={settings.themeMode}
-          guideText="中央のハブをタップして話題へ · 周囲の◎トピックをタップして井戸端へ"
+          guideText="中央のハブをタップして話題へ · 周囲の◎トピックをタップしてひろばへ"
           initialInteropActivity={initialActivity.interop}
           initialForumActivity={initialActivity.forum}
           showChat={false}
