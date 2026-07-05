@@ -1,7 +1,8 @@
 "use client";
 
 import { Canvas } from "@react-three/fiber";
-import { Html, OrbitControls, Line } from "@react-three/drei";
+import { Html, OrbitControls, Line, Stars } from "@react-three/drei";
+import { EffectComposer, Bloom } from "@react-three/postprocessing";
 import { useEffect, useMemo, useState } from "react";
 import * as THREE from "three";
 import { INTEROP_PRIORITY_TOPICS, MAJOR_META, type InteropPriorityTopic } from "@/lib/interop-priority-topics";
@@ -16,29 +17,17 @@ const MAJOR_EMOJI: Record<string, string> = { A: "🤖", B: "📊", C: "🛡️"
 
 type Axis3 = { label: string; values: Record<number, number> };
 type Edge = { a: number; b: number; weight: number };
+type Tier = "high" | "low";
 
-// 2Dマップ(InteropBackdrop)と同じ時間帯の空グラデーションを背景に使う（宇宙感は出さない）。
-type Period = "dawn" | "day" | "dusk" | "night";
-function periodFromHour(h: number): Period {
-  if (h >= 4 && h < 5) return "dusk";
-  if (h >= 5 && h < 10) return "dawn";
-  if (h >= 10 && h < 15) return "day";
-  if (h >= 15 && h < 17) return "dusk";
-  return "night";
-}
-const SKY: Record<Period, string> = {
-  dawn: "linear-gradient(180deg, #1b2350 0%, #3a2f63 38%, #7d4a72 62%, #c9737a 80%, #f0a878 92%, #f7c98b 100%)",
-  day: "linear-gradient(180deg, #1f4ea0 0%, #2f6bc0 40%, #4f93d8 72%, #8fc1ea 100%)",
-  dusk: "linear-gradient(180deg, #1a1f4a 0%, #45285f 32%, #8a3a63 54%, #d65a4e 74%, #f0894a 88%, #f6b35f 100%)",
-  night: "linear-gradient(180deg, #05060f 0%, #070b1e 45%, #0b1030 75%, #121641 100%)",
-};
+/** 深い宇宙空間の背景（設計思想§2「宇宙＝探索体験」への回帰）。 */
+const SPACE_BG =
+  "radial-gradient(ellipse at 50% 32%, #16234d 0%, #0a1130 42%, #050815 72%, #02030a 100%)";
 
 function splitPoles(label: string): [string, string] {
   const parts = label.split(/↔|⇔|<->|〜|~|→|↑/).map((s) => s.trim()).filter(Boolean);
   if (parts.length >= 2) return [parts[0], parts[1]];
   return ["", label.trim()];
 }
-// 「巡回待ち」など未確定ラベルは第3軸ラベルを出さない
 function isRealAxis3(label: string): boolean {
   const t = label.trim();
   return t.length > 0 && t !== "巡回待ち" && t.includes("↔");
@@ -59,7 +48,7 @@ function jitter(no: number): [number, number, number] {
   return [(fr(no * 12.99) - 0.5) * 6, (fr(no * 78.23) - 0.5) * 7, (fr(no * 39.42) - 0.5) * 6];
 }
 
-// 縁が光る fresnel（控えめ）
+// 縁が光る fresnel（宇宙空間で球が発光して見える）
 const ATMO_VERT = `varying vec3 vN; varying vec3 vP;
 void main(){ vN = normalize(normalMatrix * normal); vec4 mv = modelViewMatrix * vec4(position,1.0); vP = mv.xyz; gl_Position = projectionMatrix * mv; }`;
 const ATMO_FRAG = `uniform vec3 uColor; uniform float uPower; uniform float uIntensity;
@@ -93,7 +82,7 @@ function NodeLabel({ color, emoji, title, posts, hover }: { color: string; emoji
   );
 }
 
-function TopicNode({ topic, posts, position, onSelect }: { topic: InteropPriorityTopic; posts: number; position: [number, number, number]; onSelect: () => void }) {
+function TopicNode({ topic, posts, position, seg, onSelect }: { topic: InteropPriorityTopic; posts: number; position: [number, number, number]; seg: number; onSelect: () => void }) {
   const [hover, setHover] = useState(false);
   const color = MAJOR_META[topic.major]?.color ?? "#C9D4F6";
   const emoji = MAJOR_EMOJI[topic.major] ?? "✨";
@@ -104,12 +93,11 @@ function TopicNode({ topic, posts, position, onSelect }: { topic: InteropPriorit
   return (
     <group position={position}>
       <mesh scale={hover ? 1.12 : 1} onPointerOver={(e) => { e.stopPropagation(); enter(); }} onPointerOut={leave} onClick={(e) => { e.stopPropagation(); onSelect(); }}>
-        <sphereGeometry args={[r, 48, 48]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={hover ? 0.55 : 0.35} roughness={0.45} metalness={0.1} />
+        <sphereGeometry args={[r, seg, seg]} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={hover ? 0.9 : 0.6} roughness={0.4} metalness={0.15} toneMapped={false} />
       </mesh>
-      <Atmosphere color={color} radius={r * 1.28} power={3.0} intensity={hover ? 1.0 : 0.6} />
+      <Atmosphere color={color} radius={r * 1.3} power={2.6} intensity={hover ? 1.25 : 0.75} />
       <Line points={[[0, 0, 0], [0, dropToPlane, 0]]} color={color} lineWidth={1} transparent opacity={0.1} dashed dashScale={3} />
-      {/* ラベル（常時表示）。occludeは玉を切断する不具合があるため使わない。 */}
       <Html center distanceFactor={hover ? 20 : 28} position={[0, r + 1.4, 0]} zIndexRange={[hover ? 40 : 16, 2]} style={{ pointerEvents: "none" }}>
         <NodeLabel color={color} emoji={emoji} title={topic.category} posts={posts} hover={hover} />
       </Html>
@@ -128,7 +116,7 @@ function TopicEdges({ edges, posById }: { edges: Edge[]; posById: Map<number, [n
   }, [edges, posById]);
   return (
     <group>
-      {segments.map((s) => (<Line key={s.key} points={[s.a, s.b]} color="#9fb6ff" lineWidth={1} transparent opacity={0.18} />))}
+      {segments.map((s) => (<Line key={s.key} points={[s.a, s.b]} color="#9fb6ff" lineWidth={1} transparent opacity={0.2} />))}
     </group>
   );
 }
@@ -139,11 +127,11 @@ function AxisFrame({ config, axis3Low, axis3High, showAxis3 }: { config: AxisCon
   const cy = CENTER_Y;
   return (
     <group>
-      <Line points={[[-S, cy, 0], [S, cy, 0]]} color={axis} lineWidth={1.5} transparent opacity={0.55} />
-      <Line points={[[0, cy, S], [0, cy, -S]]} color={axis} lineWidth={1.5} transparent opacity={0.55} />
+      <Line points={[[-S, cy, 0], [S, cy, 0]]} color={axis} lineWidth={1.5} transparent opacity={0.5} />
+      <Line points={[[0, cy, S], [0, cy, -S]]} color={axis} lineWidth={1.5} transparent opacity={0.5} />
       <mesh raycast={() => null} position={[0, cy, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <ringGeometry args={[3.4, 3.6, 64]} />
-        <meshBasicMaterial color="#9fd0ff" transparent opacity={0.35} side={THREE.DoubleSide} depthWrite={false} />
+        <meshBasicMaterial color="#9fd0ff" transparent opacity={0.3} side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
       <Html center position={[S + 4, cy, 0]} style={{ pointerEvents: "none" }}><div style={axisLabelStyle}>{config.xRight} →</div></Html>
       <Html center position={[-S - 4, cy, 0]} style={{ pointerEvents: "none" }}><div style={axisLabelStyle}>← {config.xLeft}</div></Html>
@@ -160,7 +148,7 @@ function AxisFrame({ config, axis3Low, axis3High, showAxis3 }: { config: AxisCon
   );
 }
 
-function CenterHub({ label, onSelect }: { label: string; onSelect: () => void }) {
+function CenterHub({ label, seg, onSelect }: { label: string; seg: number; onSelect: () => void }) {
   const [hover, setHover] = useState(false);
   const enter = () => { setHover(true); document.body.style.cursor = "pointer"; };
   const leave = () => { setHover(false); document.body.style.cursor = "auto"; };
@@ -168,10 +156,10 @@ function CenterHub({ label, onSelect }: { label: string; onSelect: () => void })
   return (
     <group position={[0, CENTER_Y, 0]}>
       <mesh scale={hover ? 1.06 : 1} onPointerOver={(e) => { e.stopPropagation(); enter(); }} onPointerOut={leave} onClick={(e) => select(e)}>
-        <sphereGeometry args={[2.2, 48, 48]} />
-        <meshStandardMaterial color="#f3f7ff" emissive="#b9d2ff" emissiveIntensity={hover ? 0.7 : 0.5} roughness={0.4} metalness={0.2} />
+        <sphereGeometry args={[2.2, seg, seg]} />
+        <meshStandardMaterial color="#f3f7ff" emissive="#cfe0ff" emissiveIntensity={hover ? 1.1 : 0.85} roughness={0.35} metalness={0.2} toneMapped={false} />
       </mesh>
-      <Atmosphere color="#bcd6ff" radius={3.0} power={2.4} intensity={hover ? 1.2 : 0.8} />
+      <Atmosphere color="#bcd6ff" radius={3.1} power={2.2} intensity={hover ? 1.5 : 1.05} />
       <mesh raycast={() => null} rotation={[Math.PI / 2, 0, 0]}>
         <ringGeometry args={[2.8, 2.95, 64]} />
         <meshBasicMaterial color="#bcd6ff" transparent opacity={0.4} side={THREE.DoubleSide} depthWrite={false} />
@@ -192,12 +180,13 @@ function Controls() {
   );
 }
 
-function Scene({ centerLabel, config, positions, axis3, edges, counts, onSelectCenter, onSelectTopic }: {
-  centerLabel: string; config: AxisConfig; positions: Record<number, AxisPoint>; axis3: Axis3; edges: Edge[]; counts: Map<string, number>;
+function Scene({ centerLabel, config, positions, axis3, edges, counts, tier, onSelectCenter, onSelectTopic }: {
+  centerLabel: string; config: AxisConfig; positions: Record<number, AxisPoint>; axis3: Axis3; edges: Edge[]; counts: Map<string, number>; tier: Tier;
   onSelectCenter: () => void; onSelectTopic: (t: InteropPriorityTopic) => void;
 }) {
   const [axis3Low, axis3High] = useMemo(() => splitPoles(axis3.label), [axis3.label]);
   const showAxis3 = isRealAxis3(axis3.label);
+  const seg = tier === "high" ? 48 : 24;
 
   const nodes = useMemo(() => {
     const out: { topic: InteropPriorityTopic; posts: number; position: [number, number, number] }[] = [];
@@ -241,18 +230,107 @@ function Scene({ centerLabel, config, positions, axis3, edges, counts, onSelectC
 
   return (
     <>
-      <ambientLight intensity={0.9} />
-      <hemisphereLight args={["#dbe7ff", "#24304f", 0.6]} />
-      <directionalLight position={[24, 40, 24]} intensity={0.9} color="#ffffff" />
-      <directionalLight position={[-22, -10, -18]} intensity={0.3} color="#bcd0ff" />
+      {/* 宇宙空間：星雲状の環境光＋発光球体を引き立てる控えめなライティング */}
+      <ambientLight intensity={0.35} />
+      <hemisphereLight args={["#9fb6ff", "#0a1024", 0.4]} />
+      <directionalLight position={[24, 40, 24]} intensity={0.7} color="#eaf1ff" />
+      <directionalLight position={[-22, -10, -18]} intensity={0.25} color="#7d9dff" />
+      <Stars radius={140} depth={70} count={tier === "high" ? 4200 : 1200} factor={4} saturation={0} fade speed={0.5} />
       <AxisFrame config={config} axis3Low={axis3Low} axis3High={axis3High} showAxis3={showAxis3} />
       <TopicEdges edges={effectiveEdges} posById={posById} />
-      <CenterHub label={centerLabel} onSelect={onSelectCenter} />
+      <CenterHub label={centerLabel} seg={seg} onSelect={onSelectCenter} />
       {nodes.map(({ topic, posts, position }) => (
-        <TopicNode key={topic.no} topic={topic} posts={posts} position={position} onSelect={() => onSelectTopic(topic)} />
+        <TopicNode key={topic.no} topic={topic} posts={posts} position={position} seg={seg} onSelect={() => onSelectTopic(topic)} />
       ))}
       <Controls />
+      {tier === "high" && (
+        <EffectComposer>
+          <Bloom intensity={0.7} luminanceThreshold={0.3} luminanceSmoothing={0.9} mipmapBlur />
+        </EffectComposer>
+      )}
     </>
+  );
+}
+
+/** WebGL 可否と描画品質ティア（モバイル/低スペックは軽量化）を判定。 */
+function useClientCapabilities(): { webgl: boolean; tier: Tier } | null {
+  const [caps, setCaps] = useState<{ webgl: boolean; tier: Tier } | null>(null);
+  useEffect(() => {
+    let webgl = false;
+    try {
+      const c = document.createElement("canvas");
+      webgl = !!(c.getContext("webgl") || c.getContext("experimental-webgl"));
+    } catch {
+      webgl = false;
+    }
+    const isMobile =
+      window.matchMedia("(max-width: 768px)").matches || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+    const lowCores = (navigator.hardwareConcurrency ?? 8) <= 4;
+    const lowMem = ((navigator as unknown as { deviceMemory?: number }).deviceMemory ?? 8) <= 4;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const tier: Tier = isMobile || lowCores || lowMem || reduceMotion ? "low" : "high";
+    // マウント後の一度きりのクライアント能力検出（外部環境→Reactへの同期）。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCaps({ webgl, tier });
+  }, []);
+  return caps;
+}
+
+/** WebGL 非対応・描画不可時の 2D フォールバック（誰も広場から締め出さない）。 */
+function ForumGalaxy2DFallback({ centerLabel, onSelectCenter, onSelectTopic }: {
+  centerLabel: string;
+  onSelectCenter: () => void;
+  onSelectTopic: (t: InteropPriorityTopic) => void;
+}) {
+  const groups = useMemo(() => {
+    const byMajor = new Map<string, InteropPriorityTopic[]>();
+    for (const t of INTEROP_PRIORITY_TOPICS) {
+      const arr = byMajor.get(t.major) ?? [];
+      arr.push(t);
+      byMajor.set(t.major, arr);
+    }
+    return [...byMajor.entries()];
+  }, []);
+  return (
+    <div className="absolute inset-0 overflow-y-auto" style={{ background: SPACE_BG }}>
+      <div className="mx-auto max-w-3xl px-4 py-6">
+        <button
+          type="button"
+          onClick={onSelectCenter}
+          className="mb-5 w-full rounded-xl border border-sky-300/40 bg-white/10 px-4 py-3 text-left text-white backdrop-blur transition-colors hover:bg-white/20"
+        >
+          <span className="text-base font-bold">🎫 {centerLabel}</span>
+          <span className="ml-2 text-sm text-white/70">中央のハブ（電子チケット・案内）</span>
+        </button>
+        {groups.map(([major, topics]) => {
+          const meta = MAJOR_META[major];
+          return (
+            <div key={major} className="mb-5">
+              <h3 className="mb-2 flex items-center gap-2 text-sm font-bold text-white/90">
+                <span>{MAJOR_EMOJI[major] ?? "✨"}</span>
+                <span>{meta?.label ?? major}</span>
+              </h3>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {topics.map((t) => (
+                  <button
+                    key={t.no}
+                    type="button"
+                    onClick={() => onSelectTopic(t)}
+                    className="rounded-lg border px-3 py-2 text-left text-sm text-white transition-transform hover:scale-[1.02]"
+                    style={{ borderColor: `${meta?.color ?? "#C9D4F6"}66`, background: `${meta?.color ?? "#C9D4F6"}1a` }}
+                  >
+                    {t.category}
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <p className="pointer-events-none absolute bottom-3 left-4 text-[11px] text-white/50">
+        軽量表示モード（3D非対応環境）。タップで各テーマの教育のひろばへ。
+      </p>
+    </div>
   );
 }
 
@@ -266,6 +344,7 @@ export default function ForumGalaxy3D({ centerLabel, onSelectCenter, onSelectTop
   const [positions, setPositions] = useState<Record<number, AxisPoint>>({});
   const [axis3, setAxis3] = useState<Axis3>({ label: "巡回待ち", values: {} });
   const [edges, setEdges] = useState<Edge[]>([]);
+  const caps = useClientCapabilities();
 
   useEffect(() => {
     let cancelled = false;
@@ -286,17 +365,32 @@ export default function ForumGalaxy3D({ centerLabel, onSelectCenter, onSelectTop
   }, []);
 
   const label = centerLabel?.trim() || "議員会館";
-  const period = useMemo(() => periodFromHour(new Date().getHours()), []);
+
+  // 判定前は宇宙背景のみ（フラッシュ防止）
+  if (!caps) {
+    return <div className="absolute inset-0" style={{ background: SPACE_BG }} />;
+  }
+
+  // WebGL 非対応 → 2D フォールバック（UX-002）
+  if (!caps.webgl) {
+    return <ForumGalaxy2DFallback centerLabel={label} onSelectCenter={onSelectCenter} onSelectTopic={onSelectTopic} />;
+  }
 
   return (
     <div className="absolute inset-0">
-      {/* 2Dと同じ時間帯の空（宇宙感なし）。Canvasは透過して前面に重ねる。 */}
-      <div className="absolute inset-0" style={{ background: SKY[period] }} />
-      <Canvas camera={{ position: [46, 40, 58], fov: 46 }} dpr={[1, 2]} gl={{ antialias: true, alpha: true }} style={{ background: "transparent" }}>
-        <Scene centerLabel={label} config={config} positions={positions} axis3={axis3} edges={edges} counts={counts} onSelectCenter={onSelectCenter} onSelectTopic={onSelectTopic} />
+      {/* 深宇宙の背景。Canvas は透過して星と発光球体を重ねる */}
+      <div className="absolute inset-0" style={{ background: SPACE_BG }} />
+      <Canvas
+        camera={{ position: [46, 40, 58], fov: 46 }}
+        dpr={caps.tier === "high" ? [1, 2] : [1, 1.5]}
+        gl={{ antialias: caps.tier === "high", alpha: true, powerPreference: "high-performance" }}
+        style={{ background: "transparent" }}
+      >
+        <Scene centerLabel={label} config={config} positions={positions} axis3={axis3} edges={edges} counts={counts} tier={caps.tier} onSelectCenter={onSelectCenter} onSelectTopic={onSelectTopic} />
       </Canvas>
       <p className="pointer-events-none absolute bottom-4 left-4 z-40 text-[11px] leading-relaxed text-white/55">
         ドラッグで回転・<span className="text-white/80">Shift+ドラッグで移動</span>・ホイールで拡大／玉の大きさ＝活発さ・高さ＝週次AI巡回の分析軸
+        {caps.tier === "low" && <span className="text-white/40">・軽量モード</span>}
       </p>
     </div>
   );
