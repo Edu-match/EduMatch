@@ -19,6 +19,7 @@ import { getLatestPosts, getPopularPosts } from "@/app/_actions/posts";
 import { getUpcomingEvents } from "@/app/_actions/events";
 import { Reveal } from "@/components/home/reveal";
 import { NewsTicker } from "@/components/home/news-ticker";
+import { FeaturedSlider, type FeaturedItem } from "@/components/home/featured-slider";
 
 export const dynamic = "force-dynamic";
 
@@ -51,9 +52,18 @@ export default async function HomePage() {
     getRecentForumVoices(4),
   ]);
 
-  const featured = posts[0];
-  const secondary = posts.slice(1, 5);
-  const latestGrid = posts.slice(5, 13);
+  // 一面スライダー（上位5本を自動ローテーション）／サブ記事／下段グリッド
+  const sliderItems: FeaturedItem[] = posts.slice(0, 5).map((p) => ({
+    id: p.id,
+    href: `/articles/${p.id}`,
+    title: p.title,
+    category: p.category,
+    summary: p.summary ?? null,
+    dateLabel: formatDate(p.created_at),
+    thumbnailUrl: p.thumbnail_url ?? null,
+  }));
+  const secondary = posts.slice(5, 9);
+  const latestGrid = posts.slice(9, 13);
 
   return (
     <div className="bg-white">
@@ -80,42 +90,12 @@ export default async function HomePage() {
               </Link>
             </div>
 
-            {featured ? (
+            {sliderItems.length > 0 ? (
               <div className="grid grid-cols-1 gap-6 md:grid-cols-5">
-                {/* 一面記事 */}
-                <Link
-                  href={`/articles/${featured.id}`}
-                  className="group animate-fade-up animation-delay-100 md:col-span-3"
-                >
-                  <div className="relative aspect-[16/10] overflow-hidden rounded-2xl bg-muted">
-                    {featured.thumbnail_url ? (
-                      <Image
-                        src={featured.thumbnail_url}
-                        alt={featured.title}
-                        fill
-                        priority
-                        unoptimized
-                        className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
-                      />
-                    ) : (
-                      <div className="grid h-full w-full place-items-center text-muted-foreground/40">
-                        <Newspaper className="h-10 w-10" />
-                      </div>
-                    )}
-                    <span className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-xs font-semibold text-foreground backdrop-blur">
-                      {featured.category}
-                    </span>
-                  </div>
-                  <p className="mt-4 text-xs text-muted-foreground">{formatDate(featured.created_at)}</p>
-                  <h2 className="mt-1.5 text-xl font-bold leading-snug tracking-tight sm:text-2xl">
-                    <span className="link-underline">{featured.title}</span>
-                  </h2>
-                  {featured.summary && (
-                    <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-                      {featured.summary}
-                    </p>
-                  )}
-                </Link>
+                {/* 一面スライダー */}
+                <div className="animate-fade-up animation-delay-100 md:col-span-3">
+                  <FeaturedSlider items={sliderItems} />
+                </div>
 
                 {/* サブ記事リスト */}
                 <div className="flex flex-col divide-y divide-border/60 md:col-span-2">

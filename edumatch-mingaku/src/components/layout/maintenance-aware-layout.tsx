@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Header } from "@/components/layout/header";
+import { SectionNav } from "@/components/layout/section-nav";
 import { Footer } from "@/components/layout/footer";
 import { ChatbotWidget } from "@/components/layout/chatbot-widget";
 import { SwipeNavigation } from "@/components/layout/swipe-navigation";
@@ -52,8 +53,11 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen flex-col w-full">
       <Header />
 
-      {/* Desktop + tablet content row（左サイドバーは廃止し、ナビはヘッダーに集約） */}
-      <div className="flex-1 flex min-w-0 pt-16">
+      {/* セクションナビ（ヘッダー直下・スティッキー）＋ヘッダー分スペーサー */}
+      <SectionNav />
+
+      {/* Desktop + tablet content row（左サイドバーは廃止し、ナビはヘッダー＋セクションナビに集約） */}
+      <div className="flex-1 flex min-w-0">
 
         {/* Main content */}
         <main className="flex-1 min-w-0 overflow-x-hidden">
@@ -66,7 +70,7 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
             className="hidden lg:flex flex-col flex-shrink-0 transition-all duration-150 ease-in-out"
             style={{ width: `${panelWidth}px` }}
           >
-            <div className="sticky top-16 h-[calc(100vh-4rem)] flex flex-col">
+            <div className="sticky top-16 z-40 h-[calc(100vh-4rem)] flex flex-col">
               <div
                 className="relative h-full flex flex-col border-l bg-background overflow-hidden"
                 data-tutorial="ai-navigator-panel"

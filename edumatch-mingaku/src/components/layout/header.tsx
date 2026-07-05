@@ -40,7 +40,6 @@ import { useTutorial } from "@/components/tutorial/use-tutorial";
 
 export function Header() {
   const t = useTranslations("header");
-  const tn = useTranslations("nav");
   const tc = useTranslations("common");
   const tsm = useTranslations("sideMenu");
   const router = useRouter();
@@ -132,14 +131,6 @@ export function Header() {
 
   // 教育のひろばの段階移行フラグ：1 でナビの向き先を常設マップ版（/idobata）へ切替
   const idobataNav = process.env.NEXT_PUBLIC_IDOBATA_NAV === "1";
-  const navLinks = [
-    { href: "/services", label: tn("services") },
-    { href: "/articles", label: tn("articles") },
-    { href: idobataNav ? "/idobata" : "/forum", label: tn("forum") },
-    { href: "/events", label: tn("events") },
-    { href: "/matching", label: tsm("matching") },
-    { href: "/companies", label: tn("companies") },
-  ];
 
   // モバイルメニューは PC のサイドメニューと同じ一般項目を表示（PC版と揃える）。
   const mobileNavLinks = [
@@ -202,21 +193,9 @@ export function Header() {
           />
         </Link>
 
-        {/* Desktop Navigation */}
-        <nav
-          className="hidden md:flex min-w-0 flex-1 items-center justify-end gap-1.5 lg:gap-2.5"
-          data-tutorial="header-nav"
-        >
+        {/* Desktop Navigation（セクション移動は SectionNav タブに集約。ここは機能系のみ） */}
+        <nav className="hidden md:flex min-w-0 flex-1 items-center justify-end gap-1.5 lg:gap-2.5">
           <div className="flex min-w-0 items-center gap-1.5 overflow-hidden lg:gap-2.5">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="shrink-0 whitespace-nowrap text-sm font-medium text-foreground/60 transition-colors hover:text-foreground"
-            >
-              {link.label}
-            </Link>
-          ))}
           <Link
             href="/request-info/list"
             className="relative flex shrink-0 items-center gap-1 whitespace-nowrap text-sm font-medium text-foreground/60 transition-colors hover:text-foreground"
