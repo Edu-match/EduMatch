@@ -11,9 +11,6 @@ import { revalidatePath } from "next/cache";
  * 返信は AI（汎用ファシリテーター）/ AIペルソナ（記事著者本人）/ 人間 の3種。
  */
 
-export const AI_REVIEW_ROLE = "AI";
-export const AI_PERSONA_REVIEW_ROLE = "AIペルソナ";
-
 export type ReviewReply = {
   id: string;
   author_name: string;

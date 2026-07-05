@@ -8,10 +8,11 @@ import { Star, Sparkles, Bot, CornerDownRight, Send, MessageCircle, Loader2 } fr
 import {
   createArticleReview,
   createArticleReviewReply,
-  AI_REVIEW_ROLE,
-  AI_PERSONA_REVIEW_ROLE,
   type ArticleReview,
 } from "@/app/_actions/article-reviews";
+
+const AI_REVIEW_ROLE = "AI";
+const AI_PERSONA_REVIEW_ROLE = "AIペルソナ";
 
 function formatDate(d: Date | string): string {
   const date = typeof d === "string" ? new Date(d) : d;

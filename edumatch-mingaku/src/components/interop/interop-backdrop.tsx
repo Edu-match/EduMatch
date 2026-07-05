@@ -256,17 +256,21 @@ export function InteropBackdrop({
   const pal = PALETTES[period];
   const isNightLike = pal.star > 0;
 
-  const stars = useMemo(
-    () =>
-      Array.from({ length: 40 }, () => ({
-        left: Math.random() * 100,
-        top: Math.random() * 72,
-        d: 0.8 + Math.random() * 1.7,
-        delay: Math.random() * 6,
-        dur: 3 + Math.random() * 4,
-      })),
-    []
-  );
+  const stars = useMemo(() => {
+    // Seeded PRNG to avoid SSR/client hydration mismatch
+    let seed = 42;
+    const rand = () => {
+      seed = (seed * 16807 + 0) % 2147483647;
+      return (seed - 1) / 2147483646;
+    };
+    return Array.from({ length: 40 }, () => ({
+      left: rand() * 100,
+      top: rand() * 72,
+      d: 0.8 + rand() * 1.7,
+      delay: rand() * 6,
+      dur: 3 + rand() * 4,
+    }));
+  }, []);
 
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">

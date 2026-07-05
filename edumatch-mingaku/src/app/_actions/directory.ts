@@ -60,15 +60,21 @@ function roleLabel(p: Row): string {
 
 /** 名鑑掲載メンバー一覧（オプトイン済みのみ）。interest 指定時はその関心を持つ人に絞る。 */
 export async function getDirectoryMembers(interest?: string): Promise<DirectoryMember[]> {
-  const rows = (await prisma.profile.findMany({
-    where: {
-      directory_opt_in: true,
-      ...(interest ? { interests: { has: interest } } : {}),
-    },
-    select: SELECT,
-    orderBy: { updated_at: "desc" },
-    take: 200,
-  })) as Row[];
+  let rows: Row[];
+  try {
+    rows = (await prisma.profile.findMany({
+      where: {
+        directory_opt_in: true,
+        ...(interest ? { interests: { has: interest } } : {}),
+      },
+      select: SELECT,
+      orderBy: { updated_at: "desc" },
+      take: 200,
+    })) as Row[];
+  } catch (e: unknown) {
+    if (e && typeof e === "object" && "code" in e && e.code === "P2022") return [];
+    throw e;
+  }
 
   return rows.map((p) => ({
     id: p.id,
@@ -83,11 +89,17 @@ export async function getDirectoryMembers(interest?: string): Promise<DirectoryM
 
 /** 名鑑に載っている関心タグの一覧（フィルタUI用）。 */
 export async function getDirectoryInterests(): Promise<string[]> {
-  const rows = await prisma.profile.findMany({
-    where: { directory_opt_in: true },
-    select: { interests: true },
-    take: 500,
-  });
+  let rows: { interests: string[] }[];
+  try {
+    rows = await prisma.profile.findMany({
+      where: { directory_opt_in: true },
+      select: { interests: true },
+      take: 500,
+    });
+  } catch (e: unknown) {
+    if (e && typeof e === "object" && "code" in e && e.code === "P2022") return [];
+    throw e;
+  }
   const set = new Set<string>();
   for (const r of rows) for (const i of r.interests ?? []) if (i.trim()) set.add(i.trim());
   return [...set].sort();
@@ -103,12 +115,17 @@ export type MyDirectoryStatus = {
 export async function getMyDirectoryStatus(): Promise<MyDirectoryStatus | null> {
   const user = await getCurrentUser();
   if (!user) return null;
-  const p = await prisma.profile.findUnique({
-    where: { id: user.id },
-    select: { directory_opt_in: true, bio: true, interests: true },
-  });
-  if (!p) return null;
-  return { optIn: p.directory_opt_in, bio: p.bio, interests: p.interests ?? [] };
+  try {
+    const p = await prisma.profile.findUnique({
+      where: { id: user.id },
+      select: { directory_opt_in: true, bio: true, interests: true },
+    });
+    if (!p) return null;
+    return { optIn: p.directory_opt_in, bio: p.bio, interests: p.interests ?? [] };
+  } catch (e: unknown) {
+    if (e && typeof e === "object" && "code" in e && e.code === "P2022") return null;
+    throw e;
+  }
 }
 
 /** 自分の名鑑掲載オプトインを切り替える。 */

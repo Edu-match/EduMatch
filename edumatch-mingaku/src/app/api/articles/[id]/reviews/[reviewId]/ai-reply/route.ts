@@ -3,8 +3,10 @@ import OpenAI from "openai";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { generatePersonaReplyText } from "@/lib/persona-reply";
-import { AI_REVIEW_ROLE, AI_PERSONA_REVIEW_ROLE } from "@/app/_actions/article-reviews";
 import { revalidatePath } from "next/cache";
+
+const AI_REVIEW_ROLE = "AI";
+const AI_PERSONA_REVIEW_ROLE = "AIペルソナ";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
