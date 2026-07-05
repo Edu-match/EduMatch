@@ -153,6 +153,85 @@
     transform: translateY(-2px);
     box-shadow: 0 12px 32px -12px oklch(0.2 0.02 260 / 0.18);
   }
+  /* ホバーで左から伸びる下線（見出しリンク用） */
+  .link-underline {
+    background-image: linear-gradient(currentColor, currentColor);
+    background-size: 0% 1.5px;
+    background-position: 0 100%;
+    background-repeat: no-repeat;
+    transition: background-size 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .link-underline:hover,
+  a:hover .link-underline,
+  .group:hover .link-underline {
+    background-size: 100% 1.5px;
+  }
+}
+
+/* ===== アニメーション基盤 ===== */
+
+/* ロード時のフェードアップ（ヒーロー等・CSSのみ） */
+@keyframes em-fade-up {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: none; }
+}
+.animate-fade-up {
+  animation: em-fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.animation-delay-100 { animation-delay: 100ms; }
+.animation-delay-200 { animation-delay: 200ms; }
+.animation-delay-300 { animation-delay: 300ms; }
+.animation-delay-400 { animation-delay: 400ms; }
+
+/* スクロールリビール（Reveal コンポーネントが is-visible を付与） */
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* ニュースティッカー（無限ループ・ホバーで一時停止） */
+@keyframes em-ticker {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.ticker-track {
+  display: flex;
+  width: max-content;
+  animation: em-ticker var(--ticker-duration, 45s) linear infinite;
+}
+.ticker-wrap:hover .ticker-track {
+  animation-play-state: paused;
+}
+
+/* ライブドット（教育のひろば「いま話題」用） */
+@keyframes em-pulse-dot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.6); opacity: 0.5; }
+}
+.live-dot::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  background: oklch(0.62 0.21 25);
+  animation: em-pulse-dot 1.6s ease-in-out infinite;
+}
+
+/* 動きを抑えたい設定のユーザーにはアニメーションを無効化 */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up { animation: none; }
+  .reveal { opacity: 1; transform: none; transition: none; }
+  .ticker-track { animation: none; }
+  .live-dot::before { animation: none; }
+  .card-lift, .card-lift:hover { transform: none; }
 }
 
 /* AI検定セクション用ブルーテーマ（元のAI検定アプリの配色を再現） */
