@@ -14,11 +14,11 @@ import {
   User,
   ChevronRight,
   Award,
+  Ticket,
 } from "lucide-react";
 import { AiKenteiCertificatesCompact } from "@/components/ai-kentei/certificates-compact";
 import { requireAuth, getCurrentProfile } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { Ticket } from "lucide-react";
 import { getRecentViewHistory } from "@/app/_actions";
 import { RequestListCompact } from "@/components/dashboard/request-list-compact";
 import { FavoritesCompact } from "@/components/dashboard/favorites-compact";
@@ -145,6 +145,34 @@ export default async function MyPage() {
           こんにちは、{displayName}さん
         </p>
       </div>
+
+      {/* 電子チケット（議員会館イベント） */}
+      {myTickets.length > 0 && (
+        <Card className="mb-6">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="flex items-center gap-2"><Ticket className="h-5 w-5" /> 電子チケット</CardTitle>
+            <Button variant="ghost" size="sm" asChild><Link href="/forum/kaikan">コンテンツを探す<ArrowRight className="h-4 w-4 ml-1" /></Link></Button>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2">
+              {myTickets.map((t) => (
+                <li key={t.token}>
+                  <Link href={`/forum/kaikan/ticket/${t.token}`} className="flex items-center justify-between gap-3 rounded-xl border p-3 transition hover:border-primary/50 hover:bg-primary/[0.03]">
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-bold">{t.titles[0]}{t.titles.length > 1 ? ` 他${t.titles.length - 1}件` : ""}</span>
+                      <span className="block text-[11px] text-muted-foreground">受付番号 {t.token.slice(0, 8).toUpperCase().replace(/(.{4})(.{4})/, "$1-$2")}</span>
+                    </span>
+                    <span className="flex shrink-0 items-center gap-2">
+                      <Badge variant={t.allChecked ? "default" : "secondary"} className={t.allChecked ? "bg-emerald-100 text-emerald-700" : ""}>{t.allChecked ? "受付済" : "受付前"}</Badge>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* メインコンテンツ */}

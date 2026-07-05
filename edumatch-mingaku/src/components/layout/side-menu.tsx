@@ -23,6 +23,9 @@ import {
   Video,
   Flag,
   QrCode,
+  Megaphone,
+  Sparkles,
+  ListChecks,
 } from "lucide-react";
 
 /** 一般ユーザー向けメニュー（全員閲覧用）。labelKey は sideMenu namespace のキー */
@@ -40,18 +43,25 @@ const generalItems = [
   { href: "/help", labelKey: "help", icon: HelpCircle },
 ];
 
-/** 投稿・管理者向けメニュー（下段: ADMIN のみ）。アカウントプルダウンの管理メニューと項目を揃える。 */
+/** 投稿・管理者向けメニュー（下段: ADMIN のみ）。color はアイコン色（プルダウンと統一）。
+ *  ※電子チケット読み取り(kaikan checkin)は下部で個別リンク表示するため配列には含めない。 */
 const bottomItems = [
-  { href: "/admin/approvals", labelKey: "approvals", icon: FileText, roles: ["ADMIN"] },
-  { href: "/admin/events", labelKey: "manageEvents", icon: Calendar, roles: ["ADMIN"] },
-  { href: "/admin/forum", labelKey: "manageForum", icon: MessageSquare, roles: ["ADMIN"] },
-  { href: "/admin/site-updates", labelKey: "writeSiteUpdate", icon: PenSquare, roles: ["ADMIN"] },
-  { href: "/dashboard/admin/knowledge", labelKey: "knowledge", icon: BookOpen, roles: ["ADMIN"] },
-  { href: "/admin/ai-chat", labelKey: "aiChat", icon: Bot, roles: ["ADMIN"] },
-  { href: "/admin/services/display-order", labelKey: "serviceOrder", icon: ArrowUpDown, roles: ["ADMIN"] },
-  { href: "/admin/activity-log", labelKey: "activityLog", icon: Activity, roles: ["ADMIN"] },
-  { href: "/admin/user-reports", labelKey: "userReports", icon: Flag, roles: ["ADMIN"] },
-  { href: "/admin/kaikan?tab=checkin", labelKey: "kaikanCheckin", icon: QrCode, roles: ["ADMIN"] },
+  { href: "/articles/create", labelKey: "createArticle", icon: PenSquare, roles: ["ADMIN"], color: "text-blue-600" },
+  { href: "/services/create", labelKey: "createService", icon: PenSquare, roles: ["ADMIN"], color: "text-cyan-600" },
+  { href: "/admin/approvals", labelKey: "approvals", icon: FileText, roles: ["ADMIN"], color: "text-amber-600" },
+  { href: "/admin/site-updates", labelKey: "writeSiteUpdate", icon: PenSquare, roles: ["ADMIN"], color: "text-slate-600" },
+  { href: "/admin/events", labelKey: "manageEvents", icon: Calendar, roles: ["ADMIN"], color: "text-emerald-600" },
+  { href: "/admin/forum", labelKey: "manageForum", icon: MessageSquare, roles: ["ADMIN"], color: "text-blue-600" },
+  { href: "/admin/videos", labelKey: "manageVideos", icon: Video, roles: ["ADMIN"], color: "text-rose-600" },
+  { href: "/admin/sponsors", labelKey: "manageSponsors", icon: Megaphone, roles: ["ADMIN"], color: "text-orange-600" },
+  { href: "/admin/pages", labelKey: "managePages", icon: FileText, roles: ["ADMIN"], color: "text-slate-600" },
+  // 「教育AIサミット管理(/admin/interop)」は井戸端会議 管理(/admin/forum)へ統合したため削除。
+  { href: "/admin/ai-kentei/questions", labelKey: "manageAiKentei", icon: ListChecks, roles: ["ADMIN"], color: "text-green-600" },
+  { href: "/dashboard/admin/knowledge", labelKey: "knowledge", icon: BookOpen, roles: ["ADMIN"], color: "text-indigo-600" },
+  { href: "/admin/ai-chat", labelKey: "aiChat", icon: Bot, roles: ["ADMIN"], color: "text-violet-600" },
+  { href: "/admin/services/display-order", labelKey: "serviceOrder", icon: ArrowUpDown, roles: ["ADMIN"], color: "text-cyan-600" },
+  { href: "/admin/activity-log", labelKey: "activityLog", icon: Activity, roles: ["ADMIN"], color: "text-orange-600" },
+  { href: "/admin/user-reports", labelKey: "userReports", icon: Flag, roles: ["ADMIN"], color: "text-red-600" },
 ];
 
 type MenuItem = (typeof generalItems)[number] | (typeof bottomItems)[number];
@@ -79,7 +89,7 @@ function MenuItemLink({
         hasBorder ? "border-b" : ""
       }`}
     >
-      <Icon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+      <Icon className={`h-4 w-4 flex-shrink-0 ${"color" in item && item.color ? item.color : "text-muted-foreground"}`} />
       <span className="hover:text-[#1d4ed8] transition-colors">{t(item.labelKey)}</span>
     </Link>
   );
@@ -130,6 +140,24 @@ export function SideMenu() {
             </h2>
           </div>
           <nav>
+            {role === "ADMIN" && (
+              <Link
+                href="/admin/kaikan?tab=checkin"
+                className="flex w-full items-center gap-2 border-b border-amber-200 px-3 py-2.5 text-left text-sm transition-colors hover:bg-amber-100"
+              >
+                <QrCode className="h-4 w-4 flex-shrink-0 text-amber-900" />
+                <span className="hover:text-[#1d4ed8] transition-colors">電子チケット読み取り</span>
+              </Link>
+            )}
+            {role === "ADMIN" && (
+              <Link
+                href="/admin/persona"
+                className="flex w-full items-center gap-2 border-b border-amber-200 px-3 py-2.5 text-left text-sm transition-colors hover:bg-amber-100"
+              >
+                <Sparkles className="h-4 w-4 flex-shrink-0 text-violet-700" />
+                <span className="hover:text-[#1d4ed8] transition-colors">AIペルソナ</span>
+              </Link>
+            )}
             {visibleBottomItems.map((item, index) => (
               <MenuItemLink
                 key={item.href}

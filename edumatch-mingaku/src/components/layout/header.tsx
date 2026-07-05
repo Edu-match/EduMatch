@@ -10,7 +10,7 @@ import {
   Menu, LogOut, User, LayoutDashboard, Settings, 
   ChevronDown, UserPlus, LogIn, FileText, Bell,
   CheckCircle, Calendar, Newspaper, BookOpen, Bot, Activity, Flag, ArrowUpDown,
-  MessageSquare, CircleHelp, Pencil, QrCode
+  MessageSquare, CircleHelp, Pencil, QrCode, Sparkles
 } from "lucide-react";
 import { useRequestList } from "@/components/request-list/request-list-context";
 import { useTextEdit } from "@/components/text-edit/text-edit-context";
@@ -42,6 +42,7 @@ export function Header() {
   const t = useTranslations("header");
   const tn = useTranslations("nav");
   const tc = useTranslations("common");
+  const tsm = useTranslations("sideMenu");
   const router = useRouter();
   const pathname = usePathname();
   const { count: requestListCount } = useRequestList();
@@ -137,6 +138,20 @@ export function Header() {
     { href: idobataNav ? "/idobata" : "/forum", label: tn("forum") },
     { href: "/events", label: tn("events") },
     { href: "/companies", label: tn("companies") },
+  ];
+
+  // モバイルメニューは PC のサイドメニューと同じ一般項目を表示（PC版と揃える）。
+  const mobileNavLinks = [
+    { href: "/", label: tsm("home") },
+    { href: "/services", label: tsm("services") },
+    { href: "/articles", label: tsm("articles") },
+    { href: idobataNav ? "/idobata" : "/forum", label: tsm("forum") },
+    { href: "/videos", label: tsm("videos") },
+    { href: "/events", label: tsm("events") },
+    { href: "/companies", label: tsm("companies") },
+    { href: "/compare", label: tsm("compare") },
+    { href: "/ai-kentei", label: tsm("aiKentei") },
+    { href: "/help", label: tsm("help") },
   ];
 
   const displayName = userName || (userEmail ? userEmail.split("@")[0] : tc("user"));
@@ -397,6 +412,20 @@ export function Header() {
                     </DropdownMenuLabel>
                     <DropdownMenuItem
                       className="cursor-pointer"
+                      onSelect={() => router.push("/admin/kaikan?tab=checkin")}
+                    >
+                      <QrCode className="mr-2 h-4 w-4 text-primary" />
+                      電子チケット読み取り
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onSelect={() => router.push("/admin/persona")}
+                    >
+                      <Sparkles className="mr-2 h-4 w-4 text-violet-600" />
+                      AIペルソナ
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="cursor-pointer"
                       onSelect={() => router.push("/admin/approvals")}
                     >
                       <CheckCircle className="mr-2 h-4 w-4 text-amber-600" />
@@ -505,7 +534,7 @@ export function Header() {
         </nav>
 
         {/* Mobile Navigation */}
-        <div className="flex shrink-0 items-center gap-1 md:hidden">
+        <div className="ml-auto flex shrink-0 items-center gap-1 md:hidden">
           {tutorialButton}
           <LanguageSwitcher />
         <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
@@ -524,7 +553,7 @@ export function Header() {
               <SheetTitle>{t("menu")}</SheetTitle>
             </SheetHeader>
             <nav className="flex flex-col px-4 pb-6">
-              {navLinks.map((link) => (
+              {mobileNavLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
@@ -613,6 +642,12 @@ export function Header() {
                     {userRole === "ADMIN" && (
                       <div className="border-t pt-3 mt-2">
                         <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground pb-1">{t("adminMenu")}</p>
+                        <Link href="/admin/kaikan?tab=checkin" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
+                          <QrCode className="h-4 w-4 text-primary flex-shrink-0" />電子チケット読み取り
+                        </Link>
+                        <Link href="/admin/persona" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
+                          <Sparkles className="h-4 w-4 text-violet-600 flex-shrink-0" />AIペルソナ
+                        </Link>
                         <Link href="/admin/approvals" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
                           <CheckCircle className="h-4 w-4 text-amber-600 flex-shrink-0" />{t("approvals")}
                         </Link>

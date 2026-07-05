@@ -503,6 +503,18 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
   const [openedRagRefsMessageId, setOpenedRagRefsMessageId] = useState<string | null>(null);
   const [expandedActivityMsgIds, setExpandedActivityMsgIds] = useState<Set<string>>(new Set());
   const [openedWebSourcesMsgId, setOpenedWebSourcesMsgId] = useState<string | null>(null);
+  // 参照（RAG）モード。ON=公的文書RAG＋サイト内情報を参照、OFF=モデル内部知識＋Web検索のみ。
+  const [ragEnabled, setRagEnabled] = useState(true);
+  // 設定を localStorage で永続化（初回マウント時に復元）。
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = window.localStorage.getItem("em-chat-rag-enabled");
+    if (saved === "0") setRagEnabled(false);
+  }, []);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("em-chat-rag-enabled", ragEnabled ? "1" : "0");
+  }, [ragEnabled]);
   const [forumComposeAssist, setForumComposeAssist] = useState<{
     active: boolean;
     topic: string;
@@ -973,7 +985,7 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
       const resp = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: allMessages, contextItems: ctxPayload, mode: chatMode }),
+        body: JSON.stringify({ messages: allMessages, contextItems: ctxPayload, mode: chatMode, ragEnabled }),
         signal: controller.signal,
       });
 
@@ -1708,6 +1720,30 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
                   </DropdownMenu>
                 </div>
               )}
+            </div>
+
+            <div className="mb-2 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setRagEnabled((v) => !v)}
+                aria-pressed={ragEnabled}
+                title={
+                  ragEnabled
+                    ? "参照モードON：登録文書・サイト内情報を参照して回答します（クリックでOFF）"
+                    : "参照モードOFF：登録文書・サイト内情報を参照しません（クリックでON）"
+                }
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+                  ragEnabled
+                    ? "border-violet-300 bg-violet-50 text-violet-700 hover:bg-violet-100"
+                    : "border-input bg-muted/40 text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                <BookOpen className="h-3.5 w-3.5 shrink-0" />
+                参照{ragEnabled ? "ON" : "OFF"}
+              </button>
+              <span className="text-[11px] text-muted-foreground">
+                {ragEnabled ? "登録文書・サイト内情報を参照" : "Web検索とAIの知識のみで回答"}
+              </span>
             </div>
 
             <div className="flex items-end gap-2">

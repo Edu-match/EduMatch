@@ -4,9 +4,21 @@ import { getCurrentProfile } from "@/lib/auth";
 import { generatePersonaReplyText } from "@/lib/persona-reply";
 import { isInteropAiReplyDisabled } from "@/lib/interop-ai-reply-policy";
 import { getInteropSettings } from "@/lib/interop-settings.server";
+import { searchKnowledgeChunks } from "@/app/_actions/chat-context";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
+
+/** 投稿本文から公的文書RAGの抜粋を取得（best-effort・最大2件）。 */
+async function fetchKnowledgeContext(postBody: string): Promise<string> {
+  try {
+    const hits = await searchKnowledgeChunks(postBody, 2);
+    if (!hits.length) return "";
+    return hits.map((h) => `〈${h.title}〉${h.content.slice(0, 280)}`).join("\n");
+  } catch {
+    return "";
+  }
+}
 
 /**
  * パーソナルAIペルソナによる自動返信エンジン（※現状は管理者のみ）。
@@ -102,6 +114,8 @@ export async function POST(req: NextRequest) {
   const since = startOfTodayUtc();
   const results: { persona: string; created: number }[] = [];
   let totalCreated = 0;
+  // 投稿ごとのRAG抜粋をキャッシュ（同じ投稿に複数ペルソナが返信しても1回だけ検索）。
+  const knowledgeCache = new Map<string, string>();
 
   for (const persona of personas) {
     const usedToday = await prisma.interopPost.count({
@@ -144,6 +158,21 @@ export async function POST(req: NextRequest) {
       if (created >= budget) break;
       if (isInteropAiReplyDisabled(post.subCategory)) continue;
 
+      // スレッドの流れ（この投稿への直近の返信・古い順で最大4件）
+      const replies = await prisma.interopPost.findMany({
+        where: { parent_post_id: post.id, is_hidden: false },
+        orderBy: { created_at: "asc" },
+        take: 4,
+        select: { author_name: true, body: true },
+      });
+
+      // 投稿に関連する公的文書RAG抜粋（キャッシュ利用）
+      let knowledgeContext = knowledgeCache.get(post.id);
+      if (knowledgeContext === undefined) {
+        knowledgeContext = await fetchKnowledgeContext(post.body);
+        knowledgeCache.set(post.id, knowledgeContext);
+      }
+
       const replyText = await generatePersonaReplyText({
         personaPrompt: persona.persona_prompt,
         valuesText: persona.values_text,
@@ -152,6 +181,8 @@ export async function POST(req: NextRequest) {
         postBody: post.body,
         subCategoryName: post.subCategory.name,
         categoryName: post.subCategory.category.name,
+        recentPosts: replies.map((r) => ({ authorName: r.author_name, body: r.body })),
+        knowledgeContext,
       });
       if (!replyText) continue;
 

@@ -48,6 +48,12 @@ type RequestBody = {
   messages: { role: MessageRole; content: string }[];
   contextItems?: { id: string; type: "article" | "service" }[];
   mode?: ChatMode;
+  /**
+   * 参照（RAG）モードの ON/OFF。
+   * - true（既定）: 公的文書RAG＋サイト内記事/サービス参照を有効化
+   * - false: 上記参照を停止し、モデル内部知識＋Web検索のみで回答
+   */
+  ragEnabled?: boolean;
 };
 
 // ─── システムプロンプト ───────────────────────────────────────────────────────
@@ -333,6 +339,8 @@ export async function POST(req: NextRequest) {
 
   const { messages, contextItems, mode: bodyMode } = body;
   const mode: ChatMode = bodyMode && ["navigator", "debate", "discussion"].includes(bodyMode) ? bodyMode : "navigator";
+  // 参照（RAG）モード。明示的に false のときだけ参照を停止（既定は ON）。
+  const ragEnabled = body.ragEnabled !== false;
 
   if (!messages || !Array.isArray(messages) || messages.length === 0) {
     return new Response(JSON.stringify({ error: "Messages are required" }), {
@@ -395,24 +403,44 @@ export async function POST(req: NextRequest) {
         controller.enqueue(encodeSse(event));
 
       try {
-        // ── 明示コンテキスト取得 ──────────────────────────────────────────
-        const explicitContexts: ChatContextItem[] = [];
-        if (contextItems && contextItems.length > 0) {
-          for (const item of contextItems.slice(0, 10)) {
-            const ctx =
-              item.type === "article"
-                ? await getArticleContextForChat(item.id)
-                : await getServiceContextForChat(item.id);
-            if (ctx) explicitContexts.push(ctx);
-          }
-        }
-
-        // ── 段階的コンテキスト検索（emit でステータスを逐次送信）────────────
         const lastUserMsg = messages.filter((m) => m.role === "user").at(-1)?.content ?? "";
         const activityEmit: ActivityEmit = (e) => emit(e);
 
-        const { services: searchSvcs, articles: searchArts, knowledge: knowledgeHits } =
-          await retrieveChatContext(lastUserMsg, 5, activityEmit);
+        // ── 参照（RAG）モード ──────────────────────────────────────────────
+        // ragEnabled=false のときは、公的文書RAG・サイト内記事/サービス参照を
+        // 一切行わず、モデル内部知識＋Web検索のみで回答する。
+        const explicitContexts: ChatContextItem[] = [];
+        let searchSvcs: ChatContextItem[] = [];
+        let searchArts: ChatContextItem[] = [];
+        let knowledgeHits: ChatContextItem[] = [];
+
+        if (ragEnabled) {
+          // ── 明示コンテキスト取得 ──────────────────────────────────────────
+          if (contextItems && contextItems.length > 0) {
+            for (const item of contextItems.slice(0, 10)) {
+              const ctx =
+                item.type === "article"
+                  ? await getArticleContextForChat(item.id)
+                  : await getServiceContextForChat(item.id);
+              if (ctx) explicitContexts.push(ctx);
+            }
+          }
+
+          // ── 段階的コンテキスト検索（emit でステータスを逐次送信）────────────
+          const retrieved = await retrieveChatContext(lastUserMsg, 5, activityEmit);
+          searchSvcs = retrieved.services;
+          searchArts = retrieved.articles;
+          knowledgeHits = retrieved.knowledge;
+        } else {
+          emit({
+            type: "status",
+            id: "rag-off",
+            phase: "prepare",
+            message: "参照モードOFF：登録文書・サイト内情報を参照せず回答します",
+            status: "active",
+          });
+          emit({ type: "status_update", id: "rag-off", status: "done" });
+        }
 
         const searchResults = [...searchSvcs, ...searchArts].filter(
           (r) => !explicitContexts.some((e) => e.id === r.id)
@@ -483,7 +511,7 @@ export async function POST(req: NextRequest) {
           : [];
 
         const responseStream = await openai.responses.create({
-          model: "gpt-5.4",
+          model: "gpt-5.4-mini",
           stream: true as const,
           instructions: systemPrompt,
           input: trimmedMessages,
