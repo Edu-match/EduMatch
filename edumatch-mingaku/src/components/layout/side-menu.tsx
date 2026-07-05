@@ -33,7 +33,7 @@ const generalItems = [
   { href: "/", labelKey: "home", icon: Home },
   { href: "/services", labelKey: "services", icon: Search },
   { href: "/articles", labelKey: "articles", icon: Newspaper },
-  // 井戸端会議：NEXT_PUBLIC_IDOBATA_NAV=1 で常設マップ版（/idobata）へ切替
+  // 教育のひろば：NEXT_PUBLIC_IDOBATA_NAV=1 で常設マップ版（/idobata）へ切替
   { href: process.env.NEXT_PUBLIC_IDOBATA_NAV === "1" ? "/idobata" : "/forum", labelKey: "forum", icon: MessageSquare },
   { href: "/videos", labelKey: "videos", icon: Video },
   { href: "/events", labelKey: "events", icon: Calendar },
@@ -55,7 +55,7 @@ const bottomItems = [
   { href: "/admin/videos", labelKey: "manageVideos", icon: Video, roles: ["ADMIN"], color: "text-rose-600" },
   { href: "/admin/sponsors", labelKey: "manageSponsors", icon: Megaphone, roles: ["ADMIN"], color: "text-orange-600" },
   { href: "/admin/pages", labelKey: "managePages", icon: FileText, roles: ["ADMIN"], color: "text-slate-600" },
-  // 「教育AIサミット管理(/admin/interop)」は井戸端会議 管理(/admin/forum)へ統合したため削除。
+  // 「教育AIサミット管理(/admin/interop)」は教育のひろば 管理(/admin/forum)へ統合したため削除。
   { href: "/admin/ai-kentei/questions", labelKey: "manageAiKentei", icon: ListChecks, roles: ["ADMIN"], color: "text-green-600" },
   { href: "/dashboard/admin/knowledge", labelKey: "knowledge", icon: BookOpen, roles: ["ADMIN"], color: "text-indigo-600" },
   { href: "/admin/ai-chat", labelKey: "aiChat", icon: Bot, roles: ["ADMIN"], color: "text-violet-600" },

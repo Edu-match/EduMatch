@@ -196,7 +196,7 @@ export function InteropExplorer({
   centerHubItems?: CenterHubItem[];
   initialInteropActivity?: ActivityPayload | null;
   initialForumActivity?: { rooms?: ForumRoomActivityPayload[] } | null;
-  /** 来場者向けAIチャット(fixed配置)を出すか。井戸端会議・ホーム埋め込みでは false。 */
+  /** 来場者向けAIチャット(fixed配置)を出すか。教育のひろば・ホーム埋め込みでは false。 */
   showChat?: boolean;
   /** トップマップのサテライト表示（管理画面のトグルで切替）。 */
   showLatestNews?: boolean;
@@ -216,7 +216,7 @@ export function InteropExplorer({
   const groupParam = searchParams.get("group"); // ミニマップから major(A〜F)で絞り込み
 
   // サブカテゴリのタップ遷移。
-  // ・ミニマップ（embedded）：常に該当の井戸端会議ボードへ直行（トップ以降のリンク/外部遷移は紐付けない）。
+  // ・ミニマップ（embedded）：常に該当の教育のひろばボードへ直行（トップ以降のリンク/外部遷移は紐付けない）。
   // ・フル表示：link_url があれば外部リンク、無ければ掲示板へ（ノード毎のリンク/掲示板選択を尊重）。
   const openSubCategory = useCallback(
     (sub: { id: string; linkUrl?: string }) => {
@@ -700,7 +700,7 @@ export function InteropExplorer({
       )}
 
       {/* 来場者向けAIチャット（ログイン不要・全ビュー共通）。今見ているビューを文脈として渡す。
-          井戸端会議・ホーム埋め込みでは showChat=false で非表示（fixed配置のはみ出し回避）。 */}
+          教育のひろば・ホーム埋め込みでは showChat=false で非表示（fixed配置のはみ出し回避）。 */}
       {showChat && (
         <InteropChatWidget
           context={

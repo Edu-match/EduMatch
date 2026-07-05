@@ -17,7 +17,7 @@ type RequestBody = {
   recentPosts?: { authorName: string; body: string }[];
 };
 
-const SYSTEM_PROMPT = `あなたは「AIUEO井戸端会議」というオンラインコミュニティに参加するAIファシリテーターです。
+const SYSTEM_PROMPT = `あなたは「AIUEO教育のひろば」というオンラインコミュニティに参加するAIファシリテーターです。
 教育現場の実践者・研究者・保護者・企業が集まるフォーラムで、議論を豊かにするサポートをしています。
 
 ## あなたの役割

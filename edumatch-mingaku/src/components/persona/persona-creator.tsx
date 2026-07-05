@@ -126,7 +126,7 @@ export function PersonaCreator({
         <div className="min-w-0">
           <p className="text-sm font-semibold">AIペルソナ＆アバターを作成 <span className="font-normal text-muted-foreground">（任意）</span></p>
           <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-            あなたの「分身AI」を作る機能です。下の質問に答えると、あなたらしい考え方・口調を持ったAIと、似合うアイコン画像を生成。井戸端会議で“あなたらしく”返信できます。
+            あなたの「分身AI」を作る機能です。下の質問に答えると、あなたらしい考え方・口調を持ったAIと、似合うアイコン画像を生成。教育のひろばで“あなたらしく”返信できます。
           </p>
         </div>
       </div>

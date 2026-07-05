@@ -13,7 +13,7 @@ export type TutorialPageId =
 export const TUTORIAL_PAGE_LABELS: Record<TutorialPageId, string> = {
   home: "ホーム",
   articles: "記事一覧",
-  forum: "井戸端会議",
+  forum: "教育のひろば",
   "ai-kentei": "AI検定",
   dashboard: "マイページ",
 };
@@ -62,7 +62,7 @@ export const TUTORIAL_PAGES: Record<TutorialPageId, TutorialPageDefinition> = {
         selector: '[data-tutorial="side-menu"]',
         title: "📚 左メニューでコンテンツを探そう",
         description:
-          "記事・サービス・イベント・井戸端会議・AI検定など、教育に関するコンテンツがここから見つかります。",
+          "記事・サービス・イベント・教育のひろば・AI検定など、教育に関するコンテンツがここから見つかります。",
       },
       {
         selector:
@@ -106,7 +106,7 @@ export const TUTORIAL_PAGES: Record<TutorialPageId, TutorialPageDefinition> = {
         selector: '[data-tutorial="article-card-favorite"]',
         title: "❤️ お気に入りに保存",
         description: "ハートボタンで気になった記事をブックマークできます。",
-        nextLabel: "井戸端会議を見てみよう",
+        nextLabel: "教育のひろばを見てみよう",
       },
     ],
   },
@@ -118,7 +118,7 @@ export const TUTORIAL_PAGES: Record<TutorialPageId, TutorialPageDefinition> = {
     steps: [
       {
         selector: '[data-tutorial="forum-hero-section"]',
-        title: "💬 井戸端会議へようこそ",
+        title: "💬 教育のひろばへようこそ",
         description:
           "ここは教育に関する話題を、テーマ別の「部屋」で語り合うコミュニティです。教員・専門家・保護者・企業など、立場を超えてつながれます。",
       },

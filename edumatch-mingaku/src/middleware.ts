@@ -101,7 +101,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.rewrite(url);
   }
 
-  // 井戸端会議 常設ルート（/idobata）：実体は /interop と同一コンポーネント（並行ルート）。
+  // 教育のひろば 常設ルート（/idobata）：実体は /interop と同一コンポーネント（並行ルート）。
   // 段階移行のため /interop はそのまま残し、こちらは内部 rewrite のみ（URLは /idobata を維持）。
   if (pathname === "/idobata" || pathname.startsWith("/idobata/")) {
     const url = request.nextUrl.clone();

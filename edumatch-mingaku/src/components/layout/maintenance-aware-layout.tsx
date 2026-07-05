@@ -224,7 +224,7 @@ export function MaintenanceAwareLayout({
   const isBareLayout =
     pathname === "/maintenance" ||
     !!pathname?.startsWith("/interop") ||
-    // 井戸端会議 常設ルート（middleware で /interop に内部 rewrite される並行ルート）
+    // 教育のひろば 常設ルート（middleware で /interop に内部 rewrite される並行ルート）
     !!pathname?.startsWith("/idobata") ||
     isSpecialHost;
   // 注: 以前は「/forum を ?from=interop で開くと bare（chrome無し）」にしていたが、

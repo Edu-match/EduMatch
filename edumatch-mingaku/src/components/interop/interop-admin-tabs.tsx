@@ -20,11 +20,11 @@ export function InteropAdminTabs() {
 
   return (
     <div className="space-y-5">
-      {/* 役割分担：部屋・サテライト・投稿の管理は「井戸端会議 管理」側。 */}
+      {/* 役割分担：部屋・サテライト・投稿の管理は「教育のひろば 管理」側。 */}
       <div className="flex flex-wrap items-center gap-2 rounded-lg border border-white/10 bg-white/[0.06] px-3 py-2 text-xs text-white/70 backdrop-blur-sm">
         <span>部屋・サテライト・投稿の管理は</span>
         <Link href="/admin/forum" className="inline-flex items-center gap-1 rounded-md bg-white/[0.12] px-2 py-1 font-bold text-white hover:bg-white/20">
-          <MessagesSquare className="h-3.5 w-3.5" />井戸端会議 管理
+          <MessagesSquare className="h-3.5 w-3.5" />教育のひろば 管理
         </Link>
         <span>で。（こちらはマップ・軸・サイト設定・モデレーション）</span>
       </div>

@@ -80,7 +80,7 @@ export async function generateMetadata({
   const room = (await getRoomFromDb(id)) ?? (await ensureInteropForumRoom(id));
   if (!room) return {};
   return {
-    title: `${room.name} | AIUEO 井戸端会議 | エデュマッチ`,
+    title: `${room.name} | AIUEO 教育のひろば | エデュマッチ`,
     description: room.description,
   };
 }

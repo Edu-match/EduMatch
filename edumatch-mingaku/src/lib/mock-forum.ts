@@ -2,7 +2,7 @@
 
 export type AuthorRole = "教員" | "学生" | "専門家" | "企業" | "一般" | "匿名";
 
-/** 井戸端会議: 職業スラッグ・整形済み「その他（…）」・旧カテゴリ名など */
+/** 教育のひろば: 職業スラッグ・整形済み「その他（…）」・旧カテゴリ名など */
 export type ForumAuthorRoleStored = string;
 
 export type ForumPost = {

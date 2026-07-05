@@ -18,7 +18,7 @@ export default async function AdminPersonaPage() {
       }).catch(() => null)
     : null;
 
-  // 井戸端会議の投稿（forum_posts）。一般カテゴリ→部屋(ルーム)→投稿 の構造。
+  // 教育のひろばの投稿（forum_posts）。一般カテゴリ→部屋(ルーム)→投稿 の構造。
   const rawPosts = await prisma.forumPost.findMany({
     where: { is_hidden: false },
     orderBy: { created_at: "desc" },
@@ -58,7 +58,7 @@ export default async function AdminPersonaPage() {
   return (
     <main className="mx-auto w-full max-w-2xl px-4 py-8 sm:px-6">
       <h1 className="text-2xl font-bold">AIペルソナ</h1>
-      <p className="mt-1 text-sm text-muted-foreground">あなたの分身AIペルソナを作成・再生成し、井戸端会議の投稿に本人らしく返信できます。</p>
+      <p className="mt-1 text-sm text-muted-foreground">あなたの分身AIペルソナを作成・再生成し、教育のひろばの投稿に本人らしく返信できます。</p>
 
       {/* 現在のペルソナ */}
       <section className="mt-6">
@@ -95,7 +95,7 @@ export default async function AdminPersonaPage() {
       {/* 投稿に返信 */}
       <section className="mt-8">
         <h2 className="mb-2 text-sm font-bold">投稿を選んで返信を作成</h2>
-        <p className="mb-3 text-xs text-muted-foreground">井戸端会議の直近の投稿から選び、AIで返信ドラフトを作成・編集して投稿できます。</p>
+        <p className="mb-3 text-xs text-muted-foreground">教育のひろばの直近の投稿から選び、AIで返信ドラフトを作成・編集して投稿できます。</p>
         <AdminPersonaReplyTool posts={posts} hasPersona={!!persona?.persona_prompt} />
       </section>
 

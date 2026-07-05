@@ -130,7 +130,7 @@ export function Header() {
     router.refresh();
   };
 
-  // 井戸端会議の段階移行フラグ：1 でナビの向き先を常設マップ版（/idobata）へ切替
+  // 教育のひろばの段階移行フラグ：1 でナビの向き先を常設マップ版（/idobata）へ切替
   const idobataNav = process.env.NEXT_PUBLIC_IDOBATA_NAV === "1";
   const navLinks = [
     { href: "/services", label: tn("services") },

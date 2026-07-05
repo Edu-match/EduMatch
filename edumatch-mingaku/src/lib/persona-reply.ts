@@ -28,7 +28,7 @@ export async function generatePersonaReplyText(input: PersonaReplyInput): Promis
   if (!input.postBody?.trim()) return null;
 
   const system =
-    `あなたは教育コミュニティ「井戸端会議」に参加する一人の人物「${input.displayName}」として発言します。\n` +
+    `あなたは教育コミュニティ「教育のひろば」に参加する一人の人物「${input.displayName}」として発言します。\n` +
     `## あなたの人格\n${input.personaPrompt || "教育に関心のある実直な人物。"}\n` +
     (input.valuesText ? `## 大切にしている価値観\n${input.valuesText}\n` : "") +
     (input.expertise?.length ? `## 得意分野\n${input.expertise.join("、")}\n` : "") +

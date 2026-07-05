@@ -44,7 +44,7 @@ export default async function KaikanApplyPage({ params }: { params: Promise<{ id
   return (
     <main className="mx-auto w-full max-w-xl px-4 py-8 sm:px-6">
       <Link href="/forum?map=3d" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-        <ChevronLeft className="h-3.5 w-3.5" /> 井戸端会議へ
+        <ChevronLeft className="h-3.5 w-3.5" /> 教育のひろばへ
       </Link>
 
       {/* イベントカード */}
