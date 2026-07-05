@@ -137,6 +137,7 @@ export function Header() {
     { href: "/articles", label: tn("articles") },
     { href: idobataNav ? "/idobata" : "/forum", label: tn("forum") },
     { href: "/events", label: tn("events") },
+    { href: "/matching", label: tsm("matching") },
     { href: "/companies", label: tn("companies") },
   ];
 
@@ -149,6 +150,7 @@ export function Header() {
     { href: "/videos", label: tsm("videos") },
     { href: "/events", label: tsm("events") },
     { href: "/companies", label: tsm("companies") },
+    { href: "/matching", label: tsm("matching") },
     { href: "/compare", label: tsm("compare") },
     { href: "/ai-kentei", label: tsm("aiKentei") },
     { href: "/help", label: tsm("help") },
@@ -185,7 +187,7 @@ export function Header() {
   );
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="fixed top-0 left-0 right-0 z-50 w-full border-b border-border/60 bg-white/70 backdrop-blur-xl supports-[backdrop-filter]:bg-white/60">
       <div className="container flex h-16 items-center gap-2 md:gap-3">
         {/* Logo */}
         <Link href="/" className="flex shrink-0 items-center hover:opacity-80 transition-opacity">
@@ -516,17 +518,11 @@ export function Header() {
           ) : (
             /* 未ログイン時: ログイン/新規登録ボタン */
             <div className="flex items-center gap-2">
-              <Button asChild variant="ghost" size="sm">
-                <Link href="/login">
-                  <LogIn className="h-4 w-4 mr-2" />
-                  {t("login")}
-                </Link>
+              <Button asChild variant="ghost" size="sm" className="rounded-full px-4">
+                <Link href="/login">{t("login")}</Link>
               </Button>
-              <Button asChild size="sm">
-                <Link href="/login">
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  {t("register")}
-                </Link>
+              <Button asChild size="sm" className="rounded-full px-5 shadow-sm">
+                <Link href="/login">{t("register")}</Link>
               </Button>
             </div>
           )}

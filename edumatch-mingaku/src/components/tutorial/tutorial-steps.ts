@@ -59,10 +59,10 @@ export const TUTORIAL_PAGES: Record<TutorialPageId, TutorialPageDefinition> = {
     nextPageId: "articles",
     steps: [
       {
-        selector: '[data-tutorial="side-menu"]',
-        title: "📚 左メニューでコンテンツを探そう",
+        selector: '[data-tutorial="header-nav"], [data-tutorial="header-mobile-menu-trigger"]',
+        title: "📚 メニューでコンテンツを探そう",
         description:
-          "記事・サービス・イベント・教育のひろば・AI検定など、教育に関するコンテンツがここから見つかります。",
+          "記事・サービス・イベント・教育のひろば・人材マッチングなど、教育に関するコンテンツがここから見つかります。",
       },
       {
         selector:
@@ -162,7 +162,7 @@ export const TUTORIAL_PAGES: Record<TutorialPageId, TutorialPageDefinition> = {
     nextPageId: "dashboard",
     steps: [
       {
-        selector: '[data-tutorial="side-menu-ai-kentei"]',
+        selector: null,
         title: "🏆 AI検定について",
         description:
           "AIに関する知識を問う検定です。クイズに挑戦してAIについてもっと学べます。",

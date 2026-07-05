@@ -8,14 +8,20 @@ export function Footer() {
 
   const footerLinks = {
     product: [
-      { href: "/articles", label: t("nav.articles") },
       { href: "/services", label: t("nav.services") },
-      { href: "/events", label: t("nav.events") },
+      { href: "/articles", label: t("nav.articles") },
       { href: "/forum", label: t("nav.forum") },
+      { href: "/events", label: t("nav.events") },
+      { href: "/matching", label: t("sideMenu.matching") },
+      { href: "/videos", label: t("sideMenu.videos") },
+      { href: "/compare", label: t("sideMenu.compare") },
+      { href: "/ai-kentei", label: t("sideMenu.aiKentei") },
     ],
     company: [
       { href: "/about", label: t("nav.about") },
+      { href: "/companies", label: t("nav.companies") },
       { href: "/contact", label: t("nav.contact") },
+      { href: "/help", label: t("sideMenu.help") },
     ],
     legal: [
       { href: "/terms", label: t("nav.terms") },
@@ -24,7 +30,7 @@ export function Footer() {
   };
 
   return (
-    <footer className="w-full border-t bg-muted/40">
+    <footer className="w-full border-t border-border/60 bg-white">
       <div className="container py-8 md:py-12 lg:py-16">
         <div className="grid grid-cols-2 gap-6 sm:gap-8 md:grid-cols-4">
           {/* Logo & Description */}
