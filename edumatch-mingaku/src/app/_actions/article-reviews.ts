@@ -33,16 +33,22 @@ export type ArticleReview = {
 
 /** 記事の承認済み口コミ一覧（返信スレッド付き・新しい順） */
 export async function getArticleReviews(postId: string): Promise<ArticleReview[]> {
-  const rows = await prisma.review.findMany({
-    where: { post_id: postId, parent_id: null, is_approved: true },
-    orderBy: { created_at: "desc" },
-    include: {
-      replies: {
-        where: { is_approved: true },
-        orderBy: { created_at: "asc" },
+  const rows = await prisma.review
+    .findMany({
+      where: { post_id: postId, parent_id: null, is_approved: true },
+      orderBy: { created_at: "desc" },
+      include: {
+        replies: {
+          where: { is_approved: true },
+          orderBy: { created_at: "asc" },
+        },
       },
-    },
-  });
+    })
+    .catch((e: unknown) => {
+      // マイグレーション未適用（post_id/parent_id 等が無い）時はレビュー欄を空扱いにする
+      if (e && typeof e === "object" && "code" in e && e.code === "P2022") return [];
+      throw e;
+    });
 
   return rows.map((r) => ({
     id: r.id,

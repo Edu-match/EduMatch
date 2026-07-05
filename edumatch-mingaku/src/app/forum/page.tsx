@@ -19,7 +19,7 @@ export default async function ForumPage() {
   ]);
 
   return (
-    <main className="relative h-[calc(100dvh-4rem)] w-full overflow-hidden bg-[#070a1c] text-white">
+    <main className="relative h-[calc(100dvh-4rem-2.75rem)] w-full overflow-hidden bg-[#070a1c] text-white">
       <Suspense fallback={<div className="absolute inset-0 bg-[#070a1c]" />}>
         <ForumMapMode
           themeMode={settings.themeMode}

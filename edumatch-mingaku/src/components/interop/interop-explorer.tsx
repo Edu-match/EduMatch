@@ -568,22 +568,25 @@ export function InteropExplorer({
             onSelectTopic={handleSelectTopic}
           />
           )}
-          <div className="pointer-events-none absolute inset-x-0 top-16 z-20 hidden justify-center px-4 sm:top-20 sm:flex">
-            <div
-              className="flex items-center gap-2 rounded-full px-4 py-2 text-center text-[12px] font-medium text-white/90 sm:text-sm"
-              style={{
-                background: "rgba(8,11,32,0.45)",
-                border: "1px solid rgba(255,255,255,0.2)",
-                backdropFilter: "blur(8px)",
-              }}
-            >
-              <Hand
-                className="h-4 w-4 shrink-0 text-white/70"
-                style={{ animation: "itmBob 1.6s ease-in-out infinite" }}
-              />
-              {guideText}
+          {/* 3D ギャラクシーは独自の操作ヒント＋凡例を持つため、汎用の上部案内ピルは 2D 時のみ表示 */}
+          {mapMode !== "3d" && (
+            <div className="pointer-events-none absolute inset-x-0 top-16 z-20 hidden justify-center px-4 sm:top-20 sm:flex">
+              <div
+                className="flex items-center gap-2 rounded-full px-4 py-2 text-center text-[12px] font-medium text-white/90 sm:text-sm"
+                style={{
+                  background: "rgba(8,11,32,0.45)",
+                  border: "1px solid rgba(255,255,255,0.2)",
+                  backdropFilter: "blur(8px)",
+                }}
+              >
+                <Hand
+                  className="h-4 w-4 shrink-0 text-white/70"
+                  style={{ animation: "itmBob 1.6s ease-in-out infinite" }}
+                />
+                {guideText}
+              </div>
             </div>
-          </div>
+          )}
           {groupParam && (
             <button
               type="button"
