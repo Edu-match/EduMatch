@@ -30,6 +30,7 @@ export function KaikanCheckinPanel({ initialToken }: { initialToken?: string }) 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const scannerRef = useRef<{ stop: () => Promise<void> } | null>(null);
 
   // QRから開かれた（?token付き）場合は自動照会
@@ -52,13 +53,20 @@ export function KaikanCheckinPanel({ initialToken }: { initialToken?: string }) 
   }
 
   async function checkIn(sessionId: string) {
+    setNotice(null);
     try {
       const r = await fetch("/api/kaikan/admin/lookup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ applicationId: sessionId }) });
       const d = await r.json();
       if (r.ok && d.ok) {
         setResult((prev) => prev && prev.sessions ? { ...prev, sessions: prev.sessions.map((s) => s.id === sessionId ? { ...s, status: "checked_in", checkedInAt: d.session.checkedInAt } : s) } : prev);
+        // 二重受付防止：既に受付済みだった場合は警告し、初回受付時刻を維持する。
+        if (d.alreadyCheckedIn) {
+          setNotice(`このプログラムは既に受付済みです${d.session?.checkedInAt ? `（${fmt(d.session.checkedInAt)} 受付）` : ""}`);
+        }
+      } else {
+        setNotice(d?.error || "受付に失敗しました");
       }
-    } catch { /* noop */ }
+    } catch { setNotice("通信エラーで受付できませんでした"); }
   }
 
   async function startScan() {
@@ -70,20 +78,33 @@ export function KaikanCheckinPanel({ initialToken }: { initialToken?: string }) 
       const scanner = new Html5Qrcode("kaikan-qr-reader");
       scannerRef.current = { stop: () => scanner.stop().then(() => scanner.clear()) };
       setScanning(true);
-      await scanner.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 220, height: 220 } },
-        async (decoded: string) => {
-          const t = tokenFromScan(decoded);
-          setToken(t);
-          await stopScan();
-          lookup(t);
-        },
-        () => { /* ignore per-frame decode errors */ },
-      );
+
+      const onDecode = async (decoded: string) => {
+        const t = tokenFromScan(decoded);
+        setToken(t);
+        await stopScan();
+        lookup(t);
+      };
+      const config = { fps: 10, qrbox: { width: 220, height: 220 } };
+
+      // PC（ノートPC等）対応：背面カメラ指定が無い端末が多いため、まず接続カメラを列挙し
+      // 背面（environment/back）を優先、無ければ先頭のカメラを deviceId 指定で起動する。
+      // 列挙に失敗した場合は facingMode 指定にフォールバック。
+      try {
+        const cameras = await Html5Qrcode.getCameras();
+        if (cameras && cameras.length > 0) {
+          const back = cameras.find((c) => /back|rear|environment|背面/i.test(c.label));
+          const camId = (back ?? cameras[cameras.length - 1]).id;
+          await scanner.start({ deviceId: { exact: camId } }, config, onDecode, () => {});
+        } else {
+          await scanner.start({ facingMode: "environment" }, config, onDecode, () => {});
+        }
+      } catch {
+        await scanner.start({ facingMode: "environment" }, config, onDecode, () => {});
+      }
     } catch (e) {
       setScanning(false);
-      setError("カメラを起動できませんでした（権限/対応をご確認ください）");
+      setError("カメラを起動できませんでした（ブラウザのカメラ権限を許可してください。PCでは内蔵/接続カメラが必要です）");
       console.error(e);
     }
   }
@@ -126,6 +147,7 @@ export function KaikanCheckinPanel({ initialToken }: { initialToken?: string }) 
       </div>
 
       {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      {notice && <p className="rounded-md bg-amber-50 px-3 py-2 text-sm font-bold text-amber-800">{notice}</p>}
 
       {/* 照会結果 */}
       {result?.found && result.user && result.sessions && (

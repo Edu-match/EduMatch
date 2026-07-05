@@ -71,14 +71,31 @@ export async function POST(req: NextRequest) {
   const id = (body.applicationId || "").trim();
   if (!id) return NextResponse.json({ error: "applicationId required" }, { status: 400 });
   try {
-    const app = await prisma.kaikanApplication.findUnique({ where: { id } });
+    const app = await prisma.kaikanApplication.findUnique({
+      where: { id },
+      select: { id: true, status: true, checked_in_at: true },
+    });
     if (!app) return NextResponse.json({ error: "申込が見つかりません" }, { status: 404 });
+
+    // 二重受付防止：既に受付済みなら上書きせず、初回の受付時刻を返す。
+    if (app.status === "checked_in") {
+      return NextResponse.json({
+        ok: true,
+        alreadyCheckedIn: true,
+        session: { id: app.id, status: app.status, checkedInAt: app.checked_in_at },
+      });
+    }
+
     const updated = await prisma.kaikanApplication.update({
       where: { id },
       data: { status: "checked_in", checked_in_at: new Date() },
       select: { id: true, status: true, checked_in_at: true },
     });
-    return NextResponse.json({ ok: true, session: { id: updated.id, status: updated.status, checkedInAt: updated.checked_in_at } });
+    return NextResponse.json({
+      ok: true,
+      alreadyCheckedIn: false,
+      session: { id: updated.id, status: updated.status, checkedInAt: updated.checked_in_at },
+    });
   } catch (err) {
     console.error("[api/kaikan/admin/lookup POST]", err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
