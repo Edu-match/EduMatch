@@ -5,62 +5,88 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentProfile, requireAdmin } from "@/lib/auth";
 import { generatePersonaReplyText } from "@/lib/persona-reply";
 import { synthesizePersona, generateAvatarImage } from "@/lib/persona-ai";
-import { checkHistoricalPersonaLegal, researchHistoricalFigure, type LegalVerdict } from "@/lib/historical-persona";
+import { checkPersonaLegal, researchFigure, type LegalVerdict } from "@/lib/historical-persona";
 import { createServiceRoleClient } from "@/utils/supabase/server-admin";
 
-export type HistoricalPersonaResult = {
+export type SpecialPersonaResult = {
   ok: boolean;
   error?: string;
   legal?: LegalVerdict;
-  persona?: { id: string; name: string; expertise: string[]; valuesText: string; avatarUrl: string | null };
+  persona?: {
+    id: string;
+    name: string;
+    expertise: string[];
+    valuesText: string;
+    avatarUrl: string | null;
+    personaPrompt: string;
+  };
 };
 
+/** @deprecated Use createSpecialPersona */
+export type HistoricalPersonaResult = SpecialPersonaResult;
+
+function ensureAiPrefix(name: string): string {
+  if (name.startsWith("AI")) return name;
+  return `AI${name}`;
+}
+
 /**
- * 歴史上の人物名から、AI法的チェック→ネット検索→ペルソナ＋オリジナルイラスト生成→保存。
- * blocked 判定の場合は生成せず理由を返す。
+ * 人物名 or 自由記述から、AI法的チェック→ネット検索→ペルソナ＋オリジナルイラスト生成→保存。
+ * blocked 判定の場合は生成せず理由を返す（管理者が許可確認済みの場合は続行可能）。
+ *
+ * inputType: "person" = 人物名入力, "freeform" = 自由記述
  */
-export async function createHistoricalPersona(
-  name: string,
+export async function createSpecialPersona(
+  input: string,
+  inputType: "person" | "freeform" = "person",
   permissionConfirmed = false,
-): Promise<HistoricalPersonaResult> {
+): Promise<SpecialPersonaResult> {
   await requireAdmin();
   const profile = await getCurrentProfile();
   if (!profile) return { ok: false, error: "管理者のみ利用できます" };
 
-  const trimmed = (name || "").trim();
-  if (!trimmed) return { ok: false, error: "人物名を入力してください" };
+  const trimmed = (input || "").trim();
+  if (!trimmed) return { ok: false, error: "入力を入力してください" };
 
   // 1) 法的チェック
-  const legal = await checkHistoricalPersonaLegal(trimmed);
+  const legal = await checkPersonaLegal(trimmed);
   if (!legal) return { ok: false, error: "法的チェックに失敗しました（OPENAI_API_KEY を確認）" };
-  // blocked（存命者含む）は原則作成不可。ただし管理者が本人・権利者の許可取得済みを明示確認した場合のみ続行。
+
   if (legal.status === "blocked" && !permissionConfirmed) {
-    return {
-      ok: false,
-      legal,
-      error: legal.living
-        ? "存命の人物のため作成できません。本人・権利者の許可を取得済みの場合のみ、下の確認手順から作成してください。"
-        : "法的チェックの結果、このペルソナの作成は見送りが推奨されます。許可取得済みの場合のみ確認手順から作成できます。",
-    };
+    const msg = legal.living
+      ? "存命の人物のため作成できません。本人・権利者の許可を取得済みの場合のみ、確認手順から作成してください。"
+      : legal.realPerson
+        ? "法的チェックの結果、このペルソナの作成は見送りが推奨されます。許可取得済みの場合のみ確認手順から作成できます。"
+        : "著作権で保護されたキャラクターのため作成できません。権利者の許可を取得済みの場合のみ、確認手順から作成してください。";
+    return { ok: false, legal, error: msg };
   }
 
-  // 2) ネット検索で人物像を調査
-  const research = await researchHistoricalFigure(trimmed);
+  // 2) 実在人物ならネット検索で調査
+  const research = legal.realPerson ? await researchFigure(trimmed) : "";
 
-  // 3) ペルソナ合成（史実ベース・本人になりきる）
-  const persona = await synthesizePersona({
-    name: trimmed,
-    bio: research || undefined,
-    mindset:
-      "これは歴史上の人物の特別AIペルソナです。史実・調査結果に基づき本人の思想・立場・口調を踏まえて教育コミュニティで発言します。断定しすぎず、不確かな点は諸説ありと添える。現代の話題には本人の価値観から想像で応答してよいが、史実を捏造しない。",
-  });
+  // 3) ペルソナ合成
+  const mindsetForPerson =
+    "これは特別AIペルソナです。" +
+    (legal.realPerson
+      ? "史実・調査結果に基づき本人の思想・立場・口調を踏まえて教育コミュニティで発言します。断定しすぎず、不確かな点は諸説ありと添える。現代の話題には本人の価値観から想像で応答してよいが、史実を捏造しない。"
+      : "入力された設定に基づき、その人格・キャラクターの思想・立場・口調を踏まえて教育コミュニティで発言します。設定に忠実でありつつ、教育的な議論に建設的に参加します。");
+
+  const personaInput = legal.realPerson
+    ? { name: trimmed, bio: research || undefined, mindset: mindsetForPerson }
+    : { name: trimmed, bio: trimmed, mindset: mindsetForPerson };
+
+  const persona = await synthesizePersona(personaInput);
   if (!persona) return { ok: false, legal, error: "ペルソナ生成に失敗しました" };
 
-  // 4) オリジナルのイラストアバター生成（実在の写真・肖像画は複製しない）
+  // 名称を「AI○○」形式に強制
+  const displayName = ensureAiPrefix(persona.displayName);
+
+  // 4) オリジナルのイラストアバター生成
   let avatarUrl: string | null = null;
-  const png = await generateAvatarImage(
-    `${persona.imagePrompt} An ORIGINAL stylized illustration only; do NOT copy any real photograph or existing portrait painting of the person.`,
-  );
+  const imageNote = legal.realPerson
+    ? " An ORIGINAL stylized illustration only; do NOT copy any real photograph or existing portrait painting of the person."
+    : "";
+  const png = await generateAvatarImage(`${persona.imagePrompt}${imageNote}`);
   if (png) {
     try {
       const admin = createServiceRoleClient();
@@ -70,41 +96,57 @@ export async function createHistoricalPersona(
       });
       if (!upErr) avatarUrl = admin.storage.from("media").getPublicUrl(path).data.publicUrl;
     } catch (e) {
-      console.error("[historical-persona] upload", e);
+      console.error("[special-persona] upload", e);
     }
   }
 
   // 5) 保存
   try {
+    const source = legal.realPerson ? "person" : "freeform";
     const saved = await prisma.aiSpecialPersona.create({
       data: {
-        name: trimmed,
+        name: displayName,
         persona_prompt: persona.personaPrompt,
         values_text: persona.valuesText,
         expertise: persona.expertise,
         avatar_url: avatarUrl,
-        source: "historical",
+        source,
         legal_status: legal.status,
         legal_note: permissionConfirmed && legal.status === "blocked"
           ? `${legal.note}\n【管理者確認】本人・権利者の許可取得済みとして作成。`
           : legal.note,
         created_by: profile.id,
       },
-      select: { id: true, name: true, expertise: true, values_text: true, avatar_url: true },
+      select: { id: true, name: true, expertise: true, values_text: true, avatar_url: true, persona_prompt: true },
     });
     revalidatePath("/admin/persona");
     return {
       ok: true,
       legal,
-      persona: { id: saved.id, name: saved.name, expertise: saved.expertise, valuesText: saved.values_text, avatarUrl: saved.avatar_url },
+      persona: {
+        id: saved.id,
+        name: saved.name,
+        expertise: saved.expertise,
+        valuesText: saved.values_text,
+        avatarUrl: saved.avatar_url,
+        personaPrompt: saved.persona_prompt,
+      },
     };
   } catch (e) {
-    console.error("[historical-persona] save", e);
+    console.error("[special-persona] save", e);
     return { ok: false, legal, error: "保存に失敗しました" };
   }
 }
 
-/** 管理者：特別ペルソナの有効/無効・削除。 */
+/** @deprecated Use createSpecialPersona */
+export async function createHistoricalPersona(
+  name: string,
+  permissionConfirmed = false,
+): Promise<SpecialPersonaResult> {
+  return createSpecialPersona(name, "person", permissionConfirmed);
+}
+
+/** 管理者：特別ペルソナの有効/無効。 */
 export async function setSpecialPersonaActive(id: string, active: boolean): Promise<{ ok: boolean }> {
   await requireAdmin();
   await prisma.aiSpecialPersona.update({ where: { id }, data: { is_active: active } });
@@ -112,9 +154,44 @@ export async function setSpecialPersonaActive(id: string, active: boolean): Prom
   return { ok: true };
 }
 
+/** 管理者：特別ペルソナの削除。 */
 export async function deleteSpecialPersona(id: string): Promise<{ ok: boolean }> {
   await requireAdmin();
   await prisma.aiSpecialPersona.delete({ where: { id } });
+  revalidatePath("/admin/persona");
+  return { ok: true };
+}
+
+/** 管理者：特別ペルソナのシステムプロンプトを更新。 */
+export async function updateSpecialPersonaPrompt(
+  id: string,
+  personaPrompt: string,
+): Promise<{ ok: boolean; error?: string }> {
+  await requireAdmin();
+  const trimmed = (personaPrompt || "").trim();
+  if (!trimmed) return { ok: false, error: "システムプロンプトは空にできません" };
+  if (trimmed.length > 2000) return { ok: false, error: "システムプロンプトは2000文字以内にしてください" };
+  await prisma.aiSpecialPersona.update({ where: { id }, data: { persona_prompt: trimmed } });
+  revalidatePath("/admin/persona");
+  return { ok: true };
+}
+
+/** 管理者：自分ペルソナのシステムプロンプトを更新。 */
+export async function updateMyPersonaPrompt(
+  personaPrompt: string,
+): Promise<{ ok: boolean; error?: string }> {
+  await requireAdmin();
+  const profile = await getCurrentProfile();
+  if (!profile) return { ok: false, error: "管理者のみ利用できます" };
+
+  const trimmed = (personaPrompt || "").trim();
+  if (!trimmed) return { ok: false, error: "システムプロンプトは空にできません" };
+  if (trimmed.length > 2000) return { ok: false, error: "システムプロンプトは2000文字以内にしてください" };
+
+  await prisma.userAiPersona.update({
+    where: { profile_id: profile.id },
+    data: { persona_prompt: trimmed },
+  });
   revalidatePath("/admin/persona");
   return { ok: true };
 }
@@ -175,8 +252,7 @@ export async function postPersonaReplyToPost(
   });
   if (!post) return { ok: false, error: "投稿が見つかりません" };
 
-  // 返信者名は「AI○○」とする（人間の発言と区別するため）。
-  const aiName = persona.display_name.startsWith("AI") ? persona.display_name : `AI${persona.display_name}`;
+  const aiName = ensureAiPrefix(persona.display_name);
   await prisma.forumReply.create({
     data: {
       post_id: post.id,

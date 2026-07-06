@@ -111,7 +111,7 @@ export async function POST(
         recentPosts,
         knowledgeContext: knowledge,
       });
-      authorName = authorPersona.display_name;
+      authorName = authorPersona.display_name.startsWith("AI") ? authorPersona.display_name : `AI${authorPersona.display_name}`;
       authorRole = AI_PERSONA_REVIEW_ROLE;
     } else {
       // 汎用 AI ファシリテーター

@@ -4,6 +4,7 @@ import { requireAdmin, getCurrentProfile } from "@/lib/auth";
 import { PersonaCreator } from "@/components/persona/persona-creator";
 import { AdminPersonaReplyTool, type ReplyTargetPost } from "./admin-persona-reply-tool";
 import { AdminHistoricalPersona, type SpecialPersonaRow } from "./admin-historical-persona";
+import { PersonaPromptViewer } from "./persona-prompt-viewer";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,6 @@ export default async function AdminPersonaPage() {
       }).catch(() => null)
     : null;
 
-  // 教育のひろばの投稿（forum_posts）。一般カテゴリ→部屋(ルーム)→投稿 の構造。
   const rawPosts = await prisma.forumPost.findMany({
     where: { is_hidden: false },
     orderBy: { created_at: "desc" },
@@ -33,7 +33,7 @@ export default async function AdminPersonaPage() {
   const specialRows = await prisma.aiSpecialPersona.findMany({
     orderBy: { created_at: "desc" },
     take: 100,
-    select: { id: true, name: true, expertise: true, avatar_url: true, legal_status: true, legal_note: true, is_active: true },
+    select: { id: true, name: true, expertise: true, avatar_url: true, legal_status: true, legal_note: true, is_active: true, persona_prompt: true },
   }).catch(() => []);
   const specialPersonas: SpecialPersonaRow[] = specialRows.map((s) => ({
     id: s.id,
@@ -43,6 +43,7 @@ export default async function AdminPersonaPage() {
     legalStatus: s.legal_status,
     legalNote: s.legal_note,
     isActive: s.is_active,
+    personaPrompt: s.persona_prompt,
   }));
 
   const posts: ReplyTargetPost[] = rawPosts.map((p) => ({
@@ -64,19 +65,23 @@ export default async function AdminPersonaPage() {
       <section className="mt-6">
         <h2 className="mb-2 text-sm font-bold">あなたのAIペルソナ</h2>
         {persona?.persona_prompt ? (
-          <div className="mb-3 flex items-center gap-3 rounded-xl border bg-card p-3">
-            {persona.avatar_url ? (
-              <Image src={persona.avatar_url} alt="" width={56} height={56} className="h-14 w-14 rounded-full object-cover" unoptimized />
-            ) : (
-              <div className="h-14 w-14 rounded-full bg-muted" />
-            )}
-            <div className="min-w-0 text-xs text-muted-foreground">
-              <p className="text-sm font-bold text-foreground">{persona.display_name}</p>
-              {persona.expertise.length > 0 && <p className="truncate">得意分野: {persona.expertise.join("、")}</p>}
-              <p className={persona.is_active ? "text-emerald-600" : "text-amber-600"}>
-                自動返信: {persona.is_active ? "有効" : "オフ（フォーラム管理で有効化できます）"}
-              </p>
+          <div className="mb-3 space-y-2">
+            <div className="flex items-center gap-3 rounded-xl border bg-card p-3">
+              {persona.avatar_url ? (
+                <Image src={persona.avatar_url} alt="" width={56} height={56} className="h-14 w-14 rounded-full object-cover" unoptimized />
+              ) : (
+                <div className="h-14 w-14 rounded-full bg-muted" />
+              )}
+              <div className="min-w-0 text-xs text-muted-foreground">
+                <p className="text-sm font-bold text-foreground">{persona.display_name}</p>
+                {persona.expertise.length > 0 && <p className="truncate">得意分野: {persona.expertise.join("、")}</p>}
+                <p className={persona.is_active ? "text-emerald-600" : "text-amber-600"}>
+                  自動返信: {persona.is_active ? "有効" : "オフ（フォーラム管理で有効化できます）"}
+                </p>
+              </div>
             </div>
+            {/* システムプロンプト表示・編集 */}
+            <PersonaPromptViewer initialPrompt={persona.persona_prompt} type="my" />
           </div>
         ) : (
           <p className="mb-3 rounded-lg border bg-muted/30 p-3 text-sm text-muted-foreground">まだペルソナがありません。下のフォームで作成してください。</p>
@@ -89,6 +94,7 @@ export default async function AdminPersonaPage() {
             interests: profile?.interests ?? [],
           }}
           currentAvatarUrl={persona?.avatar_url ?? null}
+          isAdmin
         />
       </section>
 
@@ -99,11 +105,11 @@ export default async function AdminPersonaPage() {
         <AdminPersonaReplyTool posts={posts} hasPersona={!!persona?.persona_prompt} />
       </section>
 
-      {/* 歴史上の人物ペルソナ */}
+      {/* 特別ペルソナ */}
       <section className="mt-8">
-        <h2 className="mb-1 text-sm font-bold">歴史上の人物からペルソナを作成</h2>
+        <h2 className="mb-1 text-sm font-bold">特別AIペルソナを作成</h2>
         <p className="mb-3 text-xs text-muted-foreground">
-          ネット検索で人物像を調べ、AIが著作権・肖像権等を点検したうえで、特別AIペルソナとオリジナルイラストを生成します。
+          人物名の入力、または自由記述でAIペルソナを作成できます。実在人物の場合は著作権・肖像権等を自動で法的チェックします。
           <br />※法的チェックはAIによる参考判定です。最終的な公開可否は運営でご判断ください。
         </p>
         <AdminHistoricalPersona existing={specialPersonas} />
