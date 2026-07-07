@@ -24,11 +24,11 @@ export function ForumMapMode(props: React.ComponentProps<typeof InteropExplorer>
       <InteropExplorer {...props} mapMode={mode} />
 
       {/* 3D / 2D 切替（右上・ガラスピル） */}
-      <div className="absolute right-3 top-3 z-40 inline-flex overflow-hidden rounded-full border border-white/20 bg-[#0a1024]/70 shadow-lg shadow-black/30 backdrop-blur-xl">
+      <div className="absolute right-3 top-3 z-40 inline-flex overflow-hidden rounded-full border border-[#1a3a5a]/20 bg-white/80 shadow-lg shadow-black/10 backdrop-blur-xl">
         <button
           type="button"
           onClick={() => choose("3d")}
-          className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold transition-all ${mode === "3d" ? "bg-white text-[#0a1024]" : "text-white/60 hover:text-white"}`}
+          className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold transition-all ${mode === "3d" ? "bg-primary text-white" : "text-[#1a3a5a]/60 hover:text-[#1a3a5a]"}`}
           aria-pressed={mode === "3d"}
         >
           <Box className="h-3.5 w-3.5" />3D
@@ -36,7 +36,7 @@ export function ForumMapMode(props: React.ComponentProps<typeof InteropExplorer>
         <button
           type="button"
           onClick={() => choose("2d")}
-          className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold transition-all ${mode === "2d" ? "bg-white text-[#0a1024]" : "text-white/60 hover:text-white"}`}
+          className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold transition-all ${mode === "2d" ? "bg-primary text-white" : "text-[#1a3a5a]/60 hover:text-[#1a3a5a]"}`}
           aria-pressed={mode === "2d"}
         >
           <MapIcon className="h-3.5 w-3.5" />2D

@@ -1,7 +1,7 @@
 "use client";
 
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Html, OrbitControls, Line, Stars, Sparkles, Trail } from "@react-three/drei";
+import { Html, OrbitControls, Line, Sparkles } from "@react-three/drei";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
@@ -94,41 +94,16 @@ function Atmosphere({ color, radius, power, intensity }: { color: string; radius
   );
 }
 
-/** 星雲：Canvasグラデーションのスプライトを奥に漂わせる */
-function useNebulaTexture(inner: string, outer: string) {
-  return useMemo(() => {
-    const c = document.createElement("canvas");
-    c.width = c.height = 256;
-    const ctx = c.getContext("2d")!;
-    const g = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
-    g.addColorStop(0, inner);
-    g.addColorStop(1, outer);
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, 256, 256);
-    const tex = new THREE.CanvasTexture(c);
-    tex.needsUpdate = true;
-    return tex;
-  }, [inner, outer]);
-}
-
-function Nebula({ position, scale, inner, opacity }: { position: [number, number, number]; scale: number; inner: string; opacity: number }) {
-  const tex = useNebulaTexture(inner, "rgba(0,0,0,0)");
-  return (
-    <sprite raycast={() => null} position={position} scale={[scale, scale, 1]}>
-      <spriteMaterial map={tex} transparent opacity={opacity} blending={THREE.AdditiveBlending} depthWrite={false} />
-    </sprite>
-  );
-}
 
 /* ---------- ラベル ---------- */
 
 const pillBase: React.CSSProperties = {
   whiteSpace: "nowrap",
   fontWeight: 700,
-  color: "#fff",
+  color: "#1a3a5a",
   borderRadius: 999,
-  textShadow: "0 1px 2px rgba(0,0,0,0.65)",
-  boxShadow: "0 3px 14px rgba(0,0,0,0.5)",
+  textShadow: "0 1px 2px rgba(255,255,255,0.5)",
+  boxShadow: "0 3px 14px rgba(0,0,0,0.15)",
   pointerEvents: "none",
 };
 
@@ -142,7 +117,7 @@ function PlanetLabel({ color, emoji, label, total, hover }: { color: string; emo
         gap: 6,
         fontSize: hover ? 13 : 12,
         padding: "4px 12px 4px 6px",
-        background: hover ? "rgba(10,16,36,0.95)" : "rgba(10,16,36,0.8)",
+        background: hover ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.85)",
         border: `1px solid ${color}${hover ? "ee" : "88"}`,
         transition: "all .18s ease",
       }}
@@ -166,7 +141,7 @@ function MoonLabel({ color, title, posts }: { color: string; title: string; post
         gap: 6,
         fontSize: 11,
         padding: "3px 10px",
-        background: "rgba(10,16,36,0.9)",
+        background: "rgba(255,255,255,0.88)",
         border: `1px solid ${color}bb`,
       }}
     >
@@ -214,12 +189,12 @@ function Sun({ label, seg, reduceMotion, onSelect }: { label: string; seg: numbe
             whiteSpace: "nowrap",
             fontSize: 13,
             fontWeight: 800,
-            color: "#fff",
-            background: "rgba(10,16,36,0.88)",
+            color: "#1a3a5a",
+            background: "rgba(255,255,255,0.92)",
             border: "1px solid #ffd9a0cc",
             borderRadius: 999,
             padding: "5px 14px",
-            boxShadow: "0 2px 14px rgba(0,0,0,0.5)",
+            boxShadow: "0 2px 14px rgba(0,0,0,0.15)",
           }}
         >
           🎫 {label}
@@ -377,23 +352,6 @@ function Planet({ spec, topics, counts, clockRef, seg, focused, anyFocused, posi
   );
 }
 
-/** 彗星（高品質ティアのみ）：尾を引いて外周を横切るアクセント */
-function Comet() {
-  const head = useRef<THREE.Mesh>(null);
-  useFrame(({ clock }) => {
-    if (!head.current) return;
-    const t = clock.getElapsedTime() * 0.16;
-    head.current.position.set(Math.cos(t) * 40, Math.sin(t * 0.9) * 9 + 4, Math.sin(t) * 30 - 4);
-  });
-  return (
-    <Trail width={1.4} length={7} color="#bcd6ff" attenuation={(w) => w * w}>
-      <mesh ref={head} raycast={() => null}>
-        <sphereGeometry args={[0.22, 12, 12]} />
-        <meshBasicMaterial color="#eaf3ff" toneMapped={false} />
-      </mesh>
-    </Trail>
-  );
-}
 
 /* ---------- カメラ演出 ---------- */
 
@@ -480,15 +438,9 @@ function Scene({ centerLabel, counts, caps, focusedMajor, onFocusMajor, onSelect
 
   return (
     <>
-      <color attach="background" args={["#060a1e"]} />
-      <Stars radius={160} depth={80} count={tier === "high" ? 5200 : 1400} factor={4} saturation={0} fade speed={reduceMotion ? 0 : 0.4} />
-      {/* 星雲（奥行きの色彩） */}
-      <Nebula position={[-55, 18, -70]} scale={95} inner="rgba(88,108,255,0.55)" opacity={0.5} />
-      <Nebula position={[65, -12, -85]} scale={110} inner="rgba(168,88,255,0.45)" opacity={0.42} />
-      <Nebula position={[10, 30, -95]} scale={80} inner="rgba(64,190,255,0.4)" opacity={0.36} />
-      {/* 微細な塵 */}
-      {tier === "high" && <Sparkles count={320} scale={[85, 26, 85]} size={1.8} speed={reduceMotion ? 0 : 0.28} opacity={0.5} color="#9fb6ff" />}
-      {tier === "high" && !reduceMotion && <Comet />}
+      <color attach="background" args={["#87CEEB"]} />
+      {/* 微細な花粉・妖精の塵 */}
+      {tier === "high" && <Sparkles count={320} scale={[85, 26, 85]} size={1.8} speed={reduceMotion ? 0 : 0.28} opacity={0.3} color="#ffd700" />}
 
       <Sun label={centerLabel} seg={seg} reduceMotion={reduceMotion} onSelect={onSelectCenter} />
       {ORBITS.map((spec) => (
@@ -574,12 +526,12 @@ function ForumGalaxy2DFallback({ centerLabel, counts, onSelectCenter, onSelectTo
         <button
           type="button"
           onClick={onSelectCenter}
-          className="mb-6 flex w-full items-center gap-3 rounded-2xl border border-amber-200/40 bg-white/10 px-5 py-4 text-left text-white backdrop-blur transition hover:bg-white/[0.16]"
+          className="mb-6 flex w-full items-center gap-3 rounded-2xl border border-amber-200/40 bg-white/70 px-5 py-4 text-left text-[#1a3a5a] backdrop-blur transition hover:bg-white/80"
         >
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-amber-300/25 text-lg">🎫</span>
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-amber-200/50 text-lg">🎫</span>
           <span>
             <span className="block text-base font-bold">{centerLabel}</span>
-            <span className="block text-xs text-white/65">中央ハブ（電子チケット・案内）</span>
+            <span className="block text-xs text-[#1a3a5a]/60">中央ハブ（電子チケット・案内）</span>
           </span>
         </button>
         {groups.map(([major, topics]) => {
@@ -587,7 +539,7 @@ function ForumGalaxy2DFallback({ centerLabel, counts, onSelectCenter, onSelectTo
           const color = meta?.color ?? "#C9D4F6";
           return (
             <div key={major} className="mb-6">
-              <h3 className="mb-2.5 flex items-center gap-2 text-sm font-bold text-white/90">
+              <h3 className="mb-2.5 flex items-center gap-2 text-sm font-bold text-[#1a3a5a]/90">
                 <span className="grid h-7 w-7 place-items-center rounded-full text-sm" style={{ background: `${color}33` }}>
                   {MAJOR_EMOJI[major] ?? "✨"}
                 </span>
@@ -601,7 +553,7 @@ function ForumGalaxy2DFallback({ centerLabel, counts, onSelectCenter, onSelectTo
                       key={t.no}
                       type="button"
                       onClick={() => onSelectTopic(t)}
-                      className="flex items-center justify-between gap-2 rounded-xl border px-3.5 py-2.5 text-left text-sm text-white transition hover:scale-[1.02]"
+                      className="flex items-center justify-between gap-2 rounded-xl border px-3.5 py-2.5 text-left text-sm text-[#1a3a5a] transition hover:scale-[1.02]"
                       style={{ borderColor: `${color}55`, background: `${color}14` }}
                     >
                       <span className="min-w-0 truncate">{t.category}</span>
@@ -618,7 +570,7 @@ function ForumGalaxy2DFallback({ centerLabel, counts, onSelectCenter, onSelectTo
           );
         })}
       </div>
-      <p className="pointer-events-none absolute bottom-3 left-4 text-[11px] text-white/50">
+      <p className="pointer-events-none absolute bottom-3 left-4 text-[11px] text-[#1a3a5a]/50">
         軽量表示モード（3D非対応環境）。タップで各テーマの教育のひろばへ。
       </p>
     </div>
@@ -683,7 +635,7 @@ export default function ForumGalaxy3D({ centerLabel, onSelectCenter, onSelectTop
       <div
         className="pointer-events-none absolute inset-0"
         aria-hidden
-        style={{ background: "radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(2,3,10,0.55) 100%)" }}
+        style={{ background: "radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(100,180,250,0.2) 100%)" }}
       />
 
       {/* 大分類レジェンド（クリックでその惑星系へ） */}
@@ -692,7 +644,7 @@ export default function ForumGalaxy3D({ centerLabel, onSelectCenter, onSelectTop
           <button
             type="button"
             onClick={() => setFocusedMajor(null)}
-            className="rounded-full border border-white/30 bg-white/15 px-3.5 py-1.5 text-xs font-bold text-white backdrop-blur transition hover:bg-white/25"
+            className="rounded-full border border-[#1a3a5a]/20 bg-white/70 px-3.5 py-1.5 text-xs font-bold text-[#1a3a5a] backdrop-blur transition hover:bg-white/85"
           >
             ← 全体へ
           </button>
@@ -708,8 +660,8 @@ export default function ForumGalaxy3D({ centerLabel, onSelectCenter, onSelectTop
               className="rounded-full border px-3 py-1.5 text-xs font-bold backdrop-blur transition"
               style={{
                 borderColor: `${meta.color}${active ? "ff" : "55"}`,
-                background: active ? `${meta.color}e6` : "rgba(10,16,36,0.6)",
-                color: active ? "#0a1024" : "#fff",
+                background: active ? `${meta.color}e6` : "rgba(255,255,255,0.75)",
+                color: active ? "#1a3a5a" : "#1a3a5a",
               }}
             >
               {MAJOR_EMOJI[m]} {meta.label}
@@ -718,9 +670,9 @@ export default function ForumGalaxy3D({ centerLabel, onSelectCenter, onSelectTop
         })}
       </div>
 
-      <p className="pointer-events-none absolute bottom-14 left-4 z-40 max-w-[240px] text-[11px] leading-relaxed text-white/55 sm:bottom-4 sm:max-w-none">
+      <p className="pointer-events-none absolute bottom-14 left-4 z-40 max-w-[240px] text-[11px] leading-relaxed text-[#1a3a5a]/55 sm:bottom-4 sm:max-w-none">
         惑星＝カテゴリをタップで接近 · 衛星＝トピックをタップでひろばへ · ドラッグで回転
-        {caps.tier === "low" && <span className="text-white/40">・軽量モード</span>}
+        {caps.tier === "low" && <span className="text-[#1a3a5a]/40">・軽量モード</span>}
       </p>
     </div>
   );
