@@ -99,8 +99,8 @@ function PermissionModal({ open, onClose, onConfirm, loading, name }: {
   );
 }
 
-/* ── システムプロンプト表示（コードエディタ風） ── */
-function PromptCodeView({
+/* ── システムプロンプト（IDEエディタ風・行番号付き） ── */
+function PromptCodeEditor({
   personaId,
   initialPrompt,
 }: {
@@ -108,12 +108,24 @@ function PromptCodeView({
   initialPrompt: string;
 }) {
   const hasPrefix = initialPrompt.startsWith(PROMPT_PREFIX);
-  const lockedPart = hasPrefix ? PROMPT_PREFIX.trim() : "";
+  const lockedLines = hasPrefix ? PROMPT_PREFIX.trimEnd().split("\n") : [];
   const editablePart = hasPrefix ? initialPrompt.slice(PROMPT_PREFIX.length) : initialPrompt;
 
   const [prompt, setPrompt] = useState(editablePart);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const editableLines = prompt.split("\n");
+  const totalLines = lockedLines.length + Math.max(editableLines.length, 1);
+
+  function autoResize() {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = "0";
+    ta.style.height = ta.scrollHeight + "px";
+  }
+  useEffect(autoResize, [prompt]);
 
   async function save() {
     setSaving(true);
@@ -125,44 +137,79 @@ function PromptCodeView({
   }
 
   return (
-    <div className="mt-2 overflow-hidden rounded-lg border border-border bg-[#1e1e2e]">
-      {/* 編集不可部分 */}
-      {lockedPart && (
-        <div className="border-b border-white/10 px-1">
-          <div className="flex items-center gap-1.5 px-2 pt-2 pb-1">
-            <Lock className="h-3 w-3 text-amber-400/70" />
-            <span className="text-[10px] font-medium text-amber-400/70">編集不可（安全ルール）</span>
-          </div>
-          <pre className="select-none px-3 pb-2 text-xs leading-relaxed text-white/40 font-mono whitespace-pre-wrap">{lockedPart}</pre>
+    <div className="mt-2 overflow-hidden rounded-lg border border-[#3c3c5c] bg-[#1e1e2e] text-[13px] font-mono">
+      {/* タブバー */}
+      <div className="flex items-center gap-1 border-b border-[#3c3c5c] bg-[#252536] px-3 py-1.5">
+        <div className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f56]" />
+          <span className="h-2.5 w-2.5 rounded-full bg-[#ffbd2e]" />
+          <span className="h-2.5 w-2.5 rounded-full bg-[#27c93f]" />
         </div>
-      )}
-      {/* 編集可能部分 */}
-      <div className="px-1">
-        <div className="flex items-center gap-1.5 px-2 pt-2 pb-1">
-          <span className="h-2 w-2 rounded-full bg-emerald-400" />
-          <span className="text-[10px] font-medium text-emerald-400/70">編集可能（ペルソナ設定）</span>
-        </div>
-        <textarea
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          rows={6}
-          className="w-full resize-y border-0 bg-transparent px-3 py-1 text-xs font-mono leading-relaxed text-emerald-100 outline-none placeholder:text-white/20"
-          placeholder="ペルソナの性格・口調・知識などを記述…"
-          spellCheck={false}
-        />
+        <span className="ml-3 text-[11px] text-white/50">system-prompt.txt</span>
       </div>
-      {/* フッター */}
-      <div className="flex items-center gap-2 border-t border-white/10 px-3 py-2">
-        <button
-          type="button"
-          onClick={save}
-          disabled={saving}
-          className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-emerald-500 disabled:opacity-50"
-        >
-          {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />} 保存
-        </button>
-        {msg && <p className={`text-xs ${msg === "保存しました" ? "text-emerald-400" : "text-red-400"}`}>{msg}</p>}
-        <span className="ml-auto text-[10px] text-white/30">{prompt.length} 文字</span>
+
+      {/* エディタ本体 */}
+      <div className="flex min-h-[120px]">
+        {/* 行番号ガター */}
+        <div className="shrink-0 select-none border-r border-[#3c3c5c] bg-[#1e1e2e] py-2 text-right text-[11px] leading-[1.7] text-white/20" style={{ width: 38 }}>
+          {Array.from({ length: totalLines }, (_, i) => (
+            <div key={i} className="px-2">{i + 1}</div>
+          ))}
+        </div>
+
+        {/* コード領域 */}
+        <div className="min-w-0 flex-1 py-2">
+          {/* 編集不可ブロック */}
+          {lockedLines.length > 0 && (
+            <div className="relative">
+              <div className="absolute inset-0 bg-amber-500/[0.06]" />
+              <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-amber-500/40" />
+              <div className="relative select-none whitespace-pre-wrap px-4 leading-[1.7] text-white/50">
+                {lockedLines.map((line, i) => (
+                  <div key={i}>{line || " "}</div>
+                ))}
+              </div>
+              <div className="absolute right-2 top-1 flex items-center gap-1 rounded bg-amber-500/20 px-1.5 py-0.5">
+                <Lock className="h-2.5 w-2.5 text-amber-400/60" />
+                <span className="text-[9px] font-sans text-amber-400/60">read-only</span>
+              </div>
+            </div>
+          )}
+
+          {/* 編集可能エリア */}
+          <div className="relative">
+            <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-emerald-500/40" />
+            <textarea
+              ref={textareaRef}
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              className="w-full resize-none border-0 bg-transparent px-4 leading-[1.7] text-[#d4d4d4] outline-none placeholder:text-white/15"
+              placeholder="// ペルソナの性格・口調・知識を記述..."
+              spellCheck={false}
+              style={{ minHeight: "3.4em" }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ステータスバー */}
+      <div className="flex items-center justify-between border-t border-[#3c3c5c] bg-[#007acc] px-3 py-1">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={save}
+            disabled={saving}
+            className="inline-flex items-center gap-1 text-[11px] font-bold text-white transition hover:text-white/80 disabled:opacity-50"
+          >
+            {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />} 保存
+          </button>
+          {msg && <span className={`text-[11px] ${msg === "保存しました" ? "text-emerald-200" : "text-red-200"}`}>{msg}</span>}
+        </div>
+        <div className="flex items-center gap-3 text-[10px] text-white/70">
+          <span>行 {totalLines}</span>
+          <span>{prompt.length} 文字</span>
+          <span>UTF-8</span>
+        </div>
       </div>
     </div>
   );
@@ -282,7 +329,7 @@ export function AdminHistoricalPersona({ existing }: { existing: SpecialPersonaR
                 {generatedId && (
                   <div className="mt-3 space-y-2">
                     <p className="text-xs font-bold">システムプロンプト</p>
-                    <PromptCodeView personaId={generatedId} initialPrompt={PROMPT_PREFIX + generatedPrompt} />
+                    <PromptCodeEditor personaId={generatedId} initialPrompt={PROMPT_PREFIX + generatedPrompt} />
                   </div>
                 )}
               </>
@@ -338,7 +385,7 @@ export function AdminHistoricalPersona({ existing }: { existing: SpecialPersonaR
                 {expandedId === p.id && (
                   <div className="border-t px-3 py-2.5">
                     <p className="mb-1 text-xs font-bold">システムプロンプト</p>
-                    <PromptCodeView personaId={p.id} initialPrompt={p.personaPrompt} />
+                    <PromptCodeEditor personaId={p.id} initialPrompt={p.personaPrompt} />
                   </div>
                 )}
               </li>
