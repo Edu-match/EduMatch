@@ -28,7 +28,7 @@ const INTEREST_SUGGESTIONS = [
 ];
 
 /**
- * AIペルソナ＆アバターを作成する共通フォーム。
+ * AIペルソナを作成する共通フォーム。
  * 人格の核は「MBTIを選ぶ」か「独自の価値観診断（12問）」で決め、
  * 好きなこと・肩書き・活動を足して生成する。登録フロー／管理者ページで共用。
  */
@@ -124,7 +124,7 @@ export function PersonaCreator({
           <Sparkles className="h-4 w-4" />
         </span>
         <div className="min-w-0">
-          <p className="text-sm font-semibold">AIペルソナ＆アバターを作成 <span className="font-normal text-muted-foreground">（任意）</span></p>
+          <p className="text-sm font-semibold">AIペルソナを作成 <span className="font-normal text-muted-foreground">（任意）</span></p>
           <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
             あなたの「分身AI」を作る機能です。下の質問に答えると、あなたらしい考え方・口調を持ったAIと、似合うアイコン画像を生成。井戸端会議で“あなたらしく”返信できます。
           </p>
@@ -326,7 +326,7 @@ export function PersonaCreator({
         className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
       >
         {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-        {generating ? "生成中…（30秒ほど）" : avatarUrl ? "作り直す" : "AIペルソナ＆アバターを生成"}
+        {generating ? "生成中…（30秒ほど）" : avatarUrl ? "作り直す" : "AIペルソナを生成"}
       </button>
       {error && <p className="text-sm text-red-500">{error}</p>}
 

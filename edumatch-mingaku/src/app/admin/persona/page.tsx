@@ -74,7 +74,7 @@ export default async function AdminPersonaPage() {
                 <div className="h-14 w-14 rounded-full bg-muted" />
               )}
               <div className="min-w-0 text-xs text-muted-foreground">
-                <p className="text-sm font-bold text-foreground">{persona.display_name}</p>
+                <p className="text-sm font-bold text-foreground">{persona.display_name.startsWith("AI") ? persona.display_name : `AI${persona.display_name}`}</p>
                 {persona.expertise.length > 0 && <p className="truncate">得意分野: {persona.expertise.join("、")}</p>}
                 <p className={persona.is_active ? "text-emerald-600" : "text-amber-600"}>
                   自動返信: {persona.is_active ? "有効" : "オフ（フォーラム管理で有効化できます）"}

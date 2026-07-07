@@ -231,7 +231,7 @@ export function AdminHistoricalPersona({ existing }: { existing: SpecialPersonaR
                     <Image src={result.persona.avatarUrl} alt="" width={56} height={56} className="h-14 w-14 rounded-full object-cover" unoptimized />
                   )}
                   <div className="text-xs">
-                    <p className="text-sm font-bold">{result.persona.name} を作成しました</p>
+                    <p className="text-sm font-bold">{result.persona.name.startsWith("AI") ? result.persona.name : `AI${result.persona.name}`} を作成しました</p>
                     {result.persona.expertise.length > 0 && <p className="text-muted-foreground">得意分野: {result.persona.expertise.join("、")}</p>}
                   </div>
                 </div>
@@ -283,7 +283,7 @@ export function AdminHistoricalPersona({ existing }: { existing: SpecialPersonaR
                     <div className="h-11 w-11 shrink-0 rounded-full bg-muted" />
                   )}
                   <div className="min-w-0 flex-1">
-                    <p className="flex items-center gap-2 text-sm font-bold">{p.name} <LegalBadge status={p.legalStatus} /></p>
+                    <p className="flex items-center gap-2 text-sm font-bold">{p.name.startsWith("AI") ? p.name : `AI${p.name}`} <LegalBadge status={p.legalStatus} /></p>
                     {p.expertise.length > 0 && <p className="truncate text-[11px] text-muted-foreground">{p.expertise.join("、")}</p>}
                   </div>
                   <ToggleSwitch
