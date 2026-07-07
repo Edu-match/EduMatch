@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { verifyCron } from "@/lib/security";
 import { prisma } from "@/lib/prisma";
 import { FORUM_AI_FACILITATOR_NAME } from "@/lib/forum-constants";
 import { generateForumAiReplyText } from "@/lib/forum-ai-comment";
@@ -13,13 +14,6 @@ const MAX_DELAY_MS = 5 * 60 * 60 * 1000; // 5h
 const SCAN_WINDOW_MS = 24 * 60 * 60 * 1000; // 24h
 /** 1回の実行で生成する上限（コスト・実行時間のガード） */
 const BATCH_LIMIT = 8;
-
-function verifyCron(req: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET?.trim();
-  if (!secret) return process.env.NODE_ENV === "development";
-  const auth = req.headers.get("authorization");
-  return auth === `Bearer ${secret}`;
-}
 
 /** 投稿IDから決定論的に 2〜5 時間の遅延(ms)を算出（投稿ごとにランダムだが安定） */
 function replyDelayForPost(postId: string): number {

@@ -1,10 +1,14 @@
 import { NextRequest } from "next/server";
 import OpenAI from "openai";
+import { z } from "zod";
 import { searchKnowledgeChunks, type ChatContextItem } from "@/app/_actions/chat-context";
-import { checkPromptInjection, checkLlmOutput } from "@/lib/security";
+import { checkPromptInjection, checkLlmOutput, getClientIp, rateLimitResponse, verifyOrigin } from "@/lib/security";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+/** 未認証チャットのレート制限（チャット系: 30回/分・IP単位） */
+const INTEROP_CHAT_RATE_LIMIT = { windowMs: 60 * 1000, max: 30 };
 
 // ── 設定 ──────────────────────────────────────────────────────────
 /** 1人あたりの利用上限（直近24時間・Cookieカウント / 来場者向け・ログイン不要） */
@@ -16,14 +20,22 @@ const USAGE_COOKIE = "interop_chat_usage";
 const INTEROP_CHAT_MODEL = process.env.INTEROP_CHAT_MODEL?.trim() || "gpt-4o-mini";
 const MAX_INPUT_CHARS = 1500;
 
-type MessageRole = "user" | "assistant";
-type RequestBody = {
-  messages: { role: MessageRole; content: string }[];
+const requestBodySchema = z.object({
+  messages: z
+    .array(
+      z.object({
+        role: z.enum(["user", "assistant"]),
+        content: z.string().max(10000),
+      })
+    )
+    .min(1)
+    .max(100),
   /** 来場者が今見ている場所（カテゴリ/論点名など） */
-  context?: string;
+  context: z.string().max(1000).optional(),
   /** 今見ているページの投稿・返信などの本文（アタッチ時に渡される） */
-  pageContent?: string;
-};
+  pageContent: z.string().max(20000).optional(),
+});
+type RequestBody = z.infer<typeof requestBodySchema>;
 /** ページ投稿コンテキストの最大文字数（プロンプト肥大・コスト対策） */
 const MAX_PAGE_CONTENT_CHARS = 4000;
 
@@ -78,6 +90,22 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const csrf = verifyOrigin(req);
+  if (csrf) return csrf;
+
+  // ─── Zod バリデーション ────────────────────────────────────────────────────
+  const parsed = requestBodySchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) {
+    return new Response(JSON.stringify({ error: "Invalid request body" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+  const body: RequestBody = parsed.data;
+
+  const rl = rateLimitResponse(`interop-chat:${getClientIp(req)}`, INTEROP_CHAT_RATE_LIMIT);
+  if (rl.limited) return rl.response;
+
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     return new Response(JSON.stringify({ error: "AIは現在利用できません。" }), {
@@ -86,23 +114,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  let body: RequestBody;
-  try {
-    body = await req.json();
-  } catch {
-    return new Response(JSON.stringify({ error: "Invalid request body" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-
   const { messages } = body;
-  if (!messages || !Array.isArray(messages) || messages.length === 0) {
-    return new Response(JSON.stringify({ error: "Messages are required" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
 
   const lastUserContent = messages.filter((m) => m.role === "user").at(-1)?.content ?? "";
   if (lastUserContent.length > MAX_INPUT_CHARS) {
@@ -218,10 +230,13 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error("[interop-chat] OpenAI error", error);
-    const message = error instanceof Error ? error.message : "AI response failed";
-    return new Response(JSON.stringify({ error: message }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    // 内部エラーの詳細はクライアントに返さない（情報漏洩防止）
+    return new Response(
+      JSON.stringify({ error: "AIの応答生成に失敗しました。しばらくしてからお試しください。" }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
   }
 }

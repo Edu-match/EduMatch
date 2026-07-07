@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentProfile } from "@/lib/auth";
 import { logActivity } from "@/app/_actions/activity-log";
+import { verifyOrigin } from "@/lib/security";
+
+const patchBodySchema = z.object({
+  isPinned: z.boolean().optional(),
+  isHidden: z.boolean().optional(),
+});
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +17,9 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const csrf = verifyOrigin(req);
+  if (csrf) return csrf;
+
   try {
     const profile = await getCurrentProfile();
     if (!profile || profile.role !== "ADMIN") {
@@ -17,11 +27,11 @@ export async function PATCH(
     }
 
     const { id } = await params;
-    const body = await req.json();
-    const { isPinned, isHidden } = body as {
-      isPinned?: boolean;
-      isHidden?: boolean;
-    };
+    const parsed = patchBodySchema.safeParse(await req.json().catch(() => null));
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    }
+    const { isPinned, isHidden } = parsed.data;
 
     const post = await prisma.forumPost.update({
       where: { id },
@@ -62,9 +72,12 @@ export async function PATCH(
 
 /** 投稿削除（管理者のみ） */
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const csrf = verifyOrigin(req);
+  if (csrf) return csrf;
+
   try {
     const profile = await getCurrentProfile();
     if (!profile || profile.role !== "ADMIN") {

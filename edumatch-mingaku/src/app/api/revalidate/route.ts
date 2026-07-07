@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
+import { timingSafeCompare } from "@/lib/security";
 
 /**
  * Supabaseでis_published等を直接変更した際に、サイトのキャッシュを無効化するAPI
@@ -18,7 +19,7 @@ async function handleRevalidate(request: NextRequest) {
     request.nextUrl.searchParams.get("secret");
 
   const expectedSecret = process.env.REVALIDATE_SECRET;
-  if (!expectedSecret || secret !== expectedSecret) {
+  if (!expectedSecret || !secret || !timingSafeCompare(secret, expectedSecret)) {
     return NextResponse.json({ error: "Invalid secret" }, { status: 401 });
   }
 

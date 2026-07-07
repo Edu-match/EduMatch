@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { getCurrentProfile } from "@/lib/auth";
+import { getCurrentProfile, getCurrentUser } from "@/lib/auth";
 
 export type ActivityAction =
   | "CREATE"
@@ -52,6 +52,12 @@ export interface LogActivityInput {
 
 export async function logActivity(input: LogActivityInput): Promise<void> {
   try {
+    // 認証済みユーザーのリクエスト内でのみ記録（外部からの偽ログ注入を防ぐ）
+    const user = await getCurrentUser();
+    if (!user) {
+      console.warn("[ActivityLog] Skipped: unauthenticated context");
+      return;
+    }
     await prisma.activityLog.create({
       data: {
         actor_id: input.actorId ?? null,

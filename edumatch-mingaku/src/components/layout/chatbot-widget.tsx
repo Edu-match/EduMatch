@@ -40,6 +40,7 @@ import { AI_KENTEI_CHAT_BLOCKED_MESSAGE } from "@/lib/ai-kentei-exam-guard-share
 import { useAiKenteiExamBlocksChat } from "@/hooks/use-ai-kentei-exam-blocks-chat";
 import { TUTORIAL_EVENT_NAME } from "@/components/tutorial/tutorial-steps";
 import { ChatActivityIndicator, type ChatActivityStep } from "@/components/layout/chat-activity-indicator";
+import { sanitizeHtml } from "@/lib/sanitize-html";
 import type { ChatStreamEvent } from "@/lib/ai-chat-stream";
 
 const AI_NAV_DISCLAIMER_PATH = "/help/ai-navigator-disclaimer";
@@ -457,7 +458,7 @@ function MarkdownContent({ text }: { text: string }) {
   return (
     <div
       className="text-sm leading-relaxed min-w-0 max-w-full break-words [overflow-wrap:anywhere] [&_p]:mb-0.5 [&_p]:break-words [&_ul]:mb-1 [&_ol]:mb-1 [&_br]:leading-tight [&_a]:break-all prose prose-sm dark:prose-invert max-w-none"
-      dangerouslySetInnerHTML={{ __html: html }}
+      dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }}
     />
   );
 }

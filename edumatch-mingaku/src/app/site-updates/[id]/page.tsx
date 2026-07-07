@@ -6,6 +6,7 @@ import { getSiteUpdateById, deleteSiteUpdateAction } from "@/app/_actions/site-u
 import { getCurrentUserRole } from "@/app/_actions/user";
 import { notFound } from "next/navigation";
 import { ContentRenderer } from "@/components/ui/content-renderer";
+import { sanitizeHtml } from "@/lib/sanitize-html";
 
 export const dynamic = "force-dynamic";
 
@@ -73,7 +74,7 @@ export default async function SiteUpdateDetailPage({
         {item.body && (
           <div className="prose prose-slate max-w-none dark:prose-invert">
             {item.body.trimStart().startsWith("<") ? (
-              <div dangerouslySetInnerHTML={{ __html: item.body }} />
+              <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.body) }} />
             ) : (
               <ContentRenderer content={item.body} />
             )}

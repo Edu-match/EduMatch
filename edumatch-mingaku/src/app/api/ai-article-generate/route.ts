@@ -1,10 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { parseThumbnailKind, type ThumbnailTemplateKind } from "@/lib/thumbnail-template";
+import { rateLimitResponse, verifyOrigin } from "@/lib/security";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+/** AI記事生成のレート制限（生成系: 5回/分） */
+const ARTICLE_GENERATE_RATE_LIMIT = { windowMs: 60 * 1000, max: 5 };
+
+const requestBodySchema = z.object({
+  url: z.string().max(2000),
+  additionalPrompt: z.string().max(4000).optional(),
+});
 
 const ARTICLE_CATEGORIES = [
   "AI", "ICT", "セミナー", "塾", "受験", "教育", "教材", "英語",
@@ -224,10 +234,24 @@ function extractTextFromContent(body: string, contentType: string): string {
 }
 
 export async function POST(req: NextRequest) {
+  const csrf = verifyOrigin(req);
+  if (csrf) return csrf;
+
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
   }
+
+  const parsedBody = requestBodySchema.safeParse(await req.json().catch(() => null));
+  if (!parsedBody.success) {
+    return NextResponse.json(
+      { error: "Invalid request", details: parsedBody.error.flatten().fieldErrors },
+      { status: 400 }
+    );
+  }
+
+  const rl = rateLimitResponse(`ai-article-generate:${user.id}`, ARTICLE_GENERATE_RATE_LIMIT);
+  if (rl.limited) return rl.response;
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
@@ -237,15 +261,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let body: { url?: string; additionalPrompt?: string };
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "リクエスト形式が無効です" }, { status: 400 });
-  }
-
-  const { url, additionalPrompt } = body;
-  if (!url || typeof url !== "string") {
+  const { url, additionalPrompt } = parsedBody.data;
+  if (!url) {
     return NextResponse.json({ error: "URLが指定されていません" }, { status: 400 });
   }
 

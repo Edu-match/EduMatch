@@ -8,9 +8,13 @@ import {
   generateVideoAiSummary,
   VideoAiSummaryError,
 } from "@/lib/video-ai-summary";
+import { rateLimitResponse } from "@/lib/security";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+/** AI要約生成のレート制限（サマリー系: 10回/分） */
+const AI_SUMMARY_RATE_LIMIT = { windowMs: 60 * 1000, max: 10 };
 // 映像フレーム取得 + Vision 推論で最大 60 秒かかることがある
 export const maxDuration = 60;
 
@@ -35,6 +39,10 @@ export async function POST(
     if (!profile || profile.role !== "ADMIN") {
       return NextResponse.json({ error: "管理者権限が必要です" }, { status: 403 });
     }
+
+    // サマリー系レート制限（10回/分・ユーザー単位）
+    const rl = rateLimitResponse(`video-ai-summary:${profile.id}`, AI_SUMMARY_RATE_LIMIT);
+    if (rl.limited) return rl.response;
 
     const body = (await req.json().catch(() => ({}))) as {
       metadataOnly?: boolean;

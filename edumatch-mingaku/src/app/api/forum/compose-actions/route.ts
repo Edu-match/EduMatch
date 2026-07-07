@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+import { getClientIp, rateLimitResponse } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
+
+/** クイックアクション生成のレート制限（返信系: 10回/分） */
+const COMPOSE_ACTIONS_RATE_LIMIT = { windowMs: 60 * 1000, max: 10 };
 
 type ComposeAction = { emoji: string; label: string; prompt: string };
 
@@ -15,6 +19,12 @@ function defaultActions(topic: string): ComposeAction[] {
 }
 
 export async function GET(req: NextRequest) {
+  const rl = rateLimitResponse(
+    `forum-compose-actions:${getClientIp(req)}`,
+    COMPOSE_ACTIONS_RATE_LIMIT
+  );
+  if (rl.limited) return rl.response;
+
   const topic = req.nextUrl.searchParams.get("topic") ?? "";
   if (!topic.trim()) {
     return NextResponse.json({ actions: defaultActions("") });
