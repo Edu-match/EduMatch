@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import {
   ArrowRight,
   Ticket,
@@ -8,11 +7,10 @@ import {
   Users,
   Award,
   Calendar,
-  Newspaper,
-  Sparkles,
   TrendingUp,
   ChevronRight,
 } from "lucide-react";
+import { ThumbnailOrTitle } from "@/components/ui/thumbnail-or-title";
 import { unstable_noStore } from "next/cache";
 import { getPopularServices } from "@/app/_actions/services";
 import { getLatestPosts, getPopularPosts } from "@/app/_actions/posts";
@@ -64,8 +62,8 @@ export default async function HomePage() {
       <div className="container py-6 sm:py-8">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-7">
 
-          {/* ── ひろば（コンパクトマップ） ── */}
-          <div className="lg:col-span-7">
+          {/* ── ひろば（コンパクトマップ）+ サービス ── */}
+          <div className="flex flex-col gap-5 lg:col-span-7">
             <Reveal>
               <div className="overflow-hidden rounded-2xl border border-border/60 shadow-sm">
                 {/* ヘッダー */}
@@ -106,6 +104,50 @@ export default async function HomePage() {
                 </div>
               </div>
             </Reveal>
+
+            {/* ひろば下: 注目のサービス（コンパクト） */}
+            {services.length > 0 && (
+              <Reveal variant="fade-in" delay={100}>
+                <section className="rounded-2xl border border-border/60 p-4">
+                  <div className="mb-3 flex items-center justify-between">
+                    <h2 className="flex items-center gap-2 text-sm font-bold tracking-tight">
+                      <span className="h-4 w-1 rounded-full bg-primary" aria-hidden />
+                      注目のサービス
+                    </h2>
+                    <Link
+                      href="/services"
+                      className="link-underline inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+                    >
+                      すべて見る <ChevronRight className="h-3 w-3" />
+                    </Link>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+                    {services.slice(0, 4).map((s) => (
+                      <Link
+                        key={s.id}
+                        href={`/services/${s.id}`}
+                        className="card-lift group block overflow-hidden rounded-xl border border-border/60 bg-white"
+                      >
+                        <div className="relative aspect-[16/10] overflow-hidden">
+                          <ThumbnailOrTitle
+                            src={s.thumbnail_url}
+                            title={s.title}
+                            fill
+                            sizes="120px"
+                            unoptimized
+                            className="transition-transform duration-500 group-hover:scale-105"
+                          />
+                        </div>
+                        <div className="p-2">
+                          <p className="text-[10px] font-medium text-primary">{s.category}</p>
+                          <h3 className="mt-0.5 line-clamp-1 text-[11px] font-semibold leading-snug">{s.title}</h3>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </section>
+              </Reveal>
+            )}
           </div>
 
           {/* ── 右カラム: ニューススライダー + ウィジェット ── */}
@@ -188,20 +230,15 @@ export default async function HomePage() {
                   {latestGrid.map((p, i) => (
                     <Reveal key={p.id} delay={i * 60}>
                       <Link href={`/articles/${p.id}`} className="group block">
-                        <div className="relative aspect-[16/10] overflow-hidden rounded-xl bg-muted">
-                          {p.thumbnail_url ? (
-                            <Image
-                              src={p.thumbnail_url}
-                              alt={p.title}
-                              fill
-                              unoptimized
-                              className="object-cover transition-transform duration-500 group-hover:scale-105"
-                            />
-                          ) : (
-                            <div className="grid h-full w-full place-items-center text-muted-foreground/40">
-                              <Newspaper className="h-6 w-6" />
-                            </div>
-                          )}
+                        <div className="relative aspect-[16/10] overflow-hidden rounded-xl">
+                          <ThumbnailOrTitle
+                            src={p.thumbnail_url}
+                            title={p.title}
+                            fill
+                            sizes="(max-width: 640px) 50vw, 25vw"
+                            unoptimized
+                            className="transition-transform duration-500 group-hover:scale-105"
+                          />
                         </div>
                         <p className="mt-2.5 text-[11px] text-muted-foreground">
                           {p.category} ・ {formatDate(p.created_at)}
@@ -274,20 +311,15 @@ export default async function HomePage() {
                     href={`/services/${s.id}`}
                     className="card-lift group block overflow-hidden rounded-xl border border-border/60 bg-white"
                   >
-                    <div className="relative aspect-[16/10] overflow-hidden bg-muted">
-                      {s.thumbnail_url ? (
-                        <Image
-                          src={s.thumbnail_url}
-                          alt={s.title}
-                          fill
-                          unoptimized
-                          className="object-cover transition-transform duration-500 group-hover:scale-105"
-                        />
-                      ) : (
-                        <div className="grid h-full w-full place-items-center text-muted-foreground/40">
-                          <Sparkles className="h-5 w-5" />
-                        </div>
-                      )}
+                    <div className="relative aspect-[16/10] overflow-hidden">
+                      <ThumbnailOrTitle
+                        src={s.thumbnail_url}
+                        title={s.title}
+                        fill
+                        sizes="(max-width: 640px) 50vw, 200px"
+                        unoptimized
+                        className="transition-transform duration-500 group-hover:scale-105"
+                      />
                     </div>
                     <div className="p-3">
                       <p className="text-[10px] font-medium text-primary">{s.category}</p>
