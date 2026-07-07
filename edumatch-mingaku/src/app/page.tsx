@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -11,16 +12,17 @@ import {
   Sparkles,
   TrendingUp,
   ChevronRight,
-  Heart,
 } from "lucide-react";
 import { unstable_noStore } from "next/cache";
-import { prisma } from "@/lib/prisma";
 import { getPopularServices } from "@/app/_actions/services";
 import { getLatestPosts, getPopularPosts } from "@/app/_actions/posts";
 import { getUpcomingEvents } from "@/app/_actions/events";
 import { Reveal } from "@/components/home/reveal";
 import { NewsTicker } from "@/components/home/news-ticker";
 import { FeaturedSlider, type FeaturedItem } from "@/components/home/featured-slider";
+import { ForumMapMode } from "@/components/interop/forum-map-mode";
+import { getInteropSettings } from "@/lib/interop-settings.server";
+import { fetchInteropInitialActivity } from "@/lib/interop-explorer.server";
 
 export const dynamic = "force-dynamic";
 
@@ -29,49 +31,15 @@ function formatDate(d: Date | string): string {
   return new Intl.DateTimeFormat("ja-JP", { month: "long", day: "numeric" }).format(date);
 }
 
-function timeAgo(d: Date | string): string {
-  const diff = Date.now() - new Date(d).getTime();
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return "たった今";
-  if (m < 60) return `${m}分前`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}時間前`;
-  const day = Math.floor(h / 24);
-  if (day < 7) return `${day}日前`;
-  return formatDate(d);
-}
-
-async function getHirobaFeed(limit: number) {
-  try {
-    return await prisma.interopPost.findMany({
-      where: { is_hidden: false, is_ai_reply: false, parent_post_id: null },
-      orderBy: { created_at: "desc" },
-      take: limit,
-      select: {
-        id: true,
-        body: true,
-        author_name: true,
-        author_role: true,
-        created_at: true,
-        is_pinned: true,
-        sub_category_id: true,
-        subCategory: { select: { name: true, slug: true, category: { select: { name: true, color: true } } } },
-        _count: { select: { likes: true, replies: true } },
-      },
-    });
-  } catch {
-    return [];
-  }
-}
-
 export default async function HomePage() {
   unstable_noStore();
-  const [posts, popularPosts, services, events, hirobaFeed] = await Promise.all([
+  const [posts, popularPosts, services, events, settings, initialActivity] = await Promise.all([
     getLatestPosts(9).catch(() => []),
     getPopularPosts(5).catch(() => []),
     getPopularServices(6).catch(() => []),
     getUpcomingEvents(4).catch(() => []),
-    getHirobaFeed(12),
+    getInteropSettings(),
+    fetchInteropInitialActivity(),
   ]);
 
   const sliderItems: FeaturedItem[] = posts.slice(0, 5).map((p) => ({
@@ -92,96 +60,23 @@ export default async function HomePage() {
         items={posts.slice(0, 8).map((p) => ({ id: p.id, title: p.title, href: `/articles/${p.id}` }))}
       />
 
-      {/* ============ ひろばフィード（メインコンテンツ） ============ */}
-      <section className="border-b border-border/60">
-        <div className="container py-8 sm:py-10">
-          {/* ひろばヘッダー */}
-          <div className="mb-6 animate-fade-up">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-primary to-[oklch(0.45_0.17_275)] text-white">
-                  <MessageSquare className="h-5 w-5" />
-                </span>
-                <div>
-                  <h1 className="text-xl font-bold tracking-tight sm:text-2xl">教育のひろば</h1>
-                  <p className="text-sm text-muted-foreground">立場を越えて、教育を語ろう。</p>
-                </div>
-              </div>
-              <Link
-                href="/forum"
-                className="inline-flex h-10 items-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-md transition-all hover:-translate-y-0.5 hover:shadow-lg"
-              >
-                参加する
-                <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-            </div>
-          </div>
-
-          {/* ひろば投稿フィード */}
-          {hirobaFeed.length > 0 ? (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {hirobaFeed.map((v, i) => (
-                <Reveal key={v.id} delay={i * 40}>
-                  <Link
-                    href={`/forum/${v.subCategory.slug}`}
-                    className="card-lift group block rounded-2xl border border-border/60 bg-white p-5 transition-colors hover:border-primary/30"
-                  >
-                    {/* カテゴリタグ */}
-                    <div className="mb-3 flex items-center gap-2">
-                      <span
-                        className="inline-block h-2.5 w-2.5 rounded-full"
-                        style={{ backgroundColor: v.subCategory.category.color }}
-                      />
-                      <span className="text-[11px] font-medium text-muted-foreground">
-                        {v.subCategory.category.name} / {v.subCategory.name}
-                      </span>
-                      {v.is_pinned && (
-                        <span className="ml-auto rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">
-                          PIN
-                        </span>
-                      )}
-                    </div>
-
-                    {/* 本文 */}
-                    <p className="line-clamp-3 text-sm leading-relaxed text-foreground/90">{v.body}</p>
-
-                    {/* フッター */}
-                    <div className="mt-3.5 flex items-center justify-between text-[11px] text-muted-foreground">
-                      <span>
-                        {v.author_name}
-                        {v.author_role ? `（${v.author_role}）` : ""}
-                      </span>
-                      <div className="flex items-center gap-3">
-                        {v._count.likes > 0 && (
-                          <span className="flex items-center gap-0.5">
-                            <Heart className="h-3 w-3" /> {v._count.likes}
-                          </span>
-                        )}
-                        {v._count.replies > 0 && (
-                          <span className="flex items-center gap-0.5">
-                            <MessageSquare className="h-3 w-3" /> {v._count.replies}
-                          </span>
-                        )}
-                        <span>{timeAgo(v.created_at)}</span>
-                      </div>
-                    </div>
-                  </Link>
-                </Reveal>
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-dashed border-border p-12 text-center">
-              <MessageSquare className="mx-auto mb-3 h-8 w-8 text-muted-foreground/40" />
-              <p className="text-sm text-muted-foreground">まだ投稿がありません。最初の声を届けましょう。</p>
-              <Link
-                href="/forum"
-                className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary"
-              >
-                ひろばに参加する <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-            </div>
-          )}
-        </div>
+      {/* ============ ひろば（フォーラムマップ埋め込み） ============ */}
+      <section className="relative h-[min(70vh,600px)] w-full overflow-hidden bg-[#e3f2fd] text-foreground dark:bg-[#0c1a3a] dark:text-white">
+        <Suspense fallback={<div className="absolute inset-0 bg-[#e3f2fd] dark:bg-[#0c1a3a]" />}>
+          <ForumMapMode
+            themeMode={settings.themeMode}
+            guideText="中央のハブをタップして話題へ · 周囲の◎トピックをタップしてひろばへ"
+            initialInteropActivity={initialActivity.interop}
+            initialForumActivity={initialActivity.forum}
+            showChat={false}
+            initialScale={1.35}
+            centerLabel={settings.centerLabel}
+            centerHubItems={settings.centerHubItems}
+            showLatestNews={settings.showLatestNews}
+            showSpeakerQa={settings.showSpeakerQa}
+            showOpinionBox={settings.showOpinionBox}
+          />
+        </Suspense>
       </section>
 
       <div className="container py-8 sm:py-10">
