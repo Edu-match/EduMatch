@@ -121,6 +121,7 @@
   }
   html {
     overflow-x: hidden;
+    scroll-behavior: smooth;
   }
   body {
     @apply bg-background text-foreground;
@@ -191,4 +192,126 @@
   .responsive-card {
     @apply w-full max-w-full overflow-hidden;
   }
+
+  /* 上品なカードホバー（浮き上がり） */
+  .card-lift {
+    @apply transition-all duration-300;
+    will-change: transform, box-shadow;
+  }
+  .card-lift:hover {
+    transform: translateY(-3px);
+    box-shadow:
+      0 16px 40px -12px oklch(0.2 0.02 260 / 0.15),
+      0 4px 12px -4px oklch(0.2 0.02 260 / 0.08);
+  }
+
+  /* ホバーで左から伸びる下線（見出しリンク用） */
+  .link-underline {
+    background-image: linear-gradient(currentColor, currentColor);
+    background-size: 0% 1.5px;
+    background-position: 0 100%;
+    background-repeat: no-repeat;
+    transition: background-size 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .link-underline:hover,
+  a:hover .link-underline,
+  .group:hover .link-underline {
+    background-size: 100% 1.5px;
+  }
+}
+
+/* ===== アニメーション基盤 ===== */
+
+/* ロード時のフェードアップ（ヒーロー等・CSSのみ） */
+@keyframes em-fade-up {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: none; }
+}
+.animate-fade-up {
+  animation: em-fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.animation-delay-100 { animation-delay: 100ms; }
+.animation-delay-200 { animation-delay: 200ms; }
+.animation-delay-300 { animation-delay: 300ms; }
+.animation-delay-400 { animation-delay: 400ms; }
+
+/* スクロールリビール（Reveal コンポーネントが is-visible を付与） */
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* リビールバリアント（Apple風の多方向アニメーション） */
+.reveal--fade-in {
+  opacity: 0;
+  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.reveal--fade-in.is-visible { opacity: 1; }
+
+.reveal--fade-left {
+  opacity: 0;
+  transform: translateX(24px);
+  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.reveal--fade-left.is-visible { opacity: 1; transform: none; }
+
+.reveal--fade-right {
+  opacity: 0;
+  transform: translateX(-24px);
+  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.reveal--fade-right.is-visible { opacity: 1; transform: none; }
+
+.reveal--scale-up {
+  opacity: 0;
+  transform: scale(0.96);
+  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.reveal--scale-up.is-visible { opacity: 1; transform: none; }
+
+.reveal--blur-in {
+  opacity: 0;
+  filter: blur(8px);
+  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.reveal--blur-in.is-visible { opacity: 1; filter: blur(0); }
+
+/* ページ遷移のサブトルフェード */
+@keyframes em-page-enter {
+  from { opacity: 0.92; }
+  to { opacity: 1; }
+}
+main {
+  animation: em-page-enter 0.3s ease-out;
+}
+
+/* 動きを抑えたい設定のユーザーにはアニメーションを無効化 */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up { animation: none; }
+  .reveal,
+  .reveal--fade-in,
+  .reveal--fade-left,
+  .reveal--fade-right,
+  .reveal--scale-up,
+  .reveal--blur-in {
+    opacity: 1; transform: none; filter: none; transition: none;
+  }
+  .card-lift, .card-lift:hover { transform: none; }
+  main { animation: none; }
 }

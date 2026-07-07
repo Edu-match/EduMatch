@@ -6,6 +6,7 @@ import { getCurrentUserRole } from "@/app/_actions/user";
 import { HeroSlider } from "@/components/home/hero-slider";
 import { RightRankingSidebar } from "@/components/home/right-ranking-sidebar";
 import { TopicsSection } from "@/components/home/topics-section";
+import { Reveal } from "@/components/home/reveal";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,7 @@ export default async function HomePage() {
         <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-12 lg:items-start lg:gap-8">
           <main className="lg:col-span-8 order-1 space-y-4 sm:space-y-6 lg:space-y-8 min-w-0">
             {/* 議員会館チケット申込導線（特設帯・スライダー上部） */}
+            <Reveal variant="fade-in">
             <Link
               href="/forum/kaikan"
               className="group flex items-center justify-between gap-3 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-4 py-3.5 text-white shadow-md shadow-orange-500/25 transition hover:to-amber-400 hover:shadow-lg"
@@ -39,13 +41,20 @@ export default async function HomePage() {
               </span>
               <span className="shrink-0 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-orange-600 transition group-hover:bg-white/90">申込へ →</span>
             </Link>
+            </Reveal>
 
             {/* スライダー：運営お知らせ → ADMIN選択記事 */}
-            <HeroSlider items={sliderItems} isAdmin={isAdmin} />
-            <TopicsSection />
+            <Reveal variant="scale-up" delay={100}>
+              <HeroSlider items={sliderItems} isAdmin={isAdmin} />
+            </Reveal>
+            <Reveal delay={200}>
+              <TopicsSection />
+            </Reveal>
           </main>
           <aside className="lg:col-span-4 order-2 w-full">
-            <RightRankingSidebar />
+            <Reveal variant="fade-in" delay={150}>
+              <RightRankingSidebar />
+            </Reveal>
           </aside>
         </div>
       </div>

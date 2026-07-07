@@ -95,6 +95,7 @@ function MenuItemLink({
 export function SideMenu() {
   const t = useTranslations("sideMenu");
   const [role, setRole] = useState<string | null>(null);
+  const [roleLoading, setRoleLoading] = useState(true);
 
   useEffect(() => {
     fetch("/api/auth/me", { credentials: "include" })
@@ -102,7 +103,8 @@ export function SideMenu() {
       .then((data) => {
         setRole(data?.profile?.role ?? null);
       })
-      .catch(() => setRole(null));
+      .catch(() => setRole(null))
+      .finally(() => setRoleLoading(false));
   }, []);
 
   const visibleBottomItems = bottomItems.filter(
@@ -128,7 +130,16 @@ export function SideMenu() {
       </div>
 
       {/* 投稿・管理者メニュー（ブロック）※ADMIN 向け */}
-      {visibleBottomItems.length > 0 && (
+      {roleLoading && (
+        <div className="border rounded-lg overflow-hidden">
+          <div className="h-10 bg-muted animate-pulse" />
+          <div className="p-3 space-y-2">
+            <div className="h-8 bg-muted/60 animate-pulse rounded" />
+            <div className="h-8 bg-muted/60 animate-pulse rounded" />
+          </div>
+        </div>
+      )}
+      {!roleLoading && visibleBottomItems.length > 0 && (
         <div className="border-2 border-amber-400 rounded-lg bg-amber-50 overflow-hidden">
           <div className="px-3 py-2.5 bg-amber-400 flex items-center gap-2">
             <ShieldCheck className="h-4 w-4 text-amber-900 flex-shrink-0" />
