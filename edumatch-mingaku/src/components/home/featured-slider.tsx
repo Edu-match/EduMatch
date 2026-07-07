@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { Newspaper, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ThumbnailOrTitle } from "@/components/ui/thumbnail-or-title";
 
 export type FeaturedItem = {
   id: string;
@@ -54,20 +54,14 @@ export function FeaturedSlider({ items }: { items: FeaturedItem[] }) {
               style={{ opacity: i === active ? 1 : 0 }}
               aria-hidden={i !== active}
             >
-              {item.thumbnailUrl ? (
-                <Image
-                  src={item.thumbnailUrl}
-                  alt={item.title}
-                  fill
-                  priority={i === 0}
-                  unoptimized
-                  className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
-                />
-              ) : (
-                <div className="grid h-full w-full place-items-center text-muted-foreground/40">
-                  <Newspaper className="h-10 w-10" />
-                </div>
-              )}
+              <ThumbnailOrTitle
+                src={item.thumbnailUrl}
+                title={item.title}
+                fill
+                priority={i === 0}
+                unoptimized
+                className="transition-transform duration-700 ease-out group-hover:scale-[1.03]"
+              />
             </div>
           ))}
 

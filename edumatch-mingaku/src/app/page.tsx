@@ -286,53 +286,6 @@ export default async function HomePage() {
         </div>
       </div>
 
-      {/* ============ 注目のサービス ============ */}
-      {services.length > 0 && (
-        <section className="border-t border-border/60 bg-secondary/40">
-          <div className="container py-14">
-            <Reveal>
-              <div className="mb-6 flex items-end justify-between">
-                <h2 className="flex items-center gap-2.5 text-lg font-bold tracking-tight">
-                  <span className="h-5 w-1 rounded-full bg-primary" aria-hidden />
-                  注目のサービス
-                </h2>
-                <Link
-                  href="/services"
-                  className="link-underline inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
-                >
-                  すべて見る <ChevronRight className="h-3.5 w-3.5" />
-                </Link>
-              </div>
-            </Reveal>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-              {services.map((s, i) => (
-                <Reveal key={s.id} delay={i * 50}>
-                  <Link
-                    href={`/services/${s.id}`}
-                    className="card-lift group block overflow-hidden rounded-xl border border-border/60 bg-white"
-                  >
-                    <div className="relative aspect-[16/10] overflow-hidden">
-                      <ThumbnailOrTitle
-                        src={s.thumbnail_url}
-                        title={s.title}
-                        fill
-                        sizes="(max-width: 640px) 50vw, 200px"
-                        unoptimized
-                        className="transition-transform duration-500 group-hover:scale-105"
-                      />
-                    </div>
-                    <div className="p-3">
-                      <p className="text-[10px] font-medium text-primary">{s.category}</p>
-                      <h3 className="mt-0.5 line-clamp-2 text-xs font-semibold leading-snug">{s.title}</h3>
-                    </div>
-                  </Link>
-                </Reveal>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
       {/* ============ 3つの入口 ============ */}
       <section className="border-t border-border/60 bg-secondary/40">
         <div className="container py-14">
