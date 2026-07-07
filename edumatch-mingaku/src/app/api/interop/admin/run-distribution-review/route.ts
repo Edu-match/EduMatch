@@ -38,12 +38,13 @@ export async function POST() {
       axis3UsedLLM: axis3.usedLLM,
     });
   } catch (e) {
+    console.error("[interop/admin/run-distribution-review]", e);
     return NextResponse.json({
       ok: false,
       isLocal: llm.isLocal,
       model: llm.model,
       latencyMs: Date.now() - t0,
-      error: e instanceof Error ? e.message : "実行に失敗しました",
+      error: "実行に失敗しました",
     });
   }
 }

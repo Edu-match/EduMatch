@@ -7,6 +7,36 @@ import { generatePersonaReplyText } from "@/lib/persona-reply";
 import { synthesizePersona, generateAvatarImage } from "@/lib/persona-ai";
 import { checkPersonaLegal, researchFigure, type LegalVerdict } from "@/lib/historical-persona";
 import { createServiceRoleClient } from "@/utils/supabase/server-admin";
+import { checkPromptInjection } from "@/lib/security";
+
+/** SEC-013: ペルソナプロンプトの最大長（ハード上限） */
+const MAX_PERSONA_PROMPT_LENGTH = 5000;
+
+/**
+ * SEC-013: ペルソナプロンプトの共通バリデーション。
+ * - 空・最大長を検証
+ * - プロンプトインジェクションパターンは検出してもブロックせずログのみ
+ */
+function validatePersonaPrompt(
+  personaPrompt: string,
+  context: string,
+): { ok: true; trimmed: string } | { ok: false; error: string } {
+  const trimmed = (personaPrompt || "").trim();
+  if (!trimmed) return { ok: false, error: "システムプロンプトは空にできません" };
+  if (trimmed.length > MAX_PERSONA_PROMPT_LENGTH) {
+    return { ok: false, error: `システムプロンプトは${MAX_PERSONA_PROMPT_LENGTH}文字以内にしてください` };
+  }
+
+  const injection = checkPromptInjection(trimmed);
+  if (injection.detected) {
+    // 管理者操作のためブロックはしないが、監査用にログを残す（SEC-013）
+    console.warn(
+      `[security] persona prompt injection pattern detected (${context}): pattern=${injection.pattern}`
+    );
+  }
+
+  return { ok: true, trimmed };
+}
 
 export type SpecialPersonaResult = {
   ok: boolean;
@@ -168,8 +198,9 @@ export async function updateSpecialPersonaPrompt(
   personaPrompt: string,
 ): Promise<{ ok: boolean; error?: string }> {
   await requireAdmin();
-  const trimmed = (personaPrompt || "").trim();
-  if (!trimmed) return { ok: false, error: "システムプロンプトは空にできません" };
+  const validated = validatePersonaPrompt(personaPrompt, `updateSpecialPersonaPrompt:${id}`);
+  if (!validated.ok) return { ok: false, error: validated.error };
+  const trimmed = validated.trimmed;
   if (trimmed.length > 2000) return { ok: false, error: "システムプロンプトは2000文字以内にしてください" };
   await prisma.aiSpecialPersona.update({ where: { id }, data: { persona_prompt: trimmed } });
   revalidatePath("/admin/persona");
@@ -184,8 +215,9 @@ export async function updateMyPersonaPrompt(
   const profile = await getCurrentProfile();
   if (!profile) return { ok: false, error: "管理者のみ利用できます" };
 
-  const trimmed = (personaPrompt || "").trim();
-  if (!trimmed) return { ok: false, error: "システムプロンプトは空にできません" };
+  const validated = validatePersonaPrompt(personaPrompt, `updateMyPersonaPrompt:${profile.id}`);
+  if (!validated.ok) return { ok: false, error: validated.error };
+  const trimmed = validated.trimmed;
   if (trimmed.length > 2000) return { ok: false, error: "システムプロンプトは2000文字以内にしてください" };
 
   await prisma.userAiPersona.update({

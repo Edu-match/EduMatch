@@ -1,25 +1,32 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
+import { timingSafeCompare } from "@/lib/security";
 
 // --- Basic認証（本番公開前テスト用）---
 const BASIC_AUTH_ENABLED = process.env.NEXT_PUBLIC_IS_RELEASED !== "true";
 /** Vercel Preview（PR・ブランチURL）は環境変数未設定でもサイトを確認できるようにメンテ強制を外す */
 const SKIP_MAINTENANCE_FOR_VERCEL_PREVIEW =
   process.env.VERCEL_ENV === "preview";
-const BASIC_AUTH_USER = process.env.BASIC_AUTH_USER ?? "preview";
-const BASIC_AUTH_PASSWORD = process.env.BASIC_AUTH_PASSWORD ?? "preview2025";
+// 資格情報は環境変数必須。未設定時はデフォルト値にフォールバックせず常に認証拒否する
+const BASIC_AUTH_USER = process.env.BASIC_AUTH_USER;
+const BASIC_AUTH_PASSWORD = process.env.BASIC_AUTH_PASSWORD;
 const MAINTENANCE_BYPASS_COOKIE = "edumatch_maintenance_bypass";
 
 const AUTH_REALM = "EduMatch";
 
 function validateBasicAuth(request: NextRequest): boolean {
+  // 資格情報が未設定の場合は常に拒否
+  if (!BASIC_AUTH_USER || !BASIC_AUTH_PASSWORD) return false;
   const authHeader = request.headers.get("authorization");
   if (!authHeader?.startsWith("Basic ")) return false;
   try {
     const base64 = authHeader.slice(6);
     const decoded = atob(base64);
     const [user, password] = decoded.split(":", 2);
-    return user === BASIC_AUTH_USER && password === BASIC_AUTH_PASSWORD;
+    // 定数時間比較（タイミング攻撃対策）。両方を必ず評価する
+    const userOk = timingSafeCompare(user ?? "", BASIC_AUTH_USER);
+    const passOk = timingSafeCompare(password ?? "", BASIC_AUTH_PASSWORD);
+    return userOk && passOk;
   } catch {
     return false;
   }

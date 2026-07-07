@@ -2,16 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrCreateCategoryRoom } from "@/lib/forum-category-room";
 import { refreshCategoryContentCache } from "@/lib/forum-category-content-ai";
+import { verifyCron } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
-
-function verifyCron(req: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET?.trim();
-  if (!secret) return process.env.NODE_ENV === "development";
-  const auth = req.headers.get("authorization");
-  return auth === `Bearer ${secret}`;
-}
 
 /**
  * 毎日1回: DB をスキャンし、各カテゴリ×サブカテゴリに AI で関連コンテンツを選定してキャッシュする。
@@ -68,7 +62,11 @@ export async function GET(req: NextRequest) {
           row.itemCount = items.length;
           row.cached = cached;
         } catch (e) {
-          row.error = e instanceof Error ? e.message : String(e);
+          console.error(
+            `[cron/forum-category-content-sync] ${category.slug}/${sub.slug}:`,
+            e
+          );
+          row.error = "同期に失敗しました";
         }
 
         results.push(row);

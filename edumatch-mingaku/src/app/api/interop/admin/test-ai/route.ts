@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentProfile } from "@/lib/auth";
+import { requireNonProduction } from "@/lib/security";
 import { getLocalLLM } from "@/lib/local-llm";
 import { moderateAndNotify } from "@/lib/post-moderation";
 import {
@@ -28,6 +29,9 @@ function allowAccess(role: string | undefined): boolean {
 }
 
 export async function GET() {
+  const blocked = requireNonProduction();
+  if (blocked) return blocked;
+
   const profile = await getCurrentProfile().catch(() => null);
   if (!allowAccess(profile?.role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -60,6 +64,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const blocked = requireNonProduction();
+  if (blocked) return blocked;
+
   const profile = await getCurrentProfile().catch(() => null);
   if (!allowAccess(profile?.role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

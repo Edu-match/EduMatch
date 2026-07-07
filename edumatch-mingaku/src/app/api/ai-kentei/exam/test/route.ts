@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { nanoid } from 'nanoid'
 import { getCurrentUser, getCurrentProfile } from '@/lib/auth'
+import { requireNonProduction } from '@/lib/security'
 import { createServiceRoleClient } from '@/utils/supabase/server-admin'
 
 /**
@@ -9,6 +10,9 @@ import { createServiceRoleClient } from '@/utils/supabase/server-admin'
  * RLSをバイパスするため、サービスロールキーを使用します。
  */
 export async function POST() {
+  const blocked = requireNonProduction()
+  if (blocked) return blocked
+
   const user = await getCurrentUser()
   if (!user) {
     return NextResponse.json({ error: '認証が必要です' }, { status: 401 })

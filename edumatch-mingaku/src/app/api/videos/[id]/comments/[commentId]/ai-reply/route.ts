@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { rateLimitResponse } from "@/lib/security";
+
+const AI_REPLY_RATE_LIMIT = { windowMs: 60 * 1000, max: 10 };
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -64,6 +67,10 @@ export async function POST(
     if (!user) {
       return NextResponse.json({ error: "ログインが必要です" }, { status: 401 });
     }
+
+    // 返信系レート制限（10回/分・ユーザー単位）
+    const rl = rateLimitResponse(`video-ai-reply:${user.id}`, AI_REPLY_RATE_LIMIT);
+    if (rl.limited) return rl.response;
 
     const { id: videoId, commentId } = await params;
 

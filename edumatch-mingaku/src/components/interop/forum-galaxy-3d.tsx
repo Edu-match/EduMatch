@@ -24,7 +24,7 @@ const MAJOR_EMOJI: Record<string, string> = { A: "🤖", B: "📊", C: "🛡️"
 const MAJORS = Object.keys(MAJOR_META);
 
 const SPACE_BG =
-  "radial-gradient(ellipse at 50% 30%, #131c42 0%, #0a1130 40%, #050815 72%, #02030a 100%)";
+  "linear-gradient(180deg, #3a8fd4 0%, #5aabee 35%, #7ec8f8 65%, #b8e0f8 85%, #e3f2fd 100%)";
 
 const CAM_START = new THREE.Vector3(0, 90, 210);
 const CAM_HOME = new THREE.Vector3(30, 24, 46);

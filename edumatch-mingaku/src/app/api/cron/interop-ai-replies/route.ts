@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateInteropAiReplyText, INTEROP_AI_FACILITATOR_NAME } from "@/lib/forum-ai-comment";
 import { isInteropAiReplyDisabled } from "@/lib/interop-ai-reply-policy";
+import { verifyCron } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -10,13 +11,6 @@ export const maxDuration = 300;
 // この cron は「即時生成に失敗した投稿」を拾うフォールバック（遅延なし・直近24h対象）。
 const SCAN_WINDOW_MS = 24 * 60 * 60 * 1000;
 const BATCH_LIMIT = 8;
-
-function verifyCron(req: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET?.trim();
-  if (!secret) return process.env.NODE_ENV === "development";
-  const auth = req.headers.get("authorization");
-  return auth === `Bearer ${secret}`;
-}
 
 /**
  * 定期ジョブ：AI返信がまだ付いていないInterop投稿に返信を付与する（フォールバック）。

@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { createServiceRoleClient } from "@/utils/supabase/server-admin";
 import { getSiteOrigin } from "@/lib/site-url";
+import { verifyOrigin } from "@/lib/security";
 import { Resend } from "resend";
 
 export const dynamic = "force-dynamic";
+
+const requestBodySchema = z.object({
+  email: z.string().max(320).optional(),
+});
 
 /**
  * パスワードリセット用メール送信。
@@ -11,9 +17,18 @@ export const dynamic = "force-dynamic";
  * セキュリティのため、メールの有無に関わらず常に同じレスポンスを返す（ユーザー列挙の防止）。
  */
 export async function POST(request: NextRequest) {
+  const csrf = verifyOrigin(request);
+  if (csrf) return csrf;
+
   try {
-    const body = await request.json().catch(() => ({}));
-    const email = typeof body.email === "string" ? body.email.trim() : "";
+    const parsed = requestBodySchema.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "入力内容が正しくありません" },
+        { status: 400 }
+      );
+    }
+    const email = parsed.data.email?.trim() ?? "";
 
     if (!email) {
       return NextResponse.json(

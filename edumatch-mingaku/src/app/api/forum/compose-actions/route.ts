@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+import { getClientIp, rateLimitResponse } from "@/lib/security";
+
+const COMPOSE_ACTIONS_RATE_LIMIT = { windowMs: 60 * 1000, max: 10 };
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +18,12 @@ function defaultActions(topic: string): ComposeAction[] {
 }
 
 export async function GET(req: NextRequest) {
+  const rl = rateLimitResponse(
+    `forum-compose-actions:${getClientIp(req)}`,
+    COMPOSE_ACTIONS_RATE_LIMIT
+  );
+  if (rl.limited) return rl.response;
+
   const topic = req.nextUrl.searchParams.get("topic") ?? "";
   if (!topic.trim()) {
     return NextResponse.json({ actions: defaultActions("") });

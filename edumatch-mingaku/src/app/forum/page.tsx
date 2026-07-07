@@ -19,8 +19,8 @@ export default async function ForumPage() {
   ]);
 
   return (
-    <main className="relative h-[calc(100dvh-4rem-2.75rem)] w-full overflow-hidden bg-[#070a1c] text-white">
-      <Suspense fallback={<div className="absolute inset-0 bg-[#070a1c]" />}>
+    <main className="relative h-[calc(100dvh-4rem-2.75rem)] w-full overflow-hidden bg-[#e3f2fd] text-foreground dark:bg-[#0c1a3a] dark:text-white">
+      <Suspense fallback={<div className="absolute inset-0 bg-[#e3f2fd] dark:bg-[#0c1a3a]" />}>
         <ForumMapMode
           themeMode={settings.themeMode}
           guideText="中央のハブをタップして話題へ · 周囲の◎トピックをタップしてひろばへ"

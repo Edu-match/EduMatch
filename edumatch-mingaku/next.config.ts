@@ -20,20 +20,21 @@ const SUPABASE_HOSTNAME = supabaseStorageHostname();
 const SUPABASE_PROJECT_ID = SUPABASE_HOSTNAME.split(".")[0];
 
 /**
- * Content-Security-Policy（report-only モード）
- * コンソール違反が出なくなったら key を Content-Security-Policy に変更する。
+ * Content-Security-Policy（enforce モード）
+ * 違反するリソースはブロックされる。新規外部リソースを追加する際は要更新。
  */
 function buildCsp(): string {
   const supabaseOrigin = `https://${SUPABASE_HOSTNAME}`;
   const supabaseApiOrigin = `https://${SUPABASE_PROJECT_ID}.supabase.co`;
   const supabaseWs = `wss://${SUPABASE_PROJECT_ID}.supabase.co`;
+  const isDev = process.env.NODE_ENV === "development";
 
   const directives: Record<string, string> = {
     "default-src": "'self'",
     "script-src": [
       "'self'",
       "'unsafe-inline'",
-      "'unsafe-eval'",
+      ...(isDev ? ["'unsafe-eval'"] : []),
       "https://www.googletagmanager.com",
     ].join(" "),
     "style-src": "'self' 'unsafe-inline' https://fonts.googleapis.com",
@@ -75,7 +76,7 @@ function buildCsp(): string {
 }
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["pdf-parse", "pdfjs-dist"],
+  serverExternalPackages: ["pdf-parse", "pdfjs-dist", "isomorphic-dompurify", "jsdom"],
   async headers() {
     return [
       {
@@ -93,10 +94,12 @@ const nextConfig: NextConfig = {
             key: "Strict-Transport-Security",
             value: "max-age=63072000; includeSubDomains; preload",
           },
+          { key: "X-DNS-Prefetch-Control", value: "off" },
+          { key: "X-Download-Options", value: "noopen" },
+          { key: "X-Permitted-Cross-Domain-Policies", value: "none" },
           {
-            // report-only: 違反をコンソールに記録するがブロックしない
-            // 本番で問題なければ Content-Security-Policy へ変更する
-            key: "Content-Security-Policy-Report-Only",
+            // enforce モード: ポリシー違反のリソースをブロックする
+            key: "Content-Security-Policy",
             value: buildCsp(),
           },
         ],

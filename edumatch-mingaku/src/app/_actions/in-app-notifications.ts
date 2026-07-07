@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/auth";
+import { getCurrentProfile, requireAuth } from "@/lib/auth";
 import {
   SITE_UPDATE_NOTIFICATION_KIND,
   type InAppNotificationRow,
@@ -51,6 +51,12 @@ export async function notifyAllUsersOfSiteUpdate(siteUpdate: {
   title: string;
   link: string | null;
 }): Promise<void> {
+  // 全会員向け通知の作成は管理者のみ
+  const profile = await getCurrentProfile();
+  if (!profile || profile.role !== "ADMIN") {
+    throw new Error("管理者権限が必要です");
+  }
+
   const link = siteUpdateHref(siteUpdate.id, siteUpdate.link);
   const title = `【運営からのお知らせ】${siteUpdate.title}`;
 

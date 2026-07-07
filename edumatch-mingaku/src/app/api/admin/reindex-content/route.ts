@@ -129,7 +129,7 @@ export async function POST(req: NextRequest) {
       return new Response(
         JSON.stringify({
           success: false,
-          error: `Failed to insert chunks: ${insertError.message}`,
+          error: "Failed to insert chunks",
         }),
         { status: 500, headers: { "Content-Type": "application/json" } }
       );
@@ -148,7 +148,7 @@ export async function POST(req: NextRequest) {
     return new Response(
       JSON.stringify({
         success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: "Internal server error",
       }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );

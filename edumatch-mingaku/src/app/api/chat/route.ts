@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import OpenAI from "openai";
+import { z } from "zod";
 import {
   getArticleContextForChat,
   getServiceContextForChat,
@@ -11,7 +12,7 @@ import type { Prisma } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAiChatPrompts } from "@/lib/ai-chat-prompts";
-import { checkPromptInjection, checkLlmOutput } from "@/lib/security";
+import { checkPromptInjection, checkLlmOutput, verifyOrigin, rateLimitResponse } from "@/lib/security";
 import { encodeSse, type RagDocRef, type WebSource } from "@/lib/ai-chat-stream";
 
 export const runtime = "nodejs";
@@ -40,21 +41,38 @@ function countInWindow(events: ChatUsageEvent[], cutoff: string): number {
   return events.filter((e) => e.at > cutoff).length;
 }
 
-type MessageRole = "user" | "assistant";
-
 type ChatMode = "navigator" | "debate" | "discussion";
 
-type RequestBody = {
-  messages: { role: MessageRole; content: string }[];
-  contextItems?: { id: string; type: "article" | "service" }[];
-  mode?: ChatMode;
+const requestBodySchema = z.object({
+  messages: z
+    .array(
+      z.object({
+        role: z.enum(["user", "assistant"]),
+        content: z.string().max(20000),
+      })
+    )
+    .min(1)
+    .max(100),
+  contextItems: z
+    .array(
+      z.object({
+        id: z.string().max(100),
+        type: z.enum(["article", "service"]),
+      })
+    )
+    .max(20)
+    .optional(),
+  // 不正な mode 値は 400 にせず既定（navigator）へフォールバックする（既存挙動の維持）
+  mode: z.enum(["navigator", "debate", "discussion"]).optional().catch(undefined),
   /**
    * 参照（RAG）モードの ON/OFF。
    * - true（既定）: 公的文書RAG＋サイト内記事/サービス参照を有効化
    * - false: 上記参照を停止し、モデル内部知識＋Web検索のみで回答
    */
-  ragEnabled?: boolean;
-};
+  ragEnabled: z.boolean().optional().catch(undefined),
+});
+
+type RequestBody = z.infer<typeof requestBodySchema>;
 
 // ─── システムプロンプト ───────────────────────────────────────────────────────
 
@@ -312,6 +330,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const csrf = verifyOrigin(req);
+  if (csrf) return csrf;
+
   const user = await getCurrentUser();
   if (!user) {
     return new Response(
@@ -319,6 +340,11 @@ export async function POST(req: NextRequest) {
       { status: 401, headers: { "Content-Type": "application/json" } }
     );
   }
+
+  // チャット系レート制限（30回/分・ユーザー単位）
+  const rl = rateLimitResponse(`chat:${user.id}`, { windowMs: 60 * 1000, max: 30 });
+  if (rl.limited) return rl.response;
+
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     return new Response(
@@ -327,27 +353,19 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let body: RequestBody;
-  try {
-    body = await req.json();
-  } catch {
+  const parsed = requestBodySchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) {
     return new Response(JSON.stringify({ error: "Invalid request body" }), {
       status: 400,
       headers: { "Content-Type": "application/json" },
     });
   }
+  const body: RequestBody = parsed.data;
 
   const { messages, contextItems, mode: bodyMode } = body;
-  const mode: ChatMode = bodyMode && ["navigator", "debate", "discussion"].includes(bodyMode) ? bodyMode : "navigator";
+  const mode: ChatMode = bodyMode ?? "navigator";
   // 参照（RAG）モード。明示的に false のときだけ参照を停止（既定は ON）。
   const ragEnabled = body.ragEnabled !== false;
-
-  if (!messages || !Array.isArray(messages) || messages.length === 0) {
-    return new Response(JSON.stringify({ error: "Messages are required" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
 
   // ─── 入力長バリデーション ──────────────────────────────────────────────────
   const MAX_INPUT_CHARS = 2000;
@@ -636,7 +654,7 @@ export async function POST(req: NextRequest) {
         controller.close();
       } catch (err) {
         console.error("Chat stream error:", err);
-        const message = err instanceof Error ? err.message : "AI response failed";
+        const message = "AI response failed";
         try {
           emit({ type: "error", message });
           controller.close();
