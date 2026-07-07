@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import { ThumbnailOrTitle } from "@/components/ui/thumbnail-or-title";
 import { useTranslations, useLocale } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { localizeArticleCategory } from "@/lib/category-i18n";
@@ -169,11 +169,11 @@ export function ArticlesClient({
               <Card className="h-full overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 border-2 hover:border-primary/50 bg-card">
                 {/* 画像エリア */}
                 <div className="relative w-full aspect-video overflow-hidden bg-muted flex items-center justify-center">
-                  <Image
+                  <ThumbnailOrTitle
                     src={article.image}
-                    alt={article.title}
+                    title={article.title}
                     fill
-                    className="object-cover transition-transform duration-500 group-hover:scale-105"
+                    className="transition-transform duration-500 group-hover:scale-105"
                     unoptimized
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -184,7 +184,7 @@ export function ArticlesClient({
                       item={{
                         id: article.id,
                         title: article.title,
-                        thumbnail: article.image,
+                        thumbnail: article.image ?? undefined,
                         category: article.category,
                         type: "article",
                       }}

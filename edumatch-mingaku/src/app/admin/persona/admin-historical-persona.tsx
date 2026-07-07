@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Loader2, Scale, Sparkles, ShieldCheck, ShieldAlert, ShieldX, Trash2, ChevronDown, Lock, Save, X } from "lucide-react";
+import { Loader2, Scale, Sparkles, ShieldCheck, ShieldAlert, ShieldX, Trash2, ChevronDown, Lock, Save, X, Pencil, Check } from "lucide-react";
 import { createSpecialPersona, setSpecialPersonaActive, deleteSpecialPersona, updateSpecialPersonaPrompt, type HistoricalPersonaResult } from "@/app/_actions/persona-admin";
 
 const PROMPT_PREFIX = `【編集不可】このAIペルソナは教育コミュニティ「教育のひろば」で発言します。断定・説教・宣伝・政治的発言は避け、建設的に議論してください。AIだと名乗りません。
@@ -45,20 +45,10 @@ function ToggleSwitch({ checked, onChange, disabled }: { checked: boolean; onCha
 function PermissionModal({ open, onClose, onConfirm, loading, name }: {
   open: boolean; onClose: () => void; onConfirm: () => void; loading: boolean; name: string;
 }) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    if (open) dialogRef.current?.showModal();
-    else dialogRef.current?.close();
-  }, [open]);
-
   if (!open) return null;
   return (
-    <dialog
-      ref={dialogRef}
-      onClose={onClose}
-      className="fixed inset-0 z-50 m-auto w-[min(420px,90vw)] rounded-2xl border bg-white p-0 shadow-2xl backdrop:bg-black/40 backdrop:backdrop-blur-sm"
-    >
-      <div className="p-5">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-[min(420px,90vw)] rounded-2xl border bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-start justify-between">
           <div className="flex items-center gap-2">
             <ShieldAlert className="h-5 w-5 text-amber-600" />
@@ -95,12 +85,12 @@ function PermissionModal({ open, onClose, onConfirm, loading, name }: {
           </button>
         </div>
       </div>
-    </dialog>
+    </div>
   );
 }
 
-/* ── システムプロンプト（IDEエディタ風・行番号付き） ── */
-function PromptCodeEditor({
+/* ── システムプロンプト（クリーンUI） ── */
+function PromptEditor({
   personaId,
   initialPrompt,
 }: {
@@ -108,109 +98,102 @@ function PromptCodeEditor({
   initialPrompt: string;
 }) {
   const hasPrefix = initialPrompt.startsWith(PROMPT_PREFIX);
-  const lockedLines = hasPrefix ? PROMPT_PREFIX.trimEnd().split("\n") : [];
   const editablePart = hasPrefix ? initialPrompt.slice(PROMPT_PREFIX.length) : initialPrompt;
 
-  const [prompt, setPrompt] = useState(editablePart);
+  const [text, setText] = useState(editablePart);
+  const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState("");
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const editableLines = prompt.split("\n");
-  const totalLines = lockedLines.length + Math.max(editableLines.length, 1);
-
-  function autoResize() {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    ta.style.height = "0";
-    ta.style.height = ta.scrollHeight + "px";
-  }
-  useEffect(autoResize, [prompt]);
-
-  async function save() {
+  async function handleSave() {
     setSaving(true);
-    setMsg("");
-    const fullPrompt = PROMPT_PREFIX + prompt;
+    setError(null);
+    const fullPrompt = PROMPT_PREFIX + text;
     const res = await updateSpecialPersonaPrompt(personaId, fullPrompt);
     setSaving(false);
-    setMsg(res.ok ? "保存しました" : (res.error ?? "保存に失敗しました"));
+    if (res.ok) {
+      setEditing(false);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } else {
+      setError(res.error ?? "保存に失敗しました");
+    }
+  }
+
+  function handleCancel() {
+    setText(editablePart);
+    setEditing(false);
+    setError(null);
   }
 
   return (
-    <div className="mt-2 overflow-hidden rounded-lg border border-[#3c3c5c] bg-[#1e1e2e] text-[13px] font-mono">
-      {/* タブバー */}
-      <div className="flex items-center gap-1 border-b border-[#3c3c5c] bg-[#252536] px-3 py-1.5">
-        <div className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f56]" />
-          <span className="h-2.5 w-2.5 rounded-full bg-[#ffbd2e]" />
-          <span className="h-2.5 w-2.5 rounded-full bg-[#27c93f]" />
-        </div>
-        <span className="ml-3 text-[11px] text-white/50">system-prompt.txt</span>
-      </div>
-
-      {/* エディタ本体 */}
-      <div className="flex min-h-[120px]">
-        {/* 行番号ガター */}
-        <div className="shrink-0 select-none border-r border-[#3c3c5c] bg-[#1e1e2e] py-2 text-right text-[11px] leading-[1.7] text-white/20" style={{ width: 38 }}>
-          {Array.from({ length: totalLines }, (_, i) => (
-            <div key={i} className="px-2">{i + 1}</div>
-          ))}
-        </div>
-
-        {/* コード領域 */}
-        <div className="min-w-0 flex-1 py-2">
-          {/* 編集不可ブロック */}
-          {lockedLines.length > 0 && (
-            <div className="relative">
-              <div className="absolute inset-0 bg-amber-500/[0.06]" />
-              <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-amber-500/40" />
-              <div className="relative select-none whitespace-pre-wrap px-4 leading-[1.7] text-white/50">
-                {lockedLines.map((line, i) => (
-                  <div key={i}>{line || " "}</div>
-                ))}
-              </div>
-              <div className="absolute right-2 top-1 flex items-center gap-1 rounded bg-amber-500/20 px-1.5 py-0.5">
-                <Lock className="h-2.5 w-2.5 text-amber-400/60" />
-                <span className="text-[9px] font-sans text-amber-400/60">read-only</span>
-              </div>
-            </div>
-          )}
-
-          {/* 編集可能エリア */}
-          <div className="relative">
-            <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-emerald-500/40" />
-            <textarea
-              ref={textareaRef}
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              className="w-full resize-none border-0 bg-transparent px-4 leading-[1.7] text-[#d4d4d4] outline-none placeholder:text-white/15"
-              placeholder="// ペルソナの性格・口調・知識を記述..."
-              spellCheck={false}
-              style={{ minHeight: "3.4em" }}
-            />
+    <div className="mt-2">
+      {/* 編集不可プレフィックス */}
+      {hasPrefix && (
+        <div className="rounded-t-lg border border-b-0 border-amber-200 bg-amber-50/60 p-3">
+          <div className="mb-1.5 flex items-center gap-1.5">
+            <Lock className="h-3 w-3 text-amber-600/70" />
+            <span className="text-[11px] font-semibold text-amber-700">共通ルール（編集不可）</span>
           </div>
+          <pre className="whitespace-pre-wrap font-mono text-xs leading-5 text-amber-900/70">{PROMPT_PREFIX.trimEnd()}</pre>
         </div>
-      </div>
+      )}
 
-      {/* ステータスバー */}
-      <div className="flex items-center justify-between border-t border-[#3c3c5c] bg-[#007acc] px-3 py-1">
-        <div className="flex items-center gap-3">
+      {/* 編集可能プロンプト */}
+      <div className={`flex items-center justify-between ${hasPrefix ? "border border-t-0 border-b-0 bg-background px-3 py-2" : "mb-2"}`}>
+        <p className="text-xs font-semibold text-foreground/70">カスタムプロンプト</p>
+        {!editing && (
           <button
             type="button"
-            onClick={save}
-            disabled={saving}
-            className="inline-flex items-center gap-1 text-[11px] font-bold text-white transition hover:text-white/80 disabled:opacity-50"
+            onClick={() => { setEditing(true); setSaved(false); }}
+            className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-[11px] font-medium transition hover:bg-muted"
           >
-            {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />} 保存
+            <Pencil className="h-3 w-3" />編集
           </button>
-          {msg && <span className={`text-[11px] ${msg === "保存しました" ? "text-emerald-200" : "text-red-200"}`}>{msg}</span>}
-        </div>
-        <div className="flex items-center gap-3 text-[10px] text-white/70">
-          <span>行 {totalLines}</span>
-          <span>{prompt.length} 文字</span>
-          <span>UTF-8</span>
-        </div>
+        )}
       </div>
+
+      {editing ? (
+        <div className={hasPrefix ? "rounded-b-lg border border-t-0 p-3" : ""}>
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            className="w-full rounded-lg border bg-background p-3 font-mono text-xs leading-5 resize-none min-h-[160px] outline-none focus:ring-2 focus:ring-primary/30"
+            rows={10}
+            spellCheck={false}
+          />
+          {error && <p className="mt-1.5 text-xs text-destructive">{error}</p>}
+          <div className="mt-2 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={handleCancel}
+              disabled={saving}
+              className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-medium transition hover:bg-muted disabled:opacity-50"
+            >
+              <X className="h-3 w-3" />キャンセル
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+              className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
+            >
+              {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+              {saving ? "保存中…" : "保存"}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className={hasPrefix ? "rounded-b-lg border border-t-0" : "rounded-lg border"}>
+          <pre className="whitespace-pre-wrap p-3 font-mono text-xs leading-5 text-foreground/80 min-h-[80px]">{text || "（未設定）"}</pre>
+          {saved && (
+            <p className="border-t px-3 py-2 flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
+              <Check className="h-3.5 w-3.5" />保存しました
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -224,8 +207,6 @@ export function AdminHistoricalPersona({ existing }: { existing: SpecialPersonaR
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [generatedPrompt, setGeneratedPrompt] = useState("");
   const [generatedId, setGeneratedId] = useState<string | null>(null);
-  const [promptSaving, setPromptSaving] = useState(false);
-  const [promptMsg, setPromptMsg] = useState("");
   const [showPermissionModal, setShowPermissionModal] = useState(false);
 
   const create = useCallback(async (permissionConfirmed = false) => {
@@ -234,7 +215,6 @@ export function AdminHistoricalPersona({ existing }: { existing: SpecialPersonaR
     setResult(null);
     setGeneratedId(null);
     setGeneratedPrompt("");
-    setPromptMsg("");
     const res = await createSpecialPersona(name.trim(), permissionConfirmed, description.trim() || undefined);
     setResult(res);
     setLoading(false);
@@ -252,17 +232,6 @@ export function AdminHistoricalPersona({ existing }: { existing: SpecialPersonaR
       setShowPermissionModal(true);
     }
   }, [name, description, router]);
-
-  async function saveGeneratedPrompt() {
-    if (!generatedId) return;
-    setPromptSaving(true);
-    setPromptMsg("");
-    const fullPrompt = PROMPT_PREFIX + generatedPrompt;
-    const res = await updateSpecialPersonaPrompt(generatedId, fullPrompt);
-    setPromptSaving(false);
-    setPromptMsg(res.ok ? "保存しました" : (res.error ?? "保存に失敗しました"));
-    if (res.ok) router.refresh();
-  }
 
   const displayName = name.trim() ? (name.trim().startsWith("AI") ? name.trim() : `AI${name.trim()}`) : "";
 
@@ -327,9 +296,9 @@ export function AdminHistoricalPersona({ existing }: { existing: SpecialPersonaR
                   </div>
                 </div>
                 {generatedId && (
-                  <div className="mt-3 space-y-2">
-                    <p className="text-xs font-bold">システムプロンプト</p>
-                    <PromptCodeEditor personaId={generatedId} initialPrompt={PROMPT_PREFIX + generatedPrompt} />
+                  <div className="mt-3">
+                    <p className="text-xs font-bold mb-1">システムプロンプト</p>
+                    <PromptEditor personaId={generatedId} initialPrompt={PROMPT_PREFIX + generatedPrompt} />
                   </div>
                 )}
               </>
@@ -385,7 +354,7 @@ export function AdminHistoricalPersona({ existing }: { existing: SpecialPersonaR
                 {expandedId === p.id && (
                   <div className="border-t px-3 py-2.5">
                     <p className="mb-1 text-xs font-bold">システムプロンプト</p>
-                    <PromptCodeEditor personaId={p.id} initialPrompt={p.personaPrompt} />
+                    <PromptEditor personaId={p.id} initialPrompt={p.personaPrompt} />
                   </div>
                 )}
               </li>

@@ -13,7 +13,7 @@ export type ArticleForList = {
   id: string;
   title: string;
   excerpt: string;
-  image: string;
+  image: string | null;
   category: string;
   tags: string[];
   date: string;
@@ -42,7 +42,7 @@ export default async function ArticlesPage() {
     id: post.id,
     title: translatedTitles[i],
     excerpt: translatedExcerpts[i],
-    image: post.thumbnail_url || "https://placehold.co/400x250/e0f2fe/0369a1?text=Article",
+    image: post.thumbnail_url ?? null,
     category: post.category || "未分類",
     tags: post.tags ?? [],
     date: post.created_at.toISOString().split("T")[0],
