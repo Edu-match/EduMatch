@@ -484,6 +484,7 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [contextItems, setContextItems] = useState<ContextItem[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [viewHistory, setViewHistory] = useState<RecentViewItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [pendingHistorySelection, setPendingHistorySelection] = useState<string | null>(null);
@@ -560,7 +561,8 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
           setHasAgreed(false);
         }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setIsAuthLoading(false));
   }, []);
 
   useEffect(() => {
@@ -1305,8 +1307,17 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
         </div>
       </div>
 
+      {/* ---- Auth Loading ---- */}
+      {view === "chat" && isAuthLoading && (
+        <div className="flex-1 flex flex-col items-center justify-center px-6 py-8">
+          <div className="h-12 w-12 rounded-full bg-muted animate-pulse mb-4" />
+          <div className="h-4 w-48 bg-muted animate-pulse rounded mb-2" />
+          <div className="h-4 w-32 bg-muted animate-pulse rounded" />
+        </div>
+      )}
+
       {/* ---- Unauthenticated ---- */}
-      {view === "chat" && !userId && (
+      {view === "chat" && !userId && !isAuthLoading && (
         <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 text-center min-h-0">
           <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 mb-4">
             <Bot className="h-6 w-6 text-primary" />

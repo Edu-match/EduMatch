@@ -181,7 +181,7 @@ export default async function HomePage() {
           {/* ============ サイドバー ============ */}
           <aside className="min-w-0 space-y-8 lg:col-span-4">
             {/* 議員会館チケット（コンパクト告知） */}
-            <Reveal>
+            <Reveal variant="fade-in">
               <Link
                 href="/forum/kaikan"
                 className="card-lift group flex items-center gap-3.5 rounded-2xl border border-primary/25 bg-accent/60 p-4"
@@ -199,7 +199,7 @@ export default async function HomePage() {
 
             {/* 人気記事ランキング */}
             {popularPosts.length > 0 && (
-              <Reveal delay={80}>
+              <Reveal variant="fade-in" delay={80}>
                 <section className="rounded-2xl border border-border/60 p-5">
                   <h2 className="mb-4 flex items-center gap-2 text-base font-bold tracking-tight">
                     <TrendingUp className="h-4 w-4 text-primary" />
@@ -228,7 +228,7 @@ export default async function HomePage() {
             )}
 
             {/* ひろばの声（ライブ感） */}
-            <Reveal delay={140}>
+            <Reveal variant="fade-in" delay={140}>
               <section className="rounded-2xl border border-border/60 p-5">
                 <h2 className="live-dot mb-4 flex items-center gap-2 text-base font-bold tracking-tight">
                   {" "}ひろばの声
@@ -259,7 +259,7 @@ export default async function HomePage() {
             </Reveal>
 
             {/* イベント */}
-            <Reveal delay={200}>
+            <Reveal variant="fade-in" delay={200}>
               <section className="rounded-2xl border border-border/60 p-5">
                 <h2 className="mb-4 flex items-center gap-2 text-base font-bold tracking-tight">
                   <Calendar className="h-4 w-4 text-primary" />
@@ -344,7 +344,7 @@ export default async function HomePage() {
       {/* ============ 教育のひろば バンド ============ */}
       <section className="border-t border-border/60">
         <div className="container py-14">
-          <Reveal>
+          <Reveal variant="scale-up">
             <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary to-[oklch(0.45_0.17_275)] px-8 py-12 text-white sm:px-12">
               <div
                 className="pointer-events-none absolute inset-0 opacity-40"

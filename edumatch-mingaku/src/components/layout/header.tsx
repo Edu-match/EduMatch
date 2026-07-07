@@ -52,6 +52,7 @@ export function Header() {
   const [userName, setUserName] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [notifications, setNotifications] = useState<{
     list: {
       id: string;
@@ -76,17 +77,18 @@ export function Header() {
       } = await supabase.auth.getUser();
       setIsAuthenticated(!!user);
       setUserEmail(user?.email || null);
-      setUserName(user?.user_metadata?.name || null);
 
-      // ユーザーのroleを取得（API経由でPrismaから取得。Supabase RLSの影響を受けない）
       if (user) {
         try {
           const res = await fetch("/api/auth/me", { credentials: "include" });
           const data = await res.json();
           setUserRole(data?.profile?.role || null);
-          if (data?.profile?.name) setUserName(data.profile.name);
+          setUserName(data?.profile?.name || user?.user_metadata?.name || null);
         } catch {
           setUserRole(null);
+          setUserName(user?.user_metadata?.name || null);
+        } finally {
+          setIsProfileLoading(false);
         }
 
         try {
@@ -101,7 +103,9 @@ export function Header() {
           setNotifications({ list: [], unreadCount: 0 });
         }
       } else {
+        setUserName(null);
         setUserRole(null);
+        setIsProfileLoading(false);
         setNotifications({ list: [], unreadCount: 0 });
       }
 
@@ -329,7 +333,7 @@ export function Header() {
           )}
           
           <div className="flex shrink-0 items-center gap-1">
-          {isLoading ? (
+          {(isLoading || isProfileLoading) ? (
             <div className="h-9 w-20 animate-pulse rounded-md bg-muted" />
           ) : isAuthenticated ? (
             /* ログイン時: ユーザーメニュー */
@@ -566,8 +570,14 @@ export function Header() {
               </Link>
 
               <div className="border-t pt-4 mt-4">
-                {isLoading ? (
-                  <div className="text-sm text-muted-foreground">{tc("loading")}</div>
+                {(isLoading || isProfileLoading) ? (
+                  <div className="flex items-center gap-3 p-2 bg-muted/50 rounded-lg mb-3">
+                    <div className="w-10 h-10 rounded-full bg-muted animate-pulse flex-shrink-0" />
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <div className="h-4 w-24 bg-muted animate-pulse rounded" />
+                      <div className="h-3 w-32 bg-muted animate-pulse rounded" />
+                    </div>
+                  </div>
                 ) : isAuthenticated ? (
                   <div>
                     <div className="flex items-center gap-3 p-2 bg-muted/50 rounded-lg mb-3">

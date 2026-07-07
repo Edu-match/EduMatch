@@ -3,19 +3,24 @@
 import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 
+type RevealVariant = "fade-up" | "fade-in" | "fade-left" | "fade-right" | "scale-up" | "blur-in";
+
 /**
  * スクロールリビール。ビューポートに入ったら .is-visible を付与して
- * globals.css の .reveal トランジションを発火させる（setState不使用でチラつきなし）。
+ * globals.css のトランジションを発火させる（setState不使用でチラつきなし）。
  */
 export function Reveal({
   children,
   className,
   delay = 0,
+  variant = "fade-up",
 }: {
   children: React.ReactNode;
   className?: string;
   /** 発火の遅延(ms)。カードのスタッガーに使う */
   delay?: number;
+  /** アニメーションバリアント */
+  variant?: RevealVariant;
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -41,10 +46,12 @@ export function Reveal({
     return () => io.disconnect();
   }, []);
 
+  const revealClass = variant === "fade-up" ? "reveal" : `reveal--${variant}`;
+
   return (
     <div
       ref={ref}
-      className={cn("reveal", className)}
+      className={cn(revealClass, className)}
       style={delay ? ({ "--reveal-delay": `${delay}ms` } as React.CSSProperties) : undefined}
     >
       {children}

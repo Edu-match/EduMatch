@@ -13,6 +13,7 @@ import { Pagination } from "@/components/ui/pagination";
 import { Search, ExternalLink } from "lucide-react";
 import { AddToRequestListButton } from "@/components/request-list/add-to-request-list-button";
 import type { ServiceForList } from "./page";
+import { Reveal } from "@/components/home/reveal";
 import { isFreeServiceSortOrder } from "@/lib/service-material-request";
 import { ServiceCategoryBadges } from "@/components/services/service-category-badges";
 
@@ -90,6 +91,7 @@ export function ServicesClient({
 
       <div className="container py-8">
         {/* 検索・フィルターエリア */}
+        <Reveal variant="fade-in">
         <Card className="mb-6 shadow-lg border-2">
           <CardContent className="p-4 md:p-6">
             <div className="space-y-4">
@@ -150,6 +152,7 @@ export function ServicesClient({
             </div>
           </CardContent>
         </Card>
+        </Reveal>
 
         {/* ページネーション（上部） */}
         <Pagination
@@ -163,12 +166,11 @@ export function ServicesClient({
         {/* サービス一覧グリッド */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6 mb-8">
           {paginatedServices.map((service, index) => (
+            <Reveal key={service.id} delay={index * 50} className="h-full">
             <Link
-              key={service.id}
               href={`/services/${service.id}`}
               prefetch={false}
               className="group block h-full"
-              style={{ animationDelay: `${index * 0.05}s` }}
             >
               <Card className="h-full overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 border-2 hover:border-primary/50 bg-card">
                 {/* 画像エリア */}
@@ -246,6 +248,7 @@ export function ServicesClient({
                 </CardContent>
               </Card>
             </Link>
+            </Reveal>
           ))}
         </div>
 

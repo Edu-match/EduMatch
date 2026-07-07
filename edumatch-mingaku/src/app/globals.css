@@ -122,6 +122,7 @@
   }
   html {
     overflow-x: hidden;
+    scroll-behavior: smooth;
   }
   body {
     @apply bg-background text-foreground;
@@ -148,10 +149,13 @@
   /* 上品なカードホバー（浮き上がり） */
   .card-lift {
     @apply transition-all duration-300;
+    will-change: transform, box-shadow;
   }
   .card-lift:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 32px -12px oklch(0.2 0.02 260 / 0.18);
+    transform: translateY(-3px);
+    box-shadow:
+      0 16px 40px -12px oklch(0.2 0.02 260 / 0.15),
+      0 4px 12px -4px oklch(0.2 0.02 260 / 0.08);
   }
   /* ホバーで左から伸びる下線（見出しリンク用） */
   .link-underline {
@@ -196,6 +200,59 @@
   transform: none;
 }
 
+/* リビールバリアント（Apple風の多方向アニメーション） */
+.reveal--fade-in {
+  opacity: 0;
+  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.reveal--fade-in.is-visible { opacity: 1; }
+
+.reveal--fade-left {
+  opacity: 0;
+  transform: translateX(24px);
+  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.reveal--fade-left.is-visible { opacity: 1; transform: none; }
+
+.reveal--fade-right {
+  opacity: 0;
+  transform: translateX(-24px);
+  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.reveal--fade-right.is-visible { opacity: 1; transform: none; }
+
+.reveal--scale-up {
+  opacity: 0;
+  transform: scale(0.96);
+  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.reveal--scale-up.is-visible { opacity: 1; transform: none; }
+
+.reveal--blur-in {
+  opacity: 0;
+  filter: blur(8px);
+  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.reveal--blur-in.is-visible { opacity: 1; filter: blur(0); }
+
+/* ページ遷移のサブトルフェード */
+@keyframes em-page-enter {
+  from { opacity: 0.92; }
+  to { opacity: 1; }
+}
+main {
+  animation: em-page-enter 0.3s ease-out;
+}
+
 /* ニュースティッカー（無限ループ・ホバーで一時停止） */
 @keyframes em-ticker {
   from { transform: translateX(0); }
@@ -228,10 +285,18 @@
 /* 動きを抑えたい設定のユーザーにはアニメーションを無効化 */
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-up { animation: none; }
-  .reveal { opacity: 1; transform: none; transition: none; }
+  .reveal,
+  .reveal--fade-in,
+  .reveal--fade-left,
+  .reveal--fade-right,
+  .reveal--scale-up,
+  .reveal--blur-in {
+    opacity: 1; transform: none; filter: none; transition: none;
+  }
   .ticker-track { animation: none; }
   .live-dot::before { animation: none; }
   .card-lift, .card-lift:hover { transform: none; }
+  main { animation: none; }
 }
 
 /* AI検定セクション用ブルーテーマ（元のAI検定アプリの配色を再現） */
