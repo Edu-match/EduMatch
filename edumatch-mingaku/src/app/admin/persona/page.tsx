@@ -1,7 +1,6 @@
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin, getCurrentProfile } from "@/lib/auth";
-import { PersonaCreator } from "@/components/persona/persona-creator";
 import { AdminPersonaReplyTool, type ReplyTargetPost } from "./admin-persona-reply-tool";
 import { AdminHistoricalPersona, type SpecialPersonaRow } from "./admin-historical-persona";
 import { AdminMyPersonaPrompt } from "./admin-my-persona-prompt";
@@ -88,14 +87,6 @@ export default async function AdminPersonaPage() {
           <p className="mb-3 rounded-lg border bg-muted/30 p-3 text-sm text-muted-foreground">まだペルソナがありません。下のフォームで作成してください。</p>
         )}
 
-        <PersonaCreator
-          defaults={{
-            name: profile?.name ?? "",
-            bio: profile?.bio ?? undefined,
-            interests: profile?.interests ?? [],
-          }}
-          currentAvatarUrl={persona?.avatar_url ?? null}
-        />
       </section>
 
       {/* 投稿に返信 */}
@@ -105,13 +96,8 @@ export default async function AdminPersonaPage() {
         <AdminPersonaReplyTool posts={posts} hasPersona={!!persona?.persona_prompt} />
       </section>
 
-      {/* 特別AIペルソナ */}
+      {/* AIペルソナ作成・管理 */}
       <section className="mt-8">
-        <h2 className="mb-1 text-sm font-bold">AIペルソナを作成</h2>
-        <p className="mb-3 text-xs text-muted-foreground">
-          名前と任意の説明からAIペルソナとオリジナルイラストを生成します。説明が空の場合はネット検索で自動調査します。
-          <br />※法的チェックはAIによる参考判定です。最終的な公開可否は運営でご判断ください。
-        </p>
         <AdminHistoricalPersona existing={specialPersonas} />
       </section>
     </main>
