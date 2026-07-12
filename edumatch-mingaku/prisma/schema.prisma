@@ -758,13 +758,27 @@ model KaikanInviteCode {
   code        String    @unique
   /// 宛先名などのメモ（任意・管理用）
   note        String    @default("")
-  /// 使用したアカウント（Profile.id）。未使用は NULL。
+  /// @deprecated 旧: 単一ユーザー使用。新ロジックは redemptions テーブルを参照。
   redeemed_by String?   @db.Uuid
   redeemed_at DateTime? @db.Timestamptz(6)
   created_at  DateTime  @default(now()) @db.Timestamptz(6)
+  redemptions KaikanInviteRedemption[]
 
   @@index([redeemed_by])
   @@map("kaikan_invite_codes")
+}
+
+model KaikanInviteRedemption {
+  id          String   @id @default(uuid()) @db.Uuid
+  code_id     String   @db.Uuid
+  profile_id  String   @db.Uuid
+  redeemed_at DateTime @default(now()) @db.Timestamptz(6)
+  code        KaikanInviteCode @relation(fields: [code_id], references: [id], onDelete: Cascade)
+
+  @@unique([code_id, profile_id])
+  @@index([profile_id])
+  @@index([code_id])
+  @@map("kaikan_invite_redemptions")
 }
 
 /// Interop特設ページのサイト設定（テキスト・テーマ等のkey-value）

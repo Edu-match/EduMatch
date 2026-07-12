@@ -228,6 +228,58 @@ export async function updateMyPersonaPrompt(
   return { ok: true };
 }
 
+/** 管理者：自分ペルソナの自動返信の有効/無効を切り替える。 */
+export async function setMyPersonaActive(
+  active: boolean,
+): Promise<{ ok: boolean; error?: string }> {
+  await requireAdmin();
+  const profile = await getCurrentProfile();
+  if (!profile) return { ok: false, error: "管理者のみ利用できます" };
+  try {
+    await prisma.userAiPersona.update({
+      where: { profile_id: profile.id },
+      data: { is_active: active },
+    });
+  } catch {
+    return { ok: false, error: "更新に失敗しました" };
+  }
+  revalidatePath("/admin/persona");
+  return { ok: true };
+}
+
+/**
+ * テスト会話：サンプル投稿文に対し、自分ペルソナの声で返信を生成する（フォーラムには投稿しない）。
+ * プロンプト調整後の「聞こえ方」を確認する用途。
+ */
+export async function generatePersonaTestReply(
+  sampleBody: string,
+): Promise<{ ok: boolean; text?: string; error?: string }> {
+  await requireAdmin();
+  const profile = await getCurrentProfile();
+  if (!profile) return { ok: false, error: "管理者のみ利用できます" };
+
+  const body = (sampleBody || "").trim();
+  if (!body) return { ok: false, error: "テスト投稿文を入力してください" };
+  if (body.length > 2000) return { ok: false, error: "テスト投稿文は2000文字以内にしてください" };
+
+  const persona = await prisma.userAiPersona.findUnique({ where: { profile_id: profile.id } });
+  if (!persona || !persona.persona_prompt) {
+    return { ok: false, error: "先にあなたのAIペルソナを作成してください" };
+  }
+
+  const text = await generatePersonaReplyText({
+    personaPrompt: persona.persona_prompt,
+    valuesText: persona.values_text,
+    expertise: persona.expertise,
+    displayName: persona.display_name,
+    postBody: body,
+    subCategoryName: "テスト",
+    categoryName: "テスト会話",
+  });
+  if (!text) return { ok: false, error: "生成に失敗しました（OPENAI_API_KEY を確認）" };
+  return { ok: true, text };
+}
+
 /** 投稿IDから、現在の管理者の自分ペルソナで返信ドラフトを生成（投稿はしない）。 */
 export async function generatePersonaReplyDraftForPost(
   postId: string,

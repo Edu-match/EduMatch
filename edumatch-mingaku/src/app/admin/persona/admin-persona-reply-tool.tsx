@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Loader2, Sparkles, Send, ChevronDown, ChevronRight, Search, Check } from "lucide-react";
+import { Loader2, Sparkles, Send, ChevronDown, ChevronRight, Search, Check, X } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { generatePersonaReplyDraftForPost, postPersonaReplyToPost } from "@/app/_actions/persona-admin";
 
 export type ReplyTargetPost = {
@@ -97,24 +98,49 @@ export function AdminPersonaReplyTool({ posts, hasPersona }: { posts: ReplyTarge
               {p.replyCount > 0 && <span>・返信 {p.replyCount}</span>}
               {active && <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">選択中</span>}
             </span>
-            <span className="mt-0.5 block break-words text-sm line-clamp-2">{p.body}</span>
+            {!active && <span className="mt-0.5 block break-words text-sm line-clamp-2">{p.body}</span>}
           </span>
         </button>
 
         {active && (
-          <div className="mt-3 space-y-2 border-t pt-3">
-            <button type="button" onClick={generate} disabled={generating} className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground transition hover:opacity-90 disabled:opacity-50">
-              {generating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-              {draft ? "作り直す" : "AIで返信を生成"}
-            </button>
-            {(draft || generating) && (
+          <div className="mt-2 space-y-3 border-t pt-3">
+            {/* 投稿プレビュー（全文） */}
+            <div className="rounded-lg border bg-muted/40 p-3">
+              <div className="mb-1.5 flex flex-wrap items-center justify-between gap-1 text-[11px] text-muted-foreground">
+                <span className="font-bold text-foreground/70">{p.categoryName} &gt; {p.subCategoryName}</span>
+                <span>
+                  {new Date(p.createdAt).toLocaleDateString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                </span>
+              </div>
+              <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{p.body}</p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={generate} disabled={generating || posting} className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground transition hover:opacity-90 disabled:opacity-50">
+                {generating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                {generating ? "生成中…" : draft ? "作り直す" : "AIで返信を生成"}
+              </button>
+              <button type="button" onClick={() => select(p.id)} disabled={generating || posting} className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-muted disabled:opacity-50">
+                <X className="h-3 w-3" />選択解除
+              </button>
+            </div>
+
+            {generating ? (
+              /* 生成中スケルトン */
+              <div className="space-y-2 rounded-md border border-input bg-background px-3 py-3">
+                <Skeleton className="h-3.5 w-full" />
+                <Skeleton className="h-3.5 w-11/12" />
+                <Skeleton className="h-3.5 w-4/5" />
+                <Skeleton className="h-3.5 w-2/3" />
+              </div>
+            ) : draft ? (
               <>
-                <textarea value={draft} onChange={(e) => setDraft(e.target.value)} rows={4} placeholder={generating ? "生成中…" : "返信本文（編集できます）"} className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm" />
+                <textarea value={draft} onChange={(e) => setDraft(e.target.value)} rows={5} placeholder="返信本文（編集できます）" className="w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
                 <button type="button" onClick={post} disabled={posting || !draft.trim()} className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white transition hover:opacity-90 disabled:opacity-50">
                   {posting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />} この内容で返信を投稿
                 </button>
               </>
-            )}
+            ) : null}
             {error && <p className="text-xs text-red-600">{error}</p>}
           </div>
         )}

@@ -12,10 +12,12 @@ function fmtDate(d: Date | null): string {
   return new Intl.DateTimeFormat("ja-JP", { month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit" }).format(d);
 }
 
-/** 受付番号：tokenの先頭8桁を 4-4 で。 */
+/** 受付番号：tokenから数字8桁を生成し 4-4 で表示。 */
 function receiptNo(token: string): string {
-  const s = token.slice(0, 8).toUpperCase();
-  return `${s.slice(0, 4)}-${s.slice(4, 8)}`;
+  const hex = token.replace(/-/g, "").slice(0, 16).toLowerCase();
+  const n = BigInt("0x" + hex) % BigInt(10 ** 8);
+  const s = n.toString().padStart(8, "0");
+  return `${s.slice(0, 4)}-${s.slice(4)}`;
 }
 
 export default async function KaikanTicketPage({ params }: { params: Promise<{ token: string }> }) {

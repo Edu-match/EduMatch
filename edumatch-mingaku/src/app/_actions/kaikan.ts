@@ -1,10 +1,80 @@
 "use server";
 
-import { randomUUID } from "crypto";
+import { randomUUID, randomInt } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentProfile, requireAdmin } from "@/lib/auth";
+
+// 招待コード用の文字集合（紛らわしい O/0/I/1/L を除外）。
+const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+
+function generateInviteCode(len = 8): string {
+  let s = "";
+  for (let i = 0; i < len; i++) s += CODE_ALPHABET[randomInt(0, CODE_ALPHABET.length)];
+  return s;
+}
+
+/** 入力コードを正規化（英数のみ・大文字）。表示はハイフン入りでも入力は自由。 */
+function normalizeCode(raw: string): string {
+  return raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+/** 2つの時間帯が重なるか（両方に開始・終了がある場合のみ判定）。 */
+function timeOverlaps(
+  aStart: Date | null, aEnd: Date | null,
+  bStart: Date | null, bEnd: Date | null,
+): boolean {
+  if (!aStart || !aEnd || !bStart || !bEnd) return false;
+  return aStart.getTime() < bEnd.getTime() && bStart.getTime() < aEnd.getTime();
+}
+
+/** 指定アカウントが招待コードを使用済み（＝申込資格あり）か。 */
+export async function hasRedeemedInvite(profileId: string): Promise<boolean> {
+  const r = await prisma.kaikanInviteRedemption.findFirst({ where: { profile_id: profileId }, select: { id: true } });
+  return !!r;
+}
+
+/** 招待コードを入力して申込資格を有効化する（共通コード対応）。 */
+export async function redeemInviteCode(formData: FormData): Promise<{ ok: boolean; error?: string }> {
+  const code = normalizeCode(String(formData.get("code") || ""));
+  if (!code) return { ok: false, error: "招待コードを入力してください" };
+
+  const profile = await getCurrentProfile();
+  if (!profile) return { ok: false, error: "ログインが必要です" };
+
+  if (await hasRedeemedInvite(profile.id)) {
+    revalidatePath("/forum/kaikan");
+    return { ok: true };
+  }
+
+  const invite = await prisma.kaikanInviteCode.findUnique({ where: { code } });
+  if (!invite) return { ok: false, error: "招待コードが正しくありません。メールに記載のコードをご確認ください。" };
+
+  await prisma.kaikanInviteRedemption.upsert({
+    where: { code_id_profile_id: { code_id: invite.id, profile_id: profile.id } },
+    create: { code_id: invite.id, profile_id: profile.id },
+    update: {},
+  });
+  revalidatePath("/forum/kaikan");
+  return { ok: true };
+}
+
+/** 管理者：招待コードを一括生成する。 */
+export async function generateKaikanInviteCodes(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const countRaw = parseInt(String(formData.get("count") || ""), 10);
+  const count = Math.max(1, Math.min(500, Number.isNaN(countRaw) ? 10 : countRaw));
+  const note = String(formData.get("note") || "").trim();
+
+  const codes = new Set<string>();
+  while (codes.size < count) codes.add(generateInviteCode());
+  await prisma.kaikanInviteCode.createMany({
+    data: [...codes].map((code) => ({ code, note })),
+    skipDuplicates: true,
+  });
+  revalidatePath("/admin/kaikan");
+}
 
 /** ログイン中アカウントでコンテンツに申込→電子チケット(QR)を発行。氏名/メールはアカウント情報を使用。 */
 export async function applyForKaikanContent(formData: FormData) {

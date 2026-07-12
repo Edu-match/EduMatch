@@ -202,7 +202,7 @@ export default async function ArticleDetailPage({
         )}
 
         {/* 本文 */}
-        <div className="prose prose-slate max-w-none mb-8">
+        <div className="prose prose-lg prose-slate max-w-none mb-8">
           {isImportedContent(post.content) ? (
             (() => {
               const parsed = parseImportedContent(post.content);
