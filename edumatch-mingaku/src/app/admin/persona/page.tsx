@@ -1,9 +1,10 @@
-import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin, getCurrentProfile } from "@/lib/auth";
 import { AdminPersonaReplyTool, type ReplyTargetPost } from "./admin-persona-reply-tool";
 import { AdminHistoricalPersona, type SpecialPersonaRow } from "./admin-historical-persona";
 import { AdminMyPersonaPrompt } from "./admin-my-persona-prompt";
+import { AdminMyPersonaCard } from "./admin-persona-card";
+import { AdminPersonaTestChat } from "./admin-persona-test-chat";
 
 export const dynamic = "force-dynamic";
 
@@ -14,9 +15,16 @@ export default async function AdminPersonaPage() {
   const persona = profile
     ? await prisma.userAiPersona.findUnique({
         where: { profile_id: profile.id },
-        select: { display_name: true, avatar_url: true, expertise: true, values_text: true, persona_prompt: true, is_active: true },
+        select: { display_name: true, avatar_url: true, expertise: true, values_text: true, persona_prompt: true, is_active: true, last_replied_at: true },
       }).catch(() => null)
     : null;
+
+  // ペルソナの返信数（フォーラム上でAIペルソナとして投稿した返信）
+  const personaReplyCount = profile && persona
+    ? await prisma.forumReply.count({
+        where: { author_id: profile.id, author_role: "AIペルソナ" },
+      }).catch(() => 0)
+    : 0;
 
   // 井戸端会議の投稿（forum_posts）。一般カテゴリ→部屋(ルーム)→投稿 の構造。
   const rawPosts = await prisma.forumPost.findMany({
@@ -66,22 +74,25 @@ export default async function AdminPersonaPage() {
         <h2 className="mb-2 text-sm font-bold">あなたのAIペルソナ</h2>
         {persona?.persona_prompt ? (
           <>
-            <div className="mb-3 flex items-center gap-3 rounded-xl border bg-card p-3">
-              {persona.avatar_url ? (
-                <Image src={persona.avatar_url} alt="" width={56} height={56} className="h-14 w-14 rounded-full object-cover" unoptimized />
-              ) : (
-                <div className="h-14 w-14 rounded-full bg-muted" />
-              )}
-              <div className="min-w-0 text-xs text-muted-foreground">
-                <p className="text-sm font-bold text-foreground">{persona.display_name.startsWith("AI") ? persona.display_name : `AI${persona.display_name}`}</p>
-                {persona.expertise.length > 0 && <p className="truncate">得意分野: {persona.expertise.join("、")}</p>}
-                <p className={persona.is_active ? "text-emerald-600" : "text-amber-600"}>
-                  自動返信: {persona.is_active ? "有効" : "オフ（フォーラム管理で有効化できます）"}
-                </p>
-              </div>
-            </div>
+            {/* ペルソナカード（アバター・専門タグ・自動返信トグル・統計） */}
+            <AdminMyPersonaCard
+              persona={{
+                displayName: persona.display_name,
+                avatarUrl: persona.avatar_url,
+                expertise: persona.expertise,
+                valuesText: persona.values_text,
+                isActive: persona.is_active,
+                replyCount: personaReplyCount,
+                lastRepliedAt: persona.last_replied_at?.toISOString() ?? null,
+              }}
+            />
             {/* システムプロンプト表示・編集 */}
             <AdminMyPersonaPrompt initialPrompt={persona.persona_prompt} />
+            {/* テスト会話（フォーラムには投稿されない） */}
+            <AdminPersonaTestChat
+              personaName={persona.display_name.startsWith("AI") ? persona.display_name : `AI${persona.display_name}`}
+              personaAvatarUrl={persona.avatar_url}
+            />
           </>
         ) : (
           <p className="mb-3 rounded-lg border bg-muted/30 p-3 text-sm text-muted-foreground">まだペルソナがありません。下のフォームで作成してください。</p>

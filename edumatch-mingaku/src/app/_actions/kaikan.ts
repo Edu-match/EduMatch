@@ -31,11 +31,11 @@ function timeOverlaps(
 
 /** 指定アカウントが招待コードを使用済み（＝申込資格あり）か。 */
 export async function hasRedeemedInvite(profileId: string): Promise<boolean> {
-  const c = await prisma.kaikanInviteCode.findFirst({ where: { redeemed_by: profileId }, select: { id: true } });
-  return !!c;
+  const r = await prisma.kaikanInviteRedemption.findFirst({ where: { profile_id: profileId }, select: { id: true } });
+  return !!r;
 }
 
-/** 招待コードを入力して申込資格を有効化する（申込者ごとの使い捨て）。 */
+/** 招待コードを入力して申込資格を有効化する（共通コード対応）。 */
 export async function redeemInviteCode(formData: FormData): Promise<{ ok: boolean; error?: string }> {
   const code = normalizeCode(String(formData.get("code") || ""));
   if (!code) return { ok: false, error: "招待コードを入力してください" };
@@ -43,7 +43,6 @@ export async function redeemInviteCode(formData: FormData): Promise<{ ok: boolea
   const profile = await getCurrentProfile();
   if (!profile) return { ok: false, error: "ログインが必要です" };
 
-  // 既に認証済みなら成功扱い。
   if (await hasRedeemedInvite(profile.id)) {
     revalidatePath("/forum/kaikan");
     return { ok: true };
@@ -51,13 +50,11 @@ export async function redeemInviteCode(formData: FormData): Promise<{ ok: boolea
 
   const invite = await prisma.kaikanInviteCode.findUnique({ where: { code } });
   if (!invite) return { ok: false, error: "招待コードが正しくありません。メールに記載のコードをご確認ください。" };
-  if (invite.redeemed_by && invite.redeemed_by !== profile.id) {
-    return { ok: false, error: "この招待コードは既に使用されています。" };
-  }
 
-  await prisma.kaikanInviteCode.update({
-    where: { id: invite.id },
-    data: { redeemed_by: profile.id, redeemed_at: new Date() },
+  await prisma.kaikanInviteRedemption.upsert({
+    where: { code_id_profile_id: { code_id: invite.id, profile_id: profile.id } },
+    create: { code_id: invite.id, profile_id: profile.id },
+    update: {},
   });
   revalidatePath("/forum/kaikan");
   return { ok: true };

@@ -20,12 +20,12 @@ export default async function AdminKaikanPage({ searchParams }: { searchParams: 
   const inviteCodes = isInvites ? await prisma.kaikanInviteCode.findMany({
     orderBy: { created_at: "desc" },
     take: 1000,
-    select: { id: true, code: true, note: true, redeemed_by: true, redeemed_at: true, created_at: true },
+    select: { id: true, code: true, note: true, redeemed_by: true, redeemed_at: true, created_at: true, _count: { select: { redemptions: true } } },
   }) : [];
   const inviteStats = isInvites ? {
     total: await prisma.kaikanInviteCode.count(),
-    used: await prisma.kaikanInviteCode.count({ where: { redeemed_by: { not: null } } }),
-  } : { total: 0, used: 0 };
+    usedCount: await prisma.kaikanInviteRedemption.count(),
+  } : { total: 0, usedCount: 0 };
 
   const contents = (isCheckin || isInvites) ? [] : await prisma.kaikanContent.findMany({
     orderBy: [{ sort_order: "asc" }, { created_at: "desc" }],
@@ -62,7 +62,7 @@ export default async function AdminKaikanPage({ searchParams }: { searchParams: 
           <div className="rounded-xl border bg-background p-5">
             <h2 className="mb-1 text-sm font-bold">招待コードを生成</h2>
             <p className="mb-3 text-xs text-muted-foreground">
-              Peatixで全体申込した方へ手動メールで配布する使い捨てコードです。生成後、下の一覧からコピーしてご利用ください（1コード＝1人）。
+              イベント参加者に配布する共通コードです。1つのコードを複数人で使用できます。
             </p>
             <form action={generateKaikanInviteCodes} className="flex flex-wrap items-end gap-2">
               <label className="text-sm">
@@ -78,7 +78,7 @@ export default async function AdminKaikanPage({ searchParams }: { searchParams: 
           </div>
 
           <div className="rounded-xl border bg-background p-5">
-            <h2 className="mb-3 text-sm font-bold">発行済みコード（{inviteStats.used} / {inviteStats.total} 使用済み）</h2>
+            <h2 className="mb-3 text-sm font-bold">発行済みコード（{inviteStats.total}件、合計{inviteStats.usedCount}人使用）</h2>
             {inviteCodes.length === 0 ? (
               <p className="text-sm text-muted-foreground">まだコードがありません。上で生成してください。</p>
             ) : (
@@ -98,8 +98,8 @@ export default async function AdminKaikanPage({ searchParams }: { searchParams: 
                         <td className="py-1.5 pr-3 font-mono font-bold tracking-wider">{c.code}</td>
                         <td className="py-1.5 pr-3 text-muted-foreground">{c.note || "—"}</td>
                         <td className="py-1.5 pr-3">
-                          <span className={c.redeemed_by ? "text-muted-foreground" : "text-emerald-600 font-bold"}>
-                            {c.redeemed_by ? `使用済（${fmtDate(c.redeemed_at)}）` : "未使用"}
+                          <span className={c._count.redemptions > 0 ? "text-muted-foreground" : "text-emerald-600 font-bold"}>
+                            {c._count.redemptions > 0 ? `${c._count.redemptions}人使用` : "未使用"}
                           </span>
                         </td>
                         <td className="py-1.5 text-muted-foreground">{fmtDate(c.created_at)}</td>
