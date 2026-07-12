@@ -7,7 +7,7 @@ import { SafeImage } from "@/components/ui/safe-image";
  * 1件もなければ何も描画しない。
  */
 export async function SponsorSidebarCard() {
-  const ads = await getActiveSponsorAds("HOME_SIDEBAR", 3);
+  const ads = await getActiveSponsorAds("HOME_SIDEBAR", 2);
   if (ads.length === 0) return null;
 
   return (
