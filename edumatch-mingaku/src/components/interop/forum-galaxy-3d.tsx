@@ -136,7 +136,7 @@ function PlanetLabel({ color, emoji, label, total, hover }: { color: string; emo
 
 type GalaxyClock = { orbit: number; moon: number };
 
-function Sun({ label, seg, reduceMotion, onSelect }: { label: string; seg: number; reduceMotion: boolean; onSelect: () => void }) {
+function Sun({ label, seg, reduceMotion, labelScale = 1, onSelect }: { label: string; seg: number; reduceMotion: boolean; labelScale?: number; onSelect: () => void }) {
   const core = useRef<THREE.Mesh>(null);
   const [hover, setHover] = useState(false);
   useFrame(({ clock }) => {
@@ -156,7 +156,7 @@ function Sun({ label, seg, reduceMotion, onSelect }: { label: string; seg: numbe
       </mesh>
       <Atmosphere color="#ffd9a0" radius={3.6} power={2.1} intensity={1.3} />
       <Atmosphere color="#ff9d5c" radius={4.9} power={3.4} intensity={0.9} />
-      <Html center distanceFactor={30} position={[0, 5.3, 0]} zIndexRange={[70, 50]} style={{ pointerEvents: "auto" }}>
+      <Html center distanceFactor={30} position={[0, 5.3, 0]} zIndexRange={[70, 50]} style={{ pointerEvents: "auto", transform: `scale(${labelScale})` }}>
         <button
           type="button"
           onMouseEnter={enter}
@@ -166,13 +166,13 @@ function Sun({ label, seg, reduceMotion, onSelect }: { label: string; seg: numbe
             cursor: "pointer",
             appearance: "none",
             whiteSpace: "nowrap",
-            fontSize: 13,
+            fontSize: 12,
             fontWeight: 800,
             color: "#1a3a5a",
             background: "rgba(255,255,255,0.92)",
             border: "1px solid #ffd9a0cc",
             borderRadius: 999,
-            padding: "5px 14px",
+            padding: "4px 12px",
             boxShadow: "0 2px 14px rgba(0,0,0,0.15)",
           }}
         >
@@ -236,7 +236,7 @@ function Moon({ topic, posts, planetR, index, count, clockRef, seg, showLabel, o
   );
 }
 
-function Planet({ spec, topics, counts, clockRef, seg, focused, anyFocused, positionsRef, reduceMotion, onFocus, onSelectTopic }: {
+function Planet({ spec, topics, counts, clockRef, seg, focused, anyFocused, positionsRef, reduceMotion, labelScale = 1, onFocus, onSelectTopic }: {
   spec: OrbitSpec;
   topics: InteropPriorityTopic[];
   counts: Map<string, number>;
@@ -246,6 +246,7 @@ function Planet({ spec, topics, counts, clockRef, seg, focused, anyFocused, posi
   anyFocused: boolean;
   positionsRef: React.MutableRefObject<Record<string, THREE.Vector3>>;
   reduceMotion: boolean;
+  labelScale?: number;
   onFocus: () => void;
   onSelectTopic: (t: InteropPriorityTopic) => void;
 }) {
@@ -302,7 +303,7 @@ function Planet({ spec, topics, counts, clockRef, seg, focused, anyFocused, posi
         )}
         {/* ラベル */}
         {!dim && (
-          <Html center distanceFactor={focused ? 28 : 42} position={[0, planetR + 1.8, 0]} zIndexRange={[hover || focused ? 55 : 20, 5]} style={{ pointerEvents: "auto" }}>
+          <Html center distanceFactor={focused ? 28 : 42} position={[0, planetR + 1.8, 0]} zIndexRange={[hover || focused ? 55 : 20, 5]} style={{ pointerEvents: "auto", transform: `scale(${labelScale})` }}>
             <button
               type="button"
               onMouseEnter={enter}
@@ -383,6 +384,11 @@ function CameraRig({ focusedMajor, positionsRef, reduceMotion }: {
 
 /* ---------- シーン ---------- */
 
+function useLabelScale(): number {
+  const { size } = useThree();
+  return Math.min(1, size.width / 700);
+}
+
 function Scene({ centerLabel, counts, caps, focusedMajor, onFocusMajor, onSelectCenter, onSelectTopic }: {
   centerLabel: string;
   counts: Map<string, number>;
@@ -393,6 +399,7 @@ function Scene({ centerLabel, counts, caps, focusedMajor, onFocusMajor, onSelect
   onSelectTopic: (t: InteropPriorityTopic) => void;
 }) {
   const { tier, reduceMotion } = caps;
+  const labelScale = useLabelScale();
   const seg = tier === "high" ? 48 : 24;
   const clockRef = useRef<GalaxyClock>({ orbit: 0, moon: 0 });
   const positionsRef = useRef<Record<string, THREE.Vector3>>({});
@@ -424,7 +431,7 @@ function Scene({ centerLabel, counts, caps, focusedMajor, onFocusMajor, onSelect
       {/* 微細な花粉・妖精の塵 */}
       {tier === "high" && <Sparkles count={320} scale={[85, 26, 85]} size={1.8} speed={reduceMotion ? 0 : 0.28} opacity={0.3} color="#ffd700" />}
 
-      <Sun label={centerLabel} seg={seg} reduceMotion={reduceMotion} onSelect={onSelectCenter} />
+      <Sun label={centerLabel} seg={seg} reduceMotion={reduceMotion} labelScale={labelScale} onSelect={onSelectCenter} />
       {ORBITS.map((spec) => (
         <Planet
           key={spec.major}
@@ -437,6 +444,7 @@ function Scene({ centerLabel, counts, caps, focusedMajor, onFocusMajor, onSelect
           anyFocused={focusedMajor !== null}
           positionsRef={positionsRef}
           reduceMotion={reduceMotion}
+          labelScale={labelScale}
           onFocus={() => onFocusMajor(focusedMajor === spec.major ? null : spec.major)}
           onSelectTopic={onSelectTopic}
         />
