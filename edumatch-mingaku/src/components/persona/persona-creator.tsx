@@ -51,7 +51,7 @@ export function PersonaCreator({
   const [interests, setInterests] = useState<string[]>([]);
   const [customInterest, setCustomInterest] = useState("");
   const [jobTitle, setJobTitle] = useState(defaults.role ?? "");
-  const [activities, setActivities] = useState<string[]>(["", "", ""]);
+  const [activities, setActivities] = useState<string[]>([""]);
   const [photo, setPhoto] = useState<string | null>(null);
   const [photoName, setPhotoName] = useState("");
 
@@ -288,18 +288,36 @@ export function PersonaCreator({
           placeholder="肩書き・役割（例：高校教員 / 起業部 顧問）"
           className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
         />
-        <p className="mt-2 text-sm font-medium text-foreground/70">いまの活動（短く・最大3つ）</p>
+        <p className="mt-2 text-sm font-medium text-foreground/70">いまの活動（短く）</p>
         <div className="mt-1 space-y-1.5">
           {activities.map((a, i) => (
-            <input
-              key={i}
-              value={a}
-              onChange={(e) => setActivities((prev) => prev.map((x, j) => (j === i ? e.target.value : x)))}
-              placeholder={i === 0 ? "例：探究学習の授業づくり" : i === 1 ? "例：子ども向けプログラミング教室の運営" : "例：部活動の改革"}
-              maxLength={40}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            />
+            <div key={i} className="flex items-center gap-1.5">
+              <input
+                value={a}
+                onChange={(e) => setActivities((prev) => prev.map((x, j) => (j === i ? e.target.value : x)))}
+                placeholder={i === 0 ? "例：探究学習の授業づくり" : i === 1 ? "例：子ども向けプログラミング教室の運営" : "例：部活動の改革"}
+                maxLength={40}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
+              {activities.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setActivities((prev) => prev.filter((_, j) => j !== i))}
+                  className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  aria-label="削除"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
           ))}
+          <button
+            type="button"
+            onClick={() => setActivities((prev) => [...prev, ""])}
+            className="inline-flex items-center gap-1 rounded-md border border-dashed px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition hover:border-primary/50 hover:bg-primary/5 hover:text-primary"
+          >
+            <Plus className="h-3.5 w-3.5" />活動を追加
+          </button>
         </div>
       </div>
 

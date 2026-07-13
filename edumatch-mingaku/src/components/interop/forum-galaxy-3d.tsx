@@ -131,28 +131,6 @@ function PlanetLabel({ color, emoji, label, total, hover }: { color: string; emo
   );
 }
 
-function MoonLabel({ color, title, posts }: { color: string; title: string; posts: number }) {
-  return (
-    <div
-      style={{
-        ...pillBase,
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        fontSize: 11,
-        padding: "3px 10px",
-        background: "rgba(255,255,255,0.88)",
-        border: `1px solid ${color}bb`,
-      }}
-    >
-      <span>{title}</span>
-      {posts > 0 && (
-        <span style={{ fontSize: 9.5, fontWeight: 800, color: "#0a1024", padding: "0 6px", borderRadius: 999, background: color }}>{posts}</span>
-      )}
-    </div>
-  );
-}
-
 /* ---------- 天体 ---------- */
 
 type GalaxyClock = { orbit: number; moon: number };
@@ -245,9 +223,12 @@ function Moon({ topic, posts, planetR, index, count, clockRef, seg, showLabel, o
         <meshBasicMaterial color={color} toneMapped={false} />
       </mesh>
       <Atmosphere color={color} radius={r * 1.45} power={2.6} intensity={hover ? 1.3 : 0.6} />
-      {visible && (
-        <Html center distanceFactor={16} position={[0, r + 0.9, 0]} zIndexRange={[hover ? 45 : 30, 10]} style={{ pointerEvents: "none" }}>
-          <MoonLabel color={color} title={topic.category} posts={posts} />
+      {hover && (
+        <Html center distanceFactor={16} position={[0, r + 0.9, 0]} zIndexRange={[45, 10]} style={{ pointerEvents: "none" }}>
+          <div style={{ ...pillBase, display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, padding: "3px 10px", background: "rgba(255,255,255,0.88)", border: `1px solid ${color}bb` }}>
+            <span>{topic.category}</span>
+            {posts > 0 && <span style={{ fontSize: 9.5, fontWeight: 800, color: "#0a1024", padding: "0 6px", borderRadius: 999, background: color }}>{posts}</span>}
+          </div>
         </Html>
       )}
     </group>
@@ -320,7 +301,7 @@ function Planet({ spec, topics, counts, clockRef, seg, focused, anyFocused, posi
         )}
         {/* ラベル */}
         {!dim && (
-          <Html center distanceFactor={focused ? 22 : 30} position={[0, planetR + 1.5, 0]} zIndexRange={[hover || focused ? 55 : 20, 5]} style={{ pointerEvents: "auto" }}>
+          <Html center distanceFactor={focused ? 22 : 36} position={[0, planetR + 1.8, 0]} zIndexRange={[hover || focused ? 55 : 20, 5]} style={{ pointerEvents: "auto" }}>
             <button
               type="button"
               onMouseEnter={enter}
@@ -614,6 +595,18 @@ export default function ForumGalaxy3D({ centerLabel, onSelectCenter, onSelectTop
   return (
     <div className="absolute inset-0">
       <div className="absolute inset-0" style={{ background: SPACE_BG }} />
+      {/* 山・自然の背景（2Dビューと統一） */}
+      <svg
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] w-full"
+        viewBox="0 0 100 30"
+        preserveAspectRatio="none"
+        style={{ height: "min(22vh, 200px)" }}
+        aria-hidden
+      >
+        <path d="M0,28 C8,22 15,18 25,20 C35,22 40,15 50,16 C60,17 65,12 75,14 C85,16 92,20 100,18 L100,30 L0,30 Z" fill="rgba(70,140,60,0.70)" />
+        <path d="M0,28 C8,22 15,18 25,20 C35,22 40,15 50,16 C60,17 65,12 75,14 C85,16 92,20 100,18" fill="none" stroke="rgba(120,190,80,0.40)" strokeWidth="0.3" />
+        <path d="M0,30 C10,25 20,23 30,26 C40,29 50,22 60,24 C70,26 80,23 90,25 C95,26 100,28 100,30 Z" fill="rgba(90,160,70,0.50)" />
+      </svg>
       <Canvas
         camera={{ position: CAM_START.toArray() as [number, number, number], fov: 46 }}
         dpr={caps.tier === "high" ? [1, 2] : [1, 1.5]}
@@ -638,9 +631,9 @@ export default function ForumGalaxy3D({ centerLabel, onSelectCenter, onSelectTop
         style={{ background: "radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(100,180,250,0.2) 100%)" }}
       />
 
-      {/* 大分類レジェンド（クリックでその惑星系へ） */}
-      <div className="pointer-events-auto absolute bottom-4 left-1/2 z-40 flex max-w-[94vw] -translate-x-1/2 flex-wrap items-center justify-center gap-1.5">
-        {focusedMajor && (
+      {/* フォーカス解除ボタン */}
+      {focusedMajor && (
+        <div className="pointer-events-auto absolute bottom-4 left-1/2 z-40 -translate-x-1/2">
           <button
             type="button"
             onClick={() => setFocusedMajor(null)}
@@ -648,29 +641,10 @@ export default function ForumGalaxy3D({ centerLabel, onSelectCenter, onSelectTop
           >
             ← 全体へ
           </button>
-        )}
-        {MAJORS.map((m) => {
-          const meta = MAJOR_META[m];
-          const active = focusedMajor === m;
-          return (
-            <button
-              key={m}
-              type="button"
-              onClick={() => setFocusedMajor(active ? null : m)}
-              className="rounded-full border px-3 py-1.5 text-xs font-bold backdrop-blur transition"
-              style={{
-                borderColor: `${meta.color}${active ? "ff" : "55"}`,
-                background: active ? `${meta.color}e6` : "rgba(255,255,255,0.75)",
-                color: active ? "#1a3a5a" : "#1a3a5a",
-              }}
-            >
-              {MAJOR_EMOJI[m]} {meta.label}
-            </button>
-          );
-        })}
-      </div>
+        </div>
+      )}
 
-      <p className="pointer-events-none absolute bottom-14 left-4 z-40 max-w-[240px] text-[11px] leading-relaxed text-[#1a3a5a]/55 sm:bottom-4 sm:max-w-none">
+      <p className="pointer-events-none absolute bottom-3 left-4 z-40 max-w-[240px] text-[11px] leading-relaxed text-[#1a3a5a]/55 sm:max-w-none">
         惑星＝カテゴリをタップで接近 · 衛星＝トピックをタップでひろばへ · ドラッグで回転
         {caps.tier === "low" && <span className="text-[#1a3a5a]/40">・軽量モード</span>}
       </p>

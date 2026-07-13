@@ -522,10 +522,10 @@ export function ProfileRegisterForm({
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                自己紹介・活動内容（任意）
+                自己紹介（任意）
               </label>
               <Textarea
-                placeholder="EdTechに関する取り組みや、関心事について教えてください。投稿者として表示されるプロフィール文です。"
+                placeholder="あなたの教育への想いや関心事を自由に書いてください。投稿者として表示されるプロフィール文です。"
                 rows={5}
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
@@ -565,7 +565,7 @@ export function ProfileRegisterForm({
                     人材マッチングに登録する
                   </label>
                   <p className="text-sm text-muted-foreground">
-                    mainでは登録情報のみ保存します。人材マッチングの一覧・詳細ページは公開しません。
+                    登録すると、あなたのプロフィールが人材マッチング一覧に表示されます。
                   </p>
                 </div>
               </div>
