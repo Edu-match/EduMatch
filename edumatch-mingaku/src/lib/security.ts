@@ -11,13 +11,15 @@
 
 // ─── Timing-safe Comparison ────────────────────────────────────────────────────
 
-// middleware は Edge Runtime でもバンドルされるため、node:crypto を静的 import しない。
-// process.getBuiltinModule はランタイム解決なのでバンドラーが Edge 向けに解決しようとしない。
 type NodeCryptoModule = typeof import("node:crypto");
-const nodeCrypto: NodeCryptoModule | undefined =
-  typeof process !== "undefined" && typeof process.getBuiltinModule === "function"
-    ? (process.getBuiltinModule("node:crypto") as NodeCryptoModule | undefined)
-    : undefined;
+let nodeCrypto: NodeCryptoModule | undefined;
+try {
+  if (typeof process !== "undefined" && typeof process.getBuiltinModule === "function") {
+    nodeCrypto = process.getBuiltinModule("node:crypto") as NodeCryptoModule | undefined;
+  }
+} catch {
+  nodeCrypto = undefined;
+}
 
 /**
  * 秘密値（トークン・パスワード等）を定数時間で比較する。

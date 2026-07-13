@@ -117,19 +117,25 @@ export function AdminHistoricalPersona({ existing }: { existing: SpecialPersonaR
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<SpecialPersonaResult | null>(null);
-  const [permission, setPermission] = useState(false);
+  const [showPermissionDialog, setShowPermissionDialog] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
   async function create(permissionConfirmed = false) {
     if (!input.trim()) return;
+    setShowPermissionDialog(false);
     setLoading(true);
     setResult(null);
     const res = await createSpecialPersona(input.trim(), inputType, permissionConfirmed);
+    if (!res.ok && res.legal && (res.legal.status === "blocked" || res.legal.status === "caution") && !permissionConfirmed) {
+      setResult(res);
+      setShowPermissionDialog(true);
+      setLoading(false);
+      return;
+    }
     setResult(res);
     setLoading(false);
     if (res.ok) {
       setInput("");
-      setPermission(false);
       router.refresh();
     }
   }
@@ -184,33 +190,41 @@ export function AdminHistoricalPersona({ existing }: { existing: SpecialPersonaR
         </div>
 
         <p className="mt-2 text-[11px] text-muted-foreground">
-          ※ 名称は自動的に「AI○○」形式になります。{inputType === "person" && "存命の人物は原則作成できません。本人・権利者の許可がある場合のみ、下の手順から作成してください。"}
+          ※ 名称は自動的に「AI○○」形式になります。{inputType === "person" && "存命の人物は原則作成できません。法的リスクがある場合は確認ダイアログが表示されます。"}
         </p>
 
-        {/* 許可取得済みオーバーライド */}
-        <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50/60 p-3">
-          <label className="flex cursor-pointer items-start gap-2 text-xs">
-            <input type="checkbox" checked={permission} onChange={(e) => setPermission(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-amber-600" />
-            <span className="font-bold text-amber-900">許可を取得済み（存命者・権利が残る人物・著作権保護キャラクターでも、権利者から作成・公開の許可を得ています）</span>
-          </label>
-
-          {permission && (
-            <details className="mt-2 rounded-md border border-amber-300 bg-background">
-              <summary className="flex cursor-pointer select-none items-center justify-between gap-2 px-3 py-2 text-xs font-bold text-amber-900">
-                <span className="flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5" /> 本当に作成してよいか確認する</span>
-                <ChevronDown className="h-3.5 w-3.5 shrink-0" />
-              </summary>
-              <div className="space-y-2 border-t border-amber-200 px-3 py-2.5">
-                <p className="text-[11px] leading-relaxed text-muted-foreground">
-                  許可の取得状況・公開範囲・苦情時の取り下げ対応について、あなた（管理者）の責任で確認済みであることを前提に作成します。法的チェックで見送り推奨と判定されても、この操作で作成を続行します。記録として「許可取得済みとして作成」が残ります。
+        {/* 許可確認ダイアログ（法的チェックで caution/blocked の場合にポップアップ） */}
+        {showPermissionDialog && result?.legal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowPermissionDialog(false)}>
+            <div className="mx-4 w-full max-w-md rounded-2xl border bg-card p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-start gap-3">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-100 text-amber-700">
+                  <AlertTriangle className="h-5 w-5" />
+                </span>
+                <div className="min-w-0">
+                  <h3 className="text-sm font-bold">権利確認が必要です</h3>
+                  <div className="mt-1.5">
+                    <LegalBadge status={result.legal.status} />
+                    <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{result.legal.note}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50/60 p-3">
+                <p className="text-[11px] leading-relaxed text-amber-900">
+                  権利者から作成・公開の許可を得ている場合のみ、作成を続行できます。許可の取得状況・苦情時の取り下げ対応について管理者の責任で確認済みであることを前提とします。
                 </p>
-                <button type="button" onClick={() => create(true)} disabled={loading || !input.trim()} className="inline-flex items-center justify-center gap-1.5 rounded-md bg-amber-600 px-4 py-2 text-xs font-bold text-white transition hover:opacity-90 disabled:opacity-50">
+              </div>
+              <div className="mt-4 flex justify-end gap-2">
+                <button type="button" onClick={() => setShowPermissionDialog(false)} className="inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-xs font-medium transition hover:bg-muted">
+                  <X className="h-3.5 w-3.5" /> キャンセル
+                </button>
+                <button type="button" onClick={() => create(true)} disabled={loading} className="inline-flex items-center gap-1.5 rounded-md bg-amber-600 px-4 py-2 text-xs font-bold text-white transition hover:opacity-90 disabled:opacity-50">
                   {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5" />} 許可確認済みとして作成
                 </button>
               </div>
-            </details>
-          )}
-        </div>
+            </div>
+          </div>
+        )}
 
         {loading && <p className="mt-2 text-xs text-muted-foreground">調査・チェック・生成中です（30〜60秒ほどかかります）…</p>}
 

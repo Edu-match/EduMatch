@@ -60,7 +60,7 @@ export function AdminPersonaTestChat({
             <MessageCircleMore className="h-4 w-4 text-primary" />テスト会話
           </p>
           <p className="text-[11px] text-muted-foreground">
-            サンプル投稿にペルソナがどう返信するか試せます（フォーラムには投稿されません）
+            ペルソナの返信をテストできます（実際には投稿されません）
           </p>
         </div>
         {turns.length > 0 && (
@@ -124,7 +124,7 @@ export function AdminPersonaTestChat({
         {/* サンプル投稿 */}
         {turns.length === 0 && !generating && (
           <div className="mb-3">
-            <p className="mb-1.5 text-[11px] font-semibold text-muted-foreground">サンプルから試す</p>
+            <p className="mb-1.5 text-[11px] font-semibold text-muted-foreground">よくある質問で試す（クリックで入力欄にセット）</p>
             <div className="flex flex-col gap-1.5">
               {SAMPLE_POSTS.map((s) => (
                 <button

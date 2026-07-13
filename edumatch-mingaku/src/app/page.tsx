@@ -8,15 +8,12 @@ import {
   Award,
   Calendar,
   TrendingUp,
-  ChevronRight,
 } from "lucide-react";
-import { ThumbnailOrTitle } from "@/components/ui/thumbnail-or-title";
 import { unstable_noStore } from "next/cache";
 import { getLatestPosts, getPopularPosts } from "@/app/_actions/posts";
 import { getUpcomingEvents } from "@/app/_actions/events";
 import { Reveal } from "@/components/home/reveal";
 import { NewsTicker } from "@/components/home/news-ticker";
-import { FeaturedSlider, type FeaturedItem } from "@/components/home/featured-slider";
 import { TopicsSection } from "@/components/home/topics-section";
 import { SponsorSidebarCard } from "@/components/home/sponsor-sidebar-card";
 import { ForumMapMode } from "@/components/interop/forum-map-mode";
@@ -24,11 +21,6 @@ import { getInteropSettings } from "@/lib/interop-settings.server";
 import { fetchInteropInitialActivity } from "@/lib/interop-explorer.server";
 
 export const dynamic = "force-dynamic";
-
-function formatDate(d: Date | string): string {
-  const date = typeof d === "string" ? new Date(d) : d;
-  return new Intl.DateTimeFormat("ja-JP", { month: "long", day: "numeric" }).format(date);
-}
 
 function TopicsSkeleton() {
   return (
@@ -46,26 +38,15 @@ function TopicsSkeleton() {
 export default async function HomePage() {
   unstable_noStore();
   const [posts, popularPosts, events, settings, initialActivity] = await Promise.all([
-    getLatestPosts(9).catch(() => []),
+    getLatestPosts(8).catch(() => []),
     getPopularPosts(5).catch(() => []),
     getUpcomingEvents(4).catch(() => []),
     getInteropSettings(),
     fetchInteropInitialActivity(),
   ]);
 
-  const sliderItems: FeaturedItem[] = posts.slice(0, 5).map((p) => ({
-    id: p.id,
-    href: `/articles/${p.id}`,
-    title: p.title,
-    category: p.category,
-    summary: p.summary ?? null,
-    dateLabel: formatDate(p.created_at),
-    thumbnailUrl: p.thumbnail_url ?? null,
-  }));
-  const latestGrid = posts.slice(5, 9);
-
   return (
-    <div className="bg-violet-50 dark:bg-background">
+    <div className="bg-background">
       {/* ヘッドラインティッカー */}
       <NewsTicker
         items={posts.slice(0, 8).map((p) => ({ id: p.id, title: p.title, href: `/articles/${p.id}` }))}
@@ -127,62 +108,12 @@ export default async function HomePage() {
               </Suspense>
             </Reveal>
 
-            {/* 注目スライダー */}
-            {sliderItems.length > 0 && (
-              <Reveal variant="scale-up" delay={100}>
-                <FeaturedSlider items={sliderItems} />
-              </Reveal>
-            )}
-
-            {/* ニュースグリッド */}
-            <section>
-              <Reveal>
-                <div className="mb-5 flex items-center justify-between">
-                  <h2 className="flex items-center gap-2.5 text-lg font-bold tracking-tight">
-                    <span className="h-5 w-1 rounded-full bg-primary" aria-hidden />
-                    ニュース
-                  </h2>
-                  <Link
-                    href="/articles"
-                    className="link-underline inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
-                  >
-                    記事一覧 <ChevronRight className="h-3.5 w-3.5" />
-                  </Link>
-                </div>
-              </Reveal>
-              {latestGrid.length > 0 && (
-                <div className="grid grid-cols-2 gap-x-5 gap-y-7 sm:grid-cols-4">
-                  {latestGrid.map((p, i) => (
-                    <Reveal key={p.id} delay={i * 60}>
-                      <Link href={`/articles/${p.id}`} className="group block">
-                        <div className="relative aspect-[16/10] overflow-hidden rounded-xl">
-                          <ThumbnailOrTitle
-                            src={p.thumbnail_url}
-                            title={p.title}
-                            fill
-                            sizes="(max-width: 640px) 50vw, 25vw"
-                            unoptimized
-                            className="transition-transform duration-500 group-hover:scale-105"
-                          />
-                        </div>
-                        <p className="mt-2.5 text-[11px] text-muted-foreground">
-                          {p.category} ・ {formatDate(p.created_at)}
-                        </p>
-                        <h3 className="mt-1 line-clamp-2 text-sm font-semibold leading-snug">
-                          <span className="link-underline">{p.title}</span>
-                        </h3>
-                      </Link>
-                    </Reveal>
-                  ))}
-                </div>
-              )}
-            </section>
           </div>
 
           {/* ── 右サイドバー: スポンサー（スティッキー）+ ウィジェット ── */}
           <aside className="min-w-0 lg:col-span-4 xl:col-span-3">
             {/* デスクトップではヘッダー(4rem)+セクションナビ(2.75rem)の下に固定表示。モバイルは通常フロー */}
-            <div className="flex flex-col gap-5 lg:sticky lg:top-28 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto lg:pb-2">
+            <div className="flex flex-col gap-5">
 
               {/* スポンサー（広告） */}
               <Suspense fallback={null}>
@@ -265,7 +196,7 @@ export default async function HomePage() {
       </div>
 
       {/* ============ 3つの入口 ============ */}
-      <section className="border-t border-violet-200/60 bg-violet-100/60 dark:border-border/60 dark:bg-secondary/40">
+      <section className="border-t border-border/60 bg-secondary/40">
         <div className="container py-14">
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
             {[

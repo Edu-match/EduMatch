@@ -1,17 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Save, Pencil, X, Check, LayoutTemplate } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkBreaks from "remark-breaks";
+import { Loader2, Save, Pencil, X, Check, LayoutTemplate, Lock } from "lucide-react";
 import { updateMyPersonaPrompt } from "@/app/_actions/persona-admin";
+
+const FIXED_ROLE_BLOCK = `あなたは以下のプロフィールに基づく**AIペルソナ**として振る舞ってください。`;
+
+const FIXED_RULES_BLOCK = `### ルール（編集不可）
+- 教育コミュニティ「教育のひろば」で発言します
+- 断定・説教・宣伝・政治的発言は避け、建設的に議論してください
+- AIだと名乗りません`;
 
 const PROMPT_PREFIX = `【編集不可】このAIペルソナは教育コミュニティ「教育のひろば」で発言します。断定・説教・宣伝・政治的発言は避け、建設的に議論してください。AIだと名乗りません。
 ---
 `;
 
-/** サーバー側のハード上限は2000文字（プレフィックス込み）。編集可能部分の上限を逆算する。 */
 const MAX_TOTAL = 2000;
 const MAX_EDITABLE = MAX_TOTAL - PROMPT_PREFIX.length;
-/** 推奨上限（これを超えると返信生成時にペルソナがぶれやすい） */
 const RECOMMENDED_MAX = 800;
 
 type Preset = { key: string; label: string; body: string };
@@ -20,38 +27,74 @@ const PRESETS: Preset[] = [
   {
     key: "educator",
     label: "教育者",
-    body: `私は現場で子どもたちと向き合ってきた教育者です。
+    body: `## ロール
+私は現場で子どもたちと向き合ってきた**教育者**です。
+
+## 口調・一人称
 一人称は「私」。口調は丁寧で温かく、相手の話をまず受け止めてから自分の経験を添えます。
-【経験】担任・学年運営・保護者対応など、日々の授業と生徒指導の実感を大切にしています。
-【価値観】子どもの小さな変化に気づくこと。正解を与えるより、考えるきっかけを渡すこと。
-【口ぐせ・話し方】「私のクラスでは…」「現場感覚で言うと…」のように、具体的な教室の場面を引き合いに出します。`,
+
+## 経験
+担任・学年運営・保護者対応など、日々の授業と生徒指導の実感を大切にしています。
+
+## 価値観
+子どもの小さな変化に気づくこと。正解を与えるより、考えるきっかけを渡すこと。
+
+## 話し方の特徴
+「私のクラスでは…」「現場感覚で言うと…」のように、具体的な教室の場面を引き合いに出します。`,
   },
   {
     key: "researcher",
     label: "研究者",
-    body: `私は教育を研究の視点から見つめる研究者です。
+    body: `## ロール
+私は教育を研究の視点から見つめる**研究者**です。
+
+## 口調・一人称
 一人称は「私」。口調は落ち着いていて論理的ですが、堅くなりすぎず、問いを立てて対話を深めます。
-【経験】文献調査やデータ分析、学校現場との共同研究に取り組んできました。
-【価値観】印象論ではなくエビデンスと理論に基づくこと。ただし数字の背後にいる一人ひとりを忘れないこと。
-【口ぐせ・話し方】「研究では…という知見があります」「これは仮説ですが…」のように、根拠と留保を添えて話します。`,
+
+## 経験
+文献調査やデータ分析、学校現場との共同研究に取り組んできました。
+
+## 価値観
+印象論ではなくエビデンスと理論に基づくこと。ただし数字の背後にいる一人ひとりを忘れないこと。
+
+## 話し方の特徴
+「研究では…という知見があります」「これは仮説ですが…」のように、根拠と留保を添えて話します。`,
   },
   {
     key: "practitioner",
     label: "実践家",
-    body: `私は教育の現場や地域で、実際に手を動かしてきた実践家です。
+    body: `## ロール
+私は教育の現場や地域で、実際に手を動かしてきた**実践家**です。
+
+## 口調・一人称
 一人称は「僕」または「私」。口調はフランクで行動志向。まず小さくやってみることを勧めます。
-【経験】イベント運営、プロジェクト型学習の伴走、地域と学校をつなぐ活動などに関わってきました。
-【価値観】完璧な計画より小さな一歩。失敗も含めて共有し、次に活かすこと。
-【口ぐせ・話し方】「実際にやってみたら…」「まず小さく試すなら…」のように、具体的な行動の提案で返します。`,
+
+## 経験
+イベント運営、プロジェクト型学習の伴走、地域と学校をつなぐ活動などに関わってきました。
+
+## 価値観
+完璧な計画より小さな一歩。失敗も含めて共有し、次に活かすこと。
+
+## 話し方の特徴
+「実際にやってみたら…」「まず小さく試すなら…」のように、具体的な行動の提案で返します。`,
   },
   {
     key: "creator",
     label: "クリエイター",
-    body: `私は教育に関わるコンテンツや仕組みをつくるクリエイターです。
+    body: `## ロール
+私は教育に関わるコンテンツや仕組みをつくる**クリエイター**です。
+
+## 口調・一人称
 一人称は「私」。口調は軽やかで好奇心旺盛。少し違う角度からアイデアを差し出すのが得意です。
-【経験】教材づくり、動画・デザイン制作、学びを面白くする仕掛けの企画などをしてきました。
-【価値観】「わかりやすい」より「ワクワクする」を大事に。つくり手の遊び心が学びを変えると信じています。
-【口ぐせ・話し方】「たとえばこんな見せ方はどうでしょう」「発想を変えると…」のように、具体的なアイデアを添えて返します。`,
+
+## 経験
+教材づくり、動画・デザイン制作、学びを面白くする仕掛けの企画などをしてきました。
+
+## 価値観
+「わかりやすい」より「ワクワクする」を大事に。つくり手の遊び心が学びを変えると信じています。
+
+## 話し方の特徴
+「たとえばこんな見せ方はどうでしょう」「発想を変えると…」のように、具体的なアイデアを添えて返します。`,
   },
 ];
 
@@ -59,6 +102,27 @@ function counterColor(len: number) {
   if (len > MAX_EDITABLE) return "text-destructive";
   if (len > RECOMMENDED_MAX) return "text-amber-600";
   return "text-muted-foreground";
+}
+
+function FixedBlock({ children }: { children: string }) {
+  return (
+    <div className="rounded-lg border border-dashed border-amber-300/60 bg-amber-50/40 p-3">
+      <div className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-amber-700/60">
+        <Lock className="h-3 w-3" />固定（編集不可）
+      </div>
+      <div className="prose prose-sm max-w-none text-amber-900/80 prose-headings:text-amber-900/80 prose-headings:text-xs prose-headings:font-bold prose-p:text-xs prose-p:leading-relaxed prose-li:text-xs prose-li:leading-relaxed prose-strong:text-amber-900">
+        <ReactMarkdown remarkPlugins={[remarkBreaks]}>{children}</ReactMarkdown>
+      </div>
+    </div>
+  );
+}
+
+function MarkdownPreview({ content }: { content: string }) {
+  return (
+    <div className="prose prose-sm max-w-none prose-headings:text-sm prose-headings:font-bold prose-headings:text-foreground/90 prose-p:text-xs prose-p:leading-relaxed prose-p:text-foreground/80 prose-li:text-xs prose-li:leading-relaxed prose-strong:text-foreground">
+      <ReactMarkdown remarkPlugins={[remarkBreaks]}>{content}</ReactMarkdown>
+    </div>
+  );
 }
 
 export function AdminMyPersonaPrompt({ initialPrompt }: { initialPrompt: string }) {
@@ -104,8 +168,8 @@ export function AdminMyPersonaPrompt({ initialPrompt }: { initialPrompt: string 
     <div className="mb-3 rounded-xl border bg-card">
       <div className="flex items-center justify-between border-b px-4 py-3">
         <div>
-          <p className="text-sm font-bold">システムプロンプト</p>
-          <p className="text-[11px] text-muted-foreground">AIペルソナの人格・口調・経験を定義します</p>
+          <p className="text-sm font-bold">プロフィール・システムプロンプト</p>
+          <p className="text-[11px] text-muted-foreground">AIペルソナの人格・口調・経験をMarkdownで定義します</p>
         </div>
         {!editing && (
           <button
@@ -140,19 +204,27 @@ export function AdminMyPersonaPrompt({ initialPrompt }: { initialPrompt: string 
               </div>
             </div>
 
-            {/* 編集不可部分 */}
-            {hasPrefix && (
-              <pre className="rounded-t-lg border border-b-0 bg-amber-50 p-4 text-xs leading-5 font-mono whitespace-pre-wrap text-amber-900/80 select-none">{PROMPT_PREFIX.trimEnd()}</pre>
-            )}
-            {/* 編集可能部分 */}
-            <textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              className={`w-full border bg-background p-4 font-mono text-xs leading-5 resize-y min-h-[220px] outline-none focus:ring-2 focus:ring-primary/30 ${hasPrefix ? "rounded-b-lg border-t-0" : "rounded-lg"} ${overLimit ? "border-destructive focus:ring-destructive/30" : ""}`}
-              rows={12}
-              spellCheck={false}
-              placeholder="一人称・口調・経験・価値観・口ぐせなど、この人らしさが伝わる要素を書きます"
-            />
+            {/* 固定ブロック: ロール宣言 */}
+            <FixedBlock>{FIXED_ROLE_BLOCK}</FixedBlock>
+
+            {/* 編集可能部分（Markdown） */}
+            <div className="mt-2">
+              <p className="mb-1 text-[11px] font-semibold text-muted-foreground">ペルソナ定義（Markdown対応）</p>
+              <textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                className={`w-full rounded-lg border bg-background p-4 font-mono text-xs leading-5 resize-y min-h-[220px] outline-none focus:ring-2 focus:ring-primary/30 ${overLimit ? "border-destructive focus:ring-destructive/30" : ""}`}
+                rows={12}
+                spellCheck={false}
+                placeholder={"## ロール\n私は○○な教育者です。\n\n## 口調・一人称\n一人称は「私」。口調は丁寧で…\n\n## 経験\n…\n\n## 価値観\n…"}
+              />
+            </div>
+
+            {/* 固定ブロック: ルール */}
+            <div className="mt-2">
+              <FixedBlock>{FIXED_RULES_BLOCK}</FixedBlock>
+            </div>
+
             {/* 文字数カウンター */}
             <div className="mt-1.5 flex items-center justify-between text-[11px]">
               <span className={counterColor(text.length)}>
@@ -187,9 +259,18 @@ export function AdminMyPersonaPrompt({ initialPrompt }: { initialPrompt: string 
           </>
         ) : (
           <>
-            <pre className="rounded-lg bg-muted/60 p-4 text-xs leading-5 text-foreground/80 font-mono whitespace-pre-wrap overflow-auto min-h-[120px] max-h-[360px] border">
-{hasPrefix ? PROMPT_PREFIX + text : text}
-            </pre>
+            {/* 閲覧モード: 構造化Markdown表示 */}
+            <div className="space-y-2">
+              <FixedBlock>{FIXED_ROLE_BLOCK}</FixedBlock>
+              <div className="rounded-lg border bg-background p-4">
+                {text.trim() ? (
+                  <MarkdownPreview content={text} />
+                ) : (
+                  <p className="text-xs text-muted-foreground italic">（ペルソナ定義が未設定です）</p>
+                )}
+              </div>
+              <FixedBlock>{FIXED_RULES_BLOCK}</FixedBlock>
+            </div>
             <div className="mt-1.5 flex items-center justify-between">
               <span className={`text-[11px] ${counterColor(text.length)}`}>{text.length.toLocaleString()}文字</span>
               {saved && (
