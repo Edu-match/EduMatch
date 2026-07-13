@@ -3,12 +3,17 @@
 import { useState, useCallback } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Loader2, Scale, Sparkles, ShieldCheck, ShieldAlert, ShieldX, Trash2, ChevronDown, Save, X, Pencil, Check } from "lucide-react";
-import { createSpecialPersona, setSpecialPersonaActive, deleteSpecialPersona, updateSpecialPersonaPrompt, type HistoricalPersonaResult } from "@/app/_actions/persona-admin";
-
-const PROMPT_PREFIX = `【編集不可】このAIペルソナは教育コミュニティ「教育のひろば」で発言します。断定・説教・宣伝・政治的発言は避け、建設的に議論してください。AIだと名乗りません。
----
-`;
+import {
+  Loader2, Sparkles, ShieldCheck, ShieldAlert, ShieldX, Trash2,
+  ChevronDown, AlertTriangle, User, FileText, Pencil, Check, X, ToggleLeft, ToggleRight,
+} from "lucide-react";
+import {
+  createSpecialPersona,
+  setSpecialPersonaActive,
+  deleteSpecialPersona,
+  updateSpecialPersonaPrompt,
+  type SpecialPersonaResult,
+} from "@/app/_actions/persona-admin";
 
 export type SpecialPersonaRow = {
   id: string;
@@ -29,163 +34,78 @@ function LegalBadge({ status }: { status: string }) {
   return <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700"><ShieldCheck className="h-3 w-3" />OK</span>;
 }
 
-function ToggleSwitch({ checked, onChange, disabled }: { checked: boolean; onChange: () => void; disabled?: boolean }) {
-  return (
-    <label className="inline-flex cursor-pointer items-center gap-2">
-      <span className={`text-[11px] font-bold ${checked ? "text-emerald-700" : "text-muted-foreground"}`}>
-        {checked ? "有効" : "無効"}
-      </span>
-      <input type="checkbox" checked={checked} onChange={onChange} disabled={disabled} className="sr-only peer" />
-      <div className="relative h-5 w-9 shrink-0 rounded-full bg-gray-300 transition-colors duration-200 ease-in-out peer-checked:bg-emerald-500 peer-disabled:opacity-50 after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow after:transition-transform after:duration-200 after:ease-in-out peer-checked:after:translate-x-4" />
-    </label>
-  );
-}
-
-/* ── 許可確認モーダル ── */
-function PermissionModal({ open, onClose, onConfirm, loading, name }: {
-  open: boolean; onClose: () => void; onConfirm: () => void; loading: boolean; name: string;
-}) {
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-[min(420px,90vw)] rounded-2xl border bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="mb-4 flex items-start justify-between">
-          <div className="flex items-center gap-2">
-            <ShieldAlert className="h-5 w-5 text-amber-600" />
-            <h3 className="text-base font-bold">肖像権・著作権の確認</h3>
-          </div>
-          <button type="button" onClick={onClose} className="rounded-md p-1 hover:bg-muted"><X className="h-4 w-4" /></button>
-        </div>
-        <p className="text-sm leading-relaxed text-foreground/80">
-          「<strong>{name}</strong>」は肖像権・著作権を侵害する可能性があります。
-        </p>
-        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">
-          <p className="font-bold">以下をすべて確認してください：</p>
-          <ul className="mt-1.5 list-inside list-disc space-y-1 text-amber-800">
-            <li>本人または権利者から作成・公開の許可を取得済み</li>
-            <li>公開範囲について合意済み</li>
-            <li>苦情時の取り下げ対応が可能</li>
-          </ul>
-        </div>
-        <p className="mt-3 text-[11px] text-muted-foreground">
-          確認済みとして作成した場合、記録が残ります。法的チェックはAIによる参考判定です。
-        </p>
-        <div className="mt-4 flex items-center justify-end gap-2">
-          <button type="button" onClick={onClose} className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted">
-            キャンセル
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={loading}
-            className="inline-flex items-center gap-1.5 rounded-md bg-amber-600 px-4 py-2 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-50"
-          >
-            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5" />}
-            許可確認済みとして作成
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ── システムプロンプト（クリーンUI） ── */
-function PromptEditor({
-  personaId,
-  initialPrompt,
-}: {
-  personaId: string;
-  initialPrompt: string;
-}) {
-  const hasPrefix = initialPrompt.startsWith(PROMPT_PREFIX);
-  const editablePart = hasPrefix ? initialPrompt.slice(PROMPT_PREFIX.length) : initialPrompt;
-
-  const [text, setText] = useState(editablePart);
+function PromptEditor({ personaId, initialPrompt }: { personaId: string; initialPrompt: string }) {
   const [editing, setEditing] = useState(false);
+  const [prompt, setPrompt] = useState(initialPrompt);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
 
-  async function handleSave() {
+  const IMMUTABLE_HEADER = "【以下はシステム固定（編集不可）】\n返信ルール: 教育コミュニティにふさわしい建設的な発言をする。断定・説教・宣伝・政治的に偏った発言は避ける。AIだと名乗らない。";
+
+  const save = useCallback(async () => {
     setSaving(true);
-    setError(null);
-    const fullPrompt = PROMPT_PREFIX + text;
-    const res = await updateSpecialPersonaPrompt(personaId, fullPrompt);
+    const res = await updateSpecialPersonaPrompt(personaId, prompt);
     setSaving(false);
-    if (res.ok) {
-      setEditing(false);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
-    } else {
-      setError(res.error ?? "保存に失敗しました");
-    }
-  }
-
-  function handleCancel() {
-    setText(editablePart);
-    setEditing(false);
-    setError(null);
-  }
+    if (res.ok) setEditing(false);
+  }, [personaId, prompt]);
 
   return (
     <div className="mt-2">
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-sm font-semibold">システムプロンプト</p>
-        {!editing && (
-          <button
-            type="button"
-            onClick={() => { setEditing(true); setSaved(false); }}
-            className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition hover:bg-muted"
-          >
-            <Pencil className="h-3 w-3" />編集
-          </button>
-        )}
-      </div>
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <FileText className="h-3 w-3" />
+        システムプロンプト
+        <ChevronDown className={`h-3 w-3 transition-transform ${expanded ? "rotate-180" : ""}`} />
+      </button>
 
-      {editing ? (
-        <>
-          {hasPrefix && (
-            <pre className="rounded-t-lg border border-b-0 bg-amber-50 p-4 text-xs leading-5 font-mono whitespace-pre-wrap text-amber-900/80 select-none">{PROMPT_PREFIX.trimEnd()}</pre>
-          )}
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            className={`w-full border bg-background p-4 font-mono text-xs leading-5 resize-none min-h-[160px] outline-none focus:ring-2 focus:ring-primary/30 ${hasPrefix ? "rounded-b-lg border-t-0" : "rounded-lg"}`}
-            rows={10}
-            spellCheck={false}
-          />
-          {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
-          <div className="mt-3 flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={handleCancel}
-              disabled={saving}
-              className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition hover:bg-muted disabled:opacity-50"
-            >
-              <X className="h-3.5 w-3.5" />キャンセル
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving}
-              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
-            >
-              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-              {saving ? "保存中…" : "保存"}
-            </button>
+      {expanded && (
+        <div className="mt-1.5 space-y-1.5">
+          {/* 編集不可部分 */}
+          <div className="rounded-md bg-muted/50 px-2.5 py-2 text-[11px] text-muted-foreground leading-relaxed border border-dashed border-muted-foreground/20">
+            <p className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground/60 mb-1">固定ルール（編集不可）</p>
+            {IMMUTABLE_HEADER.split("\n").map((line, i) => <p key={i}>{line}</p>)}
           </div>
-        </>
-      ) : (
-        <>
-          <pre className="rounded-lg bg-muted/60 p-4 text-xs leading-5 text-foreground/80 font-mono whitespace-pre-wrap overflow-auto min-h-[120px] border">
-{hasPrefix ? PROMPT_PREFIX + text : text}
-          </pre>
-          {saved && (
-            <p className="mt-2 flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
-              <Check className="h-3.5 w-3.5" />保存しました
-            </p>
+
+          {/* 編集可能部分 */}
+          {editing ? (
+            <div className="space-y-1.5">
+              <textarea
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                rows={6}
+                maxLength={2000}
+                className="w-full rounded-md border border-input bg-background px-2.5 py-2 text-xs leading-relaxed focus:ring-2 focus:ring-primary/30"
+              />
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-muted-foreground">{prompt.length}/2000</span>
+                <div className="flex gap-1.5">
+                  <button type="button" onClick={() => { setPrompt(initialPrompt); setEditing(false); }} className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-[11px] font-medium hover:bg-muted">
+                    <X className="h-3 w-3" /> キャンセル
+                  </button>
+                  <button type="button" onClick={save} disabled={saving || !prompt.trim()} className="inline-flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-[11px] font-bold text-primary-foreground hover:opacity-90 disabled:opacity-50">
+                    {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />} 保存
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="group relative rounded-md border bg-background px-2.5 py-2 text-xs leading-relaxed text-foreground/80">
+              <p className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground/60 mb-1">ペルソナプロンプト（編集可能）</p>
+              <p className="whitespace-pre-wrap">{initialPrompt || "（未設定）"}</p>
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="absolute right-2 top-2 rounded-md p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover:opacity-100"
+                aria-label="編集"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+            </div>
           )}
-        </>
+        </div>
       )}
     </div>
   );
@@ -193,78 +113,118 @@ function PromptEditor({
 
 export function AdminHistoricalPersona({ existing }: { existing: SpecialPersonaRow[] }) {
   const router = useRouter();
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
+  const [inputType, setInputType] = useState<"person" | "freeform">("person");
+  const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<HistoricalPersonaResult | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [generatedPrompt, setGeneratedPrompt] = useState("");
-  const [generatedId, setGeneratedId] = useState<string | null>(null);
-  const [showPermissionModal, setShowPermissionModal] = useState(false);
+  const [result, setResult] = useState<SpecialPersonaResult | null>(null);
+  const [showPermissionDialog, setShowPermissionDialog] = useState(false);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
-  const create = useCallback(async (permissionConfirmed = false) => {
-    if (!name.trim()) return;
+  async function create(permissionConfirmed = false) {
+    if (!input.trim()) return;
+    setShowPermissionDialog(false);
     setLoading(true);
     setResult(null);
-    setGeneratedId(null);
-    setGeneratedPrompt("");
-    const res = await createSpecialPersona(name.trim(), permissionConfirmed, description.trim() || undefined);
+    const res = await createSpecialPersona(input.trim(), inputType, permissionConfirmed);
+    if (!res.ok && res.legal && (res.legal.status === "blocked" || res.legal.status === "caution") && !permissionConfirmed) {
+      setResult(res);
+      setShowPermissionDialog(true);
+      setLoading(false);
+      return;
+    }
     setResult(res);
     setLoading(false);
-
-    if (res.ok && res.persona) {
-      const rawPrompt = res.persona.personaPrompt ?? "";
-      const hasPrefix = rawPrompt.startsWith(PROMPT_PREFIX);
-      setGeneratedPrompt(hasPrefix ? rawPrompt.slice(PROMPT_PREFIX.length) : rawPrompt);
-      setGeneratedId(res.persona.id);
-      setName("");
-      setDescription("");
-      setShowPermissionModal(false);
+    if (res.ok) {
+      setInput("");
       router.refresh();
-    } else if (!res.ok && res.legal && (res.legal.status === "blocked" || res.legal.status === "caution")) {
-      setShowPermissionModal(true);
     }
-  }, [name, description, router]);
+  }
 
-  const displayName = name.trim() ? (name.trim().startsWith("AI") ? name.trim() : `AI${name.trim()}`) : "";
+  async function toggleActive(id: string, currentActive: boolean) {
+    setTogglingId(id);
+    await setSpecialPersonaActive(id, !currentActive);
+    setTogglingId(null);
+    router.refresh();
+  }
 
   return (
     <div className="space-y-4">
-      {/* ── 作成フォーム ── */}
       <div className="rounded-xl border bg-background p-4">
-        <p className="flex items-center gap-2 text-sm font-bold"><Scale className="h-4 w-4 text-primary" /> AIペルソナを作成</p>
+        <p className="flex items-center gap-2 text-sm font-bold"><Sparkles className="h-4 w-4 text-primary" /> 特別AIペルソナを作成</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          名前と任意の説明からAIペルソナとオリジナルイラストを生成します。説明が空の場合はネット検索で自動調査します。
+          人物名の入力、または自由記述でAIペルソナを作成できます。実在人物の場合は著作権・肖像権等の法的チェックを自動で行います。
         </p>
-        <div className="mt-3 space-y-2">
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }}
-            placeholder="例：吉田松陰、教育改革者"
-            className="w-full rounded-md border border-input px-3 py-2 text-sm"
-          />
-          {displayName && (
-            <p className="text-xs text-muted-foreground">
-              表示名: <span className="font-bold text-foreground">{displayName}</span>
-            </p>
-          )}
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="人物の特徴や人格の説明を自由に入力できます。空欄の場合はネット検索で自動調査します。"
-            rows={3}
-            className="w-full rounded-md border border-input px-3 py-2 text-sm"
-          />
-          <button
-            type="button"
-            onClick={() => create(false)}
-            disabled={loading || !name.trim()}
-            className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-bold text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
-          >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} AIペルソナを生成
+
+        {/* 入力モード切替 */}
+        <div className="mt-3 inline-flex rounded-lg border bg-muted/40 p-0.5 text-xs font-medium">
+          <button type="button" onClick={() => setInputType("person")} className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 transition ${inputType === "person" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}>
+            <User className="h-3 w-3" /> 人物名で作成
+          </button>
+          <button type="button" onClick={() => setInputType("freeform")} className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 transition ${inputType === "freeform" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}>
+            <FileText className="h-3 w-3" /> 自由記述で作成
           </button>
         </div>
+
+        <div className="mt-3 flex flex-col gap-2">
+          {inputType === "person" ? (
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }}
+              placeholder="例：吉田松陰、福沢諭吉"
+              className="min-w-0 flex-1 rounded-md border border-input px-3 py-2 text-sm"
+            />
+          ) : (
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="例：教育改革に情熱を持つ架空の校長先生。生徒の自主性を重んじ、「失敗は学びの始まり」が口癖。穏やかだが芯が強い。"
+              rows={3}
+              className="min-w-0 flex-1 rounded-md border border-input px-3 py-2 text-sm leading-relaxed"
+            />
+          )}
+          <button type="button" onClick={() => create(false)} disabled={loading || !input.trim()} className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-bold text-primary-foreground transition hover:opacity-90 disabled:opacity-50">
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            {inputType === "person" ? "法的チェック＆生成" : "生成"}
+          </button>
+        </div>
+
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          ※ 名称は自動的に「AI○○」形式になります。{inputType === "person" && "存命の人物は原則作成できません。法的リスクがある場合は確認ダイアログが表示されます。"}
+        </p>
+
+        {/* 許可確認ダイアログ（法的チェックで caution/blocked の場合にポップアップ） */}
+        {showPermissionDialog && result?.legal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowPermissionDialog(false)}>
+            <div className="mx-4 w-full max-w-md rounded-2xl border bg-card p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-start gap-3">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-100 text-amber-700">
+                  <AlertTriangle className="h-5 w-5" />
+                </span>
+                <div className="min-w-0">
+                  <h3 className="text-sm font-bold">権利確認が必要です</h3>
+                  <div className="mt-1.5">
+                    <LegalBadge status={result.legal.status} />
+                    <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{result.legal.note}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50/60 p-3">
+                <p className="text-[11px] leading-relaxed text-amber-900">
+                  権利者から作成・公開の許可を得ている場合のみ、作成を続行できます。許可の取得状況・苦情時の取り下げ対応について管理者の責任で確認済みであることを前提とします。
+                </p>
+              </div>
+              <div className="mt-4 flex justify-end gap-2">
+                <button type="button" onClick={() => setShowPermissionDialog(false)} className="inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-xs font-medium transition hover:bg-muted">
+                  <X className="h-3.5 w-3.5" /> キャンセル
+                </button>
+                <button type="button" onClick={() => create(true)} disabled={loading} className="inline-flex items-center gap-1.5 rounded-md bg-amber-600 px-4 py-2 text-xs font-bold text-white transition hover:opacity-90 disabled:opacity-50">
+                  {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5" />} 許可確認済みとして作成
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {loading && <p className="mt-2 text-xs text-muted-foreground">調査・チェック・生成中です（30〜60秒ほどかかります）…</p>}
 
@@ -278,78 +238,70 @@ export function AdminHistoricalPersona({ existing }: { existing: SpecialPersonaR
             )}
             {result.error && <p className="text-sm text-red-600">{result.error}</p>}
             {result.ok && result.persona && (
-              <>
+              <div className="space-y-2">
                 <div className="flex items-center gap-3">
                   {result.persona.avatarUrl && (
                     <Image src={result.persona.avatarUrl} alt="" width={56} height={56} className="h-14 w-14 rounded-full object-cover" unoptimized />
                   )}
                   <div className="text-xs">
-                    <p className="text-sm font-bold">{result.persona.name.startsWith("AI") ? result.persona.name : `AI${result.persona.name}`} を作成しました</p>
+                    <p className="text-sm font-bold">{result.persona.name} を作成しました</p>
                     {result.persona.expertise.length > 0 && <p className="text-muted-foreground">得意分野: {result.persona.expertise.join("、")}</p>}
                   </div>
                 </div>
-                {generatedId && (
-                  <div className="mt-3">
-                    <p className="text-xs font-bold mb-1">システムプロンプト</p>
-                    <PromptEditor personaId={generatedId} initialPrompt={PROMPT_PREFIX + generatedPrompt} />
-                  </div>
-                )}
-              </>
+                {/* 生成後のシステムプロンプト表示 */}
+                <PromptEditor personaId={result.persona.id} initialPrompt={result.persona.personaPrompt} />
+              </div>
             )}
           </div>
         )}
       </div>
 
-      {/* ── 許可確認モーダル ── */}
-      <PermissionModal
-        open={showPermissionModal}
-        onClose={() => setShowPermissionModal(false)}
-        onConfirm={() => create(true)}
-        loading={loading}
-        name={displayName || name.trim()}
-      />
-
-      {/* ── 作成済み一覧 ── */}
+      {/* 作成済み一覧 */}
       <div className="rounded-xl border bg-background p-4">
         <p className="mb-3 text-sm font-bold">作成済みの特別ペルソナ（{existing.length}）</p>
         {existing.length === 0 ? (
           <p className="text-sm text-muted-foreground">まだありません。</p>
         ) : (
-          <ul className="space-y-2">
+          <ul className="space-y-3">
             {existing.map((p) => (
-              <li key={p.id} className="rounded-lg border">
-                <div className="flex items-center gap-3 p-2.5">
+              <li key={p.id} className="rounded-xl border bg-card p-3">
+                <div className="flex items-center gap-3">
                   {p.avatarUrl ? (
                     <Image src={p.avatarUrl} alt="" width={44} height={44} className="h-11 w-11 shrink-0 rounded-full object-cover" unoptimized />
                   ) : (
                     <div className="h-11 w-11 shrink-0 rounded-full bg-muted" />
                   )}
                   <div className="min-w-0 flex-1">
-                    <p className="flex items-center gap-2 text-sm font-bold">{p.name.startsWith("AI") ? p.name : `AI${p.name}`} <LegalBadge status={p.legalStatus} /></p>
+                    <p className="flex items-center gap-2 text-sm font-bold">{p.name} <LegalBadge status={p.legalStatus} /></p>
                     {p.expertise.length > 0 && <p className="truncate text-[11px] text-muted-foreground">{p.expertise.join("、")}</p>}
                   </div>
-                  <ToggleSwitch
-                    checked={p.isActive}
-                    onChange={async () => { await setSpecialPersonaActive(p.id, !p.isActive); router.refresh(); }}
-                  />
+
+                  {/* 有効/無効トグル（改善版） */}
                   <button
                     type="button"
-                    onClick={() => setExpandedId(expandedId === p.id ? null : p.id)}
-                    className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-muted"
-                    aria-label="プロンプト表示"
+                    onClick={() => toggleActive(p.id, p.isActive)}
+                    disabled={togglingId === p.id}
+                    className={`relative inline-flex h-7 w-[4.5rem] shrink-0 items-center rounded-full border-2 px-0.5 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary/30 ${
+                      p.isActive
+                        ? "border-emerald-500 bg-emerald-500"
+                        : "border-muted-foreground/30 bg-muted"
+                    }`}
+                    aria-label={p.isActive ? "無効にする" : "有効にする"}
                   >
-                    <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${expandedId === p.id ? "rotate-180" : ""}`} />
+                    <span className={`absolute text-[10px] font-bold transition-opacity ${p.isActive ? "left-2 text-white opacity-100" : "left-2 opacity-0"}`}>有効</span>
+                    <span className={`absolute text-[10px] font-bold transition-opacity ${!p.isActive ? "right-2 text-muted-foreground opacity-100" : "right-2 opacity-0"}`}>無効</span>
+                    <span className={`inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${p.isActive ? "translate-x-[2.75rem]" : "translate-x-0"}`}>
+                      {togglingId === p.id && <Loader2 className="h-5 w-5 animate-spin p-0.5 text-muted-foreground" />}
+                    </span>
                   </button>
+
                   <button type="button" onClick={async () => { if (confirm(`「${p.name}」を削除しますか？`)) { await deleteSpecialPersona(p.id); router.refresh(); } }} aria-label="削除" className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-rose-600">
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
-                {expandedId === p.id && (
-                  <div className="border-t px-3 py-2.5">
-                    <p className="mb-1 text-xs font-bold">システムプロンプト</p>
-                    <PromptEditor personaId={p.id} initialPrompt={p.personaPrompt} />
-                  </div>
-                )}
+
+                {/* システムプロンプト表示・編集 */}
+                <PromptEditor personaId={p.id} initialPrompt={p.personaPrompt} />
               </li>
             ))}
           </ul>

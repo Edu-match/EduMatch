@@ -1,29 +1,25 @@
 /**
  * セキュリティユーティリティ
+ * - timingSafeCompare: 秘密値の定数時間比較
+ * - verifyCron: Cron ルート共通の認証
+ * - getClientIp: プロキシヘッダーからのクライアントIP取得
  * - safeRedirect: オープンリダイレクト防止
  * - checkPromptInjection: プロンプトインジェクション検出
  * - checkLlmOutput: LLM出力の個人情報・禁止コンテンツスキャン
  * - createRateLimiter: インメモリ sliding window レート制限
- * - timingSafeCompare: 秘密値の定数時間比較
- * - verifyCron: Cron ルート共通の認証
- * - getClientIp: プロキシヘッダーからのクライアントIP取得
  */
-
-import { getRateLimiter } from "@/lib/rate-limit";
-import type {
-  RateLimitConfig as RateLimitConfigImpl,
-  RateLimitResult as RateLimitResultImpl,
-} from "@/lib/rate-limit";
 
 // ─── Timing-safe Comparison ────────────────────────────────────────────────────
 
-// middleware は Edge Runtime でもバンドルされるため、node:crypto を静的 import しない。
-// process.getBuiltinModule はランタイム解決なのでバンドラーが Edge 向けに解決しようとしない。
 type NodeCryptoModule = typeof import("node:crypto");
-const nodeCrypto: NodeCryptoModule | undefined =
-  typeof process !== "undefined" && typeof process.getBuiltinModule === "function"
-    ? (process.getBuiltinModule("node:crypto") as NodeCryptoModule | undefined)
-    : undefined;
+let nodeCrypto: NodeCryptoModule | undefined;
+try {
+  if (typeof process !== "undefined" && typeof process.getBuiltinModule === "function") {
+    nodeCrypto = process.getBuiltinModule("node:crypto") as NodeCryptoModule | undefined;
+  }
+} catch {
+  nodeCrypto = undefined;
+}
 
 /**
  * 秘密値（トークン・パスワード等）を定数時間で比較する。
@@ -191,6 +187,12 @@ export function checkLlmOutput(text: string): OutputCheckResult {
 // ─── Rate Limiter ─────────────────────────────────────────────────────────────
 // 実装本体は src/lib/rate-limit.ts（SEC-007: Upstash Redis 移行準備）。
 // ここでは後方互換のため既存シグネチャを維持したラッパーを提供する。
+
+import { getRateLimiter } from "@/lib/rate-limit";
+import type {
+  RateLimitConfig as RateLimitConfigImpl,
+  RateLimitResult as RateLimitResultImpl,
+} from "@/lib/rate-limit";
 
 export type RateLimitConfig = RateLimitConfigImpl;
 export type RateLimitResult = RateLimitResultImpl;

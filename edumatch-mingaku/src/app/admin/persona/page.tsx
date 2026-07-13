@@ -100,16 +100,18 @@ export default async function AdminPersonaPage() {
 
       </section>
 
-      {/* 投稿に返信 */}
+      {/* 特別AIペルソナ作成・管理 */}
       <section className="mt-8">
-        <h2 className="mb-2 text-sm font-bold">投稿を選んで返信を作成</h2>
-        <p className="mb-3 text-xs text-muted-foreground">井戸端会議の直近の投稿から選び、AIで返信ドラフトを作成・編集して投稿できます。</p>
-        <AdminPersonaReplyTool posts={posts} hasPersona={!!persona?.persona_prompt} />
+        <h2 className="mb-2 text-sm font-bold">特別AIペルソナ</h2>
+        <p className="mb-3 text-xs text-muted-foreground">歴史上の人物やオリジナルキャラクターをAIペルソナとして作成・管理します。</p>
+        <AdminHistoricalPersona existing={specialPersonas} />
       </section>
 
-      {/* AIペルソナ作成・管理 */}
+      {/* 投稿に返信 */}
       <section className="mt-8">
-        <AdminHistoricalPersona existing={specialPersonas} />
+        <h2 className="mb-2 text-sm font-bold">井戸端の投稿にAIで返信</h2>
+        <p className="mb-3 text-xs text-muted-foreground">投稿を選択 → AIが返信ドラフトを生成 → 確認して投稿できます。</p>
+        <AdminPersonaReplyTool posts={posts} hasPersona={!!persona?.persona_prompt} />
       </section>
     </main>
   );
