@@ -12,7 +12,7 @@ import {
   setSpecialPersonaActive,
   deleteSpecialPersona,
   updateSpecialPersonaPrompt,
-  type SpecialPersonaResult,
+  type HistoricalPersonaResult,
 } from "@/app/_actions/persona-admin";
 
 export type SpecialPersonaRow = {
@@ -116,7 +116,7 @@ export function AdminHistoricalPersona({ existing }: { existing: SpecialPersonaR
   const [inputType, setInputType] = useState<"person" | "freeform">("person");
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<SpecialPersonaResult | null>(null);
+  const [result, setResult] = useState<HistoricalPersonaResult | null>(null);
   const [showPermissionDialog, setShowPermissionDialog] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
@@ -125,7 +125,11 @@ export function AdminHistoricalPersona({ existing }: { existing: SpecialPersonaR
     setShowPermissionDialog(false);
     setLoading(true);
     setResult(null);
-    const res = await createSpecialPersona(input.trim(), inputType, permissionConfirmed);
+    const res = await createSpecialPersona(
+      input.trim(),
+      permissionConfirmed,
+      inputType === "freeform" ? input.trim() : undefined,
+    );
     if (!res.ok && res.legal && (res.legal.status === "blocked" || res.legal.status === "caution") && !permissionConfirmed) {
       setResult(res);
       setShowPermissionDialog(true);
@@ -249,7 +253,7 @@ export function AdminHistoricalPersona({ existing }: { existing: SpecialPersonaR
                   </div>
                 </div>
                 {/* 生成後のシステムプロンプト表示 */}
-                <PromptEditor personaId={result.persona.id} initialPrompt={result.persona.personaPrompt} />
+                <PromptEditor personaId={result.persona.id} initialPrompt={result.persona.personaPrompt ?? ""} />
               </div>
             )}
           </div>
