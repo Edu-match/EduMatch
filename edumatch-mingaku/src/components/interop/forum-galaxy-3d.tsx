@@ -114,18 +114,19 @@ function PlanetLabel({ color, emoji, label, total, hover }: { color: string; emo
         ...pillBase,
         display: "inline-flex",
         alignItems: "center",
-        gap: 6,
-        fontSize: hover ? 13 : 12,
-        padding: "4px 12px 4px 6px",
+        gap: 5,
+        fontSize: hover ? 12 : 11,
+        padding: "3px 10px 3px 5px",
         background: hover ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.85)",
         border: `1px solid ${color}${hover ? "ee" : "88"}`,
         transition: "all .18s ease",
+        maxWidth: 160,
       }}
     >
-      <span style={{ display: "grid", placeItems: "center", width: 20, height: 20, borderRadius: 999, fontSize: 12, background: `${color}44` }}>{emoji}</span>
-      <span>{label}</span>
+      <span style={{ display: "grid", placeItems: "center", width: 18, height: 18, borderRadius: 999, fontSize: 11, background: `${color}44`, flexShrink: 0 }}>{emoji}</span>
+      <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
       {total > 0 && (
-        <span style={{ fontSize: 10, fontWeight: 800, color: "#0a1024", padding: "1px 7px", borderRadius: 999, background: color }}>{total}</span>
+        <span style={{ fontSize: 9, fontWeight: 800, color: "#0a1024", padding: "1px 6px", borderRadius: 999, background: color, flexShrink: 0 }}>{total}</span>
       )}
     </div>
   );
@@ -196,7 +197,7 @@ function Moon({ topic, posts, planetR, index, count, clockRef, seg, showLabel, o
   const group = useRef<THREE.Group>(null);
   const [hover, setHover] = useState(false);
   const color = MAJOR_META[topic.major]?.color ?? "#C9D4F6";
-  const r = 0.42 + Math.min(0.55, posts * 0.05);
+  const r = 0.42 + Math.min(0.7, posts * 0.08);
   const orbitR = planetR + 2.1 + (index % 2) * 0.75;
   const speed = 0.38 + (index % 3) * 0.09;
   const phase = (index / count) * Math.PI * 2;
@@ -255,7 +256,7 @@ function Planet({ spec, topics, counts, clockRef, seg, focused, anyFocused, posi
   const color = meta?.color ?? "#C9D4F6";
   const emoji = MAJOR_EMOJI[spec.major] ?? "✨";
   const total = topics.reduce((acc, t) => acc + (counts.get(t.roomId) ?? 0), 0);
-  const planetR = 1.35 + Math.min(1.05, total * 0.02);
+  const planetR = 1.35 + Math.min(1.3, total * 0.035);
 
   useFrame(() => {
     if (!holder.current) return;
@@ -301,7 +302,7 @@ function Planet({ spec, topics, counts, clockRef, seg, focused, anyFocused, posi
         )}
         {/* ラベル */}
         {!dim && (
-          <Html center distanceFactor={focused ? 22 : 36} position={[0, planetR + 1.8, 0]} zIndexRange={[hover || focused ? 55 : 20, 5]} style={{ pointerEvents: "auto" }}>
+          <Html center distanceFactor={focused ? 28 : 42} position={[0, planetR + 1.8, 0]} zIndexRange={[hover || focused ? 55 : 20, 5]} style={{ pointerEvents: "auto" }}>
             <button
               type="button"
               onMouseEnter={enter}
@@ -595,12 +596,12 @@ export default function ForumGalaxy3D({ centerLabel, onSelectCenter, onSelectTop
   return (
     <div className="absolute inset-0">
       <div className="absolute inset-0" style={{ background: SPACE_BG }} />
-      {/* 山・自然の背景（2Dビューと統一） */}
+      {/* 山・自然の背景（2Dビューと統一・3Dコンテンツの背後に配置） */}
       <svg
-        className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] w-full"
+        className="pointer-events-none absolute inset-x-0 bottom-0 w-full"
         viewBox="0 0 100 30"
         preserveAspectRatio="none"
-        style={{ height: "min(22vh, 200px)" }}
+        style={{ height: "min(22vh, 200px)", zIndex: 0 }}
         aria-hidden
       >
         <path d="M0,28 C8,22 15,18 25,20 C35,22 40,15 50,16 C60,17 65,12 75,14 C85,16 92,20 100,18 L100,30 L0,30 Z" fill="rgba(70,140,60,0.70)" />
@@ -611,7 +612,7 @@ export default function ForumGalaxy3D({ centerLabel, onSelectCenter, onSelectTop
         camera={{ position: CAM_START.toArray() as [number, number, number], fov: 46 }}
         dpr={caps.tier === "high" ? [1, 2] : [1, 1.5]}
         gl={{ antialias: caps.tier === "high", alpha: true, powerPreference: "high-performance" }}
-        style={{ background: "transparent" }}
+        style={{ background: "transparent", position: "relative", zIndex: 1 }}
       >
         <Scene
           centerLabel={label}
