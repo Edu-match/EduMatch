@@ -25,11 +25,14 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Upload, Image as ImageIcon } from "lucide-react";
-import { createArticle } from "@/app/_actions";
+import { Loader2, Upload, Image as ImageIcon, Sparkles } from "lucide-react";
+import { createArticle, generateThumbnailForArticle, uploadCanvasThumbnail } from "@/app/_actions";
 import { articleSchema, type ArticleFormData } from "@/lib/validations/article";
 import { SHARED_CATEGORIES } from "@/lib/categories";
 import { ImageWithUrlError } from "@/components/ui/image-with-url-error";
+import { ThumbnailStyleSelector } from "@/components/articles/thumbnail-style-selector";
+import { generateArticleThumbnailPng } from "@/lib/article-thumbnail-canvas";
+import type { ThumbnailStyleKind, ThumbnailTemplateKind } from "@/lib/thumbnail-template";
 
 const guidelines = [
   "記事の内容は教育現場に役立つ実践的な情報にしてください。",
@@ -43,6 +46,11 @@ export function ArticleForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+  const [generatingThumbnail, setGeneratingThumbnail] = useState(false);
+  const [thumbnailError, setThumbnailError] = useState<string | null>(null);
+  const [thumbnailMode, setThumbnailMode] = useState<"style" | "ai" | "url">("style");
+  const [thumbnailStyle, setThumbnailStyle] = useState<ThumbnailStyleKind>("gradient");
+  const [uploadingStyleThumbnail, setUploadingStyleThumbnail] = useState(false);
 
   const form = useForm<ArticleFormData>({
     resolver: zodResolver(articleSchema),
@@ -92,6 +100,32 @@ export function ArticleForm() {
       setThumbnailPreview(url);
     } else {
       setThumbnailPreview(null);
+    }
+  };
+
+  const handleGenerateThumbnail = async () => {
+    const title = form.getValues("title");
+    const summary = form.getValues("summary");
+    if (!title.trim()) {
+      setThumbnailError("先に記事タイトルを入力してください");
+      return;
+    }
+
+    setGeneratingThumbnail(true);
+    setThumbnailError(null);
+    try {
+      const res = await generateThumbnailForArticle(title, summary || undefined);
+      if (res.ok && res.url) {
+        form.setValue("thumbnail_url", res.url, { shouldValidate: true });
+        setThumbnailPreview(res.url);
+      } else {
+        setThumbnailError(res.error || "サムネイル生成に失敗しました");
+      }
+    } catch (err) {
+      console.error("Thumbnail generation error:", err);
+      setThumbnailError("サムネイル生成に失敗しました");
+    } finally {
+      setGeneratingThumbnail(false);
     }
   };
 
@@ -201,17 +235,95 @@ export function ArticleForm() {
                 name="thumbnail_url"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>サムネイル画像URL</FormLabel>
+                    <FormLabel>サムネイル画像</FormLabel>
+                    <div className="flex gap-1 mb-2">
+                      {(["style", "ai", "url"] as const).map((mode) => (
+                        <button
+                          key={mode}
+                          type="button"
+                          onClick={() => setThumbnailMode(mode)}
+                          className={`rounded-full px-3 py-1 text-xs font-medium transition ${thumbnailMode === mode ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+                        >
+                          {mode === "style" ? "5スタイルから選ぶ" : mode === "ai" ? "AI画像生成" : "URL入力"}
+                        </button>
+                      ))}
+                    </div>
                     <FormControl>
                       <div className="space-y-2">
-                        <Input 
-                          placeholder="https://example.com/image.jpg" 
-                          {...field}
-                          onChange={(e) => {
-                            field.onChange(e);
-                            handleThumbnailChange(e);
-                          }}
-                        />
+                        {thumbnailMode === "style" && (
+                          <>
+                            <ThumbnailStyleSelector
+                              value={thumbnailStyle}
+                              onChange={(s) => setThumbnailStyle(s)}
+                              title={form.watch("title")}
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={uploadingStyleThumbnail || !form.watch("title").trim()}
+                              onClick={async () => {
+                                const title = form.getValues("title");
+                                if (!title.trim()) return;
+                                setUploadingStyleThumbnail(true);
+                                setThumbnailError(null);
+                                try {
+                                  const blob = await generateArticleThumbnailPng({ templateKind: thumbnailStyle, title });
+                                  const fd = new FormData();
+                                  fd.append("file", new File([blob], "thumbnail.png", { type: "image/png" }));
+                                  const res = await uploadCanvasThumbnail(fd);
+                                  if (res.ok && res.url) {
+                                    form.setValue("thumbnail_url", res.url, { shouldValidate: true });
+                                    setThumbnailPreview(res.url);
+                                  } else {
+                                    setThumbnailError(res.error || "アップロードに失敗しました");
+                                  }
+                                } catch {
+                                  setThumbnailError("サムネイル生成に失敗しました");
+                                } finally {
+                                  setUploadingStyleThumbnail(false);
+                                }
+                              }}
+                            >
+                              {uploadingStyleThumbnail ? (
+                                <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />アップロード中…</>
+                              ) : (
+                                "このスタイルで確定"
+                              )}
+                            </Button>
+                          </>
+                        )}
+                        {thumbnailMode === "ai" && (
+                          <div className="space-y-2">
+                            <p className="text-xs text-muted-foreground">タイトル・概要からAIがイラストを自動生成します（30秒ほどかかります）</p>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={handleGenerateThumbnail}
+                              disabled={generatingThumbnail || isSubmitting}
+                            >
+                              {generatingThumbnail ? (
+                                <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />生成中…</>
+                              ) : (
+                                <><Sparkles className="mr-1.5 h-3.5 w-3.5" />AIで生成</>
+                              )}
+                            </Button>
+                          </div>
+                        )}
+                        {thumbnailMode === "url" && (
+                          <Input
+                            placeholder="https://example.com/image.jpg"
+                            {...field}
+                            onChange={(e) => {
+                              field.onChange(e);
+                              handleThumbnailChange(e);
+                            }}
+                          />
+                        )}
+                        {thumbnailError && (
+                          <p className="text-sm text-destructive">{thumbnailError}</p>
+                        )}
                         {thumbnailPreview && (
                           <div className="relative w-full aspect-video border rounded-lg overflow-hidden bg-muted">
                             <ImageWithUrlError
@@ -225,9 +337,6 @@ export function ArticleForm() {
                         )}
                       </div>
                     </FormControl>
-                    <FormDescription>
-                      画像ホスティングサービスにアップロードしたURLを入力してください
-                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

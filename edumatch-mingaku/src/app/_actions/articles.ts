@@ -6,7 +6,73 @@ import { canManageProviderContent } from "@/lib/provider-access";
 import { revalidatePath } from "next/cache";
 import { articleSchema, type ArticleFormData } from "@/lib/validations/article";
 import { normalizeImageUrl } from "@/lib/image-url-utils";
+import { generateArticleThumbnail } from "@/lib/article-thumbnail";
 import { logActivity } from "./activity-log";
+
+/**
+ * 記事タイトル・概要からAIサムネイルを生成する
+ */
+export async function generateThumbnailForArticle(
+  title: string,
+  description?: string,
+): Promise<{ ok: boolean; url?: string; error?: string }> {
+  try {
+    const profile = await getCurrentProfile();
+    if (!profile) {
+      return { ok: false, error: "ログインが必要です" };
+    }
+    if (!(await canManageProviderContent(profile))) {
+      return { ok: false, error: "サムネイルを生成する権限がありません" };
+    }
+
+    if (!title.trim()) {
+      return { ok: false, error: "タイトルが必要です" };
+    }
+
+    const url = await generateArticleThumbnail(title.trim(), description?.trim());
+    if (!url) {
+      return { ok: false, error: "サムネイル生成に失敗しました" };
+    }
+
+    return { ok: true, url };
+  } catch (e) {
+    console.error("generateThumbnailForArticle error:", e);
+    return { ok: false, error: "サムネイル生成に失敗しました" };
+  }
+}
+
+/**
+ * Canvasで生成したサムネイルPNGをSupabase Storageにアップロード
+ */
+export async function uploadCanvasThumbnail(
+  formData: FormData,
+): Promise<{ ok: boolean; url?: string; error?: string }> {
+  try {
+    const profile = await getCurrentProfile();
+    if (!profile) return { ok: false, error: "ログインが必要です" };
+    if (!(await canManageProviderContent(profile)))
+      return { ok: false, error: "権限がありません" };
+
+    const file = formData.get("file") as File | null;
+    if (!file) return { ok: false, error: "ファイルがありません" };
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const { createServiceRoleClient } = await import("@/utils/supabase/server-admin");
+    const supabase = createServiceRoleClient();
+    const path = `article-thumbnails/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`;
+    const { error } = await supabase.storage.from("media").upload(path, buffer, {
+      cacheControl: "3600",
+      contentType: "image/png",
+      upsert: true,
+    });
+    if (error) return { ok: false, error: "アップロードに失敗しました" };
+    const { data: urlData } = supabase.storage.from("media").getPublicUrl(path);
+    return { ok: true, url: urlData?.publicUrl ?? undefined };
+  } catch (e) {
+    console.error("uploadCanvasThumbnail error:", e);
+    return { ok: false, error: "アップロードに失敗しました" };
+  }
+}
 
 /**
  * 記事を作成する
@@ -41,6 +107,17 @@ export async function createArticle(data: ArticleFormData) {
           .filter((tag) => tag.length > 0)
       : [];
 
+    // サムネイル未指定ならAIで自動生成（失敗時は null のまま）
+    let thumbnailUrl = validatedData.thumbnail_url?.trim()
+      ? normalizeImageUrl(validatedData.thumbnail_url.trim())
+      : null;
+    if (!thumbnailUrl) {
+      thumbnailUrl = await generateArticleThumbnail(
+        validatedData.title,
+        validatedData.summary,
+      );
+    }
+
     // 記事を作成
     const article = await prisma.post.create({
       data: {
@@ -50,9 +127,7 @@ export async function createArticle(data: ArticleFormData) {
         tags: tagsArray,
         summary: validatedData.summary,
         content: validatedData.content,
-        thumbnail_url: validatedData.thumbnail_url?.trim()
-          ? normalizeImageUrl(validatedData.thumbnail_url.trim())
-          : null,
+        thumbnail_url: thumbnailUrl,
         youtube_url: validatedData.youtube_url || null,
         status: validatedData.status,
         is_published: validatedData.status === "APPROVED",
@@ -145,6 +220,17 @@ export async function updateArticle(articleId: string, data: ArticleFormData) {
           .filter((tag) => tag.length > 0)
       : [];
 
+    // サムネイル未指定ならAIで自動生成（失敗時は null のまま）
+    let thumbnailUrl = validatedData.thumbnail_url?.trim()
+      ? normalizeImageUrl(validatedData.thumbnail_url.trim())
+      : null;
+    if (!thumbnailUrl) {
+      thumbnailUrl = await generateArticleThumbnail(
+        validatedData.title,
+        validatedData.summary,
+      );
+    }
+
     // 記事を更新
     const article = await prisma.post.update({
       where: { id: articleId },
@@ -154,9 +240,7 @@ export async function updateArticle(articleId: string, data: ArticleFormData) {
         tags: tagsArray,
         summary: validatedData.summary,
         content: validatedData.content,
-        thumbnail_url: validatedData.thumbnail_url?.trim()
-          ? normalizeImageUrl(validatedData.thumbnail_url.trim())
-          : null,
+        thumbnail_url: thumbnailUrl,
         youtube_url: validatedData.youtube_url || null,
         status: validatedData.status,
         is_published: validatedData.status === "APPROVED",
