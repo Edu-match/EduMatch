@@ -81,16 +81,16 @@ function SubTopicOrb({
   accent,
   sizeScale = 1,
   compact = false,
+  btnW = 150,
 }: {
   item: InteropOrbitItem;
   index: number;
   total: number;
   orbitRadius: number;
   accent: string;
-  /** コンテナに収めるための玉サイズ倍率（小さい枠ほど縮小） */
   sizeScale?: number;
-  /** 埋め込み等の小さい枠向けにさらに縮小するモード */
   compact?: boolean;
+  btnW?: number;
 }) {
   const pos = orbitPosition(index, total, orbitRadius);
   const stats = item.stats;
@@ -116,7 +116,12 @@ function SubTopicOrb({
       type="button"
       onClick={item.onActivate}
       className="group absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center focus:outline-none transition-[left,top] duration-500 ease-out"
-      style={{ left: `${pos.left}%`, top: `${pos.top}%`, zIndex: 10 + Math.round(baseSize / 40) }}
+      style={{
+        left: `${pos.left}%`,
+        top: `${pos.top}%`,
+        width: btnW,
+        zIndex: 10 + Math.round(baseSize / 40),
+      }}
       aria-label={`${item.name} を開く`}
     >
       {/* ホバーグロー */}
@@ -169,8 +174,8 @@ function SubTopicOrb({
         <span
           className={
             compact
-              ? "mt-1 max-w-[min(22vw,90px)] rounded-lg px-2 py-0.5 text-center text-[10px] font-bold leading-snug text-white transition-all duration-200 group-hover:text-white"
-              : "mt-1.5 max-w-[min(28vw,120px)] rounded-xl px-3 py-1 text-center text-[11.5px] font-bold leading-snug text-white transition-all duration-200 group-hover:text-white"
+              ? "mt-1 max-w-[min(22vw,100px)] rounded-lg px-2 py-0.5 text-center text-[10px] font-bold leading-snug text-white transition-all duration-200 group-hover:text-white line-clamp-2"
+              : "mt-1.5 max-w-[min(28vw,140px)] rounded-xl px-3 py-1 text-center text-[11.5px] font-bold leading-snug text-white transition-all duration-200 group-hover:text-white line-clamp-2"
           }
           style={{
             background: hot
@@ -238,33 +243,34 @@ export function InteropSubOrbit({
   // 埋め込み枠（トップページのフォーラム等）など小さいコンテナ向けの縮小モード
   const compact = avail.w > 0 && avail.h > 0 && Math.min(avail.w, avail.h) < 450;
 
+  const btnW = compact ? 110 : 150;
   const { containerPx, orbScale } = useMemo(() => {
     const w = avail.w;
     const h = avail.h;
     if (!w || !h) return { containerPx: 0, orbScale: 1 };
     const radiusFrac = orbitRadius / 100;
     const availHalf = Math.min(w, h) / 2;
-    const labelH = compact ? 36 : 46; // 玉下のラベル＋余白
-    const gap = 10; // 玉どうしの最小間隔
+    const labelH = compact ? 36 : 46;
+    const btnHalf = btnW / 2;
+    const gap = 10;
     const n = Math.max(count, 1);
-    // リング上に n 個の玉が重ならず並べられる最大玉径（中心角ベース）
     const orbFitByRing = ((2 * Math.PI) / n) * (availHalf - labelH) / (1 + Math.PI / n) - gap;
     const orbBase =
       Math.min(maxOrbPx, Math.max(compact ? 34 : 40, orbFitByRing)) * (compact ? 0.7 : 1);
     let orb = orbBase;
-    // その玉径で「玉の外縁＋ラベル」が枠内に収まる最大の正方形サイズ
     const solveS = (o: number) => {
-      let s = radiusFrac > 0 ? (availHalf - o / 2 - labelH) / radiusFrac : availHalf * 2;
+      const vertMargin = o / 2 + labelH;
+      const horizMargin = btnHalf;
+      const margin = Math.max(vertMargin, horizMargin);
+      let s = radiusFrac > 0 ? (availHalf - margin) / radiusFrac : availHalf * 2;
       s = Math.max(compact ? 150 : 180, Math.min(s, 820));
-      // 小さい枠では、下部ストリップ等の他UIと重ならないよう上限をさらに絞る
       if (compact) s = Math.min(s, Math.min(w, h) * 0.75);
       return s;
     };
     let S = solveS(orb);
     if (compact) {
-      // 中央ハブ＋玉下ラベルがリング内側で重ならないよう、玉径とコンテナを収束計算
-      const hubClear = 56; // ハブ中心から縁までの安全距離
-      const innerLabel = 30; // 真上の玉のラベルがハブへ食い込まないための余白
+      const hubClear = 56;
+      const innerLabel = 30;
       for (let i = 0; i < 3; i++) {
         const radiusPx = radiusFrac * S;
         orb = Math.min(orbBase, Math.max(30, 2 * (radiusPx - hubClear - innerLabel)));
@@ -272,7 +278,7 @@ export function InteropSubOrbit({
       }
     }
     return { containerPx: Math.round(S), orbScale: Math.min(1, orb / maxOrbPx) };
-  }, [avail, compact, count, maxOrbPx, orbitRadius]);
+  }, [avail, compact, count, maxOrbPx, orbitRadius, btnW]);
 
   const hint =
     centerHint ??
@@ -294,7 +300,7 @@ export function InteropSubOrbit({
       <style>{INTEROP_PUYO_CSS}</style>
 
       <div
-        className="relative aspect-square shrink-0"
+        className="relative aspect-square shrink-0 overflow-visible"
         style={{ width: containerPx || "min(86vmin, 520px)", height: containerPx || "min(86vmin, 520px)" }}
       >
         {/* 軌道リング */}
@@ -381,6 +387,7 @@ export function InteropSubOrbit({
             accent={accent}
             sizeScale={orbScale}
             compact={compact}
+            btnW={btnW}
           />
         ))}
       </div>
