@@ -188,6 +188,37 @@ export async function updateSpecialPersonaPrompt(
   return { ok: true };
 }
 
+/** 管理者：特別ペルソナのシステムプロンプトを再生成。 */
+export async function regenerateSpecialPersonaPrompt(
+  id: string,
+): Promise<{ ok: boolean; newPrompt?: string; error?: string }> {
+  await requireAdmin();
+  const sp = await prisma.aiSpecialPersona.findUnique({ where: { id } });
+  if (!sp) return { ok: false, error: "ペルソナが見つかりません" };
+
+  const isRealPerson = sp.source === "person";
+  const mindset =
+    "これは特別AIペルソナです。" +
+    (isRealPerson
+      ? "史実・調査結果に基づき本人の思想・立場・口調を踏まえて教育コミュニティで発言します。断定しすぎず、不確かな点は諸説ありと添える。"
+      : "入力された設定に基づき、その人格・キャラクターの思想・立場・口調を踏まえて教育コミュニティで発言します。");
+
+  const result = await synthesizePersona({
+    name: sp.name,
+    bio: sp.values_text ?? undefined,
+    mindset,
+    activities: sp.expertise?.join("、") ?? undefined,
+  });
+  if (!result) return { ok: false, error: "生成に失敗しました" };
+
+  await prisma.aiSpecialPersona.update({
+    where: { id },
+    data: { persona_prompt: result.personaPrompt },
+  });
+  revalidatePath("/admin/persona");
+  return { ok: true, newPrompt: result.personaPrompt };
+}
+
 /** 管理者：自分ペルソナのシステムプロンプトを再生成（登録情報から synthesizePersona を再実行）。 */
 export async function regenerateMyPersonaPrompt(): Promise<{ ok: boolean; newPrompt?: string; error?: string }> {
   await requireAdmin();
