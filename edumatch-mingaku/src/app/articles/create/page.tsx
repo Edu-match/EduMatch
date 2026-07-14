@@ -700,7 +700,7 @@ export default function ArticleCreatePage() {
                                 : "border-input text-muted-foreground hover:bg-muted"
                             }`}
                           >
-                            {THUMBNAIL_STYLE_META[style].label}
+                            <span className="mr-1">{THUMBNAIL_STYLE_META[style].emoji}</span>{THUMBNAIL_STYLE_META[style].label}
                           </button>
                         ))}
                       </div>

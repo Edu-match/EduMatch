@@ -5,8 +5,6 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentProfile } from "@/lib/auth";
 import { KaikanViewToggle } from "@/components/kaikan/kaikan-view-toggle";
 import { KaikanBackButton } from "@/components/kaikan/back-button";
-import { getInteropSettings } from "@/lib/interop-settings.server";
-import { fetchInteropInitialActivity } from "@/lib/interop-explorer.server";
 
 export const dynamic = "force-dynamic";
 
@@ -16,15 +14,13 @@ export const metadata: Metadata = {
 };
 
 export default async function KaikanTicketsPage() {
-  const [rows, profile, settings, activity] = await Promise.all([
+  const [rows, profile] = await Promise.all([
     prisma.kaikanContent.findMany({
       where: { is_published: true },
       orderBy: [{ sort_order: "asc" }, { starts_at: "asc" }, { created_at: "asc" }],
       include: { _count: { select: { applications: true } } },
     }).catch(() => []),
     getCurrentProfile().catch(() => null),
-    getInteropSettings().catch(() => null),
-    fetchInteropInitialActivity().catch(() => ({ interop: null, forum: null })),
   ]);
 
   const mine = profile
@@ -68,8 +64,6 @@ export default async function KaikanTicketsPage() {
         <KaikanViewToggle
           contents={contentProps}
           appliedIds={appliedIds}
-          forumSettings={settings ?? undefined}
-          forumActivity={activity}
         />
       )}
     </main>

@@ -84,11 +84,13 @@ export function InteropBoard({
   topic,
   accent,
   themeMode = "auto",
+  showChat = false,
 }: {
   sub: { id: string; name: string; description: string; url?: string; categoryId: string; categoryName: string; categorySlug?: string };
   topic?: { id: string; name: string; description: string; url?: string };
   accent: string;
   themeMode?: InteropThemeMode;
+  showChat?: boolean;
 }) {
   // interop 直下の「直行サテライト」（最新ニュース／登壇者への質問／ご意見BOX）は
   // トップマップから直接入るので、戻り先はハブではなくトップマップにする。
@@ -721,15 +723,17 @@ export function InteropBoard({
 
       {/* どのページでもいつでも質問できるAIチャット（下部に投稿バーがあるので少し上げる）。
           今見ているページ（トピック・概要）に加え、ページ内の投稿・返信もアタッチして渡す */}
-      <InteropChatWidget
-        mobileRaise
-        context={
-          topic
-            ? `${sub.categoryName}｜${sub.name}｜トピック「${topic.name}」${topic.description ? `（${topic.description}）` : ""}`
-            : `${sub.categoryName}｜${sub.name}${sub.description ? `（${sub.description}）` : ""}`
-        }
-        contextDetail={serializePostsForAi(posts)}
-      />
+      {showChat && (
+        <InteropChatWidget
+          mobileRaise
+          context={
+            topic
+              ? `${sub.categoryName}｜${sub.name}｜トピック「${topic.name}」${topic.description ? `（${topic.description}）` : ""}`
+              : `${sub.categoryName}｜${sub.name}${sub.description ? `（${sub.description}）` : ""}`
+          }
+          contextDetail={serializePostsForAi(posts)}
+        />
+      )}
     </main>
   );
 }
