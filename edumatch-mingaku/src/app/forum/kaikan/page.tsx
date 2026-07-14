@@ -3,8 +3,10 @@ import type { Metadata } from "next";
 import { LogIn } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentProfile } from "@/lib/auth";
-import { KaikanTimetable } from "@/components/kaikan/kaikan-timetable";
+import { KaikanViewToggle } from "@/components/kaikan/kaikan-view-toggle";
 import { KaikanBackButton } from "@/components/kaikan/back-button";
+import { getInteropSettings } from "@/lib/interop-settings.server";
+import { fetchInteropInitialActivity } from "@/lib/interop-explorer.server";
 
 export const dynamic = "force-dynamic";
 
@@ -14,18 +16,33 @@ export const metadata: Metadata = {
 };
 
 export default async function KaikanTicketsPage() {
-  const rows = await prisma.kaikanContent.findMany({
-    where: { is_published: true },
-    orderBy: [{ sort_order: "asc" }, { starts_at: "asc" }, { created_at: "asc" }],
-    include: { _count: { select: { applications: true } } },
-  }).catch(() => []);
+  const [rows, profile, settings, activity] = await Promise.all([
+    prisma.kaikanContent.findMany({
+      where: { is_published: true },
+      orderBy: [{ sort_order: "asc" }, { starts_at: "asc" }, { created_at: "asc" }],
+      include: { _count: { select: { applications: true } } },
+    }).catch(() => []),
+    getCurrentProfile().catch(() => null),
+    getInteropSettings().catch(() => null),
+    fetchInteropInitialActivity().catch(() => ({ interop: null, forum: null })),
+  ]);
 
-  const profile = await getCurrentProfile().catch(() => null);
   const mine = profile
     ? await prisma.kaikanApplication.findMany({ where: { profile_id: profile.id, status: { not: "cancelled" } }, select: { content_id: true } }).catch(() => [])
     : [];
   const appliedIds = mine.map((m) => m.content_id);
   const loginHref = `/login?next=${encodeURIComponent("/forum/kaikan")}`;
+
+  const contentProps = rows.map((c) => ({
+    id: c.id,
+    title: c.title,
+    description: c.description,
+    location: c.location,
+    startsAt: c.starts_at ? c.starts_at.toISOString() : null,
+    endsAt: c.ends_at ? c.ends_at.toISOString() : null,
+    capacity: c.capacity,
+    applied: c._count.applications,
+  }));
 
   return (
     <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
@@ -48,18 +65,11 @@ export default async function KaikanTicketsPage() {
           </Link>
         </div>
       ) : (
-        <KaikanTimetable
-          contents={rows.map((c) => ({
-            id: c.id,
-            title: c.title,
-            description: c.description,
-            location: c.location,
-            startsAt: c.starts_at ? c.starts_at.toISOString() : null,
-            endsAt: c.ends_at ? c.ends_at.toISOString() : null,
-            capacity: c.capacity,
-            applied: c._count.applications,
-          }))}
+        <KaikanViewToggle
+          contents={contentProps}
           appliedIds={appliedIds}
+          forumSettings={settings ?? undefined}
+          forumActivity={activity}
         />
       )}
     </main>

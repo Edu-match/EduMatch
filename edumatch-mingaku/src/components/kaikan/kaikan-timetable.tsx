@@ -261,7 +261,7 @@ export function KaikanTimetable({ contents, appliedIds }: { contents: Selectable
             </div>
 
             {/* Time grid */}
-            <div className="relative grid grid-cols-[56px_1fr_1fr_1fr]" style={{ height: TOTAL_HEIGHT }}>
+            <div className="relative grid grid-cols-[56px_1fr_1fr_1fr] pt-2" style={{ height: TOTAL_HEIGHT + 8 }}>
               {/* Time labels column */}
               <div className="relative border-r">
                 {slots.map((slot) => {
@@ -270,7 +270,7 @@ export function KaikanTimetable({ contents, appliedIds }: { contents: Selectable
                   const isHour = m === 0;
                   return (
                     <div key={slot} className="absolute right-0 left-0" style={{ top }}>
-                      <span className={`absolute -top-2 right-1 flex items-center gap-0.5 tabular-nums ${isHour ? "text-xs font-bold text-foreground" : "text-[10px] text-muted-foreground"}`}>
+                      <span className={`absolute -translate-y-1/2 right-1 flex items-center gap-0.5 tabular-nums ${isHour ? "text-xs font-bold text-foreground" : "text-[10px] text-muted-foreground"}`}>
                         {isHour && <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary" />}
                         {slot}
                       </span>

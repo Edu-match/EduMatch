@@ -23,8 +23,63 @@ type Caps = { webgl: boolean; tier: Tier; reduceMotion: boolean };
 const MAJOR_EMOJI: Record<string, string> = { A: "🤖", B: "📊", C: "🛡️", D: "🌈", E: "🏫", F: "📚" };
 const MAJORS = Object.keys(MAJOR_META);
 
-const SPACE_BG =
-  "linear-gradient(180deg, #3a8fd4 0%, #5aabee 35%, #7ec8f8 65%, #b8e0f8 85%, #e3f2fd 100%)";
+/* ── 2Dと同一の時間帯パレット（interop-backdrop.tsx と完全同期） ── */
+type Period = "dawn" | "day" | "dusk" | "night";
+
+function periodFromHour(h: number): Period {
+  if (h >= 4 && h < 5)  return "dusk";
+  if (h >= 5 && h < 10) return "dawn";
+  if (h >= 10 && h < 15) return "day";
+  if (h >= 15 && h < 17) return "dusk";
+  return "night";
+}
+
+type BgPalette = {
+  sky: string;
+  horizon: string;
+  vignette: string;
+  hill: string;
+  hillEdge: string;
+  grass: string;
+};
+
+const BG_PALETTES: Record<Period, BgPalette> = {
+  dawn: {
+    sky: "linear-gradient(180deg, #2a4a7a 0%, #5a7ab0 30%, #d4a574 60%, #f0c896 80%, #fce4b8 100%)",
+    horizon: "radial-gradient(120% 60% at 50% 100%, rgba(255,220,170,0.55) 0%, rgba(255,180,140,0.25) 35%, transparent 70%)",
+    vignette: "radial-gradient(ellipse 95% 95% at 50% 40%, transparent 62%, rgba(30,20,10,0.3) 100%)",
+    hill: "rgba(60,90,50,0.75)", hillEdge: "rgba(140,180,90,0.45)", grass: "rgba(80,130,60,0.55)",
+  },
+  day: {
+    sky: "linear-gradient(180deg, #3a8fd4 0%, #5aabee 35%, #7ec8f8 65%, #b8e0f8 85%, #e3f2fd 100%)",
+    horizon: "radial-gradient(120% 55% at 50% 100%, rgba(200,235,255,0.4) 0%, transparent 65%)",
+    vignette: "radial-gradient(ellipse 95% 95% at 50% 45%, transparent 65%, rgba(20,60,120,0.2) 100%)",
+    hill: "rgba(70,140,60,0.70)", hillEdge: "rgba(120,190,80,0.40)", grass: "rgba(90,160,70,0.50)",
+  },
+  dusk: {
+    sky: "linear-gradient(180deg, #3a4a8a 0%, #6a4a7a 28%, #c06858 54%, #e88a50 74%, #f0b060 88%, #fcd088 100%)",
+    horizon: "radial-gradient(130% 62% at 50% 100%, rgba(255,180,100,0.5) 0%, rgba(230,100,70,0.25) 38%, transparent 72%)",
+    vignette: "radial-gradient(ellipse 95% 95% at 50% 42%, transparent 58%, rgba(30,15,10,0.4) 100%)",
+    hill: "rgba(80,60,50,0.75)", hillEdge: "rgba(180,120,70,0.45)", grass: "rgba(70,100,50,0.55)",
+  },
+  night: {
+    sky: "linear-gradient(180deg, #0c1a3a 0%, #152550 40%, #1e3a60 70%, #2a4a70 100%)",
+    horizon: "radial-gradient(120% 55% at 50% 100%, rgba(40,70,120,0.35) 0%, transparent 68%)",
+    vignette: "radial-gradient(ellipse 95% 95% at 50% 46%, transparent 60%, rgba(5,10,25,0.5) 100%)",
+    hill: "rgba(15,35,50,0.85)", hillEdge: "rgba(40,70,100,0.50)", grass: "rgba(25,60,50,0.60)",
+  },
+};
+
+function useTimePeriod(): Period {
+  const [period, setPeriod] = useState<Period>(() => periodFromHour(new Date().getHours()));
+  useEffect(() => {
+    const update = () => setPeriod(periodFromHour(new Date().getHours()));
+    update();
+    const t = setInterval(update, 5 * 60 * 1000);
+    return () => clearInterval(t);
+  }, []);
+  return period;
+}
 
 const CAM_START = new THREE.Vector3(0, 90, 210);
 const CAM_HOME = new THREE.Vector3(30, 24, 46);
@@ -533,7 +588,7 @@ function ForumGalaxy2DFallback({ centerLabel, counts, onSelectCenter, onSelectTo
     return [...byMajor.entries()];
   }, []);
   return (
-    <div className="absolute inset-0 overflow-y-auto" style={{ background: SPACE_BG }}>
+    <div className="absolute inset-0 overflow-y-auto" style={{ background: BG_PALETTES.day.sky }}>
       <div className="mx-auto max-w-3xl px-4 py-6">
         <button
           type="button"
@@ -599,6 +654,8 @@ export default function ForumGalaxy3D({ centerLabel, onSelectCenter, onSelectTop
   const [counts, setCounts] = useState<Map<string, number>>(new Map());
   const [focusedMajor, setFocusedMajor] = useState<string | null>(null);
   const caps = useClientCapabilities();
+  const period = useTimePeriod();
+  const pal = BG_PALETTES[period];
 
   useEffect(() => {
     let cancelled = false;
@@ -617,7 +674,7 @@ export default function ForumGalaxy3D({ centerLabel, onSelectCenter, onSelectTop
   const label = centerLabel?.trim() || "議員会館";
 
   if (!caps) {
-    return <div className="absolute inset-0" style={{ background: SPACE_BG }} />;
+    return <div className="absolute inset-0 transition-[background] duration-1000" style={{ background: pal.sky }} />;
   }
   if (!caps.webgl) {
     return <ForumGalaxy2DFallback centerLabel={label} counts={counts} onSelectCenter={onSelectCenter} onSelectTopic={onSelectTopic} />;
@@ -625,8 +682,7 @@ export default function ForumGalaxy3D({ centerLabel, onSelectCenter, onSelectTop
 
   return (
     <div className="absolute inset-0">
-      <div className="absolute inset-0" style={{ background: SPACE_BG }} />
-      {/* 山・自然の背景（2Dビューと統一・3Dコンテンツの背後に配置） */}
+      <div className="absolute inset-0 transition-[background] duration-1000" style={{ background: pal.sky }} />
       <svg
         className="pointer-events-none absolute inset-x-0 bottom-0 w-full"
         viewBox="0 0 100 30"
@@ -634,9 +690,9 @@ export default function ForumGalaxy3D({ centerLabel, onSelectCenter, onSelectTop
         style={{ height: "min(22vh, 200px)", zIndex: 0 }}
         aria-hidden
       >
-        <path d="M0,28 C8,22 15,18 25,20 C35,22 40,15 50,16 C60,17 65,12 75,14 C85,16 92,20 100,18 L100,30 L0,30 Z" fill="rgba(70,140,60,0.70)" />
-        <path d="M0,28 C8,22 15,18 25,20 C35,22 40,15 50,16 C60,17 65,12 75,14 C85,16 92,20 100,18" fill="none" stroke="rgba(120,190,80,0.40)" strokeWidth="0.3" />
-        <path d="M0,30 C10,25 20,23 30,26 C40,29 50,22 60,24 C70,26 80,23 90,25 C95,26 100,28 100,30 Z" fill="rgba(90,160,70,0.50)" />
+        <path d="M0,28 C8,22 15,18 25,20 C35,22 40,15 50,16 C60,17 65,12 75,14 C85,16 92,20 100,18 L100,30 L0,30 Z" fill={pal.hill} className="transition-[fill] duration-1000" />
+        <path d="M0,28 C8,22 15,18 25,20 C35,22 40,15 50,16 C60,17 65,12 75,14 C85,16 92,20 100,18" fill="none" stroke={pal.hillEdge} strokeWidth="0.3" className="transition-[stroke] duration-1000" />
+        <path d="M0,30 C10,25 20,23 30,26 C40,29 50,22 60,24 C70,26 80,23 90,25 C95,26 100,28 100,30 Z" fill={pal.grass} className="transition-[fill] duration-1000" />
       </svg>
       <Canvas
         camera={{ position: CAM_START.toArray() as [number, number, number], fov: 46 }}
@@ -655,17 +711,15 @@ export default function ForumGalaxy3D({ centerLabel, onSelectCenter, onSelectTop
         />
       </Canvas>
 
-      {/* 2Dビューと同じ地平線グロー */}
       <div
-        className="pointer-events-none absolute inset-0"
+        className="pointer-events-none absolute inset-0 transition-[background] duration-1000"
         aria-hidden
-        style={{ background: "radial-gradient(120% 55% at 50% 100%, rgba(200,235,255,0.4) 0%, transparent 65%)", zIndex: 2 }}
+        style={{ background: pal.horizon, zIndex: 2 }}
       />
-      {/* 2Dビューと同じビネット */}
       <div
-        className="pointer-events-none absolute inset-0"
+        className="pointer-events-none absolute inset-0 transition-[background] duration-1000"
         aria-hidden
-        style={{ background: "radial-gradient(ellipse 95% 95% at 50% 45%, transparent 65%, rgba(20,60,120,0.2) 100%)", zIndex: 2 }}
+        style={{ background: pal.vignette, zIndex: 2 }}
       />
 
       {/* フォーカス解除ボタン */}
