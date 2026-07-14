@@ -56,6 +56,7 @@ export default async function KaikanTicketsPage() {
             location: c.location,
             startsAt: c.starts_at ? c.starts_at.toISOString() : null,
             endsAt: c.ends_at ? c.ends_at.toISOString() : null,
+            contentType: c.content_type,
             capacity: c.capacity,
             applied: c._count.applications,
           }))}

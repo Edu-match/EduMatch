@@ -152,7 +152,7 @@ function Sun({ label, seg, reduceMotion, labelScale = 1, compact = false, onSele
     <group>
       <mesh ref={core} onPointerOver={(e) => { e.stopPropagation(); enter(); }} onPointerOut={leave} onClick={(e) => { e.stopPropagation(); onSelect(); }}>
         <sphereGeometry args={[2.7, seg, seg]} />
-        <meshBasicMaterial color={hover ? "#fff6de" : "#ffedc2"} toneMapped={false} />
+        <meshBasicMaterial color={hover ? "#fff6de" : "#ffedc2"} transparent opacity={0.7} toneMapped={false} />
       </mesh>
       <Atmosphere color="#ffd9a0" radius={3.6} power={2.1} intensity={1.3} />
       <Atmosphere color="#ff9d5c" radius={4.9} power={3.4} intensity={0.9} />
@@ -224,7 +224,7 @@ function Moon({ topic, posts, planetR, index, count, clockRef, seg, showLabel, c
         onClick={(e) => { e.stopPropagation(); onSelect(); }}
       >
         <sphereGeometry args={[r, seg, seg]} />
-        <meshBasicMaterial color={color} toneMapped={false} />
+        <meshBasicMaterial color={color} transparent opacity={0.5} toneMapped={false} />
       </mesh>
       <Atmosphere color={color} radius={r * 1.45} power={2.6} intensity={hover ? 1.3 : 0.6} />
       {hover && (
@@ -295,9 +295,9 @@ function Planet({ spec, topics, counts, clockRef, seg, focused, anyFocused, posi
           onClick={(e) => { e.stopPropagation(); onFocus(); }}
         >
           <sphereGeometry args={[planetR, seg, seg]} />
-          <meshBasicMaterial color={color} transparent opacity={dim ? 0.35 : 1} toneMapped={false} />
+          <meshBasicMaterial color={color} transparent opacity={dim ? 0.15 : 0.45} toneMapped={false} />
         </mesh>
-        <Atmosphere color={color} radius={planetR * 1.32} power={2.4} intensity={dim ? 0.3 : hover || focused ? 1.35 : 0.8} />
+        <Atmosphere color={color} radius={planetR * 1.25} power={1.8} intensity={dim ? 0.2 : hover || focused ? 1.5 : 1.0} />
         {/* リング（差し色） */}
         {spec.hasRing && (
           <mesh raycast={() => null} rotation={[Math.PI / 2.25, 0, 0]}>

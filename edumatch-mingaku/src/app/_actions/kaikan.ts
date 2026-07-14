@@ -187,17 +187,80 @@ export async function createKaikanContent(formData: FormData) {
   const description = String(formData.get("description") || "").trim();
   const location = String(formData.get("location") || "").trim();
   const startsAtRaw = String(formData.get("starts_at") || "").trim();
+  const endsAtRaw = String(formData.get("ends_at") || "").trim();
   const capacityRaw = String(formData.get("capacity") || "").trim();
+  const contentType = String(formData.get("content_type") || "session");
   await prisma.kaikanContent.create({
     data: {
       title,
       description,
       location,
       starts_at: startsAtRaw ? new Date(startsAtRaw) : null,
+      ends_at: endsAtRaw ? new Date(endsAtRaw) : null,
       capacity: capacityRaw ? Math.max(0, parseInt(capacityRaw, 10)) || null : null,
+      content_type: contentType,
       is_published: formData.get("is_published") === "on",
     },
   });
+  revalidatePath("/admin/kaikan");
+  revalidatePath("/forum/kaikan");
+}
+
+/** 管理者：CSVからコンテンツを一括インポートする。 */
+export async function importKaikanContentsFromCsv(formData: FormData) {
+  await requireAdmin();
+  const file = formData.get("csv") as File | null;
+  if (!file) throw new Error("CSVファイルを選択してください");
+
+  const text = await file.text();
+  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+  if (lines.length < 2) throw new Error("CSVにデータ行がありません");
+
+  const header = lines[0].split(",").map((h) => h.trim().replace(/^"|"$/g, ""));
+  const titleIdx = header.indexOf("title");
+  const descIdx = header.indexOf("description");
+  const locIdx = header.indexOf("location");
+  const startIdx = header.indexOf("starts_at");
+  const endIdx = header.indexOf("ends_at");
+  const capIdx = header.indexOf("capacity");
+  const typeIdx = header.indexOf("content_type");
+  const pubIdx = header.indexOf("is_published");
+
+  if (titleIdx < 0) throw new Error("CSVにtitle列が必要です");
+
+  // 簡易CSVパース（クォート付きフィールド対応）
+  function parseCsvLine(line: string): string[] {
+    const result: string[] = [];
+    let current = "";
+    let inQuotes = false;
+    for (const ch of line) {
+      if (ch === '"') { inQuotes = !inQuotes; continue; }
+      if (ch === "," && !inQuotes) { result.push(current.trim()); current = ""; continue; }
+      current += ch;
+    }
+    result.push(current.trim());
+    return result;
+  }
+
+  for (let i = 1; i < lines.length; i++) {
+    const cols = parseCsvLine(lines[i]);
+    const title = cols[titleIdx]?.trim();
+    if (!title) continue;
+
+    await prisma.kaikanContent.create({
+      data: {
+        title,
+        description: cols[descIdx] ?? "",
+        location: cols[locIdx] ?? "",
+        starts_at: cols[startIdx] ? new Date(cols[startIdx]) : null,
+        ends_at: cols[endIdx] ? new Date(cols[endIdx]) : null,
+        capacity: cols[capIdx] ? parseInt(cols[capIdx], 10) || null : null,
+        content_type: cols[typeIdx] || "session",
+        is_published: cols[pubIdx] === "true",
+      },
+    });
+  }
+
   revalidatePath("/admin/kaikan");
   revalidatePath("/forum/kaikan");
 }

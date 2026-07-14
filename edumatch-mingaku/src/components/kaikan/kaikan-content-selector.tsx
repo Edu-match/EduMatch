@@ -11,6 +11,8 @@ export type SelectableContent = {
   location: string;
   startsAt: string | null;
   endsAt: string | null;
+  /// session | workshop | keynote
+  contentType: string;
   capacity: number | null;
   applied: number;
 };
@@ -36,6 +38,16 @@ function fmtDateHeading(d: string): string {
   try { return new Intl.DateTimeFormat("ja-JP", { month: "long", day: "numeric", weekday: "short" }).format(new Date(d)); } catch { return ""; }
 }
 
+/** 2つのコンテンツの時間帯が重なるか（両方に開始・終了がある場合のみ判定）。 */
+function timeOverlaps(a: SelectableContent, b: SelectableContent): boolean {
+  if (!a.startsAt || !a.endsAt || !b.startsAt || !b.endsAt) return false;
+  const aStart = new Date(a.startsAt).getTime();
+  const aEnd = new Date(a.endsAt).getTime();
+  const bStart = new Date(b.startsAt).getTime();
+  const bEnd = new Date(b.endsAt).getTime();
+  return aStart < bEnd && bStart < aEnd;
+}
+
 /** 日付キー（ローカル日付単位でグルーピング） */
 function dateKey(d: string): string {
   const dt = new Date(d);
@@ -53,6 +65,7 @@ export function KaikanContentSelector({ contents, appliedIds }: { contents: Sele
   const pageCount = Math.max(1, Math.ceil(contents.length / PER_PAGE));
   const pageItems = contents.slice(page * PER_PAGE, page * PER_PAGE + PER_PAGE);
   const newCount = [...selected].filter((id) => !appliedSet.has(id)).length;
+  const selectedContents = useMemo(() => contents.filter((c) => selected.has(c.id)), [contents, selected]);
 
   // 日付ごとにグルーピング（時間未定は最後）。各グループ内は開始時刻順。
   const groups = useMemo(() => {
@@ -97,7 +110,9 @@ export function KaikanContentSelector({ contents, appliedIds }: { contents: Sele
                 const full = c.capacity != null && c.applied >= c.capacity;
                 const applied = appliedSet.has(c.id);
                 const checked = selected.has(c.id);
-                const disabled = full || applied;
+                const overlapsWithSelected = !selected.has(c.id) && selectedContents.some((s) => timeOverlaps(s, c));
+                const workshopLimitReached = c.contentType === "workshop" && !selected.has(c.id) && selectedContents.some((s) => s.contentType === "workshop");
+                const disabled = full || applied || overlapsWithSelected || workshopLimitReached;
                 const timeRange = fmtTimeRange(c.startsAt, c.endsAt);
                 return (
                   <li key={c.id}>
@@ -122,6 +137,8 @@ export function KaikanContentSelector({ contents, appliedIds }: { contents: Sele
                             <span className="font-bold">{c.title}</span>
                             {applied && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700"><CheckCircle2 className="h-3 w-3" />申込済</span>}
                             {full && !applied && <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">満席</span>}
+                            {!full && !applied && overlapsWithSelected && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">時間が重複しています</span>}
+                            {!full && !applied && !overlapsWithSelected && workshopLimitReached && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">ワークショップは1つまで</span>}
                           </span>
                           <span className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
                             {c.location && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{c.location}</span>}

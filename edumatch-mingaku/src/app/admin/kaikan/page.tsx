@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
-import { createKaikanContent, setKaikanContentPublished, generateKaikanInviteCodes, toggleKaikanInviteCode, deleteKaikanInviteCode } from "@/app/_actions/kaikan";
+import { createKaikanContent, setKaikanContentPublished, generateKaikanInviteCodes, toggleKaikanInviteCode, deleteKaikanInviteCode, importKaikanContentsFromCsv } from "@/app/_actions/kaikan";
 import { KaikanCheckinPanel } from "@/components/kaikan/kaikan-checkin-panel";
 
 export const dynamic = "force-dynamic";
@@ -176,6 +176,18 @@ export default async function AdminKaikanPage({ searchParams }: { searchParams: 
       </section>
       ) : (
       <>
+      {/* CSV一括インポート */}
+      <section className="mt-6 rounded-xl border bg-background p-5">
+        <h2 className="mb-1 text-sm font-bold">CSVで一括インポート</h2>
+        <p className="mb-3 text-xs text-muted-foreground">
+          <a href="/kaikan-content-template.csv" download className="text-primary underline">テンプレートCSV</a>をダウンロードして記入後、アップロードしてください。
+        </p>
+        <form action={importKaikanContentsFromCsv} className="flex items-end gap-2">
+          <input name="csv" type="file" accept=".csv" required className="text-sm" />
+          <button type="submit" className="rounded-md bg-primary px-4 py-2 text-sm font-bold text-primary-foreground">インポート</button>
+        </form>
+      </section>
+
       {/* コンテンツ新設 */}
       <section className="mt-6 rounded-xl border bg-background p-5">
         <h2 className="mb-3 text-sm font-bold">コンテンツを新設</h2>
@@ -185,7 +197,14 @@ export default async function AdminKaikanPage({ searchParams }: { searchParams: 
           <input name="location" placeholder="場所（例：第一議員会館 大会議室）" className="rounded-md border border-input px-3 py-2 text-sm sm:col-span-2" />
           <label className="text-xs text-muted-foreground">開始<input name="starts_at" type="datetime-local" className="mt-1 block w-full rounded-md border border-input px-3 py-2 text-sm" /></label>
           <label className="text-xs text-muted-foreground">終了（時間重複の判定に使用）<input name="ends_at" type="datetime-local" className="mt-1 block w-full rounded-md border border-input px-3 py-2 text-sm" /></label>
-          <input name="capacity" type="number" min={0} placeholder="定員（空欄=無制限）" className="rounded-md border border-input px-3 py-2 text-sm sm:col-span-2" />
+          <input name="capacity" type="number" min={0} placeholder="定員（空欄=無制限）" className="rounded-md border border-input px-3 py-2 text-sm" />
+          <label className="text-xs text-muted-foreground">種別
+            <select name="content_type" className="mt-1 block w-full rounded-md border border-input px-3 py-2 text-sm">
+              <option value="session">セッション</option>
+              <option value="workshop">ワークショップ</option>
+              <option value="keynote">基調講演</option>
+            </select>
+          </label>
           <label className="flex items-center gap-2 text-sm">
             <input name="is_published" type="checkbox" className="h-4 w-4" />
             すぐ公開する

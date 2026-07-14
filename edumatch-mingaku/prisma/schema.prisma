@@ -711,6 +711,8 @@ model KaikanContent {
   title        String
   description  String              @default("")
   location     String              @default("")
+  /// session | workshop | keynote
+  content_type String              @default("session")
   /// 開催日時（任意）
   starts_at    DateTime?           @db.Timestamptz(6)
   /// 終了日時（任意。starts_at と合わせて時間重複の判定に使う）
