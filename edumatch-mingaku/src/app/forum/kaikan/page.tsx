@@ -4,7 +4,7 @@ import { LogIn, ChevronLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentProfile } from "@/lib/auth";
 import { hasRedeemedInvite } from "@/app/_actions/kaikan";
-import { KaikanContentSelector } from "@/components/kaikan/kaikan-content-selector";
+import { KaikanTimetable } from "@/components/kaikan/kaikan-timetable";
 import { KaikanInviteGate } from "@/components/kaikan/kaikan-invite-gate";
 
 export const dynamic = "force-dynamic";
@@ -30,7 +30,7 @@ export default async function KaikanTicketsPage() {
   const loginHref = `/login?next=${encodeURIComponent("/forum/kaikan")}`;
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-4 py-8 sm:px-6">
+    <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
       <Link href="/forum?map=3d" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
         <ChevronLeft className="h-3.5 w-3.5" /> 井戸端会議へ
       </Link>
@@ -55,7 +55,7 @@ export default async function KaikanTicketsPage() {
       ) : rows.length === 0 ? (
         <div className="rounded-xl border bg-muted/30 p-8 text-center text-sm text-muted-foreground">現在申込受付中のコンテンツはありません。</div>
       ) : (
-        <KaikanContentSelector
+        <KaikanTimetable
           contents={rows.map((c) => ({
             id: c.id,
             title: c.title,
