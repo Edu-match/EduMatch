@@ -37,7 +37,10 @@ function periodFromHour(h: number): Period {
 type BgPalette = {
   sky: string;
   horizon: string;
+  haze?: string;
   vignette: string;
+  cloudOpacity: number;
+  starOpacity: number;
   hill: string;
   hillEdge: string;
   grass: string;
@@ -47,28 +50,52 @@ const BG_PALETTES: Record<Period, BgPalette> = {
   dawn: {
     sky: "linear-gradient(180deg, #2a4a7a 0%, #5a7ab0 30%, #d4a574 60%, #f0c896 80%, #fce4b8 100%)",
     horizon: "radial-gradient(120% 60% at 50% 100%, rgba(255,220,170,0.55) 0%, rgba(255,180,140,0.25) 35%, transparent 70%)",
+    haze: "radial-gradient(80% 40% at 50% 88%, rgba(255,200,150,0.30) 0%, transparent 60%)",
     vignette: "radial-gradient(ellipse 95% 95% at 50% 40%, transparent 62%, rgba(30,20,10,0.3) 100%)",
+    cloudOpacity: 0.6, starOpacity: 0.15,
     hill: "rgba(60,90,50,0.75)", hillEdge: "rgba(140,180,90,0.45)", grass: "rgba(80,130,60,0.55)",
   },
   day: {
     sky: "linear-gradient(180deg, #3a8fd4 0%, #5aabee 35%, #7ec8f8 65%, #b8e0f8 85%, #e3f2fd 100%)",
     horizon: "radial-gradient(120% 55% at 50% 100%, rgba(200,235,255,0.4) 0%, transparent 65%)",
     vignette: "radial-gradient(ellipse 95% 95% at 50% 45%, transparent 65%, rgba(20,60,120,0.2) 100%)",
+    cloudOpacity: 0.8, starOpacity: 0,
     hill: "rgba(70,140,60,0.70)", hillEdge: "rgba(120,190,80,0.40)", grass: "rgba(90,160,70,0.50)",
   },
   dusk: {
     sky: "linear-gradient(180deg, #3a4a8a 0%, #6a4a7a 28%, #c06858 54%, #e88a50 74%, #f0b060 88%, #fcd088 100%)",
     horizon: "radial-gradient(130% 62% at 50% 100%, rgba(255,180,100,0.5) 0%, rgba(230,100,70,0.25) 38%, transparent 72%)",
+    haze: "radial-gradient(90% 45% at 50% 90%, rgba(255,160,100,0.35) 0%, transparent 62%)",
     vignette: "radial-gradient(ellipse 95% 95% at 50% 42%, transparent 58%, rgba(30,15,10,0.4) 100%)",
+    cloudOpacity: 0.5, starOpacity: 0.2,
     hill: "rgba(80,60,50,0.75)", hillEdge: "rgba(180,120,70,0.45)", grass: "rgba(70,100,50,0.55)",
   },
   night: {
     sky: "linear-gradient(180deg, #0c1a3a 0%, #152550 40%, #1e3a60 70%, #2a4a70 100%)",
     horizon: "radial-gradient(120% 55% at 50% 100%, rgba(40,70,120,0.35) 0%, transparent 68%)",
     vignette: "radial-gradient(ellipse 95% 95% at 50% 46%, transparent 60%, rgba(5,10,25,0.5) 100%)",
+    cloudOpacity: 0.25, starOpacity: 0.7,
     hill: "rgba(15,35,50,0.85)", hillEdge: "rgba(40,70,100,0.50)", grass: "rgba(25,60,50,0.60)",
   },
 };
+
+const BG_FX = `
+  @keyframes g3dCloud { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  @keyframes g3dTwinkle { 0%,100% { opacity: 0.15; } 50% { opacity: 1; } }
+  @keyframes g3dFirefly { 0%,100% { opacity: 0; transform: translateY(0); } 30% { opacity: 0.8; } 70% { opacity: 0.6; } 100% { transform: translateY(-20px); opacity: 0; } }
+  @keyframes g3dBird { 0% { transform: translateX(-20px); } 100% { transform: translateX(calc(100vw + 40px)); } }
+`;
+
+function useBgElements() {
+  return useMemo(() => {
+    let seed = 42;
+    const rand = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+    const stars = Array.from({ length: 30 }, () => ({ left: rand() * 100, top: rand() * 55, d: 0.6 + rand() * 1.4, delay: rand() * 6, dur: 3 + rand() * 4 }));
+    const clouds = Array.from({ length: 6 }, () => ({ top: 5 + rand() * 40, w: 80 + rand() * 160, h: 20 + rand() * 30, speed: 60 + rand() * 80, offset: rand() * 100 }));
+    const fireflies = Array.from({ length: 8 }, () => ({ left: 10 + rand() * 80, bottom: 5 + rand() * 25, delay: rand() * 8, dur: 4 + rand() * 5 }));
+    return { stars, clouds, fireflies };
+  }, []);
+}
 
 function useTimePeriod(): Period {
   const [period, setPeriod] = useState<Period>(() => periodFromHour(new Date().getHours()));
@@ -97,8 +124,8 @@ type OrbitSpec = {
 };
 const ORBITS: OrbitSpec[] = MAJORS.map((major, i) => ({
   major,
-  rx: 10.5 + i * 4.7,
-  rz: (10.5 + i * 4.7) * 0.94,
+  rx: 14 + i * 6.5,
+  rz: (14 + i * 6.5) * 0.94,
   tiltX: [0.05, -0.08, 0.11, -0.05, 0.08, -0.11][i],
   tiltZ: [0.03, -0.04, 0.02, 0.06, -0.03, 0.05][i],
   phase: i * 2.39996, // 黄金角でばらす
@@ -656,6 +683,9 @@ export default function ForumGalaxy3D({ centerLabel, onSelectCenter, onSelectTop
   const caps = useClientCapabilities();
   const period = useTimePeriod();
   const pal = BG_PALETTES[period];
+  const els = useBgElements();
+  const showStars = pal.starOpacity > 0;
+  const showClouds = pal.cloudOpacity > 0.1;
 
   useEffect(() => {
     let cancelled = false;
@@ -681,19 +711,43 @@ export default function ForumGalaxy3D({ centerLabel, onSelectCenter, onSelectTop
   }
 
   return (
-    <div className="absolute inset-0">
+    <div className="absolute inset-0 overflow-hidden">
+      <style>{BG_FX}</style>
+
+      {/* 空グラデーション */}
       <div className="absolute inset-0 transition-[background] duration-1000" style={{ background: pal.sky }} />
-      <svg
-        className="pointer-events-none absolute inset-x-0 bottom-0 w-full"
-        viewBox="0 0 100 30"
-        preserveAspectRatio="none"
-        style={{ height: "min(22vh, 200px)", zIndex: 0 }}
-        aria-hidden
-      >
+
+      {/* 雲 */}
+      {showClouds && els.clouds.map((c, i) => (
+        <div key={`cloud-${i}`} className="pointer-events-none absolute" style={{ top: `${c.top}%`, left: `${c.offset}%`, width: c.w * 2, animation: `g3dCloud ${c.speed}s linear infinite`, zIndex: 0 }}>
+          <div className="rounded-full" style={{ width: c.w, height: c.h, background: `radial-gradient(ellipse at 50% 60%, rgba(255,255,255,${pal.cloudOpacity}) 0%, rgba(255,255,255,${pal.cloudOpacity * 0.3}) 60%, transparent 80%)`, filter: "blur(4px)" }} />
+          <div className="rounded-full -mt-3 ml-6" style={{ width: c.w * 0.7, height: c.h * 0.8, background: `radial-gradient(ellipse at 50% 60%, rgba(255,255,255,${pal.cloudOpacity * 0.7}) 0%, transparent 75%)`, filter: "blur(5px)" }} />
+        </div>
+      ))}
+
+      {/* 星 */}
+      {showStars && els.stars.map((s, i) => (
+        <span key={`star-${i}`} className="pointer-events-none absolute rounded-full bg-white" style={{ left: `${s.left}%`, top: `${s.top}%`, width: s.d, height: s.d, opacity: pal.starOpacity, animation: `g3dTwinkle ${s.dur}s ease-in-out ${s.delay}s infinite`, zIndex: 0 }} />
+      ))}
+
+      {/* 蛍（夜のみ） */}
+      {period === "night" && els.fireflies.map((f, i) => (
+        <span key={`fly-${i}`} className="pointer-events-none absolute rounded-full" style={{ left: `${f.left}%`, bottom: `${f.bottom}%`, width: 4, height: 4, background: "radial-gradient(circle, rgba(180,255,160,0.9) 0%, rgba(120,255,100,0.3) 50%, transparent 70%)", animation: `g3dFirefly ${f.dur}s ease-in-out ${f.delay}s infinite`, zIndex: 0 }} />
+      ))}
+
+      {/* 鳥シルエット（昼のみ） */}
+      {period === "day" && (
+        <div className="pointer-events-none absolute" style={{ top: "18%", left: 0, fontSize: 12, opacity: 0.25, animation: "g3dBird 25s linear 5s infinite", zIndex: 0 }}>~&nbsp;&nbsp;~</div>
+      )}
+
+      {/* 丘陵シルエット */}
+      <svg className="pointer-events-none absolute inset-x-0 bottom-0 w-full" viewBox="0 0 100 30" preserveAspectRatio="none" style={{ height: "min(22vh, 200px)", zIndex: 0 }} aria-hidden>
         <path d="M0,28 C8,22 15,18 25,20 C35,22 40,15 50,16 C60,17 65,12 75,14 C85,16 92,20 100,18 L100,30 L0,30 Z" fill={pal.hill} className="transition-[fill] duration-1000" />
         <path d="M0,28 C8,22 15,18 25,20 C35,22 40,15 50,16 C60,17 65,12 75,14 C85,16 92,20 100,18" fill="none" stroke={pal.hillEdge} strokeWidth="0.3" className="transition-[stroke] duration-1000" />
         <path d="M0,30 C10,25 20,23 30,26 C40,29 50,22 60,24 C70,26 80,23 90,25 C95,26 100,28 100,30 Z" fill={pal.grass} className="transition-[fill] duration-1000" />
       </svg>
+
+      {/* 3D Canvas */}
       <Canvas
         camera={{ position: CAM_START.toArray() as [number, number, number], fov: 46 }}
         dpr={caps.tier === "high" ? [1, 2] : [1, 1.5]}
@@ -711,16 +765,12 @@ export default function ForumGalaxy3D({ centerLabel, onSelectCenter, onSelectTop
         />
       </Canvas>
 
-      <div
-        className="pointer-events-none absolute inset-0 transition-[background] duration-1000"
-        aria-hidden
-        style={{ background: pal.horizon, zIndex: 2 }}
-      />
-      <div
-        className="pointer-events-none absolute inset-0 transition-[background] duration-1000"
-        aria-hidden
-        style={{ background: pal.vignette, zIndex: 2 }}
-      />
+      {/* 地平線グロー */}
+      <div className="pointer-events-none absolute inset-0 transition-[background] duration-1000" aria-hidden style={{ background: pal.horizon, zIndex: 2 }} />
+      {/* ヘイズ */}
+      {pal.haze && <div className="pointer-events-none absolute inset-0 transition-[background] duration-1000" aria-hidden style={{ background: pal.haze, zIndex: 2 }} />}
+      {/* ビネット */}
+      <div className="pointer-events-none absolute inset-0 transition-[background] duration-1000" aria-hidden style={{ background: pal.vignette, zIndex: 2 }} />
 
       {/* フォーカス解除ボタン */}
       {focusedMajor && (
