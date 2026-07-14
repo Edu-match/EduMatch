@@ -6,20 +6,16 @@ const OPENAI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL?.trim() || "gpt-image-
 /** Supabase Storage の既存バケット（persona アバターと同じ） */
 const BUCKET_NAME = "media";
 
-/**
- * スタイル別のビジュアル指示。
- * GPT Image 1 がタイトル文字込みで完全なサムネイルを生成する。
- */
 const STYLE_PROMPTS: Record<string, string> = {
-  tech: "Dark blue-purple tech background with holographic UI panels, glowing circuit lines, and digital particles. An anime-style young professional character on the right side, pointing or presenting energetically.",
+  tech: "Dark blue-purple tech background with holographic UI panels, glowing circuit lines, and digital particles. An anime-style young professional character on the right side, pointing or presenting energetically. No text or letters anywhere in the image.",
   illustration:
-    "Warm classroom or library scene with bookshelves and soft lighting. A friendly anime-style teacher character on the right side, smiling and gesturing.",
+    "Warm classroom or library scene with bookshelves and soft lighting. A friendly anime-style teacher character on the right side, smiling and gesturing. No text or letters anywhere in the image.",
   professional:
-    "Clean modern office or conference room, sleek design. A professional anime character in business attire on the right side. Blue and white color scheme.",
+    "Clean modern office or conference room, sleek design. A professional anime character in business attire on the right side. Blue and white color scheme. No text or letters anywhere in the image.",
   creative:
-    "Colorful creative workspace with art supplies and inspiration boards. An energetic anime character with creative tools on the right side. Vivid pop-art colors.",
+    "Colorful creative workspace with art supplies and inspiration boards. An energetic anime character with creative tools on the right side. Vivid pop-art colors. No text or letters anywhere in the image.",
   gradient:
-    "Abstract gradient background (purple to blue) with soft geometric shapes, light particles, and bokeh effects. No characters. Modern minimalist.",
+    "Abstract gradient background (purple to blue) with soft geometric shapes, light particles, and bokeh effects. No characters. Modern minimalist. No text or letters anywhere in the image.",
 };
 
 async function cropTo16by9(buffer: Buffer): Promise<Buffer> {
@@ -33,12 +29,6 @@ async function cropTo16by9(buffer: Buffer): Promise<Buffer> {
   return img.extract({ left: 0, top, width: w, height: targetH }).toBuffer();
 }
 
-/**
- * 記事タイトル（＋概要）から OpenAI 画像APIで YouTube サムネイル風の
- * 完全なサムネイル画像（タイトル文字入り）を生成し、
- * Supabase Storage にアップロードして公開URLを返す。
- * 失敗時は null（呼び出し側でフォールバック）。
- */
 export async function generateArticleThumbnail(
   title: string,
   description?: string,
@@ -49,16 +39,13 @@ export async function generateArticleThumbnail(
 
   const openai = new OpenAI({ apiKey });
   const stylePrompt = STYLE_PROMPTS[style] ?? STYLE_PROMPTS.tech;
-  const displayTitle = title.trim().slice(0, 60);
   const prompt =
-    `Create a YouTube video thumbnail image. ` +
-    `The thumbnail MUST display this Japanese title text prominently: 「${displayTitle}」. ` +
-    `Render the title as large, bold white text with a black outline/stroke, placed in the left-center area of the image. ` +
-    `The text should be clearly readable, high contrast against the background. ` +
-    `${description ? `Topic context: ${description}. ` : ""}` +
+    `Create a visually striking thumbnail illustration for an educational article. ` +
+    `The image should visually represent the topic: "${title.trim().slice(0, 80)}". ` +
+    `${description ? `Context: ${description.slice(0, 120)}. ` : ""}` +
     `Visual style: ${stylePrompt} ` +
-    `Layout: 16:9 aspect ratio, eye-catching composition. The title text is the focal point. ` +
-    `The overall feel should be like a popular Japanese YouTube education channel thumbnail.`;
+    `CRITICAL: Do NOT include any text, titles, captions, words, letters, or characters in the image. The image must be purely visual/illustrative with zero text. ` +
+    `Layout: 16:9 aspect ratio, eye-catching composition suitable for an article thumbnail.`;
 
   try {
     const res = await openai.images.generate({

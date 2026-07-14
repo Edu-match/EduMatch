@@ -56,14 +56,11 @@ export function resolveThumbnailStyle(kind: ThumbnailTemplateKind): ThumbnailSty
 }
 
 export interface ThumbnailStyleMeta {
-  /** UI に表示する日本語名 */
   label: string;
-  /** UI に表示する短い説明 */
   description: string;
-  /** セレクタのプレビュー用 CSS background 値 */
   previewBackground: string;
-  /** プレビュー上のラベル文字色（背景に対して可読な色） */
   previewTextColor: string;
+  emoji: string;
 }
 
 export const THUMBNAIL_STYLE_META: Record<ThumbnailStyleKind, ThumbnailStyleMeta> = {
@@ -72,6 +69,7 @@ export const THUMBNAIL_STYLE_META: Record<ThumbnailStyleKind, ThumbnailStyleMeta
     description: "やわらかいパステルの色合い",
     previewBackground: "linear-gradient(135deg, #fbc2d4 0%, #d8c6f0 55%, #b8c8f2 100%)",
     previewTextColor: "#41365a",
+    emoji: "🌈",
   },
   illustration: {
     label: "イラスト",
@@ -79,6 +77,7 @@ export const THUMBNAIL_STYLE_META: Record<ThumbnailStyleKind, ThumbnailStyleMeta
     previewBackground:
       "radial-gradient(circle at 20% 25%, #cdeedd 0%, #cdeedd 22%, transparent 23%), radial-gradient(circle at 82% 75%, #ffd9c0 0%, #ffd9c0 26%, transparent 27%), #fff6e9",
     previewTextColor: "#5b4636",
+    emoji: "🎨",
   },
   tech: {
     label: "テック",
@@ -86,6 +85,7 @@ export const THUMBNAIL_STYLE_META: Record<ThumbnailStyleKind, ThumbnailStyleMeta
     previewBackground:
       "linear-gradient(rgba(78,168,255,0.14) 1px, transparent 1px), linear-gradient(90deg, rgba(78,168,255,0.14) 1px, transparent 1px), #0b1220",
     previewTextColor: "#e8f2ff",
+    emoji: "💻",
   },
   professional: {
     label: "プロフェッショナル",
@@ -93,6 +93,7 @@ export const THUMBNAIL_STYLE_META: Record<ThumbnailStyleKind, ThumbnailStyleMeta
     previewBackground:
       "linear-gradient(90deg, #1d5bd8 0%, #1d5bd8 7%, #f6f8fb 7%, #f6f8fb 100%)",
     previewTextColor: "#1f2937",
+    emoji: "💼",
   },
   creative: {
     label: "クリエイティブ",
@@ -100,6 +101,7 @@ export const THUMBNAIL_STYLE_META: Record<ThumbnailStyleKind, ThumbnailStyleMeta
     previewBackground:
       "radial-gradient(circle at 12% 18%, #ff5a7a 0%, #ff5a7a 12%, transparent 13%), radial-gradient(circle at 88% 20%, #ffc233 0%, #ffc233 10%, transparent 11%), radial-gradient(circle at 85% 82%, #00b8a9 0%, #00b8a9 13%, transparent 14%), radial-gradient(circle at 15% 80%, #7c4dff 0%, #7c4dff 9%, transparent 10%), #ffffff",
     previewTextColor: "#24252d",
+    emoji: "✨",
   },
 };
 
