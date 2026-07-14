@@ -32,7 +32,12 @@ import { SHARED_CATEGORIES } from "@/lib/categories";
 import { ImageWithUrlError } from "@/components/ui/image-with-url-error";
 import { ThumbnailStyleSelector } from "@/components/articles/thumbnail-style-selector";
 import { generateArticleThumbnailPng } from "@/lib/article-thumbnail-canvas";
-import type { ThumbnailStyleKind, ThumbnailTemplateKind } from "@/lib/thumbnail-template";
+import { compositeYoutubeThumbnail } from "@/lib/article-thumbnail-composite";
+import {
+  THUMBNAIL_STYLE_KINDS,
+  THUMBNAIL_STYLE_META,
+  type ThumbnailStyleKind,
+} from "@/lib/thumbnail-template";
 
 const guidelines = [
   "記事の内容は教育現場に役立つ実践的な情報にしてください。",
@@ -48,9 +53,12 @@ export function ArticleForm() {
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   const [generatingThumbnail, setGeneratingThumbnail] = useState(false);
   const [thumbnailError, setThumbnailError] = useState<string | null>(null);
-  const [thumbnailMode, setThumbnailMode] = useState<"style" | "ai" | "url">("style");
+  const [thumbnailMode, setThumbnailMode] = useState<"youtube" | "style" | "ai" | "url">("youtube");
   const [thumbnailStyle, setThumbnailStyle] = useState<ThumbnailStyleKind>("gradient");
   const [uploadingStyleThumbnail, setUploadingStyleThumbnail] = useState(false);
+  const [youtubeStyle, setYoutubeStyle] = useState<ThumbnailStyleKind>("tech");
+  const [badgeText, setBadgeText] = useState("");
+  const [generatingYoutubeThumbnail, setGeneratingYoutubeThumbnail] = useState(false);
 
   const form = useForm<ArticleFormData>({
     resolver: zodResolver(articleSchema),
@@ -126,6 +134,51 @@ export function ArticleForm() {
       setThumbnailError("サムネイル生成に失敗しました");
     } finally {
       setGeneratingThumbnail(false);
+    }
+  };
+
+  const handleGenerateYoutubeThumbnail = async () => {
+    const title = form.getValues("title");
+    const summary = form.getValues("summary");
+    if (!title.trim()) {
+      setThumbnailError("先に記事タイトルを入力してください");
+      return;
+    }
+
+    setGeneratingYoutubeThumbnail(true);
+    setThumbnailError(null);
+    try {
+      // 1. AI背景を生成
+      const res = await generateThumbnailForArticle(
+        title,
+        summary || undefined,
+        youtubeStyle,
+      );
+      if (!res.ok || !res.url) {
+        setThumbnailError(res.error || "背景画像の生成に失敗しました");
+        return;
+      }
+      // 2. ブラウザ側でテキストを合成
+      const blob = await compositeYoutubeThumbnail(
+        res.url,
+        title,
+        badgeText.trim() || undefined,
+      );
+      // 3. 合成結果をアップロード
+      const fd = new FormData();
+      fd.append("file", new File([blob], "thumbnail.png", { type: "image/png" }));
+      const upload = await uploadCanvasThumbnail(fd);
+      if (upload.ok && upload.url) {
+        form.setValue("thumbnail_url", upload.url, { shouldValidate: true });
+        setThumbnailPreview(upload.url);
+      } else {
+        setThumbnailError(upload.error || "アップロードに失敗しました");
+      }
+    } catch (err) {
+      console.error("YouTube thumbnail generation error:", err);
+      setThumbnailError("サムネイル生成に失敗しました");
+    } finally {
+      setGeneratingYoutubeThumbnail(false);
     }
   };
 
@@ -236,20 +289,73 @@ export function ArticleForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>サムネイル画像</FormLabel>
-                    <div className="flex gap-1 mb-2">
-                      {(["style", "ai", "url"] as const).map((mode) => (
+                    <div className="flex flex-wrap gap-1 mb-2">
+                      {(["youtube", "style", "ai", "url"] as const).map((mode) => (
                         <button
                           key={mode}
                           type="button"
                           onClick={() => setThumbnailMode(mode)}
                           className={`rounded-full px-3 py-1 text-xs font-medium transition ${thumbnailMode === mode ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
                         >
-                          {mode === "style" ? "5スタイルから選ぶ" : mode === "ai" ? "AI画像生成" : "URL入力"}
+                          {mode === "youtube"
+                            ? "YouTube風（AI生成）"
+                            : mode === "style"
+                              ? "シンプル（テキストのみ）"
+                              : mode === "ai"
+                                ? "AI画像のみ"
+                                : "URL入力"}
                         </button>
                       ))}
                     </div>
                     <FormControl>
                       <div className="space-y-2">
+                        {thumbnailMode === "youtube" && (
+                          <div className="space-y-3">
+                            <p className="text-xs text-muted-foreground">
+                              AIが背景イラストを生成し、タイトル文字を重ねてYouTube風サムネイルを作成します（30秒ほどかかります）
+                            </p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {THUMBNAIL_STYLE_KINDS.map((style) => (
+                                <button
+                                  key={style}
+                                  type="button"
+                                  onClick={() => setYoutubeStyle(style)}
+                                  aria-pressed={youtubeStyle === style}
+                                  className={`rounded-md border px-3 py-1.5 text-xs font-medium transition ${
+                                    youtubeStyle === style
+                                      ? "border-primary bg-primary/10 text-primary"
+                                      : "border-input text-muted-foreground hover:bg-muted"
+                                  }`}
+                                >
+                                  {THUMBNAIL_STYLE_META[style].label}
+                                </button>
+                              ))}
+                            </div>
+                            <Input
+                              placeholder="バッジテキスト（任意）例: 副業・収益化 / EdTech / 授業改善"
+                              value={badgeText}
+                              onChange={(e) => setBadgeText(e.target.value)}
+                              maxLength={20}
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={handleGenerateYoutubeThumbnail}
+                              disabled={
+                                generatingYoutubeThumbnail ||
+                                isSubmitting ||
+                                !form.watch("title").trim()
+                              }
+                            >
+                              {generatingYoutubeThumbnail ? (
+                                <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />生成中…</>
+                              ) : (
+                                <><Sparkles className="mr-1.5 h-3.5 w-3.5" />生成する</>
+                              )}
+                            </Button>
+                          </div>
+                        )}
                         {thumbnailMode === "style" && (
                           <>
                             <ThumbnailStyleSelector

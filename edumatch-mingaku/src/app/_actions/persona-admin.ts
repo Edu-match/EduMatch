@@ -188,6 +188,33 @@ export async function updateSpecialPersonaPrompt(
   return { ok: true };
 }
 
+/** 管理者：自分ペルソナのシステムプロンプトを再生成（登録情報から synthesizePersona を再実行）。 */
+export async function regenerateMyPersonaPrompt(): Promise<{ ok: boolean; newPrompt?: string; error?: string }> {
+  await requireAdmin();
+  const profile = await getCurrentProfile();
+  if (!profile) return { ok: false, error: "管理者のみ利用できます" };
+
+  const persona = await prisma.userAiPersona.findUnique({ where: { profile_id: profile.id } });
+  if (!persona) return { ok: false, error: "先にAIペルソナを作成してください" };
+
+  const result = await synthesizePersona({
+    name: persona.display_name,
+    bio: profile.bio ?? undefined,
+    mindset: persona.values_text ?? undefined,
+    activities: persona.expertise?.join("、") ?? undefined,
+    interests: persona.expertise ?? undefined,
+    role: profile.role ?? undefined,
+  });
+  if (!result) return { ok: false, error: "生成に失敗しました（OPENAI_API_KEY を確認）" };
+
+  await prisma.userAiPersona.update({
+    where: { profile_id: profile.id },
+    data: { persona_prompt: result.personaPrompt },
+  });
+  revalidatePath("/admin/persona");
+  return { ok: true, newPrompt: result.personaPrompt };
+}
+
 /** 管理者：自分ペルソナのシステムプロンプトを更新。 */
 export async function updateMyPersonaPrompt(
   personaPrompt: string,

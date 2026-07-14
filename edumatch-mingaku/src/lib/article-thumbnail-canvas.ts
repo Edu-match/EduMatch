@@ -10,8 +10,8 @@ const NOTO_FAMILY = '"Noto Sans JP", sans-serif';
 const CANVAS_WIDTH = 1200;
 const CANVAS_HEIGHT = 630;
 
-/** Canvas 用に Google Fonts の Noto Sans JP (700) を読み込む */
-async function ensureNotoSansJpBold(): Promise<void> {
+/** Canvas 用に Google Fonts の Noto Sans JP (700/900) を読み込む */
+export async function ensureNotoSansJpBold(): Promise<void> {
   if (typeof document === "undefined") return;
   const id = "edumatch-noto-sans-jp-canvas";
   if (!document.getElementById(id)) {
@@ -20,7 +20,7 @@ async function ensureNotoSansJpBold(): Promise<void> {
       link.id = id;
       link.rel = "stylesheet";
       link.href =
-        "https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@700&display=swap";
+        "https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@700;900&display=swap";
       link.onload = () => resolve();
       link.onerror = () => reject(new Error("フォントの読み込みに失敗しました"));
       document.head.appendChild(link);
@@ -28,6 +28,7 @@ async function ensureNotoSansJpBold(): Promise<void> {
   }
   await document.fonts.ready;
   await document.fonts.load(`700 48px "Noto Sans JP"`);
+  await document.fonts.load(`900 48px "Noto Sans JP"`);
 }
 
 /* ------------------------------------------------------------------ */
@@ -88,7 +89,7 @@ function breakQualityAfter(chunks: string[], i: number): number {
  * - 英単語・カタカナ語の途中では改行しない
  * - 行頭禁則（句読点・閉じ括弧が行頭に来ない）
  */
-function wrapLines(
+export function wrapLines(
   ctx: CanvasRenderingContext2D,
   text: string,
   maxWidth: number
@@ -159,7 +160,7 @@ function wrapLines(
 /**
  * 全角スペースの位置で必ず改行し、各ブロックは自然な位置で折り返す
  */
-function wrapTitleForThumbnail(
+export function wrapTitleForThumbnail(
   ctx: CanvasRenderingContext2D,
   text: string,
   maxWidth: number

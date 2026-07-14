@@ -9,12 +9,24 @@ import { normalizeImageUrl } from "@/lib/image-url-utils";
 import { generateArticleThumbnail } from "@/lib/article-thumbnail";
 import { logActivity } from "./activity-log";
 
+/** 記事カテゴリ → AI背景スタイルの自動マッピング */
+const CATEGORY_STYLE_MAP: Record<string, string> = {
+  "EdTech": "tech",
+  "授業改善": "illustration",
+  "学校経営": "professional",
+  "教員研修": "professional",
+  "ICT活用": "tech",
+  "特別支援": "illustration",
+  "キャリア教育": "creative",
+};
+
 /**
  * 記事タイトル・概要からAIサムネイルを生成する
  */
 export async function generateThumbnailForArticle(
   title: string,
   description?: string,
+  style?: string,
 ): Promise<{ ok: boolean; url?: string; error?: string }> {
   try {
     const profile = await getCurrentProfile();
@@ -29,7 +41,11 @@ export async function generateThumbnailForArticle(
       return { ok: false, error: "タイトルが必要です" };
     }
 
-    const url = await generateArticleThumbnail(title.trim(), description?.trim());
+    const url = await generateArticleThumbnail(
+      title.trim(),
+      description?.trim(),
+      style,
+    );
     if (!url) {
       return { ok: false, error: "サムネイル生成に失敗しました" };
     }
@@ -112,9 +128,11 @@ export async function createArticle(data: ArticleFormData) {
       ? normalizeImageUrl(validatedData.thumbnail_url.trim())
       : null;
     if (!thumbnailUrl) {
+      const autoStyle = CATEGORY_STYLE_MAP[validatedData.category] || "tech";
       thumbnailUrl = await generateArticleThumbnail(
         validatedData.title,
         validatedData.summary,
+        autoStyle,
       );
     }
 
@@ -225,9 +243,11 @@ export async function updateArticle(articleId: string, data: ArticleFormData) {
       ? normalizeImageUrl(validatedData.thumbnail_url.trim())
       : null;
     if (!thumbnailUrl) {
+      const autoStyle = CATEGORY_STYLE_MAP[validatedData.category] || "tech";
       thumbnailUrl = await generateArticleThumbnail(
         validatedData.title,
         validatedData.summary,
+        autoStyle,
       );
     }
 
