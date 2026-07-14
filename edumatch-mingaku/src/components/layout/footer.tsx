@@ -30,7 +30,7 @@ export function Footer() {
   };
 
   return (
-    <footer className="w-full border-t border-border/60 bg-white">
+    <footer className="w-full border-t border-primary/10 bg-gradient-to-b from-violet-50/50 to-purple-50/30">
       <div className="container py-8 md:py-12 lg:py-16">
         <div className="grid grid-cols-2 gap-6 sm:gap-8 md:grid-cols-4">
           {/* Logo & Description */}
@@ -96,7 +96,7 @@ export function Footer() {
         </div>
 
         {/* Copyright */}
-        <div className="mt-8 md:mt-12 border-t pt-6 md:pt-8">
+        <div className="mt-8 md:mt-12 border-t border-primary/10 pt-6 md:pt-8">
           <p className="text-center text-xs sm:text-sm text-muted-foreground">
             {t("footer.copyright", {
               year: currentYear,

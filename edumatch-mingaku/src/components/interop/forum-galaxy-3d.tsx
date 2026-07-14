@@ -449,7 +449,6 @@ function Scene({ centerLabel, counts, caps, focusedMajor, onFocusMajor, onSelect
 
   return (
     <>
-      <color attach="background" args={["#87CEEB"]} />
       {/* 微細な花粉・妖精の塵 */}
       {tier === "high" && <Sparkles count={320} scale={[85, 26, 85]} size={1.8} speed={reduceMotion ? 0 : 0.28} opacity={0.3} color="#ffd700" />}
 
@@ -656,11 +655,17 @@ export default function ForumGalaxy3D({ centerLabel, onSelectCenter, onSelectTop
         />
       </Canvas>
 
-      {/* シネマティックなビネット（CSS・ポストプロセス代替） */}
+      {/* 2Dビューと同じ地平線グロー */}
       <div
         className="pointer-events-none absolute inset-0"
         aria-hidden
-        style={{ background: "radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(100,180,250,0.2) 100%)" }}
+        style={{ background: "radial-gradient(120% 55% at 50% 100%, rgba(200,235,255,0.4) 0%, transparent 65%)", zIndex: 2 }}
+      />
+      {/* 2Dビューと同じビネット */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        aria-hidden
+        style={{ background: "radial-gradient(ellipse 95% 95% at 50% 45%, transparent 65%, rgba(20,60,120,0.2) 100%)", zIndex: 2 }}
       />
 
       {/* フォーカス解除ボタン */}

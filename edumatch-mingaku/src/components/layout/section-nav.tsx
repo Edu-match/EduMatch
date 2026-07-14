@@ -38,7 +38,7 @@ export function SectionNav() {
       <nav
         data-tutorial="header-nav"
         aria-label="セクション"
-        className="sticky top-16 z-30 h-11 border-b border-border/60 bg-white/85 backdrop-blur-xl"
+        className="sticky top-16 z-30 h-11 border-b border-primary/10 bg-gradient-to-r from-violet-50/60 via-white/85 to-purple-50/60 backdrop-blur-xl"
       >
         <div className="container h-full">
           <ul
@@ -62,7 +62,7 @@ export function SectionNav() {
                     <span
                       aria-hidden
                       className={cn(
-                        "absolute inset-x-3 bottom-0 h-[2.5px] origin-center rounded-full bg-primary transition-all duration-300",
+                        "absolute inset-x-3 bottom-0 h-[2.5px] origin-center rounded-full bg-gradient-to-r from-violet-500 to-primary transition-all duration-300",
                         active ? "scale-x-100 opacity-100" : "scale-x-50 opacity-0"
                       )}
                     />

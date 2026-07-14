@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import sharp from "sharp";
 
 const OPENAI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL?.trim() || "gpt-image-1";
 
@@ -20,6 +21,17 @@ const STYLE_PROMPTS: Record<string, string> = {
   gradient:
     "Abstract gradient background (purple to blue) with soft geometric shapes, light particles, and bokeh effects. No characters. Modern minimalist.",
 };
+
+async function cropTo16by9(buffer: Buffer): Promise<Buffer> {
+  const img = sharp(buffer);
+  const meta = await img.metadata();
+  const w = meta.width ?? 1536;
+  const h = meta.height ?? 1024;
+  const targetH = Math.round(w * 9 / 16);
+  if (targetH >= h) return buffer;
+  const top = Math.round((h - targetH) / 2);
+  return img.extract({ left: 0, top, width: w, height: targetH }).toBuffer();
+}
 
 /**
  * 記事タイトル（＋概要）から OpenAI 画像APIで YouTube サムネイル風の
@@ -57,9 +69,9 @@ export async function generateArticleThumbnail(
     });
     const item = res.data?.[0];
     if (item?.b64_json) {
-      const uploaded = await uploadThumbnailToStorage(
-        Buffer.from(item.b64_json, "base64"),
-      );
+      const raw = Buffer.from(item.b64_json, "base64");
+      const cropped = await cropTo16by9(raw);
+      const uploaded = await uploadThumbnailToStorage(cropped);
       // アップロード失敗時は一時URLがあればそれを返す
       if (uploaded) return uploaded;
     }
@@ -68,9 +80,9 @@ export async function generateArticleThumbnail(
       try {
         const r = await fetch(item.url);
         if (r.ok) {
-          const uploaded = await uploadThumbnailToStorage(
-            Buffer.from(await r.arrayBuffer()),
-          );
+          const raw = Buffer.from(await r.arrayBuffer());
+          const cropped = await cropTo16by9(raw);
+          const uploaded = await uploadThumbnailToStorage(cropped);
           if (uploaded) return uploaded;
         }
       } catch {
