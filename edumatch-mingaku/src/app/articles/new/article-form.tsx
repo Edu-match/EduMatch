@@ -32,7 +32,6 @@ import { SHARED_CATEGORIES } from "@/lib/categories";
 import { ImageWithUrlError } from "@/components/ui/image-with-url-error";
 import { ThumbnailStyleSelector } from "@/components/articles/thumbnail-style-selector";
 import { generateArticleThumbnailPng } from "@/lib/article-thumbnail-canvas";
-import { compositeYoutubeThumbnail } from "@/lib/article-thumbnail-composite";
 import {
   THUMBNAIL_STYLE_KINDS,
   THUMBNAIL_STYLE_META,
@@ -57,7 +56,6 @@ export function ArticleForm() {
   const [thumbnailStyle, setThumbnailStyle] = useState<ThumbnailStyleKind>("gradient");
   const [uploadingStyleThumbnail, setUploadingStyleThumbnail] = useState(false);
   const [youtubeStyle, setYoutubeStyle] = useState<ThumbnailStyleKind>("tech");
-  const [badgeText, setBadgeText] = useState("");
   const [generatingYoutubeThumbnail, setGeneratingYoutubeThumbnail] = useState(false);
 
   const form = useForm<ArticleFormData>({
@@ -148,31 +146,16 @@ export function ArticleForm() {
     setGeneratingYoutubeThumbnail(true);
     setThumbnailError(null);
     try {
-      // 1. AI背景を生成
       const res = await generateThumbnailForArticle(
         title,
         summary || undefined,
         youtubeStyle,
       );
-      if (!res.ok || !res.url) {
-        setThumbnailError(res.error || "背景画像の生成に失敗しました");
-        return;
-      }
-      // 2. ブラウザ側でテキストを合成
-      const blob = await compositeYoutubeThumbnail(
-        res.url,
-        title,
-        badgeText.trim() || undefined,
-      );
-      // 3. 合成結果をアップロード
-      const fd = new FormData();
-      fd.append("file", new File([blob], "thumbnail.png", { type: "image/png" }));
-      const upload = await uploadCanvasThumbnail(fd);
-      if (upload.ok && upload.url) {
-        form.setValue("thumbnail_url", upload.url, { shouldValidate: true });
-        setThumbnailPreview(upload.url);
+      if (res.ok && res.url) {
+        form.setValue("thumbnail_url", res.url, { shouldValidate: true });
+        setThumbnailPreview(res.url);
       } else {
-        setThumbnailError(upload.error || "アップロードに失敗しました");
+        setThumbnailError(res.error || "サムネイル生成に失敗しました");
       }
     } catch (err) {
       console.error("YouTube thumbnail generation error:", err);
@@ -312,7 +295,7 @@ export function ArticleForm() {
                         {thumbnailMode === "youtube" && (
                           <div className="space-y-3">
                             <p className="text-xs text-muted-foreground">
-                              AIが背景イラストを生成し、タイトル文字を重ねてYouTube風サムネイルを作成します（30秒ほどかかります）
+                              AIがタイトル文字入りのYouTube風サムネイル画像を完全生成します（30秒ほどかかります）
                             </p>
                             <div className="flex flex-wrap gap-1.5">
                               {THUMBNAIL_STYLE_KINDS.map((style) => (
@@ -331,12 +314,6 @@ export function ArticleForm() {
                                 </button>
                               ))}
                             </div>
-                            <Input
-                              placeholder="バッジテキスト（任意）例: 副業・収益化 / EdTech / 授業改善"
-                              value={badgeText}
-                              onChange={(e) => setBadgeText(e.target.value)}
-                              maxLength={20}
-                            />
                             <Button
                               type="button"
                               variant="outline"

@@ -6,24 +6,25 @@ const OPENAI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL?.trim() || "gpt-image-
 const BUCKET_NAME = "media";
 
 /**
- * YouTube サムネイル風の背景イラスト用スタイル別プロンプト。
- * テキストは後段で Canvas 合成するため、AI 画像には文字を入れない。
+ * スタイル別のビジュアル指示。
+ * GPT Image 1 がタイトル文字込みで完全なサムネイルを生成する。
  */
 const STYLE_PROMPTS: Record<string, string> = {
-  tech: "Dark blue-green tech room background with floating holographic UI windows, code editors, and glowing circuit patterns. Anime-style character (young professional in business casual) sitting at a laptop, pointing at the viewer. Style: clean anime illustration, vibrant colors, dramatic lighting.",
+  tech: "Dark blue-purple tech background with holographic UI panels, glowing circuit lines, and digital particles. An anime-style young professional character on the right side, pointing or presenting energetically.",
   illustration:
-    "Warm, inviting classroom or library background with bookshelves, plants, and warm lighting. Anime-style friendly teacher character smiling. Style: soft watercolor anime illustration, pastel colors.",
+    "Warm classroom or library scene with bookshelves and soft lighting. A friendly anime-style teacher character on the right side, smiling and gesturing.",
   professional:
-    "Clean corporate office or conference room background, modern design. Professional anime character in business attire. Style: clean flat anime, blue and white color scheme.",
+    "Clean modern office or conference room, sleek design. A professional anime character in business attire on the right side. Blue and white color scheme.",
   creative:
-    "Colorful creative workspace with art supplies, design tools, and inspiration boards. Energetic anime character with creative tools. Style: vivid pop art anime, colorful splashes.",
+    "Colorful creative workspace with art supplies and inspiration boards. An energetic anime character with creative tools on the right side. Vivid pop-art colors.",
   gradient:
-    "Abstract beautiful gradient background with soft geometric shapes and light particles. No characters. Style: modern minimalist, soft focus.",
+    "Abstract gradient background (purple to blue) with soft geometric shapes, light particles, and bokeh effects. No characters. Modern minimalist.",
 };
 
 /**
  * 記事タイトル（＋概要）から OpenAI 画像APIで YouTube サムネイル風の
- * 背景イラスト（文字なし）を生成し、Supabase Storage にアップロードして公開URLを返す。
+ * 完全なサムネイル画像（タイトル文字入り）を生成し、
+ * Supabase Storage にアップロードして公開URLを返す。
  * 失敗時は null（呼び出し側でフォールバック）。
  */
 export async function generateArticleThumbnail(
@@ -36,13 +37,16 @@ export async function generateArticleThumbnail(
 
   const openai = new OpenAI({ apiKey });
   const stylePrompt = STYLE_PROMPTS[style] ?? STYLE_PROMPTS.tech;
+  const displayTitle = title.trim().slice(0, 60);
   const prompt =
-    `Create a YouTube-thumbnail style background illustration for a Japanese education article titled "${title}". ` +
-    `${description ? `The article is about: ${description}. ` : ""}` +
-    `${stylePrompt} ` +
-    `Composition: leave breathing room on the left/center for a text overlay to be added later. ` +
-    `High contrast, eye-catching, 16:9 aspect ratio. ` +
-    `NO text, NO letters, NO words, NO watermark, NO logo in the image.`;
+    `Create a YouTube video thumbnail image. ` +
+    `The thumbnail MUST display this Japanese title text prominently: 「${displayTitle}」. ` +
+    `Render the title as large, bold white text with a black outline/stroke, placed in the left-center area of the image. ` +
+    `The text should be clearly readable, high contrast against the background. ` +
+    `${description ? `Topic context: ${description}. ` : ""}` +
+    `Visual style: ${stylePrompt} ` +
+    `Layout: 16:9 aspect ratio, eye-catching composition. The title text is the focal point. ` +
+    `The overall feel should be like a popular Japanese YouTube education channel thumbnail.`;
 
   try {
     const res = await openai.images.generate({
