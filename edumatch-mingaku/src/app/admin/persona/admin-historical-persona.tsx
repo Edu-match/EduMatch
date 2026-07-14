@@ -5,13 +5,16 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   Loader2, Sparkles, ShieldCheck, ShieldAlert, ShieldX, Trash2,
-  ChevronDown, AlertTriangle, User, FileText, Pencil, Check, X, ToggleLeft, ToggleRight,
+  ChevronDown, AlertTriangle, User, FileText, Pencil, Check, X, ToggleLeft, ToggleRight, RefreshCw,
 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkBreaks from "remark-breaks";
 import {
   createSpecialPersona,
   setSpecialPersonaActive,
   deleteSpecialPersona,
   updateSpecialPersonaPrompt,
+  regenerateSpecialPersonaPrompt,
   type SpecialPersonaResult,
 } from "@/app/_actions/persona-admin";
 
@@ -37,17 +40,36 @@ function LegalBadge({ status }: { status: string }) {
 function PromptEditor({ personaId, initialPrompt }: { personaId: string; initialPrompt: string }) {
   const [editing, setEditing] = useState(false);
   const [prompt, setPrompt] = useState(initialPrompt);
+  const [baseline, setBaseline] = useState(initialPrompt);
   const [saving, setSaving] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const IMMUTABLE_HEADER = "【以下はシステム固定（編集不可）】\n返信ルール: 教育コミュニティにふさわしい建設的な発言をする。断定・説教・宣伝・政治的に偏った発言は避ける。AIだと名乗らない。";
 
   const save = useCallback(async () => {
     setSaving(true);
+    setError(null);
     const res = await updateSpecialPersonaPrompt(personaId, prompt);
     setSaving(false);
-    if (res.ok) setEditing(false);
+    if (res.ok) { setBaseline(prompt); setEditing(false); }
+    else setError(res.error ?? "保存に失敗しました");
   }, [personaId, prompt]);
+
+  const regenerate = useCallback(async () => {
+    if (!confirm("システムプロンプトを再生成しますか？現在の内容は上書きされます。")) return;
+    setRegenerating(true);
+    setError(null);
+    const res = await regenerateSpecialPersonaPrompt(personaId);
+    setRegenerating(false);
+    if (res.ok && res.newPrompt) {
+      setPrompt(res.newPrompt);
+      setBaseline(res.newPrompt);
+    } else {
+      setError(res.error ?? "再生成に失敗しました");
+    }
+  }, [personaId]);
 
   return (
     <div className="mt-2">
@@ -82,7 +104,7 @@ function PromptEditor({ personaId, initialPrompt }: { personaId: string; initial
               <div className="flex items-center justify-between">
                 <span className="text-[10px] text-muted-foreground">{prompt.length}/2000</span>
                 <div className="flex gap-1.5">
-                  <button type="button" onClick={() => { setPrompt(initialPrompt); setEditing(false); }} className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-[11px] font-medium hover:bg-muted">
+                  <button type="button" onClick={() => { setPrompt(baseline); setEditing(false); }} className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-[11px] font-medium hover:bg-muted">
                     <X className="h-3 w-3" /> キャンセル
                   </button>
                   <button type="button" onClick={save} disabled={saving || !prompt.trim()} className="inline-flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-[11px] font-bold text-primary-foreground hover:opacity-90 disabled:opacity-50">
@@ -92,17 +114,34 @@ function PromptEditor({ personaId, initialPrompt }: { personaId: string; initial
               </div>
             </div>
           ) : (
-            <div className="group relative rounded-md border bg-background px-2.5 py-2 text-xs leading-relaxed text-foreground/80">
+            <div className="rounded-md border bg-background px-2.5 py-2 text-xs leading-relaxed text-foreground/80">
               <p className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground/60 mb-1">ペルソナプロンプト（編集可能）</p>
-              <p className="whitespace-pre-wrap">{initialPrompt || "（未設定）"}</p>
-              <button
-                type="button"
-                onClick={() => setEditing(true)}
-                className="absolute right-2 top-2 rounded-md p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover:opacity-100"
-                aria-label="編集"
-              >
-                <Pencil className="h-3.5 w-3.5" />
-              </button>
+              {prompt ? (
+                <div className="prose prose-sm max-w-none prose-headings:mt-3 prose-headings:mb-1.5 prose-headings:text-sm prose-headings:font-bold prose-p:my-1 prose-p:text-[13px] prose-p:leading-relaxed prose-li:my-0.5 prose-li:text-[13px] prose-ul:my-1 prose-strong:text-foreground">
+                  <ReactMarkdown remarkPlugins={[remarkBreaks]}>{prompt}</ReactMarkdown>
+                </div>
+              ) : (
+                <p className="text-muted-foreground italic">（未設定）</p>
+              )}
+              {error && <p className="mt-1.5 text-xs text-destructive">{error}</p>}
+              <div className="mt-2 flex items-center gap-1.5 border-t pt-2">
+                <button
+                  type="button"
+                  onClick={regenerate}
+                  disabled={regenerating}
+                  className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-[11px] font-medium transition hover:bg-muted disabled:opacity-50"
+                >
+                  {regenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                  {regenerating ? "生成中…" : "再生成"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-[11px] font-medium transition hover:bg-muted"
+                >
+                  <Pencil className="h-3 w-3" /> 編集
+                </button>
+              </div>
             </div>
           )}
         </div>
