@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { LogIn } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentProfile } from "@/lib/auth";
-import { KaikanContentSelector } from "@/components/kaikan/kaikan-content-selector";
+import { KaikanTimetable } from "@/components/kaikan/kaikan-timetable";
 import { KaikanBackButton } from "@/components/kaikan/back-button";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +28,7 @@ export default async function KaikanTicketsPage() {
   const loginHref = `/login?next=${encodeURIComponent("/forum/kaikan")}`;
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-4 py-8 sm:px-6">
+    <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
       <KaikanBackButton />
       <header className="mb-5 mt-3">
         <p className="text-xs font-bold tracking-wide text-primary">教育AIサミット＠衆議院第一会館</p>
@@ -48,7 +48,7 @@ export default async function KaikanTicketsPage() {
           </Link>
         </div>
       ) : (
-        <KaikanContentSelector
+        <KaikanTimetable
           contents={rows.map((c) => ({
             id: c.id,
             title: c.title,
@@ -56,7 +56,6 @@ export default async function KaikanTicketsPage() {
             location: c.location,
             startsAt: c.starts_at ? c.starts_at.toISOString() : null,
             endsAt: c.ends_at ? c.ends_at.toISOString() : null,
-            contentType: c.content_type,
             capacity: c.capacity,
             applied: c._count.applications,
           }))}
