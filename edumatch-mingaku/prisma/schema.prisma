@@ -758,6 +758,8 @@ model KaikanInviteCode {
   code        String    @unique
   /// 宛先名などのメモ（任意・管理用）
   note        String    @default("")
+  /// 無効化されたコードは使用不可（管理画面でトグル）
+  is_active   Boolean   @default(true)
   /// @deprecated 旧: 単一ユーザー使用。新ロジックは redemptions テーブルを参照。
   redeemed_by String?   @db.Uuid
   redeemed_at DateTime? @db.Timestamptz(6)

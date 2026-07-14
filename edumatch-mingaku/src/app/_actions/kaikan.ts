@@ -50,6 +50,7 @@ export async function redeemInviteCode(formData: FormData): Promise<{ ok: boolea
 
   const invite = await prisma.kaikanInviteCode.findUnique({ where: { code } });
   if (!invite) return { ok: false, error: "招待コードが正しくありません。メールに記載のコードをご確認ください。" };
+  if (!invite.is_active) return { ok: false, error: "この招待コードは無効化されています。" };
 
   await prisma.kaikanInviteRedemption.upsert({
     where: { code_id_profile_id: { code_id: invite.id, profile_id: profile.id } },
@@ -73,6 +74,25 @@ export async function generateKaikanInviteCodes(formData: FormData): Promise<voi
     data: [...codes].map((code) => ({ code, note })),
     skipDuplicates: true,
   });
+  revalidatePath("/admin/kaikan");
+}
+
+/** 管理者：招待コードの有効/無効を切り替える。 */
+export async function toggleKaikanInviteCode(formData: FormData) {
+  await requireAdmin();
+  const id = String(formData.get("id") || "");
+  const nextActive = String(formData.get("next") || "") === "true";
+  if (!id) return;
+  await prisma.kaikanInviteCode.update({ where: { id }, data: { is_active: nextActive } });
+  revalidatePath("/admin/kaikan");
+}
+
+/** 管理者：招待コードを削除する。 */
+export async function deleteKaikanInviteCode(formData: FormData) {
+  await requireAdmin();
+  const id = String(formData.get("id") || "");
+  if (!id) return;
+  await prisma.kaikanInviteCode.delete({ where: { id } });
   revalidatePath("/admin/kaikan");
 }
 

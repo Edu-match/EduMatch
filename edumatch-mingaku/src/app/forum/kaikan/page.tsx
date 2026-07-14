@@ -1,9 +1,10 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { LogIn, ChevronLeft } from "lucide-react";
+import { LogIn } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentProfile } from "@/lib/auth";
 import { KaikanContentSelector } from "@/components/kaikan/kaikan-content-selector";
+import { KaikanBackButton } from "@/components/kaikan/back-button";
 
 export const dynamic = "force-dynamic";
 
@@ -28,9 +29,7 @@ export default async function KaikanTicketsPage() {
 
   return (
     <main className="mx-auto w-full max-w-2xl px-4 py-8 sm:px-6">
-      <Link href="/forum?map=3d" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-        <ChevronLeft className="h-3.5 w-3.5" /> 教育のひろばへ
-      </Link>
+      <KaikanBackButton />
       <header className="mb-5 mt-3">
         <p className="text-xs font-bold tracking-wide text-primary">教育AIサミット＠衆議院第一会館</p>
         <h1 className="mt-1 text-2xl font-bold">参加するコンテンツを選ぶ</h1>
@@ -56,6 +55,7 @@ export default async function KaikanTicketsPage() {
             description: c.description,
             location: c.location,
             startsAt: c.starts_at ? c.starts_at.toISOString() : null,
+            endsAt: c.ends_at ? c.ends_at.toISOString() : null,
             capacity: c.capacity,
             applied: c._count.applications,
           }))}

@@ -625,7 +625,7 @@ export function InteropExplorer({
           />
           {/* 自由記入コミュニティトピック（ハブ下部フローティングストリップ） */}
           <div
-            className="absolute inset-x-0 bottom-5 z-30 flex items-center gap-2 overflow-x-auto px-4 pb-1 sm:bottom-7"
+            className="absolute inset-x-0 bottom-2 z-40 flex items-center gap-2 overflow-x-auto px-4 pb-1 sm:bottom-3"
             style={{ scrollbarWidth: "none" }}
           >
             <span className="flex-none whitespace-nowrap text-[11px] font-semibold text-white/45 pr-0.5">自由に書く</span>

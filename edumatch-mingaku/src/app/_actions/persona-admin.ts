@@ -207,6 +207,33 @@ export async function updateSpecialPersonaPrompt(
   return { ok: true };
 }
 
+/** 管理者：自分ペルソナのシステムプロンプトを再生成。 */
+export async function regenerateMyPersonaPrompt(): Promise<{ ok: boolean; newPrompt?: string; error?: string }> {
+  await requireAdmin();
+  const profile = await getCurrentProfile();
+  if (!profile) return { ok: false, error: "管理者のみ利用できます" };
+
+  const persona = await prisma.userAiPersona.findUnique({ where: { profile_id: profile.id } });
+  if (!persona) return { ok: false, error: "先にAIペルソナを作成してください" };
+
+  const result = await synthesizePersona({
+    name: persona.display_name,
+    bio: profile.bio ?? undefined,
+    mindset: persona.values_text ?? undefined,
+    activities: persona.expertise?.join("、") ?? undefined,
+    interests: persona.expertise ?? undefined,
+    role: profile.role ?? undefined,
+  });
+  if (!result) return { ok: false, error: "生成に失敗しました" };
+
+  await prisma.userAiPersona.update({
+    where: { profile_id: profile.id },
+    data: { persona_prompt: result.personaPrompt },
+  });
+  revalidatePath("/admin/persona");
+  return { ok: true, newPrompt: result.personaPrompt };
+}
+
 /** 管理者：自分ペルソナのシステムプロンプトを更新。 */
 export async function updateMyPersonaPrompt(
   personaPrompt: string,
@@ -272,6 +299,36 @@ export async function generatePersonaTestReply(
     valuesText: persona.values_text,
     expertise: persona.expertise,
     displayName: persona.display_name,
+    postBody: body,
+    subCategoryName: "テスト",
+    categoryName: "テスト会話",
+  });
+  if (!text) return { ok: false, error: "生成に失敗しました（OPENAI_API_KEY を確認）" };
+  return { ok: true, text };
+}
+
+/**
+ * テスト会話：サンプル投稿文に対し、特別ペルソナの声で返信を生成する（フォーラムには投稿しない）。
+ */
+export async function generateSpecialPersonaTestReply(
+  personaId: string,
+  sampleBody: string,
+): Promise<{ ok: boolean; text?: string; error?: string }> {
+  await requireAdmin();
+  const body = (sampleBody || "").trim();
+  if (!body) return { ok: false, error: "テスト投稿文を入力してください" };
+  if (body.length > 2000) return { ok: false, error: "テスト投稿文は2000文字以内にしてください" };
+
+  const persona = await prisma.aiSpecialPersona.findUnique({ where: { id: personaId } });
+  if (!persona || !persona.persona_prompt) {
+    return { ok: false, error: "ペルソナが見つかりません" };
+  }
+
+  const text = await generatePersonaReplyText({
+    personaPrompt: persona.persona_prompt,
+    valuesText: persona.values_text,
+    expertise: persona.expertise,
+    displayName: persona.name,
     postBody: body,
     subCategoryName: "テスト",
     categoryName: "テスト会話",

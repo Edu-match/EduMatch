@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
-import { createKaikanContent, setKaikanContentPublished, generateKaikanInviteCodes } from "@/app/_actions/kaikan";
+import { createKaikanContent, setKaikanContentPublished, generateKaikanInviteCodes, toggleKaikanInviteCode, deleteKaikanInviteCode } from "@/app/_actions/kaikan";
 import { KaikanCheckinPanel } from "@/components/kaikan/kaikan-checkin-panel";
 
 export const dynamic = "force-dynamic";
@@ -16,18 +16,25 @@ export default async function AdminKaikanPage({ searchParams }: { searchParams: 
   const { tab, token } = await searchParams;
   const isCheckin = tab === "checkin";
   const isInvites = tab === "invites";
+  const isParticipants = tab === "participants";
 
   const inviteCodes = isInvites ? await prisma.kaikanInviteCode.findMany({
     orderBy: { created_at: "desc" },
     take: 1000,
-    select: { id: true, code: true, note: true, redeemed_by: true, redeemed_at: true, created_at: true, _count: { select: { redemptions: true } } },
+    select: { id: true, code: true, note: true, is_active: true, redeemed_by: true, redeemed_at: true, created_at: true, _count: { select: { redemptions: true } } },
+  }) : [];
+
+  const participants = isParticipants ? await prisma.kaikanApplication.findMany({
+    orderBy: { created_at: "desc" },
+    include: { content: { select: { title: true, starts_at: true } } },
+    take: 2000,
   }) : [];
   const inviteStats = isInvites ? {
     total: await prisma.kaikanInviteCode.count(),
     usedCount: await prisma.kaikanInviteRedemption.count(),
   } : { total: 0, usedCount: 0 };
 
-  const contents = (isCheckin || isInvites) ? [] : await prisma.kaikanContent.findMany({
+  const contents = (isCheckin || isInvites || isParticipants) ? [] : await prisma.kaikanContent.findMany({
     orderBy: [{ sort_order: "asc" }, { created_at: "desc" }],
     include: {
       _count: { select: { applications: true } },
@@ -48,9 +55,10 @@ export default async function AdminKaikanPage({ searchParams }: { searchParams: 
 
       {/* タブ */}
       <nav className="mt-4 flex flex-wrap gap-2">
-        <Link href="/admin/kaikan" className={tabCls(!isCheckin && !isInvites)}>コンテンツ管理</Link>
+        <Link href="/admin/kaikan" className={tabCls(!isCheckin && !isInvites && !isParticipants)}>コンテンツ管理</Link>
         <Link href="/admin/kaikan?tab=checkin" className={tabCls(isCheckin)}>当日受付（QR/受付番号）</Link>
         <Link href="/admin/kaikan?tab=invites" className={tabCls(isInvites)}>招待コード</Link>
+        <Link href="/admin/kaikan?tab=participants" className={tabCls(isParticipants)}>参加者一覧</Link>
       </nav>
 
       {isCheckin ? (
@@ -89,7 +97,9 @@ export default async function AdminKaikanPage({ searchParams }: { searchParams: 
                       <th className="py-1 pr-3">コード</th>
                       <th className="py-1 pr-3">メモ</th>
                       <th className="py-1 pr-3">状態</th>
-                      <th className="py-1">発行日</th>
+                      <th className="py-1 pr-3">発行日</th>
+                      <th className="py-1 pr-3">有効/無効</th>
+                      <th className="py-1">削除</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -102,7 +112,22 @@ export default async function AdminKaikanPage({ searchParams }: { searchParams: 
                             {c._count.redemptions > 0 ? `${c._count.redemptions}人使用` : "未使用"}
                           </span>
                         </td>
-                        <td className="py-1.5 text-muted-foreground">{fmtDate(c.created_at)}</td>
+                        <td className="py-1.5 pr-3 text-muted-foreground">{fmtDate(c.created_at)}</td>
+                        <td className="py-1.5 pr-3">
+                          <form action={toggleKaikanInviteCode} className="inline">
+                            <input type="hidden" name="id" value={c.id} />
+                            <input type="hidden" name="next" value={(!c.is_active).toString()} />
+                            <button type="submit" className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${c.is_active ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-600"}`}>
+                              {c.is_active ? "有効" : "無効"}
+                            </button>
+                          </form>
+                        </td>
+                        <td className="py-1.5">
+                          <form action={deleteKaikanInviteCode} className="inline">
+                            <input type="hidden" name="id" value={c.id} />
+                            <button type="submit" className="text-[10px] text-destructive hover:underline">削除</button>
+                          </form>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -111,6 +136,44 @@ export default async function AdminKaikanPage({ searchParams }: { searchParams: 
             )}
           </div>
         </section>
+      ) : isParticipants ? (
+      <section className="mt-6">
+        <div className="rounded-xl border bg-background p-5">
+          <h2 className="mb-3 text-sm font-bold">参加者一覧（{participants.length}件）</h2>
+          {participants.length === 0 ? (
+            <p className="text-sm text-muted-foreground">まだ参加申込がありません。</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="text-muted-foreground">
+                  <tr>
+                    <th className="py-1 pr-3">氏名</th>
+                    <th className="py-1 pr-3">メール</th>
+                    <th className="py-1 pr-3">コンテンツ</th>
+                    <th className="py-1 pr-3">状態</th>
+                    <th className="py-1">申込日時</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {participants.map((p) => (
+                    <tr key={p.id} className="border-t">
+                      <td className="py-1.5 pr-3 font-medium">{p.name}</td>
+                      <td className="py-1.5 pr-3 text-muted-foreground">{p.email || "—"}</td>
+                      <td className="py-1.5 pr-3">{p.content?.title || "—"}</td>
+                      <td className="py-1.5 pr-3">
+                        <span className={p.status === "checked_in" ? "text-emerald-600" : "text-amber-600"}>
+                          {p.status === "checked_in" ? "受付済" : p.status === "cancelled" ? "取消" : "受付前"}
+                        </span>
+                      </td>
+                      <td className="py-1.5 text-muted-foreground">{fmtDate(p.created_at)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </section>
       ) : (
       <>
       {/* コンテンツ新設 */}

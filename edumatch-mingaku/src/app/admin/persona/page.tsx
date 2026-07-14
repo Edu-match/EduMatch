@@ -92,6 +92,7 @@ export default async function AdminPersonaPage() {
             <AdminPersonaTestChat
               personaName={persona.display_name.startsWith("AI") ? persona.display_name : `AI${persona.display_name}`}
               personaAvatarUrl={persona.avatar_url}
+              specialPersonas={specialPersonas.map(s => ({ id: s.id, name: s.name, avatarUrl: s.avatarUrl }))}
             />
           </>
         ) : (

@@ -163,7 +163,7 @@ function SubTopicOrb({
         </span>
 
         <span
-          className="mt-3 max-w-[min(34vw,148px)] rounded-xl px-3 py-1 text-center text-[11.5px] font-bold leading-snug text-white transition-all duration-200 group-hover:text-white"
+          className="mt-1.5 max-w-[min(28vw,120px)] rounded-xl px-3 py-1 text-center text-[11.5px] font-bold leading-snug text-white transition-all duration-200 group-hover:text-white"
           style={{
             background: hot
               ? "linear-gradient(135deg, rgba(12,18,44,0.92) 0%, rgba(90,50,0,0.52) 100%)"
@@ -254,7 +254,7 @@ export function InteropSubOrbit({
   return (
     <div
       ref={rootRef}
-      className="absolute inset-0 flex items-center justify-center px-3 pb-6 pt-14 sm:pt-20"
+      className="absolute inset-0 flex items-center justify-center px-3 pb-16 pt-14 sm:pt-20"
       style={{ animation: "itmFadeIn 0.4s ease-out both" }}
     >
       <style>{FX_CSS}</style>

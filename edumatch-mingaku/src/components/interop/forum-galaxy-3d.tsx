@@ -114,19 +114,19 @@ function PlanetLabel({ color, emoji, label, total, hover }: { color: string; emo
         ...pillBase,
         display: "inline-flex",
         alignItems: "center",
-        gap: 5,
-        fontSize: hover ? 12 : 11,
-        padding: "3px 10px 3px 5px",
+        gap: 4,
+        fontSize: hover ? 11 : 10,
+        padding: "2px 8px 2px 4px",
         background: hover ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.85)",
         border: `1px solid ${color}${hover ? "ee" : "88"}`,
         transition: "all .18s ease",
-        maxWidth: 160,
+        maxWidth: 140,
       }}
     >
-      <span style={{ display: "grid", placeItems: "center", width: 18, height: 18, borderRadius: 999, fontSize: 11, background: `${color}44`, flexShrink: 0 }}>{emoji}</span>
+      <span style={{ display: "grid", placeItems: "center", width: 16, height: 16, borderRadius: 999, fontSize: 10, background: `${color}44`, flexShrink: 0 }}>{emoji}</span>
       <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
       {total > 0 && (
-        <span style={{ fontSize: 9, fontWeight: 800, color: "#0a1024", padding: "1px 6px", borderRadius: 999, background: color, flexShrink: 0 }}>{total}</span>
+        <span style={{ fontSize: 8, fontWeight: 800, color: "#0a1024", padding: "1px 5px", borderRadius: 999, background: color, flexShrink: 0 }}>{total}</span>
       )}
     </div>
   );
@@ -136,7 +136,7 @@ function PlanetLabel({ color, emoji, label, total, hover }: { color: string; emo
 
 type GalaxyClock = { orbit: number; moon: number };
 
-function Sun({ label, seg, reduceMotion, labelScale = 1, onSelect }: { label: string; seg: number; reduceMotion: boolean; labelScale?: number; onSelect: () => void }) {
+function Sun({ label, seg, reduceMotion, labelScale = 1, compact = false, onSelect }: { label: string; seg: number; reduceMotion: boolean; labelScale?: number; compact?: boolean; onSelect: () => void }) {
   const core = useRef<THREE.Mesh>(null);
   const [hover, setHover] = useState(false);
   useFrame(({ clock }) => {
@@ -156,7 +156,7 @@ function Sun({ label, seg, reduceMotion, labelScale = 1, onSelect }: { label: st
       </mesh>
       <Atmosphere color="#ffd9a0" radius={3.6} power={2.1} intensity={1.3} />
       <Atmosphere color="#ff9d5c" radius={4.9} power={3.4} intensity={0.9} />
-      <Html center distanceFactor={30} position={[0, 5.3, 0]} zIndexRange={[70, 50]} style={{ pointerEvents: "auto", transform: `scale(${labelScale})` }}>
+      <Html center distanceFactor={compact ? 200 : 60} position={[0, 5.3, 0]} zIndexRange={[70, 50]} style={{ pointerEvents: "auto" }}>
         <button
           type="button"
           onMouseEnter={enter}
@@ -166,14 +166,16 @@ function Sun({ label, seg, reduceMotion, labelScale = 1, onSelect }: { label: st
             cursor: "pointer",
             appearance: "none",
             whiteSpace: "nowrap",
-            fontSize: 12,
+            fontSize: compact ? Math.round(9 * labelScale) : Math.round(11 * labelScale),
             fontWeight: 800,
             color: "#1a3a5a",
             background: "rgba(255,255,255,0.92)",
             border: "1px solid #ffd9a0cc",
             borderRadius: 999,
-            padding: "4px 12px",
-            boxShadow: "0 2px 14px rgba(0,0,0,0.15)",
+            padding: `${Math.round(3 * labelScale)}px ${Math.round(10 * labelScale)}px`,
+            boxShadow: "0 2px 10px rgba(0,0,0,0.12)",
+            transform: `scale(${labelScale})`,
+            transformOrigin: "center center",
           }}
         >
           🎫 {label}
@@ -183,7 +185,7 @@ function Sun({ label, seg, reduceMotion, labelScale = 1, onSelect }: { label: st
   );
 }
 
-function Moon({ topic, posts, planetR, index, count, clockRef, seg, showLabel, onSelect }: {
+function Moon({ topic, posts, planetR, index, count, clockRef, seg, showLabel, compact = false, onSelect }: {
   topic: InteropPriorityTopic;
   posts: number;
   planetR: number;
@@ -192,6 +194,7 @@ function Moon({ topic, posts, planetR, index, count, clockRef, seg, showLabel, o
   clockRef: React.MutableRefObject<GalaxyClock>;
   seg: number;
   showLabel: boolean;
+  compact?: boolean;
   onSelect: () => void;
 }) {
   const group = useRef<THREE.Group>(null);
@@ -225,10 +228,10 @@ function Moon({ topic, posts, planetR, index, count, clockRef, seg, showLabel, o
       </mesh>
       <Atmosphere color={color} radius={r * 1.45} power={2.6} intensity={hover ? 1.3 : 0.6} />
       {hover && (
-        <Html center distanceFactor={16} position={[0, r + 0.9, 0]} zIndexRange={[45, 10]} style={{ pointerEvents: "none" }}>
-          <div style={{ ...pillBase, display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, padding: "3px 10px", background: "rgba(255,255,255,0.88)", border: `1px solid ${color}bb` }}>
+        <Html center distanceFactor={compact ? 200 : 40} position={[0, r + 0.9, 0]} zIndexRange={[45, 10]} style={{ pointerEvents: "none" }}>
+          <div style={{ ...pillBase, display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, padding: "2px 8px", background: "rgba(255,255,255,0.88)", border: `1px solid ${color}bb` }}>
             <span>{topic.category}</span>
-            {posts > 0 && <span style={{ fontSize: 9.5, fontWeight: 800, color: "#0a1024", padding: "0 6px", borderRadius: 999, background: color }}>{posts}</span>}
+            {posts > 0 && <span style={{ fontSize: 9, fontWeight: 800, color: "#0a1024", padding: "0 5px", borderRadius: 999, background: color }}>{posts}</span>}
           </div>
         </Html>
       )}
@@ -236,7 +239,7 @@ function Moon({ topic, posts, planetR, index, count, clockRef, seg, showLabel, o
   );
 }
 
-function Planet({ spec, topics, counts, clockRef, seg, focused, anyFocused, positionsRef, reduceMotion, labelScale = 1, onFocus, onSelectTopic }: {
+function Planet({ spec, topics, counts, clockRef, seg, focused, anyFocused, positionsRef, reduceMotion, labelScale = 1, compact = false, onFocus, onSelectTopic }: {
   spec: OrbitSpec;
   topics: InteropPriorityTopic[];
   counts: Map<string, number>;
@@ -247,6 +250,7 @@ function Planet({ spec, topics, counts, clockRef, seg, focused, anyFocused, posi
   positionsRef: React.MutableRefObject<Record<string, THREE.Vector3>>;
   reduceMotion: boolean;
   labelScale?: number;
+  compact?: boolean;
   onFocus: () => void;
   onSelectTopic: (t: InteropPriorityTopic) => void;
 }) {
@@ -302,14 +306,14 @@ function Planet({ spec, topics, counts, clockRef, seg, focused, anyFocused, posi
           </mesh>
         )}
         {/* ラベル */}
-        {!dim && (
-          <Html center distanceFactor={focused ? 28 : 42} position={[0, planetR + 1.8, 0]} zIndexRange={[hover || focused ? 55 : 20, 5]} style={{ pointerEvents: "auto", transform: `scale(${labelScale})` }}>
+        {!dim && (!compact || hover || focused) && (
+          <Html center distanceFactor={compact ? 250 : (focused ? 50 : 80)} position={[0, planetR + 1.8, 0]} zIndexRange={[hover || focused ? 55 : 20, 5]} style={{ pointerEvents: "auto" }}>
             <button
               type="button"
               onMouseEnter={enter}
               onMouseLeave={leave}
               onClick={(e) => { e.stopPropagation(); onFocus(); }}
-              style={{ appearance: "none", background: "none", border: "none", padding: 0, cursor: "pointer" }}
+              style={{ appearance: "none", background: "none", border: "none", padding: 0, cursor: "pointer", transform: `scale(${labelScale})`, transformOrigin: "center center" }}
             >
               <PlanetLabel color={color} emoji={emoji} label={meta?.label ?? spec.major} total={total} hover={hover || focused} />
             </button>
@@ -327,6 +331,7 @@ function Planet({ spec, topics, counts, clockRef, seg, focused, anyFocused, posi
             clockRef={clockRef}
             seg={Math.max(16, seg - 16)}
             showLabel={focused}
+            compact={compact}
             onSelect={() => onSelectTopic(t)}
           />
         ))}
@@ -384,9 +389,12 @@ function CameraRig({ focusedMajor, positionsRef, reduceMotion }: {
 
 /* ---------- シーン ---------- */
 
-function useLabelScale(): number {
+function useLabelScale(): { scale: number; compact: boolean } {
   const { size } = useThree();
-  return Math.min(1, size.width / 700);
+  const shorter = Math.min(size.width, size.height);
+  const compact = shorter < 400;
+  const scale = Math.max(0.3, Math.min(1, shorter / 600));
+  return { scale, compact };
 }
 
 function Scene({ centerLabel, counts, caps, focusedMajor, onFocusMajor, onSelectCenter, onSelectTopic }: {
@@ -399,7 +407,7 @@ function Scene({ centerLabel, counts, caps, focusedMajor, onFocusMajor, onSelect
   onSelectTopic: (t: InteropPriorityTopic) => void;
 }) {
   const { tier, reduceMotion } = caps;
-  const labelScale = useLabelScale();
+  const { scale: labelScale, compact } = useLabelScale();
   const seg = tier === "high" ? 48 : 24;
   const clockRef = useRef<GalaxyClock>({ orbit: 0, moon: 0 });
   const positionsRef = useRef<Record<string, THREE.Vector3>>({});
@@ -431,7 +439,7 @@ function Scene({ centerLabel, counts, caps, focusedMajor, onFocusMajor, onSelect
       {/* 微細な花粉・妖精の塵 */}
       {tier === "high" && <Sparkles count={320} scale={[85, 26, 85]} size={1.8} speed={reduceMotion ? 0 : 0.28} opacity={0.3} color="#ffd700" />}
 
-      <Sun label={centerLabel} seg={seg} reduceMotion={reduceMotion} labelScale={labelScale} onSelect={onSelectCenter} />
+      <Sun label={centerLabel} seg={seg} reduceMotion={reduceMotion} labelScale={labelScale} compact={compact} onSelect={onSelectCenter} />
       {ORBITS.map((spec) => (
         <Planet
           key={spec.major}
@@ -445,6 +453,7 @@ function Scene({ centerLabel, counts, caps, focusedMajor, onFocusMajor, onSelect
           positionsRef={positionsRef}
           reduceMotion={reduceMotion}
           labelScale={labelScale}
+          compact={compact}
           onFocus={() => onFocusMajor(focusedMajor === spec.major ? null : spec.major)}
           onSelectTopic={onSelectTopic}
         />

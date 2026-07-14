@@ -3,8 +3,8 @@
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
-import { Loader2, Save, Pencil, X, Check, LayoutTemplate, Lock } from "lucide-react";
-import { updateMyPersonaPrompt } from "@/app/_actions/persona-admin";
+import { Loader2, Save, Pencil, X, Check, LayoutTemplate, Lock, RefreshCw } from "lucide-react";
+import { updateMyPersonaPrompt, regenerateMyPersonaPrompt } from "@/app/_actions/persona-admin";
 
 const FIXED_RULES_BLOCK = `### ルール（編集不可）
 - 教育コミュニティ「教育のひろば」で発言します
@@ -151,6 +151,7 @@ export function AdminMyPersonaPrompt({ initialPrompt }: { initialPrompt: string 
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const overLimit = text.length > MAX_EDITABLE;
@@ -177,6 +178,24 @@ export function AdminMyPersonaPrompt({ initialPrompt }: { initialPrompt: string 
     setError(null);
   }
 
+  async function handleRegenerate() {
+    if (!confirm("システムプロンプトを再生成しますか？現在の内容は上書きされます。")) return;
+    setRegenerating(true);
+    setError(null);
+    const res = await regenerateMyPersonaPrompt();
+    setRegenerating(false);
+    if (res.ok && res.newPrompt) {
+      const newEditable = res.newPrompt.startsWith(PROMPT_PREFIX)
+        ? res.newPrompt.slice(PROMPT_PREFIX.length)
+        : res.newPrompt;
+      setText(newEditable);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } else {
+      setError(res.error ?? "再生成に失敗しました");
+    }
+  }
+
   function insertPreset(preset: Preset) {
     if (text.trim() && !confirm(`現在の内容を「${preset.label}」テンプレートで置き換えますか？`)) return;
     setText(preset.body);
@@ -190,13 +209,24 @@ export function AdminMyPersonaPrompt({ initialPrompt }: { initialPrompt: string 
           <p className="text-[11px] text-muted-foreground">AIペルソナの人格・口調・経験をMarkdownで定義します</p>
         </div>
         {!editing && (
-          <button
-            type="button"
-            onClick={() => { setEditing(true); setSaved(false); }}
-            className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition hover:bg-muted"
-          >
-            <Pencil className="h-3 w-3" />編集
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleRegenerate}
+              disabled={regenerating}
+              className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition hover:bg-muted disabled:opacity-50"
+            >
+              {regenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+              {regenerating ? "生成中…" : "再生成"}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setEditing(true); setSaved(false); }}
+              className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition hover:bg-muted"
+            >
+              <Pencil className="h-3 w-3" />編集
+            </button>
+          </div>
         )}
       </div>
 
@@ -285,6 +315,7 @@ export function AdminMyPersonaPrompt({ initialPrompt }: { initialPrompt: string 
               </div>
               <FixedBlock>{FIXED_RULES_BLOCK}</FixedBlock>
             </div>
+            {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
             <div className="mt-1.5 flex items-center justify-between">
               <span className={`text-[11px] ${counterColor(text.length)}`}>{text.length.toLocaleString()}文字</span>
               {saved && (
