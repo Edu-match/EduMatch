@@ -33,12 +33,15 @@ import type { ContentBlock } from "@/components/editor/block-editor";
 import { contentToBlocks } from "@/lib/markdown-to-blocks";
 import { blocksToArticleContent, stripLeadText } from "@/lib/article-content";
 import { isImportedContent } from "@/lib/imported-content";
-import { generateArticleThumbnailPng } from "@/lib/article-thumbnail-canvas";
+import { generateThumbnailForArticle } from "@/app/_actions";
 import {
   parseThumbnailKind,
+  THUMBNAIL_STYLE_KINDS,
+  THUMBNAIL_STYLE_META,
+  resolveThumbnailStyle,
+  type ThumbnailStyleKind,
   type ThumbnailTemplateKind,
 } from "@/lib/thumbnail-template";
-import { ThumbnailStyleSelector } from "@/components/articles/thumbnail-style-selector";
 import {
   Eye,
   Save,
@@ -370,19 +373,16 @@ export default function ArticleCreatePage() {
       }
       setThumbnailTemplateGenerating(true);
       try {
-        const blob = await generateArticleThumbnailPng({ templateKind: kind, title: t });
-        const file = new File([blob], "article-thumbnail.png", { type: "image/png" });
-        const formData = new FormData();
-        formData.append("file", file);
-        const result = await uploadImage(formData);
-        if (result.success && result.url) {
-          setThumbnailUrl(result.url);
+        const style = resolveThumbnailStyle(kind);
+        const res = await generateThumbnailForArticle(t, leadText?.trim() || undefined, style);
+        if (res.ok && res.url) {
+          setThumbnailUrl(res.url);
           setThumbnailTemplateKind(kind);
           if (!options?.quiet) {
-            toast.success("サムネイルを生成して設定しました");
+            toast.success("AIがサムネイルを生成しました");
           }
         } else {
-          toast.error(result.error || "アップロードに失敗しました");
+          toast.error(res.error || "サムネイル生成に失敗しました");
         }
       } catch (e) {
         console.error(e);
@@ -391,7 +391,7 @@ export default function ArticleCreatePage() {
         setThumbnailTemplateGenerating(false);
       }
     },
-    []
+    [leadText]
   );
 
   const handleApplyGenerated = useCallback(async () => {
@@ -684,12 +684,26 @@ export default function ArticleCreatePage() {
                     )}
 
                     <div className="pt-6 border-t space-y-3">
-                      <p className="text-sm font-medium">スタイルを選んでサムネイルを生成</p>
-                      <ThumbnailStyleSelector
-                        value={thumbnailTemplateKind}
-                        onChange={setThumbnailTemplateKind}
-                        title={title}
-                      />
+                      <p className="text-sm font-medium">AIでサムネイル画像を生成</p>
+                      <p className="text-xs text-muted-foreground">
+                        記事の内容に合ったイラスト画像をAIが生成します（30秒ほどかかります）
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {THUMBNAIL_STYLE_KINDS.map((style) => (
+                          <button
+                            key={style}
+                            type="button"
+                            onClick={() => setThumbnailTemplateKind(style)}
+                            className={`rounded-md border px-3 py-1.5 text-xs font-medium transition ${
+                              resolveThumbnailStyle(thumbnailTemplateKind) === style
+                                ? "border-primary bg-primary/10 text-primary"
+                                : "border-input text-muted-foreground hover:bg-muted"
+                            }`}
+                          >
+                            {THUMBNAIL_STYLE_META[style].label}
+                          </button>
+                        ))}
+                      </div>
                       <Button
                         type="button"
                         variant="secondary"
@@ -704,12 +718,12 @@ export default function ArticleCreatePage() {
                         {thumbnailTemplateGenerating ? (
                           <>
                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            生成中...
+                            AI画像を生成中...
                           </>
                         ) : (
                           <>
                             <ImageIcon className="h-4 w-4 mr-2" />
-                            このスタイルでサムネイルを生成
+                            AIでサムネイルを生成
                           </>
                         )}
                       </Button>
