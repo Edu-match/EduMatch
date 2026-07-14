@@ -107,7 +107,8 @@ const pillBase: React.CSSProperties = {
   pointerEvents: "none",
 };
 
-function PlanetLabel({ color, emoji, label, total, hover }: { color: string; emoji: string; label: string; total: number; hover: boolean }) {
+function PlanetLabel({ color, emoji, label, total, hover, compact = false }: { color: string; emoji: string; label: string; total: number; hover: boolean; compact?: boolean }) {
+  const fontSize = compact ? 8 : hover ? 11 : 10;
   return (
     <div
       style={{
@@ -115,18 +116,19 @@ function PlanetLabel({ color, emoji, label, total, hover }: { color: string; emo
         display: "inline-flex",
         alignItems: "center",
         gap: 4,
-        fontSize: hover ? 11 : 10,
-        padding: "2px 8px 2px 4px",
+        fontSize,
+        padding: compact ? "1px 6px 1px 3px" : "2px 8px 2px 4px",
         background: hover ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.85)",
         border: `1px solid ${color}${hover ? "ee" : "88"}`,
         transition: "all .18s ease",
-        maxWidth: 140,
+        maxWidth: compact ? 110 : 140,
+        overflow: "hidden",
       }}
     >
-      <span style={{ display: "grid", placeItems: "center", width: 16, height: 16, borderRadius: 999, fontSize: 10, background: `${color}44`, flexShrink: 0 }}>{emoji}</span>
+      <span style={{ display: "grid", placeItems: "center", width: compact ? 12 : 16, height: compact ? 12 : 16, borderRadius: 999, fontSize: compact ? 8 : 10, background: `${color}44`, flexShrink: 0 }}>{emoji}</span>
       <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
       {total > 0 && (
-        <span style={{ fontSize: 8, fontWeight: 800, color: "#0a1024", padding: "1px 5px", borderRadius: 999, background: color, flexShrink: 0 }}>{total}</span>
+        <span style={{ fontSize: compact ? 7 : 8, fontWeight: 800, color: "#0a1024", padding: "1px 5px", borderRadius: 999, background: color, flexShrink: 0 }}>{total}</span>
       )}
     </div>
   );
@@ -156,7 +158,7 @@ function Sun({ label, seg, reduceMotion, labelScale = 1, compact = false, onSele
       </mesh>
       <Atmosphere color="#ffd9a0" radius={3.6} power={2.1} intensity={1.3} />
       <Atmosphere color="#ff9d5c" radius={4.9} power={3.4} intensity={0.9} />
-      <Html center distanceFactor={compact ? 200 : 60} position={[0, 5.3, 0]} zIndexRange={[70, 50]} style={{ pointerEvents: "auto" }}>
+      <Html center distanceFactor={compact ? 42 : 55} position={[0, 5.3, 0]} zIndexRange={[70, 50]} style={{ pointerEvents: "auto" }}>
         <button
           type="button"
           onMouseEnter={enter}
@@ -166,15 +168,19 @@ function Sun({ label, seg, reduceMotion, labelScale = 1, compact = false, onSele
             cursor: "pointer",
             appearance: "none",
             whiteSpace: "nowrap",
-            fontSize: compact ? Math.round(9 * labelScale) : Math.round(11 * labelScale),
+            maxWidth: compact ? 180 : 280,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            // compact 時は distanceFactor 側で十分縮小されるため、labelScale での二重縮小を避ける
+            fontSize: compact ? 9 : Math.round(11 * labelScale),
             fontWeight: 800,
             color: "#1a3a5a",
             background: "rgba(255,255,255,0.92)",
             border: "1px solid #ffd9a0cc",
             borderRadius: 999,
-            padding: `${Math.round(3 * labelScale)}px ${Math.round(10 * labelScale)}px`,
+            padding: compact ? "2px 8px" : `${Math.round(3 * labelScale)}px ${Math.round(10 * labelScale)}px`,
             boxShadow: "0 2px 10px rgba(0,0,0,0.12)",
-            transform: `scale(${labelScale})`,
+            transform: compact ? "none" : `scale(${labelScale})`,
             transformOrigin: "center center",
           }}
         >
@@ -228,10 +234,10 @@ function Moon({ topic, posts, planetR, index, count, clockRef, seg, showLabel, c
       </mesh>
       <Atmosphere color={color} radius={r * 1.45} power={2.6} intensity={hover ? 1.3 : 0.6} />
       {hover && (
-        <Html center distanceFactor={compact ? 200 : 40} position={[0, r + 0.9, 0]} zIndexRange={[45, 10]} style={{ pointerEvents: "none" }}>
-          <div style={{ ...pillBase, display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, padding: "2px 8px", background: "rgba(255,255,255,0.88)", border: `1px solid ${color}bb` }}>
-            <span>{topic.category}</span>
-            {posts > 0 && <span style={{ fontSize: 9, fontWeight: 800, color: "#0a1024", padding: "0 5px", borderRadius: 999, background: color }}>{posts}</span>}
+        <Html center distanceFactor={compact ? 12 : 22} position={[0, r + 0.9, 0]} zIndexRange={[45, 10]} style={{ pointerEvents: "none" }}>
+          <div style={{ ...pillBase, display: "inline-flex", alignItems: "center", gap: 4, fontSize: compact ? 8 : 10, padding: compact ? "1px 6px" : "2px 8px", maxWidth: compact ? 110 : 160, overflow: "hidden", background: "rgba(255,255,255,0.88)", border: `1px solid ${color}bb` }}>
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{topic.category}</span>
+            {posts > 0 && <span style={{ fontSize: compact ? 8 : 9, fontWeight: 800, color: "#0a1024", padding: "0 5px", borderRadius: 999, background: color, flexShrink: 0 }}>{posts}</span>}
           </div>
         </Html>
       )}
@@ -307,15 +313,23 @@ function Planet({ spec, topics, counts, clockRef, seg, focused, anyFocused, posi
         )}
         {/* ラベル */}
         {!dim && (!compact || hover || focused) && (
-          <Html center distanceFactor={compact ? 250 : (focused ? 50 : 80)} position={[0, planetR + 1.8, 0]} zIndexRange={[hover || focused ? 55 : 20, 5]} style={{ pointerEvents: "auto" }}>
+          <Html
+            center
+            // 注: drei の distanceFactor は「大きいほどラベルが拡大」される（scale ∝ distanceFactor / カメラ距離）。
+            // フォーカス時はカメラが惑星に接近する（距離 ≈ 16）ため、係数を小さくしないとラベルが巨大化する。
+            distanceFactor={compact ? (focused ? 14 : 26) : (focused ? 22 : 55)}
+            position={[0, planetR + 1.8, 0]}
+            zIndexRange={[hover || focused ? 55 : 20, 5]}
+            style={{ pointerEvents: "auto" }}
+          >
             <button
               type="button"
               onMouseEnter={enter}
               onMouseLeave={leave}
               onClick={(e) => { e.stopPropagation(); onFocus(); }}
-              style={{ appearance: "none", background: "none", border: "none", padding: 0, cursor: "pointer", transform: `scale(${labelScale})`, transformOrigin: "center center" }}
+              style={{ appearance: "none", background: "none", border: "none", padding: 0, cursor: "pointer", transform: compact ? "none" : `scale(${labelScale})`, transformOrigin: "center center" }}
             >
-              <PlanetLabel color={color} emoji={emoji} label={meta?.label ?? spec.major} total={total} hover={hover || focused} />
+              <PlanetLabel color={color} emoji={emoji} label={meta?.label ?? spec.major} total={total} hover={hover || focused} compact={compact} />
             </button>
           </Html>
         )}

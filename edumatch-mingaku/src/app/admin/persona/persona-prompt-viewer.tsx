@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { FileText, Pencil, Check, X, Loader2, ChevronDown } from "lucide-react";
-import { updateMyPersonaPrompt } from "@/app/_actions/persona-admin";
+import ReactMarkdown from "react-markdown";
+import remarkBreaks from "remark-breaks";
+import { FileText, Pencil, Check, X, Loader2, ChevronDown, RefreshCw } from "lucide-react";
+import { updateMyPersonaPrompt, regenerateMyPersonaPrompt } from "@/app/_actions/persona-admin";
 
 const IMMUTABLE_HEADER = "【以下はシステム固定（編集不可）】\n返信ルール: 教育コミュニティにふさわしい建設的な発言をする。断定・説教・宣伝・政治的に偏った発言は避ける。AIだと名乗らない。";
 
@@ -15,7 +17,10 @@ export function PersonaPromptViewer({
 }) {
   const [editing, setEditing] = useState(false);
   const [prompt, setPrompt] = useState(initialPrompt);
+  const [baseline, setBaseline] = useState(initialPrompt);
   const [saving, setSaving] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
 
   const save = useCallback(async () => {
@@ -23,8 +28,27 @@ export function PersonaPromptViewer({
     setSaving(true);
     const res = await updateMyPersonaPrompt(prompt);
     setSaving(false);
-    if (res.ok) setEditing(false);
+    if (res.ok) {
+      setBaseline(prompt);
+      setEditing(false);
+    }
   }, [prompt, type]);
+
+  const regenerate = useCallback(async () => {
+    if (type !== "my") return;
+    if (!confirm("システムプロンプトを再生成しますか？現在の内容は上書きされます。")) return;
+    setRegenerating(true);
+    setError(null);
+    const res = await regenerateMyPersonaPrompt();
+    setRegenerating(false);
+    if (res.ok && res.newPrompt) {
+      setPrompt(res.newPrompt);
+      setBaseline(res.newPrompt);
+      setEditing(false);
+    } else {
+      setError(res.error ?? "再生成に失敗しました");
+    }
+  }, [type]);
 
   return (
     <div className="rounded-lg border bg-card p-3">
@@ -59,7 +83,7 @@ export function PersonaPromptViewer({
               <div className="flex items-center justify-between">
                 <span className="text-[10px] text-muted-foreground">{prompt.length}/2000</span>
                 <div className="flex gap-1.5">
-                  <button type="button" onClick={() => { setPrompt(initialPrompt); setEditing(false); }} className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-[11px] font-medium hover:bg-muted">
+                  <button type="button" onClick={() => { setPrompt(baseline); setEditing(false); }} className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-[11px] font-medium hover:bg-muted">
                     <X className="h-3 w-3" /> キャンセル
                   </button>
                   <button type="button" onClick={save} disabled={saving || !prompt.trim()} className="inline-flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-[11px] font-bold text-primary-foreground hover:opacity-90 disabled:opacity-50">
@@ -69,9 +93,15 @@ export function PersonaPromptViewer({
               </div>
             </div>
           ) : (
-            <div className="group relative rounded-md border bg-background px-2.5 py-2 text-xs leading-relaxed text-foreground/80">
-              <p className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground/60 mb-1">ペルソナプロンプト（編集可能）</p>
-              <p className="whitespace-pre-wrap">{initialPrompt || "（未設定）"}</p>
+            <div className="group relative rounded-md border bg-background px-3 py-2.5">
+              <p className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground/60 mb-1.5">ペルソナプロンプト（編集可能）</p>
+              {prompt.trim() ? (
+                <div className="prose prose-sm max-w-none prose-headings:mt-3 prose-headings:mb-1.5 prose-headings:text-sm prose-headings:font-bold prose-headings:text-foreground/90 prose-p:my-1 prose-p:text-[13px] prose-p:leading-relaxed prose-p:text-foreground/80 prose-li:my-0.5 prose-li:text-[13px] prose-li:leading-relaxed prose-ul:my-1 prose-strong:text-foreground first:prose-headings:mt-0">
+                  <ReactMarkdown remarkPlugins={[remarkBreaks]}>{prompt}</ReactMarkdown>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">（未設定）</p>
+              )}
               <button
                 type="button"
                 onClick={() => setEditing(true)}
@@ -80,6 +110,20 @@ export function PersonaPromptViewer({
               >
                 <Pencil className="h-3.5 w-3.5" />
               </button>
+              {type === "my" && (
+                <div className="mt-3 flex justify-end border-t pt-2.5">
+                  <button
+                    type="button"
+                    onClick={regenerate}
+                    disabled={regenerating}
+                    className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-medium transition hover:bg-muted disabled:opacity-50"
+                  >
+                    {regenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                    {regenerating ? "生成中…" : "再生成"}
+                  </button>
+                </div>
+              )}
+              {error && <p className="mt-1.5 text-[11px] text-destructive">{error}</p>}
             </div>
           )}
         </div>
