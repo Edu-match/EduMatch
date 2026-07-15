@@ -256,22 +256,32 @@ export function ArticleForm() {
                             <p className="text-xs text-muted-foreground">
                               AIがイラスト付きのサムネイル画像を生成します（30秒ほどかかります）
                             </p>
-                            <div className="flex flex-wrap gap-1.5">
-                              {THUMBNAIL_STYLE_KINDS.map((style) => (
-                                <button
-                                  key={style}
-                                  type="button"
-                                  onClick={() => setAiStyle(style)}
-                                  aria-pressed={aiStyle === style}
-                                  className={`rounded-md border px-3 py-1.5 text-xs font-medium transition ${
-                                    aiStyle === style
-                                      ? "border-primary bg-primary/10 text-primary"
-                                      : "border-input text-muted-foreground hover:bg-muted"
-                                  }`}
-                                >
-                                  <span className="mr-1">{THUMBNAIL_STYLE_META[style].emoji}</span>{THUMBNAIL_STYLE_META[style].label}
-                                </button>
-                              ))}
+                            <div className="flex flex-wrap gap-2">
+                              {THUMBNAIL_STYLE_KINDS.map((style) => {
+                                const meta = THUMBNAIL_STYLE_META[style];
+                                return (
+                                  <button
+                                    key={style}
+                                    type="button"
+                                    onClick={() => setAiStyle(style)}
+                                    aria-pressed={aiStyle === style}
+                                    className={`group flex flex-col items-center gap-1 rounded-lg border p-1.5 transition ${
+                                      aiStyle === style
+                                        ? "border-primary ring-2 ring-primary/30"
+                                        : "border-input hover:border-primary/40"
+                                    }`}
+                                    style={{ width: 80 }}
+                                  >
+                                    <div
+                                      className="h-11 w-full rounded-md"
+                                      style={{ background: meta.previewBackground, backgroundSize: "20px 20px" }}
+                                    />
+                                    <span className={`text-[10px] font-medium leading-tight ${
+                                      aiStyle === style ? "text-primary" : "text-muted-foreground"
+                                    }`}>{meta.label}</span>
+                                  </button>
+                                );
+                              })}
                             </div>
                             <Button
                               type="button"

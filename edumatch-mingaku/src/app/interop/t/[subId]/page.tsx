@@ -100,6 +100,8 @@ export default async function InteropSubPage({
     );
   }
 
+  const isOpinionBoard = sub.slug === "giin-opinion" || sub.slug === "interop-opinion-box";
+
   return (
     <>
       <InteropBoard
@@ -114,6 +116,7 @@ export default async function InteropSubPage({
         }}
         accent={sub.category.color || "#9fb4e8"}
         themeMode={settings.themeMode}
+        forumStyleForm={isOpinionBoard}
       />
       <InteropGeofence settings={settings} />
     </>

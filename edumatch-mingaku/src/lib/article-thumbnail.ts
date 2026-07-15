@@ -6,15 +6,15 @@ const OPENAI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL?.trim() || "gpt-image-
 const BUCKET_NAME = "media";
 
 const STYLE_PROMPTS: Record<string, string> = {
-  tech: "Dark blue-purple tech background with holographic UI panels, glowing circuit lines, and digital particles. An anime-style young professional character on the right side, pointing or presenting energetically. No text or letters anywhere in the image.",
+  tech: "Dark blue-purple tech background with holographic UI panels, glowing circuit lines, and digital particles. An anime-style young professional character on the right side, pointing or presenting energetically.",
   illustration:
-    "Warm classroom or library scene with bookshelves and soft lighting. A friendly anime-style teacher character on the right side, smiling and gesturing. No text or letters anywhere in the image.",
+    "Warm classroom or library scene with bookshelves and soft lighting. A friendly anime-style teacher character on the right side, smiling and gesturing.",
   professional:
-    "Clean modern office or conference room, sleek design. A professional anime character in business attire on the right side. Blue and white color scheme. No text or letters anywhere in the image.",
+    "Clean modern office or conference room, sleek design. A professional anime character in business attire on the right side. Blue and white color scheme.",
   creative:
-    "Colorful creative workspace with art supplies and inspiration boards. An energetic anime character with creative tools on the right side. Vivid pop-art colors. No text or letters anywhere in the image.",
+    "Colorful creative workspace with art supplies and inspiration boards. An energetic anime character with creative tools on the right side. Vivid pop-art colors.",
   gradient:
-    "Abstract gradient background (purple to blue) with soft geometric shapes, light particles, and bokeh effects. No characters. Modern minimalist. No text or letters anywhere in the image.",
+    "Abstract gradient background (purple to blue) with soft geometric shapes, light particles, and bokeh effects. No characters. Modern minimalist.",
 };
 
 async function cropTo16by9(buffer: Buffer): Promise<Buffer> {
@@ -43,7 +43,6 @@ export async function generateArticleThumbnail(
     `The image should visually represent the topic: "${title.trim().slice(0, 80)}". ` +
     `${description ? `Context: ${description.slice(0, 120)}. ` : ""}` +
     `Visual style: ${stylePrompt} ` +
-    `CRITICAL: Do NOT include any text, titles, captions, words, letters, or characters in the image. The image must be purely visual/illustrative with zero text. ` +
     `Layout: 16:9 aspect ratio, eye-catching composition suitable for an article thumbnail.`;
 
   try {
