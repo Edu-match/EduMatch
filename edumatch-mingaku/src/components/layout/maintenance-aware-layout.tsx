@@ -60,7 +60,7 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
       <div className="flex-1 flex min-w-0">
 
         {/* Main content */}
-        <main className="flex-1 min-w-0 overflow-x-hidden">
+        <main className="flex-1 min-w-0 [overflow-x:clip]">
           <div className="w-full">{children}</div>
         </main>
 
