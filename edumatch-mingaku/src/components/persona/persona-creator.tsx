@@ -18,6 +18,7 @@ export type PersonaGenerated = {
   avatarUrl?: string;
   expertise?: string[];
   valuesText?: string;
+  personaPrompt?: string;
 };
 
 // 「好きなこと」をタップで足せるサジェスト（一般的で誰にでも当てはまるカテゴリ）。
@@ -28,7 +29,7 @@ const INTEREST_SUGGESTIONS = [
 ];
 
 /**
- * AIペルソナを作成する共通フォーム。
+ * AIペルソナ＆アバターを作成する共通フォーム。
  * 人格の核は「MBTIを選ぶ」か「独自の価値観診断（12問）」で決め、
  * 好きなこと・肩書き・活動を足して生成する。登録フロー／管理者ページで共用。
  */
@@ -36,10 +37,12 @@ export function PersonaCreator({
   defaults,
   currentAvatarUrl,
   onGenerated,
+  isAdmin,
 }: {
   defaults: PersonaCreatorDefaults;
   currentAvatarUrl?: string | null;
   onGenerated?: (r: PersonaGenerated) => void;
+  isAdmin?: boolean;
 }) {
   const [mode, setMode] = useState<"mbti" | "diagnostic">("diagnostic");
   const [mbti, setMbti] = useState("");
@@ -48,7 +51,7 @@ export function PersonaCreator({
   const [interests, setInterests] = useState<string[]>([]);
   const [customInterest, setCustomInterest] = useState("");
   const [jobTitle, setJobTitle] = useState(defaults.role ?? "");
-  const [activities, setActivities] = useState<string[]>(["", "", ""]);
+  const [activities, setActivities] = useState<string[]>([""]);
   const [photo, setPhoto] = useState<string | null>(null);
   const [photoName, setPhotoName] = useState("");
 
@@ -104,6 +107,7 @@ export function PersonaCreator({
           avatarUrl: result.avatarUrl,
           expertise: result.persona?.expertise ?? [],
           valuesText: result.persona?.valuesText ?? "",
+          personaPrompt: result.persona?.personaPrompt ?? "",
         };
         setInfo(gen);
         onGenerated?.(gen);
@@ -124,121 +128,123 @@ export function PersonaCreator({
           <Sparkles className="h-4 w-4" />
         </span>
         <div className="min-w-0">
-          <p className="text-sm font-semibold">AIペルソナを作成 <span className="font-normal text-muted-foreground">（任意）</span></p>
+          <p className="text-sm font-semibold">AIペルソナ＆アバターを作成 <span className="font-normal text-muted-foreground">（任意）</span></p>
           <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-            あなたの「分身AI」を作る機能です。下の質問に答えると、あなたらしい考え方・口調を持ったAIと、似合うアイコン画像を生成。井戸端会議で“あなたらしく”返信できます。
+            あなたの「分身AI」を作る機能です。下の質問に答えると、あなたらしい考え方・口調を持ったAIと、似合うアイコン画像を生成。教育のひろばで“あなたらしく”返信できます。
           </p>
         </div>
       </div>
 
-      {/* ① 人格の核：MBTI か 価値観診断 */}
-      <div className="rounded-lg border bg-background/60 p-3">
-        <p className="text-sm font-bold">① 人格の核を決める</p>
-        <div className="mt-2 inline-flex rounded-lg border bg-muted/40 p-0.5 text-xs font-medium">
-          <button type="button" onClick={() => setMode("diagnostic")} className={`rounded-md px-3 py-1.5 transition ${mode === "diagnostic" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}>価値観診断（おすすめ）</button>
-          <button type="button" onClick={() => setMode("mbti")} className={`rounded-md px-3 py-1.5 transition ${mode === "mbti" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}>MBTIを選ぶ</button>
-        </div>
+      {/* ① 人格の核：MBTI か 価値観診断（管理者用では省略） */}
+      {!isAdmin && (
+        <div className="rounded-lg border bg-background/60 p-3">
+          <p className="text-sm font-bold">① 人格の核を決める</p>
+          <div className="mt-2 inline-flex rounded-lg border bg-muted/40 p-0.5 text-xs font-medium">
+            <button type="button" onClick={() => setMode("diagnostic")} className={`rounded-md px-3 py-1.5 transition ${mode === "diagnostic" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}>価値観診断（おすすめ）</button>
+            <button type="button" onClick={() => setMode("mbti")} className={`rounded-md px-3 py-1.5 transition ${mode === "mbti" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}>MBTIを選ぶ</button>
+          </div>
 
-        {mode === "diagnostic" ? (
-          <div className="mt-3">
-            {/* 進捗バー */}
-            <div className="mb-1 flex items-center justify-between text-[11px]">
-              <span className="font-medium text-foreground/70">直感でどちらか選んでください</span>
-              <span className="text-muted-foreground">{answeredCount}/{PERSONA_DIAGNOSTIC.length}</span>
-            </div>
-            <div className="mb-3 h-2 w-full overflow-hidden rounded-full bg-muted">
-              <div className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all" style={{ width: `${(answeredCount / PERSONA_DIAGNOSTIC.length) * 100}%` }} />
-            </div>
-
-            {diagnosticDone ? (
-              <div className="rounded-xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 p-3">
-                <p className="text-sm font-bold text-emerald-700">✅ 診断が完了しました</p>
-                <p className="mt-1 text-xs text-foreground/70">{summarizeDiagnostic(answers)}</p>
-                <button type="button" onClick={() => { setAnswers({}); setDq(0); }} className="mt-2 text-xs font-medium text-primary underline underline-offset-2">最初からやり直す</button>
+          {mode === "diagnostic" ? (
+            <div className="mt-3">
+              {/* 進捗バー */}
+              <div className="mb-1 flex items-center justify-between text-[11px]">
+                <span className="font-medium text-foreground/70">直感でどちらか選んでください</span>
+                <span className="text-muted-foreground">{answeredCount}/{PERSONA_DIAGNOSTIC.length}</span>
               </div>
-            ) : (
-              (() => {
-                const q = PERSONA_DIAGNOSTIC[dq];
-                const cur = answers[q.id];
-                const OPT = {
-                  A: { on: "border-indigo-500 bg-indigo-500 text-white shadow-sm", off: "border-indigo-200 bg-indigo-50 text-indigo-900 hover:bg-indigo-100", badge: "bg-indigo-100 text-indigo-700" },
-                  B: { on: "border-teal-500 bg-teal-500 text-white shadow-sm", off: "border-teal-200 bg-teal-50 text-teal-900 hover:bg-teal-100", badge: "bg-teal-100 text-teal-700" },
-                } as const;
-                return (
-                  <div className="rounded-xl border border-violet-200 bg-gradient-to-br from-violet-50/70 to-indigo-50/70 p-3">
-                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                      <span className="inline-flex items-center gap-1.5">
-                        <span className="grid h-5 w-8 place-items-center rounded-full bg-violet-500 text-[10px] font-bold text-white">Q{dq + 1}</span>
-                        / {PERSONA_DIAGNOSTIC.length}
-                      </span>
-                      {dq > 0 && (
-                        <button type="button" onClick={() => setDq((d) => Math.max(0, d - 1))} className="inline-flex items-center gap-0.5 hover:text-foreground">
-                          <ChevronLeft className="h-3 w-3" /> 戻る
-                        </button>
-                      )}
-                    </div>
-                    <p className="mt-1.5 text-sm font-bold text-foreground">{q.text}</p>
-                    <div className="mt-3 space-y-2">
-                      {(["A", "B"] as const).map((opt) => {
-                        const on = cur === opt;
-                        const st = OPT[opt];
-                        return (
-                          <button
-                            key={opt}
-                            type="button"
-                            onClick={() => { setAnswers((prev) => ({ ...prev, [q.id]: opt })); setDq((d) => Math.min(PERSONA_DIAGNOSTIC.length - 1, d + 1)); }}
-                            className={`flex w-full items-center gap-2.5 rounded-xl border px-3 py-3 text-left text-sm transition active:scale-[0.99] ${on ? st.on : st.off}`}
-                          >
-                            <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-bold ${on ? "bg-white/25 text-white" : st.badge}`}>{opt}</span>
-                            <span className="min-w-0">{opt === "A" ? q.a : q.b}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {/* 進捗ドット（タップで移動） */}
-                    <div className="mt-3 flex flex-wrap justify-center gap-1">
-                      {PERSONA_DIAGNOSTIC.map((qq, i) => (
-                        <button key={qq.id} type="button" onClick={() => setDq(i)} aria-label={`質問${i + 1}へ`} className={`h-1.5 w-4 rounded-full transition ${answers[qq.id] ? "bg-violet-500" : i === dq ? "bg-violet-300" : "bg-muted"}`} />
-                      ))}
-                    </div>
-                  </div>
-                );
-              })()
-            )}
-          </div>
-        ) : (
-          <div className="mt-3 space-y-2">
-            <a href={MBTI_GUIDE_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary underline underline-offset-2 hover:opacity-80">
-              MBTIタイプ診断・解説を見る ↗
-            </a>
-            {/* 4グループの凡例 */}
-            <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px]">
-              {(["analyst", "diplomat", "sentinel", "explorer"] as MbtiGroup[]).map((g) => (
-                <span key={g} className="inline-flex items-center gap-1 text-muted-foreground">
-                  <span className="h-2 w-2 rounded-full" style={{ background: { analyst: "#8b5cf6", diplomat: "#22c55e", sentinel: "#0ea5e9", explorer: "#eab308" }[g] }} />
-                  {MBTI_GROUP_STYLE[g].label}
-                </span>
-              ))}
-            </div>
-            <div className="grid grid-cols-4 gap-1.5">
-              {PERSONA_MBTI_OPTIONS.map((m) => {
-                const on = mbti === m.code;
-                const st = MBTI_GROUP_STYLE[mbtiGroup(m.code)];
-                return (
-                  <button key={m.code} type="button" onClick={() => setMbti(on ? "" : m.code)} className={`flex flex-col items-center rounded-lg border px-1 py-1.5 transition active:scale-95 ${on ? st.on : st.off}`}>
-                    <span className="text-xs font-bold tracking-wide">{m.code}</span>
-                    <span className={`text-[10px] ${on ? "text-white/80" : "opacity-70"}`}>{m.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </div>
+              <div className="mb-3 h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all" style={{ width: `${(answeredCount / PERSONA_DIAGNOSTIC.length) * 100}%` }} />
+              </div>
 
-      {/* ② 好きなこと（タップで追加） */}
+              {diagnosticDone ? (
+                <div className="rounded-xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 p-3">
+                  <p className="text-sm font-bold text-emerald-700">診断が完了しました</p>
+                  <p className="mt-1 text-xs text-foreground/70">{summarizeDiagnostic(answers)}</p>
+                  <button type="button" onClick={() => { setAnswers({}); setDq(0); }} className="mt-2 text-xs font-medium text-primary underline underline-offset-2">最初からやり直す</button>
+                </div>
+              ) : (
+                (() => {
+                  const q = PERSONA_DIAGNOSTIC[dq];
+                  const cur = answers[q.id];
+                  const OPT = {
+                    A: { on: "border-indigo-500 bg-indigo-500 text-white shadow-sm", off: "border-indigo-200 bg-indigo-50 text-indigo-900 hover:bg-indigo-100", badge: "bg-indigo-100 text-indigo-700" },
+                    B: { on: "border-teal-500 bg-teal-500 text-white shadow-sm", off: "border-teal-200 bg-teal-50 text-teal-900 hover:bg-teal-100", badge: "bg-teal-100 text-teal-700" },
+                  } as const;
+                  return (
+                    <div className="rounded-xl border border-violet-200 bg-gradient-to-br from-violet-50/70 to-indigo-50/70 p-3">
+                      <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className="grid h-5 w-8 place-items-center rounded-full bg-violet-500 text-[10px] font-bold text-white">Q{dq + 1}</span>
+                          / {PERSONA_DIAGNOSTIC.length}
+                        </span>
+                        {dq > 0 && (
+                          <button type="button" onClick={() => setDq((d) => Math.max(0, d - 1))} className="inline-flex items-center gap-0.5 hover:text-foreground">
+                            <ChevronLeft className="h-3 w-3" /> 戻る
+                          </button>
+                        )}
+                      </div>
+                      <p className="mt-1.5 text-sm font-bold text-foreground">{q.text}</p>
+                      <div className="mt-3 space-y-2">
+                        {(["A", "B"] as const).map((opt) => {
+                          const on = cur === opt;
+                          const st = OPT[opt];
+                          return (
+                            <button
+                              key={opt}
+                              type="button"
+                              onClick={() => { setAnswers((prev) => ({ ...prev, [q.id]: opt })); setDq((d) => Math.min(PERSONA_DIAGNOSTIC.length - 1, d + 1)); }}
+                              className={`flex w-full items-center gap-2.5 rounded-xl border px-3 py-3 text-left text-sm transition active:scale-[0.99] ${on ? st.on : st.off}`}
+                            >
+                              <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-bold ${on ? "bg-white/25 text-white" : st.badge}`}>{opt}</span>
+                              <span className="min-w-0">{opt === "A" ? q.a : q.b}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {/* 進捗ドット（タップで移動） */}
+                      <div className="mt-3 flex flex-wrap justify-center gap-1">
+                        {PERSONA_DIAGNOSTIC.map((qq, i) => (
+                          <button key={qq.id} type="button" onClick={() => setDq(i)} aria-label={`質問${i + 1}へ`} className={`h-1.5 w-4 rounded-full transition ${answers[qq.id] ? "bg-violet-500" : i === dq ? "bg-violet-300" : "bg-muted"}`} />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()
+              )}
+            </div>
+          ) : (
+            <div className="mt-3 space-y-2">
+              <a href={MBTI_GUIDE_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary underline underline-offset-2 hover:opacity-80">
+                MBTIタイプ診断・解説を見る ↗
+              </a>
+              {/* 4グループの凡例 */}
+              <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px]">
+                {(["analyst", "diplomat", "sentinel", "explorer"] as MbtiGroup[]).map((g) => (
+                  <span key={g} className="inline-flex items-center gap-1 text-muted-foreground">
+                    <span className="h-2 w-2 rounded-full" style={{ background: { analyst: "#8b5cf6", diplomat: "#22c55e", sentinel: "#0ea5e9", explorer: "#eab308" }[g] }} />
+                    {MBTI_GROUP_STYLE[g].label}
+                  </span>
+                ))}
+              </div>
+              <div className="grid grid-cols-4 gap-1.5">
+                {PERSONA_MBTI_OPTIONS.map((m) => {
+                  const on = mbti === m.code;
+                  const st = MBTI_GROUP_STYLE[mbtiGroup(m.code)];
+                  return (
+                    <button key={m.code} type="button" onClick={() => setMbti(on ? "" : m.code)} className={`flex flex-col items-center rounded-lg border px-1 py-1.5 transition active:scale-95 ${on ? st.on : st.off}`}>
+                      <span className="text-xs font-bold tracking-wide">{m.code}</span>
+                      <span className={`text-[10px] ${on ? "text-white/80" : "opacity-70"}`}>{m.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 好きなこと（タップで追加） */}
       <div className="rounded-lg border bg-background/60 p-3">
-        <p className="text-sm font-bold">② 好きなこと <span className="font-normal text-muted-foreground">（タップで追加・任意）</span></p>
+        <p className="text-sm font-bold">{isAdmin ? "①" : "②"} 好きなこと <span className="font-normal text-muted-foreground">（タップで追加・任意）</span></p>
         <div className="mt-2 flex flex-wrap gap-1.5">
           {INTEREST_SUGGESTIONS.map((v) => {
             const on = interests.includes(v);
@@ -273,27 +279,45 @@ export function PersonaCreator({
         )}
       </div>
 
-      {/* ③ 肩書き・活動 */}
+      {/* 肩書き・活動 */}
       <div className="rounded-lg border bg-background/60 p-3">
-        <p className="text-sm font-bold">③ 肩書き・活動 <span className="font-normal text-muted-foreground">（任意）</span></p>
+        <p className="text-sm font-bold">{isAdmin ? "②" : "③"} 肩書き・活動 <span className="font-normal text-muted-foreground">（任意）</span></p>
         <input
           value={jobTitle}
           onChange={(e) => setJobTitle(e.target.value)}
           placeholder="肩書き・役割（例：高校教員 / 起業部 顧問）"
           className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
         />
-        <p className="mt-2 text-sm font-medium text-foreground/70">いまの活動（短く・最大3つ）</p>
+        <p className="mt-2 text-sm font-medium text-foreground/70">いまの活動（短く）</p>
         <div className="mt-1 space-y-1.5">
           {activities.map((a, i) => (
-            <input
-              key={i}
-              value={a}
-              onChange={(e) => setActivities((prev) => prev.map((x, j) => (j === i ? e.target.value : x)))}
-              placeholder={i === 0 ? "例：探究学習の授業づくり" : i === 1 ? "例：子ども向けプログラミング教室の運営" : "例：部活動の改革"}
-              maxLength={40}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            />
+            <div key={i} className="flex items-center gap-1.5">
+              <input
+                value={a}
+                onChange={(e) => setActivities((prev) => prev.map((x, j) => (j === i ? e.target.value : x)))}
+                placeholder={i === 0 ? "例：探究学習の授業づくり" : i === 1 ? "例：子ども向けプログラミング教室の運営" : "例：部活動の改革"}
+                maxLength={40}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
+              {activities.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setActivities((prev) => prev.filter((_, j) => j !== i))}
+                  className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  aria-label="削除"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
           ))}
+          <button
+            type="button"
+            onClick={() => setActivities((prev) => [...prev, ""])}
+            className="inline-flex items-center gap-1 rounded-md border border-dashed px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition hover:border-primary/50 hover:bg-primary/5 hover:text-primary"
+          >
+            <Plus className="h-3.5 w-3.5" />活動を追加
+          </button>
         </div>
       </div>
 
@@ -326,7 +350,7 @@ export function PersonaCreator({
         className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
       >
         {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-        {generating ? "生成中…（30秒ほど）" : avatarUrl ? "作り直す" : "AIペルソナを生成"}
+        {generating ? "生成中…（30秒ほど）" : avatarUrl ? "作り直す" : "AIペルソナ＆アバターを生成"}
       </button>
       {error && <p className="text-sm text-red-500">{error}</p>}
 

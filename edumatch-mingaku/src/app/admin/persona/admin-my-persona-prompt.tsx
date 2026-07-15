@@ -209,13 +209,24 @@ export function AdminMyPersonaPrompt({ initialPrompt }: { initialPrompt: string 
           <p className="text-[11px] text-muted-foreground">AIペルソナの人格・口調・経験をMarkdownで定義します</p>
         </div>
         {!editing && (
-          <button
-            type="button"
-            onClick={() => { setEditing(true); setSaved(false); }}
-            className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition hover:bg-muted"
-          >
-            <Pencil className="h-3 w-3" />編集
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleRegenerate}
+              disabled={regenerating}
+              className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition hover:bg-muted disabled:opacity-50"
+            >
+              {regenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+              {regenerating ? "生成中…" : "再生成"}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setEditing(true); setSaved(false); }}
+              className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition hover:bg-muted"
+            >
+              <Pencil className="h-3 w-3" />編集
+            </button>
+          </div>
         )}
       </div>
 
@@ -301,17 +312,6 @@ export function AdminMyPersonaPrompt({ initialPrompt }: { initialPrompt: string 
                 ) : (
                   <p className="text-xs text-muted-foreground italic">（システムプロンプトが未設定です）</p>
                 )}
-                <div className="mt-3 flex justify-end border-t pt-3">
-                  <button
-                    type="button"
-                    onClick={handleRegenerate}
-                    disabled={regenerating}
-                    className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition hover:bg-muted disabled:opacity-50"
-                  >
-                    {regenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-                    {regenerating ? "生成中…" : "再生成"}
-                  </button>
-                </div>
               </div>
               <FixedBlock>{FIXED_RULES_BLOCK}</FixedBlock>
             </div>

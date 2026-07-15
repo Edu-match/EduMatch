@@ -87,6 +87,18 @@ export async function requireAdmin() {
 }
 
 /**
+ * スタッフ以上ガード。STAFF または ADMIN ならパス。チケット受付用。
+ */
+export async function requireStaffOrAdmin() {
+  const user = await requireAuth();
+  const profile = await getCurrentProfile();
+  if (!profile || (profile.role !== "ADMIN" && profile.role !== "STAFF")) {
+    redirect("/");
+  }
+  return { user, profile };
+}
+
+/**
  * 記事・サービス投稿および投稿者ダッシュボード（運営 ADMIN のみ）。
  */
 export async function requireProvider() {

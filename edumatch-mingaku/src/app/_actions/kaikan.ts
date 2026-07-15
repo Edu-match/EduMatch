@@ -4,7 +4,7 @@ import { randomUUID, randomInt } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { getCurrentProfile, requireAdmin } from "@/lib/auth";
+import { getCurrentProfile, requireAdmin, requireStaffOrAdmin } from "@/lib/auth";
 
 // 招待コード用の文字集合（紛らわしい O/0/I/1/L を除外）。
 const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
@@ -240,9 +240,9 @@ export async function setKaikanContentPublished(formData: FormData) {
   revalidatePath("/forum/kaikan");
 }
 
-/** 管理者：受付チェックイン（QR読み取り先）。 */
+/** スタッフ以上：受付チェックイン（QR読み取り先）。 */
 export async function checkInKaikanApplication(formData: FormData) {
-  await requireAdmin();
+  await requireStaffOrAdmin();
   const token = String(formData.get("token") || "");
   if (!token) throw new Error("トークンが不正です");
   const app = await prisma.kaikanApplication.findUnique({ where: { qr_token: token } });
@@ -252,5 +252,32 @@ export async function checkInKaikanApplication(formData: FormData) {
     data: { status: "checked_in", checked_in_at: new Date() },
   });
   revalidatePath(`/admin/kaikan/checkin/${token}`);
+  revalidatePath("/admin/kaikan");
+}
+
+/** 管理者：メールアドレスでスタッフ権限を付与する。 */
+export async function grantStaffRole(formData: FormData) {
+  await requireAdmin();
+  const email = String(formData.get("email") || "").trim().toLowerCase();
+  if (!email) throw new Error("メールアドレスを入力してください");
+
+  const profile = await prisma.profile.findFirst({ where: { email } });
+  if (!profile) throw new Error("該当するユーザーが見つかりません");
+  if (profile.role === "ADMIN") throw new Error("管理者のロールは変更できません");
+
+  await prisma.profile.update({ where: { id: profile.id }, data: { role: "STAFF" } });
+  revalidatePath("/admin/kaikan");
+}
+
+/** 管理者：スタッフ権限を解除する。 */
+export async function revokeStaffRole(formData: FormData) {
+  await requireAdmin();
+  const profileId = String(formData.get("profileId") || "");
+  if (!profileId) return;
+
+  const profile = await prisma.profile.findUnique({ where: { id: profileId } });
+  if (!profile || profile.role !== "STAFF") return;
+
+  await prisma.profile.update({ where: { id: profileId }, data: { role: "VIEWER" } });
   revalidatePath("/admin/kaikan");
 }

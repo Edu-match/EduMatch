@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
-import { createKaikanContent, setKaikanContentPublished, generateKaikanInviteCodes } from "@/app/_actions/kaikan";
+import { createKaikanContent, setKaikanContentPublished, generateKaikanInviteCodes, grantStaffRole, revokeStaffRole } from "@/app/_actions/kaikan";
 import { KaikanCheckinPanel } from "@/components/kaikan/kaikan-checkin-panel";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +16,13 @@ export default async function AdminKaikanPage({ searchParams }: { searchParams: 
   const { tab, token } = await searchParams;
   const isCheckin = tab === "checkin";
   const isInvites = tab === "invites";
+  const isStaff = tab === "staff";
+
+  const staffUsers = isStaff ? await prisma.profile.findMany({
+    where: { role: "STAFF" },
+    select: { id: true, name: true, email: true },
+    orderBy: { name: "asc" },
+  }) : [];
 
   const inviteCodes = isInvites ? await prisma.kaikanInviteCode.findMany({
     orderBy: { created_at: "desc" },
@@ -27,7 +34,7 @@ export default async function AdminKaikanPage({ searchParams }: { searchParams: 
     usedCount: await prisma.kaikanInviteRedemption.count(),
   } : { total: 0, usedCount: 0 };
 
-  const contents = (isCheckin || isInvites) ? [] : await prisma.kaikanContent.findMany({
+  const contents = (isCheckin || isInvites || isStaff) ? [] : await prisma.kaikanContent.findMany({
     orderBy: [{ sort_order: "asc" }, { created_at: "desc" }],
     include: {
       _count: { select: { applications: true } },
@@ -48,14 +55,53 @@ export default async function AdminKaikanPage({ searchParams }: { searchParams: 
 
       {/* タブ */}
       <nav className="mt-4 flex flex-wrap gap-2">
-        <Link href="/admin/kaikan" className={tabCls(!isCheckin && !isInvites)}>コンテンツ管理</Link>
+        <Link href="/admin/kaikan" className={tabCls(!isCheckin && !isInvites && !isStaff)}>コンテンツ管理</Link>
         <Link href="/admin/kaikan?tab=checkin" className={tabCls(isCheckin)}>当日受付（QR/受付番号）</Link>
         <Link href="/admin/kaikan?tab=invites" className={tabCls(isInvites)}>招待コード</Link>
+        <Link href="/admin/kaikan?tab=staff" className={tabCls(isStaff)}>スタッフ</Link>
       </nav>
 
       {isCheckin ? (
         <section className="mt-6">
           <KaikanCheckinPanel initialToken={token} />
+        </section>
+      ) : isStaff ? (
+        <section className="mt-6 space-y-6">
+          <div className="rounded-xl border bg-background p-5">
+            <h2 className="mb-1 text-sm font-bold">スタッフ権限を付与</h2>
+            <p className="mb-3 text-xs text-muted-foreground">
+              メールアドレスを入力して、当日のチケット受付（QR読み取り）権限を付与します。
+            </p>
+            <form action={grantStaffRole} className="flex items-end gap-2">
+              <label className="text-sm flex-1">
+                <span className="block text-xs text-muted-foreground">メールアドレス</span>
+                <input name="email" type="email" required placeholder="staff@example.com" className="mt-1 w-full rounded-md border border-input px-3 py-2 text-sm" />
+              </label>
+              <button type="submit" className="rounded-md bg-primary px-4 py-2 text-sm font-bold text-primary-foreground">付与</button>
+            </form>
+          </div>
+
+          <div className="rounded-xl border bg-background p-5">
+            <h2 className="mb-3 text-sm font-bold">現在のスタッフ（{staffUsers.length}名）</h2>
+            {staffUsers.length === 0 ? (
+              <p className="text-sm text-muted-foreground">まだスタッフはいません。</p>
+            ) : (
+              <div className="space-y-2">
+                {staffUsers.map((s) => (
+                  <div key={s.id} className="flex items-center justify-between rounded-lg border px-3 py-2">
+                    <div>
+                      <p className="text-sm font-medium">{s.name}</p>
+                      <p className="text-xs text-muted-foreground">{s.email}</p>
+                    </div>
+                    <form action={revokeStaffRole}>
+                      <input type="hidden" name="profileId" value={s.id} />
+                      <button type="submit" className="rounded-md border px-3 py-1 text-xs text-muted-foreground hover:border-destructive hover:text-destructive">解除</button>
+                    </form>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </section>
       ) : isInvites ? (
         <section className="mt-6 space-y-6">

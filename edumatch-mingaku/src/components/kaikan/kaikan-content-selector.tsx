@@ -47,6 +47,21 @@ function fmtDayHeader(s: string | null): string {
   return new Intl.DateTimeFormat("ja-JP", { month: "long", day: "numeric", weekday: "short" }).format(d);
 }
 
+const VENUE_COLORS: Record<string, string> = {
+  "ステージ1": "border-l-blue-500",
+  "ステージ2": "border-l-amber-500",
+  "会議室": "border-l-emerald-500",
+  "大会議室": "border-l-emerald-500",
+  "ホール": "border-l-purple-500",
+};
+
+function venueColor(location: string): string {
+  for (const [key, cls] of Object.entries(VENUE_COLORS)) {
+    if (location.includes(key)) return cls;
+  }
+  return "border-l-slate-300";
+}
+
 /** 2つの時間帯が重なるか（両方に開始・終了がある場合のみ）。 */
 function overlaps(a: SelectableContent, b: SelectableContent): boolean {
   const as = toDate(a.startsAt), ae = toDate(a.endsAt), bs = toDate(b.startsAt), be = toDate(b.endsAt);
@@ -131,7 +146,7 @@ export function KaikanContentSelector({ contents, appliedIds }: { contents: Sele
                 return (
                   <li key={c.id}>
                     <label
-                      className={`flex gap-3 rounded-xl border p-3.5 transition ${
+                      className={`flex gap-3 rounded-xl border border-l-4 ${venueColor(c.location)} p-3.5 transition ${
                         disabled ? "cursor-default bg-muted/30" : "cursor-pointer bg-background hover:border-primary/50 hover:bg-primary/[0.03]"
                       } ${checked && !applied ? "border-primary ring-1 ring-primary/30" : ""} ${clash ? "opacity-70" : ""}`}
                     >

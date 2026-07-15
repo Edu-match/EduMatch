@@ -1,0 +1,2 @@
+-- Add STAFF to the Role enum type
+ALTER TYPE "Role" ADD VALUE IF NOT EXISTS 'STAFF' BEFORE 'PROVIDER';

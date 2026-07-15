@@ -349,7 +349,7 @@ function AiBadge() {
   return (
     <span className="inline-flex items-center gap-1 rounded-full border border-indigo-300/35 bg-indigo-400/15 px-2.5 py-0.5 text-xs font-semibold text-indigo-200">
       <Bot className="h-3 w-3" />
-      AI
+      AI生成
     </span>
   );
 }
@@ -524,6 +524,9 @@ function ReplyCard({
             <span className="text-xs text-white/40"><RelativeTime iso={reply.postedAt} /></span>
           </div>
           <p className="text-sm leading-7 whitespace-pre-wrap text-white/80">{reply.body}</p>
+          {isAiReply && (
+            <p className="mt-1 text-[10px] text-indigo-300/50">この返信はAIによって自動生成されたものです。内容の正確性を保証するものではありません。</p>
+          )}
           <button
             type="button"
             onClick={toggleLike}

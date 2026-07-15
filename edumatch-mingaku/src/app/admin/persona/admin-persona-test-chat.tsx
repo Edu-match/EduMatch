@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { Loader2, MessageCircleMore, Sparkles, RotateCcw } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { generatePersonaTestReply } from "@/app/_actions/persona-admin";
+import { generatePersonaTestReply, generateSpecialPersonaTestReply } from "@/app/_actions/persona-admin";
 
 const SAMPLE_POSTS = [
   "子どもがタブレット学習ばかりで、紙のノートを使わなくなりました。このままで大丈夫でしょうか？",
@@ -14,6 +14,12 @@ const SAMPLE_POSTS = [
 
 type Turn = { role: "user" | "persona"; text: string };
 
+type SpecialPersonaOption = {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+};
+
 /**
  * テスト会話パネル：サンプル投稿を入力し、ペルソナの声で返信を試せる。
  * フォーラムには一切投稿されない。プロンプト調整のプレビュー用。
@@ -21,14 +27,20 @@ type Turn = { role: "user" | "persona"; text: string };
 export function AdminPersonaTestChat({
   personaName,
   personaAvatarUrl,
+  specialPersonas = [],
 }: {
   personaName: string;
   personaAvatarUrl: string | null;
+  specialPersonas?: SpecialPersonaOption[];
 }) {
   const [input, setInput] = useState("");
   const [turns, setTurns] = useState<Turn[]>([]);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [testMode, setTestMode] = useState<"my" | string>("my");
+  const activePersona = testMode === "my"
+    ? { name: personaName, avatarUrl: personaAvatarUrl }
+    : specialPersonas.find(s => s.id === testMode) ?? { name: personaName, avatarUrl: personaAvatarUrl };
 
   async function generate() {
     const body = input.trim();
@@ -37,7 +49,9 @@ export function AdminPersonaTestChat({
     setError(null);
     setTurns((prev) => [...prev, { role: "user", text: body }]);
     setInput("");
-    const res = await generatePersonaTestReply(body);
+    const res = testMode === "my"
+      ? await generatePersonaTestReply(body)
+      : await generateSpecialPersonaTestReply(testMode, body);
     setGenerating(false);
     if (res.ok && res.text) {
       setTurns((prev) => [...prev, { role: "persona", text: res.text! }]);
@@ -75,6 +89,28 @@ export function AdminPersonaTestChat({
         )}
       </div>
 
+      {specialPersonas.length > 0 && (
+        <div className="flex items-center gap-2 overflow-x-auto border-b px-4 py-2" style={{ scrollbarWidth: "none" }}>
+          <button
+            type="button"
+            onClick={() => { setTestMode("my"); setTurns([]); }}
+            className={`flex-none rounded-full px-3 py-1 text-[11px] font-bold transition ${testMode === "my" ? "bg-primary text-primary-foreground" : "border text-muted-foreground hover:text-foreground"}`}
+          >
+            自分のペルソナ
+          </button>
+          {specialPersonas.map((sp) => (
+            <button
+              key={sp.id}
+              type="button"
+              onClick={() => { setTestMode(sp.id); setTurns([]); }}
+              className={`flex-none rounded-full px-3 py-1 text-[11px] font-bold transition ${testMode === sp.id ? "bg-primary text-primary-foreground" : "border text-muted-foreground hover:text-foreground"}`}
+            >
+              {sp.name}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="p-4">
         {/* 会話履歴 */}
         {(turns.length > 0 || generating) && (
@@ -88,13 +124,13 @@ export function AdminPersonaTestChat({
                 </div>
               ) : (
                 <div key={i} className="flex items-end gap-2">
-                  {personaAvatarUrl ? (
-                    <Image src={personaAvatarUrl} alt="" width={32} height={32} className="h-8 w-8 shrink-0 rounded-full object-cover" unoptimized />
+                  {activePersona.avatarUrl ? (
+                    <Image src={activePersona.avatarUrl} alt="" width={32} height={32} className="h-8 w-8 shrink-0 rounded-full object-cover" unoptimized />
                   ) : (
                     <div className="h-8 w-8 shrink-0 rounded-full bg-muted" />
                   )}
                   <div className="max-w-[85%]">
-                    <p className="mb-0.5 ml-1 text-[10px] font-bold text-muted-foreground">{personaName}</p>
+                    <p className="mb-0.5 ml-1 text-[10px] font-bold text-muted-foreground">{activePersona.name}</p>
                     <div className="rounded-2xl rounded-bl-sm border bg-muted/50 px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap break-words">
                       {t.text}
                     </div>
@@ -104,8 +140,8 @@ export function AdminPersonaTestChat({
             )}
             {generating && (
               <div className="flex items-end gap-2">
-                {personaAvatarUrl ? (
-                  <Image src={personaAvatarUrl} alt="" width={32} height={32} className="h-8 w-8 shrink-0 rounded-full object-cover" unoptimized />
+                {activePersona.avatarUrl ? (
+                  <Image src={activePersona.avatarUrl} alt="" width={32} height={32} className="h-8 w-8 shrink-0 rounded-full object-cover" unoptimized />
                 ) : (
                   <div className="h-8 w-8 shrink-0 rounded-full bg-muted" />
                 )}

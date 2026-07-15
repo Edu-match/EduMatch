@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { requireStaffOrAdmin } from "@/lib/auth";
 import { checkInKaikanApplication } from "@/app/_actions/kaikan";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +12,7 @@ function fmtDate(d: Date | null): string {
 }
 
 export default async function KaikanCheckinPage({ params }: { params: Promise<{ token: string }> }) {
-  await requireAdmin();
+  await requireStaffOrAdmin();
   const { token } = await params;
 
   const app = await prisma.kaikanApplication.findUnique({

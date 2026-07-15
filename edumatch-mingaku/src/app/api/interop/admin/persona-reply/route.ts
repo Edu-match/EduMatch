@@ -194,7 +194,7 @@ export async function POST(req: NextRequest) {
           persona_id: persona.id,
           author_id: persona.profile_id,
           is_ai_reply: true,
-          author_name: persona.display_name,
+          author_name: persona.display_name.startsWith("AI") ? persona.display_name : `AI${persona.display_name}`,
           author_role: "AIペルソナ",
           body: replyText,
         },

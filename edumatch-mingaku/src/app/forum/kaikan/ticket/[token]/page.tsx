@@ -12,6 +12,21 @@ function fmtDate(d: Date | null): string {
   return new Intl.DateTimeFormat("ja-JP", { month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit" }).format(d);
 }
 
+const VENUE_COLORS: Record<string, string> = {
+  "ステージ1": "border-l-blue-500",
+  "ステージ2": "border-l-amber-500",
+  "会議室": "border-l-emerald-500",
+  "大会議室": "border-l-emerald-500",
+  "ホール": "border-l-purple-500",
+};
+
+function venueColor(location: string): string {
+  for (const [key, cls] of Object.entries(VENUE_COLORS)) {
+    if (location.includes(key)) return cls;
+  }
+  return "border-l-slate-300";
+}
+
 /** 受付番号：tokenから数字8桁を生成し 4-4 で表示。 */
 function receiptNo(token: string): string {
   const hex = token.replace(/-/g, "").slice(0, 16).toLowerCase();
@@ -79,7 +94,7 @@ export default async function KaikanTicketPage({ params }: { params: Promise<{ t
               {apps.map((a) => {
                 const done = a.status === "checked_in";
                 return (
-                  <li key={a.id} className="rounded-lg border bg-background p-3">
+                  <li key={a.id} className={`rounded-lg border border-l-4 ${venueColor(a.content.location)} bg-background p-3`}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="truncate text-sm font-bold">{a.content.title}</p>

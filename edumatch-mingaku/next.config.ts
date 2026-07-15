@@ -45,6 +45,7 @@ function buildCsp(): string {
       "data:",
       "blob:",
       supabaseOrigin,
+      "https://*.supabase.co",
       "https://placehold.co",
       "https://drive.google.com",
       "https://lh3.googleusercontent.com",
@@ -131,6 +132,12 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: SUPABASE_HOSTNAME,
+        port: "",
+        pathname: "/storage/v1/object/public/**",
+      },
+      {
+        protocol: "https",
+        hostname: "*.supabase.co",
         port: "",
         pathname: "/storage/v1/object/public/**",
       },

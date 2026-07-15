@@ -1021,6 +1021,7 @@ enum VideoVisibility {
 
 enum Role {
   ADMIN
+  STAFF
   PROVIDER
   VIEWER
 }
