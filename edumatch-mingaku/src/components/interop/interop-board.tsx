@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Bot, ChevronDown, ChevronUp, CornerDownRight, Heart, Link2, Loader2, MessageCircle, Pin, Send, X } from "lucide-react";
+import { ArrowLeft, Bot, ChevronDown, ChevronUp, CornerDownRight, Heart, Link2, Loader2, LogIn, MessageCircle, PenSquare, Pin, Send, X } from "lucide-react";
+import { useAuthUser } from "@/components/community/answer-section";
+import { formatOrganizationTypeDisplay } from "@/lib/organization-types";
 import { getInteropVoterKey } from "@/lib/interop-voter";
 import { InteropBackdrop } from "@/components/interop/interop-backdrop";
 import { InteropContentCarousel } from "@/components/interop/interop-content-carousel";
@@ -84,15 +86,18 @@ export function InteropBoard({
   topic,
   accent,
   themeMode = "auto",
+  forumStyleForm = false,
 }: {
   sub: { id: string; name: string; description: string; url?: string; categoryId: string; categoryName: string; categorySlug?: string };
   topic?: { id: string; name: string; description: string; url?: string };
   accent: string;
   themeMode?: InteropThemeMode;
+  forumStyleForm?: boolean;
 }) {
   // interop 直下の「直行サテライト」（最新ニュース／登壇者への質問／ご意見BOX）は
   // トップマップから直接入るので、戻り先はハブではなくトップマップにする。
   const isSatellite = sub.categorySlug === "interop";
+  const auth = useAuthUser();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
@@ -204,7 +209,9 @@ export function InteropBoard({
     try { localStorage.setItem("interop_author_role", value); } catch { /* noop */ }
   };
 
-  const canSubmit = !!name.trim() && !!role.trim() && !!bodyText.trim() && !submitting;
+  const canSubmit = forumStyleForm
+    ? auth.isLoggedIn && !!bodyText.trim() && !submitting
+    : !!name.trim() && !!role.trim() && !!bodyText.trim() && !submitting;
 
   async function submit() {
     const trimmed = bodyText.trim();
@@ -677,45 +684,64 @@ export function InteropBoard({
           )}
           {error && <p className="mb-2 text-xs text-rose-300">{error}</p>}
           {notice && <p className="mb-2 text-xs text-emerald-300">{notice}</p>}
-          <div className="flex items-end gap-2">
-            <div className="flex-1 space-y-2">
-              <div className="flex gap-2">
-                <input
-                  value={name}
-                  onChange={(e) => updateName(e.target.value)}
-                  placeholder="ニックネーム（必須）"
-                  maxLength={40}
-                  className="w-full rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-white/30 focus:outline-none"
-                />
-                <input
-                  value={role}
-                  onChange={(e) => updateRole(e.target.value)}
-                  placeholder="肩書き（必須）"
-                  maxLength={60}
-                  className="w-full rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-white/30 focus:outline-none"
+          {forumStyleForm ? (
+            <ForumStyleComposeArea
+              auth={auth}
+              bodyText={bodyText}
+              setBodyText={setBodyText}
+              submitting={submitting}
+              accent={accent}
+              onSubmit={() => {
+                if (!auth.isLoggedIn || !bodyText.trim()) return;
+                const profileRole = auth.organizationType?.trim()
+                  ? formatOrganizationTypeDisplay(auth.organizationType, auth.organizationTypeOther ?? undefined)
+                  : "一般";
+                setName(auth.name);
+                setRole(profileRole);
+                submit();
+              }}
+            />
+          ) : (
+            <div className="flex items-end gap-2">
+              <div className="flex-1 space-y-2">
+                <div className="flex gap-2">
+                  <input
+                    value={name}
+                    onChange={(e) => updateName(e.target.value)}
+                    placeholder="ニックネーム（必須）"
+                    maxLength={40}
+                    className="w-full rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-white/30 focus:outline-none"
+                  />
+                  <input
+                    value={role}
+                    onChange={(e) => updateRole(e.target.value)}
+                    placeholder="肩書き（必須）"
+                    maxLength={60}
+                    className="w-full rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-white/30 focus:outline-none"
+                  />
+                </div>
+                <textarea
+                  value={bodyText}
+                  onChange={(e) => setBodyText(e.target.value)}
+                  onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") submit(); }}
+                  placeholder="ひとこと書く…"
+                  rows={2}
+                  maxLength={1000}
+                  className="w-full resize-none rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-white/30 focus:outline-none"
                 />
               </div>
-              <textarea
-                value={bodyText}
-                onChange={(e) => setBodyText(e.target.value)}
-                onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") submit(); }}
-                placeholder="ひとこと書く…"
-                rows={2}
-                maxLength={1000}
-                className="w-full resize-none rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-white/30 focus:outline-none"
-              />
+              <button
+                type="button"
+                onClick={submit}
+                disabled={!canSubmit}
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-xl font-bold text-white transition disabled:opacity-40"
+                style={{ background: accent }}
+                aria-label="投稿する"
+              >
+                {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={submit}
-              disabled={!canSubmit}
-              className="grid h-11 w-11 shrink-0 place-items-center rounded-xl font-bold text-white transition disabled:opacity-40"
-              style={{ background: accent }}
-              aria-label="投稿する"
-            >
-              {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
-            </button>
-          </div>
+          )}
         </div>
       </div>
 
@@ -731,6 +757,93 @@ export function InteropBoard({
         contextDetail={serializePostsForAi(posts)}
       />
     </main>
+  );
+}
+
+function ForumStyleComposeArea({
+  auth,
+  bodyText,
+  setBodyText,
+  submitting,
+  accent,
+  onSubmit,
+}: {
+  auth: ReturnType<typeof useAuthUser>;
+  bodyText: string;
+  setBodyText: (v: string) => void;
+  submitting: boolean;
+  accent: string;
+  onSubmit: () => void;
+}) {
+  const MAX_BODY = 3000;
+  const remaining = MAX_BODY - bodyText.length;
+  const canSubmit = auth.isLoggedIn && bodyText.trim().length > 0 && bodyText.length <= MAX_BODY && !submitting;
+
+  if (auth.isLoading) {
+    return (
+      <div className="flex items-center justify-center py-4">
+        <Loader2 className="h-5 w-5 animate-spin text-white/40" />
+      </div>
+    );
+  }
+
+  if (!auth.isLoggedIn) {
+    return (
+      <div className="flex flex-col gap-3 rounded-xl border border-dashed border-white/20 bg-white/[0.04] p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-white/90">投稿するにはログインしてください</p>
+          <p className="mt-1 text-xs text-white/55">会員限定の投稿機能です。</p>
+        </div>
+        <a
+          href="/auth/login"
+          className="inline-flex items-center gap-1.5 rounded-full px-5 py-2 text-sm font-bold text-white transition hover:opacity-90"
+          style={{ background: accent }}
+        >
+          <LogIn className="h-4 w-4" />ログインする
+        </a>
+      </div>
+    );
+  }
+
+  const profileRole = auth.organizationType?.trim()
+    ? formatOrganizationTypeDisplay(auth.organizationType, auth.organizationTypeOther ?? undefined)
+    : "一般";
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white/15 text-xs font-bold text-white">
+          {(auth.name || "?")[0]}
+        </div>
+        <span className="text-xs font-medium text-white/85">{auth.name}</span>
+        <span className="text-white/30">·</span>
+        <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-medium text-white/65">{profileRole}</span>
+      </div>
+      <textarea
+        value={bodyText}
+        onChange={(e) => setBodyText(e.target.value)}
+        onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") onSubmit(); }}
+        placeholder="あなたの意見や経験を書いてください…"
+        rows={4}
+        maxLength={MAX_BODY + 50}
+        className="w-full resize-none rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm leading-7 text-white placeholder:text-white/40 focus:border-white/30 focus:outline-none"
+      />
+      <div className="flex items-center justify-end gap-3">
+        <span className={`text-[11px] tabular-nums ${remaining < 0 ? "text-rose-400 font-semibold" : remaining < 50 ? "text-amber-300" : "text-white/40"}`}>
+          {remaining}
+        </span>
+        <button
+          type="button"
+          onClick={onSubmit}
+          disabled={!canSubmit}
+          className="inline-flex items-center gap-1.5 rounded-full px-5 py-2 text-sm font-bold text-white transition disabled:opacity-40 hover:opacity-90"
+          style={{ background: accent }}
+        >
+          {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PenSquare className="h-3.5 w-3.5" />}
+          投稿する
+        </button>
+      </div>
+    </div>
   );
 }
 
