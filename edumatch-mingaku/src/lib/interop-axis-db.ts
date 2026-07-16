@@ -50,6 +50,43 @@ export async function saveAxisConfig(c: AxisConfig): Promise<void> {
     WHERE id = 1`;
 }
 
+// ───────────────────────── 第3軸（週次ローカルLLM巡回） ─────────────────────────
+
+export type Axis3 = { label: string; values: Record<number, number> };
+
+export async function getAxis3(): Promise<Axis3> {
+  let label = "短期 ↔ 長期";
+  const values: Record<number, number> = {};
+  try {
+    const meta = await prisma.$queryRaw<Array<{ label: string }>>`
+      SELECT label FROM interop_axis3_meta WHERE id = 1 LIMIT 1`;
+    if (meta[0]?.label) label = meta[0].label;
+    const rows = await prisma.$queryRaw<Array<{ topic_no: number; v: number }>>`
+      SELECT topic_no, v FROM interop_topic_axis3`;
+    for (const r of rows) values[Number(r.topic_no)] = Number(r.v);
+  } catch {
+    /* テーブル未作成時は既定ラベル＋空 */
+  }
+  return { label, values };
+}
+
+export async function saveAxis3Label(label: string): Promise<void> {
+  await prisma.$executeRaw`
+    INSERT INTO interop_axis3_meta (id, label, updated_at)
+    VALUES (1, ${label}, now())
+    ON CONFLICT (id) DO UPDATE SET label = ${label}, updated_at = now()`;
+}
+
+export async function saveTopicAxis3(no: number, v: number): Promise<void> {
+  const c = Math.max(0, Math.min(1, v));
+  await prisma.$executeRaw`
+    INSERT INTO interop_topic_axis3 (topic_no, v, updated_at)
+    VALUES (${no}, ${c}, now())
+    ON CONFLICT (topic_no) DO UPDATE SET v = ${c}, updated_at = now()`;
+}
+
+// ───────────────────────── トピック間ノード接続（内容ベース） ─────────────────────────
+
 export type TopicEdge = { a: number; b: number; weight: number };
 
 /** トピック間の内容ベース関連（Gemmaが日次で生成）。テーブル未作成なら空配列。 */
