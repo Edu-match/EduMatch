@@ -195,50 +195,46 @@ export default async function HomePage() {
         </div>
       </div>
 
-      {/* ============ 3つの入口 ============ */}
-      <section className="border-t border-border/60 bg-secondary/40">
-        <div className="container py-14">
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
-            {[
-              {
-                href: "/forum",
-                icon: MessageSquare,
-                title: "教育のひろば",
-                desc: "先生、保護者、企業、行政。すべての教育関係者がフラットに対話できる場所。",
-                cta: "参加する",
-              },
-              {
-                href: "/matching",
-                icon: Users,
-                title: "人材マッチング",
-                desc: "教育に関わる人と出会う名鑑。関心でつながる。",
-                cta: "見てみる",
-              },
-              {
-                href: "/ai-kentei",
-                icon: Award,
-                title: "AI検定",
-                desc: "教育×AIリテラシーを証明。合格バッジをプロフィールに。",
-                cta: "挑戦する",
-              },
-            ].map((f, i) => (
-              <Reveal key={f.href} delay={i * 90}>
-                <Link href={f.href} className="card-lift group block rounded-2xl border border-border/60 bg-card p-7">
-                  <span className="grid h-11 w-11 place-items-center rounded-2xl bg-primary/10 text-primary transition-transform duration-300 group-hover:scale-110">
-                    <f.icon className="h-5 w-5" />
-                  </span>
-                  <h3 className="mt-4 font-semibold">{f.title}</h3>
-                  <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{f.desc}</p>
-                  <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary">
-                    {f.cta}
-                    <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-                  </span>
-                </Link>
-              </Reveal>
-            ))}
-          </div>
+      {/* ============ サービスナビ（コンパクトストリップ） ============ */}
+      <nav className="container pb-8" aria-label="サービスメニュー">
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+          {[
+            {
+              href: "/forum",
+              icon: MessageSquare,
+              title: "教育のひろば",
+              sub: "対話に参加する",
+            },
+            {
+              href: "/matching",
+              icon: Users,
+              title: "人材マッチング",
+              sub: "教育の名鑑を見る",
+            },
+            {
+              href: "/ai-kentei",
+              icon: Award,
+              title: "AI検定",
+              sub: "力試しに挑戦する",
+            },
+          ].map((f) => (
+            <Link
+              key={f.href}
+              href={f.href}
+              className="group flex items-center gap-3 rounded-xl border border-border/60 bg-card px-4 py-3 transition-colors hover:border-primary/30 hover:bg-accent/40"
+            >
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary transition-transform duration-200 group-hover:scale-110">
+                <f.icon className="h-4 w-4" />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold">{f.title}</span>
+                <span className="block text-xs text-muted-foreground">{f.sub}</span>
+              </span>
+              <ArrowRight className="ml-auto h-3.5 w-3.5 shrink-0 text-muted-foreground/40 transition-all group-hover:translate-x-0.5 group-hover:text-primary" />
+            </Link>
+          ))}
         </div>
-      </section>
+      </nav>
     </div>
   );
 }
