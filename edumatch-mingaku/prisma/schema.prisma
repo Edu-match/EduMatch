@@ -64,6 +64,7 @@ model Profile {
   video_comments                  VideoComment[]
   ai_persona                      UserAiPersona?
   interop_posts                   InteropPost[]        @relation("InteropPostAuthor")
+  kaikan_staff                    KaikanStaff?
 
   @@index([email])
   @@index([stripe_customer_id])
@@ -783,6 +784,21 @@ model KaikanInviteRedemption {
   @@index([profile_id])
   @@index([code_id])
   @@map("kaikan_invite_redemptions")
+}
+
+/// イベントスタッフ。管理者が付与し、当日受付（QRチェックイン）の権限を持つ。
+model KaikanStaff {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  profile_id String   @db.Uuid
+  name       String   @default("")
+  email      String   @default("")
+  note       String   @default("")
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  profile    Profile  @relation(fields: [profile_id], references: [id], onDelete: Cascade)
+
+  @@unique([profile_id])
+  @@map("kaikan_staff")
 }
 
 /// Interop特設ページのサイト設定（テキスト・テーマ等のkey-value）

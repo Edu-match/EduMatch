@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import {
   DEFAULT_AXIS_CONFIG,
   DEFAULT_TOPIC_AXIS,
+  DEFAULT_AXIS3,
   type AxisConfig,
   type AxisPoint,
 } from "@/lib/interop-topic-axis";
@@ -37,42 +38,13 @@ export async function saveAxisConfig(c: AxisConfig): Promise<void> {
     WHERE id = 1`;
 }
 
-// ───────────────────────── 第3軸（週次ローカルLLM巡回） ─────────────────────────
+// ───────────────────────── 第3軸（3Dビュー専用・固定） ─────────────────────────
 
 export type Axis3 = { label: string; values: Record<number, number> };
 
-/** 第3軸の意味（ラベル）＋各トピックの値（0..1）。テーブル未作成・空なら既定。 */
+/** 第3軸（固定）。interop-topic-axis.ts の DEFAULT_AXIS3 をそのまま返す。 */
 export async function getAxis3(): Promise<Axis3> {
-  let label = "短期 ↔ 長期";
-  const values: Record<number, number> = {};
-  try {
-    const meta = await prisma.$queryRaw<Array<{ label: string }>>`
-      SELECT label FROM interop_axis3_meta WHERE id = 1 LIMIT 1`;
-    if (meta[0]?.label) label = meta[0].label;
-    const rows = await prisma.$queryRaw<Array<{ topic_no: number; v: number }>>`
-      SELECT topic_no, v FROM interop_topic_axis3`;
-    for (const r of rows) values[Number(r.topic_no)] = Number(r.v);
-  } catch {
-    /* テーブル未作成時は既定ラベル＋空 */
-  }
-  return { label, values };
-}
-
-/** 第3軸ラベルを保存（週次巡回が推測した軸の意味）。 */
-export async function saveAxis3Label(label: string): Promise<void> {
-  await prisma.$executeRaw`
-    INSERT INTO interop_axis3_meta (id, label, updated_at)
-    VALUES (1, ${label}, now())
-    ON CONFLICT (id) DO UPDATE SET label = ${label}, updated_at = now()`;
-}
-
-/** 1トピックの第3軸値を upsert（0..1にクランプ）。 */
-export async function saveTopicAxis3(no: number, v: number): Promise<void> {
-  const c = Math.max(0, Math.min(1, v));
-  await prisma.$executeRaw`
-    INSERT INTO interop_topic_axis3 (topic_no, v, updated_at)
-    VALUES (${no}, ${c}, now())
-    ON CONFLICT (topic_no) DO UPDATE SET v = ${c}, updated_at = now()`;
+  return DEFAULT_AXIS3;
 }
 
 // ───────────────────────── トピック間ノード接続（内容ベース） ─────────────────────────

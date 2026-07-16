@@ -3,6 +3,7 @@
 import { randomUUID, randomInt } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { Resend } from "resend";
 import { prisma } from "@/lib/prisma";
 import { getCurrentProfile, requireAdmin } from "@/lib/auth";
 
@@ -274,6 +275,82 @@ export async function setKaikanContentPublished(formData: FormData) {
   await prisma.kaikanContent.update({ where: { id }, data: { is_published: next } });
   revalidatePath("/admin/kaikan");
   revalidatePath("/forum/kaikan");
+}
+
+/* ───────── スタッフロール ───────── */
+
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "エデュマッチ <onboarding@resend.dev>";
+
+async function sendStaffEmail(email: string, name: string) {
+  const key = process.env.RESEND_API_KEY;
+  if (!key || !email) return;
+  const resend = new Resend(key);
+  const safeName = name.replace(/[<>&"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c] ?? c));
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to: email,
+    subject: "【エデュマッチ】イベントスタッフに登録されました",
+    html: `
+      <p>${safeName} 様</p>
+      <p>イベントの運営スタッフとして登録されました。<br>
+      当日は管理画面から電子チケットの読み取り（QRチェックイン）を行うことができます。</p>
+      <p>ご不明点があれば運営までお問い合わせください。</p>
+      <p>— エデュマッチ運営</p>
+    `.trim(),
+  }).catch((e) => console.error("[kaikan/staff-email]", e));
+}
+
+/** 管理者：スタッフロールを付与する（メール送信あり）。 */
+export async function addKaikanStaff(formData: FormData) {
+  await requireAdmin();
+  const email = String(formData.get("email") || "").trim().toLowerCase();
+  if (!email) throw new Error("メールアドレスは必須です");
+
+  const profile = await prisma.profile.findUnique({ where: { email }, select: { id: true, name: true, email: true } });
+  if (!profile) throw new Error(`メール「${email}」のアカウントが見つかりません`);
+
+  const existing = await prisma.kaikanStaff.findUnique({ where: { profile_id: profile.id } });
+  if (existing) {
+    revalidatePath("/admin/kaikan");
+    return;
+  }
+
+  await prisma.kaikanStaff.create({
+    data: { profile_id: profile.id, name: profile.name, email: profile.email },
+  });
+  await sendStaffEmail(profile.email, profile.name);
+  revalidatePath("/admin/kaikan");
+}
+
+/** 管理者：スタッフを一括登録（メール改行区切り）。 */
+export async function bulkAddKaikanStaff(formData: FormData) {
+  await requireAdmin();
+  const raw = String(formData.get("emails") || "");
+  const emails = raw.split(/[\n,;]+/).map((e) => e.trim().toLowerCase()).filter(Boolean);
+  if (emails.length === 0) throw new Error("メールアドレスを入力してください");
+
+  let added = 0;
+  for (const email of emails) {
+    const profile = await prisma.profile.findUnique({ where: { email }, select: { id: true, name: true, email: true } });
+    if (!profile) continue;
+    const existing = await prisma.kaikanStaff.findUnique({ where: { profile_id: profile.id } });
+    if (existing) continue;
+    await prisma.kaikanStaff.create({
+      data: { profile_id: profile.id, name: profile.name, email: profile.email },
+    });
+    await sendStaffEmail(profile.email, profile.name);
+    added++;
+  }
+  revalidatePath("/admin/kaikan");
+}
+
+/** 管理者：スタッフロールを解除する。 */
+export async function removeKaikanStaff(formData: FormData) {
+  await requireAdmin();
+  const id = String(formData.get("id") || "");
+  if (!id) return;
+  await prisma.kaikanStaff.delete({ where: { id } }).catch(() => {});
+  revalidatePath("/admin/kaikan");
 }
 
 /** 管理者：受付チェックイン（QR読み取り先）。 */

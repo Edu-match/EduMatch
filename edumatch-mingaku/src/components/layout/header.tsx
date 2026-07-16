@@ -7,10 +7,10 @@ import Link from "next/link";
 import Image from "next/image";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { 
-  Menu, LogOut, User, LayoutDashboard, Settings, 
+  Menu, LogOut, User, LayoutDashboard, Settings,
   ChevronDown, UserPlus, LogIn, FileText, Bell,
   CheckCircle, Calendar, Newspaper, BookOpen, Bot, Activity, Flag, ArrowUpDown,
-  MessageSquare, CircleHelp, Pencil, QrCode, Sparkles
+  MessageSquare, CircleHelp, Pencil, QrCode, Sparkles, FilePlus, Briefcase
 } from "lucide-react";
 import { useRequestList } from "@/components/request-list/request-list-context";
 import { useTextEdit } from "@/components/text-edit/text-edit-context";
@@ -364,30 +364,49 @@ export function Header() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   className="cursor-pointer"
                   onSelect={() => router.push("/mypage")}
                 >
                   <User className="mr-2 h-4 w-4" />
                   {t("mypage")}
                 </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-2 py-1">
+                  投稿
+                </DropdownMenuLabel>
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  onSelect={() => router.push("/articles/new")}
+                >
+                  <FilePlus className="mr-2 h-4 w-4 text-blue-600" />
+                  記事を投稿
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  onSelect={() => router.push("/services/new")}
+                >
+                  <Briefcase className="mr-2 h-4 w-4 text-emerald-600" />
+                  サービスを投稿
+                </DropdownMenuItem>
                 {userRole === "ADMIN" && (
-                  <DropdownMenuItem
-                    className="cursor-pointer"
-                    onSelect={() => router.push("/provider-dashboard")}
-                  >
-                    <LayoutDashboard className="mr-2 h-4 w-4" />
-                    {t("adminDashboard")}
-                  </DropdownMenuItem>
-                )}
-                {userRole === "ADMIN" && (
-                  <DropdownMenuItem
-                    className="cursor-pointer"
-                    onSelect={() => setEditMode(!editMode)}
-                  >
-                    <Pencil className="mr-2 h-4 w-4 text-orange-600" />
-                    {editMode ? t("editModeOff") : t("editModeOn")}
-                  </DropdownMenuItem>
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onSelect={() => router.push("/provider-dashboard")}
+                    >
+                      <LayoutDashboard className="mr-2 h-4 w-4" />
+                      {t("adminDashboard")}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onSelect={() => setEditMode(!editMode)}
+                    >
+                      <Pencil className="mr-2 h-4 w-4 text-orange-600" />
+                      {editMode ? t("editModeOff") : t("editModeOn")}
+                    </DropdownMenuItem>
+                  </>
                 )}
                 {userRole === "ADMIN" && (
                   <>
@@ -400,7 +419,7 @@ export function Header() {
                       onSelect={() => router.push("/admin/kaikan?tab=checkin")}
                     >
                       <QrCode className="mr-2 h-4 w-4 text-primary" />
-                      電子チケット読み取り
+                      電子チケット 当日受付
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="cursor-pointer"
@@ -471,13 +490,6 @@ export function Header() {
                     >
                       <Flag className="mr-2 h-4 w-4 text-rose-600" />
                       {t("userReports")}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="cursor-pointer"
-                      onSelect={() => router.push("/admin/kaikan?tab=checkin")}
-                    >
-                      <QrCode className="mr-2 h-4 w-4 text-sky-600" />
-                      {t("kaikanCheckin")}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                   </>
