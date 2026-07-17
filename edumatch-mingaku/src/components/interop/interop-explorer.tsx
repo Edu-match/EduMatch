@@ -544,14 +544,14 @@ export function InteropExplorer({
         <>
           {mapMode === "3d" ? (
             <ForumGalaxy3D
-              centerLabel={centerLabelOverride?.trim() || (isGiinKaikanCenter ? "教育AIサミット＠衆議院第一議員会館" : interopCat?.name)}
+              centerLabel={centerLabelOverride?.trim() || (isGiinKaikanCenter ? "教育AIサミット2026＠衆議院第一議員会館" : interopCat?.name)}
               onSelectCenter={() => { if (interopCat) handleSelectFromMap(interopCat); }}
               onSelectTopic={handleSelectTopic}
             />
           ) : (
           <InteropPuyoBubbleMap
             interopCat={interopCat}
-            centerLabel={centerLabelOverride?.trim() || (isGiinKaikanCenter ? "教育AIサミット＠衆議院第一議員会館" : interopCat?.name)}
+            centerLabel={centerLabelOverride?.trim() || (isGiinKaikanCenter ? "教育AIサミット2026＠衆議院第一議員会館" : interopCat?.name)}
             groupFilter={groupParam ?? undefined}
             initialScale={initialScale}
             activityByRoom={activityByRoom}

@@ -24,7 +24,7 @@ export const dynamic = "force-dynamic";
 
 function TopicsSkeleton() {
   return (
-    <div className="rounded-lg border bg-card p-4">
+    <div className="rounded-2xl border bg-card p-4">
       <div className="mb-4 h-6 w-32 animate-pulse rounded bg-muted" />
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
@@ -61,7 +61,7 @@ export default async function HomePage() {
 
             {/* ひろば（コンパクトマップ）: ヒーロー */}
             <Reveal>
-              <div className="overflow-hidden rounded-2xl border border-violet-200/60 bg-card shadow-sm shadow-violet-200/30">
+              <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
                 {/* ヘッダー */}
                 <div className="flex items-center justify-between bg-gradient-to-r from-violet-500/25 via-purple-500/15 to-primary/15 px-4 py-3">
                   <div className="flex items-center gap-2.5">
@@ -69,7 +69,7 @@ export default async function HomePage() {
                       <MessageSquare className="h-4 w-4" />
                     </span>
                     <div>
-                      <h2 className="text-sm font-bold">教育のひろば</h2>
+                      <h2 className="text-base font-semibold leading-snug tracking-[-0.01em]">教育のひろば</h2>
                       <p className="text-[11px] text-muted-foreground">立場を越えて、教育を語ろう。</p>
                     </div>
                   </div>
@@ -124,14 +124,14 @@ export default async function HomePage() {
               <Reveal variant="fade-in" delay={120}>
                 <Link
                   href="/forum/kaikan"
-                  className="card-lift group flex items-center gap-3.5 rounded-2xl border border-violet-200/60 bg-gradient-to-r from-card to-violet-50/40 p-4"
+                  className="card-lift group flex items-center gap-3.5 rounded-2xl border bg-gradient-to-r from-card to-violet-50/40 p-4"
                 >
                   <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
                     <Ticket className="h-5 w-5" />
                   </span>
                   <span className="min-w-0">
                     <span className="block text-sm font-bold">教育AIサミット2026＠衆議院第一議員会館</span>
-                    <span className="block text-xs text-muted-foreground">チケット受付中 → 電子チケット(QR)</span>
+                    <span className="block text-xs text-muted-foreground">チケット受付中 → 電子チケット（QR）</span>
                   </span>
                   <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-primary transition-transform group-hover:translate-x-1" />
                 </Link>
@@ -140,8 +140,8 @@ export default async function HomePage() {
               {/* 人気記事 */}
               {popularPosts.length > 0 && (
                 <Reveal variant="fade-in" delay={160}>
-                  <section className="rounded-2xl border border-violet-200/60 bg-gradient-to-br from-card to-violet-50/30 p-4">
-                    <h2 className="mb-3 flex items-center gap-2 text-sm font-bold tracking-tight">
+                  <section className="rounded-2xl border bg-gradient-to-br from-card to-violet-50/30 p-4">
+                    <h2 className="mb-3 flex items-center gap-2 text-base font-semibold leading-snug tracking-[-0.01em]">
                       <TrendingUp className="h-4 w-4 text-primary" />
                       人気の記事
                     </h2>
@@ -149,7 +149,7 @@ export default async function HomePage() {
                       {popularPosts.slice(0, 4).map((p, i) => (
                         <li key={p.id}>
                           <Link href={`/articles/${p.id}`} className="group flex items-start gap-2.5">
-                            <span className={`mt-0.5 w-5 shrink-0 text-center font-mono text-sm font-bold tabular-nums ${i < 3 ? "text-primary" : "text-muted-foreground/60"}`}>
+                            <span className={`mt-0.5 w-5 shrink-0 text-center text-sm font-bold tabular-nums ${i < 3 ? "text-primary" : "text-muted-foreground/60"}`}>
                               {i + 1}
                             </span>
                             <span className="line-clamp-2 text-sm font-medium leading-snug">
@@ -165,8 +165,8 @@ export default async function HomePage() {
 
               {/* 近日のイベント */}
               <Reveal variant="fade-in" delay={200}>
-                <section className="rounded-2xl border border-violet-200/60 bg-gradient-to-br from-card to-violet-50/30 p-4">
-                  <h2 className="mb-3 flex items-center gap-2 text-sm font-bold tracking-tight">
+                <section className="rounded-2xl border bg-gradient-to-br from-card to-violet-50/30 p-4">
+                  <h2 className="mb-3 flex items-center gap-2 text-base font-semibold leading-snug tracking-[-0.01em]">
                     <Calendar className="h-4 w-4 text-primary" />
                     近日のイベント
                   </h2>
@@ -221,7 +221,7 @@ export default async function HomePage() {
             <Link
               key={f.href}
               href={f.href}
-              className="group flex items-center gap-3 rounded-xl border border-violet-200/50 bg-gradient-to-r from-card to-violet-50/30 px-4 py-3 transition-all hover:border-violet-300/60 hover:bg-violet-50/50 hover:shadow-sm hover:shadow-violet-200/30"
+              className="group flex items-center gap-3 rounded-xl border bg-gradient-to-r from-card to-violet-50/30 px-4 py-3 transition-all hover:border-primary/30 hover:bg-violet-50/50 hover:shadow-sm"
             >
               <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-violet-500/15 to-primary/15 text-primary transition-transform duration-200 group-hover:scale-110">
                 <f.icon className="h-4 w-4" />

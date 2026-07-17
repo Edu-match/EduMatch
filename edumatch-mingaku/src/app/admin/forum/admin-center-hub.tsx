@@ -80,7 +80,7 @@ export function AdminCenterHub({ open, onToggle }: { open: boolean; onToggle: ()
             <>
               <label className="block text-xs">
                 <span className="mb-1 block text-muted-foreground">中央の玉に表示する名前</span>
-                <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="例：教育AIサミット＠衆議院第一議員会館" />
+                <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="例：教育AIサミット2026＠衆議院第一議員会館" />
               </label>
 
               <div className="space-y-2">

@@ -67,6 +67,7 @@ export function Header() {
     unreadCount: number;
   }>({ list: [], unreadCount: 0 });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
 
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
@@ -114,17 +115,18 @@ export function Header() {
 
     checkAuth();
 
-    // 認証状態の変更を監視
+    // 認証状態の変更を監視（INITIAL_SESSION は上の checkAuth() と重複するためスキップ）
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(() => {
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "INITIAL_SESSION") return;
       checkAuth();
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [pathname]);
+  }, []);
 
   const handleLogout = async () => {
     const supabase = createSupabaseBrowserClient();
@@ -182,18 +184,17 @@ export function Header() {
   );
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 w-full border-b border-violet-300/40 bg-gradient-to-r from-violet-500/[0.16] via-background/85 to-purple-500/[0.12] backdrop-blur-xl supports-[backdrop-filter]:bg-transparent">
+    <header className="fixed top-0 left-0 right-0 z-50 w-full border-b border-border/60 bg-background/80 backdrop-blur-xl after:absolute after:inset-x-0 after:top-0 after:h-px after:bg-gradient-to-r after:from-transparent after:via-primary/40 after:to-transparent">
       <div className="container flex h-16 items-center gap-2 md:gap-3">
         {/* Logo */}
         <Link href="/" className="flex shrink-0 items-center hover:opacity-80 transition-opacity">
           <Image
             src="/logo.png"
             alt={tc("siteName")}
-            width={180}
+            width={168}
             height={44}
             className="h-9 w-auto object-contain"
             priority
-            unoptimized
           />
         </Link>
 
@@ -202,7 +203,7 @@ export function Header() {
           <div className="flex min-w-0 items-center gap-1.5 overflow-hidden lg:gap-2.5">
           <Link
             href="/request-info/list"
-            className="relative flex shrink-0 items-center gap-1 whitespace-nowrap text-sm font-medium text-foreground/60 transition-colors hover:text-foreground"
+            className="relative flex shrink-0 items-center gap-1 whitespace-nowrap rounded-sm text-sm font-medium text-foreground/75 transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
             <FileText className="h-4 w-4 shrink-0" />
             <span className="hidden lg:inline">{t("favoritesFull")}</span>
@@ -222,7 +223,9 @@ export function Header() {
           {/* 通知ベル（全ログインユーザー・汎用） */}
           {isAuthenticated && (
             <DropdownMenu
+              open={notifOpen}
               onOpenChange={(open) => {
+                setNotifOpen(open);
                 if (!open) return;
                 void fetch("/api/notifications", { credentials: "include" })
                   .then((r) => r.json())
@@ -253,7 +256,10 @@ export function Header() {
                       <Link
                         href="/notifications"
                         className="text-xs text-primary hover:underline"
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setNotifOpen(false);
+                        }}
                       >
                         {t("viewAll")}
                       </Link>
@@ -275,6 +281,7 @@ export function Header() {
                             className="block px-4 py-3 hover:bg-muted/50 transition-colors text-left"
                             onClick={(e) => {
                               e.stopPropagation();
+                              setNotifOpen(false);
                               const target = n.href ?? "/notifications";
                               if (
                                 n.inAppNotificationId &&
@@ -373,21 +380,21 @@ export function Header() {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-2 py-1">
-                  投稿
+                  {t("post")}
                 </DropdownMenuLabel>
                 <DropdownMenuItem
                   className="cursor-pointer"
-                  onSelect={() => router.push("/articles/new")}
+                  onSelect={() => router.push("/articles/create")}
                 >
                   <FilePlus className="mr-2 h-4 w-4 text-blue-600" />
-                  記事を投稿
+                  {tsm("createArticle")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="cursor-pointer"
-                  onSelect={() => router.push("/services/new")}
+                  onSelect={() => router.push("/services/create")}
                 >
                   <Briefcase className="mr-2 h-4 w-4 text-emerald-600" />
-                  サービスを投稿
+                  {tsm("createService")}
                 </DropdownMenuItem>
                 {userRole === "ADMIN" && (
                   <>
@@ -419,14 +426,14 @@ export function Header() {
                       onSelect={() => router.push("/admin/kaikan?tab=checkin")}
                     >
                       <QrCode className="mr-2 h-4 w-4 text-primary" />
-                      電子チケット 当日受付
+                      {t("kaikanCheckin")}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="cursor-pointer"
                       onSelect={() => router.push("/admin/persona")}
                     >
                       <Sparkles className="mr-2 h-4 w-4 text-violet-600" />
-                      AIペルソナ
+                      {t("aiPersona")}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="cursor-pointer"
@@ -513,11 +520,11 @@ export function Header() {
           ) : (
             /* 未ログイン時: ログイン/新規登録ボタン */
             <div className="flex items-center gap-2">
-              <Button asChild variant="ghost" size="sm" className="rounded-full px-4">
+              <Button asChild variant="ghost" size="sm">
                 <Link href="/login">{t("login")}</Link>
               </Button>
-              <Button asChild size="sm" className="rounded-full px-5 shadow-sm">
-                <Link href="/login">{t("register")}</Link>
+              <Button asChild size="sm">
+                <Link href="/login?tab=signup">{t("register")}</Link>
               </Button>
             </div>
           )}
@@ -549,7 +556,7 @@ export function Header() {
                   key={link.href}
                   href={link.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center py-3 text-sm font-medium text-foreground/60 transition-colors hover:text-foreground border-b"
+                  className="flex items-center py-3 text-sm font-medium text-foreground/75 transition-colors hover:text-foreground border-b rounded-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring"
                 >
                   {link.label}
                 </Link>
@@ -557,7 +564,7 @@ export function Header() {
               <Link
                 href="/request-info/list"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b"
+                className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring"
               >
                 <FileText className="h-4 w-4 flex-shrink-0" />
                 {t("favoritesFull")}
@@ -570,7 +577,7 @@ export function Header() {
               <Link
                 href="/notifications"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b"
+                className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring"
               >
                 <Bell className="h-4 w-4 flex-shrink-0" />
                 {t("notifications")}
@@ -608,7 +615,7 @@ export function Header() {
                     <Link
                       href="/mypage"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b"
+                      className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring"
                     >
                       <User className="h-4 w-4 flex-shrink-0" />
                       {t("mypage")}
@@ -617,7 +624,7 @@ export function Header() {
                       <Link
                         href="/provider-dashboard"
                         onClick={() => setMobileMenuOpen(false)}
-                        className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b"
+                        className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring"
                       >
                         <LayoutDashboard className="h-4 w-4 flex-shrink-0" />
                         {t("adminDashboard")}
@@ -630,7 +637,7 @@ export function Header() {
                           setMobileMenuOpen(false);
                           setEditMode(!editMode);
                         }}
-                        className="flex w-full items-center gap-2 py-3 text-left text-sm font-medium text-foreground/60 hover:text-foreground border-b"
+                        className="flex w-full items-center gap-2 py-3 text-left text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring"
                       >
                         <Pencil className="h-4 w-4 flex-shrink-0 text-orange-600" />
                         {editMode ? t("editModeOff") : t("editModeOn")}
@@ -639,37 +646,37 @@ export function Header() {
                     {userRole === "ADMIN" && (
                       <div className="border-t pt-3 mt-2">
                         <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground pb-1">{t("adminMenu")}</p>
-                        <Link href="/admin/kaikan?tab=checkin" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
-                          <QrCode className="h-4 w-4 text-primary flex-shrink-0" />電子チケット読み取り
+                        <Link href="/admin/kaikan?tab=checkin" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring">
+                          <QrCode className="h-4 w-4 text-primary flex-shrink-0" />{t("kaikanCheckin")}
                         </Link>
-                        <Link href="/admin/persona" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
-                          <Sparkles className="h-4 w-4 text-violet-600 flex-shrink-0" />AIペルソナ
+                        <Link href="/admin/persona" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring">
+                          <Sparkles className="h-4 w-4 text-violet-600 flex-shrink-0" />{t("aiPersona")}
                         </Link>
-                        <Link href="/admin/approvals" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
+                        <Link href="/admin/approvals" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring">
                           <CheckCircle className="h-4 w-4 text-amber-600 flex-shrink-0" />{t("approvals")}
                         </Link>
-                        <Link href="/admin/events" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
+                        <Link href="/admin/events" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring">
                           <Calendar className="h-4 w-4 text-emerald-600 flex-shrink-0" />{t("eventsAdmin")}
                         </Link>
-                        <Link href="/admin/forum" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
+                        <Link href="/admin/forum" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring">
                           <MessageSquare className="h-4 w-4 text-blue-600 flex-shrink-0" />{t("forumAdmin")}
                         </Link>
-                        <Link href="/admin/site-updates" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
+                        <Link href="/admin/site-updates" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring">
                           <Newspaper className="h-4 w-4 text-slate-600 flex-shrink-0" />{t("siteUpdatesAdmin")}
                         </Link>
-                        <Link href="/dashboard/admin/knowledge" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
+                        <Link href="/dashboard/admin/knowledge" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring">
                           <BookOpen className="h-4 w-4 text-indigo-600 flex-shrink-0" />{t("knowledgeAdmin")}
                         </Link>
-                        <Link href="/admin/ai-chat" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
+                        <Link href="/admin/ai-chat" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring">
                           <Bot className="h-4 w-4 text-violet-600 flex-shrink-0" />{t("aiChatAdmin")}
                         </Link>
-                        <Link href="/admin/services/display-order" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
+                        <Link href="/admin/services/display-order" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring">
                           <ArrowUpDown className="h-4 w-4 text-cyan-600 flex-shrink-0" />{t("serviceOrderAdmin")}
                         </Link>
-                        <Link href="/admin/activity-log" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
+                        <Link href="/admin/activity-log" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring">
                           <Activity className="h-4 w-4 text-orange-600 flex-shrink-0" />{t("activityLog")}
                         </Link>
-                        <Link href="/admin/user-reports" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
+                        <Link href="/admin/user-reports" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring">
                           <Flag className="h-4 w-4 text-rose-600 flex-shrink-0" />{t("userReports")}
                         </Link>
                       </div>
@@ -677,7 +684,7 @@ export function Header() {
                     <Link
                       href="/profile/register"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b"
+                      className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring"
                     >
                       <Settings className="h-4 w-4 flex-shrink-0" />
                       {t("accountSettings")}
@@ -700,7 +707,7 @@ export function Header() {
                       </Link>
                     </Button>
                     <Button asChild className="w-full">
-                      <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
+                      <Link href="/login?tab=signup" onClick={() => setMobileMenuOpen(false)}>
                         <UserPlus className="h-4 w-4 mr-2" />
                         {t("register")}
                       </Link>

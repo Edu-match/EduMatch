@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -27,9 +28,22 @@ const ITEMS: { href: string; key: string; exact?: boolean }[] = [
   { href: "/help", key: "help" },
 ];
 
+/** セグメント境界での前方一致（/help が /help-center で誤点灯しないように） */
+function matchesPath(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(href + "/");
+}
+
 export function SectionNav() {
   const pathname = usePathname();
   const t = useTranslations("sideMenu");
+  const listRef = useRef<HTMLUListElement>(null);
+
+  // モバイルでアクティブタブが横スクロールの画面外に隠れないよう、可視位置までスクロール
+  useEffect(() => {
+    listRef.current
+      ?.querySelector('[aria-current="page"]')
+      ?.scrollIntoView({ inline: "center", block: "nearest" });
+  }, [pathname]);
 
   return (
     <>
@@ -38,23 +52,30 @@ export function SectionNav() {
       <nav
         data-tutorial="header-nav"
         aria-label="セクション"
-        className="sticky top-16 z-30 h-11 border-b border-violet-200/50 bg-gradient-to-r from-violet-100/80 via-white/70 to-purple-100/70 backdrop-blur-xl"
+        className="sticky top-16 z-30 h-11 border-b border-border/50 bg-background/70 backdrop-blur-xl"
       >
-        <div className="container h-full">
+        {/* モバイルでは端をフェードさせ「続きがある」ことを示す（md以上はフェードなし） */}
+        <div className="container h-full [mask-image:linear-gradient(to_right,transparent,black_16px,black_calc(100%-24px),transparent)] md:[mask-image:none]">
           <ul
-            className="flex h-full items-center gap-0.5 overflow-x-auto [&::-webkit-scrollbar]:hidden"
+            ref={listRef}
+            className="flex h-full snap-x snap-proximity items-center gap-0.5 overflow-x-auto [&::-webkit-scrollbar]:hidden"
             style={{ scrollbarWidth: "none" }}
           >
             {ITEMS.map((item) => {
-              const active = item.exact ? pathname === item.href : pathname.startsWith(item.href);
+              // forum タブは IDOBATA_NAV の設定に関わらず /forum・/idobata の両ルートで点灯させる
+              const active = item.exact
+                ? pathname === item.href
+                : item.key === "forum"
+                  ? matchesPath(pathname, "/forum") || matchesPath(pathname, "/idobata")
+                  : matchesPath(pathname, item.href);
               return (
-                <li key={item.href} className="shrink-0">
+                <li key={item.href} className="shrink-0 snap-start">
                   <Link
                     href={item.href}
                     prefetch={false}
                     aria-current={active ? "page" : undefined}
                     className={cn(
-                      "relative flex h-11 items-center whitespace-nowrap px-3 text-[13px] font-medium transition-colors",
+                      "relative flex h-11 items-center whitespace-nowrap rounded-lg px-3 text-[13px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-ring",
                       active ? "text-primary" : "text-muted-foreground hover:text-foreground"
                     )}
                   >
@@ -62,7 +83,7 @@ export function SectionNav() {
                     <span
                       aria-hidden
                       className={cn(
-                        "absolute inset-x-3 bottom-0 h-[2.5px] origin-center rounded-full bg-gradient-to-r from-violet-600 via-purple-500 to-primary transition-all duration-300",
+                        "absolute inset-x-3 bottom-0 h-0.5 origin-center rounded-full bg-primary transition-all duration-300",
                         active ? "scale-x-100 opacity-100" : "scale-x-50 opacity-0"
                       )}
                     />

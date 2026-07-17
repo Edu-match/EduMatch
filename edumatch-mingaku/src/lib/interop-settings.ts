@@ -89,7 +89,7 @@ export const DEFAULT_INTEROP_SETTINGS: InteropSettings = {
   registerUrl: "https://www.interop.jp/",
   registerLabel: "来場登録（無料）",
   guideText: "気になるエリアをタップして、セミナー・展示・登壇情報を探そう",
-  centerLabel: "教育AIサミット＠衆議院第一議員会館",
+  centerLabel: "教育AIサミット2026＠衆議院第一議員会館",
   centerHubItems: [],
   footerCredit: "青楓館高等学院 / みんがく / AI検定協会 / AI部 © 2026",
   themeMode: "auto",

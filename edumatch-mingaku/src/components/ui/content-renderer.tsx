@@ -143,7 +143,7 @@ function MarkdownLikeContent({ text }: { text: string }) {
       nodes.push(
         <h3
           key={`md-${keyIndex++}`}
-          className="mt-4 mb-2 text-xl font-bold text-foreground scroll-mt-20"
+          className="mt-4 mb-2 text-xl font-bold text-foreground"
         >
           {renderInlineMarkdown(trimmed.slice(4))}
         </h3>
@@ -155,7 +155,7 @@ function MarkdownLikeContent({ text }: { text: string }) {
       nodes.push(
         <h2
           key={`md-${keyIndex++}`}
-          className="mt-6 mb-3 text-2xl font-bold text-foreground scroll-mt-20"
+          className="mt-6 mb-3 text-2xl font-bold text-foreground"
         >
           {renderInlineMarkdown(trimmed.slice(3))}
         </h2>
@@ -167,7 +167,7 @@ function MarkdownLikeContent({ text }: { text: string }) {
       nodes.push(
         <h1
           key={`md-${keyIndex++}`}
-          className="mt-8 mb-4 text-3xl font-bold text-foreground scroll-mt-20"
+          className="mt-8 mb-4 text-3xl font-bold text-foreground"
         >
           {renderInlineMarkdown(trimmed.slice(2))}
         </h1>

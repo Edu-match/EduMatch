@@ -159,7 +159,7 @@ export function SideMenu() {
                 className="flex w-full items-center gap-2 border-b border-amber-200 px-3 py-2.5 text-left text-sm transition-colors hover:bg-amber-100"
               >
                 <QrCode className="h-4 w-4 flex-shrink-0 text-amber-900" />
-                <span className="hover:text-[#1d4ed8] transition-colors">電子チケット読み取り</span>
+                <span className="hover:text-[#1d4ed8] transition-colors">{t("kaikanCheckin")}</span>
               </Link>
             )}
             {role === "ADMIN" && (
@@ -168,7 +168,7 @@ export function SideMenu() {
                 className="flex w-full items-center gap-2 border-b border-amber-200 px-3 py-2.5 text-left text-sm transition-colors hover:bg-amber-100"
               >
                 <Sparkles className="h-4 w-4 flex-shrink-0 text-violet-700" />
-                <span className="hover:text-[#1d4ed8] transition-colors">AIペルソナ</span>
+                <span className="hover:text-[#1d4ed8] transition-colors">{t("aiPersona")}</span>
               </Link>
             )}
             {visibleBottomItems.map((item, index) => (

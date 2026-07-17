@@ -45,6 +45,13 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
+  --color-destructive-foreground: var(--destructive-foreground);
+  /* 紫染めの影（黒ベース既定影はラベンダー背景上で濁るため一括上書き） */
+  --shadow-2xs: 0 1px 2px oklch(0.35 0.12 280 / 0.06);
+  --shadow-xs: 0 1px 2px oklch(0.35 0.12 280 / 0.08);
+  --shadow-sm: 0 1px 2px oklch(0.35 0.12 280 / 0.08), 0 2px 6px -1px oklch(0.35 0.12 280 / 0.08);
+  --shadow-md: 0 2px 4px oklch(0.35 0.12 280 / 0.08), 0 6px 16px -4px oklch(0.35 0.12 280 / 0.12);
+  --shadow-lg: 0 4px 8px oklch(0.35 0.12 280 / 0.08), 0 16px 32px -8px oklch(0.35 0.12 280 / 0.16);
 }
 
 :root {
@@ -65,6 +72,7 @@
   --accent: oklch(0.895 0.065 280);
   --accent-foreground: oklch(0.28 0.14 280);
   --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.99 0 0);
   --border: oklch(0.865 0.050 280);
   --input: oklch(0.865 0.050 280);
   --ring: oklch(0.48 0.24 278);
@@ -99,6 +107,7 @@
   --accent: oklch(0.24 0.035 278);
   --accent-foreground: oklch(0.985 0.008 280);
   --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: oklch(0.985 0.008 280);
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 18%);
   --ring: oklch(0.65 0.15 278);
@@ -123,33 +132,51 @@
   }
   html {
     scroll-behavior: smooth;
+    /* 固定ヘッダー(4rem) + セクションナビ(2.75rem) + 余白ぶんアンカー位置を下げる */
+    scroll-padding-top: calc(4rem + 2.75rem + 0.5rem);
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    line-height: 1.7; /* 和文本文の標準 */
+    min-height: 100vh;
+    overflow-x: clip;
+    max-width: 100vw;
+  }
+  /* 装飾グラデーションは viewport 固定レイヤーに分離
+     （body 直付けだと長いページで数千pxに引き伸ばされ、トップの紫ウォッシュが消えるため） */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
     background:
       radial-gradient(ellipse 80% 50% at 20% 0%, oklch(0.85 0.08 280 / 0.35) 0%, transparent 60%),
       radial-gradient(ellipse 60% 40% at 85% 15%, oklch(0.88 0.06 290 / 0.25) 0%, transparent 55%),
       linear-gradient(180deg, oklch(0.940 0.055 278) 0%, oklch(0.960 0.038 282) 35%, oklch(0.950 0.048 280) 100%);
-    min-height: 100vh;
-    overflow-x: clip;
-    max-width: 100vw;
+  }
+  .dark body::before {
+    display: none;
   }
 }
 
 @layer utilities {
   .container {
-    @apply w-full max-w-full mx-auto px-4 sm:px-6 lg:px-8;
+    /* サイドバー2カラムを考慮した上限幅。超ワイド画面で行長が無制限になるのを防ぐ */
+    @apply w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8;
   }
-  /* Apple風の大見出し（トラッキング詰め・行間詰め） */
+  /* Apple風の大見出し（トラッキング詰め・行間詰め・和文プロポーショナル） */
   .display-title {
     @apply font-bold tracking-tight;
     letter-spacing: -0.03em;
     line-height: 1.1;
+    font-feature-settings: "palt" 1;
   }
   /* セクション見出し */
   .section-title {
     @apply text-2xl sm:text-3xl font-bold tracking-tight;
     letter-spacing: -0.02em;
+    font-feature-settings: "palt" 1;
   }
   /* 上品なカードホバー（浮き上がり） */
   .card-lift {

@@ -140,7 +140,7 @@ export async function TopicsSection() {
   });
 
   return (
-    <div className="border border-violet-200/60 rounded-lg bg-card">
+    <div className="border rounded-2xl bg-card overflow-hidden">
       <div className="p-4 border-b">
         <h2 className="text-xl font-bold">{t("topics")}</h2>
       </div>

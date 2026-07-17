@@ -1,7 +1,10 @@
-import { requireProvider } from "@/lib/auth";
-import { ServiceForm } from "./service-form";
+import { redirect } from "next/navigation";
 
-export default async function ServiceSubmitPage() {
-  await requireProvider();
-  return <ServiceForm />;
+/**
+ * 旧・サービス投稿ルート。
+ * 投稿フローは /services/create に一本化したため、
+ * 旧リンク・ブックマークからのアクセスは正ルートへリダイレクトする。
+ */
+export default function ServiceSubmitPage() {
+  redirect("/services/create");
 }
