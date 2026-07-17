@@ -46,7 +46,7 @@ export default async function AdminKaikanPage({ searchParams }: { searchParams: 
   const contents = (isCheckin || isInvites || isParticipants || isStaff) ? [] : await prisma.kaikanContent.findMany({
     orderBy: [{ sort_order: "asc" }, { created_at: "desc" }],
     include: {
-      _count: { select: { applications: true } },
+      _count: { select: { applications: { where: { status: { not: "cancelled" } } } } },
       applications: {
         orderBy: { created_at: "desc" },
         take: 50,
@@ -342,10 +342,25 @@ export default async function AdminKaikanPage({ searchParams }: { searchParams: 
             <div key={c.id} className="rounded-xl border bg-background p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="min-w-0">
-                  <h3 className="font-bold">{c.title}</h3>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-bold">{c.title}</h3>
+                    {(() => {
+                      const n = c._count.applications;
+                      const cap = c.capacity;
+                      if (cap == null) {
+                        return <span className="rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-bold tabular-nums text-muted-foreground">{n} / 無制限</span>;
+                      }
+                      const full = n >= cap;
+                      const near = !full && cap > 0 && n / cap >= 0.8;
+                      return (
+                        <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold tabular-nums ${full ? "bg-red-100 text-red-700" : near ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
+                          {n} / {cap}{full ? "（満席）" : `（残り${cap - n}）`}
+                        </span>
+                      );
+                    })()}
+                  </div>
                   <p className="text-xs text-muted-foreground">
-                    {fmtDate(c.starts_at)}{c.ends_at ? `–${fmtDate(c.ends_at)}` : ""} ・ {c.location || "場所未設定"} ・ 申込 {c._count.applications}
-                    {c.capacity != null ? ` / 定員 ${c.capacity}` : ""}
+                    {fmtDate(c.starts_at)}{c.ends_at ? `–${fmtDate(c.ends_at)}` : ""} ・ {c.location || "場所未設定"}
                   </p>
                 </div>
                 <form action={setKaikanContentPublished}>
