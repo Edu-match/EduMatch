@@ -10,11 +10,12 @@ export const dynamic = "force-dynamic";
 
 function fmtDate(d: Date | null): string {
   if (!d) return "";
-  return new Intl.DateTimeFormat("ja-JP", { month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit" }).format(d);
+  return new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit" }).format(d);
 }
 
-export default async function KaikanApplyPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function KaikanApplyPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string }> }) {
   const { id } = await params;
+  const { error } = await searchParams;
   let content: Awaited<ReturnType<typeof prisma.kaikanContent.findUnique>> | null = null;
   try {
     content = await prisma.kaikanContent.findUnique({ where: { id } });
@@ -69,6 +70,11 @@ export default async function KaikanApplyPage({ params }: { params: Promise<{ id
 
       {/* 申込 */}
       <section className="mt-5">
+        {error === "full" && !full && (
+          <p className="mb-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+            申込が集中したため完了できませんでした。少し時間をおいて再度お試しください。
+          </p>
+        )}
         {full ? (
           <div className="rounded-2xl border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
             申込は定員に達しました。

@@ -196,10 +196,17 @@ export function KaikanTimetable({ contents, appliedIds }: { contents: Selectable
     const result: SelectableContent[][] = [[], [], []];
     for (const c of contents) {
       const idx = getVenueIndex(c.location);
-      if (idx >= 0) result[idx].push(c);
+      if (idx >= 0 && c.startsAt && c.endsAt) result[idx].push(c);
     }
     return result;
   }, [contents]);
+
+  // タイムテーブルに配置できないセッション（会場名がマッピング外 or 時刻未設定）。
+  // グリッドから漏れて見えなくなるのを防ぐため、下部にリスト表示する。
+  const unplacedContents = useMemo(
+    () => contents.filter((c) => getVenueIndex(c.location) < 0 || !c.startsAt || !c.endsAt),
+    [contents],
+  );
 
   function conflictWith(c: SelectableContent): boolean {
     for (const s of selectedContents) {
@@ -321,6 +328,49 @@ export function KaikanTimetable({ contents, appliedIds }: { contents: Selectable
           </div>
         </div>
       </div>
+
+      {/* タイムテーブル外のセッション（その他会場・時間未定） */}
+      {unplacedContents.length > 0 && (
+        <div className="mt-6">
+          <h3 className="mb-2 text-sm font-bold text-muted-foreground">その他のプログラム（会場・時間別掲）</h3>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {unplacedContents.map((c) => {
+              const isApplied = appliedSet.has(c.id);
+              const isSelected = selected.has(c.id);
+              const isFull = c.capacity != null && c.applied >= c.capacity && !isApplied;
+              const start = toDate(c.startsAt);
+              const end = toDate(c.endsAt);
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  disabled={isApplied || isFull}
+                  onClick={() => toggle(c)}
+                  className={`relative rounded-xl border p-3 text-left text-sm transition-all ${
+                    isApplied
+                      ? "border-emerald-300 bg-emerald-50 opacity-70"
+                      : isSelected
+                        ? "border-primary bg-primary/5 ring-2 ring-primary"
+                        : isFull
+                          ? "border-border bg-muted/30 opacity-50"
+                          : "border-border bg-background hover:border-primary/40 hover:shadow-sm"
+                  }`}
+                >
+                  {isApplied && <CheckCircle2 className="absolute right-2 top-2 h-4 w-4 text-emerald-600" />}
+                  {isFull && !isApplied && (
+                    <span className="absolute right-2 top-2 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">満席</span>
+                  )}
+                  <p className="text-[11px] text-muted-foreground">
+                    {c.location || "会場未定"}
+                    {start && end ? ` · ${fmtTime(start)}〜${fmtTime(end)}` : " · 時間未定"}
+                  </p>
+                  <p className="mt-0.5 font-bold leading-snug">{c.title}</p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Bottom fixed bar */}
       <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 backdrop-blur shadow-lg supports-[backdrop-filter]:bg-background/80">

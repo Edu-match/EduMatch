@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminOrKaikanStaff } from "@/lib/auth";
 import { createKaikanContent, setKaikanContentPublished, generateKaikanInviteCodes, toggleKaikanInviteCode, deleteKaikanInviteCode, importKaikanContentsFromCsv, addKaikanStaff, bulkAddKaikanStaff, removeKaikanStaff } from "@/app/_actions/kaikan";
 import { KaikanCheckinPanel } from "@/components/kaikan/kaikan-checkin-panel";
 
@@ -8,12 +9,14 @@ export const dynamic = "force-dynamic";
 
 function fmtDate(d: Date | null): string {
   if (!d) return "—";
-  return new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(d);
+  return new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(d);
 }
 
-export default async function AdminKaikanPage({ searchParams }: { searchParams: Promise<{ tab?: string; token?: string }> }) {
-  await requireAdmin();
-  const { tab, token } = await searchParams;
+export default async function AdminKaikanPage({ searchParams }: { searchParams: Promise<{ tab?: string; token?: string; staffError?: string; staffAdded?: string; staffMissed?: string }> }) {
+  const { isStaff: isStaffUser } = await requireAdminOrKaikanStaff();
+  const { tab, token, staffError, staffAdded, staffMissed } = await searchParams;
+  // スタッフ（非ADMIN）は当日受付タブのみ利用可
+  if (isStaffUser && tab !== "checkin") redirect("/admin/kaikan?tab=checkin");
   const isCheckin = tab === "checkin";
   const isInvites = tab === "invites";
   const isParticipants = tab === "participants";
@@ -59,13 +62,13 @@ export default async function AdminKaikanPage({ searchParams }: { searchParams: 
       <h1 className="text-2xl font-bold">議員会館チケット管理</h1>
       <p className="mt-1 text-sm text-muted-foreground">コンテンツの作成・公開と、申込者の確認・当日の受付。</p>
 
-      {/* タブ */}
+      {/* タブ（スタッフは当日受付のみ） */}
       <nav className="mt-4 flex flex-wrap gap-2">
-        <Link href="/admin/kaikan" className={tabCls(!isCheckin && !isInvites && !isParticipants && !isStaff)}>コンテンツ管理</Link>
+        {!isStaffUser && <Link href="/admin/kaikan" className={tabCls(!isCheckin && !isInvites && !isParticipants && !isStaff)}>コンテンツ管理</Link>}
         <Link href="/admin/kaikan?tab=checkin" className={tabCls(isCheckin)}>当日受付（QR/受付番号）</Link>
-        <Link href="/admin/kaikan?tab=invites" className={tabCls(isInvites)}>招待コード</Link>
-        <Link href="/admin/kaikan?tab=participants" className={tabCls(isParticipants)}>参加者一覧</Link>
-        <Link href="/admin/kaikan?tab=staff" className={tabCls(isStaff)}>スタッフ管理</Link>
+        {!isStaffUser && <Link href="/admin/kaikan?tab=invites" className={tabCls(isInvites)}>招待コード</Link>}
+        {!isStaffUser && <Link href="/admin/kaikan?tab=participants" className={tabCls(isParticipants)}>参加者一覧</Link>}
+        {!isStaffUser && <Link href="/admin/kaikan?tab=staff" className={tabCls(isStaff)}>スタッフ管理</Link>}
       </nav>
 
       {isCheckin ? (
@@ -74,6 +77,20 @@ export default async function AdminKaikanPage({ searchParams }: { searchParams: 
         </section>
       ) : isStaff ? (
         <section className="mt-6 space-y-6">
+          {/* 登録結果のフィードバック */}
+          {staffError && (
+            <p className="rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-red-700">{decodeURIComponent(staffError)}</p>
+          )}
+          {staffAdded && (
+            <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-700">
+              {staffAdded}名を登録しました。
+              {staffMissed && (
+                <span className="mt-1 block font-normal text-amber-800">
+                  未登録アカウントのためスキップ: {decodeURIComponent(staffMissed)}
+                </span>
+              )}
+            </p>
+          )}
           {/* 個別追加 */}
           <div className="rounded-xl border bg-background p-5">
             <h2 className="mb-1 text-sm font-bold">スタッフを追加</h2>

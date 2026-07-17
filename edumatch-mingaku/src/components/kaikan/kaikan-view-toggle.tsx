@@ -35,9 +35,8 @@ export function KaikanViewToggle({ contents, appliedIds }: Props) {
   const handleConfirm = () => {
     const ids = [...selected].filter((id) => !appliedIds.includes(id));
     if (ids.length === 0) return;
-    const params = new URLSearchParams();
-    ids.forEach((id) => params.append("id", id));
-    router.push(`/forum/kaikan/confirm?${params.toString()}`);
+    // confirm ページは ?ids=カンマ区切り を読む（タイムテーブル側と同一形式に統一）
+    router.push(`/forum/kaikan/confirm?ids=${encodeURIComponent(ids.join(","))}`);
   };
 
   const newSelections = [...selected].filter((id) => !appliedIds.includes(id));

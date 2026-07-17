@@ -9,19 +9,18 @@ export const dynamic = "force-dynamic";
 
 function fmtDate(d: Date | null): string {
   if (!d) return "";
-  return new Intl.DateTimeFormat("ja-JP", { month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit" }).format(d);
+  return new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit" }).format(d);
 }
 
-/** 受付番号：tokenから数字8桁を生成し 4-4 で表示。 */
+/** 受付番号：token先頭8文字を 4-4 で表示。受付側の前方一致照会でそのままヒットする。 */
 function receiptNo(token: string): string {
-  const hex = token.replace(/-/g, "").slice(0, 16).toLowerCase();
-  const n = BigInt("0x" + hex) % BigInt(10 ** 8);
-  const s = n.toString().padStart(8, "0");
-  return `${s.slice(0, 4)}-${s.slice(4)}`;
+  const hex = token.replace(/-/g, "").slice(0, 8).toUpperCase();
+  return `${hex.slice(0, 4)}-${hex.slice(4)}`;
 }
 
-export default async function KaikanTicketPage({ params }: { params: Promise<{ token: string }> }) {
+export default async function KaikanTicketPage({ params, searchParams }: { params: Promise<{ token: string }>; searchParams: Promise<{ skipped?: string }> }) {
   const { token } = await params;
+  const { skipped } = await searchParams;
   let apps: Array<{ id: string; name: string; status: string; checked_in_at: Date | null; content: { title: string; location: string; starts_at: Date | null; sort_order: number } }> = [];
   try {
     // ticket_token でまとめて取得（旧・単独申込は qr_token でフォールバック）
@@ -41,6 +40,11 @@ export default async function KaikanTicketPage({ params }: { params: Promise<{ t
   return (
     <main className="mx-auto w-full max-w-sm px-4 py-8 sm:px-6">
       <style>{`@media print { body * { visibility: hidden !important; } #ticket-print, #ticket-print * { visibility: visible !important; } #ticket-print { position: absolute; inset: 0; margin: 24px auto; } .ticket-no-print { display: none !important; } }`}</style>
+      {skipped && (
+        <p className="ticket-no-print mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+          一部のプログラムは満員・受付終了のため申込できませんでした：{skipped}
+        </p>
+      )}
       <div id="ticket-print" className="overflow-hidden rounded-3xl border bg-card shadow-lg">
         {/* 上段：イベント */}
         <div className="bg-gradient-to-br from-primary to-violet-600 px-5 pb-5 pt-4 text-white">

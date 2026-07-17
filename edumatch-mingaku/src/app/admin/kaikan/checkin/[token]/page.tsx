@@ -1,18 +1,18 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminOrKaikanStaff } from "@/lib/auth";
 import { checkInKaikanApplication } from "@/app/_actions/kaikan";
 
 export const dynamic = "force-dynamic";
 
 function fmtDate(d: Date | null): string {
   if (!d) return "";
-  return new Intl.DateTimeFormat("ja-JP", { month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(d);
+  return new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(d);
 }
 
 export default async function KaikanCheckinPage({ params }: { params: Promise<{ token: string }> }) {
-  await requireAdmin();
+  await requireAdminOrKaikanStaff();
   const { token } = await params;
 
   const app = await prisma.kaikanApplication.findUnique({

@@ -18,15 +18,16 @@ export default async function KaikanTicketsPage() {
     prisma.kaikanContent.findMany({
       where: { is_published: true },
       orderBy: [{ sort_order: "asc" }, { starts_at: "asc" }, { created_at: "asc" }],
-      include: { _count: { select: { applications: true } } },
+      include: { _count: { select: { applications: { where: { status: { not: "cancelled" } } } } } },
     }).catch(() => []),
     getCurrentProfile().catch(() => null),
   ]);
 
   const mine = profile
-    ? await prisma.kaikanApplication.findMany({ where: { profile_id: profile.id, status: { not: "cancelled" } }, select: { content_id: true } }).catch(() => [])
+    ? await prisma.kaikanApplication.findMany({ where: { profile_id: profile.id, status: { not: "cancelled" } }, select: { content_id: true, ticket_token: true, qr_token: true } }).catch(() => [])
     : [];
   const appliedIds = mine.map((m) => m.content_id);
+  const myTicketToken = mine.find((m) => m.ticket_token)?.ticket_token ?? mine[0]?.qr_token ?? null;
   const loginHref = `/login?next=${encodeURIComponent("/forum/kaikan")}`;
 
   const contentProps = rows.map((c) => ({
@@ -49,6 +50,14 @@ export default async function KaikanTicketsPage() {
         <p className="mt-2 text-sm text-muted-foreground">
           参加したいコンテンツに<strong>複数チェック</strong>して「確認へ進む」を押すと、次のページで内容を確認して申し込めます。
         </p>
+        {myTicketToken && (
+          <Link
+            href={`/forum/kaikan/ticket/${myTicketToken}`}
+            className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/5 px-4 py-1.5 text-xs font-bold text-primary transition hover:bg-primary/10"
+          >
+            マイチケットを表示（申込済 {appliedIds.length}件）
+          </Link>
+        )}
       </header>
 
       {rows.length === 0 ? (

@@ -10,7 +10,7 @@ export async function GET() {
     const rows = await prisma.kaikanContent.findMany({
       where: { is_published: true },
       orderBy: [{ sort_order: "asc" }, { starts_at: "asc" }, { created_at: "asc" }],
-      include: { _count: { select: { applications: true } } },
+      include: { _count: { select: { applications: { where: { status: { not: "cancelled" } } } } } },
     });
     const contents = rows.map((r) => ({
       id: r.id,

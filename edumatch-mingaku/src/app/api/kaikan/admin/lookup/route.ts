@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminOrKaikanStaff } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -8,13 +8,17 @@ export const dynamic = "force-dynamic";
 /** 当日受付：QR(ticket_token) もしくは受付番号でチケットを照会。ユーザー情報＋参加セッション一覧を返す。 */
 export async function GET(req: NextRequest) {
   try {
-    await requireAdmin();
+    await requireAdminOrKaikanStaff();
   } catch {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const raw = (req.nextUrl.searchParams.get("token") || "").trim();
   if (!raw) return NextResponse.json({ error: "トークンを入力してください" }, { status: 400 });
   const norm = raw.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+  // 短すぎる入力での前方一致は他人のチケットへの誤ヒットを招くため拒否（受付番号は8桁）
+  if (norm.length < 8) {
+    return NextResponse.json({ error: "受付番号は8桁で入力してください（例: 7A3F-4C21）" }, { status: 400 });
+  }
 
   try {
     const first = await prisma.kaikanApplication.findFirst({
@@ -63,7 +67,7 @@ export async function GET(req: NextRequest) {
 /** セッション単位で受付（チェックイン）。{ applicationId } を受け取り status=checked_in に。 */
 export async function POST(req: NextRequest) {
   try {
-    await requireAdmin();
+    await requireAdminOrKaikanStaff();
   } catch {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -77,24 +81,25 @@ export async function POST(req: NextRequest) {
     });
     if (!app) return NextResponse.json({ error: "申込が見つかりません" }, { status: 404 });
 
-    // 二重受付防止：既に受付済みなら上書きせず、初回の受付時刻を返す。
-    if (app.status === "checked_in") {
-      return NextResponse.json({
-        ok: true,
-        alreadyCheckedIn: true,
-        session: { id: app.id, status: app.status, checkedInAt: app.checked_in_at },
-      });
+    // キャンセル済みは受付不可
+    if (app.status === "cancelled") {
+      return NextResponse.json({ error: "この申込はキャンセル済みです" }, { status: 409 });
     }
 
-    const updated = await prisma.kaikanApplication.update({
-      where: { id },
+    // アトミック更新：条件付き updateMany で同時実行でも1回だけ受付が成立する。
+    // count=0 なら並行リクエストが先に受付済み → 初回時刻を保持して返す。
+    const r = await prisma.kaikanApplication.updateMany({
+      where: { id, status: { notIn: ["checked_in", "cancelled"] } },
       data: { status: "checked_in", checked_in_at: new Date() },
+    });
+    const updated = await prisma.kaikanApplication.findUnique({
+      where: { id },
       select: { id: true, status: true, checked_in_at: true },
     });
     return NextResponse.json({
       ok: true,
-      alreadyCheckedIn: false,
-      session: { id: updated.id, status: updated.status, checkedInAt: updated.checked_in_at },
+      alreadyCheckedIn: r.count === 0,
+      session: { id: updated?.id ?? id, status: updated?.status ?? "checked_in", checkedInAt: updated?.checked_in_at ?? null },
     });
   } catch (err) {
     console.error("[api/kaikan/admin/lookup POST]", err);

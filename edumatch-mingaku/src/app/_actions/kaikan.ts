@@ -4,8 +4,22 @@ import { randomUUID, randomInt } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { Resend } from "resend";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { getCurrentProfile, requireAdmin } from "@/lib/auth";
+import { getCurrentProfile, requireAdmin, requireAdminOrKaikanStaff } from "@/lib/auth";
+
+/**
+ * datetime-local（YYYY-MM-DDTHH:MM）やCSVの日時文字列を JST として解釈する。
+ * タイムゾーン付き（+09:00 / Z）の入力はそのまま解釈。Vercel(UTC)でも入力が9時間ズレない。
+ */
+function parseJstDate(raw: string): Date | null {
+  const s = raw.trim();
+  if (!s) return null;
+  if (/[zZ]$|[+-]\d{2}:?\d{2}$/.test(s)) return new Date(s);
+  const withSec = /T\d{2}:\d{2}$/.test(s) ? `${s}:00` : s;
+  const d = new Date(`${withSec}+09:00`);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
 
 // 招待コード用の文字集合（紛らわしい O/0/I/1/L を除外）。
 const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
@@ -97,18 +111,89 @@ export async function deleteKaikanInviteCode(formData: FormData) {
   revalidatePath("/admin/kaikan");
 }
 
+/**
+ * 定員チェック＋申込作成をアトミックに行う。満員なら false を返す。
+ * Serializable 分離レベルで同時申込のオーバーブッキングを防ぐ（競合時は失敗扱い）。
+ */
+async function createApplicationIfCapacity(args: {
+  contentId: string;
+  capacity: number | null;
+  profileId: string;
+  name: string;
+  email: string;
+  note: string;
+  qrToken: string;
+  ticketToken: string;
+}): Promise<boolean> {
+  try {
+    await prisma.$transaction(
+      async (tx) => {
+        if (args.capacity != null) {
+          const count = await tx.kaikanApplication.count({
+            where: { content_id: args.contentId, status: { not: "cancelled" } },
+          });
+          if (count >= args.capacity) throw new Error("KAIKAN_FULL");
+        }
+        await tx.kaikanApplication.create({
+          data: {
+            content_id: args.contentId,
+            name: args.name,
+            email: args.email,
+            note: args.note,
+            qr_token: args.qrToken,
+            ticket_token: args.ticketToken,
+            profile_id: args.profileId,
+          },
+        });
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+    return true;
+  } catch {
+    // 満員・直列化競合・ユニーク違反はすべて「申込不成立」として扱う
+    return false;
+  }
+}
+
+/** 申込完了メール：チケットURL付き。ページを閉じてもチケットに再到達できるようにする。 */
+async function sendTicketEmail(email: string, name: string, ticketToken: string) {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) {
+    console.warn("[kaikan/ticket-email] RESEND_API_KEY 未設定のため確認メールをスキップしました:", email);
+    return;
+  }
+  if (!email) return;
+  const base = (process.env.NEXT_PUBLIC_APP_URL || "https://edu-match.com").replace(/\/$/, "");
+  const url = `${base}/forum/kaikan/ticket/${ticketToken}`;
+  const resend = new Resend(key);
+  const safeName = name.replace(/[<>&"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c] ?? c));
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to: email,
+    subject: "【エデュマッチ】電子チケットのご案内（教育AIサミット）",
+    html: `
+      <p>${safeName} 様</p>
+      <p>教育AIサミット＠衆議院第一会館へのお申込みありがとうございます。</p>
+      <p>当日は受付で以下の電子チケット（QRコード）をご提示ください。</p>
+      <p><a href="${url}">${url}</a></p>
+      <p>※このリンクからいつでもチケットを再表示できます。</p>
+      <p>— エデュマッチ運営</p>
+    `.trim(),
+  }).catch((e) => console.error("[kaikan/ticket-email]", e));
+}
+
 /** ログイン中アカウントでコンテンツに申込→電子チケット(QR)を発行。氏名/メールはアカウント情報を使用。 */
 export async function applyForKaikanContent(formData: FormData) {
   const contentId = String(formData.get("contentId") || "").trim();
   const note = String(formData.get("note") || "").trim();
-  if (!contentId) throw new Error("コンテンツが不正です");
+  if (!contentId) redirect("/forum/kaikan");
 
   // 申込にはログイン必須。氏名・メールはアカウント登録情報を使う。
   const profile = await getCurrentProfile();
-  if (!profile) throw new Error("申込にはログインが必要です");
+  if (!profile) redirect(`/login?next=${encodeURIComponent(`/forum/kaikan/${contentId}`)}`);
 
   const content = await prisma.kaikanContent.findUnique({ where: { id: contentId } });
-  if (!content || !content.is_published) throw new Error("受付を終了したか、存在しないコンテンツです");
+  if (!content || !content.is_published) redirect(`/forum/kaikan?error=closed`);
 
   // 同一アカウントの二重申込を防ぐ：既存があればそのチケットへ。
   const existing = await prisma.kaikanApplication.findFirst({
@@ -117,25 +202,20 @@ export async function applyForKaikanContent(formData: FormData) {
   });
   if (existing) redirect(`/forum/kaikan/ticket/${existing.ticket_token ?? existing.qr_token}`);
 
-  if (content.capacity != null) {
-    const count = await prisma.kaikanApplication.count({
-      where: { content_id: contentId, status: { not: "cancelled" } },
-    });
-    if (count >= content.capacity) throw new Error("定員に達しました");
-  }
-
   const token = randomUUID().replace(/-/g, "");
-  await prisma.kaikanApplication.create({
-    data: {
-      content_id: contentId,
-      name: profile.name,
-      email: profile.email ?? "",
-      note,
-      qr_token: token,
-      ticket_token: token,
-      profile_id: profile.id,
-    },
+  const ok = await createApplicationIfCapacity({
+    contentId,
+    capacity: content.capacity,
+    profileId: profile.id,
+    name: profile.name,
+    email: profile.email ?? "",
+    note,
+    qrToken: token,
+    ticketToken: token,
   });
+  if (!ok) redirect(`/forum/kaikan/${contentId}?error=full`);
+
+  await sendTicketEmail(profile.email ?? "", profile.name, token);
   revalidatePath("/admin/kaikan");
   redirect(`/forum/kaikan/ticket/${token}`);
 }
@@ -144,10 +224,10 @@ export async function applyForKaikanContent(formData: FormData) {
 export async function applyForKaikanContents(formData: FormData) {
   const contentIds = formData.getAll("contentId").map(String).map((s) => s.trim()).filter(Boolean);
   const note = String(formData.get("note") || "").trim();
-  if (contentIds.length === 0) throw new Error("コンテンツを1つ以上選んでください");
+  if (contentIds.length === 0) redirect("/forum/kaikan");
 
   const profile = await getCurrentProfile();
-  if (!profile) throw new Error("申込にはログインが必要です");
+  if (!profile) redirect(`/login?next=${encodeURIComponent(`/forum/kaikan/confirm?ids=${contentIds.join(",")}`)}`);
 
   // 既存の自分の申込（このアカウント）を見て、チケットを流用しつつ二重を避ける
   const existingApps = await prisma.kaikanApplication.findMany({
@@ -159,25 +239,39 @@ export async function applyForKaikanContents(formData: FormData) {
 
   const toAdd = contentIds.filter((id) => !alreadyIds.has(id));
   const contents = await prisma.kaikanContent.findMany({ where: { id: { in: toAdd }, is_published: true } });
+
+  let addedCount = 0;
+  const skippedTitles: string[] = [];
   for (const c of contents) {
-    if (c.capacity != null) {
-      const count = await prisma.kaikanApplication.count({ where: { content_id: c.id, status: { not: "cancelled" } } });
-      if (count >= c.capacity) continue; // 満員は除外
-    }
-    await prisma.kaikanApplication.create({
-      data: {
-        content_id: c.id,
-        name: profile.name,
-        email: profile.email ?? "",
-        note,
-        qr_token: randomUUID().replace(/-/g, ""),
-        ticket_token: ticketToken,
-        profile_id: profile.id,
-      },
+    const ok = await createApplicationIfCapacity({
+      contentId: c.id,
+      capacity: c.capacity,
+      profileId: profile.id,
+      name: profile.name,
+      email: profile.email ?? "",
+      note,
+      qrToken: randomUUID().replace(/-/g, ""),
+      ticketToken,
     });
+    if (ok) addedCount++;
+    else skippedTitles.push(c.title);
+  }
+  // 非公開化などで取得できなかった選択分も件数として通知
+  const unavailable = toAdd.length - contents.length;
+  if (unavailable > 0) skippedTitles.push(`受付終了 ${unavailable}件`);
+
+  if (addedCount > 0) {
+    await sendTicketEmail(profile.email ?? "", profile.name, ticketToken);
   }
   revalidatePath("/admin/kaikan");
-  redirect(`/forum/kaikan/ticket/${ticketToken}`);
+
+  // 1件も申込できず既存チケットも無い場合は、確認画面へ戻してエラー表示（空チケットの404を防ぐ）
+  if (addedCount === 0 && alreadyIds.size === 0) {
+    redirect(`/forum/kaikan/confirm?ids=${contentIds.join(",")}&error=full`);
+  }
+  // 一部スキップがあればチケット面に警告表示（申し込めたつもりの欠落を防ぐ）
+  const q = skippedTitles.length > 0 ? `?skipped=${encodeURIComponent(skippedTitles.slice(0, 6).join("、"))}` : "";
+  redirect(`/forum/kaikan/ticket/${ticketToken}${q}`);
 }
 
 /** 管理者：コンテンツ新設。 */
@@ -191,14 +285,15 @@ export async function createKaikanContent(formData: FormData) {
   const endsAtRaw = String(formData.get("ends_at") || "").trim();
   const capacityRaw = String(formData.get("capacity") || "").trim();
   const contentType = String(formData.get("content_type") || "session");
+  const capNum = capacityRaw ? parseInt(capacityRaw, 10) : NaN;
   await prisma.kaikanContent.create({
     data: {
       title,
       description,
       location,
-      starts_at: startsAtRaw ? new Date(startsAtRaw) : null,
-      ends_at: endsAtRaw ? new Date(endsAtRaw) : null,
-      capacity: capacityRaw ? Math.max(0, parseInt(capacityRaw, 10)) || null : null,
+      starts_at: startsAtRaw ? parseJstDate(startsAtRaw) : null,
+      ends_at: endsAtRaw ? parseJstDate(endsAtRaw) : null,
+      capacity: Number.isNaN(capNum) ? null : Math.max(0, capNum),
       content_type: contentType,
       is_published: formData.get("is_published") === "on",
     },
@@ -248,16 +343,17 @@ export async function importKaikanContentsFromCsv(formData: FormData) {
     const title = cols[titleIdx]?.trim();
     if (!title) continue;
 
+    const csvCap = cols[capIdx] ? parseInt(cols[capIdx], 10) : NaN;
     await prisma.kaikanContent.create({
       data: {
         title,
         description: cols[descIdx] ?? "",
         location: cols[locIdx] ?? "",
-        starts_at: cols[startIdx] ? new Date(cols[startIdx]) : null,
-        ends_at: cols[endIdx] ? new Date(cols[endIdx]) : null,
-        capacity: cols[capIdx] ? parseInt(cols[capIdx], 10) || null : null,
+        starts_at: cols[startIdx] ? parseJstDate(cols[startIdx]) : null,
+        ends_at: cols[endIdx] ? parseJstDate(cols[endIdx]) : null,
+        capacity: Number.isNaN(csvCap) ? null : Math.max(0, csvCap),
         content_type: cols[typeIdx] || "session",
-        is_published: cols[pubIdx] === "true",
+        is_published: (cols[pubIdx] || "").toLowerCase() === "true",
       },
     });
   }
@@ -283,7 +379,11 @@ const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "エデュマッチ <onboard
 
 async function sendStaffEmail(email: string, name: string) {
   const key = process.env.RESEND_API_KEY;
-  if (!key || !email) return;
+  if (!key) {
+    console.warn("[kaikan/staff-email] RESEND_API_KEY 未設定のため通知メールをスキップしました:", email);
+    return;
+  }
+  if (!email) return;
   const resend = new Resend(key);
   const safeName = name.replace(/[<>&"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c] ?? c));
   await resend.emails.send({
@@ -300,19 +400,24 @@ async function sendStaffEmail(email: string, name: string) {
   }).catch((e) => console.error("[kaikan/staff-email]", e));
 }
 
-/** 管理者：スタッフロールを付与する（メール送信あり）。 */
+/** 管理者：スタッフロールを付与する（メール送信あり）。結果はクエリパラメータでスタッフタブに表示。 */
 export async function addKaikanStaff(formData: FormData) {
   await requireAdmin();
   const email = String(formData.get("email") || "").trim().toLowerCase();
-  if (!email) throw new Error("メールアドレスは必須です");
+  if (!email) redirect(`/admin/kaikan?tab=staff&staffError=${encodeURIComponent("メールアドレスは必須です")}`);
 
-  const profile = await prisma.profile.findUnique({ where: { email }, select: { id: true, name: true, email: true } });
-  if (!profile) throw new Error(`メール「${email}」のアカウントが見つかりません`);
+  // 大文字小文字の揺れを許容して照合（DB側の表記に依存しない）
+  const profile = await prisma.profile.findFirst({
+    where: { email: { equals: email, mode: "insensitive" } },
+    select: { id: true, name: true, email: true },
+  });
+  if (!profile) {
+    redirect(`/admin/kaikan?tab=staff&staffError=${encodeURIComponent(`メール「${email}」のアカウントが見つかりません。本人がエデュマッチに登録済みか確認してください。`)}`);
+  }
 
   const existing = await prisma.kaikanStaff.findUnique({ where: { profile_id: profile.id } });
   if (existing) {
-    revalidatePath("/admin/kaikan");
-    return;
+    redirect(`/admin/kaikan?tab=staff&staffError=${encodeURIComponent(`「${email}」は既にスタッフ登録済みです`)}`);
   }
 
   await prisma.kaikanStaff.create({
@@ -320,21 +425,29 @@ export async function addKaikanStaff(formData: FormData) {
   });
   await sendStaffEmail(profile.email, profile.name);
   revalidatePath("/admin/kaikan");
+  redirect("/admin/kaikan?tab=staff&staffAdded=1");
 }
 
-/** 管理者：スタッフを一括登録（メール改行区切り）。 */
+/** 管理者：スタッフを一括登録（メール改行区切り）。成功件数と未登録メールを結果表示。 */
 export async function bulkAddKaikanStaff(formData: FormData) {
   await requireAdmin();
   const raw = String(formData.get("emails") || "");
-  const emails = raw.split(/[\n,;]+/).map((e) => e.trim().toLowerCase()).filter(Boolean);
-  if (emails.length === 0) throw new Error("メールアドレスを入力してください");
+  const emails = [...new Set(raw.split(/[\n,;]+/).map((e) => e.trim().toLowerCase()).filter(Boolean))];
+  if (emails.length === 0) redirect(`/admin/kaikan?tab=staff&staffError=${encodeURIComponent("メールアドレスを入力してください")}`);
 
   let added = 0;
+  const missed: string[] = [];
   for (const email of emails) {
-    const profile = await prisma.profile.findUnique({ where: { email }, select: { id: true, name: true, email: true } });
-    if (!profile) continue;
+    const profile = await prisma.profile.findFirst({
+      where: { email: { equals: email, mode: "insensitive" } },
+      select: { id: true, name: true, email: true },
+    });
+    if (!profile) {
+      missed.push(email);
+      continue;
+    }
     const existing = await prisma.kaikanStaff.findUnique({ where: { profile_id: profile.id } });
-    if (existing) continue;
+    if (existing) continue; // 既登録はスキップ（エラー扱いにしない）
     await prisma.kaikanStaff.create({
       data: { profile_id: profile.id, name: profile.name, email: profile.email },
     });
@@ -342,6 +455,8 @@ export async function bulkAddKaikanStaff(formData: FormData) {
     added++;
   }
   revalidatePath("/admin/kaikan");
+  const missedQ = missed.length > 0 ? `&staffMissed=${encodeURIComponent(missed.join(", "))}` : "";
+  redirect(`/admin/kaikan?tab=staff&staffAdded=${added}${missedQ}`);
 }
 
 /** 管理者：スタッフロールを解除する。 */
@@ -353,15 +468,15 @@ export async function removeKaikanStaff(formData: FormData) {
   revalidatePath("/admin/kaikan");
 }
 
-/** 管理者：受付チェックイン（QR読み取り先）。 */
+/** 管理者・スタッフ：受付チェックイン（QR読み取り先）。 */
 export async function checkInKaikanApplication(formData: FormData) {
-  await requireAdmin();
+  await requireAdminOrKaikanStaff();
   const token = String(formData.get("token") || "");
-  if (!token) throw new Error("トークンが不正です");
-  const app = await prisma.kaikanApplication.findUnique({ where: { qr_token: token } });
-  if (!app) throw new Error("申込が見つかりません");
-  await prisma.kaikanApplication.update({
-    where: { qr_token: token },
+  if (!token) return;
+  // アトミック更新：confirmed のみ受付済みへ（既受付の初回時刻を保持・cancelled は不可）。
+  // 対象0件でもページ再検証で最新状態が表示されるためエラーにしない。
+  await prisma.kaikanApplication.updateMany({
+    where: { qr_token: token, status: "confirmed" },
     data: { status: "checked_in", checked_in_at: new Date() },
   });
   revalidatePath(`/admin/kaikan/checkin/${token}`);

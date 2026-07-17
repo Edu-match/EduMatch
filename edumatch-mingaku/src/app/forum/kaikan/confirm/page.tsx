@@ -9,11 +9,11 @@ export const dynamic = "force-dynamic";
 
 function fmtDate(d: Date | null): string {
   if (!d) return "";
-  return new Intl.DateTimeFormat("ja-JP", { month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit" }).format(d);
+  return new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit" }).format(d);
 }
 
-export default async function KaikanConfirmPage({ searchParams }: { searchParams: Promise<{ ids?: string }> }) {
-  const { ids } = await searchParams;
+export default async function KaikanConfirmPage({ searchParams }: { searchParams: Promise<{ ids?: string; error?: string }> }) {
+  const { ids, error } = await searchParams;
   const idList = (ids ?? "").split(",").map((s) => s.trim()).filter(Boolean);
   if (idList.length === 0) redirect("/forum/kaikan");
 
@@ -47,6 +47,12 @@ export default async function KaikanConfirmPage({ searchParams }: { searchParams
         <h1 className="mt-1 text-2xl font-bold">申込内容の確認</h1>
         <p className="mt-2 text-sm text-muted-foreground">内容を確認して申し込むと、選んだ{contents.length}件をまとめた電子チケット（QR）が発行されます。</p>
       </header>
+
+      {error === "full" && (
+        <p className="mb-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+          選択されたプログラムはすべて満員または受付終了のため、申込できませんでした。選び直してください。
+        </p>
+      )}
 
       <form action={applyForKaikanContents} className="space-y-5">
         {contents.map((c) => <input key={c.id} type="hidden" name="contentId" value={c.id} />)}

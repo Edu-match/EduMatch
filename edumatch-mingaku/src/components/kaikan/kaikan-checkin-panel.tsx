@@ -8,7 +8,7 @@ type Result = { found: boolean; ticketToken?: string; user?: { name: string; ema
 
 function fmt(d: string | null): string {
   if (!d) return "";
-  try { return new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(d)); } catch { return ""; }
+  try { return new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(d)); } catch { return ""; }
 }
 
 /** QRから token を取り出す（?token / パス / 生token に対応）。 */
@@ -124,7 +124,7 @@ export function KaikanCheckinPanel({ initialToken }: { initialToken?: string }) 
         <input
           value={token}
           onChange={(e) => setToken(e.target.value)}
-          placeholder="受付番号（例: 7321-4654）"
+          placeholder="受付番号（例: 7A3F-4C21）"
           className="flex-1 rounded-md border border-input px-3 py-2 text-sm"
         />
         <button type="submit" disabled={loading} className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-bold text-primary-foreground transition hover:opacity-90 disabled:opacity-50">
