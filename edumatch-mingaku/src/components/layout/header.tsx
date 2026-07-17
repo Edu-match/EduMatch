@@ -182,7 +182,7 @@ export function Header() {
   );
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 w-full border-b border-primary/15 bg-gradient-to-r from-violet-500/[0.06] via-background/80 to-purple-500/[0.06] backdrop-blur-xl supports-[backdrop-filter]:bg-transparent">
+    <header className="fixed top-0 left-0 right-0 z-50 w-full border-b border-violet-300/40 bg-gradient-to-r from-violet-500/[0.16] via-background/85 to-purple-500/[0.12] backdrop-blur-xl supports-[backdrop-filter]:bg-transparent">
       <div className="container flex h-16 items-center gap-2 md:gap-3">
         {/* Logo */}
         <Link href="/" className="flex shrink-0 items-center hover:opacity-80 transition-opacity">

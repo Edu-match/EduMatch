@@ -61,9 +61,9 @@ export default async function HomePage() {
 
             {/* ひろば（コンパクトマップ）: ヒーロー */}
             <Reveal>
-              <div className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
+              <div className="overflow-hidden rounded-2xl border border-violet-200/60 bg-card shadow-sm shadow-violet-200/30">
                 {/* ヘッダー */}
-                <div className="flex items-center justify-between bg-gradient-to-r from-violet-500/15 to-primary/10 px-4 py-3">
+                <div className="flex items-center justify-between bg-gradient-to-r from-violet-500/25 via-purple-500/15 to-primary/15 px-4 py-3">
                   <div className="flex items-center gap-2.5">
                     <span className="grid h-8 w-8 place-items-center rounded-xl bg-primary text-white">
                       <MessageSquare className="h-4 w-4" />
@@ -124,7 +124,7 @@ export default async function HomePage() {
               <Reveal variant="fade-in" delay={120}>
                 <Link
                   href="/forum/kaikan"
-                  className="card-lift group flex items-center gap-3.5 rounded-2xl border border-primary/25 bg-card p-4"
+                  className="card-lift group flex items-center gap-3.5 rounded-2xl border border-violet-200/60 bg-gradient-to-r from-card to-violet-50/40 p-4"
                 >
                   <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
                     <Ticket className="h-5 w-5" />
@@ -140,7 +140,7 @@ export default async function HomePage() {
               {/* 人気記事 */}
               {popularPosts.length > 0 && (
                 <Reveal variant="fade-in" delay={160}>
-                  <section className="rounded-2xl border border-border/60 bg-card p-4">
+                  <section className="rounded-2xl border border-violet-200/60 bg-gradient-to-br from-card to-violet-50/30 p-4">
                     <h2 className="mb-3 flex items-center gap-2 text-sm font-bold tracking-tight">
                       <TrendingUp className="h-4 w-4 text-primary" />
                       人気の記事
@@ -165,7 +165,7 @@ export default async function HomePage() {
 
               {/* 近日のイベント */}
               <Reveal variant="fade-in" delay={200}>
-                <section className="rounded-2xl border border-border/60 bg-card p-4">
+                <section className="rounded-2xl border border-violet-200/60 bg-gradient-to-br from-card to-violet-50/30 p-4">
                   <h2 className="mb-3 flex items-center gap-2 text-sm font-bold tracking-tight">
                     <Calendar className="h-4 w-4 text-primary" />
                     近日のイベント
@@ -221,9 +221,9 @@ export default async function HomePage() {
             <Link
               key={f.href}
               href={f.href}
-              className="group flex items-center gap-3 rounded-xl border border-border/60 bg-card px-4 py-3 transition-colors hover:border-primary/30 hover:bg-accent/40"
+              className="group flex items-center gap-3 rounded-xl border border-violet-200/50 bg-gradient-to-r from-card to-violet-50/30 px-4 py-3 transition-all hover:border-violet-300/60 hover:bg-violet-50/50 hover:shadow-sm hover:shadow-violet-200/30"
             >
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary transition-transform duration-200 group-hover:scale-110">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-violet-500/15 to-primary/15 text-primary transition-transform duration-200 group-hover:scale-110">
                 <f.icon className="h-4 w-4" />
               </span>
               <span className="min-w-0">

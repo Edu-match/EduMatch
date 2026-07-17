@@ -16,7 +16,7 @@ export function NewsTicker({ items }: { items: TickerItem[] }) {
   const duration = Math.max(30, items.length * 7);
 
   return (
-    <div className="ticker-wrap sticky top-[6.75rem] z-20 overflow-hidden border-b border-border/60 bg-secondary/60 backdrop-blur-md">
+    <div className="ticker-wrap sticky top-[6.75rem] z-20 overflow-hidden border-b border-violet-200/40 bg-violet-100/60 backdrop-blur-md">
       <div className="container flex items-center gap-3 py-2">
         <span className="live-dot flex shrink-0 items-center gap-1.5 text-xs font-bold tracking-wide text-foreground">
           {" "}HEADLINES

@@ -49,25 +49,25 @@
 
 :root {
   --radius: 0.75rem;
-  /* IU紫系: ラベンダーベース × パープル階調 */
-  --background: oklch(0.988 0.008 285);
-  --foreground: oklch(0.2 0.015 280);
-  --card: oklch(0.995 0.004 285);
-  --card-foreground: oklch(0.2 0.015 280);
-  --popover: oklch(0.995 0.004 285);
-  --popover-foreground: oklch(0.2 0.015 280);
-  --primary: oklch(0.50 0.22 280);
+  /* IU紫系: はっきりラベンダー × ディープパープル */
+  --background: oklch(0.965 0.035 280);
+  --foreground: oklch(0.18 0.020 280);
+  --card: oklch(0.975 0.025 282);
+  --card-foreground: oklch(0.18 0.020 280);
+  --popover: oklch(0.975 0.025 282);
+  --popover-foreground: oklch(0.18 0.020 280);
+  --primary: oklch(0.48 0.24 278);
   --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.955 0.016 282);
-  --secondary-foreground: oklch(0.28 0.015 280);
-  --muted: oklch(0.955 0.016 282);
-  --muted-foreground: oklch(0.50 0.018 280);
-  --accent: oklch(0.945 0.022 280);
-  --accent-foreground: oklch(0.35 0.10 280);
+  --secondary: oklch(0.915 0.050 280);
+  --secondary-foreground: oklch(0.25 0.020 280);
+  --muted: oklch(0.915 0.050 280);
+  --muted-foreground: oklch(0.48 0.025 280);
+  --accent: oklch(0.895 0.065 280);
+  --accent-foreground: oklch(0.28 0.14 280);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.92 0.012 282);
-  --input: oklch(0.92 0.012 282);
-  --ring: oklch(0.50 0.22 280);
+  --border: oklch(0.865 0.050 280);
+  --input: oklch(0.865 0.050 280);
+  --ring: oklch(0.48 0.24 278);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -84,24 +84,24 @@
 }
 
 .dark {
-  --background: oklch(0.15 0.012 280);
-  --foreground: oklch(0.985 0.005 280);
-  --card: oklch(0.20 0.015 280);
-  --card-foreground: oklch(0.985 0.005 280);
-  --popover: oklch(0.20 0.015 280);
-  --popover-foreground: oklch(0.985 0.005 280);
-  --primary: oklch(0.72 0.16 280);
-  --primary-foreground: oklch(0.15 0.012 280);
-  --secondary: oklch(0.26 0.018 280);
-  --secondary-foreground: oklch(0.985 0.005 280);
-  --muted: oklch(0.26 0.018 280);
-  --muted-foreground: oklch(0.68 0.02 280);
-  --accent: oklch(0.26 0.018 280);
-  --accent-foreground: oklch(0.985 0.005 280);
+  --background: oklch(0.14 0.025 278);
+  --foreground: oklch(0.985 0.008 280);
+  --card: oklch(0.18 0.030 278);
+  --card-foreground: oklch(0.985 0.008 280);
+  --popover: oklch(0.18 0.030 278);
+  --popover-foreground: oklch(0.985 0.008 280);
+  --primary: oklch(0.72 0.18 278);
+  --primary-foreground: oklch(0.14 0.025 278);
+  --secondary: oklch(0.24 0.035 278);
+  --secondary-foreground: oklch(0.985 0.008 280);
+  --muted: oklch(0.24 0.035 278);
+  --muted-foreground: oklch(0.68 0.03 280);
+  --accent: oklch(0.24 0.035 278);
+  --accent-foreground: oklch(0.985 0.008 280);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.60 0.12 280);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 18%);
+  --ring: oklch(0.65 0.15 278);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
@@ -126,7 +126,10 @@
   }
   body {
     @apply bg-background text-foreground;
-    background: linear-gradient(180deg, oklch(0.975 0.020 280) 0%, oklch(0.990 0.010 285) 50%, oklch(0.985 0.015 280) 100%);
+    background:
+      radial-gradient(ellipse 80% 50% at 20% 0%, oklch(0.85 0.08 280 / 0.35) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 85% 15%, oklch(0.88 0.06 290 / 0.25) 0%, transparent 55%),
+      linear-gradient(180deg, oklch(0.940 0.055 278) 0%, oklch(0.960 0.038 282) 35%, oklch(0.950 0.048 280) 100%);
     min-height: 100vh;
     overflow-x: clip;
     max-width: 100vw;
@@ -156,8 +159,8 @@
   .card-lift:hover {
     transform: translateY(-3px);
     box-shadow:
-      0 16px 40px -12px oklch(0.2 0.02 260 / 0.15),
-      0 4px 12px -4px oklch(0.2 0.02 260 / 0.08);
+      0 16px 40px -12px oklch(0.35 0.12 280 / 0.22),
+      0 4px 12px -4px oklch(0.35 0.12 280 / 0.12);
   }
   /* ホバーで左から伸びる下線（見出しリンク用） */
   .link-underline {
