@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CalendarDays, MapPin, Ticket, CheckCircle2, Clock } from "lucide-react";
+import { CalendarDays, MapPin, Ticket, CheckCircle2, Clock, XCircle } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { getCurrentProfile } from "@/lib/auth";
 import { TicketQR } from "@/components/kaikan/ticket-qr";
 import { TicketPrintButton } from "@/components/kaikan/ticket-print-button";
+import { CancelSessionButton } from "@/components/kaikan/cancel-session-button";
 
 export const dynamic = "force-dynamic";
 
@@ -21,12 +23,12 @@ function receiptNo(token: string): string {
 export default async function KaikanTicketPage({ params, searchParams }: { params: Promise<{ token: string }>; searchParams: Promise<{ skipped?: string }> }) {
   const { token } = await params;
   const { skipped } = await searchParams;
-  let apps: Array<{ id: string; name: string; status: string; checked_in_at: Date | null; content: { title: string; location: string; starts_at: Date | null; sort_order: number } }> = [];
+  let apps: Array<{ id: string; name: string; status: string; checked_in_at: Date | null; profile_id: string | null; content: { title: string; location: string; starts_at: Date | null; sort_order: number } }> = [];
   try {
     // ticket_token でまとめて取得（旧・単独申込は qr_token でフォールバック）
     apps = await prisma.kaikanApplication.findMany({
       where: { OR: [{ ticket_token: token }, { qr_token: token }] },
-      select: { id: true, name: true, status: true, checked_in_at: true, content: { select: { title: true, location: true, starts_at: true, sort_order: true } } },
+      select: { id: true, name: true, status: true, checked_in_at: true, profile_id: true, content: { select: { title: true, location: true, starts_at: true, sort_order: true } } },
     });
     apps.sort((a, b) => ((a.content?.sort_order ?? 0) - (b.content?.sort_order ?? 0)));
   } catch {
@@ -35,7 +37,12 @@ export default async function KaikanTicketPage({ params, searchParams }: { param
   if (apps.length === 0) notFound();
 
   const name = apps[0].name;
-  const allCheckedIn = apps.every((a) => a.status === "checked_in");
+  const activeApps = apps.filter((a) => a.status !== "cancelled");
+  const allCheckedIn = activeApps.length > 0 && activeApps.every((a) => a.status === "checked_in");
+
+  // 本人（申込者）にのみキャンセル操作を表示（チケットURL自体は共有可能なため）
+  const profile = await getCurrentProfile().catch(() => null);
+  const isOwner = !!profile && apps.some((a) => a.profile_id === profile.id);
 
   return (
     <main className="mx-auto w-full max-w-sm px-4 py-8 sm:px-6">
@@ -82,20 +89,27 @@ export default async function KaikanTicketPage({ params, searchParams }: { param
             <ul className="space-y-2">
               {apps.map((a) => {
                 const done = a.status === "checked_in";
+                const cancelled = a.status === "cancelled";
                 return (
-                  <li key={a.id} className="rounded-lg border bg-background p-3">
+                  <li key={a.id} className={`rounded-lg border bg-background p-3 ${cancelled ? "opacity-60" : ""}`}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-bold">{a.content.title}</p>
+                        <p className={`truncate text-sm font-bold ${cancelled ? "text-muted-foreground line-through" : ""}`}>{a.content.title}</p>
                         <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
                           {a.content.starts_at && <span className="inline-flex items-center gap-1"><CalendarDays className="h-3 w-3" />{fmtDate(a.content.starts_at)}</span>}
                           {a.content.location && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{a.content.location}</span>}
                         </div>
                       </div>
-                      <span className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${done ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
-                        {done ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}{done ? "受付済" : "受付前"}
+                      <span className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${cancelled ? "bg-muted text-muted-foreground" : done ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                        {cancelled ? <XCircle className="h-3 w-3" /> : done ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                        {cancelled ? "キャンセル済" : done ? "受付済" : "受付前"}
                       </span>
                     </div>
+                    {isOwner && a.status === "confirmed" && (
+                      <div className="ticket-no-print mt-2 flex justify-end">
+                        <CancelSessionButton id={a.id} ticketToken={token} title={a.content.title} />
+                      </div>
+                    )}
                   </li>
                 );
               })}

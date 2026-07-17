@@ -155,8 +155,20 @@ async function createApplicationIfCapacity(args: {
   }
 }
 
-/** 申込完了メール：チケットURL付き。ページを閉じてもチケットに再到達できるようにする。 */
-async function sendTicketEmail(email: string, name: string, ticketToken: string) {
+function escapeHtml(s: string): string {
+  return s.replace(/[<>&"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c] ?? c));
+}
+
+/**
+ * 申込完了メール：チケット風デザイン（QR画像をインライン埋め込み）＋お問い合わせボタン。
+ * ページを閉じてもチケットに再到達できるようにする。
+ */
+async function sendTicketEmail(
+  email: string,
+  name: string,
+  ticketToken: string,
+  sessions: { title: string; starts_at: Date | null; location: string }[],
+) {
   const key = process.env.RESEND_API_KEY;
   if (!key) {
     console.warn("[kaikan/ticket-email] RESEND_API_KEY 未設定のため確認メールをスキップしました:", email);
@@ -164,22 +176,70 @@ async function sendTicketEmail(email: string, name: string, ticketToken: string)
   }
   if (!email) return;
   const base = (process.env.NEXT_PUBLIC_APP_URL || "https://edu-match.com").replace(/\/$/, "");
-  const url = `${base}/forum/kaikan/ticket/${ticketToken}`;
-  const resend = new Resend(key);
-  const safeName = name.replace(/[<>&"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c] ?? c));
-  await resend.emails.send({
-    from: FROM_EMAIL,
-    to: email,
-    subject: "【エデュマッチ】電子チケットのご案内（教育AIサミット）",
-    html: `
-      <p>${safeName} 様</p>
-      <p>教育AIサミット＠衆議院第一会館へのお申込みありがとうございます。</p>
-      <p>当日は受付で以下の電子チケット（QRコード）をご提示ください。</p>
-      <p><a href="${url}">${url}</a></p>
-      <p>※このリンクからいつでもチケットを再表示できます。</p>
-      <p>— エデュマッチ運営</p>
-    `.trim(),
-  }).catch((e) => console.error("[kaikan/ticket-email]", e));
+  const ticketUrl = `${base}/forum/kaikan/ticket/${ticketToken}`;
+  const contactUrl = `${base}/contact`;
+  // チケット画面のQRと同一のチェックインURLをエンコード
+  const checkinUrl = `${base}/admin/kaikan?tab=checkin&token=${ticketToken}`;
+  const receipt = `${ticketToken.slice(0, 4).toUpperCase()}-${ticketToken.slice(4, 8).toUpperCase()}`;
+
+  try {
+    const QRCode = (await import("qrcode")).default;
+    const qrPng = await QRCode.toBuffer(checkinUrl, { width: 360, margin: 2 });
+
+    const fmtJst = new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit" });
+    const sessionRows = sessions
+      .map((s) => {
+        const when = s.starts_at ? fmtJst.format(s.starts_at) : "";
+        const meta = [when, s.location].filter(Boolean).join(" ・ ");
+        return `<tr><td style="padding:10px 14px;border-top:1px solid #eee;">
+          <div style="font-weight:bold;font-size:14px;color:#1f2937;">${escapeHtml(s.title)}</div>
+          ${meta ? `<div style="font-size:12px;color:#6b7280;margin-top:2px;">${escapeHtml(meta)}</div>` : ""}
+        </td></tr>`;
+      })
+      .join("");
+
+    const resend = new Resend(key);
+    await resend.emails.send({
+      from: FROM_EMAIL,
+      to: email,
+      subject: "【エデュマッチ】電子チケットのご案内（教育AIサミット）",
+      attachments: [{ filename: "ticket-qr.png", content: qrPng, contentId: "ticket-qr" }],
+      html: `
+<div style="max-width:480px;margin:0 auto;font-family:'Hiragino Sans','Noto Sans JP',sans-serif;">
+  <p style="font-size:14px;color:#374151;">${escapeHtml(name)} 様</p>
+  <p style="font-size:14px;color:#374151;">教育AIサミット＠衆議院第一会館へのお申込みありがとうございます。<br>当日は受付でこちらの電子チケットをご提示ください。</p>
+
+  <div style="border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;margin:20px 0;">
+    <div style="background:linear-gradient(135deg,#6d28d9,#7c3aed);padding:16px 20px;">
+      <div style="color:#ede9fe;font-size:11px;font-weight:bold;letter-spacing:1px;">電子チケット</div>
+      <div style="color:#ffffff;font-size:17px;font-weight:bold;margin-top:4px;">教育AIサミット@衆議院第一会館</div>
+    </div>
+    <div style="padding:20px;text-align:center;background:#ffffff;">
+      <img src="cid:ticket-qr" alt="チケットQRコード" width="200" height="200" style="display:block;margin:0 auto;border:1px solid #eee;border-radius:12px;" />
+      <div style="margin-top:14px;background:#f5f3ff;border-radius:10px;padding:10px;">
+        <div style="font-size:11px;color:#6b7280;">受付番号</div>
+        <div style="font-family:monospace;font-size:22px;font-weight:900;letter-spacing:3px;color:#111827;">${receipt}</div>
+      </div>
+      <div style="margin-top:10px;font-size:13px;color:#374151;">お名前：<strong>${escapeHtml(name)}</strong></div>
+    </div>
+    ${sessionRows ? `<table width="100%" cellpadding="0" cellspacing="0" style="background:#fafafa;"><tr><td style="padding:10px 14px 0;font-size:11px;font-weight:bold;color:#6b7280;">参加プログラム（${sessions.length}件）</td></tr>${sessionRows}</table>` : ""}
+  </div>
+
+  <div style="text-align:center;margin:24px 0;">
+    <a href="${ticketUrl}" style="display:inline-block;background:#6d28d9;color:#ffffff;font-size:14px;font-weight:bold;text-decoration:none;padding:12px 28px;border-radius:9999px;">チケットを表示する</a>
+  </div>
+  <div style="text-align:center;margin:12px 0 24px;">
+    <a href="${contactUrl}" style="display:inline-block;border:1px solid #d1d5db;color:#374151;font-size:13px;font-weight:bold;text-decoration:none;padding:10px 24px;border-radius:9999px;">お問い合わせはこちら</a>
+  </div>
+
+  <p style="font-size:11px;color:#9ca3af;">※QRコードが表示されない場合は「チケットを表示する」ボタンからもご提示いただけます。<br>※このメールに心当たりがない場合は破棄してください。</p>
+  <p style="font-size:12px;color:#6b7280;">— エデュマッチ運営</p>
+</div>
+      `.trim(),
+    });
+  } catch (e) {
+    console.error("[kaikan/ticket-email]", e);
+  }
 }
 
 /** ログイン中アカウントでコンテンツに申込→電子チケット(QR)を発行。氏名/メールはアカウント情報を使用。 */
@@ -215,7 +275,9 @@ export async function applyForKaikanContent(formData: FormData) {
   });
   if (!ok) redirect(`/forum/kaikan/${contentId}?error=full`);
 
-  await sendTicketEmail(profile.email ?? "", profile.name, token);
+  await sendTicketEmail(profile.email ?? "", profile.name, token, [
+    { title: content.title, starts_at: content.starts_at, location: content.location },
+  ]);
   revalidatePath("/admin/kaikan");
   redirect(`/forum/kaikan/ticket/${token}`);
 }
@@ -261,7 +323,18 @@ export async function applyForKaikanContents(formData: FormData) {
   if (unavailable > 0) skippedTitles.push(`受付終了 ${unavailable}件`);
 
   if (addedCount > 0) {
-    await sendTicketEmail(profile.email ?? "", profile.name, ticketToken);
+    // チケットに載る全プログラム（既存分含む）をメールに記載
+    const myApps = await prisma.kaikanApplication.findMany({
+      where: { ticket_token: ticketToken, profile_id: profile.id, status: { not: "cancelled" } },
+      select: { content: { select: { title: true, starts_at: true, location: true } } },
+      orderBy: { created_at: "asc" },
+    }).catch(() => []);
+    await sendTicketEmail(
+      profile.email ?? "",
+      profile.name,
+      ticketToken,
+      myApps.map((a) => a.content).filter(Boolean),
+    );
   }
   revalidatePath("/admin/kaikan");
 
@@ -272,6 +345,27 @@ export async function applyForKaikanContents(formData: FormData) {
   // 一部スキップがあればチケット面に警告表示（申し込めたつもりの欠落を防ぐ）
   const q = skippedTitles.length > 0 ? `?skipped=${encodeURIComponent(skippedTitles.slice(0, 6).join("、"))}` : "";
   redirect(`/forum/kaikan/ticket/${ticketToken}${q}`);
+}
+
+/** 本人：申込のキャンセル（チケットページから・受付前のみ可）。 */
+export async function cancelKaikanApplication(formData: FormData) {
+  const id = String(formData.get("id") || "").trim();
+  const ticketToken = String(formData.get("ticketToken") || "").trim();
+  if (!id) return;
+
+  const profile = await getCurrentProfile();
+  if (!profile) redirect(`/login?next=${encodeURIComponent(ticketToken ? `/forum/kaikan/ticket/${ticketToken}` : "/mypage")}`);
+
+  // 本人の confirmed のみキャンセル可（受付済み・他人の申込は不可）。アトミック更新。
+  await prisma.kaikanApplication.updateMany({
+    where: { id, profile_id: profile.id, status: "confirmed" },
+    data: { status: "cancelled" },
+  });
+
+  revalidatePath("/forum/kaikan");
+  revalidatePath("/mypage");
+  revalidatePath("/admin/kaikan");
+  if (ticketToken) revalidatePath(`/forum/kaikan/ticket/${ticketToken}`);
 }
 
 /** 管理者：コンテンツ新設。 */
