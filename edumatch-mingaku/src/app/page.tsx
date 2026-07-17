@@ -130,7 +130,7 @@ export default async function HomePage() {
                     <Ticket className="h-5 w-5" />
                   </span>
                   <span className="min-w-0">
-                    <span className="block text-sm font-bold">教育AIサミット＠衆議院第一会館</span>
+                    <span className="block text-sm font-bold">教育AIサミット2026＠衆議院第一議員会館</span>
                     <span className="block text-xs text-muted-foreground">チケット受付中 → 電子チケット(QR)</span>
                   </span>
                   <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-primary transition-transform group-hover:translate-x-1" />

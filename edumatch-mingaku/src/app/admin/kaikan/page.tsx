@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireAdminOrKaikanStaff } from "@/lib/auth";
-import { createKaikanContent, setKaikanContentPublished, generateKaikanInviteCodes, toggleKaikanInviteCode, deleteKaikanInviteCode, importKaikanContentsFromCsv, addKaikanStaff, bulkAddKaikanStaff, removeKaikanStaff } from "@/app/_actions/kaikan";
+import { createKaikanContent, setKaikanContentPublished, generateKaikanInviteCodes, toggleKaikanInviteCode, deleteKaikanInviteCode, importKaikanContentsFromCsv, addKaikanStaff, bulkAddKaikanStaff, removeKaikanStaff, adminCancelKaikanApplication, adminRestoreKaikanApplication } from "@/app/_actions/kaikan";
 import { KaikanCheckinPanel } from "@/components/kaikan/kaikan-checkin-panel";
 
 export const dynamic = "force-dynamic";
@@ -12,9 +12,9 @@ function fmtDate(d: Date | null): string {
   return new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(d);
 }
 
-export default async function AdminKaikanPage({ searchParams }: { searchParams: Promise<{ tab?: string; token?: string; staffError?: string; staffAdded?: string; staffMissed?: string }> }) {
+export default async function AdminKaikanPage({ searchParams }: { searchParams: Promise<{ tab?: string; token?: string; staffError?: string; staffAdded?: string; staffMissed?: string; pError?: string }> }) {
   const { isStaff: isStaffUser } = await requireAdminOrKaikanStaff();
-  const { tab, token, staffError, staffAdded, staffMissed } = await searchParams;
+  const { tab, token, staffError, staffAdded, staffMissed, pError } = await searchParams;
   // スタッフ（非ADMIN）は当日受付タブのみ利用可
   if (isStaffUser && tab !== "checkin") redirect("/admin/kaikan?tab=checkin");
   const isCheckin = tab === "checkin";
@@ -228,7 +228,20 @@ export default async function AdminKaikanPage({ searchParams }: { searchParams: 
       ) : isParticipants ? (
       <section className="mt-6">
         <div className="rounded-xl border bg-background p-5">
-          <h2 className="mb-3 text-sm font-bold">参加者一覧（{participants.length}件）</h2>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-bold">参加者一覧（{participants.length}件）</h2>
+            <div className="flex gap-2">
+              <a href="/api/kaikan/admin/participants/export" download className="rounded-md border border-input bg-background px-3 py-1.5 text-xs font-bold transition hover:bg-muted">
+                CSVダウンロード
+              </a>
+              <a href="/admin/kaikan/participants/print" target="_blank" rel="noopener" className="rounded-md border border-input bg-background px-3 py-1.5 text-xs font-bold transition hover:bg-muted">
+                PDF出力（印刷ビュー）
+              </a>
+            </div>
+          </div>
+          {pError && (
+            <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-red-700">{decodeURIComponent(pError)}</p>
+          )}
           {participants.length === 0 ? (
             <p className="text-sm text-muted-foreground">まだ参加申込がありません。</p>
           ) : (
@@ -240,21 +253,39 @@ export default async function AdminKaikanPage({ searchParams }: { searchParams: 
                     <th className="py-1 pr-3">メール</th>
                     <th className="py-1 pr-3">コンテンツ</th>
                     <th className="py-1 pr-3">状態</th>
-                    <th className="py-1">申込日時</th>
+                    <th className="py-1 pr-3">申込日時</th>
+                    <th className="py-1">操作</th>
                   </tr>
                 </thead>
                 <tbody>
                   {participants.map((p) => (
-                    <tr key={p.id} className="border-t">
+                    <tr key={p.id} className={`border-t ${p.status === "cancelled" ? "text-muted-foreground" : ""}`}>
                       <td className="py-1.5 pr-3 font-medium">{p.name}</td>
                       <td className="py-1.5 pr-3 text-muted-foreground">{p.email || "—"}</td>
                       <td className="py-1.5 pr-3">{p.content?.title || "—"}</td>
                       <td className="py-1.5 pr-3">
-                        <span className={p.status === "checked_in" ? "text-emerald-600" : "text-amber-600"}>
+                        <span className={p.status === "checked_in" ? "text-emerald-600" : p.status === "cancelled" ? "text-muted-foreground" : "text-amber-600"}>
                           {p.status === "checked_in" ? "受付済" : p.status === "cancelled" ? "取消" : "受付前"}
                         </span>
                       </td>
-                      <td className="py-1.5 text-muted-foreground">{fmtDate(p.created_at)}</td>
+                      <td className="py-1.5 pr-3 text-muted-foreground">{fmtDate(p.created_at)}</td>
+                      <td className="py-1.5">
+                        {p.status === "cancelled" ? (
+                          <form action={adminRestoreKaikanApplication} className="inline">
+                            <input type="hidden" name="id" value={p.id} />
+                            <button type="submit" className="rounded-full border border-emerald-300 px-2 py-0.5 text-[10px] font-bold text-emerald-700 transition hover:bg-emerald-50">
+                              復帰
+                            </button>
+                          </form>
+                        ) : (
+                          <form action={adminCancelKaikanApplication} className="inline">
+                            <input type="hidden" name="id" value={p.id} />
+                            <button type="submit" className="rounded-full border border-red-200 px-2 py-0.5 text-[10px] font-bold text-red-600 transition hover:bg-red-50">
+                              キャンセル
+                            </button>
+                          </form>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

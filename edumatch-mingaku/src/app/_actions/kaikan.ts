@@ -202,17 +202,17 @@ async function sendTicketEmail(
     await resend.emails.send({
       from: FROM_EMAIL,
       to: email,
-      subject: "【エデュマッチ】電子チケットのご案内（教育AIサミット）",
+      subject: "【エデュマッチ】電子チケットのご案内（教育AIサミット2026）",
       attachments: [{ filename: "ticket-qr.png", content: qrPng, contentId: "ticket-qr" }],
       html: `
 <div style="max-width:480px;margin:0 auto;font-family:'Hiragino Sans','Noto Sans JP',sans-serif;">
   <p style="font-size:14px;color:#374151;">${escapeHtml(name)} 様</p>
-  <p style="font-size:14px;color:#374151;">教育AIサミット＠衆議院第一会館へのお申込みありがとうございます。<br>当日は受付でこちらの電子チケットをご提示ください。</p>
+  <p style="font-size:14px;color:#374151;">教育AIサミット2026＠衆議院第一議員会館へのお申込みありがとうございます。<br>当日は受付でこちらの電子チケットをご提示ください。</p>
 
   <div style="border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;margin:20px 0;">
     <div style="background:linear-gradient(135deg,#6d28d9,#7c3aed);padding:16px 20px;">
       <div style="color:#ede9fe;font-size:11px;font-weight:bold;letter-spacing:1px;">電子チケット</div>
-      <div style="color:#ffffff;font-size:17px;font-weight:bold;margin-top:4px;">教育AIサミット@衆議院第一会館</div>
+      <div style="color:#ffffff;font-size:17px;font-weight:bold;margin-top:4px;">教育AIサミット2026＠衆議院第一議員会館</div>
     </div>
     <div style="padding:20px;text-align:center;background:#ffffff;">
       <img src="cid:ticket-qr" alt="チケットQRコード" width="200" height="200" style="display:block;margin:0 auto;border:1px solid #eee;border-radius:12px;" />
@@ -252,6 +252,9 @@ export async function applyForKaikanContent(formData: FormData) {
   const profile = await getCurrentProfile();
   if (!profile) redirect(`/login?next=${encodeURIComponent(`/forum/kaikan/${contentId}`)}`);
 
+  // 招待コード入力済みが申込の前提（共通コード方式）
+  if (!(await hasRedeemedInvite(profile.id))) redirect("/forum/kaikan?error=invite");
+
   const content = await prisma.kaikanContent.findUnique({ where: { id: contentId } });
   if (!content || !content.is_published) redirect(`/forum/kaikan?error=closed`);
 
@@ -290,6 +293,9 @@ export async function applyForKaikanContents(formData: FormData) {
 
   const profile = await getCurrentProfile();
   if (!profile) redirect(`/login?next=${encodeURIComponent(`/forum/kaikan/confirm?ids=${contentIds.join(",")}`)}`);
+
+  // 招待コード入力済みが申込の前提（共通コード方式）
+  if (!(await hasRedeemedInvite(profile.id))) redirect("/forum/kaikan?error=invite");
 
   // 既存の自分の申込（このアカウント）を見て、チケットを流用しつつ二重を避ける
   const existingApps = await prisma.kaikanApplication.findMany({
@@ -345,6 +351,37 @@ export async function applyForKaikanContents(formData: FormData) {
   // 一部スキップがあればチケット面に警告表示（申し込めたつもりの欠落を防ぐ）
   const q = skippedTitles.length > 0 ? `?skipped=${encodeURIComponent(skippedTitles.slice(0, 6).join("、"))}` : "";
   redirect(`/forum/kaikan/ticket/${ticketToken}${q}`);
+}
+
+/** 管理者：申込を手動キャンセルする。 */
+export async function adminCancelKaikanApplication(formData: FormData) {
+  await requireAdmin();
+  const id = String(formData.get("id") || "").trim();
+  if (!id) return;
+  await prisma.kaikanApplication.updateMany({
+    where: { id, status: { not: "cancelled" } },
+    data: { status: "cancelled" },
+  });
+  revalidatePath("/admin/kaikan");
+  revalidatePath("/forum/kaikan");
+}
+
+/** 管理者：キャンセル済み申込を復帰させる（キャンセルのキャンセル）。 */
+export async function adminRestoreKaikanApplication(formData: FormData) {
+  await requireAdmin();
+  const id = String(formData.get("id") || "").trim();
+  if (!id) return;
+  try {
+    await prisma.kaikanApplication.updateMany({
+      where: { id, status: "cancelled" },
+      data: { status: "confirmed", checked_in_at: null },
+    });
+  } catch {
+    // 同一ユーザーが同コンテンツに別の有効申込を持つとユニーク制約で失敗する
+    redirect(`/admin/kaikan?tab=participants&pError=${encodeURIComponent("復帰できませんでした（同じユーザーの有効な申込が既に存在します）")}`);
+  }
+  revalidatePath("/admin/kaikan");
+  revalidatePath("/forum/kaikan");
 }
 
 /** 本人：申込のキャンセル（チケットページから・受付前のみ可）。 */

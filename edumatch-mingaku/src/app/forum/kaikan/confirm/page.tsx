@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { CalendarDays, MapPin, Ticket, ChevronDown, ChevronLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentProfile } from "@/lib/auth";
-import { applyForKaikanContents } from "@/app/_actions/kaikan";
+import { applyForKaikanContents, hasRedeemedInvite } from "@/app/_actions/kaikan";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +19,9 @@ export default async function KaikanConfirmPage({ searchParams }: { searchParams
 
   const profile = await getCurrentProfile().catch(() => null);
   if (!profile) redirect(`/login?next=${encodeURIComponent(`/forum/kaikan/confirm?ids=${idList.join(",")}`)}`);
+
+  // 招待コード未入力なら一覧のゲートへ
+  if (!(await hasRedeemedInvite(profile.id).catch(() => false))) redirect("/forum/kaikan?error=invite");
 
   const contents = await prisma.kaikanContent.findMany({
     where: { id: { in: idList }, is_published: true },
@@ -43,7 +46,7 @@ export default async function KaikanConfirmPage({ searchParams }: { searchParams
         <ChevronLeft className="h-3.5 w-3.5" /> コンテンツ選択へ戻る
       </Link>
       <header className="mb-5 mt-3">
-        <p className="text-xs font-bold tracking-wide text-primary">教育AIサミット＠衆議院第一会館</p>
+        <p className="text-xs font-bold tracking-wide text-primary">教育AIサミット2026＠衆議院第一議員会館</p>
         <h1 className="mt-1 text-2xl font-bold">申込内容の確認</h1>
         <p className="mt-2 text-sm text-muted-foreground">内容を確認して申し込むと、選んだ{contents.length}件をまとめた電子チケット（QR）が発行されます。</p>
       </header>

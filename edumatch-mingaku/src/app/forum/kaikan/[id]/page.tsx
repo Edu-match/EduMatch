@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 import { CalendarDays, MapPin, Users, Ticket, LogIn, ChevronLeft, ChevronDown } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentProfile } from "@/lib/auth";
-import { applyForKaikanContent } from "@/app/_actions/kaikan";
+import { applyForKaikanContent, hasRedeemedInvite } from "@/app/_actions/kaikan";
+import { InviteCodeGate } from "@/components/kaikan/invite-code-gate";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,7 @@ export default async function KaikanApplyPage({ params, searchParams }: { params
   const remaining = content.capacity != null ? Math.max(0, content.capacity - applied) : null;
 
   const profile = await getCurrentProfile().catch(() => null);
+  const invited = profile ? await hasRedeemedInvite(profile.id).catch(() => false) : false;
   const general = profile
     ? await prisma.generalProfile.findUnique({ where: { id: profile.id }, select: { legal_name: true, organization: true } }).catch(() => null)
     : null;
@@ -86,6 +88,8 @@ export default async function KaikanApplyPage({ params, searchParams }: { params
               <LogIn className="h-4 w-4" /> ログインして申し込む
             </Link>
           </div>
+        ) : !invited ? (
+          <InviteCodeGate />
         ) : (
           <form action={applyForKaikanContent} className="space-y-4 rounded-2xl border bg-card p-5">
             <input type="hidden" name="contentId" value={content.id} />

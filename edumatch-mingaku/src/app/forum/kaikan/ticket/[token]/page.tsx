@@ -58,7 +58,7 @@ export default async function KaikanTicketPage({ params, searchParams }: { param
           <p className="flex items-center gap-1.5 text-[11px] font-bold tracking-wide opacity-90">
             <Ticket className="h-3.5 w-3.5" /> 電子チケット
           </p>
-          <h1 className="mt-1.5 text-lg font-bold leading-snug">教育AIサミット@衆議院第一会館</h1>
+          <h1 className="mt-1.5 text-lg font-bold leading-snug">教育AIサミット2026＠衆議院第一議員会館</h1>
           <p className="mt-1 text-xs opacity-90">{apps.length}件のプログラムに参加</p>
         </div>
 
