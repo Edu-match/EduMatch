@@ -10,6 +10,7 @@ export type SelectableContent = {
   title: string;
   description: string;
   location: string;
+  speaker: string;
   startsAt: string | null;
   endsAt: string | null;
   capacity: number | null;
@@ -366,6 +367,7 @@ export function KaikanTimetable({
                     {start && end ? ` · ${fmtTime(start)}〜${fmtTime(end)}` : " · 時間未定"}
                   </p>
                   <p className="mt-0.5 font-bold leading-snug">{c.title}</p>
+                  {c.speaker && <p className="mt-0.5 text-[11px] text-muted-foreground">登壇者：{c.speaker}</p>}
                 </button>
               );
             })}

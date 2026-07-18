@@ -32,10 +32,10 @@ export async function GET() {
   try {
     const apps = await prisma.kaikanApplication.findMany({
       orderBy: [{ created_at: "asc" }],
-      include: { content: { select: { title: true, starts_at: true, location: true } } },
+      include: { content: { select: { title: true, starts_at: true, location: true, speaker: true } } },
     });
 
-    const header = ["申込日時", "氏名", "メール", "プログラム", "開始時刻", "会場", "状態", "受付時刻", "受付番号", "事前質問・期待"];
+    const header = ["申込日時", "氏名", "メール", "プログラム", "登壇者", "開始時刻", "会場", "状態", "受付時刻", "受付番号", "事前質問・期待"];
     const rows = apps.map((a) => {
       const receipt = (a.ticket_token ?? a.qr_token).slice(0, 8).toUpperCase();
       return [
@@ -43,6 +43,7 @@ export async function GET() {
         a.name,
         a.email,
         a.content?.title ?? "",
+        a.content?.speaker ?? "",
         a.content?.starts_at ? fmtJst.format(a.content.starts_at) : "",
         a.content?.location ?? "",
         statusLabel(a.status),

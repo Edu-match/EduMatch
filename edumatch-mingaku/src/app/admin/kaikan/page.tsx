@@ -315,6 +315,7 @@ export default async function AdminKaikanPage({ searchParams }: { searchParams: 
           <input name="title" required placeholder="タイトル（必須）" className="rounded-md border border-input px-3 py-2 text-sm sm:col-span-2" />
           <textarea name="description" placeholder="説明" rows={2} className="resize-none rounded-md border border-input px-3 py-2 text-sm sm:col-span-2" />
           <input name="location" placeholder="場所（例：第一議員会館 大会議室）" className="rounded-md border border-input px-3 py-2 text-sm sm:col-span-2" />
+          <textarea name="speaker" placeholder="登壇者（複数は改行または／で区切る）" rows={2} className="resize-none rounded-md border border-input px-3 py-2 text-sm sm:col-span-2" />
           <label className="text-xs text-muted-foreground">開始<input name="starts_at" type="datetime-local" className="mt-1 block w-full rounded-md border border-input px-3 py-2 text-sm" /></label>
           <label className="text-xs text-muted-foreground">終了（時間重複の判定に使用）<input name="ends_at" type="datetime-local" className="mt-1 block w-full rounded-md border border-input px-3 py-2 text-sm" /></label>
           <input name="capacity" type="number" min={0} placeholder="定員（空欄=無制限）" className="rounded-md border border-input px-3 py-2 text-sm" />
@@ -362,6 +363,7 @@ export default async function AdminKaikanPage({ searchParams }: { searchParams: 
                   <p className="text-xs text-muted-foreground">
                     {fmtDate(c.starts_at)}{c.ends_at ? `–${fmtDate(c.ends_at)}` : ""} ・ {c.location || "場所未設定"}
                   </p>
+                  {c.speaker && <p className="text-xs text-muted-foreground">登壇者：{c.speaker}</p>}
                 </div>
                 <form action={setKaikanContentPublished}>
                   <input type="hidden" name="id" value={c.id} />

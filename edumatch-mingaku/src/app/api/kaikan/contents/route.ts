@@ -17,6 +17,7 @@ export async function GET() {
       title: r.title,
       description: r.description,
       location: r.location,
+      speaker: r.speaker,
       startsAt: r.starts_at,
       capacity: r.capacity,
       applied: r._count.applications,

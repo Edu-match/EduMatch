@@ -69,6 +69,7 @@ export default async function KaikanConfirmPage({ searchParams }: { searchParams
             {contents.map((c) => (
               <li key={c.id} className="rounded-xl border bg-card p-4">
                 <p className="font-bold">{c.title}</p>
+                {c.speaker && <p className="mt-0.5 text-[11px] text-muted-foreground">登壇者：{c.speaker}</p>}
                 <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
                   {c.starts_at && <span className="inline-flex items-center gap-1"><CalendarDays className="h-3 w-3" />{fmtDate(c.starts_at)}{c.ends_at ? ` – ${fmtDate(c.ends_at)}` : ""}</span>}
                   {c.location && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{c.location}</span>}

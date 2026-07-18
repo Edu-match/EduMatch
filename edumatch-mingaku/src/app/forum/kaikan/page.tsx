@@ -40,6 +40,7 @@ export default async function KaikanTicketsPage({ searchParams }: { searchParams
     title: c.title,
     description: c.description,
     location: c.location,
+    speaker: c.speaker,
     startsAt: c.starts_at ? c.starts_at.toISOString() : null,
     endsAt: c.ends_at ? c.ends_at.toISOString() : null,
     capacity: c.capacity,

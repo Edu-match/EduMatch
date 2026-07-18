@@ -167,7 +167,7 @@ async function sendTicketEmail(
   email: string,
   name: string,
   ticketToken: string,
-  sessions: { title: string; starts_at: Date | null; location: string }[],
+  sessions: { title: string; starts_at: Date | null; location: string; speaker: string }[],
 ) {
   const key = process.env.RESEND_API_KEY;
   if (!key) {
@@ -193,6 +193,7 @@ async function sendTicketEmail(
         const meta = [when, s.location].filter(Boolean).join(" ・ ");
         return `<tr><td style="padding:10px 14px;border-top:1px solid #eee;">
           <div style="font-weight:bold;font-size:14px;color:#1f2937;">${escapeHtml(s.title)}</div>
+          ${s.speaker ? `<div style="font-size:12px;color:#6b7280;margin-top:2px;">登壇者：${escapeHtml(s.speaker)}</div>` : ""}
           ${meta ? `<div style="font-size:12px;color:#6b7280;margin-top:2px;">${escapeHtml(meta)}</div>` : ""}
         </td></tr>`;
       })
@@ -288,7 +289,7 @@ export async function applyForKaikanContent(formData: FormData) {
   // チケットに載る全プログラム（既存分含む）をメールに記載
   const myApps = await prisma.kaikanApplication.findMany({
     where: { ticket_token: ticketToken, profile_id: profile.id, status: { not: "cancelled" } },
-    select: { content: { select: { title: true, starts_at: true, location: true } } },
+    select: { content: { select: { title: true, starts_at: true, location: true, speaker: true } } },
     orderBy: { created_at: "asc" },
   }).catch(() => []);
   await sendTicketEmail(
@@ -348,7 +349,7 @@ export async function applyForKaikanContents(formData: FormData) {
     // チケットに載る全プログラム（既存分含む）をメールに記載
     const myApps = await prisma.kaikanApplication.findMany({
       where: { ticket_token: ticketToken, profile_id: profile.id, status: { not: "cancelled" } },
-      select: { content: { select: { title: true, starts_at: true, location: true } } },
+      select: { content: { select: { title: true, starts_at: true, location: true, speaker: true } } },
       orderBy: { created_at: "asc" },
     }).catch(() => []);
     await sendTicketEmail(
@@ -428,6 +429,7 @@ export async function createKaikanContent(formData: FormData) {
   if (!title) throw new Error("タイトルは必須です");
   const description = String(formData.get("description") || "").trim();
   const location = String(formData.get("location") || "").trim();
+  const speaker = String(formData.get("speaker") || "").trim();
   const startsAtRaw = String(formData.get("starts_at") || "").trim();
   const endsAtRaw = String(formData.get("ends_at") || "").trim();
   const capacityRaw = String(formData.get("capacity") || "").trim();
@@ -438,6 +440,7 @@ export async function createKaikanContent(formData: FormData) {
       title,
       description,
       location,
+      speaker,
       starts_at: startsAtRaw ? parseJstDate(startsAtRaw) : null,
       ends_at: endsAtRaw ? parseJstDate(endsAtRaw) : null,
       capacity: Number.isNaN(capNum) ? null : Math.max(0, capNum),
@@ -463,6 +466,7 @@ export async function importKaikanContentsFromCsv(formData: FormData) {
   const titleIdx = header.indexOf("title");
   const descIdx = header.indexOf("description");
   const locIdx = header.indexOf("location");
+  const speakerIdx = header.indexOf("speaker");
   const startIdx = header.indexOf("starts_at");
   const endIdx = header.indexOf("ends_at");
   const capIdx = header.indexOf("capacity");
@@ -496,6 +500,7 @@ export async function importKaikanContentsFromCsv(formData: FormData) {
         title,
         description: cols[descIdx] ?? "",
         location: cols[locIdx] ?? "",
+        speaker: speakerIdx >= 0 ? (cols[speakerIdx] ?? "") : "",
         starts_at: cols[startIdx] ? parseJstDate(cols[startIdx]) : null,
         ends_at: cols[endIdx] ? parseJstDate(cols[endIdx]) : null,
         capacity: Number.isNaN(csvCap) ? null : Math.max(0, csvCap),

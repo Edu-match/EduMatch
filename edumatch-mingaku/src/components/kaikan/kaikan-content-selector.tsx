@@ -10,6 +10,7 @@ export type SelectableContent = {
   title: string;
   description: string;
   location: string;
+  speaker: string;
   startsAt: string | null;
   endsAt: string | null;
   /// session | workshop | keynote
@@ -145,6 +146,7 @@ export function KaikanContentSelector({ contents, appliedIds }: { contents: Sele
                             {c.location && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{c.location}</span>}
                             {c.capacity != null && <span className="inline-flex items-center gap-1"><Users className="h-3 w-3" />{c.applied}/{c.capacity}</span>}
                           </span>
+                          {c.speaker && <span className="mt-1 block text-[11px] text-muted-foreground">登壇者：{c.speaker}</span>}
                           {c.description && <span className="mt-1.5 block line-clamp-2 text-sm text-foreground/80">{c.description}</span>}
                         </span>
                       </span>

@@ -68,6 +68,7 @@ export default async function KaikanApplyPage({ params, searchParams }: { params
               <span className="inline-flex items-center gap-1.5"><Users className="h-4 w-4" />定員 {content.capacity}名{remaining != null && <span className={remaining <= 5 ? "font-bold text-amber-600" : ""}>（残り{remaining}）</span>}</span>
             )}
           </div>
+          {content.speaker && <p className="text-sm font-medium text-foreground/90">登壇者：{content.speaker}</p>}
           {content.description && <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/85">{content.description}</p>}
         </div>
       </section>

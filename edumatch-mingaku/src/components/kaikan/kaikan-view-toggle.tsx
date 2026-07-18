@@ -155,6 +155,9 @@ export function KaikanViewToggle({ contents, appliedIds }: Props) {
                     {startTime && endTime && ` · ${startTime}〜${endTime}`}
                   </p>
                   <h3 className="mt-1 text-sm font-bold leading-snug line-clamp-2">{c.title}</h3>
+                  {c.speaker && (
+                    <p className="mt-1 text-xs text-muted-foreground line-clamp-2">登壇者：{c.speaker}</p>
+                  )}
                   {c.description && (
                     <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{c.description}</p>
                   )}
