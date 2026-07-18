@@ -202,7 +202,7 @@ async function sendTicketEmail(
     await resend.emails.send({
       from: FROM_EMAIL,
       to: email,
-      subject: "【エデュマッチ】電子チケットのご案内（教育AIサミット2026＠衆議院第一議員会館）",
+      subject: "【AIUEO BASE】電子チケットのご案内（教育AIサミット2026＠衆議院第一議員会館）",
       attachments: [{ filename: "ticket-qr.png", content: qrPng, contentId: "ticket-qr" }],
       html: `
 <div style="max-width:480px;margin:0 auto;font-family:'Hiragino Sans','Noto Sans JP',sans-serif;">
@@ -233,7 +233,7 @@ async function sendTicketEmail(
   </div>
 
   <p style="font-size:11px;color:#9ca3af;">※QRコードが表示されない場合は「チケットを表示する」ボタンからもご提示いただけます。<br>※このメールに心当たりがない場合は破棄してください。</p>
-  <p style="font-size:12px;color:#6b7280;">— エデュマッチ運営</p>
+  <p style="font-size:12px;color:#6b7280;">— AIUEO BASE運営</p>
 </div>
       `.trim(),
     });
@@ -522,7 +522,7 @@ export async function setKaikanContentPublished(formData: FormData) {
 
 /* ───────── スタッフロール ───────── */
 
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "エデュマッチ <onboarding@resend.dev>";
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "AIUEO BASE <onboarding@resend.dev>";
 
 async function sendStaffEmail(email: string, name: string) {
   const key = process.env.RESEND_API_KEY;
@@ -536,13 +536,13 @@ async function sendStaffEmail(email: string, name: string) {
   await resend.emails.send({
     from: FROM_EMAIL,
     to: email,
-    subject: "【エデュマッチ】イベントスタッフに登録されました",
+    subject: "【AIUEO BASE】イベントスタッフに登録されました",
     html: `
       <p>${safeName} 様</p>
       <p>イベントの運営スタッフとして登録されました。<br>
       当日は管理画面から電子チケットの読み取り（QRチェックイン）を行うことができます。</p>
       <p>ご不明点があれば運営までお問い合わせください。</p>
-      <p>— エデュマッチ運営</p>
+      <p>— AIUEO BASE運営</p>
     `.trim(),
   }).catch((e) => console.error("[kaikan/staff-email]", e));
 }
@@ -559,7 +559,7 @@ export async function addKaikanStaff(formData: FormData) {
     select: { id: true, name: true, email: true },
   });
   if (!profile) {
-    redirect(`/admin/kaikan?tab=staff&staffError=${encodeURIComponent(`メール「${email}」のアカウントが見つかりません。本人がエデュマッチに登録済みか確認してください。`)}`);
+    redirect(`/admin/kaikan?tab=staff&staffError=${encodeURIComponent(`メール「${email}」のアカウントが見つかりません。本人がAIUEO BASEに登録済みか確認してください。`)}`);
   }
 
   const existing = await prisma.kaikanStaff.findUnique({ where: { profile_id: profile.id } });

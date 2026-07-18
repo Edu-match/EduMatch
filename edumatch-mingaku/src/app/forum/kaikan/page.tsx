@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "教育AIサミット2026＠衆議院第一議員会館 チケット申込 | エデュマッチ",
+  title: "教育AIサミット2026＠衆議院第一議員会館 チケット申込 | AIUEO BASE",
   description: "教育AIサミット2026＠衆議院第一議員会館のコンテンツを選んで申し込み、電子チケット（QR）を受け取れます。複数まとめてお申し込みいただけます。",
 };
 

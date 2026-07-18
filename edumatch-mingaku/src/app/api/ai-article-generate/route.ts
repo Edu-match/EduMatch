@@ -22,7 +22,7 @@ const ARTICLE_CATEGORIES = [
   "事務局からのお知らせ", "未分類",
 ] as const;
 
-const SYSTEM_PROMPT = `あなたはEduMatch（教育EdTechマッチング）向けの記事ライターです。入力テキストをもとに、教員・塾・学校・EdTech担当者向けの記事をJSONで出力します。
+const SYSTEM_PROMPT = `あなたはAIUEO BASE（教育EdTechマッチング）向けの記事ライターです。入力テキストをもとに、教員・塾・学校・EdTech担当者向けの記事をJSONで出力します。
 
 ## 出力（このJSONのみ）
 
@@ -381,7 +381,7 @@ export async function POST(req: NextRequest) {
         {
           role: "user",
           content: [
-            `以下のWebページ（URL: ${parsedUrl.toString()}）の内容を元に、EduMatch向け記事を生成してください。`,
+            `以下のWebページ（URL: ${parsedUrl.toString()}）の内容を元に、AIUEO BASE向け記事を生成してください。`,
             ...(additionalPrompt?.trim()
               ? [`\n## 追加条件・指示\n${additionalPrompt.trim()}`]
               : []),

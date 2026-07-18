@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, Chrome, Loader2, Lock, Mail, ShieldAlert } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/utils/supabase/client";
 
-/** 特設サイトの管理者ログイン画面。エデュマッチと同じSupabaseアカウントでログインしADMINのみ入場。 */
+/** 特設サイトの管理者ログイン画面。AIUEO BASEと同じSupabaseアカウントでログインしADMINのみ入場。 */
 export function InteropAdminGate({ notAdmin = false }: { notAdmin?: boolean }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -54,7 +54,7 @@ export function InteropAdminGate({ notAdmin = false }: { notAdmin?: boolean }) {
         <div className="mb-6">
           <h1 className="text-2xl font-bold">管理画面ログイン</h1>
           <p className="mt-1.5 text-sm text-white/55">
-            エデュマッチと同じアカウントでログインしてください。
+            AIUEO BASEと同じアカウントでログインしてください。
           </p>
         </div>
 

@@ -64,8 +64,8 @@ export async function POST(request: NextRequest) {
       const from = fromRaw
         ? fromRaw.includes("<")
           ? fromRaw
-          : `エデュマッチ <${fromRaw}>`
-        : "エデュマッチ <onboarding@resend.dev>";
+          : `AIUEO BASE <${fromRaw}>`
+        : "AIUEO BASE <onboarding@resend.dev>";
 
       if (apiKey) {
         const resend = new Resend(apiKey);
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
         const sendResult = await resend.emails.send({
           from,
           to: email,
-          subject: `【エデュマッチ】パスワードの再設定（${sentAt}）`,
+          subject: `【AIUEO BASE】パスワードの再設定（${sentAt}）`,
           html: `
             <h2>パスワードの再設定</h2>
             <p>パスワードを再設定するには、以下のリンクをクリックしてください。</p>

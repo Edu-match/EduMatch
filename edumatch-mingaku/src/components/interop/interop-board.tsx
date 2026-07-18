@@ -436,7 +436,7 @@ export function InteropBoard({
           );
         })()}
 
-        {/* ════ 関連コンテンツ（本体エデュマッチから検索） ════ */}
+        {/* ════ 関連コンテンツ（本体AIUEO BASEから検索） ════ */}
         <InteropContentCarousel subId={sub.id} topicId={topic?.id} accent={accent} />
 
         {/* ════ その下：投稿一覧 ════ */}

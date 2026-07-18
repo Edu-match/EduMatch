@@ -138,17 +138,17 @@ export async function markInAppNotificationReadFromForm(formData: FormData): Pro
 }
 
 /**
- * 「エデュマッチ」のプレオープンお知らせ以外をすべてクリア
+ * 「AIUEO BASE」のプレオープンお知らせ以外をすべてクリア
  */
 export async function clearOtherNotifications(): Promise<void> {
   const user = await requireAuth();
   
-  // 「エデュマッチ」または「プレオープン」を含む通知を取得
+  // 「AIUEO BASE」または「プレオープン」を含む通知を取得
   const preOpenNotifications = await prisma.inAppNotification.findMany({
     where: {
       user_id: user.id,
       OR: [
-        { title: { contains: 'エデュマッチ' } },
+        { title: { contains: 'AIUEO BASE' } },
         { title: { contains: 'プレオープン' } },
       ],
     },

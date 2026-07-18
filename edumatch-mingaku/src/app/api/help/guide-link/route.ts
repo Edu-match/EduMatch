@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-const HELP_GUIDE_TITLE = "エデュマッチ 利用ガイド";
+const HELP_GUIDE_TITLE = "AIUEO BASE 利用ガイド";
 
 export const dynamic = "force-dynamic";
 

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 
 export const metadata = {
-  title: "AIチャットの利用回数と回復について | エデュマッチ",
+  title: "AIチャットの利用回数と回復について | AIUEO BASE",
   description: "AIナビゲーター（チャット）の利用回数制限と、回数が回復する仕組みについて説明します。",
 };
 

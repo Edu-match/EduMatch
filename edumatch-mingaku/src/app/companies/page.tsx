@@ -43,7 +43,7 @@ export default async function CompaniesPage() {
       <div className="mb-8">
         <h1 className="display-title text-3xl md:text-4xl mb-2">掲載企業一覧</h1>
         <p className="text-muted-foreground">
-          エデュマッチに掲載している企業（サービス提供者）一覧です
+          AIUEO BASEに掲載している企業（サービス提供者）一覧です
         </p>
       </div>
 

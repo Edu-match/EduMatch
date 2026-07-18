@@ -119,7 +119,7 @@ export async function RightSidebar() {
             href="/about"
             className="block px-3 py-2.5 text-sm hover:bg-muted transition-colors"
           >
-            エデュマッチについて
+            AIUEO BASEについて
           </Link>
           <Link
             href="/terms"

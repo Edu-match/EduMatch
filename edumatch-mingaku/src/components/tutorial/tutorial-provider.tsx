@@ -424,7 +424,7 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
             <p className="text-3xl mb-2">🎉</p>
             <p className="text-lg font-bold text-white">チュートリアル完了！</p>
             <p className="text-sm text-orange-100 mt-1">
-              EduMatchをお楽しみください
+              AIUEO BASEをお楽しみください
             </p>
             <div className="mt-3">
               <Link

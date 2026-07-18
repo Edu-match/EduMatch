@@ -12,7 +12,7 @@ const BASIC_AUTH_USER = process.env.BASIC_AUTH_USER;
 const BASIC_AUTH_PASSWORD = process.env.BASIC_AUTH_PASSWORD;
 const MAINTENANCE_BYPASS_COOKIE = "edumatch_maintenance_bypass";
 
-const AUTH_REALM = "EduMatch";
+const AUTH_REALM = "AIUEO BASE";
 
 function validateBasicAuth(request: NextRequest): boolean {
   // 資格情報が未設定の場合は常に拒否

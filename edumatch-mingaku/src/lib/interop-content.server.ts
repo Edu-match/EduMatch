@@ -7,7 +7,7 @@ import {
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://edu-match.com").replace(/\/$/, "");
 
-/** 相対hrefを本体エデュマッチの絶対URLにし、計測用パラメータを付ける */
+/** 相対hrefを本体AIUEO BASEの絶対URLにし、計測用パラメータを付ける */
 export function absolutizeHref(href: string): string {
   const base = /^https?:\/\//.test(href) ? href : `${SITE_URL}${href.startsWith("/") ? "" : "/"}${href}`;
   try {

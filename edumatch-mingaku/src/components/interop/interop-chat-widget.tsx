@@ -12,7 +12,7 @@ type ChatMsg = {
   ragDocRefs?: DocRef[];
 };
 
-// エデュマッチ本サイトに合わせたオレンジ配色
+// AIUEO BASE本サイトに合わせたオレンジ配色
 const ORANGE_GRAD = "linear-gradient(135deg, rgba(255,150,56,0.97) 0%, rgba(236,104,26,0.97) 100%)";
 
 // 思考プロセスの段階表示（リアルタイム検索→考え→回答）

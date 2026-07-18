@@ -462,7 +462,7 @@ function ContentSearchPanel({ subId, topicId, kinds, query, onKindsChange, onQue
       <button type="button" onClick={() => setExpanded((v) => !v)}
         className="flex w-full items-center gap-1.5 text-[11px] font-semibold text-white/55 hover:text-white/80">
         {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-        エデュマッチ コンテンツ検索・設定
+        AIUEO BASE コンテンツ検索・設定
         {kinds.length > 0 && <span className="rounded-full bg-indigo-400/20 px-1.5 text-[10px] text-indigo-300">{kinds.length}種別</span>}
       </button>
       {expanded && (

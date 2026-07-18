@@ -208,7 +208,7 @@ function PromptPanel({
 // ─── コードのデフォルトプロンプト（src/app/api/chat/route.ts と同期） ────────
 
 const DEFAULT_PROMPTS: Record<ChatModeKey, string> = {
-  navigator: `あなたは教育ICT・EdTechに詳しいAIアシスタントです。このサイト（エデュマッチ）は教育サービス・教材のマッチングプラットフォームです。
+  navigator: `あなたは教育ICT・EdTechに詳しいAIアシスタントです。このサイト（AIUEO BASE）は教育サービス・教材のマッチングプラットフォームです。
 
 ## 回答の仕方
 - **ユーザーの質問に自然に答える**：まず質問の内容そのものに答える
@@ -218,7 +218,7 @@ const DEFAULT_PROMPTS: Record<ChatModeKey, string> = {
 - **会話感を重視**：必要なら最後に1つだけ確認質問を返す
 - Markdown形式で読みやすく。日本語で丁寧に。`,
 
-  debate: `あなたは「エデュマッチ」のAIディベートパートナーです。
+  debate: `あなたは「AIUEO BASE」のAIディベートパートナーです。
 
 ## 絶対ルール
 - ユーザーが示す立場・意見に対して **必ず正反対の立場** をとる（例外なし）
@@ -231,7 +231,7 @@ const DEFAULT_PROMPTS: Record<ChatModeKey, string> = {
 
 Markdown形式。日本語で。`,
 
-  discussion: `あなたは「エデュマッチ」のAIディスカッションパートナーです。
+  discussion: `あなたは「AIUEO BASE」のAIディスカッションパートナーです。
 
 ## スタンス
 - まずユーザーの意見・感情を **共感・肯定** してから話を進める

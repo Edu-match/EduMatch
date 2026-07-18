@@ -81,7 +81,7 @@ export type InteropSettings = {
   exitMessage: string;
   /** 退出CTAの文言 */
   exitCtaLabel: string;
-  /** 退出CTAのリンク（エデュマッチ登録など） */
+  /** 退出CTAのリンク（AIUEO BASE登録など） */
   exitCtaUrl: string;
 };
 
@@ -110,7 +110,7 @@ export const DEFAULT_INTEROP_SETTINGS: InteropSettings = {
   venueRadiusM: 800,
   exitTitle: "また会いましょう。",
   exitMessage:
-    "教育AIサミットの世界は、ここでいったんお別れ。\nでも学びの冒険はまだ続きます。エデュマッチに登録すると、全国の教育コンテンツや、サミットの続きの体験がいつでもあなたのそばに。",
-  exitCtaLabel: "エデュマッチに無料登録",
+    "教育AIサミットの世界は、ここでいったんお別れ。\nでも学びの冒険はまだ続きます。AIUEO BASEに登録すると、全国の教育コンテンツや、サミットの続きの体験がいつでもあなたのそばに。",
+  exitCtaLabel: "AIUEO BASEに無料登録",
   exitCtaUrl: "https://edu-match.com/auth/login",
 };

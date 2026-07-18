@@ -67,7 +67,7 @@ export default function AiKenteiPage() {
                     検定を受ける
                   </Button>
                   <p className="text-xs text-muted-foreground max-w-md">
-                    受験にはエデュマッチへの無料会員登録（ログイン）が必要です。
+                    受験にはAIUEO BASEへの無料会員登録（ログイン）が必要です。
                   </p>
                 </div>
               ) : (
@@ -164,7 +164,7 @@ export default function AiKenteiPage() {
                   検定を開始する
                 </Button>
                 <p className="text-xs text-muted-foreground max-w-md">
-                  受験にはエデュマッチへの無料会員登録（ログイン）が必要です。
+                  受験にはAIUEO BASEへの無料会員登録（ログイン）が必要です。
                 </p>
               </div>
             ) : (
