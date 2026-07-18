@@ -401,49 +401,52 @@ main {
   main { animation: none; }
 }
 
-/* AI検定セクション用ブルーテーマ（元のAI検定アプリの配色を再現） */
+/* AI検定セクション用テーマ
+   ブランド統一のため primary / ring はサイト標準の紫系トークンに合わせる。
+   背景・muted はごく僅かに寒色寄りのニュートラルにして検定らしい落ち着きを保つが、
+   Button の primary・ヒーロー・バッジは他ページと同一の紫になる。 */
 .ai-kentei-theme {
-  --background: oklch(0.98 0.005 250);
-  --foreground: oklch(0.2 0.02 250);
+  --background: oklch(0.98 0.006 280);
+  --foreground: oklch(0.18 0.020 280);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.2 0.02 250);
+  --card-foreground: oklch(0.18 0.020 280);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.2 0.02 250);
-  --primary: oklch(0.45 0.15 250);
-  --primary-hover: oklch(0.40 0.15 250);
-  --primary-foreground: oklch(0.98 0.005 250);
-  --secondary: oklch(0.95 0.01 250);
-  --secondary-foreground: oklch(0.3 0.02 250);
-  --secondary-hover: oklch(0.91 0.015 250);
-  --muted: oklch(0.94 0.01 250);
-  --muted-foreground: oklch(0.5 0.02 250);
-  --accent: oklch(0.75 0.15 85);
-  --accent-foreground: oklch(0.25 0.05 85);
+  --popover-foreground: oklch(0.18 0.020 280);
+  --primary: oklch(0.48 0.24 278);
+  --primary-hover: oklch(0.43 0.23 278);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.915 0.050 280);
+  --secondary-foreground: oklch(0.25 0.020 280);
+  --secondary-hover: oklch(0.875 0.055 280);
+  --muted: oklch(0.94 0.012 280);
+  --muted-foreground: oklch(0.48 0.025 280);
+  --accent: oklch(0.895 0.065 280);
+  --accent-foreground: oklch(0.28 0.14 280);
   --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.9 0.01 250);
-  --input: oklch(0.92 0.01 250);
-  --ring: oklch(0.45 0.15 250);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(0.9 0.012 280);
+  --input: oklch(0.72 0.055 280);
+  --ring: oklch(0.48 0.24 278);
 }
 
 .dark .ai-kentei-theme {
-  --background: oklch(0.15 0.02 250);
-  --foreground: oklch(0.95 0.005 250);
-  --card: oklch(0.18 0.02 250);
-  --card-foreground: oklch(0.95 0.005 250);
-  --primary: oklch(0.6 0.15 250);
-  --primary-hover: oklch(0.65 0.15 250);
-  --primary-foreground: oklch(0.15 0.02 250);
-  --secondary: oklch(0.25 0.02 250);
-  --secondary-foreground: oklch(0.9 0.005 250);
-  --secondary-hover: oklch(0.31 0.025 250);
-  --muted: oklch(0.25 0.02 250);
-  --muted-foreground: oklch(0.65 0.02 250);
-  --accent: oklch(0.7 0.12 85);
-  --accent-foreground: oklch(0.15 0.02 250);
-  --border: oklch(0.28 0.02 250);
-  --input: oklch(0.25 0.02 250);
-  --ring: oklch(0.6 0.15 250);
+  --background: oklch(0.15 0.020 278);
+  --foreground: oklch(0.95 0.008 280);
+  --card: oklch(0.18 0.025 278);
+  --card-foreground: oklch(0.95 0.008 280);
+  --primary: oklch(0.62 0.20 278);
+  --primary-hover: oklch(0.67 0.20 278);
+  --primary-foreground: oklch(0.15 0.020 278);
+  --secondary: oklch(0.25 0.020 278);
+  --secondary-foreground: oklch(0.9 0.008 280);
+  --secondary-hover: oklch(0.31 0.025 278);
+  --muted: oklch(0.25 0.020 278);
+  --muted-foreground: oklch(0.65 0.020 280);
+  --accent: oklch(0.30 0.060 280);
+  --accent-foreground: oklch(0.9 0.030 280);
+  --border: oklch(0.28 0.020 278);
+  --input: oklch(0.25 0.020 278);
+  --ring: oklch(0.62 0.20 278);
 }
 
 @layer components {

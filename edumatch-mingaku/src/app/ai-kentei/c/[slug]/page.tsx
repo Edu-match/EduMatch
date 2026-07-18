@@ -6,6 +6,7 @@ import { CertificatePreview } from '@/components/ai-kentei/certificate-preview'
 import { CertificateDownloadButton } from '@/components/ai-kentei/certificate-download-button'
 import type { Metadata } from 'next'
 import { getAiKenteiDb } from '@/lib/ai-kentei-db'
+import { AI_KENTEI_QUESTION_COUNT } from '@/lib/ai-kentei-constants'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -27,16 +28,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   return {
     title: `${certificate.public_display_name}さんの認定証 | 一般社団法人 教育AI活用協会`,
-    description: `${certificate.public_display_name}さんは生成AI活用ガイドライン検定に合格しました。スコア: ${certificate.score}/25`,
+    description: `${certificate.public_display_name}さんは生成AI活用ガイドライン検定に合格しました。スコア: ${certificate.score}/${AI_KENTEI_QUESTION_COUNT}`,
     openGraph: {
       title: `${certificate.public_display_name}さんの認定証`,
-      description: `生成AI活用ガイドライン検定に合格しました！スコア: ${certificate.score}/25`,
+      description: `生成AI活用ガイドライン検定に合格しました！スコア: ${certificate.score}/${AI_KENTEI_QUESTION_COUNT}`,
       type: 'website',
     },
     twitter: {
       card: 'summary_large_image',
       title: `${certificate.public_display_name}さんの認定証`,
-      description: `生成AI活用ガイドライン検定に合格しました！スコア: ${certificate.score}/25`,
+      description: `生成AI活用ガイドライン検定に合格しました！スコア: ${certificate.score}/${AI_KENTEI_QUESTION_COUNT}`,
     },
   }
 }
@@ -72,7 +73,7 @@ export default async function PublicCertificatePage({ params }: Props) {
               name={certificate.public_display_name}
               photoUrl={certificate.photo_url}
               score={certificate.score}
-              totalQuestions={25}
+              totalQuestions={AI_KENTEI_QUESTION_COUNT}
               date={new Date(certificate.passed_at)}
               certificateId={certificate.certificate_id}
             />

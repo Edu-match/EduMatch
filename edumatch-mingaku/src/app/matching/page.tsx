@@ -26,7 +26,7 @@ export default async function MatchingPage() {
   return (
     <div className="container max-w-6xl py-8">
       <header className="mb-6">
-        <h1 className="flex items-center gap-2 text-2xl font-bold">
+        <h1 className="display-title flex items-center gap-2 text-2xl sm:text-3xl">
           <Users className="h-6 w-6 text-primary" />
           人材マッチング
         </h1>

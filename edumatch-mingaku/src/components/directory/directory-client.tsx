@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { User, Award, MessageCircle, Check, Loader2, Users } from "lucide-react";
+import { toast } from "sonner";
 import { setDirectoryOptIn, type DirectoryMember, type MyDirectoryStatus } from "@/app/_actions/directory";
 
 function MemberCard({ m }: { m: DirectoryMember }) {
@@ -25,7 +26,7 @@ function MemberCard({ m }: { m: DirectoryMember }) {
             <p className="truncate font-semibold">{m.name}</p>
             {m.ai_kentei_passed && (
               <span title="生成AI活用ガイドライン検定 合格">
-                <Award className="h-4 w-4 shrink-0 text-amber-500" />
+                <Award className="h-4 w-4 shrink-0 text-primary" />
               </span>
             )}
           </div>
@@ -42,7 +43,7 @@ function MemberCard({ m }: { m: DirectoryMember }) {
       {m.interests.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-1.5">
           {m.interests.slice(0, 6).map((i) => (
-            <span key={i} className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+            <span key={i} className="rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
               #{i}
             </span>
           ))}
@@ -68,10 +69,16 @@ function OptInCard({ status }: { status: MyDirectoryStatus }) {
   function toggle() {
     const next = !optIn;
     startTransition(async () => {
-      const res = await setDirectoryOptIn(next);
-      if (res.success) {
-        setOptIn(next);
-        router.refresh();
+      try {
+        const res = await setDirectoryOptIn(next);
+        if (res.success) {
+          setOptIn(next);
+          router.refresh();
+        } else {
+          toast.error("設定の更新に失敗しました。時間をおいて再度お試しください。");
+        }
+      } catch {
+        toast.error("設定の更新に失敗しました。時間をおいて再度お試しください。");
       }
     });
   }
@@ -83,13 +90,13 @@ function OptInCard({ status }: { status: MyDirectoryStatus }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="font-semibold">
-            {optIn ? "あなたは名鑑に掲載されています" : "名鑑に載って、つながりを増やしませんか？"}
+            {optIn ? "あなたは人材マッチング一覧に掲載されています" : "人材マッチング一覧に載って、つながりを増やしませんか？"}
           </p>
           <p className="mt-0.5 text-sm text-muted-foreground">
             掲載されるのは名前・立場・自己紹介・関心のみ。連絡先は公開されません。いつでも取り下げられます。
           </p>
           {optIn && incomplete && (
-            <p className="mt-1 text-sm text-amber-600">
+            <p className="mt-1 text-sm text-accent-foreground">
               自己紹介・関心を設定すると、あなたに合う人から見つけてもらいやすくなります（プロフィール編集から）。
             </p>
           )}
@@ -100,7 +107,7 @@ function OptInCard({ status }: { status: MyDirectoryStatus }) {
           ) : optIn ? (
             <Check className="mr-1 h-4 w-4" />
           ) : null}
-          {optIn ? "掲載を取り下げる" : "名鑑に掲載する"}
+          {optIn ? "掲載を取り下げる" : "人材マッチング一覧に掲載する"}
         </Button>
       </div>
     </div>
@@ -132,8 +139,11 @@ export function DirectoryClient({
           <button
             type="button"
             onClick={() => setActiveInterest(null)}
-            className={`rounded-full px-3 py-1 text-sm transition-colors ${
-              activeInterest === null ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"
+            aria-pressed={activeInterest === null}
+            className={`inline-flex items-center rounded-full px-3.5 min-h-9 pointer-coarse:min-h-11 text-sm font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1 ${
+              activeInterest === null
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary text-secondary-foreground hover:bg-secondary-hover"
             }`}
           >
             すべて
@@ -143,8 +153,11 @@ export function DirectoryClient({
               key={i}
               type="button"
               onClick={() => setActiveInterest(i)}
-              className={`rounded-full px-3 py-1 text-sm transition-colors ${
-                activeInterest === i ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"
+              aria-pressed={activeInterest === i}
+              className={`inline-flex items-center rounded-full px-3.5 min-h-9 pointer-coarse:min-h-11 text-sm font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-1 ${
+                activeInterest === i
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary text-secondary-foreground hover:bg-secondary-hover"
               }`}
             >
               #{i}
@@ -154,9 +167,21 @@ export function DirectoryClient({
       )}
 
       {filtered.length === 0 ? (
-        <div className="rounded-xl border border-dashed p-10 text-center text-muted-foreground">
-          <Users className="mx-auto mb-2 h-8 w-8 opacity-40" />
-          <p>{activeInterest ? "この関心のメンバーはまだいません。" : "まだ掲載メンバーがいません。最初の一人になりませんか？"}</p>
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed px-6 py-10 text-center">
+          <Users className="h-8 w-8 text-muted-foreground/50" />
+          <p className="font-medium text-foreground">
+            {activeInterest ? "この関心のメンバーはまだいません。" : "まだ掲載メンバーがいません。"}
+          </p>
+          {!activeInterest && (
+            <p className="max-w-sm text-sm text-muted-foreground">
+              最初の一人になって、教育に関わる人とのつながりを広げてみませんか？
+            </p>
+          )}
+          <Button asChild variant="outline" size="sm" className="mt-1">
+            <Link href="/forum">
+              <MessageCircle className="mr-1 h-4 w-4" /> 教育のひろばを見る
+            </Link>
+          </Button>
         </div>
       ) : (
         <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

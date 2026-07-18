@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import Link from "next/link";
@@ -105,15 +105,15 @@ function DaysLabel({ dateStr }: { dateStr: string | null }) {
   if (days === null) return null;
   if (days === 0)
     return (
-      <span className="text-xs font-semibold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">{t("today")}</span>
+      <span className="text-xs font-semibold text-destructive bg-destructive/10 px-1.5 py-0.5 rounded">{t("today")}</span>
     );
   if (days === 1)
     return (
-      <span className="text-xs font-semibold text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded">{t("tomorrow")}</span>
+      <span className="text-xs font-semibold text-destructive bg-destructive/10 px-1.5 py-0.5 rounded">{t("tomorrow")}</span>
     );
   if (days <= 7)
     return (
-      <span className="text-xs font-semibold text-yellow-600 bg-yellow-50 px-1.5 py-0.5 rounded">
+      <span className="text-xs font-semibold text-accent-foreground bg-accent px-1.5 py-0.5 rounded">
         {t("daysLeft", { days })}
       </span>
     );
@@ -147,14 +147,14 @@ function EventCalendarCellLink({ event }: { event: SeminarEventData }) {
         href={event.external_url}
         target="_blank"
         rel="noopener noreferrer"
-        className="block min-w-0 rounded px-1 py-0.5 hover:bg-primary/5 -mx-1"
+        className="block min-w-0 rounded-md px-1.5 py-1 hover:bg-primary/10 -mx-1"
       >
         {inner}
       </a>
     );
   }
   return (
-    <Link href={`/events/${event.id}`} className="block min-w-0 rounded px-1 py-0.5 hover:bg-primary/5 -mx-1">
+    <Link href={`/events/${event.id}`} className="block min-w-0 rounded-md px-1.5 py-1 hover:bg-primary/10 -mx-1">
       {inner}
     </Link>
   );
@@ -183,15 +183,21 @@ export default function EventsClient({
 
   const eventsByDate = useMemo(() => groupEventsByDate(calendarEvents), [calendarEvents]);
 
-  function handleSearch(value: string) {
-    setInputValue(value);
-    startTransition(() => {
-      const params = new URLSearchParams();
-      if (value) params.set("search", value);
-      params.set("page", "1");
-      router.push(`/events?${params.toString()}`);
-    });
-  }
+  // 入力は即時にローカル state のみ更新し、URL 反映は 350ms デバウンス。
+  // 履歴汚染を避けるため push ではなく replace を使う。
+  // 既に URL 上の検索語と一致する場合は無駄なナビゲーションを避ける。
+  useEffect(() => {
+    if (inputValue === search) return;
+    const timer = setTimeout(() => {
+      startTransition(() => {
+        const params = new URLSearchParams();
+        if (inputValue) params.set("search", inputValue);
+        params.set("page", "1");
+        router.replace(`/events?${params.toString()}`);
+      });
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [inputValue, search, router]);
 
   function handlePageChange(p: number) {
     const params = new URLSearchParams();
@@ -235,7 +241,7 @@ export default function EventsClient({
         <div className="container py-10">
           <div className="flex items-center gap-3 mb-3">
             <CalendarDays className="h-8 w-8 text-primary" />
-            <h1 className="text-3xl md:text-4xl font-bold">{t("title")}</h1>
+            <h1 className="display-title text-3xl md:text-4xl">{t("title")}</h1>
           </div>
           <p className="text-muted-foreground mb-1">{t("lead")}</p>
           <p className="text-sm text-muted-foreground">
@@ -256,7 +262,7 @@ export default function EventsClient({
       </div>
 
       <div className="container py-8">
-        <Card className="mb-6 shadow-sm border-2">
+        <Card className="mb-6 shadow-sm border">
           <CardContent className="p-4">
             <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
               <div className="relative flex-1 w-full">
@@ -264,7 +270,7 @@ export default function EventsClient({
                 <Input
                   placeholder={t("searchPlaceholder")}
                   value={inputValue}
-                  onChange={(e) => handleSearch(e.target.value)}
+                  onChange={(e) => setInputValue(e.target.value)}
                   className="pl-10 h-11"
                 />
               </div>
@@ -299,7 +305,7 @@ export default function EventsClient({
             {events.length > 0 ? (
               <div className="space-y-3">
                 {events.map((event) => (
-                  <Card key={event.id} className="overflow-hidden hover:shadow-md transition-shadow border">
+                  <Card key={event.id} className="card-lift overflow-hidden border">
                     <CardContent className="p-0">
                       <div className="flex flex-col sm:flex-row">
                         <div className="sm:w-40 lg:w-48 shrink-0 bg-primary/5 border-b sm:border-b-0 sm:border-r flex flex-col items-center justify-center px-4 py-4 gap-1 text-center">
@@ -311,7 +317,7 @@ export default function EventsClient({
                         </div>
                         <div className="flex-1 min-w-0 p-4 sm:p-5 flex flex-col gap-3">
                           <div className="flex flex-wrap items-start gap-2">
-                            <Badge className="bg-green-500 hover:bg-green-600 text-white text-xs shrink-0">
+                            <Badge className="bg-success text-success-foreground hover:bg-success/90 text-xs shrink-0">
                               {t("upcoming")}
                             </Badge>
                             <h3 className="text-base font-bold leading-snug min-w-0 break-words">{event.title}</h3>
@@ -350,7 +356,7 @@ export default function EventsClient({
                               </Button>
                             ) : (
                               <Button asChild size="sm" variant="outline" className="shrink-0">
-                                <Link href="/contact?subject=イベント問い合わせ">{t("contact")}</Link>
+                                <Link href={`/contact?subject=${encodeURIComponent(t("contactSubject"))}`}>{t("contact")}</Link>
                               </Button>
                             )}
                           </div>
@@ -544,7 +550,7 @@ export default function EventsClient({
                         key={ymd}
                         className={cn(
                           "min-h-[72px] sm:min-h-[100px] border-b border-r p-1 sm:p-1.5 flex flex-col gap-0.5",
-                          isToday && "bg-primary/5",
+                          isToday && "bg-accent/60",
                         )}
                       >
                         <span

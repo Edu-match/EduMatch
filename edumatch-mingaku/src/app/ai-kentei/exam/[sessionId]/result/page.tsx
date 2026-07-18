@@ -13,6 +13,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
+import { AI_KENTEI_QUESTION_COUNT } from '@/lib/ai-kentei-constants'
 
 interface Question {
   id: string
@@ -88,7 +89,7 @@ export default function ResultPage({ params }: { params: Promise<{ sessionId: st
   }
 
   const { session, questions } = resultData
-  const totalQuestions = questions.length > 0 ? questions.length : 25
+  const totalQuestions = questions.length > 0 ? questions.length : AI_KENTEI_QUESTION_COUNT
   const percentage = Math.round((session.score / totalQuestions) * 100)
 
   return (
@@ -168,7 +169,6 @@ export default function ResultPage({ params }: { params: Promise<{ sessionId: st
               <CardDescription className="text-base leading-relaxed text-pretty text-center">
                 アンケートにご協力ください。<br />
                 いただいたご意見は、今後の問題改善・資格の充実に活用させていただきます。
-           
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col items-center gap-4 text-center">
@@ -191,7 +191,7 @@ export default function ResultPage({ params }: { params: Promise<{ sessionId: st
           {/* Detailed Results */}
           {questions.length > 0 && (
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-foreground">解答詳細</h2>
+              <h2 className="text-xl font-semibold text-foreground">回答の詳細</h2>
 
               {questions.map((question, index) => {
                 const userAnswer = session.answers[question.id]
