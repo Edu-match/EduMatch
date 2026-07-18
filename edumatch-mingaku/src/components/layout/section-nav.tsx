@@ -51,7 +51,7 @@ export function SectionNav() {
       <div className="h-16 shrink-0" aria-hidden />
       <nav
         data-tutorial="header-nav"
-        aria-label="セクション"
+        aria-label={t("menu")}
         className="sticky top-16 z-30 h-11 border-b border-border/50 bg-background/70 backdrop-blur-xl"
       >
         {/* モバイルでは端をフェードさせ「続きがある」ことを示す（md以上はフェードなし） */}
@@ -75,7 +75,7 @@ export function SectionNav() {
                     prefetch={false}
                     aria-current={active ? "page" : undefined}
                     className={cn(
-                      "relative flex h-11 items-center whitespace-nowrap rounded-lg px-3 text-[13px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-ring",
+                      "relative flex h-11 items-center whitespace-nowrap rounded-lg px-3 text-[13px] font-medium transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-inset",
                       active ? "text-primary" : "text-muted-foreground hover:text-foreground"
                     )}
                   >

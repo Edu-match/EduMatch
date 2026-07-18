@@ -59,7 +59,6 @@ export function FeaturedSlider({ items }: { items: FeaturedItem[] }) {
                 title={item.title}
                 fill
                 priority={i === 0}
-                unoptimized
                 className="transition-transform duration-700 ease-out group-hover:scale-[1.03]"
               />
             </div>

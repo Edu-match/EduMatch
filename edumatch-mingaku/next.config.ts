@@ -164,7 +164,24 @@ const nextConfig: NextConfig = {
         port: "",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "img.youtube.com",
+        port: "",
+        pathname: "/vi/**",
+      },
+      {
+        protocol: "https",
+        hostname: "i.ytimg.com",
+        port: "",
+        pathname: "/vi/**",
+      },
     ],
+    // placehold.co のフォールバック画像は SVG のため、最適化経由で配信できるよう許可する。
+    // sandbox CSP + attachment でスクリプト実行リスクを遮断（Next.js 公式推奨の安全設定）
+    dangerouslyAllowSVG: true,
+    contentDispositionType: "attachment",
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
 };
 

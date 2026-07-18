@@ -34,6 +34,7 @@
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -46,6 +47,7 @@
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-surface-tint: var(--surface-tint);
   /* 紫染めの影（黒ベース既定影はラベンダー背景上で濁るため一括上書き） */
   --shadow-2xs: 0 1px 2px oklch(0.35 0.12 280 / 0.06);
   --shadow-xs: 0 1px 2px oklch(0.35 0.12 280 / 0.08);
@@ -64,6 +66,8 @@
   --popover: oklch(0.975 0.025 282);
   --popover-foreground: oklch(0.18 0.020 280);
   --primary: oklch(0.48 0.24 278);
+  /* ホバー時の実色（半透明で下地が透けないよう一段暗い実色を定義） */
+  --primary-hover: oklch(0.43 0.23 278);
   --primary-foreground: oklch(0.99 0 0);
   --secondary: oklch(0.915 0.050 280);
   --secondary-foreground: oklch(0.25 0.020 280);
@@ -71,24 +75,28 @@
   --muted-foreground: oklch(0.48 0.025 280);
   --accent: oklch(0.895 0.065 280);
   --accent-foreground: oklch(0.28 0.14 280);
+  /* 表面ティント: カード上に敷く薄紫のグラデーション終端用（ハードコード violet-50 の代替） */
+  --surface-tint: oklch(0.955 0.030 281);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.99 0 0);
   --border: oklch(0.865 0.050 280);
   --input: oklch(0.865 0.050 280);
   --ring: oklch(0.48 0.24 278);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* チャート: 紫アンカーの調和配色（shadcn既定の雑多カラーを排除） */
+  --chart-1: oklch(0.48 0.24 278);
+  --chart-2: oklch(0.62 0.16 300);
+  --chart-3: oklch(0.58 0.14 250);
+  --chart-4: oklch(0.70 0.12 320);
+  --chart-5: oklch(0.55 0.10 230);
+  /* サイドバー: 本体トークンのラベンダー基調に揃える */
+  --sidebar: oklch(0.975 0.025 282);
+  --sidebar-foreground: oklch(0.18 0.020 280);
+  --sidebar-primary: oklch(0.48 0.24 278);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.895 0.065 280);
+  --sidebar-accent-foreground: oklch(0.28 0.14 280);
+  --sidebar-border: oklch(0.865 0.050 280);
+  --sidebar-ring: oklch(0.48 0.24 278);
 }
 
 .dark {
@@ -99,6 +107,7 @@
   --popover: oklch(0.18 0.030 278);
   --popover-foreground: oklch(0.985 0.008 280);
   --primary: oklch(0.72 0.18 278);
+  --primary-hover: oklch(0.77 0.17 278);
   --primary-foreground: oklch(0.14 0.025 278);
   --secondary: oklch(0.24 0.035 278);
   --secondary-foreground: oklch(0.985 0.008 280);
@@ -106,24 +115,27 @@
   --muted-foreground: oklch(0.68 0.03 280);
   --accent: oklch(0.24 0.035 278);
   --accent-foreground: oklch(0.985 0.008 280);
+  --surface-tint: oklch(0.20 0.035 278);
   --destructive: oklch(0.704 0.191 22.216);
   --destructive-foreground: oklch(0.985 0.008 280);
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 18%);
   --ring: oklch(0.65 0.15 278);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  /* チャート: ダーク用に明度を上げた紫アンカー配色 */
+  --chart-1: oklch(0.72 0.18 278);
+  --chart-2: oklch(0.70 0.14 300);
+  --chart-3: oklch(0.68 0.12 250);
+  --chart-4: oklch(0.76 0.10 320);
+  --chart-5: oklch(0.66 0.09 230);
+  /* サイドバー: ダーク本体トークンに揃える */
+  --sidebar: oklch(0.18 0.030 278);
+  --sidebar-foreground: oklch(0.985 0.008 280);
+  --sidebar-primary: oklch(0.72 0.18 278);
+  --sidebar-primary-foreground: oklch(0.14 0.025 278);
+  --sidebar-accent: oklch(0.24 0.035 278);
+  --sidebar-accent-foreground: oklch(0.985 0.008 280);
+  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-ring: oklch(0.65 0.15 278);
 }
 
 @layer base {
@@ -132,8 +144,8 @@
   }
   html {
     scroll-behavior: smooth;
-    /* 固定ヘッダー(4rem) + セクションナビ(2.75rem) + 余白ぶんアンカー位置を下げる */
-    scroll-padding-top: calc(4rem + 2.75rem + 0.5rem);
+    /* 固定ヘッダー(4rem) + セクションナビ(2.75rem) + ニュースティッカー(2.125rem) + 余白ぶんアンカー位置を下げる */
+    scroll-padding-top: calc(4rem + 2.75rem + 2.125rem + 0.5rem);
   }
   body {
     @apply bg-background text-foreground antialiased;
@@ -178,16 +190,16 @@
     letter-spacing: -0.02em;
     font-feature-settings: "palt" 1;
   }
-  /* 上品なカードホバー（浮き上がり） */
+  /* 上品なカードホバー（浮き上がり）
+     影は影トークン（--shadow-sm → --shadow-lg）に一本化し、二重管理を避ける */
   .card-lift {
     @apply transition-all duration-300;
     will-change: transform, box-shadow;
+    box-shadow: var(--shadow-sm);
   }
   .card-lift:hover {
-    transform: translateY(-3px);
-    box-shadow:
-      0 16px 40px -12px oklch(0.35 0.12 280 / 0.22),
-      0 4px 12px -4px oklch(0.35 0.12 280 / 0.12);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
   }
   /* ホバーで左から伸びる下線（見出しリンク用） */
   .link-underline {
@@ -314,6 +326,18 @@ main {
   animation: em-pulse-dot 1.6s ease-in-out infinite;
 }
 
+/* 印刷時はリビール待ちの opacity:0 を解除（IntersectionObserver が発火しないため空白になる対策） */
+@media print {
+  .reveal,
+  .reveal--fade-in,
+  .reveal--fade-left,
+  .reveal--fade-right,
+  .reveal--scale-up,
+  .reveal--blur-in {
+    opacity: 1; transform: none; filter: none; transition: none;
+  }
+}
+
 /* 動きを抑えたい設定のユーザーにはアニメーションを無効化 */
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-up { animation: none; }
@@ -340,6 +364,7 @@ main {
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.2 0.02 250);
   --primary: oklch(0.45 0.15 250);
+  --primary-hover: oklch(0.40 0.15 250);
   --primary-foreground: oklch(0.98 0.005 250);
   --secondary: oklch(0.95 0.01 250);
   --secondary-foreground: oklch(0.3 0.02 250);
@@ -360,6 +385,7 @@ main {
   --card: oklch(0.18 0.02 250);
   --card-foreground: oklch(0.95 0.005 250);
   --primary: oklch(0.6 0.15 250);
+  --primary-hover: oklch(0.65 0.15 250);
   --primary-foreground: oklch(0.15 0.02 250);
   --secondary: oklch(0.25 0.02 250);
   --secondary-foreground: oklch(0.9 0.005 250);

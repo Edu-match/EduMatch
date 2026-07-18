@@ -11,8 +11,8 @@ import { InviteCodeGate } from "@/components/kaikan/invite-code-gate";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "教育AIサミット2026 チケット申込 | エデュマッチ",
-  description: "教育AIサミット2026＠衆議院第一議員会館のコンテンツを選んで申し込み、電子チケット（QR）を受け取れます。複数まとめて申込可。",
+  title: "教育AIサミット2026＠衆議院第一議員会館 チケット申込 | エデュマッチ",
+  description: "教育AIサミット2026＠衆議院第一議員会館のコンテンツを選んで申し込み、電子チケット（QR）を受け取れます。複数まとめてお申し込みいただけます。",
 };
 
 export default async function KaikanTicketsPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
@@ -66,7 +66,7 @@ export default async function KaikanTicketsPage({ searchParams }: { searchParams
 
       {error === "invite" && !invited && (
         <p className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
-          お申込みには招待コードの入力が必要です。
+          お申し込みには招待コードの入力が必要です。
         </p>
       )}
 
@@ -74,7 +74,7 @@ export default async function KaikanTicketsPage({ searchParams }: { searchParams
         <div className="rounded-xl border bg-muted/30 p-8 text-center text-sm text-muted-foreground">現在申込受付中のコンテンツはありません。</div>
       ) : !profile ? (
         <div className="rounded-2xl border bg-card p-6 text-center">
-          <p className="text-sm text-muted-foreground">申込にはログインが必要です。<br />アカウントの登録情報でそのまま申し込めます。</p>
+          <p className="text-sm text-muted-foreground">お申し込みにはログインが必要です。<br />アカウントの登録情報でそのまま申し込めます。</p>
           <Link href={loginHref} className="mt-4 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground transition hover:opacity-90">
             <LogIn className="h-4 w-4" /> ログインして申し込む
           </Link>

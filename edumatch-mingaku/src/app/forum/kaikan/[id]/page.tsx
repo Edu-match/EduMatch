@@ -74,16 +74,16 @@ export default async function KaikanApplyPage({ params, searchParams }: { params
       <section className="mt-5">
         {error === "full" && !full && (
           <p className="mb-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-            申込が集中したため完了できませんでした。少し時間をおいて再度お試しください。
+            申し込みが集中したため完了できませんでした。少し時間をおいて再度お試しください。
           </p>
         )}
         {full ? (
           <div className="rounded-2xl border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
-            申込は定員に達しました。
+            申し込みは定員に達しました。
           </div>
         ) : !profile ? (
           <div className="rounded-2xl border bg-card p-6 text-center">
-            <p className="text-sm text-muted-foreground">申込にはログインが必要です。<br />アカウントの登録情報でそのまま申し込めます。</p>
+            <p className="text-sm text-muted-foreground">お申し込みにはログインが必要です。<br />アカウントの登録情報でそのまま申し込めます。</p>
             <Link href={loginHref} className="mt-4 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground transition hover:opacity-90">
               <LogIn className="h-4 w-4" /> ログインして申し込む
             </Link>

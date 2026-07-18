@@ -22,13 +22,15 @@ const PAGE_SIZE = 30;
 export function ArticlesClient({
   articles,
   categoriesWithCount,
+  initialQuery = "",
 }: {
   articles: ArticleForList[];
   categoriesWithCount: string[];
+  initialQuery?: string;
 }) {
   const t = useTranslations("articlesList");
   const locale = useLocale() as Locale;
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
 

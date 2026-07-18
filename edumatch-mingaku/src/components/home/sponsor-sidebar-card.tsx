@@ -12,7 +12,7 @@ export async function SponsorSidebarCard() {
 
   return (
     <div className="space-y-2">
-      {ads.map((ad) => (
+      {ads.map((ad, index) => (
         <a
           key={ad.id}
           href={`/api/sponsors/${ad.id}/click`}
@@ -25,6 +25,7 @@ export async function SponsorSidebarCard() {
               src={ad.image_url}
               alt={ad.title}
               fill
+              priority={index === 0}
               sizes="(max-width: 1024px) 100vw, 33vw"
               className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
             />
@@ -33,7 +34,7 @@ export async function SponsorSidebarCard() {
             <p className="text-xs text-muted-foreground line-clamp-1 flex-1">
               {ad.title}
             </p>
-            <span className="shrink-0 text-[9px] font-bold text-muted-foreground border border-muted-foreground/40 rounded px-1 py-px leading-none">
+            <span className="shrink-0 text-[10px] font-bold text-muted-foreground border border-muted-foreground/40 rounded px-1 py-px leading-none">
               広告
             </span>
           </div>

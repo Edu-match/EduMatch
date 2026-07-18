@@ -25,7 +25,6 @@ function PinnedSiteUpdateListItem({ item }: { item: PinnedSiteUpdateItem }) {
           fill
           className="object-contain"
           sizes="64px"
-          unoptimized
         />
       </div>
       <div className="flex-1 min-w-0">
@@ -65,7 +64,6 @@ function ArticleListItem({ article }: { article: ArticleItem }) {
           fill
           className="object-contain"
           sizes="64px"
-          unoptimized
         />
       </div>
       <div className="flex-1 min-w-0">
@@ -100,7 +98,6 @@ function ServiceListItem({ service }: { service: ServiceItem }) {
           fill
           className="object-contain"
           sizes="64px"
-          unoptimized
         />
       </div>
       <div className="flex-1 min-w-0">
@@ -127,7 +124,6 @@ function VideoListItem({ video }: { video: VideoItem }) {
           fill
           className="object-cover"
           sizes="96px"
-          unoptimized
         />
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="bg-black/60 rounded-full w-7 h-7 flex items-center justify-center">

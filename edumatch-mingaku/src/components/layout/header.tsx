@@ -172,7 +172,7 @@ export function Header() {
       type="button"
       variant="ghost"
       size="sm"
-      className="shrink-0 gap-1.5 px-2 text-foreground/70 hover:text-foreground"
+      className="shrink-0 gap-1.5 px-2 text-foreground/70 hover:text-foreground pointer-coarse:min-h-11 pointer-coarse:min-w-11"
       onClick={handleStartTutorial}
       title={t("tutorialTitle")}
       aria-label={t("tutorialTitle")}
@@ -200,10 +200,10 @@ export function Header() {
 
         {/* Desktop Navigation（セクション移動は SectionNav タブに集約。ここは機能系のみ） */}
         <nav className="hidden md:flex min-w-0 flex-1 items-center justify-end gap-1.5 lg:gap-2.5">
-          <div className="flex min-w-0 items-center gap-1.5 overflow-hidden lg:gap-2.5">
+          <div className="flex min-w-0 items-center gap-1.5 lg:gap-2.5">
           <Link
             href="/request-info/list"
-            className="relative flex shrink-0 items-center gap-1 whitespace-nowrap rounded-sm text-sm font-medium text-foreground/75 transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            className="relative flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 text-sm font-medium text-foreground/75 transition-colors hover:bg-accent/50 hover:text-foreground outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 pointer-coarse:min-h-11"
           >
             <FileText className="h-4 w-4 shrink-0" />
             <span className="hidden lg:inline">{t("favoritesFull")}</span>
@@ -239,10 +239,21 @@ export function Header() {
               }}
             >
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative shrink-0" aria-label={t("notifications")}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="relative shrink-0"
+                  aria-label={
+                    notifications.unreadCount > 0
+                      ? t("notificationsWithUnread", {
+                          count: notifications.unreadCount,
+                        })
+                      : t("notifications")
+                  }
+                >
                   <Bell className="h-5 w-5 text-foreground/70" />
                   {notifications.unreadCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[11px] font-bold">
                       {notifications.unreadCount > 99 ? "99+" : notifications.unreadCount}
                     </span>
                   )}
@@ -283,36 +294,34 @@ export function Header() {
                               e.stopPropagation();
                               setNotifOpen(false);
                               const target = n.href ?? "/notifications";
+                              const isExternal =
+                                target.startsWith("http://") ||
+                                target.startsWith("https://");
                               if (
                                 n.inAppNotificationId &&
                                 n.read !== true
                               ) {
+                                // 既読化は fire-and-forget（失敗しても遷移は妨げない）
+                                void markInAppNotificationRead(
+                                  n.inAppNotificationId
+                                ).catch(() => {});
+                                setNotifications((prev) => ({
+                                  list: prev.list.map((item) =>
+                                    item.id === n.id
+                                      ? { ...item, read: true }
+                                      : item
+                                  ),
+                                  unreadCount: Math.max(0, prev.unreadCount - 1),
+                                }));
+                              }
+                              // 外部URLは既読/未読に関わらず常に新規タブで開く
+                              if (isExternal) {
                                 e.preventDefault();
-                                void (async () => {
-                                  await markInAppNotificationRead(
-                                    n.inAppNotificationId!
-                                  );
-                                  setNotifications((prev) => ({
-                                    list: prev.list.map((item) =>
-                                      item.id === n.id
-                                        ? { ...item, read: true }
-                                        : item
-                                    ),
-                                    unreadCount: Math.max(0, prev.unreadCount - 1),
-                                  }));
-                                  if (
-                                    target.startsWith("http://") ||
-                                    target.startsWith("https://")
-                                  ) {
-                                    window.open(
-                                      target,
-                                      "_blank",
-                                      "noopener,noreferrer"
-                                    );
-                                  } else {
-                                    router.push(target);
-                                  }
-                                })();
+                                window.open(
+                                  target,
+                                  "_blank",
+                                  "noopener,noreferrer"
+                                );
                               }
                             }}
                           >
@@ -379,21 +388,21 @@ export function Header() {
                   {t("mypage")}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-2 py-1">
+                <DropdownMenuLabel className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground px-2 py-1">
                   {t("post")}
                 </DropdownMenuLabel>
                 <DropdownMenuItem
                   className="cursor-pointer"
                   onSelect={() => router.push("/articles/create")}
                 >
-                  <FilePlus className="mr-2 h-4 w-4 text-blue-600" />
+                  <FilePlus className="mr-2 h-4 w-4" />
                   {tsm("createArticle")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="cursor-pointer"
                   onSelect={() => router.push("/services/create")}
                 >
-                  <Briefcase className="mr-2 h-4 w-4 text-emerald-600" />
+                  <Briefcase className="mr-2 h-4 w-4" />
                   {tsm("createService")}
                 </DropdownMenuItem>
                 {userRole === "ADMIN" && (
@@ -410,7 +419,7 @@ export function Header() {
                       className="cursor-pointer"
                       onSelect={() => setEditMode(!editMode)}
                     >
-                      <Pencil className="mr-2 h-4 w-4 text-orange-600" />
+                      <Pencil className="mr-2 h-4 w-4" />
                       {editMode ? t("editModeOff") : t("editModeOn")}
                     </DropdownMenuItem>
                   </>
@@ -418,84 +427,84 @@ export function Header() {
                 {userRole === "ADMIN" && (
                   <>
                     <DropdownMenuSeparator />
-                    <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-2 py-1">
+                    <DropdownMenuLabel className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground px-2 py-1">
                       {t("adminMenu")}
                     </DropdownMenuLabel>
                     <DropdownMenuItem
                       className="cursor-pointer"
                       onSelect={() => router.push("/admin/kaikan?tab=checkin")}
                     >
-                      <QrCode className="mr-2 h-4 w-4 text-primary" />
+                      <QrCode className="mr-2 h-4 w-4" />
                       {t("kaikanCheckin")}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="cursor-pointer"
                       onSelect={() => router.push("/admin/persona")}
                     >
-                      <Sparkles className="mr-2 h-4 w-4 text-violet-600" />
+                      <Sparkles className="mr-2 h-4 w-4" />
                       {t("aiPersona")}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="cursor-pointer"
                       onSelect={() => router.push("/admin/approvals")}
                     >
-                      <CheckCircle className="mr-2 h-4 w-4 text-amber-600" />
+                      <CheckCircle className="mr-2 h-4 w-4" />
                       {t("approvals")}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="cursor-pointer"
                       onSelect={() => router.push("/admin/events")}
                     >
-                      <Calendar className="mr-2 h-4 w-4 text-emerald-600" />
+                      <Calendar className="mr-2 h-4 w-4" />
                       {t("eventsAdmin")}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="cursor-pointer"
                       onSelect={() => router.push("/admin/forum")}
                     >
-                      <MessageSquare className="mr-2 h-4 w-4 text-blue-600" />
+                      <MessageSquare className="mr-2 h-4 w-4" />
                       {t("forumAdmin")}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="cursor-pointer"
                       onSelect={() => router.push("/admin/site-updates")}
                     >
-                      <Newspaper className="mr-2 h-4 w-4 text-slate-600" />
+                      <Newspaper className="mr-2 h-4 w-4" />
                       {t("siteUpdatesAdmin")}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="cursor-pointer"
                       onSelect={() => router.push("/dashboard/admin/knowledge")}
                     >
-                      <BookOpen className="mr-2 h-4 w-4 text-indigo-600" />
+                      <BookOpen className="mr-2 h-4 w-4" />
                       {t("knowledgeAdmin")}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="cursor-pointer"
                       onSelect={() => router.push("/admin/ai-chat")}
                     >
-                      <Bot className="mr-2 h-4 w-4 text-violet-600" />
+                      <Bot className="mr-2 h-4 w-4" />
                       {t("aiChatAdmin")}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="cursor-pointer"
                       onSelect={() => router.push("/admin/services/display-order")}
                     >
-                      <ArrowUpDown className="mr-2 h-4 w-4 text-cyan-600" />
+                      <ArrowUpDown className="mr-2 h-4 w-4" />
                       {t("serviceOrderAdmin")}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="cursor-pointer"
                       onSelect={() => router.push("/admin/activity-log")}
                     >
-                      <Activity className="mr-2 h-4 w-4 text-orange-600" />
+                      <Activity className="mr-2 h-4 w-4" />
                       {t("activityLog")}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="cursor-pointer"
                       onSelect={() => router.push("/admin/user-reports")}
                     >
-                      <Flag className="mr-2 h-4 w-4 text-rose-600" />
+                      <Flag className="mr-2 h-4 w-4" />
                       {t("userReports")}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
@@ -510,7 +519,7 @@ export function Header() {
                 </DropdownMenuItem>
                 <DropdownMenuItem 
                   onClick={handleLogout}
-                  className="cursor-pointer text-red-600 focus:text-red-600"
+                  className="cursor-pointer text-destructive focus:text-destructive"
                 >
                   <LogOut className="mr-2 h-4 w-4" />
                   {t("logout")}
@@ -556,7 +565,7 @@ export function Header() {
                   key={link.href}
                   href={link.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center py-3 text-sm font-medium text-foreground/75 transition-colors hover:text-foreground border-b rounded-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring"
+                  className="flex items-center py-3 text-sm font-medium text-foreground/75 transition-colors hover:text-foreground border-b rounded-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-inset"
                 >
                   {link.label}
                 </Link>
@@ -564,7 +573,7 @@ export function Header() {
               <Link
                 href="/request-info/list"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring"
+                className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-inset"
               >
                 <FileText className="h-4 w-4 flex-shrink-0" />
                 {t("favoritesFull")}
@@ -577,7 +586,14 @@ export function Header() {
               <Link
                 href="/notifications"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring"
+                aria-label={
+                  notifications.unreadCount > 0
+                    ? t("notificationsWithUnread", {
+                        count: notifications.unreadCount,
+                      })
+                    : t("notifications")
+                }
+                className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-inset"
               >
                 <Bell className="h-4 w-4 flex-shrink-0" />
                 {t("notifications")}
@@ -615,7 +631,7 @@ export function Header() {
                     <Link
                       href="/mypage"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring"
+                      className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-inset"
                     >
                       <User className="h-4 w-4 flex-shrink-0" />
                       {t("mypage")}
@@ -624,7 +640,7 @@ export function Header() {
                       <Link
                         href="/provider-dashboard"
                         onClick={() => setMobileMenuOpen(false)}
-                        className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring"
+                        className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-inset"
                       >
                         <LayoutDashboard className="h-4 w-4 flex-shrink-0" />
                         {t("adminDashboard")}
@@ -637,54 +653,54 @@ export function Header() {
                           setMobileMenuOpen(false);
                           setEditMode(!editMode);
                         }}
-                        className="flex w-full items-center gap-2 py-3 text-left text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring"
+                        className="flex w-full items-center gap-2 py-3 text-left text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-inset"
                       >
-                        <Pencil className="h-4 w-4 flex-shrink-0 text-orange-600" />
+                        <Pencil className="h-4 w-4 flex-shrink-0" />
                         {editMode ? t("editModeOff") : t("editModeOn")}
                       </button>
                     )}
                     {userRole === "ADMIN" && (
                       <div className="border-t pt-3 mt-2">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground pb-1">{t("adminMenu")}</p>
-                        <Link href="/admin/kaikan?tab=checkin" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring">
-                          <QrCode className="h-4 w-4 text-primary flex-shrink-0" />{t("kaikanCheckin")}
+                        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground pb-1">{t("adminMenu")}</p>
+                        <Link href="/admin/kaikan?tab=checkin" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-inset">
+                          <QrCode className="h-4 w-4 flex-shrink-0" />{t("kaikanCheckin")}
                         </Link>
-                        <Link href="/admin/persona" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring">
-                          <Sparkles className="h-4 w-4 text-violet-600 flex-shrink-0" />{t("aiPersona")}
+                        <Link href="/admin/persona" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-inset">
+                          <Sparkles className="h-4 w-4 flex-shrink-0" />{t("aiPersona")}
                         </Link>
-                        <Link href="/admin/approvals" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring">
-                          <CheckCircle className="h-4 w-4 text-amber-600 flex-shrink-0" />{t("approvals")}
+                        <Link href="/admin/approvals" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-inset">
+                          <CheckCircle className="h-4 w-4 flex-shrink-0" />{t("approvals")}
                         </Link>
-                        <Link href="/admin/events" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring">
-                          <Calendar className="h-4 w-4 text-emerald-600 flex-shrink-0" />{t("eventsAdmin")}
+                        <Link href="/admin/events" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-inset">
+                          <Calendar className="h-4 w-4 flex-shrink-0" />{t("eventsAdmin")}
                         </Link>
-                        <Link href="/admin/forum" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring">
-                          <MessageSquare className="h-4 w-4 text-blue-600 flex-shrink-0" />{t("forumAdmin")}
+                        <Link href="/admin/forum" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-inset">
+                          <MessageSquare className="h-4 w-4 flex-shrink-0" />{t("forumAdmin")}
                         </Link>
-                        <Link href="/admin/site-updates" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring">
-                          <Newspaper className="h-4 w-4 text-slate-600 flex-shrink-0" />{t("siteUpdatesAdmin")}
+                        <Link href="/admin/site-updates" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-inset">
+                          <Newspaper className="h-4 w-4 flex-shrink-0" />{t("siteUpdatesAdmin")}
                         </Link>
-                        <Link href="/dashboard/admin/knowledge" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring">
-                          <BookOpen className="h-4 w-4 text-indigo-600 flex-shrink-0" />{t("knowledgeAdmin")}
+                        <Link href="/dashboard/admin/knowledge" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-inset">
+                          <BookOpen className="h-4 w-4 flex-shrink-0" />{t("knowledgeAdmin")}
                         </Link>
-                        <Link href="/admin/ai-chat" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring">
-                          <Bot className="h-4 w-4 text-violet-600 flex-shrink-0" />{t("aiChatAdmin")}
+                        <Link href="/admin/ai-chat" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-inset">
+                          <Bot className="h-4 w-4 flex-shrink-0" />{t("aiChatAdmin")}
                         </Link>
-                        <Link href="/admin/services/display-order" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring">
-                          <ArrowUpDown className="h-4 w-4 text-cyan-600 flex-shrink-0" />{t("serviceOrderAdmin")}
+                        <Link href="/admin/services/display-order" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-inset">
+                          <ArrowUpDown className="h-4 w-4 flex-shrink-0" />{t("serviceOrderAdmin")}
                         </Link>
-                        <Link href="/admin/activity-log" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring">
-                          <Activity className="h-4 w-4 text-orange-600 flex-shrink-0" />{t("activityLog")}
+                        <Link href="/admin/activity-log" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-inset">
+                          <Activity className="h-4 w-4 flex-shrink-0" />{t("activityLog")}
                         </Link>
-                        <Link href="/admin/user-reports" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring">
-                          <Flag className="h-4 w-4 text-rose-600 flex-shrink-0" />{t("userReports")}
+                        <Link href="/admin/user-reports" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-inset">
+                          <Flag className="h-4 w-4 flex-shrink-0" />{t("userReports")}
                         </Link>
                       </div>
                     )}
                     <Link
                       href="/profile/register"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring"
+                      className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/75 hover:text-foreground border-b rounded-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-inset"
                     >
                       <Settings className="h-4 w-4 flex-shrink-0" />
                       {t("accountSettings")}

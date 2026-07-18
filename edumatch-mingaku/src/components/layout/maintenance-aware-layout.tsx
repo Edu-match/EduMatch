@@ -62,7 +62,13 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
       <div className="flex-1 flex min-w-0">
 
         {/* Main content */}
-        <main className="flex-1 min-w-0 [overflow-x:clip] pb-24 lg:pb-0">
+        {/* 浮遊AIナビゲーターが最終行のCTAを覆わないよう、ボタン表示時のみ下部に余白を確保 */}
+        <main
+          className={cn(
+            "flex-1 min-w-0 [overflow-x:clip] pb-24",
+            !examBlocksChat && !open ? "lg:pb-28" : "lg:pb-0"
+          )}
+        >
           <div className="w-full">{children}</div>
         </main>
 
@@ -106,19 +112,22 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
         )}
       </div>
 
-      {/* AIナビゲーター起動ボタン – desktop（閉状態のみ・上品なフローティングピル） */}
+      {/* AIナビゲーター起動ボタン – desktop（閉状態のみ・通常はアイコンのみ、ホバー/フォーカスでラベル展開）
+          コンテンツのCTAを覆う面積を最小化するためコンパクトな円形を既定とする */}
       {!examBlocksChat && !open && (
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="hidden lg:flex fixed bottom-6 right-6 z-40 items-center gap-2.5 rounded-full border border-border/60 bg-white/85 px-5 py-3 text-sm font-semibold text-foreground shadow-lg shadow-black/5 backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:shadow-xl"
+          className="group hidden lg:flex fixed bottom-6 right-6 z-40 items-center rounded-full border border-border/60 bg-white/85 p-2 text-sm font-semibold text-foreground shadow-lg shadow-black/5 backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:shadow-xl"
           aria-label={t("openAiPanel")}
           data-tutorial="ai-navigator-open"
         >
-          <span className="grid h-7 w-7 place-items-center rounded-full bg-primary text-primary-foreground">
-            <Bot className="h-4 w-4" />
+          <span className="grid h-9 w-9 place-items-center rounded-full bg-primary text-primary-foreground">
+            <Bot className="h-5 w-5" />
           </span>
-          {t("aiNavigator")}
+          <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-300 group-hover:max-w-48 group-hover:pl-2 group-hover:pr-2 group-hover:opacity-100 group-focus-visible:max-w-48 group-focus-visible:pl-2 group-focus-visible:pr-2 group-focus-visible:opacity-100">
+            {t("aiNavigator")}
+          </span>
         </button>
       )}
 

@@ -48,12 +48,12 @@ export function Footer() {
           {/* Product Links */}
           <nav className="space-y-4" aria-label={t("footer.product")}>
             <h3 className="text-sm font-semibold">{t("footer.product")}</h3>
-            <ul className="space-y-1">
+            <ul>
               {footerLinks.product.map((link) => (
                 <li key={link.href}>
                   <Link
                     href={link.href}
-                    className="inline-block py-1.5 rounded-sm text-sm text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                    className="inline-flex min-h-11 items-center rounded-sm text-sm text-muted-foreground hover:text-foreground transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
                   >
                     {link.label}
                   </Link>
@@ -65,12 +65,12 @@ export function Footer() {
           {/* Company Links */}
           <nav className="space-y-4" aria-label={t("footer.company")}>
             <h3 className="text-sm font-semibold">{t("footer.company")}</h3>
-            <ul className="space-y-1">
+            <ul>
               {footerLinks.company.map((link) => (
                 <li key={link.href}>
                   <Link
                     href={link.href}
-                    className="inline-block py-1.5 rounded-sm text-sm text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                    className="inline-flex min-h-11 items-center rounded-sm text-sm text-muted-foreground hover:text-foreground transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
                   >
                     {link.label}
                   </Link>
@@ -82,12 +82,12 @@ export function Footer() {
           {/* Legal Links */}
           <nav className="space-y-4" aria-label={t("footer.legal")}>
             <h3 className="text-sm font-semibold">{t("footer.legal")}</h3>
-            <ul className="space-y-1">
+            <ul>
               {footerLinks.legal.map((link) => (
                 <li key={link.href}>
                   <Link
                     href={link.href}
-                    className="inline-block py-1.5 rounded-sm text-sm text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                    className="inline-flex min-h-11 items-center rounded-sm text-sm text-muted-foreground hover:text-foreground transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
                   >
                     {link.label}
                   </Link>

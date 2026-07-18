@@ -824,14 +824,14 @@ export default function ForumGalaxy3D({ centerLabel, onSelectCenter, onSelectTop
       )}
 
       {axis3 && (
-        <div className="pointer-events-none absolute right-3 top-3 z-40 rounded-lg border border-white/15 bg-[#0a1024]/60 px-3 py-1.5 text-[11px] font-bold text-white/70 backdrop-blur">
+        <div className="pointer-events-none absolute right-3 top-14 z-40 rounded-lg border border-white/15 bg-[#0a1024]/60 px-3 py-1.5 text-[11px] font-bold text-white/70 backdrop-blur">
           第3軸: {axis3.label}
         </div>
       )}
 
-      <p className="pointer-events-none absolute bottom-3 left-4 z-40 max-w-[240px] text-[11px] leading-relaxed text-[#1a3a5a]/55 sm:max-w-none">
+      <p className="pointer-events-none absolute bottom-3 left-4 z-40 max-w-[240px] rounded-full bg-white/60 px-2.5 py-1 text-[11px] leading-relaxed text-[#1a3a5a]/85 backdrop-blur sm:max-w-none">
         惑星＝カテゴリをタップで接近 · 衛星＝トピックをタップでひろばへ · ドラッグで回転
-        {caps.tier === "low" && <span className="text-[#1a3a5a]/40">・軽量モード</span>}
+        {caps.tier === "low" && <span className="text-[#1a3a5a]/60">・軽量モード</span>}
       </p>
     </div>
   );

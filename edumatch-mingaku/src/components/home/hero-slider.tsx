@@ -60,7 +60,6 @@ export function HeroSlider({ items, isAdmin }: Props) {
             className="object-cover"
             sizes="(max-width: 768px) 100vw, 80vw"
             priority
-            unoptimized
           />
           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/25 to-transparent flex items-end p-6">
             <div>
@@ -104,7 +103,6 @@ export function HeroSlider({ items, isAdmin }: Props) {
               className="object-cover"
               sizes="(max-width: 768px) 100vw, 80vw"
               priority={i === 0}
-              unoptimized
             />
             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/25 to-transparent flex items-end p-6">
               <div>

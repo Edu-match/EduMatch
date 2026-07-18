@@ -53,7 +53,7 @@ export default async function KaikanConfirmPage({ searchParams }: { searchParams
 
       {error === "full" && (
         <p className="mb-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-          選択されたプログラムはすべて満員または受付終了のため、申込できませんでした。選び直してください。
+          選択されたプログラムはすべて満員または受付終了のため、お申し込みいただけませんでした。選び直してください。
         </p>
       )}
 
