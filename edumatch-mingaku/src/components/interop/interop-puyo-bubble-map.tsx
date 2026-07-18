@@ -562,7 +562,7 @@ function PuyoBubble({
     <button
       type="button"
       onClick={onActivate}
-      className="group absolute z-10 hover:z-50 focus:z-50 focus:outline-none"
+      className="group absolute z-10 hover:z-50 focus:z-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent rounded-full"
       style={{
         left: `${pos[0]}%`,
         top: `${pos[1]}%`,
@@ -1325,7 +1325,7 @@ export function InteropPuyoBubbleMap({
         <button
           type="button"
           onClick={() => onSelectCategory(interopCat)}
-          className="group absolute left-1/2 top-[46%] z-20 -translate-x-1/2 -translate-y-1/2 focus:outline-none"
+          className="group absolute left-1/2 top-[46%] z-20 -translate-x-1/2 -translate-y-1/2 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent rounded-full"
           style={{
             width: centerSize,
             height: centerSize,
@@ -1451,7 +1451,7 @@ export function InteropPuyoBubbleMap({
             key={s.key}
             type="button"
             onClick={s.onActivate}
-            className="group absolute z-[24] flex -translate-x-1/2 -translate-y-1/2 flex-col items-center focus:outline-none transition-[left,top] duration-500 ease-out"
+            className="group absolute z-[24] flex -translate-x-1/2 -translate-y-1/2 flex-col items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent rounded-full transition-[left,top] duration-500 ease-out"
             style={{ left: placePos.left, top: placePos.top }}
             aria-label={s.label}
           >
@@ -1526,11 +1526,11 @@ export function InteropPuyoBubbleMap({
 
       {/* ズーム＆リセット操作（右下・固定）。AIバーがある時だけ左へ寄せる。ミニマップ(compact)では非表示 */}
       {!compact && (
-      <div ref={zoomRef} className={`absolute bottom-24 right-3 z-40 flex flex-col gap-1.5 md:bottom-6 ${aiBarReserved ? "md:right-16" : "md:right-6"}`}>
+      <div ref={zoomRef} className={`absolute bottom-24 right-3 z-40 flex flex-col gap-1.5 md:bottom-6 ${aiBarReserved ? "md:right-20" : "md:right-6"}`}>
         <button
           type="button"
           onClick={() => zoomAt(1.2, (containerRef.current?.getBoundingClientRect().left ?? 0) + (containerRef.current?.clientWidth ?? 0) / 2, (containerRef.current?.getBoundingClientRect().top ?? 0) + (containerRef.current?.clientHeight ?? 0) / 2)}
-          className="grid h-9 w-9 place-items-center rounded-xl border border-white/15 bg-[#0a1024]/80 text-white/80 backdrop-blur transition hover:bg-white/15 hover:text-white"
+          className="grid h-9 w-9 pointer-coarse:h-11 pointer-coarse:w-11 place-items-center rounded-lg border border-white/15 bg-[#0a1024]/80 text-white/80 backdrop-blur transition hover:bg-white/15 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
           aria-label="拡大"
         >
           <Plus className="h-4 w-4" />
@@ -1538,7 +1538,7 @@ export function InteropPuyoBubbleMap({
         <button
           type="button"
           onClick={() => zoomAt(1 / 1.2, (containerRef.current?.getBoundingClientRect().left ?? 0) + (containerRef.current?.clientWidth ?? 0) / 2, (containerRef.current?.getBoundingClientRect().top ?? 0) + (containerRef.current?.clientHeight ?? 0) / 2)}
-          className="grid h-9 w-9 place-items-center rounded-xl border border-white/15 bg-[#0a1024]/80 text-white/80 backdrop-blur transition hover:bg-white/15 hover:text-white"
+          className="grid h-9 w-9 pointer-coarse:h-11 pointer-coarse:w-11 place-items-center rounded-lg border border-white/15 bg-[#0a1024]/80 text-white/80 backdrop-blur transition hover:bg-white/15 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
           aria-label="縮小"
         >
           <Minus className="h-4 w-4" />
@@ -1546,7 +1546,7 @@ export function InteropPuyoBubbleMap({
         <button
           type="button"
           onClick={resetView}
-          className={`grid h-9 w-9 place-items-center rounded-xl border backdrop-blur transition ${
+          className={`grid h-9 w-9 pointer-coarse:h-11 pointer-coarse:w-11 place-items-center rounded-lg border backdrop-blur transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent ${
             view.scale !== 1 || view.x !== 0 || view.y !== 0
               ? "border-indigo-300/50 bg-indigo-500/30 text-white hover:bg-indigo-500/45"
               : "border-white/15 bg-[#0a1024]/80 text-white/60 hover:bg-white/15 hover:text-white"

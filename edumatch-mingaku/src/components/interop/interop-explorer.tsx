@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Award,
@@ -40,15 +40,7 @@ import { INTEROP_PRIORITY_TOPICS, type InteropPriorityTopic } from "@/lib/intero
 import type { InteropThemeMode, CenterHubItem } from "@/lib/interop-settings";
 import { ensureExternalUrl } from "@/lib/interop-settings";
 import { DEFAULT_TOPIC_AXIS, type AxisConfig, type AxisPoint } from "@/lib/interop-topic-axis";
-
-// インタロップハブ内「自由記入」コミュニティトピック
-const INTEROP_HUB_COMMUNITY = [
-  { id: "interop-2026-freewrite",  name: "ひとことメッセージ", emoji: "💬", color: "#9fb4e8" },
-  { id: "interop-2026-ai-edu",     name: "AI×教育の体験",     emoji: "🤖", color: "#7dd4fc" },
-  { id: "interop-2026-future",     name: "未来の学校像",       emoji: "🏫", color: "#86efac" },
-  { id: "interop-2026-field-voice",name: "現場の声",           emoji: "📢", color: "#fca5a5" },
-  { id: "interop-2026-idea",       name: "教育アイデア",       emoji: "💡", color: "#fcd34d" },
-] as const;
+import { INTEROP_HUB_COMMUNITY } from "@/lib/interop-hub-community";
 
 const ICONS: Record<string, LucideIcon> = {
   information: Info,
@@ -239,16 +231,6 @@ export function InteropExplorer({
   const [activityByCategory, setActivityByCategory] = useState<Map<string, InteropActivityStats>>(initialMaps.catMap);
   const [activityByRoom, setActivityByRoom] = useState<Map<string, InteropActivityStats>>(initialMaps.roomMap);
   const [activityByTopic, setActivityByTopic] = useState<Map<string, InteropActivityStats>>(initialMaps.topicMap);
-  // フォーラム等から戻ってきたとき、元のビュー（論点／ハブ）を復元する（カテゴリは下のcat復元で対応）
-  useEffect(() => {
-    if (topicParam) {
-      const t = INTEROP_PRIORITY_TOPICS.find((x) => x.roomId === topicParam);
-      if (t) { setView({ kind: "topic", topic: t }); return; }
-    }
-    if (hubParam) setView({ kind: "hub" });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // 2軸（DB由来。AIが日次で座標・週次で軸を更新）
   const [axis, setAxis] = useState<{ config?: AxisConfig; positions?: Record<number, AxisPoint> }>({});
   useEffect(() => {
@@ -277,6 +259,23 @@ export function InteropExplorer({
     () => mergeTopicPositions(dbTopicPositions, axis.positions),
     [dbTopicPositions, axis.positions],
   );
+
+  // フォーラム等から戻ってきたとき、元のビュー（論点／ハブ）を復元する（カテゴリは下のcat復元で対応）
+  // dbTopics はマウント後に非同期で解決されるため、解決を待って一度だけ復元する（DB値優先・静的にフォールバック）。
+  const restoredView = useRef(false);
+  useEffect(() => {
+    if (restoredView.current) return;
+    if (topicParam) {
+      const list = dbTopics ?? INTEROP_PRIORITY_TOPICS;
+      const t = list.find((x) => x.roomId === topicParam);
+      if (t) { restoredView.current = true; setView({ kind: "topic", topic: t }); return; }
+      // dbTopics 未解決のうちは静的一致も見つからなければ解決を待つ
+      if (!dbTopics) return;
+    }
+    restoredView.current = true;
+    if (hubParam) setView({ kind: "hub" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dbTopics]);
 
   // ── 中心インタロップ直行サテライト（最新ニュース／登壇者への質問／ご意見BOX）の解決 ──
   const [allSubs, setAllSubs] = useState<InteropSubCategory[]>([]);
@@ -462,7 +461,7 @@ export function InteropExplorer({
         setCategories(d.categories);
         // booth ページからの戻り（/?cat=xxx）で該当階層を復元
         if (catParam) {
-          const match = d.categories.find((c: InteropCategory) => c.id === catParam);
+          const match = d.categories.find((c: InteropCategory) => c.id === catParam || c.slug === catParam);
           if (match)
             setView(
               match.isPrimary || match.slug === "giin-kaikan" || match.slug === "interop"
@@ -538,13 +537,14 @@ export function InteropExplorer({
         </div>
       ) : categories.length === 0 ? (
         <div className="absolute inset-0 grid place-items-center px-8 text-center text-sm text-white/60">
-          まだカテゴリがありません。管理画面（/admin/interop）から追加してください。
+          まだカテゴリがありません。教育のひろば 管理（/admin/forum）から追加してください。
         </div>
       ) : view.kind === "map" ? (
         <>
           {mapMode === "3d" ? (
             <ForumGalaxy3D
               centerLabel={centerLabelOverride?.trim() || (isGiinKaikanCenter ? "教育AIサミット2026＠衆議院第一議員会館" : interopCat?.name)}
+              topics={dbTopics ?? INTEROP_PRIORITY_TOPICS}
               onSelectCenter={() => { if (interopCat) handleSelectFromMap(interopCat); }}
               onSelectTopic={handleSelectTopic}
             />

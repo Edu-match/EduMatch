@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MapPin, Users, CheckCircle2, ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export type SelectableContent = {
   id: string;
@@ -171,9 +172,9 @@ export function KaikanContentSelector({ contents, appliedIds }: { contents: Sele
           <span className="text-sm font-medium">
             <span className="font-bold text-primary">{selected.size}</span> 件選択中{newCount > 0 ? `（新規${newCount}件）` : ""}
           </span>
-          <button type="button" onClick={proceed} disabled={selected.size === 0} className="inline-flex items-center gap-1.5 rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground transition hover:opacity-90 disabled:opacity-50">
+          <Button type="button" size="lg" onClick={proceed} disabled={selected.size === 0}>
             確認へ進む <ArrowRight className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
       </div>
     </div>

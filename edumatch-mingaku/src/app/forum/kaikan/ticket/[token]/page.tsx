@@ -23,17 +23,15 @@ function receiptNo(token: string): string {
 export default async function KaikanTicketPage({ params, searchParams }: { params: Promise<{ token: string }>; searchParams: Promise<{ skipped?: string }> }) {
   const { token } = await params;
   const { skipped } = await searchParams;
-  let apps: Array<{ id: string; name: string; status: string; checked_in_at: Date | null; profile_id: string | null; content: { title: string; location: string; starts_at: Date | null; sort_order: number } }> = [];
-  try {
-    // ticket_token でまとめて取得（旧・単独申込は qr_token でフォールバック）
-    apps = await prisma.kaikanApplication.findMany({
-      where: { OR: [{ ticket_token: token }, { qr_token: token }] },
-      select: { id: true, name: true, status: true, checked_in_at: true, profile_id: true, content: { select: { title: true, location: true, starts_at: true, sort_order: true } } },
-    });
-    apps.sort((a, b) => ((a.content?.sort_order ?? 0) - (b.content?.sort_order ?? 0)));
-  } catch {
-    apps = [];
-  }
+  // DB障害と「本当に存在しない」を区別する。障害時に握りつぶすと有効チケットが 404 扱いになり、
+  // 受付現場で「チケットが無効になった」と誤解される。取得失敗は例外のまま error.tsx（再試行UI）に委ね、
+  // notFound() は「本当に該当0件」のときだけに限定する。
+  // ticket_token でまとめて取得（旧・単独申込は qr_token でフォールバック）
+  const apps = await prisma.kaikanApplication.findMany({
+    where: { OR: [{ ticket_token: token }, { qr_token: token }] },
+    select: { id: true, name: true, status: true, checked_in_at: true, profile_id: true, content: { select: { title: true, location: true, starts_at: true, sort_order: true } } },
+  });
+  apps.sort((a, b) => ((a.content?.sort_order ?? 0) - (b.content?.sort_order ?? 0)));
   if (apps.length === 0) notFound();
 
   const name = apps[0].name;
@@ -49,17 +47,17 @@ export default async function KaikanTicketPage({ params, searchParams }: { param
       <style>{`@media print { body * { visibility: hidden !important; } #ticket-print, #ticket-print * { visibility: visible !important; } #ticket-print { position: absolute; inset: 0; margin: 24px auto; } .ticket-no-print { display: none !important; } }`}</style>
       {skipped && (
         <p className="ticket-no-print mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
-          一部のプログラムは満員・受付終了のため申込できませんでした：{skipped}
+          一部のプログラムは満席・受付終了のため申込できませんでした：{skipped}
         </p>
       )}
       <div id="ticket-print" className="overflow-hidden rounded-3xl border bg-card shadow-lg">
         {/* 上段：イベント */}
-        <div className="bg-gradient-to-br from-primary to-violet-600 px-5 pb-5 pt-4 text-white">
+        <div className="bg-gradient-to-br from-primary to-chart-2 px-5 pb-5 pt-4 text-white">
           <p className="flex items-center gap-1.5 text-[11px] font-bold tracking-wide opacity-90">
             <Ticket className="h-3.5 w-3.5" /> 電子チケット
           </p>
           <h1 className="mt-1.5 text-lg font-bold leading-snug">教育AIサミット2026＠衆議院第一議員会館</h1>
-          <p className="mt-1 text-xs opacity-90">{apps.length}件のプログラムに参加</p>
+          <p className="mt-1 text-xs opacity-90">{activeApps.length}件のプログラムに参加</p>
         </div>
 
         {/* ミシン目 */}
@@ -124,7 +122,7 @@ export default async function KaikanTicketPage({ params, searchParams }: { param
 
       <div className="ticket-no-print mt-4 flex flex-col items-center gap-3">
         <TicketPrintButton />
-        <Link href="/forum/kaikan" className="text-xs text-muted-foreground hover:text-foreground">コンテンツ一覧へ</Link>
+        <Link href="/forum/kaikan" className="text-xs text-muted-foreground hover:text-foreground">プログラム一覧へ</Link>
       </div>
     </main>
   );

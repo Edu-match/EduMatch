@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { QrCode, Search, Camera, X, CheckCircle2, Clock, User, Mail, Phone, MapPin, Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 type Session = { id: string; title: string; location: string; startsAt: string | null; status: string; checkedInAt: string | null };
 type Result = { found: boolean; ticketToken?: string; user?: { name: string; email: string; phone: string | null; address: string | null; postal: string | null }; sessions?: Session[] };
@@ -121,13 +122,13 @@ export function KaikanCheckinPanel({ initialToken }: { initialToken?: string }) 
 
       {/* 手入力 */}
       <form onSubmit={(e) => { e.preventDefault(); lookup(token); }} className="flex gap-2">
-        <input
+        <Input
           value={token}
           onChange={(e) => setToken(e.target.value)}
-          placeholder="受付番号（例: 7A3F-4C21）"
-          className="flex-1 rounded-md border border-input px-3 py-2 text-sm"
+          placeholder="受付番号（例：7A3F-4C21）"
+          className="flex-1"
         />
-        <button type="submit" disabled={loading} className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-bold text-primary-foreground transition hover:opacity-90 disabled:opacity-50">
+        <button type="submit" disabled={loading} className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground shadow-sm transition-[color,background-color,box-shadow,transform] duration-150 hover:bg-primary-hover hover:shadow-md active:scale-[0.98] active:shadow-sm disabled:opacity-50 pointer-coarse:min-h-11">
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} 照会
         </button>
       </form>
@@ -135,18 +136,18 @@ export function KaikanCheckinPanel({ initialToken }: { initialToken?: string }) 
       {/* QRスキャン */}
       <div className="rounded-xl border bg-muted/20 p-3">
         {!scanning ? (
-          <button type="button" onClick={startScan} className="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-4 py-2 text-sm font-bold transition hover:bg-muted">
+          <button type="button" onClick={startScan} className="inline-flex items-center gap-1.5 rounded-lg border border-input bg-background px-4 py-2 text-sm font-bold outline-none transition-[color,background-color,box-shadow] duration-150 hover:bg-muted focus-visible:ring-[3px] focus-visible:ring-ring/50 pointer-coarse:min-h-11">
             <Camera className="h-4 w-4" /> カメラでQRを読み取る
           </button>
         ) : (
-          <button type="button" onClick={stopScan} className="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-4 py-2 text-sm font-bold transition hover:bg-muted">
+          <button type="button" onClick={stopScan} className="inline-flex items-center gap-1.5 rounded-lg border border-input bg-background px-4 py-2 text-sm font-bold outline-none transition-[color,background-color,box-shadow] duration-150 hover:bg-muted focus-visible:ring-[3px] focus-visible:ring-ring/50 pointer-coarse:min-h-11">
             <X className="h-4 w-4" /> スキャンを停止
           </button>
         )}
         <div id="kaikan-qr-reader" className={`mt-3 overflow-hidden rounded-lg ${scanning ? "block" : "hidden"}`} style={{ maxWidth: 320 }} />
       </div>
 
-      {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      {error && <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
       {notice && <p className="rounded-md bg-amber-50 px-3 py-2 text-sm font-bold text-amber-800">{notice}</p>}
 
       {/* 照会結果 */}
@@ -173,7 +174,7 @@ export function KaikanCheckinPanel({ initialToken }: { initialToken?: string }) 
                   {done ? (
                     <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-bold text-emerald-700"><CheckCircle2 className="h-3.5 w-3.5" /> 受付済{s.checkedInAt ? `（${fmt(s.checkedInAt)}）` : ""}</span>
                   ) : (
-                    <button type="button" onClick={() => checkIn(s.id)} className="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary px-4 py-1.5 text-xs font-bold text-primary-foreground transition hover:opacity-90"><Clock className="h-3.5 w-3.5" /> 受付する</button>
+                    <button type="button" onClick={() => checkIn(s.id)} className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-primary px-4 py-2.5 pointer-coarse:min-h-11 text-xs font-bold text-primary-foreground shadow-sm transition-[color,background-color,box-shadow,transform] duration-150 hover:bg-primary-hover hover:shadow-md active:scale-[0.98] active:shadow-sm"><Clock className="h-3.5 w-3.5" /> 受付する</button>
                   )}
                 </li>
               );

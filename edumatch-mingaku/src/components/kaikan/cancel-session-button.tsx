@@ -11,7 +11,7 @@ function SubmitButton({ title }: { title: string }) {
       type="submit"
       disabled={pending}
       title={`「${title}」の申込をキャンセル`}
-      className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[10px] font-bold text-muted-foreground transition hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+      className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-xs font-bold text-muted-foreground outline-none transition-[color,background-color,border-color,box-shadow] duration-150 hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50 pointer-coarse:min-h-11"
     >
       {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : <XCircle className="h-3 w-3" />}
       キャンセル

@@ -4,6 +4,8 @@ import { CalendarDays, MapPin, Ticket, ChevronDown, ChevronLeft } from "lucide-r
 import { prisma } from "@/lib/prisma";
 import { getCurrentProfile } from "@/lib/auth";
 import { applyForKaikanContents, hasRedeemedInvite } from "@/app/_actions/kaikan";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +45,7 @@ export default async function KaikanConfirmPage({ searchParams }: { searchParams
   return (
     <main className="mx-auto w-full max-w-xl px-4 py-8 sm:px-6">
       <Link href="/forum/kaikan" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-        <ChevronLeft className="h-3.5 w-3.5" /> コンテンツ選択へ戻る
+        <ChevronLeft className="h-3.5 w-3.5" /> プログラム選択へ戻る
       </Link>
       <header className="mb-5 mt-3">
         <p className="text-xs font-bold tracking-wide text-primary">教育AIサミット2026＠衆議院第一議員会館</p>
@@ -52,8 +54,8 @@ export default async function KaikanConfirmPage({ searchParams }: { searchParams
       </header>
 
       {error === "full" && (
-        <p className="mb-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-          選択されたプログラムはすべて満員または受付終了のため、お申し込みいただけませんでした。選び直してください。
+        <p role="alert" className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+          選択されたプログラムはすべて満席または受付終了のため、お申し込みいただけませんでした。選び直してください。
         </p>
       )}
 
@@ -62,7 +64,7 @@ export default async function KaikanConfirmPage({ searchParams }: { searchParams
 
         {/* 選択したコンテンツ */}
         <section>
-          <h2 className="mb-2 text-sm font-bold">参加コンテンツ（{contents.length}件）</h2>
+          <h2 className="mb-2 text-sm font-bold">参加プログラム（{contents.length}件）</h2>
           <ul className="space-y-2">
             {contents.map((c) => (
               <li key={c.id} className="rounded-xl border bg-card p-4">
@@ -92,7 +94,7 @@ export default async function KaikanConfirmPage({ searchParams }: { searchParams
               {accountRows.map(([k, v]) => (
                 <div key={k} className="flex items-start justify-between gap-3">
                   <dt className="shrink-0 text-muted-foreground">{k}</dt>
-                  <dd className="min-w-0 text-right font-medium">{v}</dd>
+                  <dd className="min-w-0 break-all text-right font-medium">{v}</dd>
                 </div>
               ))}
             </dl>
@@ -100,13 +102,13 @@ export default async function KaikanConfirmPage({ searchParams }: { searchParams
         </section>
 
         <div className="space-y-1.5">
-          <label className="text-sm font-medium">事前質問・期待すること <span className="text-muted-foreground">（任意・全コンテンツ共通）</span></label>
-          <textarea name="note" rows={3} maxLength={500} className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="登壇者に聞きたいこと、参加への期待など" />
+          <label htmlFor="kaikan-note" className="text-sm font-medium">事前質問・期待すること <span className="text-muted-foreground">（任意・全プログラム共通）</span></label>
+          <Textarea id="kaikan-note" name="note" rows={3} maxLength={500} className="resize-none" placeholder="登壇者に聞きたいこと、参加への期待など" />
         </div>
 
-        <button type="submit" className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition hover:opacity-90">
+        <Button type="submit" size="lg" className="w-full">
           <Ticket className="h-4 w-4" /> この内容で申し込む（電子チケットを発行）
-        </button>
+        </Button>
       </form>
     </main>
   );

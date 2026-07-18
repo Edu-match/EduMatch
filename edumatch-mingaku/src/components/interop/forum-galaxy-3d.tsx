@@ -192,7 +192,7 @@ function PlanetLabel({ color, emoji, label, total, hover, compact = false }: { c
         background: hover ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.85)",
         border: `1px solid ${color}${hover ? "ee" : "88"}`,
         transition: "all .18s ease",
-        maxWidth: compact ? 110 : 140,
+        maxWidth: hover ? "none" : compact ? 140 : 200,
         overflow: "hidden",
       }}
     >
@@ -364,7 +364,7 @@ function Moon({ topic, posts, planetR, index, count, clockRef, seg, showLabel, a
           dashScale={4}
         />
       )}
-      {hover && (
+      {(hover || (showLabel && !compact)) && (
         <Html center distanceFactor={compact ? 12 : 22} position={[0, r + 0.9, 0]} zIndexRange={[45, 10]} style={{ pointerEvents: "none" }}>
           <div style={{ ...pillBase, display: "inline-flex", alignItems: "center", gap: 4, fontSize: compact ? 8 : 10, padding: compact ? "1px 6px" : "2px 8px", maxWidth: compact ? 110 : 160, overflow: "hidden", background: "rgba(255,255,255,0.88)", border: `1px solid ${color}bb` }}>
             <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{topic.category}</span>
@@ -534,8 +534,9 @@ function useLabelScale(): { scale: number; compact: boolean } {
   return { scale, compact };
 }
 
-function Scene({ centerLabel, counts, caps, axis3, focusedMajor, onFocusMajor, onSelectCenter, onSelectTopic }: {
+function Scene({ centerLabel, topics, counts, caps, axis3, focusedMajor, onFocusMajor, onSelectCenter, onSelectTopic }: {
   centerLabel: string;
+  topics: InteropPriorityTopic[];
   counts: Map<string, number>;
   caps: Caps;
   axis3?: Axis3;
@@ -562,13 +563,13 @@ function Scene({ centerLabel, counts, caps, axis3, focusedMajor, onFocusMajor, o
 
   const topicsByMajor = useMemo(() => {
     const m = new Map<string, InteropPriorityTopic[]>();
-    for (const t of INTEROP_PRIORITY_TOPICS) {
+    for (const t of topics) {
       const arr = m.get(t.major) ?? [];
       arr.push(t);
       m.set(t.major, arr);
     }
     return m;
-  }, []);
+  }, [topics]);
 
   return (
     <>
@@ -639,21 +640,22 @@ function useClientCapabilities(): Caps | null {
 
 /* ── 2Dフォールバック ── */
 
-function ForumGalaxy2DFallback({ centerLabel, counts, onSelectCenter, onSelectTopic }: {
+function ForumGalaxy2DFallback({ centerLabel, topics, counts, onSelectCenter, onSelectTopic }: {
   centerLabel: string;
+  topics: InteropPriorityTopic[];
   counts: Map<string, number>;
   onSelectCenter: () => void;
   onSelectTopic: (t: InteropPriorityTopic) => void;
 }) {
   const groups = useMemo(() => {
     const byMajor = new Map<string, InteropPriorityTopic[]>();
-    for (const t of INTEROP_PRIORITY_TOPICS) {
+    for (const t of topics) {
       const arr = byMajor.get(t.major) ?? [];
       arr.push(t);
       byMajor.set(t.major, arr);
     }
     return [...byMajor.entries()];
-  }, []);
+  }, [topics]);
   return (
     <div className="absolute inset-0 overflow-y-auto" style={{ background: BG_PALETTES.day.sky }}>
       <div className="mx-auto max-w-3xl px-4 py-6">
@@ -704,7 +706,7 @@ function ForumGalaxy2DFallback({ centerLabel, counts, onSelectCenter, onSelectTo
           );
         })}
       </div>
-      <p className="pointer-events-none absolute bottom-3 left-4 text-[11px] text-[#1a3a5a]/50">
+      <p className="pointer-events-none absolute bottom-3 left-4 rounded-full bg-white/60 px-2.5 py-1 text-[11px] leading-relaxed text-[#1a3a5a]/85 backdrop-blur">
         軽量表示モード（3D非対応環境）。タップで各テーマの教育のひろばへ。
       </p>
     </div>
@@ -713,11 +715,13 @@ function ForumGalaxy2DFallback({ centerLabel, counts, onSelectCenter, onSelectTo
 
 /* ── エントリ ── */
 
-export default function ForumGalaxy3D({ centerLabel, onSelectCenter, onSelectTopic }: {
+export default function ForumGalaxy3D({ centerLabel, topics, onSelectCenter, onSelectTopic }: {
   centerLabel?: string;
+  topics?: InteropPriorityTopic[];
   onSelectCenter: () => void;
   onSelectTopic: (t: InteropPriorityTopic) => void;
 }) {
+  const galaxyTopics = topics && topics.length > 0 ? topics : INTEROP_PRIORITY_TOPICS;
   const [counts, setCounts] = useState<Map<string, number>>(new Map());
   const [axis3, setAxis3] = useState<Axis3 | undefined>();
   const [focusedMajor, setFocusedMajor] = useState<string | null>(null);
@@ -749,13 +753,17 @@ export default function ForumGalaxy3D({ centerLabel, onSelectCenter, onSelectTop
     return () => { cancelled = true; };
   }, []);
 
+  // 天体クリックで Canvas がアンマウントされると pointerOut が発火せず、
+  // document.body.style.cursor が "pointer" のまま残る。アンマウント時に必ず戻す。
+  useEffect(() => () => { document.body.style.cursor = "auto"; }, []);
+
   const label = centerLabel?.trim() || "議員会館";
 
   if (!caps) {
     return <div className="absolute inset-0 transition-[background] duration-1000" style={{ background: pal.sky }} />;
   }
   if (!caps.webgl) {
-    return <ForumGalaxy2DFallback centerLabel={label} counts={counts} onSelectCenter={onSelectCenter} onSelectTopic={onSelectTopic} />;
+    return <ForumGalaxy2DFallback centerLabel={label} topics={galaxyTopics} counts={counts} onSelectCenter={onSelectCenter} onSelectTopic={onSelectTopic} />;
   }
 
   return (
@@ -797,6 +805,7 @@ export default function ForumGalaxy3D({ centerLabel, onSelectCenter, onSelectTop
       >
         <Scene
           centerLabel={label}
+          topics={galaxyTopics}
           counts={counts}
           caps={caps}
           axis3={axis3}
@@ -816,7 +825,7 @@ export default function ForumGalaxy3D({ centerLabel, onSelectCenter, onSelectTop
           <button
             type="button"
             onClick={() => setFocusedMajor(null)}
-            className="rounded-full border border-[#1a3a5a]/20 bg-white/70 px-3.5 py-1.5 text-xs font-bold text-[#1a3a5a] backdrop-blur transition hover:bg-white/85"
+            className="rounded-full border border-[#1a3a5a]/20 bg-white/70 px-3.5 py-2.5 text-xs font-bold text-[#1a3a5a] backdrop-blur transition hover:bg-white/85"
           >
             ← 全体へ
           </button>

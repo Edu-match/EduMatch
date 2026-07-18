@@ -6,6 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentProfile } from "@/lib/auth";
 import { applyForKaikanContent, hasRedeemedInvite } from "@/app/_actions/kaikan";
 import { InviteCodeGate } from "@/components/kaikan/invite-code-gate";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 
 export const dynamic = "force-dynamic";
 
@@ -46,15 +48,15 @@ export default async function KaikanApplyPage({ params, searchParams }: { params
 
   return (
     <main className="mx-auto w-full max-w-xl px-4 py-8 sm:px-6">
-      <Link href="/forum?map=3d" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+      <Link href="/forum" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
         <ChevronLeft className="h-3.5 w-3.5" /> 教育のひろばへ
       </Link>
 
       {/* イベントカード */}
       <section className="mt-3 overflow-hidden rounded-2xl border bg-card shadow-sm">
-        <div className="bg-gradient-to-br from-primary/90 to-violet-600 px-5 py-4 text-white">
+        <div className="bg-gradient-to-br from-primary to-chart-2 px-5 py-4 text-white">
           <p className="flex items-center gap-1.5 text-[11px] font-bold tracking-wide opacity-90">
-            <Ticket className="h-3.5 w-3.5" /> 議員会館イベント · 電子チケット申込
+            <Ticket className="h-3.5 w-3.5" /> 教育AIサミット2026＠衆議院第一議員会館 · 電子チケット申込
           </p>
           <h1 className="mt-1 text-xl font-bold leading-snug">{content.title}</h1>
         </div>
@@ -73,7 +75,7 @@ export default async function KaikanApplyPage({ params, searchParams }: { params
       {/* 申込 */}
       <section className="mt-5">
         {error === "full" && !full && (
-          <p className="mb-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+          <p role="alert" className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
             申し込みが集中したため完了できませんでした。少し時間をおいて再度お試しください。
           </p>
         )}
@@ -84,9 +86,11 @@ export default async function KaikanApplyPage({ params, searchParams }: { params
         ) : !profile ? (
           <div className="rounded-2xl border bg-card p-6 text-center">
             <p className="text-sm text-muted-foreground">お申し込みにはログインが必要です。<br />アカウントの登録情報でそのまま申し込めます。</p>
-            <Link href={loginHref} className="mt-4 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground transition hover:opacity-90">
-              <LogIn className="h-4 w-4" /> ログインして申し込む
-            </Link>
+            <Button asChild size="lg" className="mt-4">
+              <Link href={loginHref}>
+                <LogIn className="h-4 w-4" /> ログインして申し込む
+              </Link>
+            </Button>
           </div>
         ) : !invited ? (
           <InviteCodeGate />
@@ -125,11 +129,11 @@ export default async function KaikanApplyPage({ params, searchParams }: { params
             </details>
             <div className="space-y-1.5">
               <label className="text-sm font-medium">事前質問・期待すること <span className="text-muted-foreground">（任意）</span></label>
-              <textarea name="note" rows={3} maxLength={500} className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="登壇者に聞きたいこと、参加への期待など" />
+              <Textarea name="note" rows={3} maxLength={500} className="resize-none" placeholder="登壇者に聞きたいこと、参加への期待など" />
             </div>
-            <button type="submit" className="w-full rounded-full bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition hover:opacity-90">
+            <Button type="submit" size="lg" className="w-full">
               このアカウントで申し込む（電子チケットを発行）
-            </button>
+            </Button>
             <p className="text-[11px] text-muted-foreground">申込後、受付で提示するQRコード付きの電子チケットが表示されます。</p>
           </form>
         )}

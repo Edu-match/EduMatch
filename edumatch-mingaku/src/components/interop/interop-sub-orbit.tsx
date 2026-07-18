@@ -115,7 +115,7 @@ function SubTopicOrb({
     <button
       type="button"
       onClick={item.onActivate}
-      className="group absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center focus:outline-none transition-[left,top] duration-500 ease-out"
+      className="group absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent rounded-full transition-[left,top] duration-500 ease-out"
       style={{
         left: `${pos.left}%`,
         top: `${pos.top}%`,
@@ -341,8 +341,8 @@ export function InteropSubOrbit({
             onClick={onBack}
             className={
               compact
-                ? "group relative w-full rounded-2xl px-2 py-2.5 text-center transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_0_32px_rgba(100,150,255,0.25)] focus:outline-none"
-                : "group relative w-full rounded-2xl px-3 py-3.5 text-center transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_0_32px_rgba(100,150,255,0.25)] focus:outline-none"
+                ? "group relative w-full rounded-2xl px-2 py-2.5 text-center transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_0_32px_rgba(100,150,255,0.25)] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
+                : "group relative w-full rounded-2xl px-3 py-3.5 text-center transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_0_32px_rgba(100,150,255,0.25)] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
             }
             style={{
               background: `linear-gradient(160deg, rgba(12,16,40,0.82) 0%, ${accent}18 100%)`,

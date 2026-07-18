@@ -73,7 +73,7 @@ function renderBodyWithMention(body: string): React.ReactNode {
 
 /** フロストグラス：時間帯背景を透かしつつ本文のコントラストを確保 */
 const POST_SURFACE = {
-  background: "linear-gradient(145deg, rgba(14,20,52,0.62) 0%, rgba(8,12,36,0.72) 100%)",
+  background: "linear-gradient(145deg, rgba(10,15,42,0.80) 0%, rgba(8,12,36,0.84) 100%)",
   backdropFilter: "blur(16px) saturate(1.15)",
   WebkitBackdropFilter: "blur(16px) saturate(1.15)",
   boxShadow: "0 8px 32px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.12)",
@@ -471,7 +471,7 @@ export function InteropBoard({
                         : { ...POST_SURFACE, borderColor: "rgba(255,255,255,0.16)" }
                   }>
                     <div className="px-4 py-3">
-                      <div className="flex items-center gap-2 text-xs text-white/55">
+                      <div className="flex items-center gap-2 text-xs text-white/70">
                         {p.isPinned && (
                           <span
                             className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold"
@@ -481,7 +481,7 @@ export function InteropBoard({
                           </span>
                         )}
                         <span className="font-bold text-white/85">{p.authorName}</span>
-                        {p.authorRole && <span className="text-white/40">· {p.authorRole}</span>}
+                        {p.authorRole && <span className="text-white/60">· {p.authorRole}</span>}
                         <span className="ml-auto shrink-0">{timeAgo(p.postedAt)}</span>
                       </div>
                       <p
@@ -495,7 +495,7 @@ export function InteropBoard({
                           type="button"
                           onClick={() => toggleLike(p.id)}
                           className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] transition ${
-                            p.liked ? "text-pink-400" : "text-white/40 hover:text-pink-300"
+                            p.liked ? "text-pink-400" : "text-white/60 hover:text-pink-300"
                           }`}
                           aria-pressed={p.liked}
                           aria-label={p.liked ? "いいねを取り消す" : "いいねする"}
@@ -800,7 +800,7 @@ function ForumStyleComposeArea({
         </div>
         <a
           href="/auth/login"
-          className="inline-flex items-center gap-1.5 rounded-full px-5 py-2 text-sm font-bold text-white transition hover:opacity-90"
+          className="inline-flex items-center gap-1.5 rounded-full px-5 py-2 text-sm font-bold text-white transition hover:brightness-110 active:brightness-95 outline-none focus-visible:ring-2 focus-visible:ring-white/60"
           style={{ background: accent }}
         >
           <LogIn className="h-4 w-4" />ログインする
@@ -830,7 +830,7 @@ function ForumStyleComposeArea({
         placeholder="あなたの意見や経験を書いてください…"
         rows={4}
         maxLength={MAX_BODY + 50}
-        className="w-full resize-none rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm leading-7 text-white placeholder:text-white/40 focus:border-white/30 focus:outline-none"
+        className="w-full resize-none rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm leading-7 text-white placeholder:text-white/40 outline-none focus-visible:border-white/40 focus-visible:ring-2 focus-visible:ring-white/25"
       />
       <div className="flex items-center justify-end gap-3">
         <span className={`text-[11px] tabular-nums ${remaining < 0 ? "text-rose-400 font-semibold" : remaining < 50 ? "text-amber-300" : "text-white/40"}`}>
@@ -840,7 +840,7 @@ function ForumStyleComposeArea({
           type="button"
           onClick={onSubmit}
           disabled={!canSubmit}
-          className="inline-flex items-center gap-1.5 rounded-full px-5 py-2 text-sm font-bold text-white transition disabled:opacity-40 hover:opacity-90"
+          className="inline-flex items-center gap-1.5 rounded-full px-5 py-2 text-sm font-bold text-white transition disabled:opacity-40 hover:brightness-110 active:brightness-95 outline-none focus-visible:ring-2 focus-visible:ring-white/60"
           style={{ background: accent }}
         >
           {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PenSquare className="h-3.5 w-3.5" />}

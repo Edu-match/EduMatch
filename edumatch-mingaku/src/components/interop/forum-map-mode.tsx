@@ -28,7 +28,7 @@ export function ForumMapMode(props: React.ComponentProps<typeof InteropExplorer>
         <button
           type="button"
           onClick={() => choose("3d")}
-          className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold transition-all ${mode === "3d" ? "bg-primary text-white" : "text-[#1a3a5a]/60 hover:text-[#1a3a5a]"}`}
+          className={`inline-flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-bold transition-all ${mode === "3d" ? "bg-primary text-white" : "text-[#1a3a5a]/60 hover:text-[#1a3a5a]"}`}
           aria-pressed={mode === "3d"}
         >
           <Box className="h-3.5 w-3.5" />3D
@@ -36,7 +36,7 @@ export function ForumMapMode(props: React.ComponentProps<typeof InteropExplorer>
         <button
           type="button"
           onClick={() => choose("2d")}
-          className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold transition-all ${mode === "2d" ? "bg-primary text-white" : "text-[#1a3a5a]/60 hover:text-[#1a3a5a]"}`}
+          className={`inline-flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-bold transition-all ${mode === "2d" ? "bg-primary text-white" : "text-[#1a3a5a]/60 hover:text-[#1a3a5a]"}`}
           aria-pressed={mode === "2d"}
         >
           <MapIcon className="h-3.5 w-3.5" />2D

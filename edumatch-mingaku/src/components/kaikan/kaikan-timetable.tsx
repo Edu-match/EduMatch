@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, ArrowRight, CheckCircle2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export type SelectableContent = {
   id: string;
@@ -95,7 +96,7 @@ function SessionBlock({
   const startMin = toMinutes(start);
   const endMin = toMinutes(end);
   const top = (startMin - DAY_START) * PX_PER_MIN;
-  const height = Math.max((endMin - startMin) * PX_PER_MIN, 28);
+  const height = Math.max((endMin - startMin) * PX_PER_MIN, 44);
   const disabled = applied || full || conflicting;
   const showDesc = height > 80;
 
@@ -105,7 +106,7 @@ function SessionBlock({
       onClick={() => !disabled && onToggle()}
       disabled={disabled}
       className={[
-        "absolute left-1 right-1 rounded-lg border p-1.5 text-left text-xs leading-tight transition-all duration-150 overflow-hidden shadow-sm",
+        "absolute left-1 right-1 rounded-lg border p-1.5 text-left text-xs leading-tight transition-all duration-150 overflow-hidden shadow-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:z-10",
         selected && !applied ? `${venue.selectedBg} ${venue.border} ring-2 ${venue.ring}` : `${venue.bg} ${venue.border}`,
         applied ? "opacity-60" : "",
         conflicting ? "opacity-40 cursor-not-allowed" : "",
@@ -114,7 +115,7 @@ function SessionBlock({
         !disabled && selected ? "hover:shadow-md hover:scale-[1.01]" : "",
       ].join(" ")}
       style={{ top, height }}
-      title={`${fmtTime(start)}–${fmtTime(end)} ${content.title}${conflicting ? " (時間重複)" : ""}${full ? " (満員)" : ""}`}
+      title={`${fmtTime(start)}–${fmtTime(end)} ${content.title}${conflicting ? " (時間重複)" : ""}${full ? " (満席)" : ""}`}
     >
       {/* Conflict striped overlay */}
       {conflicting && (
@@ -178,19 +179,30 @@ function useScrollHint(ref: React.RefObject<HTMLDivElement | null>) {
   return { showHint, canScrollLeft, canScrollRight };
 }
 
-export function KaikanTimetable({ contents, appliedIds }: { contents: SelectableContent[]; appliedIds: string[] }) {
+export function overlapsContents(a: SelectableContent, b: SelectableContent): boolean {
+  return overlaps(a, b);
+}
+
+export function KaikanTimetable({
+  contents,
+  appliedIds,
+  selected,
+  onToggle,
+  conflictWith,
+}: {
+  contents: SelectableContent[];
+  appliedIds: string[];
+  /** 選択状態は親（KaikanViewToggle）が一元管理する制御コンポーネント。 */
+  selected: Set<string>;
+  onToggle: (c: SelectableContent) => void;
+  /** 選択済みセッションとの時間重複判定（親から供給）。 */
+  conflictWith: (c: SelectableContent) => boolean;
+}) {
   const router = useRouter();
   const appliedSet = useMemo(() => new Set(appliedIds), [appliedIds]);
-  const [selected, setSelected] = useState<Set<string>>(() => new Set(appliedIds));
   const slots = useMemo(timeSlots, []);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { showHint, canScrollLeft, canScrollRight } = useScrollHint(scrollRef);
-
-  const byId = useMemo(() => new Map(contents.map((c) => [c.id, c])), [contents]);
-  const selectedContents = useMemo(
-    () => [...selected].map((id) => byId.get(id)).filter(Boolean) as SelectableContent[],
-    [selected, byId],
-  );
 
   const venueContents = useMemo(() => {
     const result: SelectableContent[][] = [[], [], []];
@@ -208,27 +220,16 @@ export function KaikanTimetable({ contents, appliedIds }: { contents: Selectable
     [contents],
   );
 
-  function conflictWith(c: SelectableContent): boolean {
-    for (const s of selectedContents) {
-      if (s.id !== c.id && overlaps(c, s)) return true;
-    }
-    return false;
-  }
-
   const toggle = (c: SelectableContent) => {
     if (appliedSet.has(c.id)) return;
-    setSelected((prev) => {
-      const n = new Set(prev);
-      if (n.has(c.id)) n.delete(c.id);
-      else n.add(c.id);
-      return n;
-    });
+    onToggle(c);
   };
 
   const newCount = [...selected].filter((id) => !appliedSet.has(id)).length;
 
   const proceed = () => {
-    const ids = [...selected];
+    // 申込済みIDを除いた新規分のみ confirm へ送る（既申込を新規申込に見せない）。
+    const ids = [...selected].filter((id) => !appliedSet.has(id));
     if (ids.length === 0) return;
     router.push(`/forum/kaikan/confirm?ids=${encodeURIComponent(ids.join(","))}`);
   };
@@ -255,7 +256,7 @@ export function KaikanTimetable({ contents, appliedIds }: { contents: Selectable
           </div>
         )}
 
-        <div ref={scrollRef} className="overflow-x-auto scroll-smooth -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div ref={scrollRef} className="overflow-x-auto overflow-y-auto max-h-[calc(100dvh-16rem)] scroll-smooth -mx-4 px-4 sm:mx-0 sm:px-0">
           <div className="min-w-[700px]">
             {/* Header */}
             <div className="sticky top-0 z-20 grid grid-cols-[56px_1fr_1fr_1fr] border-b bg-background/95 backdrop-blur">
@@ -346,7 +347,7 @@ export function KaikanTimetable({ contents, appliedIds }: { contents: Selectable
                   type="button"
                   disabled={isApplied || isFull}
                   onClick={() => toggle(c)}
-                  className={`relative rounded-xl border p-3 text-left text-sm transition-all ${
+                  className={`relative rounded-xl border p-3 text-left text-sm outline-none transition-all focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:border-ring ${
                     isApplied
                       ? "border-emerald-300 bg-emerald-50 opacity-70"
                       : isSelected
@@ -376,17 +377,12 @@ export function KaikanTimetable({ contents, appliedIds }: { contents: Selectable
       <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 backdrop-blur shadow-lg supports-[backdrop-filter]:bg-background/80">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <span className="text-sm font-medium">
-            <span className="font-bold text-primary">{newCount}</span> 件を新規申込
-            {selected.size - newCount > 0 && <span className="text-muted-foreground">（申込済 {selected.size - newCount} 件）</span>}
+            <span className="font-bold text-primary">{newCount}</span>件を新規申込
+            {selected.size - newCount > 0 && <span className="text-muted-foreground">（申込済{selected.size - newCount}件）</span>}
           </span>
-          <button
-            type="button"
-            onClick={proceed}
-            disabled={selected.size === 0}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-primary to-primary/90 px-6 py-2.5 text-sm font-bold text-primary-foreground shadow-md transition hover:opacity-90 hover:shadow-lg disabled:opacity-50"
-          >
+          <Button type="button" size="lg" onClick={proceed} disabled={newCount === 0}>
             確認へ進む <ArrowRight className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
       </div>
     </div>

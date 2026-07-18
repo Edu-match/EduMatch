@@ -7,6 +7,7 @@ import { hasRedeemedInvite } from "@/app/_actions/kaikan";
 import { KaikanViewToggle } from "@/components/kaikan/kaikan-view-toggle";
 import { KaikanBackButton } from "@/components/kaikan/back-button";
 import { InviteCodeGate } from "@/components/kaikan/invite-code-gate";
+import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
@@ -50,16 +51,16 @@ export default async function KaikanTicketsPage({ searchParams }: { searchParams
       <KaikanBackButton />
       <header className="mb-5 mt-3">
         <p className="text-xs font-bold tracking-wide text-primary">教育AIサミット2026＠衆議院第一議員会館</p>
-        <h1 className="mt-1 text-2xl font-bold">参加するコンテンツを選ぶ</h1>
+        <h1 className="mt-1 text-2xl font-bold">参加するプログラムを選ぶ</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          参加したいコンテンツに<strong>複数チェック</strong>して「確認へ進む」を押すと、次のページで内容を確認して申し込めます。
+          参加したいプログラムに<strong>複数チェック</strong>して「確認へ進む」を押すと、次のページで内容を確認して申し込めます。
         </p>
         {myTicketToken && (
           <Link
             href={`/forum/kaikan/ticket/${myTicketToken}`}
             className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/5 px-4 py-1.5 text-xs font-bold text-primary transition hover:bg-primary/10"
           >
-            マイチケットを表示（申込済 {appliedIds.length}件）
+            マイチケットを表示（申込済{appliedIds.length}件）
           </Link>
         )}
       </header>
@@ -71,13 +72,15 @@ export default async function KaikanTicketsPage({ searchParams }: { searchParams
       )}
 
       {rows.length === 0 ? (
-        <div className="rounded-xl border bg-muted/30 p-8 text-center text-sm text-muted-foreground">現在申込受付中のコンテンツはありません。</div>
+        <div className="rounded-xl border bg-muted/30 p-8 text-center text-sm text-muted-foreground">現在申込受付中のプログラムはありません。</div>
       ) : !profile ? (
         <div className="rounded-2xl border bg-card p-6 text-center">
           <p className="text-sm text-muted-foreground">お申し込みにはログインが必要です。<br />アカウントの登録情報でそのまま申し込めます。</p>
-          <Link href={loginHref} className="mt-4 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground transition hover:opacity-90">
-            <LogIn className="h-4 w-4" /> ログインして申し込む
-          </Link>
+          <Button asChild size="lg" className="mt-4">
+            <Link href={loginHref}>
+              <LogIn className="h-4 w-4" /> ログインして申し込む
+            </Link>
+          </Button>
         </div>
       ) : !invited ? (
         <InviteCodeGate />

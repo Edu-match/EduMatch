@@ -202,7 +202,7 @@ async function sendTicketEmail(
     await resend.emails.send({
       from: FROM_EMAIL,
       to: email,
-      subject: "【エデュマッチ】電子チケットのご案内（教育AIサミット2026）",
+      subject: "【エデュマッチ】電子チケットのご案内（教育AIサミット2026＠衆議院第一議員会館）",
       attachments: [{ filename: "ticket-qr.png", content: qrPng, contentId: "ticket-qr" }],
       html: `
 <div style="max-width:480px;margin:0 auto;font-family:'Hiragino Sans','Noto Sans JP',sans-serif;">
@@ -265,7 +265,14 @@ export async function applyForKaikanContent(formData: FormData) {
   });
   if (existing) redirect(`/forum/kaikan/ticket/${existing.ticket_token ?? existing.qr_token}`);
 
-  const token = randomUUID().replace(/-/g, "");
+  // 既存チケットがあれば合流する（別トークンでチケットが分裂しないように）。
+  // qr_token は @unique のため共有不可 → セッション用に別途発行する。
+  const existingTicket = await prisma.kaikanApplication.findFirst({
+    where: { profile_id: profile.id, status: { not: "cancelled" }, ticket_token: { not: null } },
+    select: { ticket_token: true },
+  });
+  const ticketToken = existingTicket?.ticket_token ?? randomUUID().replace(/-/g, "");
+  const qrToken = randomUUID().replace(/-/g, "");
   const ok = await createApplicationIfCapacity({
     contentId,
     capacity: content.capacity,
@@ -273,16 +280,25 @@ export async function applyForKaikanContent(formData: FormData) {
     name: profile.name,
     email: profile.email ?? "",
     note,
-    qrToken: token,
-    ticketToken: token,
+    qrToken,
+    ticketToken,
   });
   if (!ok) redirect(`/forum/kaikan/${contentId}?error=full`);
 
-  await sendTicketEmail(profile.email ?? "", profile.name, token, [
-    { title: content.title, starts_at: content.starts_at, location: content.location },
-  ]);
+  // チケットに載る全プログラム（既存分含む）をメールに記載
+  const myApps = await prisma.kaikanApplication.findMany({
+    where: { ticket_token: ticketToken, profile_id: profile.id, status: { not: "cancelled" } },
+    select: { content: { select: { title: true, starts_at: true, location: true } } },
+    orderBy: { created_at: "asc" },
+  }).catch(() => []);
+  await sendTicketEmail(
+    profile.email ?? "",
+    profile.name,
+    ticketToken,
+    myApps.map((a) => a.content).filter(Boolean),
+  );
   revalidatePath("/admin/kaikan");
-  redirect(`/forum/kaikan/ticket/${token}`);
+  redirect(`/forum/kaikan/ticket/${ticketToken}`);
 }
 
 /** 複数コンテンツをまとめて申込→1枚のチケット(共有ticket_token)に集約。受付はセッション単位。 */

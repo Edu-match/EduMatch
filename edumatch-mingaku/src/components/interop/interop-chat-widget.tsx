@@ -191,7 +191,7 @@ export function InteropChatWidget({
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="ml-auto grid h-8 w-8 place-items-center rounded-full text-white/55 transition hover:bg-white/10 hover:text-white"
+              className="ml-auto grid h-8 w-8 pointer-coarse:h-11 pointer-coarse:w-11 place-items-center rounded-full text-white/55 transition hover:bg-white/10 hover:text-white"
               aria-label="閉じる"
             >
               <X className="h-4 w-4" />
