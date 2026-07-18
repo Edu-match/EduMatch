@@ -50,6 +50,8 @@
   --color-destructive-foreground: var(--destructive-foreground);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
   --color-surface-tint: var(--surface-tint);
   /* 紫染めの影（黒ベース既定影はラベンダー背景上で濁るため一括上書き） */
   --shadow-2xs: 0 1px 2px oklch(0.35 0.12 280 / 0.06);
@@ -91,6 +93,9 @@
   /* 受付済など「成功」を意味する状態色（緑をブランド彩度に馴染ませたトーン） */
   --success: oklch(0.58 0.14 155);
   --success-foreground: oklch(0.99 0 0);
+  /* 管理者ブロック等の「注意/権限」を意味する状態色（琥珀を紫基調に馴染ませた彩度に抑えたトーン） */
+  --warning: oklch(0.72 0.14 75);
+  --warning-foreground: oklch(0.28 0.06 75);
   --border: oklch(0.865 0.050 280);
   /* input/outline ボタンの境界は装飾罫線(--border)より暗くし、
      薄紫背景に対して WCAG 1.4.11 の非テキストコントラスト（約3:1）を確保する */
@@ -136,6 +141,9 @@
   --destructive-foreground: oklch(0.985 0.008 280);
   --success: oklch(0.72 0.15 155);
   --success-foreground: oklch(0.14 0.025 278);
+  /* ダークでは明度を上げて視認性を確保した琥珀トーン */
+  --warning: oklch(0.78 0.13 75);
+  --warning-foreground: oklch(0.16 0.03 75);
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 18%);
   --ring: oklch(0.65 0.15 278);

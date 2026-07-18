@@ -89,11 +89,15 @@ export default async function ServiceDetailPage({
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/10">
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted/10 pb-28 lg:pb-0">
       {/* パンくずナビ */}
-      <div className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+      <div className="border-b bg-card/50 backdrop-blur-sm sticky top-[calc(var(--header-h)+var(--sectionnav-h))] z-20">
         <div className="container py-4">
-          <Button variant="ghost" asChild className="hover:bg-primary/10">
+          <Button
+            variant="ghost"
+            asChild
+            className="hover:bg-primary/10 pointer-coarse:min-h-11 pointer-coarse:min-w-11"
+          >
             <Link href="/services">
               <ArrowLeft className="h-4 w-4 mr-2" />
               {t("backToList")}
@@ -127,12 +131,17 @@ export default async function ServiceDetailPage({
                 </div>
               </div>
               <div className="flex items-start justify-between gap-4 mb-6">
-                <h1 className="text-4xl md:text-5xl font-bold leading-tight flex-1">
+                <h1 className="text-2xl sm:text-3xl md:text-5xl font-bold leading-tight flex-1">
                   {service.title}
                 </h1>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {canEdit && (
-                    <Button variant="outline" size="sm" asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      asChild
+                      className="pointer-coarse:min-h-11 pointer-coarse:min-w-11"
+                    >
                       <Link href={`/services/${service.id}/edit`}>
                         <Pencil className="h-4 w-4 mr-1" />
                         {t("edit")}
@@ -145,6 +154,7 @@ export default async function ServiceDetailPage({
                     text={service.title}
                     variant="outline"
                     size="sm"
+                    className="pointer-coarse:min-h-11 pointer-coarse:min-w-11"
                   />
                 </div>
               </div>
@@ -172,7 +182,7 @@ export default async function ServiceDetailPage({
                 </div>
                 <div className="text-center">
                   <span className="text-2xl font-bold text-primary">
-                    {service.price_info}
+                    {service.price_info || t("priceTBD")}
                   </span>
                 </div>
               </div>
@@ -373,7 +383,7 @@ export default async function ServiceDetailPage({
                   <div className="text-center mb-6">
                     <p className="text-sm text-muted-foreground mb-2">{t("pricePlan")}</p>
                     <p className="text-3xl font-bold text-primary mb-1">
-                      {service.price_info}
+                      {service.price_info || t("priceTBD")}
                     </p>
                   </div>
 
@@ -442,39 +452,6 @@ export default async function ServiceDetailPage({
               </Card>
 
             </div>
-
-            {/* モバイル用CTA：「なし」でも料金・お気に入りは表示、資料請求のみ条件付き */}
-            <div className="lg:hidden">
-              <Card className="border-2 border-primary/20 shadow-2xl sticky bottom-4">
-                <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-background p-6">
-                  <div className="text-center mb-4">
-                    <p className="text-sm text-muted-foreground mb-1">{t("pricePlan")}</p>
-                    <p className="text-2xl font-bold text-primary">
-                      {service.price_info}
-                    </p>
-                  </div>
-
-                  <div className="space-y-3">
-                    {showMaterialRequestButton && (
-                      <Button asChild className="w-full shadow-lg" size="lg">
-                        <Link href={`/request-info?serviceId=${service.id}`}>
-                          <FileText className="h-5 w-5 mr-2" />
-                          {t("requestMaterial")}
-                        </Link>
-                      </Button>
-                    )}
-                    <AddToRequestListServiceButton
-                      serviceId={service.id}
-                      title={service.title}
-                      thumbnailUrl={service.thumbnail_url}
-                      category={service.category}
-                      variant="button"
-                      className="w-full"
-                    />
-                  </div>
-                </div>
-              </Card>
-            </div>
           </div>
         </div>
 
@@ -525,6 +502,36 @@ export default async function ServiceDetailPage({
             </CardContent>
           </Card>
         )}
+      </div>
+
+      {/* モバイル用固定CTAバー：常時画面下部に追従。資料請求のみ条件付き、料金・お気に入りは常時表示 */}
+      <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t bg-card/95 backdrop-blur-sm shadow-[0_-4px_12px_rgba(0,0,0,0.08)] pb-[env(safe-area-inset-bottom)]">
+        <div className="container flex items-center gap-3 py-3">
+          <div className="flex-shrink-0 leading-tight">
+            <p className="text-[11px] text-muted-foreground">{t("pricePlan")}</p>
+            <p className="text-base font-bold text-primary">
+              {service.price_info || t("priceTBD")}
+            </p>
+          </div>
+          <div className="flex flex-1 items-center gap-2 min-w-0">
+            {showMaterialRequestButton && (
+              <Button asChild className="flex-1 shadow-lg" size="lg">
+                <Link href={`/request-info?serviceId=${service.id}`}>
+                  <FileText className="h-5 w-5 mr-2" />
+                  {t("requestMaterial")}
+                </Link>
+              </Button>
+            )}
+            <AddToRequestListServiceButton
+              serviceId={service.id}
+              title={service.title}
+              thumbnailUrl={service.thumbnail_url}
+              category={service.category}
+              variant={showMaterialRequestButton ? "icon" : "button"}
+              className={showMaterialRequestButton ? undefined : "flex-1"}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

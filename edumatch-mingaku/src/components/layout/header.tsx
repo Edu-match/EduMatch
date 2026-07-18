@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import Image from "next/image";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { 
   Menu, LogOut, User, LayoutDashboard, Settings,
@@ -43,6 +42,12 @@ import { useTutorial } from "@/components/tutorial/use-tutorial";
    （数値バッジは赤が慣習。紫ヘッダー上でも顕著性を保ち、ring で下地から浮かせる） */
 const headerBadgeClass =
   "absolute -top-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold leading-none text-destructive-foreground ring-2 ring-background";
+
+/* モバイルシート内の行内バッジ（未読数）。
+   ヘッダー数値バッジ(headerBadgeClass)と同じ円形トークンに寄せ、
+   絶対配置(-top/-right)と ring だけ外した派生版で形状を統一する。 */
+const mobileBadgeClass =
+  "inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[11px] font-bold leading-none text-destructive-foreground";
 
 /* モバイルシートメニューの行スタイル
    （罫線の羅列でなく行ホバー＋グループ余白で区切る。グループ境界は border-t のみ） */
@@ -212,16 +217,12 @@ export function Header() {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 w-full border-b border-border/60 bg-background/80 backdrop-blur-xl after:absolute after:inset-x-0 after:top-0 after:h-px after:bg-gradient-to-r after:from-transparent after:via-primary/40 after:to-transparent">
       <div className="container flex h-16 items-center gap-2 md:gap-3">
-        {/* Logo */}
+        {/* Logo（新ブランド AIUEO BASE。旧ロゴ画像 /logo.png はエデュマッチのままなので
+            フッター(footer.tsx)と同じテキスト表示に統一してブランドの食い違いを解消） */}
         <Link href="/" className="flex shrink-0 items-center hover:opacity-80 transition-opacity">
-          <Image
-            src="/logo.png"
-            alt={tc("siteName")}
-            width={168}
-            height={44}
-            className="h-9 w-auto object-contain"
-            priority
-          />
+          <span className="text-lg font-bold text-primary tracking-tight">
+            {tc("siteName")}
+          </span>
         </Link>
 
         {/* Desktop Navigation（セクション移動は SectionNav タブに集約。ここは機能系のみ） */}
@@ -511,6 +512,7 @@ export function Header() {
             <Button
               variant="ghost"
               size="icon"
+              aria-label={t("openMenu")}
               data-tutorial="header-mobile-menu-trigger"
             >
               <Menu className="h-5 w-5" />
@@ -540,7 +542,7 @@ export function Header() {
                 <FileText className="h-4 w-4 flex-shrink-0" />
                 {t("favoritesFull")}
                 {requestListCount > 0 && (
-                  <span className="rounded-full bg-destructive text-destructive-foreground text-xs font-bold px-2 py-0.5">
+                  <span className={mobileBadgeClass}>
                     {requestListCount}
                   </span>
                 )}
@@ -562,7 +564,7 @@ export function Header() {
                   <Bell className="h-4 w-4 flex-shrink-0" />
                   {t("notifications")}
                   {notifications.unreadCount > 0 && (
-                    <span className="rounded-full bg-destructive text-destructive-foreground text-xs font-bold px-2 py-0.5">
+                    <span className={mobileBadgeClass}>
                       {notifications.unreadCount}
                     </span>
                   )}

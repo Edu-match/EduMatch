@@ -336,12 +336,12 @@ export default function ServiceCreatePage() {
       if (result.success && result.serviceId) {
         localStorage.removeItem(STORAGE_KEY);
         toast.success(
-          publishType === "submit" ? "投稿申請を受け付けました" : "下書きを保存しました",
+          publishType === "submit" ? "投稿を受け付けました" : "下書きを保存しました",
           { description: publishType === "submit" ? "管理者の承認後に公開されます。" : undefined }
         );
         router.push(`/services/${result.serviceId}`);
       } else {
-        toast.error(publishType === "submit" ? "申請に失敗しました" : "保存に失敗しました", {
+        toast.error(publishType === "submit" ? "投稿に失敗しました" : "保存に失敗しました", {
           description: result.error || "もう一度お試しください",
         });
       }
@@ -412,7 +412,7 @@ export default function ServiceCreatePage() {
               ) : (
                 <Send className="h-4 w-4 mr-2" />
               )}
-              申請する
+              投稿する
             </Button>
           </div>
         </div>

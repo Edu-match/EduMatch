@@ -92,7 +92,7 @@ function MenuItemLink({
       }`}
     >
       <Icon className={`h-4 w-4 flex-shrink-0 ${"color" in item && item.color ? item.color : "text-muted-foreground"}`} />
-      <span className="hover:text-[#1d4ed8] transition-colors">{t(item.labelKey)}</span>
+      <span className="hover:text-primary transition-colors">{t(item.labelKey)}</span>
     </Link>
   );
 }
@@ -145,10 +145,10 @@ export function SideMenu() {
         </div>
       )}
       {!roleLoading && visibleBottomItems.length > 0 && (
-        <div className="border-2 border-amber-400 rounded-lg bg-amber-50 overflow-hidden">
-          <div className="px-3 py-2.5 bg-amber-400 flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-amber-900 flex-shrink-0" />
-            <h2 className="text-sm font-bold text-amber-900">
+        <div className="border border-warning rounded-lg bg-warning/10 overflow-hidden">
+          <div className="px-3 py-2.5 bg-warning flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-warning-foreground flex-shrink-0" />
+            <h2 className="text-sm font-bold text-warning-foreground">
               {role === "ADMIN" ? t("adminMenu") : t("posterMenu")}
             </h2>
           </div>
@@ -156,19 +156,19 @@ export function SideMenu() {
             {role === "ADMIN" && (
               <Link
                 href="/admin/kaikan?tab=checkin"
-                className="flex w-full items-center gap-2 border-b border-amber-200 px-3 py-2.5 text-left text-sm transition-colors hover:bg-amber-100"
+                className="flex w-full items-center gap-2 border-b border-warning/30 px-3 py-2.5 text-left text-sm transition-colors hover:bg-warning/15"
               >
-                <QrCode className="h-4 w-4 flex-shrink-0 text-amber-900" />
-                <span className="hover:text-[#1d4ed8] transition-colors">{t("kaikanCheckin")}</span>
+                <QrCode className="h-4 w-4 flex-shrink-0 text-warning-foreground" />
+                <span className="hover:text-primary transition-colors">{t("kaikanCheckin")}</span>
               </Link>
             )}
             {role === "ADMIN" && (
               <Link
                 href="/admin/persona"
-                className="flex w-full items-center gap-2 border-b border-amber-200 px-3 py-2.5 text-left text-sm transition-colors hover:bg-amber-100"
+                className="flex w-full items-center gap-2 border-b border-warning/30 px-3 py-2.5 text-left text-sm transition-colors hover:bg-warning/15"
               >
                 <Sparkles className="h-4 w-4 flex-shrink-0 text-violet-700" />
-                <span className="hover:text-[#1d4ed8] transition-colors">{t("aiPersona")}</span>
+                <span className="hover:text-primary transition-colors">{t("aiPersona")}</span>
               </Link>
             )}
             {visibleBottomItems.map((item, index) => (
