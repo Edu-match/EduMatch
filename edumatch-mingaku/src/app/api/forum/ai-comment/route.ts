@@ -8,8 +8,6 @@ const AI_COMMENT_RATE_LIMIT = { windowMs: 60 * 1000, max: 10 };
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
 const requestBodySchema = z.object({
   postBody: z.string().max(10000),
   roomName: z.string().max(200).default(""),
@@ -81,6 +79,7 @@ ${postBody}
 上記の投稿に対して、ファシリテーターとして自然な返信をしてください。
 `.trim();
 
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const stream = await openai.chat.completions.create({
       model: "gpt-5.4-mini",
       stream: true,
