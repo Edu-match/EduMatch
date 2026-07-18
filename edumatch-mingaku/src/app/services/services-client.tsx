@@ -107,7 +107,8 @@ export function ServicesClient({
               </div>
 
               {/* カテゴリフィルター */}
-              <div className="flex items-center gap-2 pb-2 overflow-x-auto scrollbar-hide" style={{ WebkitOverflowScrolling: "touch" }}>
+              {/* 横スクロールのチップ列: スクロールバーは隠し、右端フェードで「続きがある」ことを示す */}
+              <div className="flex items-center gap-2 pb-2 overflow-x-auto scrollbar-hide [mask-image:linear-gradient(to_right,black_calc(100%-32px),transparent)]" style={{ WebkitOverflowScrolling: "touch" }}>
                 <span className="text-sm font-medium text-muted-foreground whitespace-nowrap flex-shrink-0">
                   {t("categoryLabel")}
                 </span>

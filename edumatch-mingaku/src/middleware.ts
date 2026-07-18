@@ -197,8 +197,9 @@ export async function middleware(request: NextRequest) {
 
   if (isProtectedPath && !user) {
     // 未認証ユーザーはログインページにリダイレクト
+    // （戻り先パラメータは他ページの /login?next= 慣例に統一）
     const redirectUrl = new URL("/login", request.url);
-    redirectUrl.searchParams.set("redirect_to", pathname);
+    redirectUrl.searchParams.set("next", pathname);
     redirectUrl.searchParams.set("message", "この機能を利用するにはログインが必要です");
     return NextResponse.redirect(redirectUrl);
   }

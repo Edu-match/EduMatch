@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 export type TickerItem = {
   id: string;
@@ -8,18 +9,19 @@ export type TickerItem = {
   href: string;
 };
 
-/** ヘッドラインの無限ループティッカー。ホバーで一時停止（CSSアニメーション）。 */
+/** ヘッドラインの無限ループティッカー。ホバー/フォーカス/タッチで一時停止（CSSアニメーション）。 */
 export function NewsTicker({ items }: { items: TickerItem[] }) {
+  const t = useTranslations("home");
   if (items.length === 0) return null;
   // 途切れなくループさせるため2周分並べ、-50%移動でシームレスに繋ぐ
   const loop = [...items, ...items];
   const duration = Math.max(30, items.length * 7);
 
   return (
-    <div className="ticker-wrap sticky top-[6.75rem] z-20 overflow-hidden border-b border-violet-200/40 bg-violet-100/95 backdrop-blur-md">
-      <div className="container flex items-center gap-3 py-2">
+    <div className="ticker-wrap sticky top-[calc(var(--header-h)+var(--sectionnav-h))] z-20 overflow-hidden border-b border-border/40 bg-secondary/95 backdrop-blur-md">
+      <div className="container flex items-center gap-3">
         <span className="live-dot flex shrink-0 items-center gap-1.5 text-xs font-bold tracking-wide text-foreground">
-          {" "}HEADLINES
+          {" "}{t("headlines")}
         </span>
         <div className="relative min-w-0 flex-1 overflow-hidden">
           <div
@@ -30,7 +32,7 @@ export function NewsTicker({ items }: { items: TickerItem[] }) {
               <Link
                 key={`${item.id}-${i}`}
                 href={item.href}
-                className="shrink-0 whitespace-nowrap text-xs text-muted-foreground transition-colors hover:text-primary"
+                className="shrink-0 whitespace-nowrap py-3 text-xs text-muted-foreground transition-colors hover:text-primary"
                 tabIndex={i >= items.length ? -1 : undefined}
                 aria-hidden={i >= items.length || undefined}
               >

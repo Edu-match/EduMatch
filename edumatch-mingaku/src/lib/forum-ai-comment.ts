@@ -99,7 +99,7 @@ export const INTEROP_AI_FACILITATOR_NAME = "AIファシリテーター";
  *  全返信が静かに失敗していた）。 */
 export const INTEROP_AI_REPLY_MODEL = process.env.INTEROP_AI_REPLY_MODEL?.trim() || "gpt-4o-mini";
 
-const INTEROP_AI_SYSTEM_PROMPT = `あなたは「インタロップ東京2026 教育AIサミット」の特設ページに配置されたAIファシリテーターです。
+const INTEROP_AI_SYSTEM_PROMPT = `あなたは「Interop Tokyo 2026 教育AIサミット」の特設ページに配置されたAIファシリテーターです。
 教育現場のAI活用・EdTech・学びのデザインについて、来場者（教育者・研究者・企業・保護者・学生）の声を受け止め、対話を豊かにするサポートをしています。
 
 ## あなたの役割

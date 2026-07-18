@@ -29,7 +29,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "教育AIサミット | Interop Tokyo 2026",
   description:
-    "Interop Tokyo 2026 教育AIサミット。議員会館・AI検定・エデュマッチ・AI部の展示・登壇・セミナー情報。会場：幕張メッセ。",
+    "Interop Tokyo 2026（幕張メッセ）出展の教育AIサミット特設サイト。教育AIサミット2026＠衆議院第一議員会館の案内に加え、AI検定・エデュマッチ・AI部の展示・登壇・セミナー情報を掲載。",
 };
 
 export default async function InteropPage() {

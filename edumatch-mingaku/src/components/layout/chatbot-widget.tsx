@@ -10,6 +10,7 @@ import {
 } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   AlertTriangle,
   Bot,
@@ -125,12 +126,6 @@ const MODE_DESCRIPTIONS: Record<ChatMode, string> = {
   navigator: "一般的な質問・案内",
   debate: "賛成・反対の立場で議論",
   discussion: "テーマについて深く議論",
-};
-
-const PLACEHOLDERS: Record<ChatMode, string> = {
-  navigator: "教育ICTやこのサイトについてお聞きください",
-  debate: "あなたの立場と理由を教えてください",
-  discussion: "議論したいテーマや論点を教えてください",
 };
 
 const EXAMPLE_QUESTIONS: Record<ChatMode, string[]> = {
@@ -276,30 +271,21 @@ function AgreementScreen({
   agreeLoading: boolean;
   disclaimerPath: string;
 }) {
+  const t = useTranslations("aiNavigator.consent");
   const [checked, setChecked] = useState(false);
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
       <div className="px-4 pt-4 pb-2 border-b shrink-0">
-        <p className="text-sm font-semibold">AIナビゲーターご利用上の留意点</p>
-        <p className="text-xs text-muted-foreground mt-0.5">以下をご確認のうえ、同意してからご利用ください。</p>
+        <p className="text-sm font-semibold">{t("title")}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{t("subtitle")}</p>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-3 min-h-0 text-sm text-muted-foreground space-y-3 leading-relaxed">
-        <p>
-          本サイトのAIナビゲーターは、エデュマッチが提供する教育サービス・ICTツール等の情報検索・相談支援の補助機能です。
-        </p>
-        <p>
-          本AIによる応答は、教育サービス選びや情報整理の参考を目的に自動生成されたものであり、内容の正確性・最新性・完全性を保証するものではありません。
-        </p>
-        <p>
-          回答内容に基づく最終的な判断（資料請求・契約・導入等）は、必ず各サービス提供元の公式情報・担当者への確認を行ってください。
-        </p>
-        <p>
-          本AIの回答や解析内容により利用者または第三者に発生した損害について、当サイトおよび運営者は一切責任を負いません。
-        </p>
-        <p>
-          本AIはすべての利用ケースに対応するものではなく、AIが誤った情報を生成する可能性（いわゆる「ハルシネーション」）をご了承ください。
-        </p>
+        <p>{t("p1")}</p>
+        <p>{t("p2")}</p>
+        <p>{t("p3")}</p>
+        <p>{t("p4")}</p>
+        <p>{t("p5")}</p>
         <div className="pt-1">
           <Link
             href={disclaimerPath}
@@ -307,7 +293,7 @@ function AgreementScreen({
             rel="noopener noreferrer"
             className="text-xs text-primary underline hover:no-underline"
           >
-            留意点の全文を確認する →
+            {t("fullTextLink")}
           </Link>
         </div>
       </div>
@@ -321,7 +307,7 @@ function AgreementScreen({
             className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-primary cursor-pointer"
           />
           <span className="text-xs text-foreground leading-relaxed">
-            上記の留意点を確認しました
+            {t("checkboxLabel")}
           </span>
         </label>
         <Button
@@ -335,7 +321,7 @@ function AgreementScreen({
           ) : (
             <Check className="h-3.5 w-3.5 mr-1.5" />
           )}
-          {agreeLoading ? "保存中…" : "同意してチャットを開始する"}
+          {agreeLoading ? t("agreeSaving") : t("agreeButton")}
         </Button>
       </div>
     </div>
@@ -468,6 +454,7 @@ function MarkdownContent({ text }: { text: string }) {
 // -----------------------------------------------------------------------
 
 export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
+  const t = useTranslations("aiNavigator");
   const pathname = usePathname();
   const examBlocksChat = useAiKenteiExamBlocksChat();
   const {
@@ -995,8 +982,8 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
       });
 
       if (!resp.ok) {
-        const err = await resp.json().catch(() => ({ error: "通信エラー" }));
-        const message = err.error ?? "通信エラー";
+        const err = await resp.json().catch(() => ({ error: t("errors.generic") }));
+        const message = err.error ?? t("errors.generic");
         setMessages((prev) =>
           prev.map((m) => (m.id === botMsgId ? { ...m, content: message, streaming: false } : m))
         );
@@ -1148,9 +1135,9 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
       }
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === "AbortError") {
-        setMessages((prev) => prev.map((m) => (m.id === botMsgId ? { ...m, content: m.content || "（中断されました）", streaming: false } : m)));
+        setMessages((prev) => prev.map((m) => (m.id === botMsgId ? { ...m, content: m.content || t("errors.aborted"), streaming: false } : m)));
       } else {
-        setMessages((prev) => prev.map((m) => (m.id === botMsgId ? { ...m, content: "通信エラーが発生しました。もう一度お試しください。", streaming: false } : m)));
+        setMessages((prev) => prev.map((m) => (m.id === botMsgId ? { ...m, content: t("errors.network"), streaming: false } : m)));
       }
     } finally {
       setIsStreaming(false);
@@ -1199,7 +1186,7 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
           <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 shrink-0">
             <Bot className="h-4 w-4 text-primary" />
           </div>
-          <div className="min-w-0 flex-1 text-sm font-semibold truncate">AIナビゲーター</div>
+          <div className="min-w-0 flex-1 text-sm font-semibold truncate">{t("title")}</div>
           <Button
             variant="ghost"
             size="icon"
@@ -1237,7 +1224,7 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
         <div className="min-w-0 flex-1">
           <div className="text-sm font-semibold truncate leading-tight">
             {view === "chat"
-              ? "AIナビゲーター"
+              ? t("title")
               : view === "context-select"
                 ? "コンテキスト選択"
                 : view === "history-select"
@@ -1328,10 +1315,10 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
             <Bot className="h-6 w-6 text-primary" />
           </div>
           <p className="text-sm text-muted-foreground mb-4">
-            AIチャットは会員限定です。<br />ログインまたは会員登録するとご利用いただけます。
+            {t("gate.membersOnly")}<br />{t("gate.loginPrompt")}
           </p>
           <Button asChild size="sm">
-            <Link href="/auth/login">ログイン・会員登録</Link>
+            <Link href="/auth/login">{t("gate.loginButton")}</Link>
           </Button>
         </div>
       )}
@@ -1768,7 +1755,7 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
                 value={input}
                 onChange={handleTextareaInput}
                 onKeyDown={handleKeyDown}
-                placeholder={PLACEHOLDERS[chatMode]}
+                placeholder={t(`placeholders.${chatMode}`)}
                 rows={1}
                 disabled={isStreaming}
                 className="flex-1 resize-none rounded-xl border border-input bg-background px-3 py-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-50 max-h-[220px] min-h-[52px] leading-[1.5]"

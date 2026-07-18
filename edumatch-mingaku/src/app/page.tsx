@@ -77,7 +77,7 @@ export default async function HomePage() {
                       <MessageSquare className="h-4 w-4" />
                     </span>
                     <div>
-                      <h1 className="display-title text-lg leading-snug sm:text-xl">{t("heroTitle")}</h1>
+                      <h1 className="display-title text-xl sm:text-2xl">{t("heroTitle")}</h1>
                       <p className="text-xs text-muted-foreground">{t("heroSubtitle")}</p>
                     </div>
                   </div>
@@ -147,7 +147,7 @@ export default async function HomePage() {
               {/* 人気記事 */}
               {popularPosts.length > 0 && (
                 <Reveal variant="fade-in" delay={160}>
-                  <section className="rounded-2xl border bg-gradient-to-br from-card to-surface-tint p-4">
+                  <section className="rounded-2xl border bg-card p-4 shadow-sm">
                     <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold leading-snug tracking-[-0.01em] text-foreground/90">
                       <TrendingUp className="h-4 w-4 text-primary" />
                       {t("popularArticles")}
@@ -172,7 +172,7 @@ export default async function HomePage() {
 
               {/* 近日のイベント */}
               <Reveal variant="fade-in" delay={200}>
-                <section className="rounded-2xl border bg-gradient-to-br from-card to-surface-tint p-4">
+                <section className="rounded-2xl border bg-card p-4 shadow-sm">
                   <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold leading-snug tracking-[-0.01em] text-foreground/90">
                     <Calendar className="h-4 w-4 text-primary" />
                     {t("upcomingEvents")}
@@ -228,7 +228,7 @@ export default async function HomePage() {
             <Link
               key={f.href}
               href={f.href}
-              className="group flex items-center gap-3 rounded-xl border bg-gradient-to-r from-card to-surface-tint px-4 py-3 transition-all hover:border-primary/30 hover:bg-surface-tint hover:shadow-sm"
+              className="group flex items-center gap-3 rounded-xl border bg-card px-4 py-3 transition-all hover:border-primary/30 hover:bg-surface-tint hover:shadow-sm"
             >
               <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary transition-transform duration-200 group-hover:scale-110">
                 <f.icon className="h-4 w-4" />

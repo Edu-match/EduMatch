@@ -207,7 +207,7 @@ async function sendTicketEmail(
       html: `
 <div style="max-width:480px;margin:0 auto;font-family:'Hiragino Sans','Noto Sans JP',sans-serif;">
   <p style="font-size:14px;color:#374151;">${escapeHtml(name)} 様</p>
-  <p style="font-size:14px;color:#374151;">教育AIサミット2026＠衆議院第一議員会館へのお申込みありがとうございます。<br>当日は受付でこちらの電子チケットをご提示ください。</p>
+  <p style="font-size:14px;color:#374151;">教育AIサミット2026＠衆議院第一議員会館へのお申し込みありがとうございます。<br>当日は受付でこちらの電子チケットをご提示ください。</p>
 
   <div style="border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;margin:20px 0;">
     <div style="background:linear-gradient(135deg,#6d28d9,#7c3aed);padding:16px 20px;">

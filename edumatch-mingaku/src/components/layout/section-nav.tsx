@@ -47,15 +47,16 @@ export function SectionNav() {
 
   return (
     <>
-      {/* 固定ヘッダー(h-16)分のスペーサー */}
-      <div className="h-16 shrink-0" aria-hidden />
+      {/* 固定ヘッダー(--header-h)分のスペーサー */}
+      <div className="h-[var(--header-h)] shrink-0" aria-hidden />
       <nav
         data-tutorial="header-nav"
         aria-label={t("menu")}
-        className="sticky top-16 z-30 h-11 border-b border-border/50 bg-background/70 backdrop-blur-xl"
+        className="sticky top-[var(--header-h)] z-30 h-[var(--sectionnav-h)] border-b border-border/60 bg-background/80 backdrop-blur-xl"
       >
-        {/* モバイルでは端をフェードさせ「続きがある」ことを示す（md以上はフェードなし） */}
-        <div className="container h-full [mask-image:linear-gradient(to_right,transparent,black_16px,black_calc(100%-24px),transparent)] md:[mask-image:none]">
+        {/* 全タブが収まる幅(約1140px)までは端をフェードさせ「続きがある」ことを示す
+            （md〜lg のタブレット幅でもオーバーフローするためフェードを維持する） */}
+        <div className="container h-full [mask-image:linear-gradient(to_right,transparent,black_16px,black_calc(100%-24px),transparent)] min-[1140px]:[mask-image:none]">
           <ul
             ref={listRef}
             className="flex h-full snap-x snap-proximity items-center gap-0.5 overflow-x-auto [&::-webkit-scrollbar]:hidden"

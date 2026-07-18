@@ -39,7 +39,7 @@ type RequestBody = z.infer<typeof requestBodySchema>;
 const MAX_PAGE_CONTENT_CHARS = 4000;
 
 // ── システムプロンプト（教育×AI・公的文書RAG。エデュマッチ宣伝はしない）──────
-const SYSTEM_PROMPT = `あなたは「インタロップ東京2026 教育AIサミット」特設サイトのAIアシスタントです。
+const SYSTEM_PROMPT = `あなたは「Interop Tokyo 2026 教育AIサミット」特設サイトのAIアシスタントです。
 来場者（教育者・研究者・企業・保護者・学生）の、教育とAI・EdTech・学びのデザインに関する質問に答えます。
 
 ## 回答方針
