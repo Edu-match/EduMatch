@@ -171,6 +171,12 @@ export function ProfileRegisterForm({
     initialProfile?.is_corporate_profile === true ||
     initialProfile?.registration_kind === "service_business";
 
+  // 一般ユーザーはステップ3（資料請求の通知先）を利用しないため、
+  // ステッパー表示・タイトル参照・進捗計算はこの配列を基準にする。
+  const visibleSteps = isProvider ? steps : steps.filter((s) => s.id !== 3);
+  const currentStepMeta =
+    steps.find((s) => s.id === currentStep) ?? steps[steps.length - 1];
+
   const toggleInterest = (interest: string) => {
     if (selectedInterests.includes(interest)) {
       setSelectedInterests(selectedInterests.filter((i) => i !== interest));
@@ -440,17 +446,14 @@ export function ProfileRegisterForm({
         );
 
       case 3:
+        // このステップは事業者専用。一般ユーザーの遷移は handleNext/handleBack で
+        // ステップ2⇄4を直接処理するため、ここに到達した場合は何も描画しない。
         if (!isProvider) {
-          // 一般ユーザーの場合はこのステップをスキップして次へ
-          setCurrentStep(4);
           return null;
         }
         return (
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground mb-4">
-              サービス提供者として登録している場合、資料請求があった際の通知先メールアドレスを追加できます。
-            </p>
-            <p className="text-sm font-medium mb-2">資料請求の通知先（任意）</p>
+            <p className="text-sm font-semibold mb-2">資料請求の通知先（任意）</p>
             <p className="text-xs text-muted-foreground mb-3">
               サービス提供者として登録している場合、資料請求があった際に通知を送るメールアドレスを追加できます。最大3件まで送信されます（1件目はログイン用メールアドレス）。
             </p>
@@ -558,10 +561,10 @@ export function ProfileRegisterForm({
                   type="checkbox"
                   checked={talentMatchingEnabled}
                   onChange={(e) => setTalentMatchingEnabled(e.target.checked)}
-                  className="mt-1 h-4 w-4"
+                  className="mt-1 h-5 w-5 cursor-pointer"
                 />
                 <div className="space-y-1">
-                  <label htmlFor="talent-matching-enabled" className="font-medium">
+                  <label htmlFor="talent-matching-enabled" className="font-medium cursor-pointer">
                     人材マッチングに登録する
                   </label>
                   <p className="text-sm text-muted-foreground">
@@ -622,7 +625,7 @@ export function ProfileRegisterForm({
         return (
           <div className="space-y-6">
             <div className="p-4 rounded-lg bg-muted/50">
-              <h3 className="font-medium mb-3 flex items-center gap-2">
+              <h3 className="text-base font-semibold tracking-[-0.01em] mb-3 flex items-center gap-2">
                 <User className="h-4 w-4" />
                 アカウント
               </h3>
@@ -666,7 +669,7 @@ export function ProfileRegisterForm({
             </div>
 
             <div className="p-4 rounded-lg bg-muted/50">
-              <h3 className="font-medium mb-3 flex items-center gap-2">
+              <h3 className="text-base font-semibold tracking-[-0.01em] mb-3 flex items-center gap-2">
                 <Building2 className="h-4 w-4" />
                 所属情報
               </h3>
@@ -703,7 +706,7 @@ export function ProfileRegisterForm({
 
             {isProvider && (
               <div className="p-4 rounded-lg bg-muted/50">
-                <h3 className="font-medium mb-3 flex items-center gap-2">
+                <h3 className="text-base font-semibold tracking-[-0.01em] mb-3 flex items-center gap-2">
                   <MapPin className="h-4 w-4" />
                   連絡先（資料請求の通知先）
                 </h3>
@@ -729,7 +732,7 @@ export function ProfileRegisterForm({
             )}
 
             <div className="p-4 rounded-lg bg-muted/50">
-              <h3 className="font-medium mb-3 flex items-center gap-2">
+              <h3 className="text-base font-semibold tracking-[-0.01em] mb-3 flex items-center gap-2">
                 <GraduationCap className="h-4 w-4" />
                 関心・スキル
               </h3>
@@ -784,7 +787,7 @@ export function ProfileRegisterForm({
             </div>
 
             <div className="p-4 rounded-lg bg-muted/50">
-              <h3 className="font-medium mb-3 flex items-center gap-2">
+              <h3 className="text-base font-semibold tracking-[-0.01em] mb-3 flex items-center gap-2">
                 <Handshake className="h-4 w-4" />
                 人材マッチング
               </h3>
@@ -792,7 +795,7 @@ export function ProfileRegisterForm({
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">登録</span>
                   <span className={talentMatchingEnabled ? "text-primary font-medium" : ""}>
-                    {talentMatchingEnabled ? "登録する" : "登録しない"}
+                    {talentMatchingEnabled ? "登録済み" : "登録なし"}
                   </span>
                 </div>
                 {talentMatchingEnabled && (
@@ -902,7 +905,7 @@ export function ProfileRegisterForm({
       return;
     }
     if (!schoolType) {
-      setValidationError("職業・役職を選択してください。");
+      setValidationError("所属の種類を選択してください。");
       return;
     }
     if (isProvider && !phone.trim()) {
@@ -922,7 +925,7 @@ export function ProfileRegisterForm({
       return;
     }
     setSaving(true);
-    const { success } = await updateProfile({
+    const { success, error } = await updateProfile({
       name: name || undefined,
       legal_name: legalName.trim(),
       age: isProvider ? null : age || null,
@@ -955,6 +958,12 @@ export function ProfileRegisterForm({
       completeInitialSetup: true,
     });
     setSaving(false);
+    if (!success) {
+      setValidationError(
+        error ?? "保存に失敗しました。時間をおいて再度お試しください。"
+      );
+      return;
+    }
     if (success) {
       if (isFirstTime) {
         router.push("/?tutorial=start");
@@ -996,24 +1005,33 @@ export function ProfileRegisterForm({
           </p>
         </div>
 
-        <div className="flex items-center justify-center mb-6 sm:mb-8 overflow-x-auto px-2">
-          {steps.map((step, index) => {
+        <div
+          className="flex items-center justify-center mb-6 sm:mb-8 overflow-x-auto px-2"
+          role="list"
+          aria-label="登録ステップの進捗"
+        >
+          {visibleSteps.map((step, index) => {
             const Icon = step.icon;
+            const isActive = currentStep === step.id;
+            const isDone = currentStep > step.id;
             return (
-              <div key={step.id} className="flex items-center flex-shrink-0">
+              <div key={step.id} className="flex items-center flex-shrink-0" role="listitem">
                 <div
-                  className={`flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full ${
-                    currentStep >= step.id
+                  aria-label={step.title}
+                  aria-current={isActive ? "step" : undefined}
+                  className={`flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full transition-colors duration-300 ${
+                    isActive || isDone
                       ? "bg-primary text-primary-foreground"
                       : "bg-muted text-muted-foreground"
-                  }`}
+                  } ${isActive ? "ring-4 ring-primary/10" : ""}`}
                 >
-                  <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <Icon className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
                 </div>
-                {index < steps.length - 1 && (
+                {index < visibleSteps.length - 1 && (
                   <div
-                    className={`w-8 sm:w-12 h-1 flex-shrink-0 ${
-                      currentStep > step.id ? "bg-primary" : "bg-muted"
+                    aria-hidden
+                    className={`w-8 sm:w-12 h-0.5 rounded-full flex-shrink-0 transition-colors duration-300 ${
+                      isDone ? "bg-primary" : "bg-border"
                     }`}
                   />
                 )}
@@ -1024,7 +1042,7 @@ export function ProfileRegisterForm({
 
         <Card>
           <CardHeader>
-            <CardTitle>{steps[currentStep - 1].title}</CardTitle>
+            <CardTitle>{currentStepMeta.title}</CardTitle>
           </CardHeader>
           <CardContent>
             {renderStep()}

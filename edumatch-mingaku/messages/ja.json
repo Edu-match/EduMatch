@@ -270,7 +270,7 @@
     "googleHintSuffix": "でパスワードを設定してからメールでログインできます。",
     "providerAccountHint": "事業者アカウントの方は、上部の「事業者・団体」を選択して再度ログインしてください。",
     "providerRegisteredError": "サービス事業者として登録されています",
-    "loggingIn": "ログイン中...",
+    "loggingIn": "ログイン中…",
     "submitLogin": "ログイン",
     "selectSignupType": "登録の種類を選んでください",
     "signupTypeAria": "新規登録の種類",
@@ -295,7 +295,7 @@
     "sessionFailed": "ログインセッションの設定に失敗しました。もう一度ログインしてください。",
     "toastProvider": "事業者として登録しました。続けて事業者プロフィールを入力してください。",
     "toastViewer": "一般利用として登録しました。続けてプロフィールを入力してください。",
-    "registering": "登録中...",
+    "registering": "登録中…",
     "submitSignup": "無料会員登録"
   },
   "about": {

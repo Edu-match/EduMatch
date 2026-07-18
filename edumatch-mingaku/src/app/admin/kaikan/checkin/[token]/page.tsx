@@ -36,7 +36,7 @@ export default async function KaikanCheckinPage({ params }: { params: Promise<{ 
       <div className="mt-3 overflow-hidden rounded-2xl border bg-background">
         <div className={`px-5 py-4 text-white ${checkedIn ? "bg-emerald-600" : "bg-primary"}`}>
           <p className="text-[11px] font-bold tracking-wide opacity-90">受付チェックイン</p>
-          <h1 className="mt-0.5 text-lg font-bold">{checkedIn ? "受付済み" : "受付確認"}</h1>
+          <h1 className="mt-0.5 text-lg font-bold">{checkedIn ? "受付済" : "受付確認"}</h1>
         </div>
         <div className="space-y-3 px-5 py-5">
           <div>
@@ -65,7 +65,7 @@ export default async function KaikanCheckinPage({ params }: { params: Promise<{ 
 
           {checkedIn ? (
             <p className="rounded-lg bg-emerald-50 px-3 py-2 text-center text-sm font-bold text-emerald-700">
-              受付済み{app.checked_in_at ? `（${fmtDate(app.checked_in_at)}）` : ""}
+              受付済{app.checked_in_at ? `（${fmtDate(app.checked_in_at)}）` : ""}
             </p>
           ) : (
             <form action={checkInKaikanApplication}>

@@ -87,13 +87,13 @@ export function AdminCenterHub({ open, onToggle }: { open: boolean; onToggle: ()
                 <p className="text-xs font-semibold">中心ハブの項目（タップで出る）</p>
                 {items.map((it, i) => (
                   <div key={it.id} className="rounded-md border bg-muted/30 p-2">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <div className="flex flex-col text-muted-foreground">
-                        <button type="button" onClick={() => move(i, -1)} disabled={i === 0} className="disabled:opacity-30 hover:text-foreground"><ChevronUp className="h-3.5 w-3.5" /></button>
-                        <button type="button" onClick={() => move(i, 1)} disabled={i === items.length - 1} className="disabled:opacity-30 hover:text-foreground"><ChevronDown className="h-3.5 w-3.5" /></button>
+                        <button type="button" onClick={() => move(i, -1)} disabled={i === 0} aria-label="上に移動" className="grid min-h-[20px] place-items-center p-1 disabled:opacity-30 hover:text-foreground"><ChevronUp className="h-3.5 w-3.5" aria-hidden /></button>
+                        <button type="button" onClick={() => move(i, 1)} disabled={i === items.length - 1} aria-label="下に移動" className="grid min-h-[20px] place-items-center p-1 disabled:opacity-30 hover:text-foreground"><ChevronDown className="h-3.5 w-3.5" aria-hidden /></button>
                       </div>
                       <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground/50" />
-                      <Input value={it.name} onChange={(e) => patch(it.id, { name: e.target.value })} placeholder="項目名" className="h-8 flex-1 text-sm" />
+                      <Input value={it.name} onChange={(e) => patch(it.id, { name: e.target.value })} placeholder="項目名" className="h-8 min-w-[8rem] flex-1 text-sm" />
                       <Select value={it.kind} onValueChange={(v) => patch(it.id, { kind: v as "link" | "board" })}>
                         <SelectTrigger className="h-8 w-32 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
@@ -101,7 +101,7 @@ export function AdminCenterHub({ open, onToggle }: { open: boolean; onToggle: ()
                           <SelectItem value="board">投稿ページ</SelectItem>
                         </SelectContent>
                       </Select>
-                      <Button size="icon" variant="ghost" onClick={() => setItems((a) => a.filter((x) => x.id !== it.id))}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      <Button size="icon" variant="ghost" aria-label="項目を削除" onClick={() => setItems((a) => a.filter((x) => x.id !== it.id))}><Trash2 className="h-4 w-4 text-destructive" aria-hidden /></Button>
                     </div>
                     <div className="mt-2 pl-8">
                       {it.kind === "link" ? (

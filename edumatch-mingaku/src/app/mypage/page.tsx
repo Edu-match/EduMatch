@@ -9,7 +9,6 @@ import {
   Star,
   Settings,
   ArrowRight,
-  Eye,
   Heart,
   User,
   ChevronRight,
@@ -111,34 +110,6 @@ export default async function MyPage() {
         </Link>
       </Card>
 
-      {/* 電子チケット（議員会館イベント） */}
-      {myTickets.length > 0 && (
-        <Card className="mb-6">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="flex items-center gap-2"><Ticket className="h-5 w-5" /> 電子チケット</CardTitle>
-            <Button variant="ghost" size="sm" asChild><Link href="/forum/kaikan">コンテンツを探す<ArrowRight className="h-4 w-4 ml-1" /></Link></Button>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-2">
-              {myTickets.map((t) => (
-                <li key={t.token}>
-                  <Link href={`/forum/kaikan/ticket/${t.token}`} className="flex items-center justify-between gap-3 rounded-xl border p-3 transition hover:border-primary/50 hover:bg-primary/[0.03]">
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-bold">{t.titles[0]}{t.titles.length > 1 ? ` 他${t.titles.length - 1}件` : ""}</span>
-                      <span className="block text-[11px] text-muted-foreground">受付番号 {t.token.slice(0, 8).toUpperCase().replace(/(.{4})(.{4})/, "$1-$2")}</span>
-                    </span>
-                    <span className="flex shrink-0 items-center gap-2">
-                      <Badge variant={t.allChecked ? "default" : "secondary"} className={t.allChecked ? "bg-emerald-100 text-emerald-700" : ""}>{t.allChecked ? "受付済" : "受付前"}</Badge>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      )}
-
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">マイページ</h1>
         <p className="text-muted-foreground">
@@ -157,14 +128,14 @@ export default async function MyPage() {
             <ul className="space-y-2">
               {myTickets.map((t) => (
                 <li key={t.token}>
-                  <Link href={`/forum/kaikan/ticket/${t.token}`} className="flex items-center justify-between gap-3 rounded-xl border p-3 transition hover:border-primary/50 hover:bg-primary/[0.03]">
+                  <Link href={`/forum/kaikan/ticket/${t.token}`} className="group flex min-h-[44px] items-center justify-between gap-3 rounded-xl border p-3 transition hover:border-primary/50 hover:bg-primary/[0.03]">
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-bold">{t.titles[0]}{t.titles.length > 1 ? ` 他${t.titles.length - 1}件` : ""}</span>
                       <span className="block text-[11px] text-muted-foreground">受付番号 {t.token.slice(0, 8).toUpperCase().replace(/(.{4})(.{4})/, "$1-$2")}</span>
                     </span>
                     <span className="flex shrink-0 items-center gap-2">
-                      <Badge variant={t.allChecked ? "default" : "secondary"} className={t.allChecked ? "bg-emerald-100 text-emerald-700" : ""}>{t.allChecked ? "受付済" : "受付前"}</Badge>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      <Badge variant={t.allChecked ? "default" : "secondary"} className={t.allChecked ? "bg-success/15 text-success" : ""}>{t.allChecked ? "受付済" : "受付前"}</Badge>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden />
                     </span>
                   </Link>
                 </li>
@@ -200,7 +171,7 @@ export default async function MyPage() {
                   <Link
                     key={`${item.type}-${item.id}`}
                     href={item.type === "service" ? `/services/${item.id}` : `/articles/${item.id}`}
-                    className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted transition-colors"
+                    className="group flex min-h-[44px] items-center gap-4 p-3 rounded-lg hover:bg-primary/[0.04] transition-colors"
                   >
                     <div className="relative w-20 flex-shrink-0 overflow-hidden rounded bg-muted aspect-video">
                       {item.image ? (
@@ -228,7 +199,7 @@ export default async function MyPage() {
                         {formatViewedAt(item.viewedAt)}
                       </p>
                     </div>
-                    <Eye className="h-4 w-4 text-muted-foreground" />
+                    <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden />
                   </Link>
                 ))
                 )}
@@ -259,7 +230,7 @@ export default async function MyPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-2">
-                <Heart className="h-5 w-5 text-red-500 fill-red-500" />
+                <Heart className="h-5 w-5 text-primary/70 fill-primary/70" />
                 記事のお気に入り
               </CardTitle>
               <Button variant="ghost" size="sm" asChild>
@@ -279,7 +250,7 @@ export default async function MyPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Star className="h-5 w-5 text-yellow-500" />
+                <Star className="h-5 w-5 text-primary/70" />
                 自分の口コミ
               </CardTitle>
               <p className="text-xs text-muted-foreground">
@@ -296,7 +267,7 @@ export default async function MyPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-2">
-                <Award className="h-5 w-5 text-amber-500" />
+                <Award className="h-5 w-5 text-primary/70" />
                 AI検定 認定証
               </CardTitle>
               <Button variant="ghost" size="sm" asChild>

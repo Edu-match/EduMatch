@@ -49,12 +49,12 @@ async function LoginPageContent({
         </div>
 
         {message && (
-          <p className="mb-4 rounded-lg bg-accent/50 px-4 py-2 text-center text-sm text-muted-foreground">
+          <p className="mb-4 rounded-lg bg-accent/50 px-4 py-2 text-center text-sm font-medium text-accent-foreground">
             {message}
           </p>
         )}
 
-        <Card className="border shadow-lg rounded-xl overflow-hidden bg-card">
+        <Card className="border shadow-md rounded-xl overflow-hidden bg-card">
           <CardHeader className="space-y-1 pb-2 pt-6 px-6">
             <CardTitle className="text-center text-xl font-semibold">
               {t("cardTitle")}

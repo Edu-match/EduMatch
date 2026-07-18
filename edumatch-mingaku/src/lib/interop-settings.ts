@@ -3,6 +3,9 @@
 
 export type InteropThemeMode = "auto" | "dawn" | "day" | "dusk" | "night";
 
+/** 議員会館イベントの正式名称。名称変更時はここ1箇所を直せば全画面に反映される。 */
+export const KAIKAN_EVENT_NAME = "教育AIサミット2026＠衆議院第一議員会館";
+
 /** 中心ハブをタップしたときに出る項目。リンク先遷移(link) か 投稿ページ(board) を選べる。 */
 export type CenterHubItem = {
   id: string;

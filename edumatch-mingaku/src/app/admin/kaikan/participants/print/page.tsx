@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { ParticipantsPrintButton } from "@/components/kaikan/participants-print-button";
+import { KAIKAN_EVENT_NAME } from "@/lib/interop-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +36,7 @@ export default async function KaikanParticipantsPrintPage() {
         <ParticipantsPrintButton />
       </div>
 
-      <h1 className="text-xl font-bold">教育AIサミット2026＠衆議院第一議員会館 参加者一覧</h1>
+      <h1 className="text-xl font-bold">{KAIKAN_EVENT_NAME} 参加者一覧</h1>
       <p className="mt-1 text-xs text-muted-foreground">
         出力: {printedAt} ／ 有効申込 {active.length}件（キャンセル含む全{apps.length}件）
       </p>

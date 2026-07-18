@@ -48,6 +48,8 @@
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
   --color-surface-tint: var(--surface-tint);
   /* 紫染めの影（黒ベース既定影はラベンダー背景上で濁るため一括上書き） */
   --shadow-2xs: 0 1px 2px oklch(0.35 0.12 280 / 0.06);
@@ -86,6 +88,9 @@
   --surface-tint: oklch(0.955 0.030 281);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.99 0 0);
+  /* 受付済など「成功」を意味する状態色（緑をブランド彩度に馴染ませたトーン） */
+  --success: oklch(0.58 0.14 155);
+  --success-foreground: oklch(0.99 0 0);
   --border: oklch(0.865 0.050 280);
   /* input/outline ボタンの境界は装飾罫線(--border)より暗くし、
      薄紫背景に対して WCAG 1.4.11 の非テキストコントラスト（約3:1）を確保する */
@@ -129,6 +134,8 @@
   --surface-tint: oklch(0.20 0.035 278);
   --destructive: oklch(0.704 0.191 22.216);
   --destructive-foreground: oklch(0.985 0.008 280);
+  --success: oklch(0.72 0.15 155);
+  --success-foreground: oklch(0.14 0.025 278);
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 18%);
   --ring: oklch(0.65 0.15 278);
