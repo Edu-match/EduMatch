@@ -14,6 +14,7 @@ export function Reveal({
   className,
   delay = 0,
   variant = "fade-up",
+  enabled = true,
 }: {
   children: React.ReactNode;
   className?: string;
@@ -21,10 +22,13 @@ export function Reveal({
   delay?: number;
   /** アニメーションバリアント */
   variant?: RevealVariant;
+  /** false で即時表示（一覧グリッドの後方カード等、リビール不要な要素用） */
+  enabled?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!enabled) return;
     const el = ref.current;
     if (!el) return;
     if (typeof IntersectionObserver === "undefined") {
@@ -44,7 +48,11 @@ export function Reveal({
     );
     io.observe(el);
     return () => io.disconnect();
-  }, []);
+  }, [enabled]);
+
+  if (!enabled) {
+    return <div className={className}>{children}</div>;
+  }
 
   const revealClass = variant === "fade-up" ? "reveal" : `reveal--${variant}`;
 

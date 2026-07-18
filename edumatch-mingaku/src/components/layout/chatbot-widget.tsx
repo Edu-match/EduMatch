@@ -140,9 +140,9 @@ const EXAMPLE_QUESTIONS: Record<ChatMode, string[]> = {
     "プログラミング教育の導入事例を知りたいです",
   ],
   debate: [
-    "学校へのスマートフォン持ち込みに賛成です。なぜなら・・・",
-    "AIを授業で使うことには反対です。なぜなら・・・",
-    "タブレット1人1台に賛成の立場です。なぜなら・・・",
+    "学校へのスマートフォン持ち込みに賛成です。なぜなら……",
+    "AIを授業で使うことには反対です。なぜなら……",
+    "タブレット1人1台に賛成の立場です。なぜなら……",
   ],
   discussion: [
     "GIGAスクール構想の成果と課題について議論したいです",
@@ -571,6 +571,8 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
   }, [fetchAuth]);
 
   useEffect(() => {
+    // 未ログイン時は 401 になるだけなので取得しない（匿名トラフィックの無駄なAPIコール防止）
+    if (isAuthLoading || !userId) return;
     fetch("/api/chat")
       .then((r) => r.json())
       .then((d) => {
@@ -579,7 +581,7 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
         }
       })
       .catch(() => {});
-  }, [messages.length]);
+  }, [messages.length, userId, isAuthLoading]);
 
   // AiPanelContext 経由で open-ai-chat イベントの詳細を受け取る
   useEffect(() => {
@@ -1139,9 +1141,11 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
         }
       }
 
-      fetch("/api/chat").then((r) => r.json()).then((d) => {
-        if (typeof d.used === "number" && typeof d.limit === "number") setUsage({ used: d.used, limit: d.limit, resetAt: d.resetAt ?? null });
-      }).catch(() => {});
+      if (userId) {
+        fetch("/api/chat").then((r) => r.json()).then((d) => {
+          if (typeof d.used === "number" && typeof d.limit === "number") setUsage({ used: d.used, limit: d.limit, resetAt: d.resetAt ?? null });
+        }).catch(() => {});
+      }
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === "AbortError") {
         setMessages((prev) => prev.map((m) => (m.id === botMsgId ? { ...m, content: m.content || "（中断されました）", streaming: false } : m)));

@@ -166,7 +166,7 @@ export function ServicesClient({
         {/* サービス一覧グリッド */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6 mb-8">
           {paginatedServices.map((service, index) => (
-            <Reveal key={service.id} delay={index * 50} className="h-full">
+            <Reveal key={service.id} delay={index * 50} enabled={index < 6} className="h-full">
             <Link
               href={`/services/${service.id}`}
               prefetch={false}

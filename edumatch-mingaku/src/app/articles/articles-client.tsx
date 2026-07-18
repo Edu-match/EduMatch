@@ -163,7 +163,7 @@ export function ArticlesClient({
         {/* 記事一覧グリッド */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6 mb-8">
           {paginatedArticles.map((article, index) => (
-            <Reveal key={article.id} delay={index * 50} className="h-full">
+            <Reveal key={article.id} delay={index * 50} enabled={index < 6} className="h-full">
             <Link
               href={`/articles/${article.id}`}
               className="group block h-full"
