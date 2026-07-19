@@ -282,21 +282,33 @@ function MainAxes({ config, axis3Label }: { config: AxisConfig; axis3Label?: str
       <Html center position={[0, 0, AXIS_LINE_REACH]} style={{ pointerEvents: "none" }}>
         <div style={axisLabelStyle}>{config.yBottom} ↓</div>
       </Html>
-      {/* 第3軸（高さ）: 縦の軸線を原点対称に引き、中心ハブ(議員会館の球)が真ん中に来るようにする。右上インジケーターは出さない。 */}
-      {axis3Label && (
-        <>
-          <Line
-            points={[[0, -(AXIS3_HEIGHT / 2 + 4), 0], [0, AXIS3_HEIGHT / 2 + 4, 0]]}
-            color="#7fd6ff"
-            lineWidth={1}
-            transparent
-            opacity={0.22}
-          />
-          <Html center position={[0, AXIS3_HEIGHT / 2 + 7, 0]} style={{ pointerEvents: "none" }}>
-            <div style={{ ...axisLabelStyle, color: "#bfeaff", borderColor: "rgba(127,214,255,0.4)" }}>↑ {axis3Label}</div>
-          </Html>
-        </>
-      )}
+      {/* 第3軸（高さ）: 縦の軸線を原点対称に引き、中心ハブ(議員会館の球)が真ん中に来るようにする。
+          label は「上端 ↔ 下端」形式（例: 理論・思想 ↔ 実装・運用）なので分割して両端に配置する。 */}
+      {axis3Label && (() => {
+        const [topLabel, bottomLabel] = axis3Label.includes("↔")
+          ? axis3Label.split("↔").map((s) => s.trim())
+          : [axis3Label, null];
+        const axis3Style = { ...axisLabelStyle, color: "#bfeaff", borderColor: "rgba(127,214,255,0.4)" };
+        return (
+          <>
+            <Line
+              points={[[0, -(AXIS3_HEIGHT / 2 + 4), 0], [0, AXIS3_HEIGHT / 2 + 4, 0]]}
+              color="#7fd6ff"
+              lineWidth={1}
+              transparent
+              opacity={0.3}
+            />
+            <Html center position={[0, AXIS3_HEIGHT / 2 + 7, 0]} style={{ pointerEvents: "none" }}>
+              <div style={axis3Style}>↑ {topLabel}</div>
+            </Html>
+            {bottomLabel && (
+              <Html center position={[0, -(AXIS3_HEIGHT / 2 + 7), 0]} style={{ pointerEvents: "none" }}>
+                <div style={axis3Style}>{bottomLabel} ↓</div>
+              </Html>
+            )}
+          </>
+        );
+      })()}
     </group>
   );
 }
