@@ -230,11 +230,11 @@ export default async function AdminKaikanPage({ searchParams }: { searchParams: 
         <div className="rounded-xl border bg-background p-5">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-sm font-bold">参加者一覧（{participants.length}件）</h2>
-            <div className="flex gap-2">
-              <a href="/api/kaikan/admin/participants/export" download className="rounded-md border border-input bg-background px-3 py-1.5 text-xs font-bold transition hover:bg-muted">
+            <div className="flex flex-wrap gap-2">
+              <a href="/api/kaikan/admin/participants/export" download className="inline-flex min-h-[40px] items-center rounded-md border border-input bg-background px-4 text-xs font-bold transition hover:bg-muted">
                 CSVダウンロード
               </a>
-              <a href="/admin/kaikan/participants/print" target="_blank" rel="noopener" className="rounded-md border border-input bg-background px-3 py-1.5 text-xs font-bold transition hover:bg-muted">
+              <a href="/admin/kaikan/participants/print" target="_blank" rel="noopener" className="inline-flex min-h-[40px] items-center rounded-md border border-input bg-background px-4 text-xs font-bold transition hover:bg-muted">
                 PDF出力（印刷ビュー）
               </a>
             </div>
@@ -245,46 +245,48 @@ export default async function AdminKaikanPage({ searchParams }: { searchParams: 
           {participants.length === 0 ? (
             <p className="text-sm text-muted-foreground">まだ参加申込がありません。</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="text-muted-foreground">
-                  <tr>
-                    <th className="py-1 pr-3">氏名</th>
-                    <th className="py-1 pr-3">メール</th>
-                    <th className="py-1 pr-3">コンテンツ</th>
-                    <th className="py-1 pr-3">状態</th>
-                    <th className="py-1 pr-3">申込日時</th>
-                    <th className="py-1">操作</th>
+            <div className="-mx-5 overflow-x-auto px-5 sm:mx-0 sm:px-0">
+              <table className="w-full min-w-[720px] text-left text-sm">
+                <thead className="text-xs text-muted-foreground">
+                  <tr className="border-b">
+                    <th className="whitespace-nowrap py-2.5 pr-4 font-medium">氏名</th>
+                    <th className="whitespace-nowrap py-2.5 pr-4 font-medium">メール</th>
+                    <th className="whitespace-nowrap py-2.5 pr-4 font-medium">コンテンツ</th>
+                    <th className="whitespace-nowrap py-2.5 pr-4 font-medium">状態</th>
+                    <th className="whitespace-nowrap py-2.5 pr-4 font-medium">申込日時</th>
+                    <th className="whitespace-nowrap py-2.5 text-right font-medium">操作</th>
                   </tr>
                 </thead>
                 <tbody>
                   {participants.map((p) => (
-                    <tr key={p.id} className={`border-t ${p.status === "cancelled" ? "text-muted-foreground" : ""}`}>
-                      <td className="py-1.5 pr-3 font-medium">{p.name}</td>
-                      <td className="py-1.5 pr-3 text-muted-foreground">{p.email || "—"}</td>
-                      <td className="py-1.5 pr-3">{p.content?.title || "—"}</td>
-                      <td className="py-1.5 pr-3">
-                        <span className={p.status === "checked_in" ? "text-emerald-600" : p.status === "cancelled" ? "text-muted-foreground" : "text-amber-600"}>
-                          {p.status === "checked_in" ? "受付済" : p.status === "cancelled" ? "取消" : "受付前"}
+                    <tr key={p.id} className={`border-t align-middle ${p.status === "cancelled" ? "text-muted-foreground" : ""}`}>
+                      <td className="py-3 pr-4 font-medium">{p.name}</td>
+                      <td className="py-3 pr-4 text-muted-foreground">{p.email || "—"}</td>
+                      <td className="py-3 pr-4">{p.content?.title || "—"}</td>
+                      <td className="py-3 pr-4">
+                        <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold ${p.status === "checked_in" ? "bg-emerald-100 text-emerald-700" : p.status === "cancelled" ? "bg-muted text-muted-foreground" : "bg-amber-100 text-amber-700"}`}>
+                          {p.status === "checked_in" ? "受付済" : p.status === "cancelled" ? "キャンセル済" : "未受付"}
                         </span>
                       </td>
-                      <td className="py-1.5 pr-3 text-muted-foreground">{fmtDate(p.created_at)}</td>
-                      <td className="py-1.5">
-                        {p.status === "cancelled" ? (
-                          <form action={adminRestoreKaikanApplication} className="inline">
-                            <input type="hidden" name="id" value={p.id} />
-                            <button type="submit" className="rounded-full border border-emerald-300 px-2 py-0.5 text-[10px] font-bold text-emerald-700 transition hover:bg-emerald-50">
-                              復帰
-                            </button>
-                          </form>
-                        ) : (
-                          <form action={adminCancelKaikanApplication} className="inline">
-                            <input type="hidden" name="id" value={p.id} />
-                            <button type="submit" className="rounded-full border border-red-200 px-2 py-0.5 text-[10px] font-bold text-red-600 transition hover:bg-red-50">
-                              キャンセル
-                            </button>
-                          </form>
-                        )}
+                      <td className="whitespace-nowrap py-3 pr-4 text-muted-foreground">{fmtDate(p.created_at)}</td>
+                      <td className="py-3">
+                        <div className="flex justify-end">
+                          {p.status === "cancelled" ? (
+                            <form action={adminRestoreKaikanApplication} className="inline-flex">
+                              <input type="hidden" name="id" value={p.id} />
+                              <button type="submit" className="inline-flex min-h-[40px] items-center whitespace-nowrap rounded-md border border-input bg-background px-4 text-xs font-bold text-foreground transition hover:bg-muted">
+                                キャンセルを取り消す
+                              </button>
+                            </form>
+                          ) : (
+                            <form action={adminCancelKaikanApplication} className="inline-flex">
+                              <input type="hidden" name="id" value={p.id} />
+                              <button type="submit" className="inline-flex min-h-[40px] items-center whitespace-nowrap rounded-md border border-red-300 px-4 text-xs font-bold text-red-600 transition hover:bg-red-50">
+                                キャンセル
+                              </button>
+                            </form>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}

@@ -299,7 +299,7 @@ export async function applyForKaikanContent(formData: FormData) {
     myApps.map((a) => a.content).filter(Boolean),
   );
   revalidatePath("/admin/kaikan");
-  redirect(`/summit2026/ticket/${ticketToken}`);
+  redirect(`/summit2026/ticket/${ticketToken}?applied=1`);
 }
 
 /** 複数コンテンツをまとめて申込→1枚のチケット(共有ticket_token)に集約。受付はセッション単位。 */
@@ -365,9 +365,12 @@ export async function applyForKaikanContents(formData: FormData) {
   if (addedCount === 0 && alreadyIds.size === 0) {
     redirect(`/summit2026/confirm?ids=${contentIds.join(",")}&error=full`);
   }
-  // 一部スキップがあればチケット面に警告表示（申し込めたつもりの欠落を防ぐ）
-  const q = skippedTitles.length > 0 ? `?skipped=${encodeURIComponent(skippedTitles.slice(0, 6).join("、"))}` : "";
-  redirect(`/summit2026/ticket/${ticketToken}${q}`);
+  // 一部スキップがあればチケット面に警告表示（申し込めたつもりの欠落を防ぐ）。applied=1 で「保存しました」ポップアップ。
+  const params = new URLSearchParams();
+  if (addedCount > 0) params.set("applied", "1");
+  if (skippedTitles.length > 0) params.set("skipped", skippedTitles.slice(0, 6).join("、"));
+  const qs = params.toString();
+  redirect(`/summit2026/ticket/${ticketToken}${qs ? `?${qs}` : ""}`);
 }
 
 /** 管理者：申込を手動キャンセルする。 */
@@ -395,7 +398,7 @@ export async function adminRestoreKaikanApplication(formData: FormData) {
     });
   } catch {
     // 同一ユーザーが同コンテンツに別の有効申込を持つとユニーク制約で失敗する
-    redirect(`/admin/kaikan?tab=participants&pError=${encodeURIComponent("復帰できませんでした（同じユーザーの有効な申込が既に存在します）")}`);
+    redirect(`/admin/kaikan?tab=participants&pError=${encodeURIComponent("キャンセルを取り消せませんでした（同じユーザーの有効な申込が既に存在します）")}`);
   }
   revalidatePath("/admin/kaikan");
   revalidatePath("/summit2026");

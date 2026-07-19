@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { CalendarDays, MapPin, Ticket, ChevronDown, ChevronLeft } from "lucide-react";
+import { CalendarDays, MapPin, Ticket, ChevronDown, ChevronLeft, CheckCircle2 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentProfile } from "@/lib/auth";
 import { applyForKaikanContents, hasRedeemedInvite } from "@/app/_actions/kaikan";
@@ -34,6 +34,14 @@ export default async function KaikanConfirmPage({ searchParams }: { searchParams
   const general = await prisma.generalProfile.findUnique({ where: { id: profile.id }, select: { legal_name: true, organization: true } }).catch(() => null);
   const addr = await prisma.profile.findUnique({ where: { id: profile.id }, select: { postal_code: true, address: true } }).catch(() => null);
 
+  // すでに申込済みのプログラム（確認画面でも表示して全体像を分かりやすく）
+  const existingApps = await prisma.kaikanApplication.findMany({
+    where: { profile_id: profile.id, status: { not: "cancelled" } },
+    select: { content_id: true, content: { select: { title: true, location: true, starts_at: true, sort_order: true } } },
+    orderBy: { content: { sort_order: "asc" } },
+  }).catch(() => []);
+  const newIdSet = new Set(idList);
+
   const accountRows = ([
     ["表示名", profile.name],
     ["メールアドレス", profile.email],
@@ -53,6 +61,27 @@ export default async function KaikanConfirmPage({ searchParams }: { searchParams
         <p className="mt-2 text-sm text-muted-foreground">内容を確認して申し込むと、選んだ{contents.length}件をまとめた電子チケット（QR）が発行されます。</p>
       </header>
 
+      {/* すでに申込済みのプログラム（読み取り専用・全体像の把握用） */}
+      {existingApps.length > 0 && (
+        <section className="mb-5">
+          <h2 className="mb-2 text-sm font-bold text-muted-foreground">すでに申込済みのプログラム（{existingApps.length}件）</h2>
+          <ul className="space-y-2">
+            {existingApps.map((a) => (
+              <li key={a.content_id} className="flex items-center justify-between gap-2 rounded-xl border-2 border-emerald-300 bg-emerald-50 p-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold">{a.content.title}</p>
+                  <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
+                    {a.content.starts_at && <span className="inline-flex items-center gap-1"><CalendarDays className="h-3 w-3" />{fmtDate(a.content.starts_at)}</span>}
+                    {a.content.location && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{a.content.location}</span>}
+                  </div>
+                </div>
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-600 px-2.5 py-1 text-[11px] font-bold text-white"><CheckCircle2 className="h-3.5 w-3.5" /> 申込済{newIdSet.has(a.content_id) ? "（再選択分は自動でスキップ）" : ""}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {error === "full" && (
         <p role="alert" className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
           選択されたプログラムはすべて満席または受付終了のため、お申し込みいただけませんでした。選び直してください。
@@ -64,7 +93,7 @@ export default async function KaikanConfirmPage({ searchParams }: { searchParams
 
         {/* 選択したコンテンツ */}
         <section>
-          <h2 className="mb-2 text-sm font-bold">参加プログラム（{contents.length}件）</h2>
+          <h2 className="mb-2 text-sm font-bold">今回申し込むプログラム（{contents.length}件）</h2>
           <ul className="space-y-2">
             {contents.map((c) => (
               <li key={c.id} className="rounded-xl border bg-card p-4">

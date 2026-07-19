@@ -126,9 +126,10 @@ export function KaikanViewToggle({ contents, appliedIds }: Props) {
                   type="button"
                   disabled={isApplied || isFull || isConflicting}
                   onClick={() => toggle(c)}
+                  aria-label={isApplied ? `${c.title}（申込済）` : c.title}
                   className={`group relative rounded-xl border p-4 text-left outline-none transition-all focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:border-ring ${
                     isApplied
-                      ? "border-emerald-300 bg-emerald-50 opacity-70"
+                      ? "border-2 border-emerald-500 bg-emerald-50"
                       : isSelected
                         ? "border-primary bg-primary/5 ring-2 ring-primary shadow-md focus-visible:ring-4 focus-visible:ring-primary/40"
                         : isFull
@@ -139,8 +140,8 @@ export function KaikanViewToggle({ contents, appliedIds }: Props) {
                   }`}
                 >
                   {isApplied && (
-                    <span className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-                      <CheckCircle2 className="h-3 w-3" /> 申込済
+                    <span className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-emerald-600 px-2.5 py-1 text-[11px] font-bold text-white shadow-sm">
+                      <CheckCircle2 className="h-3.5 w-3.5" /> 申込済
                     </span>
                   )}
                   {!isApplied && (() => {

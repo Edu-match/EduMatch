@@ -109,17 +109,17 @@ function SessionBlock({
       type="button"
       onClick={() => !disabled && onToggle()}
       disabled={disabled}
+      aria-label={applied ? `${content.title}（申込済）` : content.title}
       className={[
         "absolute left-1 right-1 rounded-lg border p-1.5 text-left text-xs leading-tight transition-all duration-150 overflow-hidden shadow-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:z-10",
-        selected && !applied ? `${venue.selectedBg} ${venue.border} ring-2 ${venue.ring}` : `${venue.bg} ${venue.border}`,
-        applied ? "opacity-60" : "",
+        applied ? "border-2 border-emerald-500 bg-emerald-50" : (selected ? `${venue.selectedBg} ${venue.border} ring-2 ${venue.ring}` : `${venue.bg} ${venue.border}`),
         conflicting ? "opacity-40 cursor-not-allowed" : "",
         full && !applied ? "opacity-40 cursor-not-allowed" : "",
         !disabled && !selected ? "hover:ring-1 hover:ring-primary/40 hover:shadow-md hover:scale-[1.01] cursor-pointer" : "",
         !disabled && selected ? "hover:shadow-md hover:scale-[1.01]" : "",
       ].join(" ")}
       style={{ top, height }}
-      title={`${fmtTime(start)}–${fmtTime(end)} ${content.title}${conflicting ? " (時間重複)" : ""}${full ? " (満席)" : ""}`}
+      title={`${fmtTime(start)}–${fmtTime(end)} ${content.title}${applied ? " (申込済)" : ""}${conflicting ? " (時間重複)" : ""}${full ? " (満席)" : ""}`}
     >
       {/* Conflict striped overlay */}
       {conflicting && (
@@ -130,7 +130,7 @@ function SessionBlock({
           }}
         />
       )}
-      <div className={`font-bold ${venue.text} ${height > 50 ? "line-clamp-3" : "line-clamp-1"}`}>
+      <div className={`font-bold ${venue.text} ${applied ? "pl-[52px]" : ""} ${height > 50 ? "line-clamp-3" : "line-clamp-1"}`}>
         {conflicting && <AlertTriangle className="inline-block h-3 w-3 mr-0.5 -mt-0.5 text-amber-500" />}
         {content.title}
       </div>
@@ -150,7 +150,11 @@ function SessionBlock({
           <div className={`text-[10px] mt-0.5 font-bold ${ss.tone === "full" ? "text-muted-foreground" : "text-amber-600"}`}>{ss.label}</div>
         ) : null;
       })()}
-      {applied && <CheckCircle2 className="absolute top-1 right-1 h-3.5 w-3.5 text-emerald-600" />}
+      {applied && (
+        <span className="absolute top-0.5 left-0.5 z-10 inline-flex items-center gap-0.5 rounded-md bg-emerald-600 px-1.5 py-0.5 text-[9px] font-bold text-white shadow-sm">
+          <CheckCircle2 className="h-2.5 w-2.5" /> 申込済
+        </span>
+      )}
       <span
         role="button"
         tabIndex={0}
@@ -158,7 +162,7 @@ function SessionBlock({
         title="詳細を見る"
         onClick={(e) => { e.stopPropagation(); onShowDetail(); }}
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onShowDetail(); } }}
-        className={`absolute bottom-0.5 right-0.5 z-10 inline-flex items-center gap-0.5 rounded-md bg-background/85 px-1.5 py-0.5 text-[9px] font-bold text-primary shadow-sm outline-none transition hover:bg-background focus-visible:ring-2 focus-visible:ring-ring/50 ${applied ? "top-0.5 bottom-auto right-6" : ""}`}
+        className="absolute bottom-0.5 right-0.5 z-10 inline-flex items-center gap-0.5 rounded-md bg-background/85 px-1.5 py-0.5 text-[9px] font-bold text-primary shadow-sm outline-none transition hover:bg-background focus-visible:ring-2 focus-visible:ring-ring/50"
       >
         <Info className="h-3 w-3" /> 詳細を見る
       </span>
@@ -372,9 +376,10 @@ export function KaikanTimetable({
                   type="button"
                   disabled={isApplied || isFull}
                   onClick={() => toggle(c)}
+                  aria-label={isApplied ? `${c.title}（申込済）` : c.title}
                   className={`relative rounded-xl border p-3 text-left text-sm outline-none transition-all focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:border-ring ${
                     isApplied
-                      ? "border-emerald-300 bg-emerald-50 opacity-70"
+                      ? "border-2 border-emerald-500 bg-emerald-50"
                       : isSelected
                         ? "border-primary bg-primary/5 ring-2 ring-primary"
                         : isFull
@@ -382,7 +387,11 @@ export function KaikanTimetable({
                           : "border-border bg-background hover:border-primary/40 hover:shadow-sm"
                   }`}
                 >
-                  {isApplied && <CheckCircle2 className="absolute right-2 top-2 h-4 w-4 text-emerald-600" />}
+                  {isApplied && (
+                    <span className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-emerald-600 px-2.5 py-1 text-[11px] font-bold text-white shadow-sm">
+                      <CheckCircle2 className="h-3.5 w-3.5" /> 申込済
+                    </span>
+                  )}
                   {/* ワークショップは定員が少なく最初から残りわずかになるため「満席」のみ表示（残りわずかは出さない） */}
                   {!isApplied && seatStatus(c.applied, c.capacity)?.tone === "full" && (
                     <span className="absolute right-2 top-2 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">満席</span>

@@ -3,6 +3,7 @@ import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { CancelSessionButton } from "@/components/kaikan/cancel-session-button";
 import {
   Clock,
   FileBadge2,
@@ -56,14 +57,14 @@ export default async function MyPage() {
   // 電子チケット（議員会館）：ticket_token でまとめる
   const myApps = await prisma.kaikanApplication.findMany({
     where: { profile_id: user.id, status: { not: "cancelled" } },
-    select: { ticket_token: true, qr_token: true, status: true, created_at: true, content: { select: { title: true } } },
+    select: { id: true, ticket_token: true, qr_token: true, status: true, created_at: true, content: { select: { title: true } } },
     orderBy: { created_at: "desc" },
-  }).catch(() => [] as { ticket_token: string | null; qr_token: string; status: string; created_at: Date; content: { title: string } }[]);
-  const ticketMap = new Map<string, { token: string; titles: string[]; allChecked: boolean }>();
+  }).catch(() => [] as { id: string; ticket_token: string | null; qr_token: string; status: string; created_at: Date; content: { title: string } }[]);
+  const ticketMap = new Map<string, { token: string; apps: { id: string; title: string; status: string }[]; allChecked: boolean }>();
   for (const a of myApps) {
     const token = a.ticket_token ?? a.qr_token;
-    const g = ticketMap.get(token) ?? { token, titles: [], allChecked: true };
-    g.titles.push(a.content.title);
+    const g = ticketMap.get(token) ?? { token, apps: [], allChecked: true };
+    g.apps.push({ id: a.id, title: a.content.title, status: a.status });
     if (a.status !== "checked_in") g.allChecked = false;
     ticketMap.set(token, g);
   }
@@ -132,17 +133,29 @@ export default async function MyPage() {
             ) : (
             <ul className="space-y-2">
               {myTickets.map((t) => (
-                <li key={t.token}>
-                  <Link href={`/summit2026/ticket/${t.token}`} className="group flex min-h-[44px] items-center justify-between gap-3 rounded-xl border p-3 transition hover:border-primary/50 hover:bg-primary/[0.03]">
+                <li key={t.token} className="rounded-xl border p-3">
+                  <Link href={`/summit2026/ticket/${t.token}`} className="group flex min-h-[44px] items-center justify-between gap-3 transition">
                     <span className="min-w-0">
-                      <span className="block truncate text-sm font-bold">{t.titles[0]}{t.titles.length > 1 ? ` 他${t.titles.length - 1}件` : ""}</span>
-                      <span className="block text-[11px] text-muted-foreground">受付番号 {t.token.slice(0, 8).toUpperCase().replace(/(.{4})(.{4})/, "$1-$2")}</span>
+                      <span className="block truncate text-sm font-bold">電子チケット（{t.apps.length}件）</span>
+                      <span className="block text-[11px] text-muted-foreground">受付番号 {t.token.slice(0, 8).toUpperCase().replace(/(.{4})(.{4})/, "$1-$2")}・タップでQR表示</span>
                     </span>
                     <span className="flex shrink-0 items-center gap-2">
                       <Badge variant={t.allChecked ? "default" : "secondary"} className={t.allChecked ? "bg-success/15 text-success" : ""}>{t.allChecked ? "受付済" : "受付前"}</Badge>
                       <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden />
                     </span>
                   </Link>
+                  <ul className="mt-2 space-y-1.5 border-t pt-2">
+                    {t.apps.map((p) => (
+                      <li key={p.id} className="flex items-center justify-between gap-2">
+                        <span className="min-w-0 flex-1 truncate text-xs">{p.title}</span>
+                        {p.status === "confirmed" ? (
+                          <CancelSessionButton id={p.id} ticketToken={t.token} title={p.title} label="申込をキャンセル" />
+                        ) : (
+                          <span className="shrink-0 text-[10px] font-bold text-emerald-600">受付済</span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
                 </li>
               ))}
             </ul>

@@ -2,10 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CalendarDays, MapPin, Ticket, CheckCircle2, Clock, XCircle } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import { getCurrentProfile } from "@/lib/auth";
 import { TicketQR } from "@/components/kaikan/ticket-qr";
 import { TicketPrintButton } from "@/components/kaikan/ticket-print-button";
-import { CancelSessionButton } from "@/components/kaikan/cancel-session-button";
+import { TicketSavedToast } from "@/components/kaikan/ticket-saved-toast";
 
 export const dynamic = "force-dynamic";
 
@@ -20,9 +19,9 @@ function receiptNo(token: string): string {
   return `${hex.slice(0, 4)}-${hex.slice(4)}`;
 }
 
-export default async function KaikanTicketPage({ params, searchParams }: { params: Promise<{ token: string }>; searchParams: Promise<{ skipped?: string }> }) {
+export default async function KaikanTicketPage({ params, searchParams }: { params: Promise<{ token: string }>; searchParams: Promise<{ skipped?: string; applied?: string }> }) {
   const { token } = await params;
-  const { skipped } = await searchParams;
+  const { skipped, applied } = await searchParams;
   // DB障害と「本当に存在しない」を区別する。障害時に握りつぶすと有効チケットが 404 扱いになり、
   // 受付現場で「チケットが無効になった」と誤解される。取得失敗は例外のまま error.tsx（再試行UI）に委ね、
   // notFound() は「本当に該当0件」のときだけに限定する。
@@ -38,12 +37,9 @@ export default async function KaikanTicketPage({ params, searchParams }: { param
   const activeApps = apps.filter((a) => a.status !== "cancelled");
   const allCheckedIn = activeApps.length > 0 && activeApps.every((a) => a.status === "checked_in");
 
-  // 本人（申込者）にのみキャンセル操作を表示（チケットURL自体は共有可能なため）
-  const profile = await getCurrentProfile().catch(() => null);
-  const isOwner = !!profile && apps.some((a) => a.profile_id === profile.id);
-
   return (
     <main className="mx-auto w-full max-w-sm px-4 py-8 sm:px-6">
+      <TicketSavedToast show={applied === "1"} />
       <style>{`@media print { body * { visibility: hidden !important; } #ticket-print, #ticket-print * { visibility: visible !important; } #ticket-print { position: absolute; inset: 0; margin: 24px auto; } .ticket-no-print { display: none !important; } }`}</style>
       {skipped && (
         <p className="ticket-no-print mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
@@ -103,11 +99,6 @@ export default async function KaikanTicketPage({ params, searchParams }: { param
                         {cancelled ? "キャンセル済" : done ? "受付済" : "受付前"}
                       </span>
                     </div>
-                    {isOwner && a.status === "confirmed" && (
-                      <div className="ticket-no-print mt-2 flex justify-end">
-                        <CancelSessionButton id={a.id} ticketToken={token} title={a.content.title} />
-                      </div>
-                    )}
                   </li>
                 );
               })}
@@ -123,6 +114,7 @@ export default async function KaikanTicketPage({ params, searchParams }: { param
       <div className="ticket-no-print mt-4 flex flex-col items-center gap-3">
         <TicketPrintButton />
         <Link href="/summit2026" className="text-xs text-muted-foreground hover:text-foreground">プログラム一覧へ</Link>
+        <p className="text-[11px] text-muted-foreground">申込のキャンセルは<Link href="/mypage" className="underline underline-offset-2 hover:text-foreground">マイページ</Link>から行えます。</p>
       </div>
     </main>
   );

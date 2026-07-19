@@ -74,8 +74,8 @@ export default async function KaikanTicketsPage({ searchParams }: { searchParams
         )}
       </header>
 
-      {/* 懇親会（最上部・目立つカード） */}
-      {socialRow && (
+      {/* 懇親会（最上部・目立つカード）: ログイン済み かつ 招待コード入力済みのときのみ表示 */}
+      {socialRow && profile && invited && (
         <section className="mb-5 overflow-hidden rounded-2xl border-2 border-primary/30 bg-gradient-to-br from-primary/[0.07] via-background to-violet-500/[0.06] p-5 shadow-sm">
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full bg-primary px-2.5 py-0.5 text-[11px] font-bold text-primary-foreground">懇親会</span>
@@ -88,10 +88,6 @@ export default async function KaikanTicketsPage({ searchParams }: { searchParams
           <div className="mt-3.5">
             {socialAppliedByMe ? (
               <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700">申込済み</span>
-            ) : !profile ? (
-              <Button asChild><Link href={loginHref}><LogIn className="h-4 w-4" /> ログインして申し込む</Link></Button>
-            ) : !invited ? (
-              <p className="text-xs font-medium text-amber-700">※ お申し込みには招待コードの入力が必要です（下記）。</p>
             ) : socialFull ? (
               <Button disabled>満席</Button>
             ) : (
