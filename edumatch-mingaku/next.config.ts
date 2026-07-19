@@ -17,16 +17,18 @@ function supabaseStorageHostname(): string {
 }
 
 const SUPABASE_HOSTNAME = supabaseStorageHostname();
-const SUPABASE_PROJECT_ID = SUPABASE_HOSTNAME.split(".")[0];
 
 /**
  * Content-Security-Policy（enforce モード）
  * 違反するリソースはブロックされる。新規外部リソースを追加する際は要更新。
  */
 function buildCsp(): string {
+  // NEXT_PUBLIC_SUPABASE_URL はカスタムドメイン（auth.ai-ueo.org）の場合があるため、
+  // ホスト名からプロジェクトIDを切り出さず、URL のオリジンをそのまま許可する。
+  // （*.supabase.co 直下のプロジェクトの場合も同じ式で正しいオリジンになる）
   const supabaseOrigin = `https://${SUPABASE_HOSTNAME}`;
-  const supabaseApiOrigin = `https://${SUPABASE_PROJECT_ID}.supabase.co`;
-  const supabaseWs = `wss://${SUPABASE_PROJECT_ID}.supabase.co`;
+  const supabaseApiOrigin = supabaseOrigin;
+  const supabaseWs = `wss://${SUPABASE_HOSTNAME}`;
   const isDev = process.env.NODE_ENV === "development";
 
   const directives: Record<string, string> = {
