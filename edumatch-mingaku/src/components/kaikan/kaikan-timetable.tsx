@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, ArrowRight, CheckCircle2, Info } from "lucide-react";
+import { AlertTriangle, ArrowRight, CheckCircle2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { seatStatus } from "./seat-status";
 
@@ -81,7 +81,6 @@ function SessionBlock({
   applied,
   conflicting,
   full,
-  onToggle,
   onShowDetail,
 }: {
   content: SelectableContent;
@@ -90,7 +89,6 @@ function SessionBlock({
   applied: boolean;
   conflicting: boolean;
   full: boolean;
-  onToggle: () => void;
   onShowDetail: () => void;
 }) {
   const start = toDate(content.startsAt);
@@ -101,22 +99,19 @@ function SessionBlock({
   const endMin = toMinutes(end);
   const top = (startMin - DAY_START) * PX_PER_MIN;
   const height = Math.max((endMin - startMin) * PX_PER_MIN, 44);
-  const disabled = applied || full || conflicting;
+  const dimmed = (conflicting || (full && !applied)) && !selected;
   const showDesc = height > 80;
 
   return (
     <button
       type="button"
-      onClick={() => !disabled && onToggle()}
-      disabled={disabled}
-      aria-label={applied ? `${content.title}（申込済）` : content.title}
+      onClick={onShowDetail}
+      aria-label={applied ? `${content.title}（申込済・詳細を見る）` : `${content.title}（詳細を見る）`}
       className={[
-        "absolute left-1 right-1 rounded-lg border p-1.5 text-left text-xs leading-tight transition-all duration-150 overflow-hidden shadow-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:z-10",
+        "absolute left-1 right-1 rounded-lg border p-1.5 text-left text-xs leading-tight transition-all duration-150 overflow-hidden shadow-sm outline-none cursor-pointer hover:shadow-md hover:scale-[1.01] focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:z-10",
         applied ? "border-2 border-emerald-500 bg-emerald-50" : (selected ? `${venue.selectedBg} ${venue.border} ring-2 ${venue.ring}` : `${venue.bg} ${venue.border}`),
-        conflicting ? "opacity-40 cursor-not-allowed" : "",
-        full && !applied ? "opacity-40 cursor-not-allowed" : "",
-        !disabled && !selected ? "hover:ring-1 hover:ring-primary/40 hover:shadow-md hover:scale-[1.01] cursor-pointer" : "",
-        !disabled && selected ? "hover:shadow-md hover:scale-[1.01]" : "",
+        dimmed ? "opacity-40" : "",
+        !selected ? "hover:ring-1 hover:ring-primary/40" : "",
       ].join(" ")}
       style={{ top, height }}
       title={`${fmtTime(start)}–${fmtTime(end)} ${content.title}${applied ? " (申込済)" : ""}${conflicting ? " (時間重複)" : ""}${full ? " (満席)" : ""}`}
@@ -155,17 +150,11 @@ function SessionBlock({
           <CheckCircle2 className="h-2.5 w-2.5" /> 申込済
         </span>
       )}
-      <span
-        role="button"
-        tabIndex={0}
-        aria-label="詳細を見る"
-        title="詳細を見る"
-        onClick={(e) => { e.stopPropagation(); onShowDetail(); }}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onShowDetail(); } }}
-        className="absolute bottom-0.5 right-0.5 z-10 inline-flex items-center gap-0.5 rounded-md bg-background/85 px-1.5 py-0.5 text-[9px] font-bold text-primary shadow-sm outline-none transition hover:bg-background focus-visible:ring-2 focus-visible:ring-ring/50"
-      >
-        <Info className="h-3 w-3" /> 詳細を見る
-      </span>
+      {!applied && selected && (
+        <span className="absolute top-0.5 right-0.5 z-10 inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
+          <Check className="h-2.5 w-2.5" />
+        </span>
+      )}
     </button>
   );
 }
@@ -212,7 +201,6 @@ export function KaikanTimetable({
   contents,
   appliedIds,
   selected,
-  onToggle,
   conflictWith,
   onShowDetail,
 }: {
@@ -220,7 +208,6 @@ export function KaikanTimetable({
   appliedIds: string[];
   /** 選択状態は親（KaikanViewToggle）が一元管理する制御コンポーネント。 */
   selected: Set<string>;
-  onToggle: (c: SelectableContent) => void;
   /** 選択済みセッションとの時間重複判定（親から供給）。 */
   conflictWith: (c: SelectableContent) => boolean;
   /** 詳細モーダルを開く（親が管理）。 */
@@ -247,11 +234,6 @@ export function KaikanTimetable({
     () => contents.filter((c) => getVenueIndex(c.location) < 0 || !c.startsAt || !c.endsAt),
     [contents],
   );
-
-  const toggle = (c: SelectableContent) => {
-    if (appliedSet.has(c.id)) return;
-    onToggle(c);
-  };
 
   const newCount = [...selected].filter((id) => !appliedSet.has(id)).length;
 
@@ -347,7 +329,6 @@ export function KaikanTimetable({
                         applied={isApplied}
                         conflicting={isConflicting}
                         full={isFull}
-                        onToggle={() => toggle(c)}
                         onShowDetail={() => onShowDetail(c)}
                       />
                     );
@@ -374,22 +355,26 @@ export function KaikanTimetable({
                 <button
                   key={c.id}
                   type="button"
-                  disabled={isApplied || isFull}
-                  onClick={() => toggle(c)}
-                  aria-label={isApplied ? `${c.title}（申込済）` : c.title}
-                  className={`relative rounded-xl border p-3 text-left text-sm outline-none transition-all focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:border-ring ${
+                  onClick={() => onShowDetail(c)}
+                  aria-label={isApplied ? `${c.title}（申込済・詳細を見る）` : `${c.title}（詳細を見る）`}
+                  className={`relative rounded-xl border p-3 text-left text-sm outline-none transition-all cursor-pointer hover:shadow-sm focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:border-ring ${
                     isApplied
                       ? "border-2 border-emerald-500 bg-emerald-50"
                       : isSelected
                         ? "border-primary bg-primary/5 ring-2 ring-primary"
                         : isFull
                           ? "border-border bg-muted/30 opacity-50"
-                          : "border-border bg-background hover:border-primary/40 hover:shadow-sm"
+                          : "border-border bg-background hover:border-primary/40"
                   }`}
                 >
                   {isApplied && (
                     <span className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-emerald-600 px-2.5 py-1 text-[11px] font-bold text-white shadow-sm">
                       <CheckCircle2 className="h-3.5 w-3.5" /> 申込済
+                    </span>
+                  )}
+                  {!isApplied && isSelected && (
+                    <span className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-primary px-2.5 py-1 text-[11px] font-bold text-primary-foreground shadow-sm">
+                      <CheckCircle2 className="h-3.5 w-3.5" /> 選択中
                     </span>
                   )}
                   {/* ワークショップは定員が少なく最初から残りわずかになるため「満席」のみ表示（残りわずかは出さない） */}
@@ -402,16 +387,6 @@ export function KaikanTimetable({
                   </p>
                   <p className="mt-0.5 font-bold leading-snug">{c.title}</p>
                   {c.speaker && <p className="mt-0.5 text-[11px] text-muted-foreground">登壇者：{c.speaker}</p>}
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    onClick={(e) => { e.stopPropagation(); onShowDetail(c); }}
-                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onShowDetail(c); } }}
-                    className="mt-1.5 inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-primary outline-none transition hover:bg-primary/10 focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                  >
-                    <Info className="h-3 w-3" />
-                    詳細を見る
-                  </span>
                 </button>
               );
             })}

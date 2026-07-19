@@ -389,6 +389,20 @@ main {
   .animate-ai-glow { animation: none; }
 }
 
+/* カート追加ポップ（セッション詳細モーダルの「予定に追加する」ボタン用） */
+@keyframes em-cart-pop {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.12); }
+  60% { transform: scale(0.96); }
+  100% { transform: scale(1); }
+}
+.animate-cart-pop {
+  animation: em-cart-pop 0.5s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-cart-pop { animation: none; }
+}
+
 /* スクロールバー非表示（横スクロールのチップ列・タブ列用） */
 @layer utilities {
   .scrollbar-hide {

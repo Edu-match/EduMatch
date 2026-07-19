@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { CalendarDays, LayoutGrid, ChevronLeft, ChevronRight, CheckCircle2, ArrowRight, Info } from "lucide-react";
+import { CalendarDays, LayoutGrid, ChevronLeft, ChevronRight, CheckCircle2, ArrowRight } from "lucide-react";
 import { KaikanTimetable, overlapsContents, type SelectableContent } from "./kaikan-timetable";
 import { KaikanSessionDetailDialog } from "./kaikan-session-detail-dialog";
 import { seatStatus } from "./seat-status";
@@ -100,7 +100,6 @@ export function KaikanViewToggle({ contents, appliedIds }: Props) {
           contents={contents}
           appliedIds={appliedIds}
           selected={selected}
-          onToggle={toggle}
           conflictWith={conflictWith}
           onShowDetail={setDetail}
         />
@@ -124,10 +123,9 @@ export function KaikanViewToggle({ contents, appliedIds }: Props) {
                 <button
                   key={c.id}
                   type="button"
-                  disabled={isApplied || isFull || isConflicting}
-                  onClick={() => toggle(c)}
-                  aria-label={isApplied ? `${c.title}（申込済）` : c.title}
-                  className={`group relative rounded-xl border p-4 text-left outline-none transition-all focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:border-ring ${
+                  onClick={() => setDetail(c)}
+                  aria-label={isApplied ? `${c.title}（申込済・詳細を見る）` : `${c.title}（詳細を見る）`}
+                  className={`group relative rounded-xl border p-4 text-left outline-none transition-all cursor-pointer hover:shadow-sm focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:border-ring ${
                     isApplied
                       ? "border-2 border-emerald-500 bg-emerald-50"
                       : isSelected
@@ -136,7 +134,7 @@ export function KaikanViewToggle({ contents, appliedIds }: Props) {
                           ? "border-border bg-muted/30 opacity-50"
                           : isConflicting
                             ? "border-border bg-muted/30 opacity-50"
-                            : "border-border bg-background hover:border-primary/40 hover:shadow-sm"
+                            : "border-border bg-background hover:border-primary/40"
                   }`}
                 >
                   {isApplied && (
@@ -144,7 +142,12 @@ export function KaikanViewToggle({ contents, appliedIds }: Props) {
                       <CheckCircle2 className="h-3.5 w-3.5" /> 申込済
                     </span>
                   )}
-                  {!isApplied && (() => {
+                  {!isApplied && isSelected && (
+                    <span className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-primary px-2.5 py-1 text-[11px] font-bold text-primary-foreground shadow-sm">
+                      <CheckCircle2 className="h-3.5 w-3.5" /> 選択中
+                    </span>
+                  )}
+                  {!isApplied && !isSelected && (() => {
                     const ss = seatStatus(c.applied, c.capacity);
                     if (!ss) return null;
                     return (
@@ -170,18 +173,6 @@ export function KaikanViewToggle({ contents, appliedIds }: Props) {
                   {c.description && (
                     <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{c.description}</p>
                   )}
-                  <div className="mt-2 flex items-center justify-end gap-1 text-xs text-muted-foreground">
-                    <span
-                      role="button"
-                      tabIndex={0}
-                      onClick={(e) => { e.stopPropagation(); setDetail(c); }}
-                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); setDetail(c); } }}
-                      className="inline-flex items-center gap-1 rounded-md px-2 py-1 font-medium text-primary outline-none transition hover:bg-primary/10 focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                    >
-                      <Info className="h-3.5 w-3.5" />
-                      詳細を見る
-                    </span>
-                  </div>
                 </button>
               );
             })}
@@ -230,6 +221,11 @@ export function KaikanViewToggle({ contents, appliedIds }: Props) {
         session={detail}
         open={detail !== null}
         onOpenChange={(o) => { if (!o) setDetail(null); }}
+        selected={detail ? selected.has(detail.id) : false}
+        applied={detail ? appliedIds.includes(detail.id) : false}
+        full={detail ? detail.capacity !== null && detail.applied >= detail.capacity && !appliedIds.includes(detail.id) : false}
+        conflicting={detail ? !selected.has(detail.id) && !appliedIds.includes(detail.id) && conflictWith(detail) : false}
+        onToggleSelect={(s) => toggle(byId.get(s.id) ?? (s as SelectableContent))}
       />
     </div>
   );
