@@ -178,7 +178,6 @@ async function sendTicketEmail(
   if (!email) return;
   const base = (process.env.NEXT_PUBLIC_APP_URL || "https://edu-match.com").replace(/\/$/, "");
   const ticketUrl = `${base}/summit2026/ticket/${ticketToken}`;
-  const contactUrl = `${base}/contact`;
   // チケット画面のQRと同一のチェックインURLをエンコード
   const checkinUrl = `${base}/admin/kaikan?tab=checkin&token=${ticketToken}`;
   const receipt = receiptNumberDisplay(ticketToken);
@@ -229,9 +228,6 @@ async function sendTicketEmail(
 
   <div style="text-align:center;margin:24px 0;">
     <a href="${ticketUrl}" style="display:inline-block;background:#6d28d9;color:#ffffff;font-size:14px;font-weight:bold;text-decoration:none;padding:12px 28px;border-radius:9999px;">チケットを表示する</a>
-  </div>
-  <div style="text-align:center;margin:12px 0 24px;">
-    <a href="${contactUrl}" style="display:inline-block;border:1px solid #d1d5db;color:#374151;font-size:13px;font-weight:bold;text-decoration:none;padding:10px 24px;border-radius:9999px;">お問い合わせはこちら</a>
   </div>
 
   <p style="font-size:11px;color:#9ca3af;">※QRコードが表示されない場合は「チケットを表示する」ボタンからもご提示いただけます。<br>※このメールに心当たりがない場合は破棄してください。</p>
