@@ -75,8 +75,11 @@ export function KaikanSessionDetailDialog({
   const handleToggle = () => {
     if (!session || !onToggleSelect) return;
     if (applied || full || (conflicting && !selected)) return;
-    if (!selected) setJustAdded(true);
+    const wasSelected = selected;
+    if (!wasSelected) setJustAdded(true);
     onToggleSelect(session);
+    // 押したら自動でポップアップを閉じる（選択時はアニメを一瞬見せてから）。
+    setTimeout(() => onOpenChange(false), wasSelected ? 150 : 600);
   };
 
   // 選択ボタンの状態を props から都度算出（ライブ反映）。
@@ -165,17 +168,17 @@ export function KaikanSessionDetailDialog({
               {justAdded ? (
                 <>
                   <Check className="h-4 w-4" />
-                  追加しました
+                  選択しました
                 </>
               ) : selected ? (
                 <>
                   <Check className="h-4 w-4" />
-                  追加済み（タップで取り消し）
+                  選択中（タップで取り消し）
                 </>
               ) : (
                 <>
                   <Plus className="h-4 w-4" />
-                  予定に追加する
+                  このプログラムを選択する
                 </>
               )}
             </Button>
