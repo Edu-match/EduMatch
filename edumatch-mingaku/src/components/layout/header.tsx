@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -223,12 +224,16 @@ export function Header() {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 w-full border-b border-border/60 bg-background/80 backdrop-blur-xl after:absolute after:inset-x-0 after:top-0 after:h-px after:bg-gradient-to-r after:from-transparent after:via-primary/40 after:to-transparent">
       <div className="container flex h-16 items-center gap-2 md:gap-3">
-        {/* Logo（新ブランド AIUEO BASE。旧ロゴ画像 /logo.png はエデュマッチのままなので
-            フッター(footer.tsx)と同じテキスト表示に統一してブランドの食い違いを解消） */}
-        <Link href="/" className="flex shrink-0 items-center hover:opacity-80 transition-opacity">
-          <span className="text-lg font-bold text-primary tracking-tight">
-            {tc("siteName")}
-          </span>
+        {/* Logo（AIUEO BASE 公式ロゴ・背景透過PNG） */}
+        <Link href="/" className="flex shrink-0 items-center hover:opacity-80 transition-opacity" aria-label={tc("siteName")}>
+          <Image
+            src="/aiueo-base-logo.png"
+            alt={tc("siteName")}
+            width={1096}
+            height={99}
+            priority
+            className="h-5 w-auto sm:h-6"
+          />
         </Link>
 
         {/* Desktop Navigation（セクション移動は SectionNav タブに集約。ここは機能系のみ） */}

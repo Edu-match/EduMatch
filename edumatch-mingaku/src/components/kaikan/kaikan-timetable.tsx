@@ -158,9 +158,9 @@ function SessionBlock({
         title="詳細を見る"
         onClick={(e) => { e.stopPropagation(); onShowDetail(); }}
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onShowDetail(); } }}
-        className={`absolute bottom-0.5 right-0.5 z-10 inline-flex h-5 w-5 items-center justify-center rounded-md bg-background/70 text-muted-foreground outline-none transition hover:bg-background hover:text-primary focus-visible:ring-2 focus-visible:ring-ring/50 ${applied ? "top-0.5 bottom-auto right-6" : ""}`}
+        className={`absolute bottom-0.5 right-0.5 z-10 inline-flex items-center gap-0.5 rounded-md bg-background/85 px-1.5 py-0.5 text-[9px] font-bold text-primary shadow-sm outline-none transition hover:bg-background focus-visible:ring-2 focus-visible:ring-ring/50 ${applied ? "top-0.5 bottom-auto right-6" : ""}`}
       >
-        <Info className="h-3.5 w-3.5" />
+        <Info className="h-3 w-3" /> 詳細を見る
       </span>
     </button>
   );
@@ -358,7 +358,7 @@ export function KaikanTimetable({
       {/* タイムテーブル外のセッション（その他会場・時間未定） */}
       {unplacedContents.length > 0 && (
         <div className="mt-6">
-          <h3 className="mb-2 text-sm font-bold text-muted-foreground">その他のプログラム（会場・時間別掲）</h3>
+          <h3 className="mb-2 text-sm font-bold text-muted-foreground">ワークショップ</h3>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {unplacedContents.map((c) => {
               const isApplied = appliedSet.has(c.id);
@@ -383,12 +383,10 @@ export function KaikanTimetable({
                   }`}
                 >
                   {isApplied && <CheckCircle2 className="absolute right-2 top-2 h-4 w-4 text-emerald-600" />}
-                  {!isApplied && (() => {
-                    const ss = seatStatus(c.applied, c.capacity);
-                    return ss ? (
-                      <span className={`absolute right-2 top-2 rounded-full px-2 py-0.5 text-[10px] font-bold ${ss.tone === "full" ? "bg-muted text-muted-foreground" : "bg-amber-100 text-amber-700"}`}>{ss.label}</span>
-                    ) : null;
-                  })()}
+                  {/* ワークショップは定員が少なく最初から残りわずかになるため「満席」のみ表示（残りわずかは出さない） */}
+                  {!isApplied && seatStatus(c.applied, c.capacity)?.tone === "full" && (
+                    <span className="absolute right-2 top-2 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">満席</span>
+                  )}
                   <p className="text-[11px] text-muted-foreground">
                     {c.location || "会場未定"}
                     {start && end ? ` · ${fmtTime(start)}〜${fmtTime(end)}` : " · 時間未定"}

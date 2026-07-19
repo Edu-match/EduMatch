@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { TUTORIAL_SUPPRESS_ON_RETURN_KEY } from "@/components/tutorial/tutorial-steps";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -225,18 +226,19 @@ export function ProfileRegisterForm({
         </div>
       </div>
 
-      {/* テンプレート選択（主・大きく表示） */}
+      {/* テンプレート選択（おすすめ・手軽） */}
       <div className="space-y-2">
         <label className="text-sm font-medium">
           テンプレートから選ぶ <span className="text-red-500">*</span>
+          <span className="ml-1 text-xs font-normal text-muted-foreground">（ワンタップで設定・おすすめ）</span>
         </label>
-        <div className="grid grid-cols-4 gap-3">
+        <div className="flex flex-wrap gap-2.5">
           {AVATAR_TEMPLATES.map((url) => (
             <button
               key={url}
               type="button"
               onClick={() => setAvatarUrl(url)}
-              className={`aspect-square w-full rounded-full border-2 overflow-hidden transition-all ${
+              className={`h-14 w-14 rounded-full border-2 overflow-hidden transition-all ${
                 avatarUrl === url
                   ? "border-primary ring-2 ring-primary/30"
                   : "border-muted hover:border-primary/50"
@@ -251,8 +253,9 @@ export function ProfileRegisterForm({
         </div>
       </div>
 
-      {/* 画像アップロード（従・小さな副次オプション） */}
-      <div>
+      {/* 画像アップロード（副・でも分かりやすいボタンに） */}
+      <div className="space-y-1.5">
+        <label className="text-sm font-medium text-muted-foreground">または画像をアップロード</label>
         <input
           ref={avatarFileInputRef}
           type="file"
@@ -274,15 +277,16 @@ export function ProfileRegisterForm({
           type="button"
           disabled={avatarUploading}
           onClick={() => avatarFileInputRef.current?.click()}
-          className="inline-flex items-center text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground disabled:opacity-60"
+          className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border px-4 py-3 text-sm font-medium text-foreground transition hover:border-primary/50 hover:bg-primary/[0.03] disabled:opacity-60 sm:w-auto"
         >
           {avatarUploading ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+            <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
-            <ImageIcon className="h-3.5 w-3.5 mr-1.5" />
+            <ImageIcon className="h-4 w-4" />
           )}
-          画像をアップロード{isUploadedSelected ? "（選択中）" : ""}
+          {isUploadedSelected ? "画像を変更（選択中）" : "画像をアップロード"}
         </button>
+        <p className="text-xs text-muted-foreground">JPG / PNG / GIF / WebP。スマホで撮った写真もそのまま使えます。</p>
       </div>
     </div>
   );
@@ -996,12 +1000,17 @@ export function ProfileRegisterForm({
       return;
     }
     if (success) {
+      // 元いたページ（申込ページ等）から来た場合は最優先でそこへ戻す。その際チュートリアルは出さない。
+      if (nextUrl) {
+        try { window.sessionStorage.setItem(TUTORIAL_SUPPRESS_ON_RETURN_KEY, "1"); } catch { /* noop */ }
+        router.push(nextUrl);
+        return;
+      }
       if (isFirstTime) {
         router.push("/?tutorial=start");
         return;
       }
-
-      router.push(nextUrl ?? "/dashboard");
+      router.push("/dashboard");
     }
   };
 
