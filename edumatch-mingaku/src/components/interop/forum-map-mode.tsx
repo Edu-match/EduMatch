@@ -9,13 +9,25 @@ import { InteropExplorer } from "@/components/interop/interop-explorer";
 const STORE_KEY = "forum-map-mode";
 
 export function ForumMapMode(props: React.ComponentProps<typeof InteropExplorer>) {
-  // 3D ギャラクシービューをデフォルトに。明示的に 2D を選んだ場合だけ記憶して尊重する。
-  const [mode, setMode] = useState<"2d" | "3d">("3d");
+  // 3D ギャラクシービューをデフォルトに（PC）。ただしスマホは WebGL のメモリ制約で
+  // Safari がクラッシュ（"This page couldn't load"）しやすいため 2D を既定にする。
+  // 明示的に選んだビューは sessionStorage に記憶して尊重する。
+  // ※ 3D/2D いずれも ssr:false のためサーバーは地図本体を描画せず、初期 mode の
+  //   クライアント判定でハイドレーション不整合は起きない。
+  const [mode, setMode] = useState<"2d" | "3d">(() => {
+    if (typeof window === "undefined") return "3d";
+    try {
+      const saved = sessionStorage.getItem(STORE_KEY);
+      if (saved === "2d" || saved === "3d") return saved;
+    } catch { /* noop */ }
+    const isMobile = window.matchMedia("(max-width: 768px)").matches;
+    return isMobile ? "2d" : "3d";
+  });
 
   useEffect(() => {
-    // sessionStorage（React外部の状態）からの一度きりの復元
+    // sessionStorage（React外部の状態）からの一度きりの復元（保存済みのみ尊重）
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    try { if (sessionStorage.getItem(STORE_KEY) === "2d") setMode("2d"); } catch { /* noop */ }
+    try { const s = sessionStorage.getItem(STORE_KEY); if (s === "2d" || s === "3d") setMode(s); } catch { /* noop */ }
   }, []);
   const choose = (m: "2d" | "3d") => { setMode(m); try { sessionStorage.setItem(STORE_KEY, m); } catch { /* noop */ } };
 
