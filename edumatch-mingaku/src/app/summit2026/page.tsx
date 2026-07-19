@@ -64,6 +64,7 @@ export default async function KaikanTicketsPage({ searchParams }: { searchParams
         <p className="mt-2 text-sm text-muted-foreground">
           参加したいプログラムに<strong>チェック</strong>して「確認へ進む」を押すと、次のページで内容を確認して申し込めます。
         </p>
+        <p className="mt-1.5 text-xs font-medium text-amber-700">※同じ時間帯に開催されるプログラムは、1つのみ選択いただけます。</p>
         {myTicketToken && (
           <Link
             href={`/summit2026/ticket/${myTicketToken}`}

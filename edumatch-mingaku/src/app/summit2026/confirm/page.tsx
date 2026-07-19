@@ -5,7 +5,6 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentProfile } from "@/lib/auth";
 import { applyForKaikanContents, hasRedeemedInvite } from "@/app/_actions/kaikan";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 
 export const dynamic = "force-dynamic";
 
@@ -131,10 +130,7 @@ export default async function KaikanConfirmPage({ searchParams }: { searchParams
           </details>
         </section>
 
-        <div className="space-y-1.5">
-          <label htmlFor="kaikan-note" className="text-sm font-medium">事前質問・期待すること <span className="text-muted-foreground">（任意・全プログラム共通）</span></label>
-          <Textarea id="kaikan-note" name="note" rows={3} maxLength={500} className="resize-none" placeholder="登壇者に聞きたいこと、参加への期待など" />
-        </div>
+        <input type="hidden" name="note" value="" />
 
         <Button type="submit" size="lg" className="w-full">
           <Ticket className="h-4 w-4" /> この内容で申し込む（電子チケットを発行）
