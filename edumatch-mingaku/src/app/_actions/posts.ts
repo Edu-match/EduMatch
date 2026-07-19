@@ -803,8 +803,9 @@ export async function getPopularPosts(limit: number = 5): Promise<PostWithProvid
           },
         },
       },
+      // とりあえず最新の記事を「人気記事」枠に表示する（実データ優先。デモ記事は出さない）
       orderBy: {
-        view_count: "desc",
+        created_at: "desc",
       },
       take: limit,
     });
@@ -819,14 +820,9 @@ export async function getPopularPosts(limit: number = 5): Promise<PostWithProvid
       },
     }));
   } catch (error) {
-    if (isDbUnavailable(error)) {
-      if (process.env.NODE_ENV === "development") {
-        console.warn("[posts] Database unavailable; showing demo content.");
-      }
-      return [...DEMO_POSTS].sort((a, b) => b.view_count - a.view_count).slice(0, limit);
-    }
+    // DB障害時はデモ記事を出さず、セクションを非表示にする（実記事のみ表示する方針）
     console.error("Error fetching popular posts:", error);
-    return [...DEMO_POSTS].sort((a, b) => b.view_count - a.view_count).slice(0, limit);
+    return [];
   }
 }
 
