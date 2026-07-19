@@ -282,17 +282,17 @@ function MainAxes({ config, axis3Label }: { config: AxisConfig; axis3Label?: str
       <Html center position={[0, 0, AXIS_LINE_REACH]} style={{ pointerEvents: "none" }}>
         <div style={axisLabelStyle}>{config.yBottom} ↓</div>
       </Html>
-      {/* 第3軸（高さ）: 縦の軸線とラベル。中心ハブを避けて上方に配置。右上インジケーターは表示しない。 */}
+      {/* 第3軸（高さ）: 縦の軸線を原点対称に引き、中心ハブ(議員会館の球)が真ん中に来るようにする。右上インジケーターは出さない。 */}
       {axis3Label && (
         <>
           <Line
-            points={[[0, 6, 0], [0, AXIS3_HEIGHT + 8, 0]]}
+            points={[[0, -(AXIS3_HEIGHT / 2 + 4), 0], [0, AXIS3_HEIGHT / 2 + 4, 0]]}
             color="#7fd6ff"
             lineWidth={1}
             transparent
             opacity={0.22}
           />
-          <Html center position={[0, AXIS3_HEIGHT + 11, 0]} style={{ pointerEvents: "none" }}>
+          <Html center position={[0, AXIS3_HEIGHT / 2 + 7, 0]} style={{ pointerEvents: "none" }}>
             <div style={{ ...axisLabelStyle, color: "#bfeaff", borderColor: "rgba(127,214,255,0.4)" }}>↑ {axis3Label}</div>
           </Html>
         </>
@@ -379,7 +379,8 @@ function Moon({ topic, posts, planetR, index, count, clockRef, seg, showLabel, a
   // （分布の読み取りを妨げないため。従来の 0.38+ から大幅に減速）。
   const speed = 0.12 + (index % 3) * 0.03;
   const phase = (index / count) * Math.PI * 2;
-  const yOffset = axis3Value * AXIS3_HEIGHT;
+  // 中心球(原点)を第3軸の真ん中にするため、0.5 を基準に上下対称へマッピングする。
+  const yOffset = (axis3Value - 0.5) * AXIS3_HEIGHT;
 
   useFrame(() => {
     if (!group.current) return;
