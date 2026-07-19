@@ -132,25 +132,25 @@ export function KaikanSessionDetailDialog({
         </div>
 
         {/* アクション行：戻る + 選択/取り消し */}
-        <div className="mt-4 flex items-center justify-between gap-3 border-t pt-4">
+        <div className="mt-4 flex items-center gap-2 border-t pt-4">
           <DialogClose asChild>
-            <Button type="button" variant="ghost" size="lg">
+            <Button type="button" variant="ghost" size="lg" className="shrink-0 px-3">
               <ChevronLeft className="h-4 w-4" />
               戻る
             </Button>
           </DialogClose>
 
           {applied ? (
-            <Button type="button" size="lg" disabled className="min-w-[9rem]">
+            <Button type="button" size="lg" disabled className="flex-1">
               <CheckCircle2 className="h-4 w-4" />
               申込済み
             </Button>
           ) : full ? (
-            <Button type="button" size="lg" disabled variant="secondary" className="min-w-[9rem]">
+            <Button type="button" size="lg" disabled variant="secondary" className="flex-1">
               満席
             </Button>
           ) : conflicting && !selected ? (
-            <Button type="button" size="lg" disabled variant="secondary" className="min-w-[9rem]">
+            <Button type="button" size="lg" disabled variant="secondary" className="flex-1">
               追加できません
             </Button>
           ) : (
@@ -161,7 +161,7 @@ export function KaikanSessionDetailDialog({
               disabled={actionDisabled}
               variant={selected ? "outline" : "default"}
               aria-pressed={selected}
-              className={`min-w-[9rem] transition-transform ${justAdded ? "animate-cart-pop" : ""} ${
+              className={`flex-1 transition-transform ${justAdded ? "animate-cart-pop" : ""} ${
                 selected ? "border-primary text-primary" : ""
               }`}
             >
@@ -173,7 +173,7 @@ export function KaikanSessionDetailDialog({
               ) : selected ? (
                 <>
                   <Check className="h-4 w-4" />
-                  選択中（タップで取り消し）
+                  選択中・取り消す
                 </>
               ) : (
                 <>

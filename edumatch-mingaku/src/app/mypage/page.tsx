@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CancelSessionButton } from "@/components/kaikan/cancel-session-button";
+import { receiptNumberDisplay } from "@/lib/kaikan-receipt";
 import {
   Clock,
   FileBadge2,
@@ -137,7 +138,7 @@ export default async function MyPage() {
                   <Link href={`/summit2026/ticket/${t.token}`} className="group flex min-h-[44px] items-center justify-between gap-3 transition">
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-bold">電子チケット（{t.apps.length}件）</span>
-                      <span className="block text-[11px] text-muted-foreground">受付番号 {t.token.slice(0, 8).toUpperCase().replace(/(.{4})(.{4})/, "$1-$2")}・タップでQR表示</span>
+                      <span className="block text-[11px] text-muted-foreground">受付番号 {receiptNumberDisplay(t.token)}・タップでQR表示</span>
                     </span>
                     <span className="flex shrink-0 items-center gap-2">
                       <Badge variant={t.allChecked ? "default" : "secondary"} className={t.allChecked ? "bg-success/15 text-success" : ""}>{t.allChecked ? "受付済" : "受付前"}</Badge>

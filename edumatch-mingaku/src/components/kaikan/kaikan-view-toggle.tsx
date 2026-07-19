@@ -207,9 +207,9 @@ export function KaikanViewToggle({ contents, appliedIds }: Props) {
 
           {/* Confirm bar */}
           {newSelections.length > 0 && (
-            <div className="sticky bottom-0 mt-4 flex items-center justify-between rounded-xl border bg-background/95 p-3 shadow-lg backdrop-blur">
-              <span className="text-sm font-medium">{newSelections.length}件選択中</span>
-              <Button type="button" size="lg" onClick={handleConfirm}>
+            <div className="sticky bottom-[max(0.75rem,env(safe-area-inset-bottom))] mt-4 flex items-center justify-between gap-3 rounded-xl border bg-background/95 p-3 shadow-lg backdrop-blur">
+              <span className="min-w-0 text-sm font-medium">{newSelections.length}件選択中</span>
+              <Button type="button" size="lg" onClick={handleConfirm} className="shrink-0">
                 確認へ進む <ArrowRight className="h-4 w-4" />
               </Button>
             </div>

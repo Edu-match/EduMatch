@@ -395,13 +395,13 @@ export function KaikanTimetable({
       )}
 
       {/* Bottom fixed bar */}
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 backdrop-blur shadow-lg supports-[backdrop-filter]:bg-background/80">
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 backdrop-blur shadow-lg supports-[backdrop-filter]:bg-background/80 pb-[env(safe-area-inset-bottom)]">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <span className="text-sm font-medium">
+          <span className="min-w-0 text-sm font-medium leading-snug">
             <span className="font-bold text-primary">{newCount}</span>件を新規申込
             {selected.size - newCount > 0 && <span className="text-muted-foreground">（申込済{selected.size - newCount}件）</span>}
           </span>
-          <Button type="button" size="lg" onClick={proceed} disabled={newCount === 0}>
+          <Button type="button" size="lg" onClick={proceed} disabled={newCount === 0} className="shrink-0">
             確認へ進む <ArrowRight className="h-4 w-4" />
           </Button>
         </div>

@@ -71,19 +71,20 @@ export default async function HomePage() {
             <Reveal>
               <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
                 {/* ヘッダー */}
-                <div className="flex items-center justify-between bg-gradient-to-r from-primary/20 via-primary/10 to-primary/5 px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <span className="grid h-8 w-8 place-items-center rounded-xl bg-primary text-primary-foreground">
+                <div className="flex items-center justify-between gap-2 bg-gradient-to-r from-primary/20 via-primary/10 to-primary/5 px-4 py-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
                       <MessageSquare className="h-4 w-4" />
                     </span>
-                    <div>
+                    <div className="min-w-0">
                       <h1 className="display-title text-xl sm:text-2xl">{t("heroTitle")}</h1>
-                      <p className="text-xs text-muted-foreground">{t("heroSubtitle")}</p>
+                      <p className="truncate text-xs text-muted-foreground">{t("heroSubtitle")}</p>
                     </div>
                   </div>
-                  <Button asChild size="sm" className="gap-1">
-                    <Link href="/forum">
-                      {t("openFullscreen")} <ArrowRight className="h-3 w-3" />
+                  <Button asChild size="sm" className="shrink-0 gap-1 whitespace-nowrap">
+                    <Link href="/forum" aria-label={t("openFullscreen")}>
+                      <span className="hidden min-[400px]:inline">{t("openFullscreen")}</span>
+                      <ArrowRight className="h-3 w-3" />
                     </Link>
                   </Button>
                 </div>

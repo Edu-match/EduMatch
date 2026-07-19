@@ -247,10 +247,14 @@ const axisLabelStyle: React.CSSProperties = {
 // 軸線の到達端。惑星分布(AXIS_SPREAD)より少し外側に伸ばし、端にラベルを置く。
 const AXIS_LINE_REACH = AXIS_SPREAD + 8;
 
-function MainAxes({ config, axis3Label }: { config: AxisConfig; axis3Label?: string }) {
+function MainAxes({ config, axis3Label, compact = false }: { config: AxisConfig; axis3Label?: string; compact?: boolean }) {
   // 惑星配置と同じ写像： axis_x → X(左右) / axis_y → -Z（+y=上/奥, -y=手前）。
   // 端ラベルは 2D マップと同じ axisConfig（xLeft/xRight/yTop/yBottom）を使う。
   const axisColor = "#9fb4ff";
+  // スマホでは軸ラベルを小さめにし、長文が画面端で溢れないよう最大幅を制限する。
+  const axisLabel = compact
+    ? { ...axisLabelStyle, fontSize: 9.5, padding: "1px 5px", maxWidth: 120, overflow: "hidden" as const, textOverflow: "ellipsis" as const }
+    : axisLabelStyle;
   return (
     <group>
       {/* X 軸（人間・関係 ↔ 技術・データ）。中心ハブと被らないよう線は薄く。 */}
@@ -270,17 +274,17 @@ function MainAxes({ config, axis3Label }: { config: AxisConfig; axis3Label?: str
         opacity={0.22}
       />
       <Html center position={[-AXIS_LINE_REACH, 0, 0]} style={{ pointerEvents: "none" }}>
-        <div style={axisLabelStyle}>← {config.xLeft}</div>
+        <div style={axisLabel}>← {config.xLeft}</div>
       </Html>
       <Html center position={[AXIS_LINE_REACH, 0, 0]} style={{ pointerEvents: "none" }}>
-        <div style={axisLabelStyle}>{config.xRight} →</div>
+        <div style={axisLabel}>{config.xRight} →</div>
       </Html>
       {/* +y=制度 は Z を反転して奥(-Z) に写像（惑星配置と一致）。 */}
       <Html center position={[0, 0, -AXIS_LINE_REACH]} style={{ pointerEvents: "none" }}>
-        <div style={axisLabelStyle}>↑ {config.yTop}</div>
+        <div style={axisLabel}>↑ {config.yTop}</div>
       </Html>
       <Html center position={[0, 0, AXIS_LINE_REACH]} style={{ pointerEvents: "none" }}>
-        <div style={axisLabelStyle}>{config.yBottom} ↓</div>
+        <div style={axisLabel}>{config.yBottom} ↓</div>
       </Html>
       {/* 第3軸（高さ）: 縦の軸線を原点対称に引き、中心ハブ(議員会館の球)が真ん中に来るようにする。
           label は「上端 ↔ 下端」形式（例: 理論・思想 ↔ 実装・運用）なので分割して両端に配置する。 */}
@@ -288,7 +292,7 @@ function MainAxes({ config, axis3Label }: { config: AxisConfig; axis3Label?: str
         const [topLabel, bottomLabel] = axis3Label.includes("↔")
           ? axis3Label.split("↔").map((s) => s.trim())
           : [axis3Label, null];
-        const axis3Style = { ...axisLabelStyle, color: "#bfeaff", borderColor: "rgba(127,214,255,0.4)" };
+        const axis3Style = { ...axisLabel, color: "#bfeaff", borderColor: "rgba(127,214,255,0.4)" };
         return (
           <>
             <Line
@@ -639,7 +643,7 @@ function Scene({ centerLabel, topics, counts, caps, axis3, axisConfig, focusedMa
     <>
       {tier === "high" && <Sparkles count={320} scale={[85, 26, 85]} size={1.8} speed={reduceMotion ? 0 : 0.28} opacity={0.3} color="#ffd700" />}
 
-      <MainAxes config={axisConfig} axis3Label={axis3?.label} />
+      <MainAxes config={axisConfig} axis3Label={axis3?.label} compact={compact} />
 
       <Sun label={centerLabel} seg={seg} reduceMotion={reduceMotion} labelScale={labelScale} compact={compact} onSelect={onSelectCenter} />
       {ORBITS.map((spec) => (
@@ -665,11 +669,16 @@ function Scene({ centerLabel, topics, counts, caps, axis3, axisConfig, focusedMa
       <OrbitControls
         makeDefault
         enablePan={false}
-        minDistance={8}
-        maxDistance={140}
+        // スマホでは少し引きで全惑星を見渡せるよう最小距離を緩め、拡大は広めに許容する。
+        minDistance={compact ? 6 : 8}
+        maxDistance={compact ? 170 : 140}
         maxPolarAngle={Math.PI * 0.88}
         enableDamping
         dampingFactor={0.07}
+        // タッチ操作を明示：1本指=回転 / 2本指=ピンチズーム（pan無効なのでドリーのみ）。
+        touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_ROTATE }}
+        rotateSpeed={compact ? 0.7 : 0.9}
+        zoomSpeed={compact ? 0.9 : 1}
         // 分布(軸配置)を安定して読めるよう自動回転は無効化。閲覧はドラッグで自由に回せる。
         autoRotate={false}
       />
@@ -888,19 +897,24 @@ export default function ForumGalaxy3D({ centerLabel, topics, axisConfig, onSelec
       <div className="pointer-events-none absolute inset-0 transition-[background] duration-1000" aria-hidden style={{ background: pal.vignette, zIndex: 2 }} />
 
       {focusedMajor && (
-        <div className="pointer-events-auto absolute bottom-4 left-1/2 z-40 -translate-x-1/2">
+        <div className="pointer-events-auto absolute bottom-3 left-1/2 z-40 -translate-x-1/2 sm:bottom-4">
           <button
             type="button"
             onClick={() => setFocusedMajor(null)}
-            className="rounded-full border border-[#1a3a5a]/20 bg-white/70 px-3.5 py-2.5 text-xs font-bold text-[#1a3a5a] backdrop-blur transition hover:bg-white/85"
+            className="rounded-full border border-[#1a3a5a]/20 bg-white/75 px-3.5 py-2.5 text-xs font-bold text-[#1a3a5a] shadow-sm backdrop-blur transition hover:bg-white/90"
           >
             ← 全体へ
           </button>
         </div>
       )}
 
-      <p className="pointer-events-none absolute bottom-3 left-4 z-40 max-w-[240px] rounded-full bg-white/60 px-2.5 py-1 text-[11px] leading-relaxed text-[#1a3a5a]/85 backdrop-blur sm:max-w-none">
-        惑星＝カテゴリをタップで接近 · 衛星＝トピックをタップでひろばへ · ドラッグで回転
+      {/* 操作ヒント。スマホでは1本指=回転 / 2本指=ズーム を明示。フォーカス中は「全体へ」
+          ボタンと重ならないよう上寄せする。 */}
+      <p
+        className={`pointer-events-none absolute left-3 z-30 max-w-[calc(100%-1.5rem)] rounded-full bg-white/65 px-2.5 py-1 text-[10.5px] leading-relaxed text-[#1a3a5a]/85 backdrop-blur sm:left-4 sm:max-w-none sm:text-[11px] ${focusedMajor ? "bottom-16 sm:bottom-3" : "bottom-3"}`}
+      >
+        <span className="sm:hidden">タップで接近／ひろばへ · 1本指で回転 · 2本指でズーム</span>
+        <span className="hidden sm:inline">惑星＝カテゴリをタップで接近 · 衛星＝トピックをタップでひろばへ · ドラッグで回転・ホイールで拡大</span>
         {caps.tier === "low" && <span className="text-[#1a3a5a]/60">・軽量モード</span>}
       </p>
     </div>
