@@ -62,7 +62,7 @@ export default async function KaikanTicketsPage({ searchParams }: { searchParams
         <p className="text-xs font-bold tracking-wide text-primary">教育AIサミット2026＠衆議院第一議員会館</p>
         <h1 className="mt-1 text-2xl font-bold">参加するプログラムを選ぶ</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          参加したいプログラムに<strong>複数チェック</strong>して「確認へ進む」を押すと、次のページで内容を確認して申し込めます。
+          参加したいプログラムに<strong>チェック</strong>して「確認へ進む」を押すと、次のページで内容を確認して申し込めます。
         </p>
         {myTicketToken && (
           <Link

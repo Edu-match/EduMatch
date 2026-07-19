@@ -112,20 +112,20 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
         )}
       </div>
 
-      {/* AIナビゲーター起動ボタン – desktop（閉状態のみ・通常はアイコンのみ、ホバー/フォーカスでラベル展開）
-          コンテンツのCTAを覆う面積を最小化するためコンパクトな円形を既定とする */}
+      {/* AIナビゲーター起動ボタン – desktop（閉状態のみ）
+          サイトの中核機能として目立たせる: グラデーション＋グロー＋常時ラベル表示 */}
       {!examBlocksChat && !open && (
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="group hidden lg:flex fixed bottom-6 right-6 z-40 items-center rounded-full border border-border/60 bg-white/85 p-2 text-sm font-semibold text-foreground shadow-lg shadow-black/5 backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:shadow-xl"
-          aria-label={t("openAiPanel")}
+          className="group animate-ai-glow hidden lg:flex fixed bottom-6 right-6 z-40 items-center gap-3 rounded-full bg-gradient-to-br from-primary via-primary to-[oklch(0.58_0.24_300)] py-2.5 pl-2.5 pr-5 text-[0.95rem] font-semibold text-primary-foreground ring-1 ring-white/25 transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          aria-label={t("openAiNavigator")}
           data-tutorial="ai-navigator-open"
         >
-          <span className="grid h-9 w-9 place-items-center rounded-full bg-primary text-primary-foreground">
-            <Bot className="h-5 w-5" />
+          <span className="grid h-11 w-11 place-items-center rounded-full bg-white/20 backdrop-blur-sm ring-1 ring-white/30">
+            <Bot className="h-6 w-6" strokeWidth={2.2} />
           </span>
-          <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-300 group-hover:max-w-48 group-hover:pl-2 group-hover:pr-2 group-hover:opacity-100 group-focus-visible:max-w-48 group-focus-visible:pl-2 group-focus-visible:pr-2 group-focus-visible:opacity-100">
+          <span className="whitespace-nowrap tracking-wide drop-shadow-sm">
             {t("aiNavigator")}
           </span>
         </button>
@@ -139,13 +139,13 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
           type="button"
           onClick={() => setMobileOpen(true)}
           className={cn(
-            "lg:hidden fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-5 z-40 h-14 w-14 rounded-full bg-primary hover:opacity-90 shadow-xl hover:shadow-2xl transition-all flex items-center justify-center",
+            "animate-ai-glow lg:hidden fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-5 z-40 h-16 w-16 rounded-full bg-gradient-to-br from-primary via-primary to-[oklch(0.58_0.24_300)] ring-1 ring-white/25 transition-transform active:scale-95 flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
             mobileOpen && "hidden"
           )}
           aria-label={t("openAiNavigator")}
           data-tutorial="ai-navigator-open"
         >
-          <Bot className="h-6 w-6 text-white" strokeWidth={2} />
+          <Bot className="h-7 w-7 text-white drop-shadow-sm" strokeWidth={2.2} />
         </button>
       )}
 

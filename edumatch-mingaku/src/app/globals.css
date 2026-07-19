@@ -369,6 +369,26 @@ main {
   animation: em-pulse-dot 1.6s ease-in-out infinite;
 }
 
+/* AIナビゲーター起動ボタンの柔らかいグロー（中核機能として目立たせる） */
+@keyframes em-ai-glow {
+  0%, 100% {
+    box-shadow:
+      0 10px 30px -8px color-mix(in oklch, var(--primary) 60%, transparent),
+      0 0 0 0 color-mix(in oklch, var(--primary) 45%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 14px 38px -8px color-mix(in oklch, var(--primary) 70%, transparent),
+      0 0 0 10px color-mix(in oklch, var(--primary) 0%, transparent);
+  }
+}
+.animate-ai-glow {
+  animation: em-ai-glow 2.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-ai-glow { animation: none; }
+}
+
 /* スクロールバー非表示（横スクロールのチップ列・タブ列用） */
 @layer utilities {
   .scrollbar-hide {

@@ -2,7 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireAdminOrKaikanStaff } from "@/lib/auth";
-import { createKaikanContent, setKaikanContentPublished, generateKaikanInviteCodes, toggleKaikanInviteCode, deleteKaikanInviteCode, importKaikanContentsFromCsv, addKaikanStaff, bulkAddKaikanStaff, removeKaikanStaff, adminCancelKaikanApplication, adminRestoreKaikanApplication } from "@/app/_actions/kaikan";
+import { createKaikanContent, setKaikanContentPublished, generateKaikanInviteCodes, toggleKaikanInviteCode, deleteKaikanInviteCode, importKaikanContentsFromCsv, addKaikanStaff, bulkAddKaikanStaff, removeKaikanStaff, adminRestoreKaikanApplication } from "@/app/_actions/kaikan";
+import { AdminCancelButton } from "@/components/kaikan/admin-cancel-button";
 import { KaikanCheckinPanel } from "@/components/kaikan/kaikan-checkin-panel";
 
 export const dynamic = "force-dynamic";
@@ -279,12 +280,7 @@ export default async function AdminKaikanPage({ searchParams }: { searchParams: 
                               </button>
                             </form>
                           ) : (
-                            <form action={adminCancelKaikanApplication} className="inline-flex">
-                              <input type="hidden" name="id" value={p.id} />
-                              <button type="submit" className="inline-flex min-h-[40px] items-center whitespace-nowrap rounded-md border border-red-300 px-4 text-xs font-bold text-red-600 transition hover:bg-red-50">
-                                キャンセル
-                              </button>
-                            </form>
+                            <AdminCancelButton id={p.id} name={p.name} />
                           )}
                         </div>
                       </td>
