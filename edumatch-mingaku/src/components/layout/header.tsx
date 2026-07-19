@@ -73,6 +73,7 @@ export function Header() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
+  const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
@@ -108,9 +109,15 @@ export function Header() {
           const data = await res.json();
           setUserRole(data?.profile?.role || null);
           setUserName(data?.profile?.name || user?.user_metadata?.name || null);
+          setUserAvatarUrl(
+            data?.profile?.avatar_url ||
+              user?.user_metadata?.avatar_url ||
+              null
+          );
         } catch {
           setUserRole(null);
           setUserName(user?.user_metadata?.name || null);
+          setUserAvatarUrl(user?.user_metadata?.avatar_url || null);
         } finally {
           setIsProfileLoading(false);
         }
@@ -128,6 +135,7 @@ export function Header() {
         }
       } else {
         setUserName(null);
+        setUserAvatarUrl(null);
         setUserRole(null);
         setIsProfileLoading(false);
         setNotifications({ list: [], unreadCount: 0 });
@@ -402,9 +410,18 @@ export function Header() {
                   className="max-w-[140px] gap-1.5 px-2"
                   data-tutorial="header-user-menu-trigger"
                 >
-                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                    <User className="h-3.5 w-3.5 text-primary" />
-                  </div>
+                  {userAvatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={userAvatarUrl}
+                      alt={displayName}
+                      className="h-6 w-6 shrink-0 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                      <User className="h-3.5 w-3.5 text-primary" />
+                    </div>
+                  )}
                   <span className="hidden min-w-0 truncate sm:inline">{displayName}</span>
                   <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
                 </Button>
@@ -594,9 +611,18 @@ export function Header() {
                 ) : isAuthenticated ? (
                   <div>
                     <div className="flex items-center gap-3 p-2 bg-muted/50 rounded-lg mb-3">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <User className="h-5 w-5 text-primary" />
-                      </div>
+                      {userAvatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={userAvatarUrl}
+                          alt={displayName}
+                          className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                          <User className="h-5 w-5 text-primary" />
+                        </div>
+                      )}
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm truncate">{displayName}</p>
                         {userEmail && (

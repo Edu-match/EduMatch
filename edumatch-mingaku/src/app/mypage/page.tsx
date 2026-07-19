@@ -117,14 +117,19 @@ export default async function MyPage() {
         </p>
       </div>
 
-      {/* 電子チケット（議員会館イベント） */}
-      {myTickets.length > 0 && (
-        <Card className="mb-6">
+      {/* 電子チケット（議員会館イベント）: 常に表示。未取得時は導線を出す。 */}
+      <Card className="mb-6">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="flex items-center gap-2"><Ticket className="h-5 w-5" /> 電子チケット</CardTitle>
             <Button variant="ghost" size="sm" asChild><Link href="/summit2026">コンテンツを探す<ArrowRight className="h-4 w-4 ml-1" /></Link></Button>
           </CardHeader>
           <CardContent>
+            {myTickets.length === 0 ? (
+              <div className="rounded-xl border border-dashed bg-muted/20 p-5 text-center">
+                <p className="text-sm text-muted-foreground">まだ電子チケットはありません。</p>
+                <Button size="sm" asChild className="mt-3"><Link href="/summit2026">教育AIサミット2026に申し込む<ArrowRight className="h-4 w-4 ml-1" /></Link></Button>
+              </div>
+            ) : (
             <ul className="space-y-2">
               {myTickets.map((t) => (
                 <li key={t.token}>
@@ -141,9 +146,9 @@ export default async function MyPage() {
                 </li>
               ))}
             </ul>
+            )}
           </CardContent>
         </Card>
-      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* メインコンテンツ */}

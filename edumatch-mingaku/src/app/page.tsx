@@ -131,13 +131,16 @@ export default async function HomePage() {
               <Reveal variant="fade-in" delay={120}>
                 <Link
                   href="/summit2026"
-                  className="card-lift group flex items-center gap-3 rounded-2xl border bg-gradient-to-r from-card to-surface-tint p-4"
+                  className="card-lift group flex items-center gap-3 rounded-2xl border-2 border-primary/50 bg-gradient-to-br from-primary/15 via-primary/5 to-violet-500/15 p-4 shadow-md ring-1 ring-primary/20"
                 >
-                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-sm">
                     <Ticket className="h-5 w-5" />
                   </span>
                   <span className="min-w-0">
-                    <span className="block text-sm font-bold">{t("kaikanTitle")}</span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="block text-[15px] font-bold text-foreground">{t("kaikanTitle")}</span>
+                      <span className="shrink-0 rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-bold text-primary-foreground">受付中</span>
+                    </span>
                     <span className="block text-xs text-muted-foreground">{t("ticketOpen")}</span>
                   </span>
                   <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-primary transition-transform group-hover:translate-x-1" />

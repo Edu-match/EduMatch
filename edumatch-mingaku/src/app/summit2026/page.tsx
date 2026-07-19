@@ -57,7 +57,7 @@ export default async function KaikanTicketsPage({ searchParams }: { searchParams
 
   return (
     <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
-      <KaikanBackButton />
+      <KaikanBackButton href="/" label="トップへ戻る" />
       <header className="mb-5 mt-3">
         <p className="text-xs font-bold tracking-wide text-primary">教育AIサミット2026＠衆議院第一議員会館</p>
         <h1 className="mt-1 text-2xl font-bold">参加するプログラムを選ぶ</h1>

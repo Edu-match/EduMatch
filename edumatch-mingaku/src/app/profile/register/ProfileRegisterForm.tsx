@@ -17,6 +17,11 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   User,
   Building2,
   Handshake,
@@ -165,6 +170,7 @@ export function ProfileRegisterForm({
   );
   const [saving, setSaving] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const avatarFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -206,25 +212,51 @@ export function ProfileRegisterForm({
   const renderAvatarUploader = () => (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <div className="flex-shrink-0 w-16 h-16 rounded-full bg-muted border-2 flex items-center justify-center overflow-hidden">
-          {avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
+        {avatarUrl ? (
+          <button
+            type="button"
+            onClick={() => setAvatarPreviewOpen(true)}
+            aria-label="アバターを拡大表示"
+            className="group relative flex-shrink-0 w-16 h-16 rounded-full bg-muted border-2 flex items-center justify-center overflow-hidden transition hover:ring-2 hover:ring-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-zoom-in"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={avatarUrl}
               alt="プロフィール"
               className="w-full h-full object-cover"
             />
-          ) : (
+          </button>
+        ) : (
+          <div className="flex-shrink-0 w-16 h-16 rounded-full bg-muted border-2 flex items-center justify-center overflow-hidden">
             <User className="h-8 w-8 text-muted-foreground" />
-          )}
-        </div>
+          </div>
+        )}
         <div className="text-sm">
           <p className="font-medium">
             {avatarUrl ? "アバターを選択済み" : "アバターが未設定です"}
           </p>
+          {avatarUrl && (
+            <p className="text-xs text-muted-foreground mt-0.5">クリックで拡大</p>
+          )}
           <p className="text-red-500 text-xs mt-0.5">※アバターの設定は必須です</p>
         </div>
       </div>
+
+      <Dialog open={avatarPreviewOpen} onOpenChange={setAvatarPreviewOpen}>
+        <DialogContent className="w-auto max-w-[90vw] p-6">
+          <DialogTitle className="sr-only">アバターのプレビュー</DialogTitle>
+          {avatarUrl && (
+            <div className="flex items-center justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={avatarUrl}
+                alt="アバターの拡大表示"
+                className="h-auto w-[min(320px,80vw)] rounded-lg object-contain"
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* テンプレート選択（おすすめ・手軽） */}
       <div className="space-y-2">
