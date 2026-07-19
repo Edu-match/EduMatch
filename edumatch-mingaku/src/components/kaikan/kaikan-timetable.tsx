@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, ArrowRight, CheckCircle2, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { seatStatus } from "./seat-status";
 
 export type SelectableContent = {
   id: string;
@@ -143,6 +144,12 @@ function SessionBlock({
           {content.description}
         </div>
       )}
+      {!applied && (() => {
+        const ss = seatStatus(content.applied, content.capacity);
+        return ss ? (
+          <div className={`text-[10px] mt-0.5 font-bold ${ss.tone === "full" ? "text-muted-foreground" : "text-amber-600"}`}>{ss.label}</div>
+        ) : null;
+      })()}
       {applied && <CheckCircle2 className="absolute top-1 right-1 h-3.5 w-3.5 text-emerald-600" />}
       <span
         role="button"
@@ -376,9 +383,12 @@ export function KaikanTimetable({
                   }`}
                 >
                   {isApplied && <CheckCircle2 className="absolute right-2 top-2 h-4 w-4 text-emerald-600" />}
-                  {isFull && !isApplied && (
-                    <span className="absolute right-2 top-2 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">満席</span>
-                  )}
+                  {!isApplied && (() => {
+                    const ss = seatStatus(c.applied, c.capacity);
+                    return ss ? (
+                      <span className={`absolute right-2 top-2 rounded-full px-2 py-0.5 text-[10px] font-bold ${ss.tone === "full" ? "bg-muted text-muted-foreground" : "bg-amber-100 text-amber-700"}`}>{ss.label}</span>
+                    ) : null;
+                  })()}
                   <p className="text-[11px] text-muted-foreground">
                     {c.location || "会場未定"}
                     {start && end ? ` · ${fmtTime(start)}〜${fmtTime(end)}` : " · 時間未定"}

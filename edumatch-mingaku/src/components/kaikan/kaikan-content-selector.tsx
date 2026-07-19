@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MapPin, Users, CheckCircle2, ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { seatStatus } from "./seat-status";
 
 export type SelectableContent = {
   id: string;
@@ -144,7 +145,7 @@ export function KaikanContentSelector({ contents, appliedIds }: { contents: Sele
                           </span>
                           <span className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
                             {c.location && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{c.location}</span>}
-                            {c.capacity != null && <span className="inline-flex items-center gap-1"><Users className="h-3 w-3" />{c.applied}/{c.capacity}</span>}
+                            {(() => { const ss = seatStatus(c.applied, c.capacity); return ss ? <span className={`inline-flex items-center gap-1 font-bold ${ss.tone === "full" ? "text-muted-foreground" : "text-amber-600"}`}><Users className="h-3 w-3" />{ss.label}</span> : null; })()}
                           </span>
                           {c.speaker && <span className="mt-1 block text-[11px] text-muted-foreground">登壇者：{c.speaker}</span>}
                           {c.description && <span className="mt-1.5 block line-clamp-2 text-sm text-foreground/80">{c.description}</span>}

@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { CalendarDays, LayoutGrid, ChevronLeft, ChevronRight, CheckCircle2, Users, ArrowRight, Info } from "lucide-react";
+import { CalendarDays, LayoutGrid, ChevronLeft, ChevronRight, CheckCircle2, ArrowRight, Info } from "lucide-react";
 import { KaikanTimetable, overlapsContents, type SelectableContent } from "./kaikan-timetable";
 import { KaikanSessionDetailDialog } from "./kaikan-session-detail-dialog";
+import { seatStatus } from "./seat-status";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 
@@ -142,11 +143,15 @@ export function KaikanViewToggle({ contents, appliedIds }: Props) {
                       <CheckCircle2 className="h-3 w-3" /> 申込済
                     </span>
                   )}
-                  {isFull && !isApplied && (
-                    <span className="absolute right-2 top-2 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
-                      満席
-                    </span>
-                  )}
+                  {!isApplied && (() => {
+                    const ss = seatStatus(c.applied, c.capacity);
+                    if (!ss) return null;
+                    return (
+                      <span className={`absolute right-2 top-2 rounded-full px-2 py-0.5 text-[10px] font-bold ${ss.tone === "full" ? "bg-muted text-muted-foreground" : "bg-amber-100 text-amber-700"}`}>
+                        {ss.label}
+                      </span>
+                    );
+                  })()}
                   {isConflicting && !isApplied && !isFull && (
                     <span className="absolute right-2 top-2 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">
                       時間が重複しています
@@ -164,11 +169,7 @@ export function KaikanViewToggle({ contents, appliedIds }: Props) {
                   {c.description && (
                     <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{c.description}</p>
                   )}
-                  <div className="mt-2 flex items-center justify-between gap-1 text-xs text-muted-foreground">
-                    <span className="inline-flex items-center gap-1">
-                      <Users className="h-3 w-3" />
-                      {c.applied}{c.capacity ? ` / ${c.capacity}` : ""}
-                    </span>
+                  <div className="mt-2 flex items-center justify-end gap-1 text-xs text-muted-foreground">
                     <span
                       role="button"
                       tabIndex={0}

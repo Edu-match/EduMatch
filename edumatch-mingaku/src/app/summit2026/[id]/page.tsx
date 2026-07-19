@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentProfile } from "@/lib/auth";
 import { applyForKaikanContent, hasRedeemedInvite } from "@/app/_actions/kaikan";
 import { InviteCodeGate } from "@/components/kaikan/invite-code-gate";
+import { seatStatus } from "@/components/kaikan/seat-status";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -34,7 +35,6 @@ export default async function KaikanApplyPage({ params, searchParams }: { params
     applied = 0;
   }
   const full = content.capacity != null && applied >= content.capacity;
-  const remaining = content.capacity != null ? Math.max(0, content.capacity - applied) : null;
 
   const profile = await getCurrentProfile().catch(() => null);
   const invited = profile ? await hasRedeemedInvite(profile.id).catch(() => false) : false;
@@ -64,9 +64,12 @@ export default async function KaikanApplyPage({ params, searchParams }: { params
           <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
             {content.starts_at && <span className="inline-flex items-center gap-1.5"><CalendarDays className="h-4 w-4" />{fmtDate(content.starts_at)}</span>}
             {content.location && <span className="inline-flex items-center gap-1.5"><MapPin className="h-4 w-4" />{content.location}</span>}
-            {content.capacity != null && (
-              <span className="inline-flex items-center gap-1.5"><Users className="h-4 w-4" />定員 {content.capacity}名{remaining != null && <span className={remaining <= 5 ? "font-bold text-amber-600" : ""}>（残り{remaining}）</span>}</span>
-            )}
+            {(() => {
+              const ss = seatStatus(applied, content.capacity);
+              return ss ? (
+                <span className={`inline-flex items-center gap-1.5 font-bold ${ss.tone === "full" ? "text-muted-foreground" : "text-amber-600"}`}><Users className="h-4 w-4" />{ss.label}</span>
+              ) : null;
+            })()}
           </div>
           {content.speaker && <p className="text-sm font-medium text-foreground/90">登壇者：{content.speaker}</p>}
           {content.description && <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/85">{content.description}</p>}
