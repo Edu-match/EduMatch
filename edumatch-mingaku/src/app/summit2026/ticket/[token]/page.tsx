@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { TicketQR } from "@/components/kaikan/ticket-qr";
 import { TicketPrintButton } from "@/components/kaikan/ticket-print-button";
 import { TicketSavedToast } from "@/components/kaikan/ticket-saved-toast";
+import { receiptNumberDisplay } from "@/lib/kaikan-receipt";
 
 export const dynamic = "force-dynamic";
 
@@ -13,10 +14,9 @@ function fmtDate(d: Date | null): string {
   return new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit" }).format(d);
 }
 
-/** 受付番号：token先頭8文字を 4-4 で表示。受付側の前方一致照会でそのままヒットする。 */
+/** 受付番号（数字のみ10桁・5-5区切り）。照会側は逆変換して前方一致でヒットする。 */
 function receiptNo(token: string): string {
-  const hex = token.replace(/-/g, "").slice(0, 8).toUpperCase();
-  return `${hex.slice(0, 4)}-${hex.slice(4)}`;
+  return receiptNumberDisplay(token);
 }
 
 export default async function KaikanTicketPage({ params, searchParams }: { params: Promise<{ token: string }>; searchParams: Promise<{ skipped?: string; applied?: string }> }) {

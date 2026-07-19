@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { ParticipantsPrintButton } from "@/components/kaikan/participants-print-button";
 import { KAIKAN_EVENT_NAME } from "@/lib/interop-settings";
+import { receiptNumberDisplay } from "@/lib/kaikan-receipt";
 
 export const dynamic = "force-dynamic";
 
@@ -54,7 +55,7 @@ export default async function KaikanParticipantsPrintPage() {
         </thead>
         <tbody>
           {apps.map((a) => {
-            const receipt = (a.ticket_token ?? a.qr_token).slice(0, 8).toUpperCase();
+            const receipt = receiptNumberDisplay(a.ticket_token ?? a.qr_token);
             return (
               <tr key={a.id} className={`border-b border-border ${a.status === "cancelled" ? "text-muted-foreground line-through" : ""}`}>
                 <td className="py-1.5 pr-2 font-medium">{a.name}</td>

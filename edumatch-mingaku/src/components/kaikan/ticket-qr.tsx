@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
+import { receiptNumberDisplay } from "@/lib/kaikan-receipt";
 
 /** 受付チェックイン用QR。当日受付タブ(token付き)を開くURLをエンコード。 */
 export function TicketQR({ token }: { token: string }) {
@@ -12,7 +13,7 @@ export function TicketQR({ token }: { token: string }) {
   return (
     <div className="inline-flex flex-col items-center gap-2 rounded-2xl bg-white p-4 shadow-sm">
       <QRCodeSVG value={url} size={200} level="M" includeMargin />
-      <p className="text-[10px] tracking-widest text-neutral-400">{token.slice(0, 8).toUpperCase()}</p>
+      <p className="text-[10px] tracking-widest text-neutral-400">{receiptNumberDisplay(token)}</p>
     </div>
   );
 }

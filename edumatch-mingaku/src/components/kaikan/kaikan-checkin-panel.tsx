@@ -125,7 +125,8 @@ export function KaikanCheckinPanel({ initialToken }: { initialToken?: string }) 
         <Input
           value={token}
           onChange={(e) => setToken(e.target.value)}
-          placeholder="受付番号（例：7A3F-4C21）"
+          placeholder="受付番号（例：12345-67890）"
+          inputMode="numeric"
           className="flex-1"
         />
         <button type="submit" disabled={loading} className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground shadow-sm transition-[color,background-color,box-shadow,transform] duration-150 hover:bg-primary-hover hover:shadow-md active:scale-[0.98] active:shadow-sm disabled:opacity-50 pointer-coarse:min-h-11">

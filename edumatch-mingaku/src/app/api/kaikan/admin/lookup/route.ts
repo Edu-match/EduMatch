@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminOrKaikanStaff } from "@/lib/auth";
+import { receiptDigitsToHexPrefix } from "@/lib/kaikan-receipt";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,14 +16,18 @@ export async function GET(req: NextRequest) {
   const raw = (req.nextUrl.searchParams.get("token") || "").trim();
   if (!raw) return NextResponse.json({ error: "トークンを入力してください" }, { status: 400 });
   const norm = raw.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
-  // 短すぎる入力での前方一致は他人のチケットへの誤ヒットを招くため拒否（受付番号は8桁）
-  if (norm.length < 8) {
-    return NextResponse.json({ error: "受付番号は8桁で入力してください（例: 7A3F-4C21）" }, { status: 400 });
+  // 数字のみの受付番号なら token 先頭8hex に逆変換して前方一致検索する。
+  const digitsOnly = raw.replace(/[^0-9]/g, "");
+  const numericPrefix = /^[0-9\s-]+$/.test(raw) && digitsOnly.length >= 8 ? receiptDigitsToHexPrefix(digitsOnly) : null;
+  const searchPrefix = numericPrefix ?? norm;
+  // 短すぎる入力での前方一致は他人のチケットへの誤ヒットを招くため拒否（受付番号は数字10桁）
+  if (!numericPrefix && norm.length < 8) {
+    return NextResponse.json({ error: "受付番号は数字で入力してください（例: 12345-67890）" }, { status: 400 });
   }
 
   try {
     const first = await prisma.kaikanApplication.findFirst({
-      where: { OR: [{ ticket_token: raw }, { qr_token: raw }, { ticket_token: { startsWith: norm } }, { qr_token: { startsWith: norm } }] },
+      where: { OR: [{ ticket_token: raw }, { qr_token: raw }, { ticket_token: { startsWith: searchPrefix } }, { qr_token: { startsWith: searchPrefix } }] },
       select: { ticket_token: true, qr_token: true, profile_id: true, name: true, email: true },
     });
     if (!first) return NextResponse.json({ found: false }, { status: 200 });

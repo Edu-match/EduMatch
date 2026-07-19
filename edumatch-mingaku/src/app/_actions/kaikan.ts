@@ -7,6 +7,7 @@ import { Resend } from "resend";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getCurrentProfile, requireAdmin, requireAdminOrKaikanStaff } from "@/lib/auth";
+import { receiptNumberDisplay } from "@/lib/kaikan-receipt";
 
 /**
  * datetime-local（YYYY-MM-DDTHH:MM）やCSVの日時文字列を JST として解釈する。
@@ -180,7 +181,7 @@ async function sendTicketEmail(
   const contactUrl = `${base}/contact`;
   // チケット画面のQRと同一のチェックインURLをエンコード
   const checkinUrl = `${base}/admin/kaikan?tab=checkin&token=${ticketToken}`;
-  const receipt = `${ticketToken.slice(0, 4).toUpperCase()}-${ticketToken.slice(4, 8).toUpperCase()}`;
+  const receipt = receiptNumberDisplay(ticketToken);
 
   try {
     const QRCode = (await import("qrcode")).default;
