@@ -1195,29 +1195,28 @@ export function InteropPuyoBubbleMap({
         }}
       >
 
-      {/* 2軸の線とラベル（現場↔制度 × 人間↔技術）。ミニマップ(compact)では渋滞回避のため非表示。 */}
-      {!compact && (
-        <>
-          <div
-            className="pointer-events-none absolute"
-            style={{
-              left: `${AXIS_CX}%`, top: "9%", bottom: "13%", width: 1,
-              transform: "translateX(-50%)",
-              background: "linear-gradient(rgba(255,255,255,0.02), rgba(255,255,255,0.15) 30%, rgba(255,255,255,0.15) 70%, rgba(255,255,255,0.02))",
-            }}
-          />
-          <div
-            className="pointer-events-none absolute"
-            style={{
-              top: `${AXIS_CY}%`, left: "6%", right: "6%", height: 1,
-              transform: "translateY(-50%)",
-              background: "linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.15) 30%, rgba(255,255,255,0.15) 70%, rgba(255,255,255,0.02))",
-            }}
-          />
-          {/* 軸ラベルはここ(パン領域内)では描かない。ドラッグで隠れないよう、
-              下のコンテナ固定オーバーレイで端に常時表示する。 */}
-        </>
-      )}
+      {/* 2軸の線（現場↔制度 × 人間↔技術）。玉より背面(z-[1])に置き、常時表示して分布の意味を伝える。
+          ミニマップ(compact)でも「分布の軸」が伝わるよう表示する（渋滞回避のためラベルのみ控えめに）。 */}
+      <div className="pointer-events-none absolute inset-0 z-[1]">
+        <div
+          className="pointer-events-none absolute"
+          style={{
+            left: `${AXIS_CX}%`, top: "9%", bottom: "13%", width: 1,
+            transform: "translateX(-50%)",
+            background: "linear-gradient(rgba(255,255,255,0.02), rgba(255,255,255,0.18) 30%, rgba(255,255,255,0.18) 70%, rgba(255,255,255,0.02))",
+          }}
+        />
+        <div
+          className="pointer-events-none absolute"
+          style={{
+            top: `${AXIS_CY}%`, left: "6%", right: "6%", height: 1,
+            transform: "translateY(-50%)",
+            background: "linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.18) 30%, rgba(255,255,255,0.18) 70%, rgba(255,255,255,0.02))",
+          }}
+        />
+        {/* 軸ラベルはここ(パン領域内)では描かない。ドラッグで隠れないよう、
+            下のコンテナ固定オーバーレイで端に常時表示する。 */}
+      </div>
 
       {/* 関連カテゴリのノード接続線 */}
       <svg className="pointer-events-none absolute inset-0 z-[4] h-full w-full">
@@ -1514,15 +1513,21 @@ export function InteropPuyoBubbleMap({
       </div>{/* /centeringラッパー */}
 
       {/* 2軸ラベル（現場↔制度 × 人間↔技術）。パン/ズームで隠れないよう、コンテナ端に固定表示。
-          ミニマップ(compact)では渋滞回避のため非表示。 */}
-      {!compact && (
-        <div className="pointer-events-none absolute inset-0 z-[15]">
-          <span className="absolute left-1/2 top-2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#070a1c]/55 px-2 py-0.5 text-[11px] font-bold tracking-wide text-white/65">↑ {axisConfig.yTop}</span>
-          <span className="absolute bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#070a1c]/55 px-2 py-0.5 text-[11px] font-bold tracking-wide text-white/65">{axisConfig.yBottom} ↓</span>
-          <span className="absolute left-2 top-1/2 -translate-y-1/2 whitespace-nowrap rounded-full bg-[#070a1c]/55 px-2 py-0.5 text-[11px] font-bold tracking-wide text-white/65">← {axisConfig.xLeft}</span>
-          <span className="absolute right-2 top-1/2 -translate-y-1/2 whitespace-nowrap rounded-full bg-[#070a1c]/55 px-2 py-0.5 text-[11px] font-bold tracking-wide text-white/65">{axisConfig.xRight} →</span>
-        </div>
-      )}
+          玉(z-10〜)より前面だが端に配置するため内容には被らない。ミニマップ(compact)では
+          小さめのフォントで控えめに、ただし分布の軸が伝わるよう常時表示する。 */}
+      <div className="pointer-events-none absolute inset-0 z-[15]">
+        {(() => {
+          const chip = `absolute whitespace-nowrap rounded-full bg-[#070a1c]/55 px-2 py-0.5 font-bold tracking-wide text-white/65 ${compact ? "text-[9.5px]" : "text-[11px]"}`;
+          return (
+            <>
+              <span className={`${chip} left-1/2 top-2 -translate-x-1/2`}>↑ {axisConfig.yTop}</span>
+              <span className={`${chip} bottom-2 left-1/2 -translate-x-1/2`}>{axisConfig.yBottom} ↓</span>
+              <span className={`${chip} left-2 top-1/2 -translate-y-1/2`}>← {axisConfig.xLeft}</span>
+              <span className={`${chip} right-2 top-1/2 -translate-y-1/2`}>{axisConfig.xRight} →</span>
+            </>
+          );
+        })()}
+      </div>
 
       {/* ズーム＆リセット操作（右下・固定）。AIバーがある時だけ左へ寄せる。ミニマップ(compact)では非表示 */}
       {!compact && (

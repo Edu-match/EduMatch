@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { INTEROP_PRIORITY_TOPICS, MAJOR_META, type InteropPriorityTopic } from "@/lib/interop-priority-topics";
 import type { Axis3 } from "@/lib/interop-axis-db";
+import { DEFAULT_TOPIC_AXIS, type AxisPoint } from "@/lib/interop-topic-axis";
 
 type Tier = "high" | "low";
 type Caps = { webgl: boolean; tier: Tier; reduceMotion: boolean };
@@ -103,37 +104,61 @@ const CAM_START = new THREE.Vector3(0, 90, 210);
 const CAM_HOME = new THREE.Vector3(30, 24, 46);
 const AXIS3_HEIGHT = 18;
 
+// 軸(-1..1)→ワールド座標の広がり。axis_x→X, axis_y→Z に写像して分布を「上から見て」読めるようにする。
+const AXIS_SPREAD = 34;
+// カテゴリ中心が原点(中心ハブ)と重ならないよう、中心付近のクラスタを最小半径まで押し出す。
+const MIN_PLANET_RADIUS = 12;
+
+/** 各major(A〜F)の軸座標セントロイド（そのmajorに属するトピックの axis_x/axis_y 平均）。
+ *  惑星をこのセントロイドに固定配置し、分布が軸の意味を保つようにする（周回で流れない）。 */
+function majorAxisCentroid(major: string): AxisPoint {
+  let sx = 0;
+  let sy = 0;
+  let n = 0;
+  for (const t of INTEROP_PRIORITY_TOPICS) {
+    if (t.major !== major) continue;
+    const a = DEFAULT_TOPIC_AXIS[t.no];
+    if (!a) continue;
+    sx += a.x;
+    sy += a.y;
+    n += 1;
+  }
+  if (n === 0) return { x: 0, y: 0 };
+  return { x: sx / n, y: sy / n };
+}
+
 type OrbitSpec = {
   major: string;
-  rx: number;
-  rz: number;
+  /** 軸分布に基づく固定ワールド座標（X=axis_x, Z=-axis_y）。周回せずここに留まる。 */
+  anchorX: number;
+  anchorZ: number;
   tiltX: number;
   tiltZ: number;
-  phase: number;
-  speed: number;
   hasRing: boolean;
 };
-const ORBITS: OrbitSpec[] = MAJORS.map((major, i) => ({
-  major,
-  rx: 14 + i * 6.5,
-  rz: (14 + i * 6.5) * 0.94,
-  tiltX: [0.05, -0.08, 0.11, -0.05, 0.08, -0.11][i],
-  tiltZ: [0.03, -0.04, 0.02, 0.06, -0.03, 0.05][i],
-  phase: i * 2.39996,
-  speed: 0.055 / Math.sqrt(1 + i * 0.45),
-  hasRing: i === 2 || i === 4,
-}));
+const ORBITS: OrbitSpec[] = MAJORS.map((major, i) => {
+  const c = majorAxisCentroid(major);
+  let ax = c.x * AXIS_SPREAD;
+  // axis_y は「上(+1)=制度」。2D と揃えて Z を反転（+y→奥）。上から見た分布が 2D マップと一致する。
+  let az = -c.y * AXIS_SPREAD;
+  // 中心ハブ(原点)と近すぎるカテゴリは外側へ押し出して重なりを避ける。
+  const d = Math.hypot(ax, az);
+  if (d < MIN_PLANET_RADIUS) {
+    const ang = d < 0.001 ? (i / MAJORS.length) * Math.PI * 2 : Math.atan2(az, ax);
+    ax = Math.cos(ang) * MIN_PLANET_RADIUS;
+    az = Math.sin(ang) * MIN_PLANET_RADIUS;
+  }
+  return {
+    major,
+    anchorX: ax,
+    anchorZ: az,
+    tiltX: [0.05, -0.08, 0.11, -0.05, 0.08, -0.11][i],
+    tiltZ: [0.03, -0.04, 0.02, 0.06, -0.03, 0.05][i],
+    hasRing: i === 2 || i === 4,
+  };
+});
 
 /* ── ユーティリティ ── */
-
-function ellipsePoints(rx: number, rz: number, n = 128): [number, number, number][] {
-  const pts: [number, number, number][] = [];
-  for (let i = 0; i <= n; i++) {
-    const a = (i / n) * Math.PI * 2;
-    pts.push([Math.cos(a) * rx, 0, Math.sin(a) * rz]);
-  }
-  return pts;
-}
 
 const ATMO_VERT = `varying vec3 vN; varying vec3 vP;
 void main(){ vN = normalize(normalMatrix * normal); vec4 mv = modelViewMatrix * vec4(position,1.0); vP = mv.xyz; gl_Position = projectionMatrix * mv; }`;
@@ -223,10 +248,12 @@ function Axis3Indicator({ label }: { label: string }) {
   const parts = label.split("↔").map((s) => s.trim());
   const left = parts[0] ?? label;
   const right = parts[1] ?? "";
+  // 第3軸(高さ)の縦線は中心ハブ(原点の太陽)と被らないよう、太陽半径ぶん持ち上げた所から上へ伸ばす。
+  const baseY = 6;
   return (
     <group>
       <Line
-        points={[[0, 0, 0], [0, AXIS3_HEIGHT, 0]]}
+        points={[[0, baseY, 0], [0, AXIS3_HEIGHT, 0]]}
         color="#7fd6ff"
         lineWidth={1.2}
         transparent
@@ -239,8 +266,9 @@ function Axis3Indicator({ label }: { label: string }) {
           </div>
         </Html>
       )}
+      {/* 「理論・思想」ラベルは太陽(中心カテゴリ)と重ならないよう、縦線の起点(baseY)に配置する。 */}
       {left && (
-        <Html center position={[0, -1.5, 0]} style={{ pointerEvents: "none" }}>
+        <Html center position={[0, baseY, 0]} style={{ pointerEvents: "none" }}>
           <div style={{ ...axisLabelStyle, color: "#bfeaff", borderColor: "rgba(127,214,255,0.4)" }}>
             ↓ {left}
           </div>
@@ -324,7 +352,9 @@ function Moon({ topic, posts, planetR, index, count, clockRef, seg, showLabel, a
   const color = MAJOR_META[topic.major]?.color ?? "#C9D4F6";
   const r = 0.42 + Math.min(0.7, posts * 0.08);
   const orbitR = planetR + 2.1 + (index % 2) * 0.75;
-  const speed = 0.38 + (index % 3) * 0.09;
+  // 惑星が静止分布になったので、衛星の周回はごく緩やかにして落ち着いた「アイドル演出」に留める
+  // （分布の読み取りを妨げないため。従来の 0.38+ から大幅に減速）。
+  const speed = 0.12 + (index % 3) * 0.03;
   const phase = (index / count) * Math.PI * 2;
   const yOffset = axis3Value * AXIS3_HEIGHT;
 
@@ -401,10 +431,12 @@ function Planet({ spec, topics, counts, clockRef, seg, focused, anyFocused, posi
   const total = topics.reduce((acc, t) => acc + (counts.get(t.roomId) ?? 0), 0);
   const planetR = 1.35 + Math.min(1.3, total * 0.035);
 
+  // 惑星は軸分布の固定座標に留める（周回しない＝分布が読める）。
+  // わずかな上下バブルだけ残して「浮遊感」を保つ（分布位置からはほぼ動かない）。
   useFrame(() => {
     if (!holder.current) return;
-    const t = clockRef.current.orbit * spec.speed + spec.phase;
-    holder.current.position.set(Math.cos(t) * spec.rx, 0, Math.sin(t) * spec.rz);
+    const bob = reduceMotion ? 0 : Math.sin(clockRef.current.moon * 0.5 + spec.tiltX * 10) * 0.35;
+    holder.current.position.set(spec.anchorX, bob, spec.anchorZ);
     holder.current.getWorldPosition(positionsRef.current[spec.major] ?? (positionsRef.current[spec.major] = new THREE.Vector3()));
     if (body.current && !reduceMotion) body.current.rotation.y += 0.0012;
   });
@@ -414,14 +446,9 @@ function Planet({ spec, topics, counts, clockRef, seg, focused, anyFocused, posi
   const dim = anyFocused && !focused;
 
   return (
-    <group rotation={[spec.tiltX, 0, spec.tiltZ]}>
-      <Line
-        points={ellipsePoints(spec.rx, spec.rz)}
-        color={color}
-        lineWidth={focused || hover ? 1.6 : 1}
-        transparent
-        opacity={dim ? 0.05 : focused || hover ? 0.4 : 0.16}
-      />
+    // 惑星は軸分布の固定座標(anchor)に置く。以前の周回楕円リングは静止配置では
+    // 意味がなくなるため描かない（外側 group の tilt も外し anchor が正しく写像されるようにする）。
+    <group>
       <group ref={holder}>
         <mesh
           ref={body}
@@ -606,8 +633,8 @@ function Scene({ centerLabel, topics, counts, caps, axis3, focusedMajor, onFocus
         maxPolarAngle={Math.PI * 0.88}
         enableDamping
         dampingFactor={0.07}
-        autoRotate={!reduceMotion && !focusedMajor}
-        autoRotateSpeed={0.35}
+        // 分布(軸配置)を安定して読めるよう自動回転は無効化。閲覧はドラッグで自由に回せる。
+        autoRotate={false}
       />
       <CameraRig focusedMajor={focusedMajor} positionsRef={positionsRef} reduceMotion={reduceMotion} />
     </>
