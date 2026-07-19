@@ -247,7 +247,7 @@ const axisLabelStyle: React.CSSProperties = {
 // 軸線の到達端。惑星分布(AXIS_SPREAD)より少し外側に伸ばし、端にラベルを置く。
 const AXIS_LINE_REACH = AXIS_SPREAD + 8;
 
-function MainAxes({ config }: { config: AxisConfig }) {
+function MainAxes({ config, axis3Label }: { config: AxisConfig; axis3Label?: string }) {
   // 惑星配置と同じ写像： axis_x → X(左右) / axis_y → -Z（+y=上/奥, -y=手前）。
   // 端ラベルは 2D マップと同じ axisConfig（xLeft/xRight/yTop/yBottom）を使う。
   const axisColor = "#9fb4ff";
@@ -282,6 +282,21 @@ function MainAxes({ config }: { config: AxisConfig }) {
       <Html center position={[0, 0, AXIS_LINE_REACH]} style={{ pointerEvents: "none" }}>
         <div style={axisLabelStyle}>{config.yBottom} ↓</div>
       </Html>
+      {/* 第3軸（高さ）: 縦の軸線とラベル。中心ハブを避けて上方に配置。右上インジケーターは表示しない。 */}
+      {axis3Label && (
+        <>
+          <Line
+            points={[[0, 6, 0], [0, AXIS3_HEIGHT + 8, 0]]}
+            color="#7fd6ff"
+            lineWidth={1}
+            transparent
+            opacity={0.22}
+          />
+          <Html center position={[0, AXIS3_HEIGHT + 11, 0]} style={{ pointerEvents: "none" }}>
+            <div style={{ ...axisLabelStyle, color: "#bfeaff", borderColor: "rgba(127,214,255,0.4)" }}>↑ {axis3Label}</div>
+          </Html>
+        </>
+      )}
     </group>
   );
 }
@@ -611,7 +626,7 @@ function Scene({ centerLabel, topics, counts, caps, axis3, axisConfig, focusedMa
     <>
       {tier === "high" && <Sparkles count={320} scale={[85, 26, 85]} size={1.8} speed={reduceMotion ? 0 : 0.28} opacity={0.3} color="#ffd700" />}
 
-      <MainAxes config={axisConfig} />
+      <MainAxes config={axisConfig} axis3Label={axis3?.label} />
 
       <Sun label={centerLabel} seg={seg} reduceMotion={reduceMotion} labelScale={labelScale} compact={compact} onSelect={onSelectCenter} />
       {ORBITS.map((spec) => (
