@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -66,7 +66,7 @@ export type InitialProfile = {
 
 const steps = [
   { id: 1, title: "アカウント・所属", icon: User },
-  { id: 2, title: "AIアバター", icon: Sparkles },
+  { id: 2, title: "アバターを設定", icon: Sparkles },
   { id: 3, title: "連絡先（資料請求の通知先）", icon: MapPin },
   { id: 4, title: "関心・スキル", icon: GraduationCap },
   { id: 5, title: "人材マッチング", icon: Handshake },
@@ -167,6 +167,13 @@ export function ProfileRegisterForm({
   const [validationError, setValidationError] = useState<string | null>(null);
   const avatarFileInputRef = useRef<HTMLInputElement>(null);
 
+  // ステップが変わったら即座にページ最上部へスクロール（スムーズアニメなし）。
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior });
+    document.documentElement.scrollTop = 0;
+  }, [currentStep]);
+
   const isProvider =
     initialProfile?.is_corporate_profile === true ||
     initialProfile?.registration_kind === "service_business";
@@ -191,12 +198,14 @@ export function ProfileRegisterForm({
     );
   };
 
-  // アイコンのアップロード／テンプレート選択ブロック（アバターステップで表示）。
+  // アバターのテンプレート選択（主）＋画像アップロード（従）ブロック。
+  // テンプレートから選ぶのが基本。画像アップロードは小さな副次オプションに降格。
+  const isTemplateSelected = AVATAR_TEMPLATES.some((url) => url === avatarUrl);
+  const isUploadedSelected = !!avatarUrl && !isTemplateSelected;
   const renderAvatarUploader = () => (
-    <div className="space-y-2">
-      <label className="text-sm font-medium">画像をアップロード／テンプレートから選ぶ <span className="font-normal text-muted-foreground">（任意）</span></label>
-      <div className="flex items-center gap-4">
-        <div className="flex-shrink-0 w-20 h-20 rounded-full bg-muted border-2 flex items-center justify-center overflow-hidden">
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <div className="flex-shrink-0 w-16 h-16 rounded-full bg-muted border-2 flex items-center justify-center overflow-hidden">
           {avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -205,63 +214,75 @@ export function ProfileRegisterForm({
               className="w-full h-full object-cover"
             />
           ) : (
-            <User className="h-10 w-10 text-muted-foreground" />
+            <User className="h-8 w-8 text-muted-foreground" />
           )}
         </div>
-        <div className="flex-1 space-y-2">
-          <input
-            ref={avatarFileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/gif,image/webp"
-            className="hidden"
-            onChange={async (e) => {
-              const file = e.target.files?.[0];
-              if (!file) return;
-              setAvatarUploading(true);
-              const formData = new FormData();
-              formData.append("file", file);
-              const result = await uploadImage(formData);
-              setAvatarUploading(false);
-              if (result.success && result.url) setAvatarUrl(result.url);
-              e.target.value = "";
-            }}
-          />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={avatarUploading}
-            onClick={() => avatarFileInputRef.current?.click()}
-          >
-            {avatarUploading ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : (
-              <ImageIcon className="h-4 w-4 mr-2" />
-            )}
-            画像をアップロード
-          </Button>
-          <p className="text-[11px] text-muted-foreground">
-            またはテンプレートから選ぶ
+        <div className="text-sm">
+          <p className="font-medium">
+            {avatarUrl ? "アバターを選択済み" : "アバターが未設定です"}
           </p>
-          <div className="flex flex-wrap gap-2">
-            {AVATAR_TEMPLATES.map((url) => (
-              <button
-                key={url}
-                type="button"
-                onClick={() => setAvatarUrl(url)}
-                className={`h-11 w-11 rounded-full border-2 overflow-hidden shrink-0 transition-all ${
-                  avatarUrl === url
-                    ? "border-primary ring-2 ring-primary/30"
-                    : "border-muted hover:border-primary/50"
-                }`}
-                aria-label="テンプレート画像を選択"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={url} alt="" className="h-full w-full object-cover" />
-              </button>
-            ))}
-          </div>
+          <p className="text-red-500 text-xs mt-0.5">※アバターの設定は必須です</p>
         </div>
+      </div>
+
+      {/* テンプレート選択（主・大きく表示） */}
+      <div className="space-y-2">
+        <label className="text-sm font-medium">
+          テンプレートから選ぶ <span className="text-red-500">*</span>
+        </label>
+        <div className="grid grid-cols-4 gap-3">
+          {AVATAR_TEMPLATES.map((url) => (
+            <button
+              key={url}
+              type="button"
+              onClick={() => setAvatarUrl(url)}
+              className={`aspect-square w-full rounded-full border-2 overflow-hidden transition-all ${
+                avatarUrl === url
+                  ? "border-primary ring-2 ring-primary/30"
+                  : "border-muted hover:border-primary/50"
+              }`}
+              aria-label="テンプレート画像を選択"
+              aria-pressed={avatarUrl === url}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={url} alt="" className="h-full w-full object-cover" />
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 画像アップロード（従・小さな副次オプション） */}
+      <div>
+        <input
+          ref={avatarFileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/gif,image/webp"
+          className="hidden"
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            setAvatarUploading(true);
+            const formData = new FormData();
+            formData.append("file", file);
+            const result = await uploadImage(formData);
+            setAvatarUploading(false);
+            if (result.success && result.url) setAvatarUrl(result.url);
+            e.target.value = "";
+          }}
+        />
+        <button
+          type="button"
+          disabled={avatarUploading}
+          onClick={() => avatarFileInputRef.current?.click()}
+          className="inline-flex items-center text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground disabled:opacity-60"
+        >
+          {avatarUploading ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+          ) : (
+            <ImageIcon className="h-3.5 w-3.5 mr-1.5" />
+          )}
+          画像をアップロード{isUploadedSelected ? "（選択中）" : ""}
+        </button>
       </div>
     </div>
   );
@@ -419,7 +440,7 @@ export function ProfileRegisterForm({
         return (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              アイコンを設定します。画像をアップロードするか、テンプレートから選べます。
+              アバターを設定します。テンプレートから選ぶのがおすすめです（画像のアップロードも可能）。
             </p>
             {renderAvatarUploader()}
             {initialProfile?.role === "ADMIN" && (
@@ -554,6 +575,15 @@ export function ProfileRegisterForm({
       case 5:
         return (
           <div className="space-y-5">
+            <div className="space-y-2">
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                人材マッチングは、講演・講師・研修・顧問などの依頼を受けたい方と、依頼したい方をつなぐ仕組みです。登録すると、あなたのプロフィールが人材マッチング一覧に掲載され、依頼を受け取れるようになります。
+              </p>
+              <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-xs leading-relaxed text-amber-800">
+                ※登録は可能ですが、マッチング機能は現在準備中です。公開開始までお待ちください。
+              </div>
+            </div>
+
             <div className="rounded-lg border bg-muted/30 p-4">
               <div className="flex items-start gap-3">
                 <input
@@ -568,56 +598,54 @@ export function ProfileRegisterForm({
                     人材マッチングに登録する
                   </label>
                   <p className="text-sm text-muted-foreground">
-                    登録すると、あなたのプロフィールが人材マッチング一覧に表示されます。
+                    チェックすると、機能公開時にあなたのプロフィールが人材マッチング一覧に表示されます。
                   </p>
                 </div>
               </div>
             </div>
 
-            {talentMatchingEnabled && (
-              <div className="space-y-5">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">受け付ける依頼種別（複数選択可）</label>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {TALENT_BADGE_OPTIONS.map((option) => {
-                      const selected = talentBadges.includes(option.value);
-                      return (
-                        <button
-                          key={option.value}
-                          type="button"
-                          onClick={() => toggleTalentBadge(option.value)}
-                          className={`rounded-lg border p-3 text-left transition-colors ${
-                            selected ? "border-primary bg-primary/10" : "hover:bg-muted"
-                          }`}
-                        >
-                          <span className="block text-sm font-medium">{option.label}</span>
-                          <span className="block text-xs text-muted-foreground">{option.desc}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">自己PR・対応できる依頼内容（任意）</label>
-                  <Textarea
-                    placeholder="例：教育ICT分野の講演・研修を承ります。プログラミング教育の導入支援や教員向けワークショップも可能です。"
-                    rows={4}
-                    value={talentMatchingDescription}
-                    onChange={(e) => setTalentMatchingDescription(e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">ギャラ・料金目安（任意）</label>
-                  <Input
-                    placeholder="例：講演 1時間 5万円〜、応相談 など"
-                    value={talentHourlyRate}
-                    onChange={(e) => setTalentHourlyRate(e.target.value)}
-                  />
+            <div className="space-y-5">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">受け付ける依頼種別（複数選択可）</label>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {TALENT_BADGE_OPTIONS.map((option) => {
+                    const selected = talentBadges.includes(option.value);
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => toggleTalentBadge(option.value)}
+                        className={`rounded-lg border p-3 text-left transition-colors ${
+                          selected ? "border-primary bg-primary/10" : "hover:bg-muted"
+                        }`}
+                      >
+                        <span className="block text-sm font-medium">{option.label}</span>
+                        <span className="block text-xs text-muted-foreground">{option.desc}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
-            )}
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">自己PR・対応できる依頼内容（任意）</label>
+                <Textarea
+                  placeholder="例：教育ICT分野の講演・研修を承ります。プログラミング教育の導入支援や教員向けワークショップも可能です。"
+                  rows={4}
+                  value={talentMatchingDescription}
+                  onChange={(e) => setTalentMatchingDescription(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">ギャラ・料金目安（任意）</label>
+                <Input
+                  placeholder="例：講演 1時間 5万円〜、応相談 など"
+                  value={talentHourlyRate}
+                  onChange={(e) => setTalentHourlyRate(e.target.value)}
+                />
+              </div>
+            </div>
           </div>
         );
 
@@ -866,7 +894,10 @@ export function ProfileRegisterForm({
         setValidationError("事業者・団体の所在地を入力してください。");
         return;
       }
-      // アイコンは次の「AIアバター」ステップで設定（アップロード/テンプレート/AI生成）。必須は最終保存時に確認。
+      // アバターは次の「アバターを設定」ステップで必須。
+    } else if (currentStep === 2 && !avatarUrl.trim()) {
+      setValidationError("アバターを設定してください（テンプレートから選ぶか、画像をアップロードしてください）。");
+      return;
     } else if (currentStep === 4 && isProvider && !website.trim()) {
       setValidationError("公式サイトURLを入力してください。");
       return;
@@ -920,8 +951,8 @@ export function ProfileRegisterForm({
       setValidationError("公式サイトURLを入力してください。");
       return;
     }
-    if (isFirstTime && !avatarUrl.trim()) {
-      setValidationError("プロフィール画像を設定してください（「AIアバター」ステップで、アップロード／テンプレート、またはAIアバター生成で作成できます）。");
+    if (!avatarUrl.trim()) {
+      setValidationError("アバターを設定してください（「アバターを設定」ステップで、テンプレートから選ぶか画像をアップロードできます）。");
       return;
     }
     setSaving(true);

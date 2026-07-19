@@ -363,7 +363,7 @@ export function InteropExplorer({
       accentColor: "#7dd4fc",
       stats: EMPTY_STATS,
       // 井戸端風オービットではなく、一般的な一覧ページ（複数選択申込）へ遷移
-      onActivate: () => router.push("/forum/kaikan"),
+      onActivate: () => router.push("/summit2026"),
     };
     const opinionSub =
       allSubs.find((s) => s.slug === "giin-opinion") ??

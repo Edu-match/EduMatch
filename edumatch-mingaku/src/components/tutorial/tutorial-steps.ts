@@ -1,6 +1,9 @@
 export const TUTORIAL_DONE_STORAGE_KEY = "edu_match_tutorial_done"; // "completed" or "skipped"
 export const TUTORIAL_PROGRESS_STORAGE_KEY = "edu_match_tutorial_progress";
 export const TUTORIAL_SKIPPED_STORAGE_KEY = "edu_match_tutorial_skipped";
+// ログイン直後の「元いたページへの復帰」時にチュートリアル自動開始を一度だけ抑止するための
+// sessionStorage マーカー（ログインフォームで設定し、tutorial-provider で消費する）。
+export const TUTORIAL_SUPPRESS_ON_RETURN_KEY = "edu_match_tutorial_suppress_return";
 export const TUTORIAL_EVENT_NAME = "edumatch:tutorial:event";
 
 export type TutorialPageId =

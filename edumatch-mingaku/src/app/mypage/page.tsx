@@ -122,13 +122,13 @@ export default async function MyPage() {
         <Card className="mb-6">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="flex items-center gap-2"><Ticket className="h-5 w-5" /> 電子チケット</CardTitle>
-            <Button variant="ghost" size="sm" asChild><Link href="/forum/kaikan">コンテンツを探す<ArrowRight className="h-4 w-4 ml-1" /></Link></Button>
+            <Button variant="ghost" size="sm" asChild><Link href="/summit2026">コンテンツを探す<ArrowRight className="h-4 w-4 ml-1" /></Link></Button>
           </CardHeader>
           <CardContent>
             <ul className="space-y-2">
               {myTickets.map((t) => (
                 <li key={t.token}>
-                  <Link href={`/forum/kaikan/ticket/${t.token}`} className="group flex min-h-[44px] items-center justify-between gap-3 rounded-xl border p-3 transition hover:border-primary/50 hover:bg-primary/[0.03]">
+                  <Link href={`/summit2026/ticket/${t.token}`} className="group flex min-h-[44px] items-center justify-between gap-3 rounded-xl border p-3 transition hover:border-primary/50 hover:bg-primary/[0.03]">
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-bold">{t.titles[0]}{t.titles.length > 1 ? ` 他${t.titles.length - 1}件` : ""}</span>
                       <span className="block text-[11px] text-muted-foreground">受付番号 {t.token.slice(0, 8).toUpperCase().replace(/(.{4})(.{4})/, "$1-$2")}</span>

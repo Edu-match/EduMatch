@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, ArrowRight, CheckCircle2 } from "lucide-react";
+import { AlertTriangle, ArrowRight, CheckCircle2, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export type SelectableContent = {
@@ -81,6 +81,7 @@ function SessionBlock({
   conflicting,
   full,
   onToggle,
+  onShowDetail,
 }: {
   content: SelectableContent;
   venue: typeof VENUES[number];
@@ -89,6 +90,7 @@ function SessionBlock({
   conflicting: boolean;
   full: boolean;
   onToggle: () => void;
+  onShowDetail: () => void;
 }) {
   const start = toDate(content.startsAt);
   const end = toDate(content.endsAt);
@@ -142,6 +144,17 @@ function SessionBlock({
         </div>
       )}
       {applied && <CheckCircle2 className="absolute top-1 right-1 h-3.5 w-3.5 text-emerald-600" />}
+      <span
+        role="button"
+        tabIndex={0}
+        aria-label="詳細を見る"
+        title="詳細を見る"
+        onClick={(e) => { e.stopPropagation(); onShowDetail(); }}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onShowDetail(); } }}
+        className={`absolute bottom-0.5 right-0.5 z-10 inline-flex h-5 w-5 items-center justify-center rounded-md bg-background/70 text-muted-foreground outline-none transition hover:bg-background hover:text-primary focus-visible:ring-2 focus-visible:ring-ring/50 ${applied ? "top-0.5 bottom-auto right-6" : ""}`}
+      >
+        <Info className="h-3.5 w-3.5" />
+      </span>
     </button>
   );
 }
@@ -190,6 +203,7 @@ export function KaikanTimetable({
   selected,
   onToggle,
   conflictWith,
+  onShowDetail,
 }: {
   contents: SelectableContent[];
   appliedIds: string[];
@@ -198,6 +212,8 @@ export function KaikanTimetable({
   onToggle: (c: SelectableContent) => void;
   /** 選択済みセッションとの時間重複判定（親から供給）。 */
   conflictWith: (c: SelectableContent) => boolean;
+  /** 詳細モーダルを開く（親が管理）。 */
+  onShowDetail: (c: SelectableContent) => void;
 }) {
   const router = useRouter();
   const appliedSet = useMemo(() => new Set(appliedIds), [appliedIds]);
@@ -232,7 +248,7 @@ export function KaikanTimetable({
     // 申込済みIDを除いた新規分のみ confirm へ送る（既申込を新規申込に見せない）。
     const ids = [...selected].filter((id) => !appliedSet.has(id));
     if (ids.length === 0) return;
-    router.push(`/forum/kaikan/confirm?ids=${encodeURIComponent(ids.join(","))}`);
+    router.push(`/summit2026/confirm?ids=${encodeURIComponent(ids.join(","))}`);
   };
 
   return (
@@ -321,6 +337,7 @@ export function KaikanTimetable({
                         conflicting={isConflicting}
                         full={isFull}
                         onToggle={() => toggle(c)}
+                        onShowDetail={() => onShowDetail(c)}
                       />
                     );
                   })}
@@ -368,6 +385,16 @@ export function KaikanTimetable({
                   </p>
                   <p className="mt-0.5 font-bold leading-snug">{c.title}</p>
                   {c.speaker && <p className="mt-0.5 text-[11px] text-muted-foreground">登壇者：{c.speaker}</p>}
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => { e.stopPropagation(); onShowDetail(c); }}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onShowDetail(c); } }}
+                    className="mt-1.5 inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-primary outline-none transition hover:bg-primary/10 focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  >
+                    <Info className="h-3 w-3" />
+                    詳細を見る
+                  </span>
                 </button>
               );
             })}

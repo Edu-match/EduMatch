@@ -60,6 +60,12 @@ export function Header() {
   const tsm = useTranslations("sideMenu");
   const router = useRouter();
   const pathname = usePathname();
+  // ログイン後は元いたページへ戻れるよう、現在のパスを next として付与する。
+  // /login 自体からの遷移でループしないよう、login 系パスは付与しない。
+  const loginHref =
+    pathname && pathname.startsWith("/") && !pathname.startsWith("/login")
+      ? `/login?next=${encodeURIComponent(pathname)}`
+      : "/login";
   const { count: requestListCount } = useRequestList();
   const { startTutorial } = useTutorial();
   const { editMode, setEditMode } = useTextEdit();
@@ -493,7 +499,7 @@ export function Header() {
             /* 未ログイン時: ログイン/新規登録ボタン */
             <div className="flex items-center gap-2">
               <Button asChild variant="ghost" size="sm">
-                <Link href="/login">{t("login")}</Link>
+                <Link href={loginHref}>{t("login")}</Link>
               </Button>
               <Button asChild size="sm">
                 <Link href="/login?tab=signup">{t("register")}</Link>
@@ -662,7 +668,7 @@ export function Header() {
                 ) : (
                   <div className="space-y-2">
                     <Button asChild variant="outline" className="w-full">
-                      <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
+                      <Link href={loginHref} onClick={() => setMobileMenuOpen(false)}>
                         <LogIn className="h-4 w-4 mr-2" />
                         {t("login")}
                       </Link>

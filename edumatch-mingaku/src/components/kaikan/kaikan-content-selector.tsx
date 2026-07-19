@@ -98,7 +98,7 @@ export function KaikanContentSelector({ contents, appliedIds }: { contents: Sele
   const proceed = () => {
     const ids = [...selected];
     if (ids.length === 0) return;
-    router.push(`/forum/kaikan/confirm?ids=${encodeURIComponent(ids.join(","))}`);
+    router.push(`/summit2026/confirm?ids=${encodeURIComponent(ids.join(","))}`);
   };
 
   return (

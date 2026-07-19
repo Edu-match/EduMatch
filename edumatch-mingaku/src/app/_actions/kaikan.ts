@@ -59,7 +59,7 @@ export async function redeemInviteCode(formData: FormData): Promise<{ ok: boolea
   if (!profile) return { ok: false, error: "ログインが必要です" };
 
   if (await hasRedeemedInvite(profile.id)) {
-    revalidatePath("/forum/kaikan");
+    revalidatePath("/summit2026");
     return { ok: true };
   }
 
@@ -72,7 +72,7 @@ export async function redeemInviteCode(formData: FormData): Promise<{ ok: boolea
     create: { code_id: invite.id, profile_id: profile.id },
     update: {},
   });
-  revalidatePath("/forum/kaikan");
+  revalidatePath("/summit2026");
   return { ok: true };
 }
 
@@ -176,7 +176,7 @@ async function sendTicketEmail(
   }
   if (!email) return;
   const base = (process.env.NEXT_PUBLIC_APP_URL || "https://edu-match.com").replace(/\/$/, "");
-  const ticketUrl = `${base}/forum/kaikan/ticket/${ticketToken}`;
+  const ticketUrl = `${base}/summit2026/ticket/${ticketToken}`;
   const contactUrl = `${base}/contact`;
   // チケット画面のQRと同一のチェックインURLをエンコード
   const checkinUrl = `${base}/admin/kaikan?tab=checkin&token=${ticketToken}`;
@@ -247,24 +247,24 @@ async function sendTicketEmail(
 export async function applyForKaikanContent(formData: FormData) {
   const contentId = String(formData.get("contentId") || "").trim();
   const note = String(formData.get("note") || "").trim();
-  if (!contentId) redirect("/forum/kaikan");
+  if (!contentId) redirect("/summit2026");
 
   // 申込にはログイン必須。氏名・メールはアカウント登録情報を使う。
   const profile = await getCurrentProfile();
-  if (!profile) redirect(`/login?next=${encodeURIComponent(`/forum/kaikan/${contentId}`)}`);
+  if (!profile) redirect(`/login?next=${encodeURIComponent(`/summit2026/${contentId}`)}`);
 
   // 招待コード入力済みが申込の前提（共通コード方式）
-  if (!(await hasRedeemedInvite(profile.id))) redirect("/forum/kaikan?error=invite");
+  if (!(await hasRedeemedInvite(profile.id))) redirect("/summit2026?error=invite");
 
   const content = await prisma.kaikanContent.findUnique({ where: { id: contentId } });
-  if (!content || !content.is_published) redirect(`/forum/kaikan?error=closed`);
+  if (!content || !content.is_published) redirect(`/summit2026?error=closed`);
 
   // 同一アカウントの二重申込を防ぐ：既存があればそのチケットへ。
   const existing = await prisma.kaikanApplication.findFirst({
     where: { content_id: contentId, profile_id: profile.id, status: { not: "cancelled" } },
     select: { qr_token: true, ticket_token: true },
   });
-  if (existing) redirect(`/forum/kaikan/ticket/${existing.ticket_token ?? existing.qr_token}`);
+  if (existing) redirect(`/summit2026/ticket/${existing.ticket_token ?? existing.qr_token}`);
 
   // 既存チケットがあれば合流する（別トークンでチケットが分裂しないように）。
   // qr_token は @unique のため共有不可 → セッション用に別途発行する。
@@ -284,7 +284,7 @@ export async function applyForKaikanContent(formData: FormData) {
     qrToken,
     ticketToken,
   });
-  if (!ok) redirect(`/forum/kaikan/${contentId}?error=full`);
+  if (!ok) redirect(`/summit2026/${contentId}?error=full`);
 
   // チケットに載る全プログラム（既存分含む）をメールに記載
   const myApps = await prisma.kaikanApplication.findMany({
@@ -299,20 +299,20 @@ export async function applyForKaikanContent(formData: FormData) {
     myApps.map((a) => a.content).filter(Boolean),
   );
   revalidatePath("/admin/kaikan");
-  redirect(`/forum/kaikan/ticket/${ticketToken}`);
+  redirect(`/summit2026/ticket/${ticketToken}`);
 }
 
 /** 複数コンテンツをまとめて申込→1枚のチケット(共有ticket_token)に集約。受付はセッション単位。 */
 export async function applyForKaikanContents(formData: FormData) {
   const contentIds = formData.getAll("contentId").map(String).map((s) => s.trim()).filter(Boolean);
   const note = String(formData.get("note") || "").trim();
-  if (contentIds.length === 0) redirect("/forum/kaikan");
+  if (contentIds.length === 0) redirect("/summit2026");
 
   const profile = await getCurrentProfile();
-  if (!profile) redirect(`/login?next=${encodeURIComponent(`/forum/kaikan/confirm?ids=${contentIds.join(",")}`)}`);
+  if (!profile) redirect(`/login?next=${encodeURIComponent(`/summit2026/confirm?ids=${contentIds.join(",")}`)}`);
 
   // 招待コード入力済みが申込の前提（共通コード方式）
-  if (!(await hasRedeemedInvite(profile.id))) redirect("/forum/kaikan?error=invite");
+  if (!(await hasRedeemedInvite(profile.id))) redirect("/summit2026?error=invite");
 
   // 既存の自分の申込（このアカウント）を見て、チケットを流用しつつ二重を避ける
   const existingApps = await prisma.kaikanApplication.findMany({
@@ -363,11 +363,11 @@ export async function applyForKaikanContents(formData: FormData) {
 
   // 1件も申込できず既存チケットも無い場合は、確認画面へ戻してエラー表示（空チケットの404を防ぐ）
   if (addedCount === 0 && alreadyIds.size === 0) {
-    redirect(`/forum/kaikan/confirm?ids=${contentIds.join(",")}&error=full`);
+    redirect(`/summit2026/confirm?ids=${contentIds.join(",")}&error=full`);
   }
   // 一部スキップがあればチケット面に警告表示（申し込めたつもりの欠落を防ぐ）
   const q = skippedTitles.length > 0 ? `?skipped=${encodeURIComponent(skippedTitles.slice(0, 6).join("、"))}` : "";
-  redirect(`/forum/kaikan/ticket/${ticketToken}${q}`);
+  redirect(`/summit2026/ticket/${ticketToken}${q}`);
 }
 
 /** 管理者：申込を手動キャンセルする。 */
@@ -380,7 +380,7 @@ export async function adminCancelKaikanApplication(formData: FormData) {
     data: { status: "cancelled" },
   });
   revalidatePath("/admin/kaikan");
-  revalidatePath("/forum/kaikan");
+  revalidatePath("/summit2026");
 }
 
 /** 管理者：キャンセル済み申込を復帰させる（キャンセルのキャンセル）。 */
@@ -398,7 +398,7 @@ export async function adminRestoreKaikanApplication(formData: FormData) {
     redirect(`/admin/kaikan?tab=participants&pError=${encodeURIComponent("復帰できませんでした（同じユーザーの有効な申込が既に存在します）")}`);
   }
   revalidatePath("/admin/kaikan");
-  revalidatePath("/forum/kaikan");
+  revalidatePath("/summit2026");
 }
 
 /** 本人：申込のキャンセル（チケットページから・受付前のみ可）。 */
@@ -408,7 +408,7 @@ export async function cancelKaikanApplication(formData: FormData) {
   if (!id) return;
 
   const profile = await getCurrentProfile();
-  if (!profile) redirect(`/login?next=${encodeURIComponent(ticketToken ? `/forum/kaikan/ticket/${ticketToken}` : "/mypage")}`);
+  if (!profile) redirect(`/login?next=${encodeURIComponent(ticketToken ? `/summit2026/ticket/${ticketToken}` : "/mypage")}`);
 
   // 本人の confirmed のみキャンセル可（受付済み・他人の申込は不可）。アトミック更新。
   await prisma.kaikanApplication.updateMany({
@@ -416,10 +416,10 @@ export async function cancelKaikanApplication(formData: FormData) {
     data: { status: "cancelled" },
   });
 
-  revalidatePath("/forum/kaikan");
+  revalidatePath("/summit2026");
   revalidatePath("/mypage");
   revalidatePath("/admin/kaikan");
-  if (ticketToken) revalidatePath(`/forum/kaikan/ticket/${ticketToken}`);
+  if (ticketToken) revalidatePath(`/summit2026/ticket/${ticketToken}`);
 }
 
 /** 管理者：コンテンツ新設。 */
@@ -449,7 +449,7 @@ export async function createKaikanContent(formData: FormData) {
     },
   });
   revalidatePath("/admin/kaikan");
-  revalidatePath("/forum/kaikan");
+  revalidatePath("/summit2026");
 }
 
 /** 管理者：CSVからコンテンツを一括インポートする。 */
@@ -511,7 +511,7 @@ export async function importKaikanContentsFromCsv(formData: FormData) {
   }
 
   revalidatePath("/admin/kaikan");
-  revalidatePath("/forum/kaikan");
+  revalidatePath("/summit2026");
 }
 
 /** 管理者：公開/非公開トグル。 */
@@ -522,7 +522,7 @@ export async function setKaikanContentPublished(formData: FormData) {
   if (!id) return;
   await prisma.kaikanContent.update({ where: { id }, data: { is_published: next } });
   revalidatePath("/admin/kaikan");
-  revalidatePath("/forum/kaikan");
+  revalidatePath("/summit2026");
 }
 
 /* ───────── スタッフロール ───────── */

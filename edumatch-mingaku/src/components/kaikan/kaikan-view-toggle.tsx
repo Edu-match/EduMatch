@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { CalendarDays, LayoutGrid, ChevronLeft, ChevronRight, CheckCircle2, Users, ArrowRight } from "lucide-react";
+import { CalendarDays, LayoutGrid, ChevronLeft, ChevronRight, CheckCircle2, Users, ArrowRight, Info } from "lucide-react";
 import { KaikanTimetable, overlapsContents, type SelectableContent } from "./kaikan-timetable";
+import { KaikanSessionDetailDialog } from "./kaikan-session-detail-dialog";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 
@@ -20,6 +21,7 @@ export function KaikanViewToggle({ contents, appliedIds }: Props) {
   const [page, setPage] = useState(0);
   // 選択状態はビュー間で共有（タイムテーブル⇄ブロック切替で消えないよう一元管理）。
   const [selected, setSelected] = useState<Set<string>>(() => new Set(appliedIds));
+  const [detail, setDetail] = useState<SelectableContent | null>(null);
   const router = useRouter();
 
   const totalPages = Math.ceil(contents.length / ITEMS_PER_PAGE);
@@ -59,7 +61,7 @@ export function KaikanViewToggle({ contents, appliedIds }: Props) {
     const ids = [...selected].filter((id) => !appliedIds.includes(id));
     if (ids.length === 0) return;
     // confirm ページは ?ids=カンマ区切り を読む（タイムテーブル側と同一形式に統一）
-    router.push(`/forum/kaikan/confirm?ids=${encodeURIComponent(ids.join(","))}`);
+    router.push(`/summit2026/confirm?ids=${encodeURIComponent(ids.join(","))}`);
   };
 
   const newSelections = [...selected].filter((id) => !appliedIds.includes(id));
@@ -88,7 +90,7 @@ export function KaikanViewToggle({ contents, appliedIds }: Props) {
           className={segmentClass(view === "block")}
         >
           <LayoutGrid className="h-4 w-4" />
-          ブロック
+          一覧
         </button>
       </div>
 
@@ -99,6 +101,7 @@ export function KaikanViewToggle({ contents, appliedIds }: Props) {
           selected={selected}
           onToggle={toggle}
           conflictWith={conflictWith}
+          onShowDetail={setDetail}
         />
       ) : (
         <div>
@@ -161,9 +164,21 @@ export function KaikanViewToggle({ contents, appliedIds }: Props) {
                   {c.description && (
                     <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{c.description}</p>
                   )}
-                  <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
-                    <Users className="h-3 w-3" />
-                    {c.applied}{c.capacity ? ` / ${c.capacity}` : ""}
+                  <div className="mt-2 flex items-center justify-between gap-1 text-xs text-muted-foreground">
+                    <span className="inline-flex items-center gap-1">
+                      <Users className="h-3 w-3" />
+                      {c.applied}{c.capacity ? ` / ${c.capacity}` : ""}
+                    </span>
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onClick={(e) => { e.stopPropagation(); setDetail(c); }}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); setDetail(c); } }}
+                      className="inline-flex items-center gap-1 rounded-md px-2 py-1 font-medium text-primary outline-none transition hover:bg-primary/10 focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                    >
+                      <Info className="h-3.5 w-3.5" />
+                      詳細を見る
+                    </span>
                   </div>
                 </button>
               );
@@ -208,6 +223,12 @@ export function KaikanViewToggle({ contents, appliedIds }: Props) {
           )}
         </div>
       )}
+
+      <KaikanSessionDetailDialog
+        session={detail}
+        open={detail !== null}
+        onOpenChange={(o) => { if (!o) setDetail(null); }}
+      />
     </div>
   );
 }

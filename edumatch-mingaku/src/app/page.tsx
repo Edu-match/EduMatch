@@ -130,7 +130,7 @@ export default async function HomePage() {
               {/* 議員会館チケット */}
               <Reveal variant="fade-in" delay={120}>
                 <Link
-                  href="/forum/kaikan"
+                  href="/summit2026"
                   className="card-lift group flex items-center gap-3 rounded-2xl border bg-gradient-to-r from-card to-surface-tint p-4"
                 >
                   <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">

@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { Mail, Lock, Loader2, Chrome, AlertCircle, Building2, UserCircle2, Check } from "lucide-react";
 import { loginSchema, type LoginInput } from "@/lib/validations/auth";
 import { createSupabaseBrowserClient } from "@/utils/supabase/client";
+import { TUTORIAL_SUPPRESS_ON_RETURN_KEY } from "@/components/tutorial/tutorial-steps";
 import { FEATURES } from "@/lib/features";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
@@ -71,6 +72,12 @@ export function LoginForm({ onSuccess, redirectTo = "/" }: Props) {
           refresh_token: result.session.refresh_token,
         });
       }
+      // ログイン直後の復帰ページではチュートリアルを自動起動しない（一度だけ抑止）。
+      try {
+        window.sessionStorage.setItem(TUTORIAL_SUPPRESS_ON_RETURN_KEY, "1");
+      } catch {
+        /* sessionStorage 不可環境は無視 */
+      }
       window.location.href = redirectTo;
     } catch {
       setGlobalError(t("loginFailedRetry"));
@@ -79,6 +86,12 @@ export function LoginForm({ onSuccess, redirectTo = "/" }: Props) {
   };
 
   const handleGoogleLogin = () => {
+    // ログイン直後の復帰ページではチュートリアルを自動起動しない（一度だけ抑止）。
+    try {
+      window.sessionStorage.setItem(TUTORIAL_SUPPRESS_ON_RETURN_KEY, "1");
+    } catch {
+      /* sessionStorage 不可環境は無視 */
+    }
     window.location.href = `/api/auth/google?redirect_to=${encodeURIComponent(
       redirectTo
     )}&userType=${effectiveUserType}`;
