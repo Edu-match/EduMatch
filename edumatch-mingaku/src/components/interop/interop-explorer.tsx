@@ -165,7 +165,7 @@ function mergeTopicPositions(
 
 export function InteropExplorer({
   themeMode = "auto",
-  guideText = "中央のインタロップをタップして展示情報へ · 周囲の◎トピックをタップして論点・ひろばへ",
+  guideText = "",
   initialInteropActivity = null,
   initialForumActivity = null,
   showChat = true,
@@ -545,6 +545,7 @@ export function InteropExplorer({
             <ForumGalaxy3D
               centerLabel={centerLabelOverride?.trim() || (isGiinKaikanCenter ? "教育AIサミット2026＠衆議院第一議員会館" : interopCat?.name)}
               topics={dbTopics ?? INTEROP_PRIORITY_TOPICS}
+              axisConfig={axis.config}
               onSelectCenter={() => { if (interopCat) handleSelectFromMap(interopCat); }}
               onSelectTopic={handleSelectTopic}
             />
@@ -568,8 +569,9 @@ export function InteropExplorer({
             onSelectTopic={handleSelectTopic}
           />
           )}
-          {/* 3D ギャラクシーは独自の操作ヒント＋凡例を持つため、汎用の上部案内ピルは 2D 時のみ表示 */}
-          {mapMode !== "3d" && (
+          {/* 3D ギャラクシーは独自の操作ヒント＋凡例を持つため、汎用の上部案内ピルは 2D 時のみ表示。
+              guideText が空なら案内ピル自体を出さない（ハブ/トピックのタップ導線は自明なので既定で非表示）。 */}
+          {mapMode !== "3d" && guideText.trim() && (
             <div className="pointer-events-none absolute inset-x-0 top-16 z-20 hidden justify-center px-4 sm:top-20 sm:flex">
               <div
                 className="flex items-center gap-2 rounded-full px-4 py-2 text-center text-[12px] font-medium text-white/90 sm:text-sm"

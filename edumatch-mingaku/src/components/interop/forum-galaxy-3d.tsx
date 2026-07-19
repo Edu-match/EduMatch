@@ -7,7 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { INTEROP_PRIORITY_TOPICS, MAJOR_META, type InteropPriorityTopic } from "@/lib/interop-priority-topics";
 import type { Axis3 } from "@/lib/interop-axis-db";
-import { DEFAULT_TOPIC_AXIS, type AxisPoint } from "@/lib/interop-topic-axis";
+import { DEFAULT_AXIS_CONFIG, DEFAULT_TOPIC_AXIS, type AxisConfig, type AxisPoint } from "@/lib/interop-topic-axis";
 
 type Tier = "high" | "low";
 type Caps = { webgl: boolean; tier: Tier; reduceMotion: boolean };
@@ -242,38 +242,46 @@ const axisLabelStyle: React.CSSProperties = {
   pointerEvents: "none",
 };
 
-/* ── 第3軸インジケーター ── */
+/* ── 2軸インジケーター（2D マップと同じ軸ラベルを水平面に描く） ── */
 
-function Axis3Indicator({ label }: { label: string }) {
-  const parts = label.split("↔").map((s) => s.trim());
-  const left = parts[0] ?? label;
-  const right = parts[1] ?? "";
-  // 第3軸(高さ)の縦線は中心ハブ(原点の太陽)と被らないよう、太陽半径ぶん持ち上げた所から上へ伸ばす。
-  const baseY = 6;
+// 軸線の到達端。惑星分布(AXIS_SPREAD)より少し外側に伸ばし、端にラベルを置く。
+const AXIS_LINE_REACH = AXIS_SPREAD + 8;
+
+function MainAxes({ config }: { config: AxisConfig }) {
+  // 惑星配置と同じ写像： axis_x → X(左右) / axis_y → -Z（+y=上/奥, -y=手前）。
+  // 端ラベルは 2D マップと同じ axisConfig（xLeft/xRight/yTop/yBottom）を使う。
+  const axisColor = "#9fb4ff";
   return (
     <group>
+      {/* X 軸（人間・関係 ↔ 技術・データ）。中心ハブと被らないよう線は薄く。 */}
       <Line
-        points={[[0, baseY, 0], [0, AXIS3_HEIGHT, 0]]}
-        color="#7fd6ff"
-        lineWidth={1.2}
+        points={[[-AXIS_LINE_REACH, 0, 0], [AXIS_LINE_REACH, 0, 0]]}
+        color={axisColor}
+        lineWidth={1}
         transparent
-        opacity={0.35}
+        opacity={0.22}
       />
-      {right && (
-        <Html center position={[0, AXIS3_HEIGHT + 1.5, 0]} style={{ pointerEvents: "none" }}>
-          <div style={{ ...axisLabelStyle, color: "#bfeaff", borderColor: "rgba(127,214,255,0.4)" }}>
-            {right} ↑
-          </div>
-        </Html>
-      )}
-      {/* 「理論・思想」ラベルは太陽(中心カテゴリ)と重ならないよう、縦線の起点(baseY)に配置する。 */}
-      {left && (
-        <Html center position={[0, baseY, 0]} style={{ pointerEvents: "none" }}>
-          <div style={{ ...axisLabelStyle, color: "#bfeaff", borderColor: "rgba(127,214,255,0.4)" }}>
-            ↓ {left}
-          </div>
-        </Html>
-      )}
+      {/* Z 軸（現場・実践[手前] ↔ 制度・政策[奥]） */}
+      <Line
+        points={[[0, 0, AXIS_LINE_REACH], [0, 0, -AXIS_LINE_REACH]]}
+        color={axisColor}
+        lineWidth={1}
+        transparent
+        opacity={0.22}
+      />
+      <Html center position={[-AXIS_LINE_REACH, 0, 0]} style={{ pointerEvents: "none" }}>
+        <div style={axisLabelStyle}>← {config.xLeft}</div>
+      </Html>
+      <Html center position={[AXIS_LINE_REACH, 0, 0]} style={{ pointerEvents: "none" }}>
+        <div style={axisLabelStyle}>{config.xRight} →</div>
+      </Html>
+      {/* +y=制度 は Z を反転して奥(-Z) に写像（惑星配置と一致）。 */}
+      <Html center position={[0, 0, -AXIS_LINE_REACH]} style={{ pointerEvents: "none" }}>
+        <div style={axisLabelStyle}>↑ {config.yTop}</div>
+      </Html>
+      <Html center position={[0, 0, AXIS_LINE_REACH]} style={{ pointerEvents: "none" }}>
+        <div style={axisLabelStyle}>{config.yBottom} ↓</div>
+      </Html>
     </group>
   );
 }
@@ -561,12 +569,13 @@ function useLabelScale(): { scale: number; compact: boolean } {
   return { scale, compact };
 }
 
-function Scene({ centerLabel, topics, counts, caps, axis3, focusedMajor, onFocusMajor, onSelectCenter, onSelectTopic }: {
+function Scene({ centerLabel, topics, counts, caps, axis3, axisConfig, focusedMajor, onFocusMajor, onSelectCenter, onSelectTopic }: {
   centerLabel: string;
   topics: InteropPriorityTopic[];
   counts: Map<string, number>;
   caps: Caps;
   axis3?: Axis3;
+  axisConfig: AxisConfig;
   focusedMajor: string | null;
   onFocusMajor: (m: string | null) => void;
   onSelectCenter: () => void;
@@ -602,7 +611,7 @@ function Scene({ centerLabel, topics, counts, caps, axis3, focusedMajor, onFocus
     <>
       {tier === "high" && <Sparkles count={320} scale={[85, 26, 85]} size={1.8} speed={reduceMotion ? 0 : 0.28} opacity={0.3} color="#ffd700" />}
 
-      {axis3 && <Axis3Indicator label={axis3.label} />}
+      <MainAxes config={axisConfig} />
 
       <Sun label={centerLabel} seg={seg} reduceMotion={reduceMotion} labelScale={labelScale} compact={compact} onSelect={onSelectCenter} />
       {ORBITS.map((spec) => (
@@ -742,9 +751,11 @@ function ForumGalaxy2DFallback({ centerLabel, topics, counts, onSelectCenter, on
 
 /* ── エントリ ── */
 
-export default function ForumGalaxy3D({ centerLabel, topics, onSelectCenter, onSelectTopic }: {
+export default function ForumGalaxy3D({ centerLabel, topics, axisConfig, onSelectCenter, onSelectTopic }: {
   centerLabel?: string;
   topics?: InteropPriorityTopic[];
+  /** 2軸ラベル（2D マップと共有。未指定なら既定値）。3D の水平面2軸に表示する。 */
+  axisConfig?: AxisConfig;
   onSelectCenter: () => void;
   onSelectTopic: (t: InteropPriorityTopic) => void;
 }) {
@@ -836,6 +847,7 @@ export default function ForumGalaxy3D({ centerLabel, topics, onSelectCenter, onS
           counts={counts}
           caps={caps}
           axis3={axis3}
+          axisConfig={axisConfig ?? DEFAULT_AXIS_CONFIG}
           focusedMajor={focusedMajor}
           onFocusMajor={setFocusedMajor}
           onSelectCenter={onSelectCenter}
@@ -856,12 +868,6 @@ export default function ForumGalaxy3D({ centerLabel, topics, onSelectCenter, onS
           >
             ← 全体へ
           </button>
-        </div>
-      )}
-
-      {axis3 && (
-        <div className="pointer-events-none absolute right-3 top-14 z-40 rounded-lg border border-white/15 bg-[#0a1024]/60 px-3 py-1.5 text-[11px] font-bold text-white/70 backdrop-blur">
-          第3軸: {axis3.label}
         </div>
       )}
 

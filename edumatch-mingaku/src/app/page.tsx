@@ -92,11 +92,10 @@ export default async function HomePage() {
                   <Suspense fallback={<div className="absolute inset-0 bg-accent/60 dark:bg-card" />}>
                     <ForumMapMode
                       themeMode={settings.themeMode}
-                      guideText="ハブをタップして話題へ · トピックをタップしてひろばへ"
                       initialInteropActivity={initialActivity.interop}
                       initialForumActivity={initialActivity.forum}
                       showChat={false}
-                      initialScale={1.2}
+                      initialScale={1.9}
                       centerLabel={settings.centerLabel}
                       centerHubItems={settings.centerHubItems}
                       showLatestNews={settings.showLatestNews}
