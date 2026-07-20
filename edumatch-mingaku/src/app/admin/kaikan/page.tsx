@@ -2,9 +2,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireAdminOrKaikanStaff } from "@/lib/auth";
-import { createKaikanContent, setKaikanContentPublished, generateKaikanInviteCodes, toggleKaikanInviteCode, deleteKaikanInviteCode, importKaikanContentsFromCsv, addKaikanStaff, bulkAddKaikanStaff, removeKaikanStaff, adminRestoreKaikanApplication } from "@/app/_actions/kaikan";
+import { createKaikanContent, setKaikanContentPublished, generateKaikanInviteCodes, toggleKaikanInviteCode, deleteKaikanInviteCode, importKaikanContentsFromCsv, addKaikanStaff, bulkAddKaikanStaff, removeKaikanStaff } from "@/app/_actions/kaikan";
 import { AdminCancelButton } from "@/components/kaikan/admin-cancel-button";
 import { KaikanCheckinPanel } from "@/components/kaikan/kaikan-checkin-panel";
+import { ParticipantsTable } from "@/components/kaikan/participants-table";
+import { receiptNumberDisplay } from "@/lib/kaikan-receipt";
 
 export const dynamic = "force-dynamic";
 
@@ -250,49 +252,18 @@ export default async function AdminKaikanPage({ searchParams }: { searchParams: 
           {participants.length === 0 ? (
             <p className="text-sm text-muted-foreground">まだ参加申込がありません。</p>
           ) : (
-            <div className="-mx-5 overflow-x-auto px-5 sm:mx-0 sm:px-0">
-              <table className="w-full min-w-[720px] text-left text-sm">
-                <thead className="text-xs text-muted-foreground">
-                  <tr className="border-b">
-                    <th className="whitespace-nowrap py-2.5 pr-4 font-medium">氏名</th>
-                    <th className="whitespace-nowrap py-2.5 pr-4 font-medium">メール</th>
-                    <th className="whitespace-nowrap py-2.5 pr-4 font-medium">コンテンツ</th>
-                    <th className="whitespace-nowrap py-2.5 pr-4 font-medium">状態</th>
-                    <th className="whitespace-nowrap py-2.5 pr-4 font-medium">申込日時</th>
-                    <th className="whitespace-nowrap py-2.5 text-right font-medium">操作</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {participants.map((p) => (
-                    <tr key={p.id} className={`border-t align-middle ${p.status === "cancelled" ? "text-muted-foreground" : ""}`}>
-                      <td className="py-3 pr-4 font-medium">{p.name}</td>
-                      <td className="py-3 pr-4 text-muted-foreground">{p.email || "—"}</td>
-                      <td className="py-3 pr-4">{p.content?.title || "—"}</td>
-                      <td className="py-3 pr-4">
-                        <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold ${p.status === "checked_in" ? "bg-emerald-100 text-emerald-700" : p.status === "cancelled" ? "bg-muted text-muted-foreground" : "bg-amber-100 text-amber-700"}`}>
-                          {p.status === "checked_in" ? "受付済" : p.status === "cancelled" ? "キャンセル済" : "未受付"}
-                        </span>
-                      </td>
-                      <td className="whitespace-nowrap py-3 pr-4 text-muted-foreground">{fmtDate(p.created_at)}</td>
-                      <td className="py-3">
-                        <div className="flex justify-end">
-                          {p.status === "cancelled" ? (
-                            <form action={adminRestoreKaikanApplication} className="inline-flex">
-                              <input type="hidden" name="id" value={p.id} />
-                              <button type="submit" className="inline-flex min-h-[40px] items-center whitespace-nowrap rounded-md border border-input bg-background px-4 text-xs font-bold text-foreground transition hover:bg-muted">
-                                キャンセルを取り消す
-                              </button>
-                            </form>
-                          ) : (
-                            <AdminCancelButton id={p.id} name={p.name} />
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <ParticipantsTable
+              participants={participants.map((p) => ({
+                id: p.id,
+                name: p.name,
+                email: p.email,
+                status: p.status,
+                contentTitle: p.content?.title ?? "",
+                createdAtLabel: fmtDate(p.created_at),
+                qrToken: p.qr_token,
+                receipt: receiptNumberDisplay(p.ticket_token ?? p.qr_token),
+              }))}
+            />
           )}
         </div>
       </section>
@@ -392,7 +363,8 @@ export default async function AdminKaikanPage({ searchParams }: { searchParams: 
                         <th className="py-1 pr-3">メール</th>
                         <th className="py-1 pr-3">状態</th>
                         <th className="py-1 pr-3">申込</th>
-                        <th className="py-1">受付</th>
+                        <th className="py-1 pr-3">受付</th>
+                        <th className="py-1">操作</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -406,10 +378,13 @@ export default async function AdminKaikanPage({ searchParams }: { searchParams: 
                             </span>
                           </td>
                           <td className="py-1.5 pr-3 text-muted-foreground">{fmtDate(a.created_at)}</td>
-                          <td className="py-1.5">
+                          <td className="py-1.5 pr-3">
                             <Link href={`/admin/kaikan/checkin/${a.qr_token}`} className="text-primary underline underline-offset-2">
                               受付画面
                             </Link>
+                          </td>
+                          <td className="py-1.5">
+                            <AdminCancelButton id={a.id} name={a.name} />
                           </td>
                         </tr>
                       ))}
