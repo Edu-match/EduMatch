@@ -263,6 +263,19 @@ export async function applyForKaikanContent(formData: FormData) {
   });
   if (existing) redirect(`/summit2026/ticket/${existing.ticket_token ?? existing.qr_token}`);
 
+  // サーバー側でも「ワークショップは1つまで」「時間帯の重複なし」を強制する
+  // （UIのチェックは古い画面・直接URLで素通りできるため。例：同じWSの第1回/第2回への重複申込）。
+  const myContents = await prisma.kaikanApplication.findMany({
+    where: { profile_id: profile.id, status: { not: "cancelled" } },
+    select: { content: { select: { content_type: true, starts_at: true, ends_at: true } } },
+  });
+  if (content.content_type === "workshop" && myContents.some((a) => a.content?.content_type === "workshop")) {
+    redirect(`/summit2026/${contentId}?error=workshop`);
+  }
+  if (myContents.some((a) => timeOverlaps(content.starts_at, content.ends_at, a.content?.starts_at ?? null, a.content?.ends_at ?? null))) {
+    redirect(`/summit2026/${contentId}?error=overlap`);
+  }
+
   // 既存チケットがあれば合流する（別トークンでチケットが分裂しないように）。
   // qr_token は @unique のため共有不可 → セッション用に別途発行する。
   const existingTicket = await prisma.kaikanApplication.findFirst({
@@ -324,7 +337,37 @@ export async function applyForKaikanContents(formData: FormData) {
 
   let addedCount = 0;
   const skippedTitles: string[] = [];
-  for (const c of contents) {
+
+  // サーバー側でも「ワークショップは1つまで」「時間帯の重複なし」を強制する
+  // （UIのチェックは古い画面・直接URLで素通りできるため。例：同じWSの第1回/第2回への重複申込）。
+  const existingContents = alreadyIds.size > 0
+    ? await prisma.kaikanContent.findMany({
+        where: { id: { in: [...alreadyIds] } },
+        select: { content_type: true, starts_at: true, ends_at: true },
+      })
+    : [];
+  let hasWorkshop = existingContents.some((c) => c.content_type === "workshop");
+  const accepted: typeof contents = [];
+  const sortedByStart = [...contents].sort(
+    (a, b) => (a.starts_at?.getTime() ?? Number.MAX_SAFE_INTEGER) - (b.starts_at?.getTime() ?? Number.MAX_SAFE_INTEGER),
+  );
+  for (const c of sortedByStart) {
+    if (c.content_type === "workshop" && hasWorkshop) {
+      skippedTitles.push(`${c.title}（ワークショップは1つまで）`);
+      continue;
+    }
+    const overlaps = [...existingContents, ...accepted].some((o) =>
+      timeOverlaps(c.starts_at, c.ends_at, o.starts_at, o.ends_at),
+    );
+    if (overlaps) {
+      skippedTitles.push(`${c.title}（時間帯が重複）`);
+      continue;
+    }
+    if (c.content_type === "workshop") hasWorkshop = true;
+    accepted.push(c);
+  }
+
+  for (const c of accepted) {
     const ok = await createApplicationIfCapacity({
       contentId: c.id,
       capacity: c.capacity,

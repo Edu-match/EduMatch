@@ -49,6 +49,10 @@ export default async function AdminKaikanPage({ searchParams }: { searchParams: 
     include: {
       _count: { select: { applications: { where: { status: { not: "cancelled" } } } } },
       applications: {
+        // キャンセル済みを含めると見出しの人数（キャンセル除外）と行数がズレて
+        // 「定員超過に見える」ため、この一覧では有効な申込だけを表示する。
+        // キャンセル済みの確認は「参加者一覧」タブで行う。
+        where: { status: { not: "cancelled" } },
         orderBy: { created_at: "desc" },
         take: 50,
         select: { id: true, name: true, email: true, status: true, qr_token: true, created_at: true },

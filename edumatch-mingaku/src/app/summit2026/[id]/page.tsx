@@ -83,6 +83,16 @@ export default async function KaikanApplyPage({ params, searchParams }: { params
             申し込みが集中したため完了できませんでした。少し時間をおいて再度お試しください。
           </p>
         )}
+        {error === "workshop" && (
+          <p role="alert" className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+            ワークショップはお一人さま1つまでです。既にお申し込みのワークショップをキャンセルしてから再度お試しください。
+          </p>
+        )}
+        {error === "overlap" && (
+          <p role="alert" className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+            既にお申し込みのプログラムと時間帯が重なっているため、お申し込みできません。
+          </p>
+        )}
         {full ? (
           <div className="rounded-2xl border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
             申し込みは定員に達しました。
