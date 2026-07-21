@@ -35,7 +35,7 @@ export async function RightSidebar() {
           </p>
           <div className="flex flex-col gap-2">
             <Button asChild size="sm" className="w-full">
-              <Link href="/login">新規登録（無料）</Link>
+              <Link href="/login?tab=signup">新規登録（無料）</Link>
             </Button>
             <Button asChild size="sm" variant="outline" className="w-full">
               <Link href="/login">ログイン</Link>
