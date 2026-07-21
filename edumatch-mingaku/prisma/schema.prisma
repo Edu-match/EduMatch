@@ -81,6 +81,8 @@ model GeneralProfile {
   organization_type           String?
   /// 所属の種類が「その他」のときの補足（任意）
   organization_type_other     String?
+  /// 役職・担当（議員会館サミット等のイベント登録用）
+  position                    String?
   /// 人材マッチングへの登録可否。公開ページは main では提供しない
   talent_matching_enabled     Boolean  @default(false)
   talent_matching_description String?
@@ -749,10 +751,33 @@ model KaikanApplication {
   status        String        @default("confirmed")
   checked_in_at DateTime?     @db.Timestamptz(6)
   created_at    DateTime      @default(now()) @db.Timestamptz(6)
+  /// イベント参加時の詳細情報（同意・属性・紹介者など）
+  event_response KaikanEventResponse?
 
   @@index([content_id, created_at])
   @@index([ticket_token])
   @@map("kaikan_applications")
+}
+
+/// 議員会館サミット等イベント申込時の詳細情報（同意・属性・紹介者・きっかけ・連絡事項）
+model KaikanEventResponse {
+  id                   String             @id @default(uuid()) @db.Uuid
+  application_id       String             @unique @db.Uuid
+  application          KaikanApplication @relation(fields: [application_id], references: [id], onDelete: Cascade)
+  /// 参加規約への同意フラグ
+  consent_agreed       Boolean            @default(false)
+  /// 参加者属性：一般参加 / メディア関係者 / AIUEO関係者 / 共創メンバー希望
+  participant_type     String?
+  /// ご紹介者のお名前
+  referrer_name        String?
+  /// 本イベントを知ったきっかけ
+  event_discovery_source String?
+  /// その他連絡事項
+  additional_notes     String?
+  created_at           DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime           @updatedAt @db.Timestamptz(6)
+
+  @@map("kaikan_event_responses")
 }
 
 /// 議員会館サミットの招待コード。Peatixで全体申込した人へ手動メールで配布し、
