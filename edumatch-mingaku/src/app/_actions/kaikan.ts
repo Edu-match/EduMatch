@@ -568,6 +568,40 @@ export async function setKaikanContentPublished(formData: FormData) {
   revalidatePath("/summit2026");
 }
 
+/** 管理者：コンテンツを編集する。 */
+export async function updateKaikanContent(formData: FormData) {
+  await requireAdmin();
+  const id = String(formData.get("id") || "").trim();
+  if (!id) throw new Error("コンテンツIDが必須です");
+
+  const title = String(formData.get("title") || "").trim();
+  if (!title) throw new Error("タイトルは必須です");
+  const description = String(formData.get("description") || "").trim();
+  const location = String(formData.get("location") || "").trim();
+  const speaker = String(formData.get("speaker") || "").trim();
+  const startsAtRaw = String(formData.get("starts_at") || "").trim();
+  const endsAtRaw = String(formData.get("ends_at") || "").trim();
+  const capacityRaw = String(formData.get("capacity") || "").trim();
+  const contentType = String(formData.get("content_type") || "session");
+  const capNum = capacityRaw ? parseInt(capacityRaw, 10) : NaN;
+
+  await prisma.kaikanContent.update({
+    where: { id },
+    data: {
+      title,
+      description,
+      location,
+      speaker,
+      starts_at: startsAtRaw ? parseJstDate(startsAtRaw) : null,
+      ends_at: endsAtRaw ? parseJstDate(endsAtRaw) : null,
+      capacity: Number.isNaN(capNum) ? null : Math.max(0, capNum),
+      content_type: contentType,
+    },
+  });
+  revalidatePath("/admin/kaikan");
+  revalidatePath("/summit2026");
+}
+
 /* ───────── スタッフロール ───────── */
 
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "AIUEO BASE <onboarding@resend.dev>";

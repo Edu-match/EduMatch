@@ -6,6 +6,7 @@ import { createKaikanContent, setKaikanContentPublished, generateKaikanInviteCod
 import { AdminCancelButton } from "@/components/kaikan/admin-cancel-button";
 import { KaikanCheckinPanel } from "@/components/kaikan/kaikan-checkin-panel";
 import { ParticipantsTable } from "@/components/kaikan/participants-table";
+import { KaikanContentEditor } from "@/components/kaikan/kaikan-content-editor";
 import { receiptNumberDisplay } from "@/lib/kaikan-receipt";
 
 export const dynamic = "force-dynamic";
@@ -349,6 +350,26 @@ export default async function AdminKaikanPage({ searchParams }: { searchParams: 
                   </button>
                 </form>
               </div>
+
+              {/* 編集パネル */}
+              <details className="mt-3 rounded-lg border bg-amber-50/40 dark:bg-amber-950/20">
+                <summary className="cursor-pointer select-none px-3 py-2 text-xs font-bold text-amber-700 dark:text-amber-300 hover:bg-amber-100/50 dark:hover:bg-amber-900/30">
+                  ✎ このコンテンツを編集
+                </summary>
+                <div className="border-t border-amber-200/50 dark:border-amber-900/30 px-3 py-3">
+                  <KaikanContentEditor
+                    id={c.id}
+                    title={c.title}
+                    description={c.description}
+                    location={c.location}
+                    speaker={c.speaker}
+                    startsAt={c.starts_at?.toISOString() ?? null}
+                    endsAt={c.ends_at?.toISOString() ?? null}
+                    capacity={c.capacity}
+                    contentType={c.content_type}
+                  />
+                </div>
+              </details>
 
               {c.applications.length > 0 && (
                 <details className="mt-3 rounded-lg border bg-muted/20">
