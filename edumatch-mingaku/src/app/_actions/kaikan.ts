@@ -125,8 +125,9 @@ async function createApplicationIfCapacity(args: {
   note: string;
   qrToken: string;
   ticketToken: string;
-}): Promise<boolean> {
+}): Promise<string | null> {
   try {
+    let appId: string | null = null;
     await prisma.$transaction(
       async (tx) => {
         if (args.capacity != null) {
@@ -135,7 +136,7 @@ async function createApplicationIfCapacity(args: {
           });
           if (count >= args.capacity) throw new Error("KAIKAN_FULL");
         }
-        await tx.kaikanApplication.create({
+        const app = await tx.kaikanApplication.create({
           data: {
             content_id: args.contentId,
             name: args.name,
@@ -146,13 +147,14 @@ async function createApplicationIfCapacity(args: {
             profile_id: args.profileId,
           },
         });
+        appId = app.id;
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
-    return true;
+    return appId;
   } catch {
     // 満員・直列化競合・ユニーク違反はすべて「申込不成立」として扱う
-    return false;
+    return null;
   }
 }
 
@@ -316,6 +318,14 @@ export async function applyForKaikanContent(formData: FormData) {
 export async function applyForKaikanContents(formData: FormData) {
   const contentIds = formData.getAll("contentId").map(String).map((s) => s.trim()).filter(Boolean);
   const note = String(formData.get("note") || "").trim();
+
+  // イベント参加情報を取得
+  const consentAgreed = String(formData.get("consent_agreed") || "") === "true";
+  const participantType = String(formData.get("participant_type") || "general").trim();
+  const referrerName = String(formData.get("referrer_name") || "").trim();
+  const eventDiscoverySource = String(formData.get("event_discovery_source") || "").trim();
+  const additionalNotes = String(formData.get("additional_notes") || "").trim();
+
   if (contentIds.length === 0) redirect("/summit2026");
 
   const profile = await getCurrentProfile();
@@ -368,7 +378,7 @@ export async function applyForKaikanContents(formData: FormData) {
   }
 
   for (const c of accepted) {
-    const ok = await createApplicationIfCapacity({
+    const appId = await createApplicationIfCapacity({
       contentId: c.id,
       capacity: c.capacity,
       profileId: profile.id,
@@ -378,8 +388,32 @@ export async function applyForKaikanContents(formData: FormData) {
       qrToken: randomUUID().replace(/-/g, ""),
       ticketToken,
     });
-    if (ok) addedCount++;
-    else skippedTitles.push(c.title);
+    if (appId) {
+      addedCount++;
+      // KaikanEventResponse を作成（イベント参加情報を保存）
+      await prisma.kaikanEventResponse.upsert({
+        where: { application_id: appId },
+        create: {
+          application_id: appId,
+          consent_agreed: consentAgreed,
+          participant_type: participantType,
+          referrer_name: referrerName || null,
+          event_discovery_source: eventDiscoverySource || null,
+          additional_notes: additionalNotes || null,
+        },
+        update: {
+          consent_agreed: consentAgreed,
+          participant_type: participantType,
+          referrer_name: referrerName || null,
+          event_discovery_source: eventDiscoverySource || null,
+          additional_notes: additionalNotes || null,
+        },
+      }).catch((err) => {
+        console.error("[kaikan] KaikanEventResponse upsert failed:", err);
+      });
+    } else {
+      skippedTitles.push(c.title);
+    }
   }
   // 非公開化などで取得できなかった選択分も件数として通知
   const unavailable = toAdd.length - contents.length;

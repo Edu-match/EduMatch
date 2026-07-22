@@ -54,6 +54,7 @@ export type InitialProfile = {
   organization_type?: string | null;
   organization_type_other?: string | null;
   job_title?: string | null;
+  position?: string | null;
   bio?: string | null;
   website?: string | null;
   notification_email_2?: string | null;
@@ -145,6 +146,7 @@ export function ProfileRegisterForm({
   const [roleOther, setRoleOther] = useState(
     initialJobTitle && !ROLE_VALUES.has(initialJobTitle) ? initialJobTitle : ""
   );
+  const [position, setPosition] = useState(initialProfile?.position ?? "");
   const [address, setAddress] = useState(initialProfile?.address ?? "");
   const [selectedInterests, setSelectedInterests] = useState<string[]>(
     initialProfile?.interests ?? []
@@ -452,6 +454,15 @@ export function ProfileRegisterForm({
                 )}
               </div>
             )}
+            {/* 役職・肩書（全ユーザー対象） */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">役職・肩書（任意）</label>
+              <Input
+                placeholder="例：教員、教頭、校長、職員、保護者など"
+                value={position}
+                onChange={(e) => setPosition(e.target.value)}
+              />
+            </div>
             {isProvider && (
               <>
                 <div className="space-y-2">
@@ -1007,6 +1018,7 @@ export function ProfileRegisterForm({
           ? roleOther.trim() || null
           : role || null
         : null,
+      position: position.trim() || null,
       bio: bio || null,
       website: website || null,
       address: isProvider ? address.trim() || null : null,

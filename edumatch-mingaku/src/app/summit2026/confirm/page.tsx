@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentProfile } from "@/lib/auth";
 import { applyForKaikanContents, hasRedeemedInvite } from "@/app/_actions/kaikan";
 import { Button } from "@/components/ui/button";
+import { SummitEventDetailsForm } from "@/components/kaikan/summit-event-details-form";
 
 export const dynamic = "force-dynamic";
 
@@ -128,6 +129,12 @@ export default async function KaikanConfirmPage({ searchParams }: { searchParams
               ))}
             </dl>
           </details>
+        </section>
+
+        {/* イベント参加詳細情報 */}
+        <section>
+          <h2 className="mb-2 text-sm font-bold">イベント参加情報</h2>
+          <SummitEventDetailsForm />
         </section>
 
         <input type="hidden" name="note" value="" />

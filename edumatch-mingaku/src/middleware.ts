@@ -67,6 +67,15 @@ function isNextSoftNavigation(request: NextRequest): boolean {
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  const host = request.headers.get("host") ?? "";
+
+  // Vercel プレビューURL (aiueo-base.vercel.app) → 本番カスタムドメイン (base.ai-ueo.org) へリダイレクト
+  if (host.includes("aiueo-base.vercel.app")) {
+    const url = request.nextUrl.clone();
+    url.host = "base.ai-ueo.org";
+    url.protocol = "https";
+    return NextResponse.redirect(url, { status: 301 });
+  }
 
   // 掲示板の正規URL /t/... → 実体 /interop/t/...（全ホスト共通）
   if (pathname === "/t" || pathname.startsWith("/t/")) {
@@ -77,7 +86,6 @@ export async function middleware(request: NextRequest) {
 
   // 特設サブドメイン（special.*）は常に総合案内所(/interop)を表示する。
   // 来場者向けの公開ページなので Basic認証/メンテナンスゲートはバイパスする。
-  const host = request.headers.get("host") ?? "";
   if (host.startsWith("special.")) {
     // URL を special.edu-match.com 側に寄せる：/interop と /interop/... へ来た来場者は
     // プレフィックスを取り除いた正規URLへ 308 リダイレクト（重複ページの混乱を解消）。
