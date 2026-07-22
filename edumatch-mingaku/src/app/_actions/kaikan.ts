@@ -408,7 +408,7 @@ export async function applyForKaikanContents(formData: FormData) {
           event_discovery_source: eventDiscoverySource || null,
           additional_notes: additionalNotes || null,
         },
-      }).catch((err) => {
+      }).catch((err: unknown) => {
         console.error("[kaikan] KaikanEventResponse upsert failed:", err);
       });
     } else {
