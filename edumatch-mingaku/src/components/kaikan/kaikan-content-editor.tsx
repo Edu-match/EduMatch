@@ -18,6 +18,15 @@ function SubmitButton() {
   );
 }
 
+/** UTC の ISO 文字列を datetime-local 形式に変換（JST 表示用）。 */
+function utcToDatetimeLocal(utcIso: string | null): string {
+  if (!utcIso) return "";
+  const d = new Date(utcIso);
+  // UTC → JST (+09:00)
+  const jst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+  return jst.toISOString().slice(0, 16); // YYYY-MM-DDTHH:MM
+}
+
 /** コンテンツ編集フォーム（管理者向け）。折りたたみ形式で埋め込む。 */
 export function KaikanContentEditor({
   id,
@@ -103,7 +112,7 @@ export function KaikanContentEditor({
           <input
             name="starts_at"
             type="datetime-local"
-            defaultValue={startsAt ? startsAt.replace("Z", "").slice(0, 16) : ""}
+            defaultValue={utcToDatetimeLocal(startsAt)}
             className="mt-1 w-full rounded-md border border-input px-3 py-2 text-sm"
           />
         </div>
@@ -112,7 +121,7 @@ export function KaikanContentEditor({
           <input
             name="ends_at"
             type="datetime-local"
-            defaultValue={endsAt ? endsAt.replace("Z", "").slice(0, 16) : ""}
+            defaultValue={utcToDatetimeLocal(endsAt)}
             className="mt-1 w-full rounded-md border border-input px-3 py-2 text-sm"
           />
         </div>
