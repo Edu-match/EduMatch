@@ -14,7 +14,7 @@ export default function ArticleGatePage() {
     category: "教育ICT",
     date: "2024-01-15",
     tags: ["EdTech", "選び方", "導入"],
-    author: "エデュマッチ編集部",
+    author: "AIUEO BASE編集部",
     previewContent: `
 # EdTechツール選びの完全ガイド
 
@@ -102,7 +102,7 @@ export default function ArticleGatePage() {
               </h2>
 
               <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                エデュマッチに無料会員登録すると、この記事の全文や、会員限定の教育コンテンツ、
+                AIUEO BASEに無料会員登録すると、この記事の全文や、会員限定の教育コンテンツ、
                 お気に入り機能などをご利用いただけます。
               </p>
 

@@ -86,7 +86,7 @@ export function VideoDetailClient({ video, forumHref = "/forum" }: Props) {
         </Card>
       )}
 
-      {/* 井戸端会議への動線：動画の話題は井戸端会議でじっくり語り合う */}
+      {/* 教育のひろばへの動線：動画の話題は教育のひろばでじっくり語り合う */}
       <Link
         href={forumHref}
         className="group block rounded-xl border border-primary/30 bg-primary/5 p-4 transition-colors hover:border-primary/50 hover:bg-primary/10"
@@ -97,7 +97,7 @@ export function VideoDetailClient({ video, forumHref = "/forum" }: Props) {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-bold text-foreground">
-              この動画の話題を井戸端会議で語り合おう
+              この動画の話題を教育のひろばで語り合おう
             </p>
             <p className="mt-0.5 text-xs text-muted-foreground">
               教育のテーマごとに部屋があります。動画で学んだことを、みんなと深掘りできます。

@@ -25,7 +25,6 @@ function PinnedSiteUpdateListItem({ item }: { item: PinnedSiteUpdateItem }) {
           fill
           className="object-contain"
           sizes="64px"
-          unoptimized
         />
       </div>
       <div className="flex-1 min-w-0">
@@ -65,7 +64,6 @@ function ArticleListItem({ article }: { article: ArticleItem }) {
           fill
           className="object-contain"
           sizes="64px"
-          unoptimized
         />
       </div>
       <div className="flex-1 min-w-0">
@@ -100,7 +98,6 @@ function ServiceListItem({ service }: { service: ServiceItem }) {
           fill
           className="object-contain"
           sizes="64px"
-          unoptimized
         />
       </div>
       <div className="flex-1 min-w-0">
@@ -127,7 +124,6 @@ function VideoListItem({ video }: { video: VideoItem }) {
           fill
           className="object-cover"
           sizes="96px"
-          unoptimized
         />
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="bg-black/60 rounded-full w-7 h-7 flex items-center justify-center">
@@ -163,8 +159,11 @@ export function TopicsTabs({ articles, pinnedSiteUpdates, services, videos }: Pr
   const pinnedCount = pinnedSiteUpdates.length;
   const regularAllCount = Math.max(0, ALL_TAB_MAX - pinnedCount);
   const allArticles = articles.slice(0, regularAllCount);
-  const domesticArticles = articles.filter((a) => a.newsTab === "DOMESTIC").slice(0, 10);
-  const internationalArticles = articles.filter((a) => a.newsTab === "INTERNATIONAL").slice(0, 10);
+  const newsArticles = articles
+    .filter((a) => a.newsTab === "DOMESTIC" || a.newsTab === "INTERNATIONAL" || a.newsTab === "WEEKLY")
+    .slice(0, 10);
+  const serviceItems = services.slice(0, 10);
+  const videoItems = videos.slice(0, 10);
 
   const triggerClass =
     "rounded-none border-b-2 border-transparent data-[state=active]:border-[#1d4ed8] data-[state=active]:bg-transparent px-3 sm:px-4 py-2.5 text-sm whitespace-nowrap flex-shrink-0";
@@ -173,9 +172,10 @@ export function TopicsTabs({ articles, pinnedSiteUpdates, services, videos }: Pr
     <Tabs defaultValue="all" className="w-full">
       <div className="border-b overflow-x-auto">
         <TabsList className="w-max min-w-full justify-start rounded-none h-auto bg-transparent p-0 flex">
-          <TabsTrigger value="all" className={triggerClass}>{t("tabAll")}</TabsTrigger>
-          <TabsTrigger value="domestic" className={triggerClass}>{t("tabDomestic")}</TabsTrigger>
-          <TabsTrigger value="international" className={triggerClass}>{t("tabInternational")}</TabsTrigger>
+          <TabsTrigger value="all" className={triggerClass}>{t("tabArticles")}</TabsTrigger>
+          <TabsTrigger value="news" className={triggerClass}>{t("tabNews")}</TabsTrigger>
+          <TabsTrigger value="services" className={triggerClass}>{t("tabServices")}</TabsTrigger>
+          <TabsTrigger value="videos" className={triggerClass}>{t("tabVideos")}</TabsTrigger>
         </TabsList>
       </div>
       <div className="p-3">
@@ -194,19 +194,27 @@ export function TopicsTabs({ articles, pinnedSiteUpdates, services, videos }: Pr
           )}
         </TabsContent>
 
-        <TabsContent value="domestic" className="mt-0 space-y-0">
-          {domesticArticles.length > 0 ? (
-            domesticArticles.map((a) => <ArticleListItem key={a.id} article={a} />)
+        <TabsContent value="news" className="mt-0 space-y-0">
+          {newsArticles.length > 0 ? (
+            newsArticles.map((a) => <ArticleListItem key={a.id} article={a} />)
           ) : (
-            <p className="text-center text-muted-foreground py-4">{t("noDomestic")}</p>
+            <p className="text-center text-muted-foreground py-4">{t("noNews")}</p>
           )}
         </TabsContent>
 
-        <TabsContent value="international" className="mt-0 space-y-0">
-          {internationalArticles.length > 0 ? (
-            internationalArticles.map((a) => <ArticleListItem key={a.id} article={a} />)
+        <TabsContent value="services" className="mt-0 space-y-0">
+          {serviceItems.length > 0 ? (
+            serviceItems.map((s) => <ServiceListItem key={s.id} service={s} />)
           ) : (
-            <p className="text-center text-muted-foreground py-4">{t("noInternational")}</p>
+            <p className="text-center text-muted-foreground py-4">{t("noServices")}</p>
+          )}
+        </TabsContent>
+
+        <TabsContent value="videos" className="mt-0 space-y-0">
+          {videoItems.length > 0 ? (
+            videoItems.map((v) => <VideoListItem key={v.id} video={v} />)
+          ) : (
+            <p className="text-center text-muted-foreground py-4">{t("noVideos")}</p>
           )}
         </TabsContent>
       </div>

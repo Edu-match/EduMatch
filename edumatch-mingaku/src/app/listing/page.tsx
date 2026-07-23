@@ -113,7 +113,7 @@ export default function ListingPage() {
       <div className="text-center mb-16 py-12">
         <Badge className="mb-4">EdTech事業者様向け</Badge>
         <h1 className="text-4xl font-bold mb-4">
-          エデュマッチにサービスを掲載しませんか？
+          AIUEO BASEにサービスを掲載しませんか？
         </h1>
         <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
           教育現場で導入を検討している教育関係者に、
@@ -254,7 +254,7 @@ export default function ListingPage() {
                 step: 4,
                 title: "掲載開始",
                 description:
-                  "審査完了後、エデュマッチにサービスが掲載されます。",
+                  "審査完了後、AIUEO BASEにサービスが掲載されます。",
               },
             ].map((item) => (
               <div key={item.step} className="flex gap-4">

@@ -4,7 +4,7 @@ import { InteropExplorer } from "@/components/interop/interop-explorer";
 import { getInteropSettings } from "@/lib/interop-settings.server";
 
 /**
- * サイドバーの「井戸端会議マップ」ミニ。
+ * サイドバーの「教育のひろばマップ」ミニ。
  * 本物の井戸端マップ(InteropExplorer)を拡大表示し、ドラッグでパン・泡タップで話題へ。
  * 右上「ひらく」で全画面の /forum。明るめテーマ＋初期ズームで暗さ/可動域の狭さを解消。
  * サテライト(最新ニュース/登壇者への質問/ご意見BOX)の表示可否は管理画面のトグルに従う
@@ -18,7 +18,7 @@ export async function ForumMapSidebarWidget() {
       <div className="flex items-center gap-2 px-3.5 py-3">
         <MessagesSquare className="h-4 w-4 shrink-0 text-[#6366f1]" />
         <div className="min-w-0 flex-1">
-          <h3 className="text-sm font-bold leading-tight">井戸端会議マップ</h3>
+          <h3 className="text-sm font-bold leading-tight">教育のひろばマップ</h3>
           <p className="text-xs leading-tight text-muted-foreground">
             ドラッグで動かす・泡をタップ
           </p>

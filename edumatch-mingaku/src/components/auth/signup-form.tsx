@@ -57,7 +57,12 @@ export function SignupForm({ onSuccess, redirectTo = "/" }: Props) {
       const result = await response.json();
 
       if (!response.ok) {
-        setGlobalError(result.error || t("signupFailed"));
+        let errorMsg = result.error || t("signupFailed");
+        // メール送信上限エラーをユーザーフレンドリーに
+        if (errorMsg?.includes("429") || errorMsg?.includes("上限")) {
+          errorMsg = "申し訳ございません。確認メールの送信が一時的に制限されています。しばらく待ってから再度お試しいただくか、メールアドレスでログインしてください。";
+        }
+        setGlobalError(errorMsg);
         setIsSubmitting(false);
         return;
       }

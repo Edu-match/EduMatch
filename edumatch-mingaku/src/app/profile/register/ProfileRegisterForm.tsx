@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { TUTORIAL_SUPPRESS_ON_RETURN_KEY } from "@/components/tutorial/tutorial-steps";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   User,
   Building2,
@@ -30,7 +36,7 @@ import {
 } from "lucide-react";
 import { updateProfile } from "@/app/_actions";
 import { uploadImage } from "@/app/_actions";
-import { generatePersonaAndAvatar } from "@/app/_actions";
+import { PersonaCreator } from "@/components/persona/persona-creator";
 import {
   ORGANIZATION_TYPE_OPTIONS,
   formatOrganizationTypeDisplay,
@@ -48,6 +54,7 @@ export type InitialProfile = {
   organization_type?: string | null;
   organization_type_other?: string | null;
   job_title?: string | null;
+  position?: string | null;
   bio?: string | null;
   website?: string | null;
   notification_email_2?: string | null;
@@ -65,8 +72,8 @@ export type InitialProfile = {
 };
 
 const steps = [
-  { id: 1, title: "アカウント", icon: User },
-  { id: 2, title: "所属情報", icon: Building2 },
+  { id: 1, title: "アカウント・所属", icon: User },
+  { id: 2, title: "アバターを設定", icon: Sparkles },
   { id: 3, title: "連絡先（資料請求の通知先）", icon: MapPin },
   { id: 4, title: "関心・スキル", icon: GraduationCap },
   { id: 5, title: "人材マッチング", icon: Handshake },
@@ -91,36 +98,6 @@ const interests = [
 
 const INTEREST_OTHER_MAX = 100;
 
-// AIアバター生成をアンケート形式にするための選択肢（自由記述しなくても作れるように）。
-// 教育色を抑え、誰にでも当てはまる「人となり」の語彙にしている（アバター画像の雰囲気に効く）。
-const PERSONA_TRAIT_OPTIONS = [
-  "明るい・社交的", "落ち着いている", "好奇心旺盛", "論理的・冷静",
-  "面倒見がいい", "創造的・アイデア型", "行動派・エネルギッシュ",
-  "聞き上手・共感型", "まじめ・誠実", "マイペース", "ユーモアがある", "情熱的",
-];
-const PERSONA_TONE_OPTIONS = [
-  "やわらかい・親しみやすい", "知的・落ち着いた", "元気・ポップ",
-  "クール・スタイリッシュ", "ナチュラル・温かい", "かわいい系",
-];
-const PERSONA_COLOR_OPTIONS = [
-  { label: "ブルー系", dot: "#3b82f6" },
-  { label: "グリーン系", dot: "#22c55e" },
-  { label: "イエロー・オレンジ系", dot: "#f59e0b" },
-  { label: "パープル系", dot: "#8b5cf6" },
-  { label: "ピンク系", dot: "#ec4899" },
-  { label: "モノトーン", dot: "#64748b" },
-];
-// MBTIから生成（任意）。コード＋日本語の通称でわかりやすく。
-const PERSONA_MBTI_OPTIONS: { code: string; name: string }[] = [
-  { code: "INTJ", name: "建築家" }, { code: "INTP", name: "論理学者" },
-  { code: "ENTJ", name: "指揮官" }, { code: "ENTP", name: "討論者" },
-  { code: "INFJ", name: "提唱者" }, { code: "INFP", name: "仲介者" },
-  { code: "ENFJ", name: "主人公" }, { code: "ENFP", name: "運動家" },
-  { code: "ISTJ", name: "管理者" }, { code: "ISFJ", name: "擁護者" },
-  { code: "ESTJ", name: "幹部" }, { code: "ESFJ", name: "領事" },
-  { code: "ISTP", name: "巨匠" }, { code: "ISFP", name: "冒険家" },
-  { code: "ESTP", name: "起業家" }, { code: "ESFP", name: "エンターテイナー" },
-];
 const AVATAR_TEMPLATES = [
   "/avatars/templates/1.svg",
   "/avatars/templates/2.svg",
@@ -169,6 +146,7 @@ export function ProfileRegisterForm({
   const [roleOther, setRoleOther] = useState(
     initialJobTitle && !ROLE_VALUES.has(initialJobTitle) ? initialJobTitle : ""
   );
+  const [position, setPosition] = useState(initialProfile?.position ?? "");
   const [address, setAddress] = useState(initialProfile?.address ?? "");
   const [selectedInterests, setSelectedInterests] = useState<string[]>(
     initialProfile?.interests ?? []
@@ -178,15 +156,6 @@ export function ProfileRegisterForm({
   );
   const [bio, setBio] = useState(initialProfile?.bio ?? "");
   const [website, setWebsite] = useState(initialProfile?.website ?? "");
-  // AIアバター生成（アンケート形式：性格・雰囲気・色を選択＋自由キーワードはカンマ区切り）
-  const [personaTraits, setPersonaTraits] = useState<string[]>([]);
-  const [personaTone, setPersonaTone] = useState<string>("");
-  const [personaColor, setPersonaColor] = useState<string>("");
-  const [personaMbti, setPersonaMbti] = useState<string>("");
-  const [mindset, setMindset] = useState(""); // 任意の自由記述（カンマ区切りキーワード）
-  const [personaGenerating, setPersonaGenerating] = useState(false);
-  const [personaError, setPersonaError] = useState<string | null>(null);
-  const [personaInfo, setPersonaInfo] = useState<{ expertise: string[]; valuesText: string } | null>(null);
   const [notificationEmail2, setNotificationEmail2] = useState(initialProfile?.notification_email_2 ?? "");
   const [notificationEmail3, setNotificationEmail3] = useState(initialProfile?.notification_email_3 ?? "");
   const [talentMatchingEnabled, setTalentMatchingEnabled] = useState(
@@ -203,12 +172,26 @@ export function ProfileRegisterForm({
   );
   const [saving, setSaving] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const avatarFileInputRef = useRef<HTMLInputElement>(null);
+
+  // ステップが変わったら即座にページ最上部へスクロール（スムーズアニメなし）。
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior });
+    document.documentElement.scrollTop = 0;
+  }, [currentStep]);
 
   const isProvider =
     initialProfile?.is_corporate_profile === true ||
     initialProfile?.registration_kind === "service_business";
+
+  // 一般ユーザーはステップ3（資料請求の通知先）を利用しないため、
+  // ステッパー表示・タイトル参照・進捗計算はこの配列を基準にする。
+  const visibleSteps = isProvider ? steps : steps.filter((s) => s.id !== 3);
+  const currentStepMeta =
+    steps.find((s) => s.id === currentStep) ?? steps[steps.length - 1];
 
   const toggleInterest = (interest: string) => {
     if (selectedInterests.includes(interest)) {
@@ -224,253 +207,130 @@ export function ProfileRegisterForm({
     );
   };
 
+  // アバターのテンプレート選択（主）＋画像アップロード（従）ブロック。
+  // テンプレートから選ぶのが基本。画像アップロードは小さな副次オプションに降格。
+  const isTemplateSelected = AVATAR_TEMPLATES.some((url) => url === avatarUrl);
+  const isUploadedSelected = !!avatarUrl && !isTemplateSelected;
+  const renderAvatarUploader = () => (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        {avatarUrl ? (
+          <button
+            type="button"
+            onClick={() => setAvatarPreviewOpen(true)}
+            aria-label="アバターを拡大表示"
+            className="group relative flex-shrink-0 w-16 h-16 rounded-full bg-muted border-2 flex items-center justify-center overflow-hidden transition hover:ring-2 hover:ring-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-zoom-in"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={avatarUrl}
+              alt="プロフィール"
+              className="w-full h-full object-cover"
+            />
+          </button>
+        ) : (
+          <div className="flex-shrink-0 w-16 h-16 rounded-full bg-muted border-2 flex items-center justify-center overflow-hidden">
+            <User className="h-8 w-8 text-muted-foreground" />
+          </div>
+        )}
+        <div className="text-sm">
+          <p className="font-medium">
+            {avatarUrl ? "アバターを選択済み" : "アバターが未設定です"}
+          </p>
+          {avatarUrl && (
+            <p className="text-xs text-muted-foreground mt-0.5">クリックで拡大</p>
+          )}
+          <p className="text-red-500 text-xs mt-0.5">※アバターの設定は必須です</p>
+        </div>
+      </div>
+
+      <Dialog open={avatarPreviewOpen} onOpenChange={setAvatarPreviewOpen}>
+        <DialogContent className="w-auto max-w-[90vw] p-6">
+          <DialogTitle className="sr-only">アバターのプレビュー</DialogTitle>
+          {avatarUrl && (
+            <div className="flex items-center justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={avatarUrl}
+                alt="アバターの拡大表示"
+                className="h-auto w-[min(320px,80vw)] rounded-lg object-contain"
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* テンプレート選択（おすすめ・手軽） */}
+      <div className="space-y-2">
+        <label className="text-sm font-medium">
+          テンプレートから選ぶ <span className="text-red-500">*</span>
+          <span className="ml-1 text-xs font-normal text-muted-foreground">（ワンタップで設定・おすすめ）</span>
+        </label>
+        <div className="flex flex-wrap gap-2.5">
+          {AVATAR_TEMPLATES.map((url) => (
+            <button
+              key={url}
+              type="button"
+              onClick={() => setAvatarUrl(url)}
+              className={`h-14 w-14 rounded-full border-2 overflow-hidden transition-all ${
+                avatarUrl === url
+                  ? "border-primary ring-2 ring-primary/30"
+                  : "border-muted hover:border-primary/50"
+              }`}
+              aria-label="テンプレート画像を選択"
+              aria-pressed={avatarUrl === url}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={url} alt="" className="h-full w-full object-cover" />
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 画像アップロード（副・でも分かりやすいボタンに） */}
+      <div className="space-y-1.5">
+        <label className="text-sm font-medium text-muted-foreground">または画像をアップロード</label>
+        <input
+          ref={avatarFileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/gif,image/webp"
+          className="hidden"
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            setAvatarUploading(true);
+            const formData = new FormData();
+            formData.append("file", file);
+            const result = await uploadImage(formData);
+            setAvatarUploading(false);
+            if (result.success && result.url) setAvatarUrl(result.url);
+            e.target.value = "";
+          }}
+        />
+        <button
+          type="button"
+          disabled={avatarUploading}
+          onClick={() => avatarFileInputRef.current?.click()}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border px-4 py-3 text-sm font-medium text-foreground transition hover:border-primary/50 hover:bg-primary/[0.03] disabled:opacity-60 sm:w-auto"
+        >
+          {avatarUploading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <ImageIcon className="h-4 w-4" />
+          )}
+          {isUploadedSelected ? "画像を変更（選択中）" : "画像をアップロード"}
+        </button>
+        <p className="text-xs text-muted-foreground">JPG / PNG / GIF / WebP。スマホで撮った写真もそのまま使えます。</p>
+      </div>
+    </div>
+  );
+
+  // AIアバター生成ブロック（アバターステップで表示）。
   const renderStep = () => {
     switch (currentStep) {
       case 1:
         return (
           <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">プロフィール画像（アイコン）</label>
-              <div className="flex items-center gap-4">
-                <div className="flex-shrink-0 w-20 h-20 rounded-full bg-muted border-2 flex items-center justify-center overflow-hidden">
-                  {avatarUrl ? (
-                    <img
-                      src={avatarUrl}
-                      alt="プロフィール"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <User className="h-10 w-10 text-muted-foreground" />
-                  )}
-                </div>
-                <div className="flex-1 space-y-2">
-                  <input
-                    ref={avatarFileInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/gif,image/webp"
-                    className="hidden"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      setAvatarUploading(true);
-                      const formData = new FormData();
-                      formData.append("file", file);
-                      const result = await uploadImage(formData);
-                      setAvatarUploading(false);
-                      if (result.success && result.url) setAvatarUrl(result.url);
-                      e.target.value = "";
-                    }}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={avatarUploading}
-                    onClick={() => avatarFileInputRef.current?.click()}
-                  >
-                    {avatarUploading ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : (
-                      <ImageIcon className="h-4 w-4 mr-2" />
-                    )}
-                    画像をアップロード
-                  </Button>
-                  <p className="text-[11px] text-muted-foreground">
-                    またはテンプレートから選ぶ
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {AVATAR_TEMPLATES.map((url) => (
-                      <button
-                        key={url}
-                        type="button"
-                        onClick={() => setAvatarUrl(url)}
-                        className={`h-11 w-11 rounded-full border-2 overflow-hidden shrink-0 transition-all ${
-                          avatarUrl === url
-                            ? "border-primary ring-2 ring-primary/30"
-                            : "border-muted hover:border-primary/50"
-                        }`}
-                        aria-label="テンプレート画像を選択"
-                      >
-                        <img src={url} alt="" className="h-full w-full object-cover" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* AIアバター生成：アンケートに答えるだけでアバター＆AIペルソナを作る */}
-            <div className="space-y-4 rounded-xl border bg-gradient-to-br from-primary/[0.06] to-violet-500/[0.06] p-4">
-              <div className="flex items-start gap-2.5">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
-                  <Sparkles className="h-4 w-4" />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold">AIアバターを生成 <span className="font-normal text-muted-foreground">（任意）</span></p>
-                  <p className="text-[11px] leading-relaxed text-muted-foreground">
-                    かんたんなアンケートに答えるだけ。あなたらしさからAIがアイコン画像を作ります。
-                  </p>
-                </div>
-              </div>
-
-              {/* 性格・タイプ（複数選択） */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold">あなたのタイプ <span className="font-normal text-muted-foreground">（複数OK）</span></p>
-                  {personaTraits.length > 0 && <span className="text-[10px] text-primary">{personaTraits.length}件選択中</span>}
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {PERSONA_TRAIT_OPTIONS.map((v) => {
-                    const on = personaTraits.includes(v);
-                    return (
-                      <button
-                        key={v}
-                        type="button"
-                        onClick={() => setPersonaTraits((prev) => on ? prev.filter((x) => x !== v) : [...prev, v])}
-                        className={`rounded-full border px-3 py-1.5 text-xs transition-all active:scale-95 ${on ? "border-primary bg-primary text-primary-foreground font-medium shadow-sm" : "border-input bg-background text-foreground/70 hover:border-primary/40 hover:bg-primary/5"}`}
-                      >
-                        {v}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 雰囲気（単一選択） */}
-              <div className="space-y-1.5">
-                <p className="text-xs font-semibold">アイコンの雰囲気 <span className="font-normal text-muted-foreground">（1つ）</span></p>
-                <div className="flex flex-wrap gap-1.5">
-                  {PERSONA_TONE_OPTIONS.map((t) => {
-                    const on = personaTone === t;
-                    return (
-                      <button
-                        key={t}
-                        type="button"
-                        onClick={() => setPersonaTone(on ? "" : t)}
-                        className={`rounded-full border px-3 py-1.5 text-xs transition-all active:scale-95 ${on ? "border-primary bg-primary text-primary-foreground font-medium shadow-sm" : "border-input bg-background text-foreground/70 hover:border-primary/40 hover:bg-primary/5"}`}
-                      >
-                        {t}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 好きな色（単一選択・色ドット付き） */}
-              <div className="space-y-1.5">
-                <p className="text-xs font-semibold">好きな色 <span className="font-normal text-muted-foreground">（1つ・任意）</span></p>
-                <div className="flex flex-wrap gap-1.5">
-                  {PERSONA_COLOR_OPTIONS.map((c) => {
-                    const on = personaColor === c.label;
-                    return (
-                      <button
-                        key={c.label}
-                        type="button"
-                        onClick={() => setPersonaColor(on ? "" : c.label)}
-                        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition-all active:scale-95 ${on ? "border-primary bg-primary/10 font-medium" : "border-input bg-background text-foreground/70 hover:border-primary/40 hover:bg-primary/5"}`}
-                      >
-                        <span className="h-2.5 w-2.5 rounded-full" style={{ background: c.dot }} />
-                        {c.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* MBTIから生成（任意・単一選択） */}
-              <div className="space-y-1.5">
-                <p className="text-xs font-semibold">MBTIから <span className="font-normal text-muted-foreground">（任意・1つ）</span></p>
-                <div className="grid grid-cols-4 gap-1.5">
-                  {PERSONA_MBTI_OPTIONS.map((m) => {
-                    const on = personaMbti === m.code;
-                    return (
-                      <button
-                        key={m.code}
-                        type="button"
-                        onClick={() => setPersonaMbti(on ? "" : m.code)}
-                        className={`flex flex-col items-center rounded-lg border px-1 py-1.5 transition-all active:scale-95 ${on ? "border-primary bg-primary text-primary-foreground shadow-sm" : "border-input bg-background text-foreground/70 hover:border-primary/40 hover:bg-primary/5"}`}
-                      >
-                        <span className="text-xs font-bold tracking-wide">{m.code}</span>
-                        <span className={`text-[9px] ${on ? "text-primary-foreground/80" : "text-muted-foreground"}`}>{m.name}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 自由記述（任意・カンマ区切り） */}
-              <div className="space-y-1.5">
-                <p className="text-xs font-semibold">好きなもの・キーワード <span className="font-normal text-muted-foreground">（任意・カンマ区切り）</span></p>
-                <input
-                  type="text"
-                  value={mindset}
-                  onChange={(e) => setMindset(e.target.value)}
-                  placeholder="例：読書, カフェ巡り, 音楽, 自然"
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                />
-              </div>
-
-              <Button
-                type="button"
-                size="sm"
-                className="w-full"
-                disabled={personaGenerating || (personaTraits.length === 0 && !personaTone && !personaColor && !personaMbti && !mindset.trim())}
-                onClick={async () => {
-                  setPersonaGenerating(true);
-                  setPersonaError(null);
-                  // アンケートの選択＋自由記述をまとめて mindset 文字列に（カンマ区切りキーワードも分解）。
-                  const freeKeywords = mindset.split(/[,、]/).map((s) => s.trim()).filter(Boolean);
-                  const mbtiName = PERSONA_MBTI_OPTIONS.find((m) => m.code === personaMbti)?.name;
-                  const mindsetText = [
-                    personaMbti ? `MBTI：${personaMbti}${mbtiName ? `（${mbtiName}）` : ""}（この性格タイプらしさを反映）` : "",
-                    personaTraits.length ? `性格・タイプ：${personaTraits.join("、")}` : "",
-                    personaTone ? `雰囲気：${personaTone}` : "",
-                    personaColor ? `好きな色：${personaColor}` : "",
-                    freeKeywords.length ? `好きなもの：${freeKeywords.join("、")}` : "",
-                  ].filter(Boolean).join("。 ");
-                  try {
-                    const result = await generatePersonaAndAvatar({
-                      name: (legalName || name || "").trim(),
-                      bio: bio || undefined,
-                      mindset: mindsetText || undefined,
-                      interests: selectedInterests,
-                      organization: organization || undefined,
-                      role: roleOther || role || undefined,
-                    });
-                    if (result.success && result.avatarUrl) {
-                      setAvatarUrl(result.avatarUrl);
-                      setPersonaInfo({
-                        expertise: result.persona?.expertise ?? [],
-                        valuesText: result.persona?.valuesText ?? "",
-                      });
-                    } else {
-                      setPersonaError(result.error ?? "生成に失敗しました");
-                    }
-                  } catch {
-                    setPersonaError("生成に失敗しました");
-                  } finally {
-                    setPersonaGenerating(false);
-                  }
-                }}
-              >
-                {personaGenerating ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <Sparkles className="h-4 w-4 mr-2" />
-                )}
-                {personaGenerating ? "生成中…（30秒ほど）" : "AIアバターを生成"}
-              </Button>
-              {personaError && <p className="text-[11px] text-red-500">{personaError}</p>}
-              {personaInfo && (
-                <div className="text-[11px] text-muted-foreground space-y-1">
-                  <p>✅ アバターを生成してアイコンに設定しました。</p>
-                  {personaInfo.expertise.length > 0 && (
-                    <p>得意分野: {personaInfo.expertise.join("、")}</p>
-                  )}
-                </div>
-              )}
-            </div>
-
             <div className="space-y-2">
               <label className="text-sm font-medium">
                 {isProvider ? "代表者名" : "名前"} <span className="text-red-500">*</span>
@@ -522,12 +382,8 @@ export function ProfileRegisterForm({
                 />
               </div>
             )}
-          </div>
-        );
 
-      case 2:
-        return (
-          <div className="space-y-4">
+            {/* 所属情報（旧ステップ2をアカウントページに統合） */}
             <div className="space-y-2">
               <label className="text-sm font-medium">
                 {isProvider ? "事業者・団体名" : "所属"} <span className="text-red-500">*</span>
@@ -598,6 +454,15 @@ export function ProfileRegisterForm({
                 )}
               </div>
             )}
+            {/* 役職・肩書（全ユーザー対象） */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">役職・肩書（任意）</label>
+              <Input
+                placeholder="例：教員、教頭、校長、職員、保護者など"
+                value={position}
+                onChange={(e) => setPosition(e.target.value)}
+              />
+            </div>
             {isProvider && (
               <>
                 <div className="space-y-2">
@@ -618,18 +483,45 @@ export function ProfileRegisterForm({
           </div>
         );
 
+      case 2:
+        return (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              アバターを設定します。テンプレートから選ぶのがおすすめです（画像のアップロードも可能）。
+            </p>
+            {renderAvatarUploader()}
+            {initialProfile?.role === "ADMIN" && (
+              <>
+                <div className="flex items-center gap-2">
+                  <span className="h-px flex-1 bg-border" />
+                  <span className="text-xs font-semibold text-muted-foreground">または AIで生成（管理者）</span>
+                  <span className="h-px flex-1 bg-border" />
+                </div>
+                <PersonaCreator
+                  defaults={{
+                    name: (legalName || name || "").trim(),
+                    bio: bio || undefined,
+                    organization: organization || undefined,
+                    role: roleOther || role || undefined,
+                    interests: selectedInterests,
+                  }}
+                  currentAvatarUrl={avatarUrl}
+                  onGenerated={(r) => { if (r.avatarUrl) setAvatarUrl(r.avatarUrl); }}
+                />
+              </>
+            )}
+          </div>
+        );
+
       case 3:
+        // このステップは事業者専用。一般ユーザーの遷移は handleNext/handleBack で
+        // ステップ2⇄4を直接処理するため、ここに到達した場合は何も描画しない。
         if (!isProvider) {
-          // 一般ユーザーの場合はこのステップをスキップして次へ
-          setCurrentStep(4);
           return null;
         }
         return (
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground mb-4">
-              サービス提供者として登録している場合、資料請求があった際の通知先メールアドレスを追加できます。
-            </p>
-            <p className="text-sm font-medium mb-2">資料請求の通知先（任意）</p>
+            <p className="text-sm font-semibold mb-2">資料請求の通知先（任意）</p>
             <p className="text-xs text-muted-foreground mb-3">
               サービス提供者として登録している場合、資料請求があった際に通知を送るメールアドレスを追加できます。最大3件まで送信されます（1件目はログイン用メールアドレス）。
             </p>
@@ -701,10 +593,10 @@ export function ProfileRegisterForm({
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                自己紹介・活動内容（任意）
+                自己紹介（任意）
               </label>
               <Textarea
-                placeholder="EdTechに関する取り組みや、関心事について教えてください。投稿者として表示されるプロフィール文です。"
+                placeholder="あなたの教育への想いや関心事を自由に書いてください。投稿者として表示されるプロフィール文です。"
                 rows={5}
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
@@ -723,12 +615,22 @@ export function ProfileRegisterForm({
                 />
               </div>
             )}
+
           </div>
         );
 
       case 5:
         return (
           <div className="space-y-5">
+            <div className="space-y-2">
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                人材マッチングは、講演・講師・研修・顧問などの依頼を受けたい方と、依頼したい方をつなぐ仕組みです。登録すると、あなたのプロフィールが人材マッチング一覧に掲載され、依頼を受け取れるようになります。
+              </p>
+              <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-xs leading-relaxed text-amber-800">
+                ※登録は可能ですが、マッチング機能は現在準備中です。公開開始までお待ちください。
+              </div>
+            </div>
+
             <div className="rounded-lg border bg-muted/30 p-4">
               <div className="flex items-start gap-3">
                 <input
@@ -736,63 +638,61 @@ export function ProfileRegisterForm({
                   type="checkbox"
                   checked={talentMatchingEnabled}
                   onChange={(e) => setTalentMatchingEnabled(e.target.checked)}
-                  className="mt-1 h-4 w-4"
+                  className="mt-1 h-5 w-5 cursor-pointer"
                 />
                 <div className="space-y-1">
-                  <label htmlFor="talent-matching-enabled" className="font-medium">
+                  <label htmlFor="talent-matching-enabled" className="font-medium cursor-pointer">
                     人材マッチングに登録する
                   </label>
                   <p className="text-sm text-muted-foreground">
-                    mainでは登録情報のみ保存します。人材マッチングの一覧・詳細ページは公開しません。
+                    チェックすると、機能公開時にあなたのプロフィールが人材マッチング一覧に表示されます。
                   </p>
                 </div>
               </div>
             </div>
 
-            {talentMatchingEnabled && (
-              <div className="space-y-5">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">受け付ける依頼種別（複数選択可）</label>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {TALENT_BADGE_OPTIONS.map((option) => {
-                      const selected = talentBadges.includes(option.value);
-                      return (
-                        <button
-                          key={option.value}
-                          type="button"
-                          onClick={() => toggleTalentBadge(option.value)}
-                          className={`rounded-lg border p-3 text-left transition-colors ${
-                            selected ? "border-primary bg-primary/10" : "hover:bg-muted"
-                          }`}
-                        >
-                          <span className="block text-sm font-medium">{option.label}</span>
-                          <span className="block text-xs text-muted-foreground">{option.desc}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">自己PR・対応できる依頼内容（任意）</label>
-                  <Textarea
-                    placeholder="例：教育ICT分野の講演・研修を承ります。プログラミング教育の導入支援や教員向けワークショップも可能です。"
-                    rows={4}
-                    value={talentMatchingDescription}
-                    onChange={(e) => setTalentMatchingDescription(e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">ギャラ・料金目安（任意）</label>
-                  <Input
-                    placeholder="例：講演 1時間 5万円〜、応相談 など"
-                    value={talentHourlyRate}
-                    onChange={(e) => setTalentHourlyRate(e.target.value)}
-                  />
+            <div className="space-y-5">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">受け付ける依頼種別（複数選択可）</label>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {TALENT_BADGE_OPTIONS.map((option) => {
+                    const selected = talentBadges.includes(option.value);
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => toggleTalentBadge(option.value)}
+                        className={`rounded-lg border p-3 text-left transition-colors ${
+                          selected ? "border-primary bg-primary/10" : "hover:bg-muted"
+                        }`}
+                      >
+                        <span className="block text-sm font-medium">{option.label}</span>
+                        <span className="block text-xs text-muted-foreground">{option.desc}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
-            )}
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">自己PR・対応できる依頼内容（任意）</label>
+                <Textarea
+                  placeholder="例：教育ICT分野の講演・研修を承ります。プログラミング教育の導入支援や教員向けワークショップも可能です。"
+                  rows={4}
+                  value={talentMatchingDescription}
+                  onChange={(e) => setTalentMatchingDescription(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">ギャラ・料金目安（任意）</label>
+                <Input
+                  placeholder="例：講演 1時間 5万円〜、応相談 など"
+                  value={talentHourlyRate}
+                  onChange={(e) => setTalentHourlyRate(e.target.value)}
+                />
+              </div>
+            </div>
           </div>
         );
 
@@ -800,7 +700,7 @@ export function ProfileRegisterForm({
         return (
           <div className="space-y-6">
             <div className="p-4 rounded-lg bg-muted/50">
-              <h3 className="font-medium mb-3 flex items-center gap-2">
+              <h3 className="text-base font-semibold tracking-[-0.01em] mb-3 flex items-center gap-2">
                 <User className="h-4 w-4" />
                 アカウント
               </h3>
@@ -844,7 +744,7 @@ export function ProfileRegisterForm({
             </div>
 
             <div className="p-4 rounded-lg bg-muted/50">
-              <h3 className="font-medium mb-3 flex items-center gap-2">
+              <h3 className="text-base font-semibold tracking-[-0.01em] mb-3 flex items-center gap-2">
                 <Building2 className="h-4 w-4" />
                 所属情報
               </h3>
@@ -881,7 +781,7 @@ export function ProfileRegisterForm({
 
             {isProvider && (
               <div className="p-4 rounded-lg bg-muted/50">
-                <h3 className="font-medium mb-3 flex items-center gap-2">
+                <h3 className="text-base font-semibold tracking-[-0.01em] mb-3 flex items-center gap-2">
                   <MapPin className="h-4 w-4" />
                   連絡先（資料請求の通知先）
                 </h3>
@@ -907,7 +807,7 @@ export function ProfileRegisterForm({
             )}
 
             <div className="p-4 rounded-lg bg-muted/50">
-              <h3 className="font-medium mb-3 flex items-center gap-2">
+              <h3 className="text-base font-semibold tracking-[-0.01em] mb-3 flex items-center gap-2">
                 <GraduationCap className="h-4 w-4" />
                 関心・スキル
               </h3>
@@ -962,7 +862,7 @@ export function ProfileRegisterForm({
             </div>
 
             <div className="p-4 rounded-lg bg-muted/50">
-              <h3 className="font-medium mb-3 flex items-center gap-2">
+              <h3 className="text-base font-semibold tracking-[-0.01em] mb-3 flex items-center gap-2">
                 <Handshake className="h-4 w-4" />
                 人材マッチング
               </h3>
@@ -970,7 +870,7 @@ export function ProfileRegisterForm({
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">登録</span>
                   <span className={talentMatchingEnabled ? "text-primary font-medium" : ""}>
-                    {talentMatchingEnabled ? "登録する" : "登録しない"}
+                    {talentMatchingEnabled ? "登録済み" : "登録なし"}
                   </span>
                 </div>
                 {talentMatchingEnabled && (
@@ -1024,15 +924,11 @@ export function ProfileRegisterForm({
         setValidationError("表示名を入力してください。");
         return;
       }
-      if (isFirstTime && !avatarUrl.trim()) {
-        setValidationError("プロフィール画像をアップロードするか、テンプレートから選んでください。");
-        return;
-      }
       if (isProvider && !phone.trim()) {
         setValidationError("事業者・団体のTELを入力してください。");
         return;
       }
-    } else if (currentStep === 2) {
+      // 所属（旧ステップ2をアカウントページに統合）
       if (!organization.trim()) {
         setValidationError("所属を入力してください。");
         return;
@@ -1045,6 +941,10 @@ export function ProfileRegisterForm({
         setValidationError("事業者・団体の所在地を入力してください。");
         return;
       }
+      // アバターは次の「アバターを設定」ステップで必須。
+    } else if (currentStep === 2 && !avatarUrl.trim()) {
+      setValidationError("アバターを設定してください（テンプレートから選ぶか、画像をアップロードしてください）。");
+      return;
     } else if (currentStep === 4 && isProvider && !website.trim()) {
       setValidationError("公式サイトURLを入力してください。");
       return;
@@ -1083,7 +983,7 @@ export function ProfileRegisterForm({
       return;
     }
     if (!schoolType) {
-      setValidationError("職業・役職を選択してください。");
+      setValidationError("所属の種類を選択してください。");
       return;
     }
     if (isProvider && !phone.trim()) {
@@ -1098,12 +998,12 @@ export function ProfileRegisterForm({
       setValidationError("公式サイトURLを入力してください。");
       return;
     }
-    if (isFirstTime && !avatarUrl.trim()) {
-      setValidationError("プロフィール画像をアップロードするか、テンプレートから選んでください。");
+    if (!avatarUrl.trim()) {
+      setValidationError("アバターを設定してください（「アバターを設定」ステップで、テンプレートから選ぶか画像をアップロードできます）。");
       return;
     }
     setSaving(true);
-    const { success } = await updateProfile({
+    const { success, error } = await updateProfile({
       name: name || undefined,
       legal_name: legalName.trim(),
       age: isProvider ? null : age || null,
@@ -1118,6 +1018,7 @@ export function ProfileRegisterForm({
           ? roleOther.trim() || null
           : role || null
         : null,
+      position: position.trim() || null,
       bio: bio || null,
       website: website || null,
       address: isProvider ? address.trim() || null : null,
@@ -1136,13 +1037,24 @@ export function ProfileRegisterForm({
       completeInitialSetup: true,
     });
     setSaving(false);
+    if (!success) {
+      setValidationError(
+        error ?? "保存に失敗しました。時間をおいて再度お試しください。"
+      );
+      return;
+    }
     if (success) {
+      // 元いたページ（申込ページ等）から来た場合は最優先でそこへ戻す。その際チュートリアルは出さない。
+      if (nextUrl) {
+        try { window.sessionStorage.setItem(TUTORIAL_SUPPRESS_ON_RETURN_KEY, "1"); } catch { /* noop */ }
+        router.push(nextUrl);
+        return;
+      }
       if (isFirstTime) {
         router.push("/?tutorial=start");
         return;
       }
-
-      router.push(nextUrl ?? "/dashboard");
+      router.push("/dashboard");
     }
   };
 
@@ -1177,24 +1089,33 @@ export function ProfileRegisterForm({
           </p>
         </div>
 
-        <div className="flex items-center justify-center mb-6 sm:mb-8 overflow-x-auto px-2">
-          {steps.map((step, index) => {
+        <div
+          className="flex items-center justify-center mb-6 sm:mb-8 overflow-x-auto px-2"
+          role="list"
+          aria-label="登録ステップの進捗"
+        >
+          {visibleSteps.map((step, index) => {
             const Icon = step.icon;
+            const isActive = currentStep === step.id;
+            const isDone = currentStep > step.id;
             return (
-              <div key={step.id} className="flex items-center flex-shrink-0">
+              <div key={step.id} className="flex items-center flex-shrink-0" role="listitem">
                 <div
-                  className={`flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full ${
-                    currentStep >= step.id
+                  aria-label={step.title}
+                  aria-current={isActive ? "step" : undefined}
+                  className={`flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full transition-colors duration-300 ${
+                    isActive || isDone
                       ? "bg-primary text-primary-foreground"
                       : "bg-muted text-muted-foreground"
-                  }`}
+                  } ${isActive ? "ring-4 ring-primary/10" : ""}`}
                 >
-                  <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <Icon className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
                 </div>
-                {index < steps.length - 1 && (
+                {index < visibleSteps.length - 1 && (
                   <div
-                    className={`w-8 sm:w-12 h-1 flex-shrink-0 ${
-                      currentStep > step.id ? "bg-primary" : "bg-muted"
+                    aria-hidden
+                    className={`w-8 sm:w-12 h-0.5 rounded-full flex-shrink-0 transition-colors duration-300 ${
+                      isDone ? "bg-primary" : "bg-border"
                     }`}
                   />
                 )}
@@ -1205,7 +1126,7 @@ export function ProfileRegisterForm({
 
         <Card>
           <CardHeader>
-            <CardTitle>{steps[currentStep - 1].title}</CardTitle>
+            <CardTitle>{currentStepMeta.title}</CardTitle>
           </CardHeader>
           <CardContent>
             {renderStep()}

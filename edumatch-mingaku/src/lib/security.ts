@@ -1,10 +1,82 @@
 /**
  * セキュリティユーティリティ
+ * - timingSafeCompare: 秘密値の定数時間比較
+ * - verifyCron: Cron ルート共通の認証
+ * - getClientIp: プロキシヘッダーからのクライアントIP取得
  * - safeRedirect: オープンリダイレクト防止
  * - checkPromptInjection: プロンプトインジェクション検出
  * - checkLlmOutput: LLM出力の個人情報・禁止コンテンツスキャン
  * - createRateLimiter: インメモリ sliding window レート制限
  */
+
+// ─── Timing-safe Comparison ────────────────────────────────────────────────────
+
+type NodeCryptoModule = typeof import("node:crypto");
+let nodeCrypto: NodeCryptoModule | undefined;
+try {
+  if (typeof process !== "undefined" && typeof process.getBuiltinModule === "function") {
+    nodeCrypto = process.getBuiltinModule("node:crypto") as NodeCryptoModule | undefined;
+  }
+} catch {
+  nodeCrypto = undefined;
+}
+
+/**
+ * 秘密値（トークン・パスワード等）を定数時間で比較する。
+ * Node.js では crypto.timingSafeEqual を使用し、
+ * Edge Runtime では定数時間の XOR 比較にフォールバックする。
+ * 長さが異なる場合もタイミング差を最小化する。
+ */
+export function timingSafeCompare(a: string, b: string): boolean {
+  const encoder = new TextEncoder();
+  const bufA = encoder.encode(a ?? "");
+  const bufB = encoder.encode(b ?? "");
+
+  if (nodeCrypto) {
+    if (bufA.length !== bufB.length) {
+      // 長さ不一致でも比較コストを揃える（結果は必ず false）
+      nodeCrypto.timingSafeEqual(bufA, bufA);
+      return false;
+    }
+    return nodeCrypto.timingSafeEqual(bufA, bufB);
+  }
+
+  // Edge Runtime フォールバック（内容に依存しない定数時間比較）
+  let diff = bufA.length ^ bufB.length;
+  const len = Math.max(bufA.length, bufB.length, 1);
+  for (let i = 0; i < len; i++) {
+    diff |= (bufA[i] ?? 0) ^ (bufB[i] ?? 0);
+  }
+  return diff === 0;
+}
+
+// ─── Cron Authentication ───────────────────────────────────────────────────────
+
+/**
+ * Cron ルート共通の認証。`Authorization: Bearer <CRON_SECRET>` を検証する。
+ * CRON_SECRET が未設定の場合は環境を問わず常に拒否する（devフォールバックなし）。
+ */
+export function verifyCron(req: Request): boolean {
+  const secret = process.env.CRON_SECRET?.trim();
+  if (!secret) return false;
+  const auth = req.headers.get("authorization") ?? "";
+  return timingSafeCompare(auth, `Bearer ${secret}`);
+}
+
+// ─── Client IP ─────────────────────────────────────────────────────────────────
+
+/**
+ * Vercel 等のリバースプロキシ経由でのクライアントIPを取得する。
+ * 取得できない場合は "unknown" を返す（レート制限キーのフォールバック用）。
+ */
+export function getClientIp(req: Request): string {
+  const forwarded = req.headers.get("x-forwarded-for");
+  if (forwarded) {
+    const first = forwarded.split(",")[0]?.trim();
+    if (first) return first;
+  }
+  return req.headers.get("x-real-ip")?.trim() || "unknown";
+}
 
 // ─── Safe Redirect ─────────────────────────────────────────────────────────────
 
@@ -112,71 +184,34 @@ export function checkLlmOutput(text: string): OutputCheckResult {
   };
 }
 
-// ─── In-memory Rate Limiter ────────────────────────────────────────────────────
+// ─── Rate Limiter ─────────────────────────────────────────────────────────────
+// 実装本体は src/lib/rate-limit.ts（SEC-007: Upstash Redis 移行準備）。
+// ここでは後方互換のため既存シグネチャを維持したラッパーを提供する。
 
-type RateLimitEntry = { count: number; resetAt: number };
+import { getRateLimiter } from "@/lib/rate-limit";
+import type {
+  RateLimitConfig as RateLimitConfigImpl,
+  RateLimitResult as RateLimitResultImpl,
+} from "@/lib/rate-limit";
 
-const rateLimitStore = new Map<string, RateLimitEntry>();
-
-/** ストアの古いエントリを定期クリア（メモリリーク防止） */
-function cleanupRateLimitStore() {
-  const now = Date.now();
-  for (const [key, entry] of rateLimitStore.entries()) {
-    if (entry.resetAt < now) rateLimitStore.delete(key);
-  }
-}
-
-let lastCleanup = Date.now();
-
-export type RateLimitConfig = {
-  /** ウィンドウ期間（ミリ秒） */
-  windowMs: number;
-  /** ウィンドウ内の最大リクエスト数 */
-  max: number;
-};
-
-export type RateLimitResult = {
-  allowed: boolean;
-  remaining: number;
-  resetAt: number;
-  retryAfterSec: number;
-};
+export type RateLimitConfig = RateLimitConfigImpl;
+export type RateLimitResult = RateLimitResultImpl;
 
 /**
- * インメモリ fixed window レート制限。
- * Vercel の同一インスタンス内でのみ有効（インスタンスをまたぐとリセットされる）。
- * 基本的な乱用防止として十分。厳密な制限が必要な場合は Upstash Redis を使用。
+ * レート制限チェック（同期版・後方互換）。
+ * 実装は getRateLimiter() が返す RateLimiter に委譲する。
+ * Upstash 等の非同期専用実装へ移行する際は getRateLimiter().limit() を直接使うこと。
  *
  * @param key 識別子（IP アドレスや userId など）
  */
 export function checkRateLimit(key: string, config: RateLimitConfig): RateLimitResult {
-  const now = Date.now();
-
-  // 定期クリア（5分に1回）
-  if (now - lastCleanup > 5 * 60 * 1000) {
-    cleanupRateLimitStore();
-    lastCleanup = now;
+  const limiter = getRateLimiter();
+  if (typeof limiter.limitSync !== "function") {
+    throw new Error(
+      "checkRateLimit (sync) is not supported by the configured RateLimiter. Use getRateLimiter().limit() instead."
+    );
   }
-
-  const entry = rateLimitStore.get(key);
-
-  if (!entry || entry.resetAt < now) {
-    const resetAt = now + config.windowMs;
-    rateLimitStore.set(key, { count: 1, resetAt });
-    return {
-      allowed: true,
-      remaining: config.max - 1,
-      resetAt,
-      retryAfterSec: 0,
-    };
-  }
-
-  entry.count += 1;
-  const allowed = entry.count <= config.max;
-  const remaining = Math.max(0, config.max - entry.count);
-  const retryAfterSec = allowed ? 0 : Math.ceil((entry.resetAt - now) / 1000);
-
-  return { allowed, remaining, resetAt: entry.resetAt, retryAfterSec };
+  return limiter.limitSync(key, config);
 }
 
 /**
@@ -209,4 +244,99 @@ export function rateLimitResponse(
       }
     ),
   };
+}
+
+// ─── Environment Gating (SEC-012) ─────────────────────────────────────────────
+
+/**
+ * 本番環境かどうか（Vercel の VERCEL_ENV を優先、なければ NODE_ENV）。
+ */
+export function isProductionEnv(): boolean {
+  const vercelEnv = process.env.VERCEL_ENV;
+  if (vercelEnv) return vercelEnv === "production";
+  return process.env.NODE_ENV === "production";
+}
+
+/**
+ * テスト/デバッグ用ルートの本番ガード。
+ * 本番環境では 404 レスポンスを返し、それ以外では null を返す。
+ *
+ * 使い方:
+ *   const blocked = requireNonProduction();
+ *   if (blocked) return blocked;
+ */
+export function requireNonProduction(): Response | null {
+  if (!isProductionEnv()) return null;
+  return new Response(JSON.stringify({ error: "Not Found" }), {
+    status: 404,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+// ─── CSRF: Origin Verification ────────────────────────────────────────────────
+
+/**
+ * 状態変更リクエスト（POST/PUT/PATCH/DELETE）の Origin ヘッダー検証（CSRF 対策）。
+ *
+ * - Origin ヘッダーがない場合（サーバー間通信・一部の古いクライアント）は許可
+ * - Origin がリクエストの Host、NEXT_PUBLIC_SITE_URL、または localhost と
+ *   一致すれば許可
+ * - それ以外は拒否
+ *
+ * Webhook（Stripe 等）・Cron ルートには適用しないこと。
+ *
+ * 使い方:
+ *   const csrf = verifyOrigin(request);
+ *   if (csrf) return csrf; // 403
+ */
+export function verifyOrigin(request: Request): Response | null {
+  const origin = request.headers.get("origin");
+  if (!origin) return null;
+
+  let originHost: string;
+  try {
+    originHost = new URL(origin).host;
+  } catch {
+    return originForbiddenResponse();
+  }
+
+  const allowedHosts = new Set<string>();
+
+  // リクエスト自身の Host（プロキシ経由を考慮して x-forwarded-host も見る）
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  if (forwardedHost) allowedHosts.add(forwardedHost.split(",")[0].trim());
+  const hostHeader = request.headers.get("host");
+  if (hostHeader) allowedHosts.add(hostHeader);
+  try {
+    allowedHosts.add(new URL(request.url).host);
+  } catch {
+    // ignore
+  }
+
+  // 環境変数で定義されたサイト URL
+  for (const envUrl of [process.env.NEXT_PUBLIC_SITE_URL, process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined]) {
+    if (!envUrl) continue;
+    try {
+      allowedHosts.add(new URL(envUrl).host);
+    } catch {
+      // ignore
+    }
+  }
+
+  if (allowedHosts.has(originHost)) return null;
+
+  // 開発環境の localhost は許可
+  if (!isProductionEnv() && /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(originHost)) {
+    return null;
+  }
+
+  console.warn(`[security] Origin verification failed: origin=${originHost}`);
+  return originForbiddenResponse();
+}
+
+function originForbiddenResponse(): Response {
+  return new Response(JSON.stringify({ error: "Forbidden" }), {
+    status: 403,
+    headers: { "Content-Type": "application/json" },
+  });
 }

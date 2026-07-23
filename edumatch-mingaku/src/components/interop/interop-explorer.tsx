@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Award,
@@ -25,27 +25,22 @@ const InteropPuyoBubbleMap = dynamic(
   () => import("@/components/interop/interop-puyo-bubble-map").then((m) => m.InteropPuyoBubbleMap),
   { ssr: false },
 );
+// 3Dマップ（トップマップのみ）。重いので遅延ロード。ドリルダウンは2Dと共有。
+const ForumGalaxy3D = dynamic(() => import("@/components/interop/forum-galaxy-3d"), { ssr: false });
 import { InteropChatWidget } from "@/components/interop/interop-chat-widget";
 import type { InteropCategory } from "@/components/interop/interop-category-bubble-map";
-import { Mic, Newspaper, MessagesSquare, ExternalLink } from "lucide-react";
+import { Mic, Newspaper, MessagesSquare, ExternalLink, Ticket } from "lucide-react";
 import {
   InteropSubOrbit,
   type InteropSubCategory,
 } from "@/components/interop/interop-sub-orbit";
+import { InteropCategoryList } from "@/components/interop/interop-category-list";
 import type { InteropActivityStats } from "@/lib/interop-activity";
 import { INTEROP_PRIORITY_TOPICS, type InteropPriorityTopic } from "@/lib/interop-priority-topics";
 import type { InteropThemeMode, CenterHubItem } from "@/lib/interop-settings";
 import { ensureExternalUrl } from "@/lib/interop-settings";
 import { DEFAULT_TOPIC_AXIS, type AxisConfig, type AxisPoint } from "@/lib/interop-topic-axis";
-
-// インタロップハブ内「自由記入」コミュニティトピック
-const INTEROP_HUB_COMMUNITY = [
-  { id: "interop-2026-freewrite",  name: "ひとことメッセージ", emoji: "💬", color: "#9fb4e8" },
-  { id: "interop-2026-ai-edu",     name: "AI×教育の体験",     emoji: "🤖", color: "#7dd4fc" },
-  { id: "interop-2026-future",     name: "未来の学校像",       emoji: "🏫", color: "#86efac" },
-  { id: "interop-2026-field-voice",name: "現場の声",           emoji: "📢", color: "#fca5a5" },
-  { id: "interop-2026-idea",       name: "教育アイデア",       emoji: "💡", color: "#fcd34d" },
-] as const;
+import { INTEROP_HUB_COMMUNITY } from "@/lib/interop-hub-community";
 
 const ICONS: Record<string, LucideIcon> = {
   information: Info,
@@ -170,7 +165,7 @@ function mergeTopicPositions(
 
 export function InteropExplorer({
   themeMode = "auto",
-  guideText = "中央のインタロップをタップして展示情報へ · 周囲の◎トピックをタップして論点・井戸端へ",
+  guideText = "",
   initialInteropActivity = null,
   initialForumActivity = null,
   showChat = true,
@@ -181,8 +176,11 @@ export function InteropExplorer({
   initialScale,
   centerLabel: centerLabelOverride,
   centerHubItems,
+  mapMode = "2d",
 }: {
   themeMode?: InteropThemeMode;
+  /** トップマップの表示モード。"3d" のときマップ層だけ3D。ドリルダウンは2D共有。 */
+  mapMode?: "2d" | "3d";
   guideText?: string;
   /** 中心ハブの表示名（管理画面の表示設定で編集）。未指定なら従来のロジック。 */
   centerLabel?: string;
@@ -190,7 +188,7 @@ export function InteropExplorer({
   centerHubItems?: CenterHubItem[];
   initialInteropActivity?: ActivityPayload | null;
   initialForumActivity?: { rooms?: ForumRoomActivityPayload[] } | null;
-  /** 来場者向けAIチャット(fixed配置)を出すか。井戸端会議・ホーム埋め込みでは false。 */
+  /** 来場者向けAIチャット(fixed配置)を出すか。教育のひろば・ホーム埋め込みでは false。 */
   showChat?: boolean;
   /** トップマップのサテライト表示（管理画面のトグルで切替）。 */
   showLatestNews?: boolean;
@@ -209,6 +207,19 @@ export function InteropExplorer({
   const hubParam = searchParams.get("hub"); // フォーラム(井戸端)から「ハブ」へ戻る
   const groupParam = searchParams.get("group"); // ミニマップから major(A〜F)で絞り込み
 
+  // サブカテゴリのタップ遷移。
+  // ・ミニマップ（embedded）：常に該当の教育のひろばボードへ直行（トップ以降のリンク/外部遷移は紐付けない）。
+  // ・フル表示：link_url があれば外部リンク、無ければ掲示板へ（ノード毎のリンク/掲示板選択を尊重）。
+  const openSubCategory = useCallback(
+    (sub: { id: string; linkUrl?: string }) => {
+      if (embedded) { router.push(interopBoardPath(sub.id)); return; }
+      const link = sub.linkUrl?.trim();
+      if (link) window.open(ensureExternalUrl(link, link), "_blank", "noopener,noreferrer");
+      else router.push(interopBoardPath(sub.id));
+    },
+    [router, embedded],
+  );
+
   const [categories, setCategories] = useState<InteropCategory[]>([]);
   const [subCategories, setSubCategories] = useState<InteropSubCategory[]>([]);
   const [loadingCats, setLoadingCats] = useState(true);
@@ -220,16 +231,6 @@ export function InteropExplorer({
   const [activityByCategory, setActivityByCategory] = useState<Map<string, InteropActivityStats>>(initialMaps.catMap);
   const [activityByRoom, setActivityByRoom] = useState<Map<string, InteropActivityStats>>(initialMaps.roomMap);
   const [activityByTopic, setActivityByTopic] = useState<Map<string, InteropActivityStats>>(initialMaps.topicMap);
-  // フォーラム等から戻ってきたとき、元のビュー（論点／ハブ）を復元する（カテゴリは下のcat復元で対応）
-  useEffect(() => {
-    if (topicParam) {
-      const t = INTEROP_PRIORITY_TOPICS.find((x) => x.roomId === topicParam);
-      if (t) { setView({ kind: "topic", topic: t }); return; }
-    }
-    if (hubParam) setView({ kind: "hub" });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // 2軸（DB由来。AIが日次で座標・週次で軸を更新）
   const [axis, setAxis] = useState<{ config?: AxisConfig; positions?: Record<number, AxisPoint> }>({});
   useEffect(() => {
@@ -258,6 +259,23 @@ export function InteropExplorer({
     () => mergeTopicPositions(dbTopicPositions, axis.positions),
     [dbTopicPositions, axis.positions],
   );
+
+  // フォーラム等から戻ってきたとき、元のビュー（論点／ハブ）を復元する（カテゴリは下のcat復元で対応）
+  // dbTopics はマウント後に非同期で解決されるため、解決を待って一度だけ復元する（DB値優先・静的にフォールバック）。
+  const restoredView = useRef(false);
+  useEffect(() => {
+    if (restoredView.current) return;
+    if (topicParam) {
+      const list = dbTopics ?? INTEROP_PRIORITY_TOPICS;
+      const t = list.find((x) => x.roomId === topicParam);
+      if (t) { restoredView.current = true; setView({ kind: "topic", topic: t }); return; }
+      // dbTopics 未解決のうちは静的一致も見つからなければ解決を待つ
+      if (!dbTopics) return;
+    }
+    restoredView.current = true;
+    if (hubParam) setView({ kind: "hub" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dbTopics]);
 
   // ── 中心インタロップ直行サテライト（最新ニュース／登壇者への質問／ご意見BOX）の解決 ──
   const [allSubs, setAllSubs] = useState<InteropSubCategory[]>([]);
@@ -313,11 +331,11 @@ export function InteropExplorer({
         color: d.color,
         icon: d.icon,
         postCount: activityBySub.get(sub.id)?.postCount,
-        onActivate: () => router.push(interopBoardPath(sub.id)),
+        onActivate: () => openSubCategory(sub),
       });
     }
     return result;
-  }, [categories, allSubs, activityBySub, router, showLatestNews, showSpeakerQa, showOpinionBox]);
+  }, [allSubs, activityBySub, openSubCategory, showLatestNews, showSpeakerQa, showOpinionBox]);
 
   // 中心ハブは is_primary 優先（DBで議員会館に付け替え可能）。後方互換で giin-kaikan / interop もフォールバック。
   const interopCat = useMemo(
@@ -337,6 +355,16 @@ export function InteropExplorer({
   // ご意見・要望は議員会館専用の掲示板(giin-opinion)へ（サテライトのご意見BOXとは独立）。
   const isGiinKaikanCenter = interopCat?.slug === "giin-kaikan";
   const giinKaikanItems = useMemo(() => {
+    // 先頭に「コンテンツ」（電子チケット申込）。2D/3Dで共通表示。
+    const contentsItem = {
+      id: "kaikan-contents",
+      name: "コンテンツ",
+      icon: Ticket,
+      accentColor: "#7dd4fc",
+      stats: EMPTY_STATS,
+      // 井戸端風オービットではなく、一般的な一覧ページ（複数選択申込）へ遷移
+      onActivate: () => router.push("/summit2026"),
+    };
     const opinionSub =
       allSubs.find((s) => s.slug === "giin-opinion") ??
       allSubs.find((s) => s.slug === "interop-opinion-box");
@@ -344,7 +372,7 @@ export function InteropExplorer({
     // 管理画面で設定された項目があればそれを使う（リンク or 掲示板）。
     if (centerHubItems && centerHubItems.length > 0) {
       const palette = ["#7dd4fc", "#fcd34d", "#86efac", "#c4b5fd", "#fca5a5", "#93c5fd"];
-      return centerHubItems
+      return [contentsItem, ...centerHubItems
         .filter((it) => it.name?.trim())
         .map((it, i) => ({
           id: it.id,
@@ -356,11 +384,12 @@ export function InteropExplorer({
             if (it.kind === "board" && it.subId) router.push(interopBoardPath(it.subId));
             else if (it.url) window.open(ensureExternalUrl(it.url), "_blank", "noopener,noreferrer");
           },
-        }));
+        }))];
     }
 
     // 既定（後方互換）
     return [
+      contentsItem,
       {
         id: "giin-information",
         name: "インフォメーション",
@@ -432,7 +461,7 @@ export function InteropExplorer({
         setCategories(d.categories);
         // booth ページからの戻り（/?cat=xxx）で該当階層を復元
         if (catParam) {
-          const match = d.categories.find((c: InteropCategory) => c.id === catParam);
+          const match = d.categories.find((c: InteropCategory) => c.id === catParam || c.slug === catParam);
           if (match)
             setView(
               match.isPrimary || match.slug === "giin-kaikan" || match.slug === "interop"
@@ -475,18 +504,22 @@ export function InteropExplorer({
   }, [activeCategoryId]);
 
   // トップマップで選べるのは中心のインタロップのみ → ハブへ。念のため他カテゴリはカテゴリ表示にフォールバック。
+  // ミニマップ(embedded)では内部ビューに潜らず、本井戸端(/forum)へリダイレクト（移動=パンは維持）。
   const handleSelectFromMap = useCallback(
     (cat: InteropCategory) => {
+      if (embedded) { router.push("/forum"); return; }
       setView(cat.id === interopCat?.id ? { kind: "hub" } : { kind: "category", cat });
     },
-    [interopCat?.id]
+    [interopCat?.id, embedded, router]
   );
 
   const handleSelectTopic = useCallback(
     (topic: InteropPriorityTopic) => {
+      // ミニマップからは該当トピックの井戸端ボードへ直行。
+      if (embedded) { router.push(topic.roomId ? `/forum/${topic.roomId}?from=interop` : "/forum"); return; }
       setView({ kind: "topic", topic });
     },
-    []
+    [embedded, router]
   );
 
   return (
@@ -504,13 +537,22 @@ export function InteropExplorer({
         </div>
       ) : categories.length === 0 ? (
         <div className="absolute inset-0 grid place-items-center px-8 text-center text-sm text-white/60">
-          まだカテゴリがありません。管理画面（/admin/interop）から追加してください。
+          まだカテゴリがありません。教育のひろば 管理（/admin/forum）から追加してください。
         </div>
       ) : view.kind === "map" ? (
         <>
+          {mapMode === "3d" ? (
+            <ForumGalaxy3D
+              centerLabel={centerLabelOverride?.trim() || (isGiinKaikanCenter ? "教育AIサミット2026＠衆議院第一議員会館" : interopCat?.name)}
+              topics={dbTopics ?? INTEROP_PRIORITY_TOPICS}
+              axisConfig={axis.config}
+              onSelectCenter={() => { if (interopCat) handleSelectFromMap(interopCat); }}
+              onSelectTopic={handleSelectTopic}
+            />
+          ) : (
           <InteropPuyoBubbleMap
             interopCat={interopCat}
-            centerLabel={centerLabelOverride?.trim() || (isGiinKaikanCenter ? "教育AIサミット＠衆議院第一議員会館" : interopCat?.name)}
+            centerLabel={centerLabelOverride?.trim() || (isGiinKaikanCenter ? "教育AIサミット2026＠衆議院第一議員会館" : interopCat?.name)}
             groupFilter={groupParam ?? undefined}
             initialScale={initialScale}
             activityByRoom={activityByRoom}
@@ -526,22 +568,27 @@ export function InteropExplorer({
             onSelectCategory={handleSelectFromMap}
             onSelectTopic={handleSelectTopic}
           />
-          <div className="pointer-events-none absolute inset-x-0 top-16 z-20 hidden justify-center px-4 sm:top-20 sm:flex">
-            <div
-              className="flex items-center gap-2 rounded-full px-4 py-2 text-center text-[12px] font-medium text-white/90 sm:text-sm"
-              style={{
-                background: "rgba(8,11,32,0.45)",
-                border: "1px solid rgba(255,255,255,0.2)",
-                backdropFilter: "blur(8px)",
-              }}
-            >
-              <Hand
-                className="h-4 w-4 shrink-0 text-white/70"
-                style={{ animation: "itmBob 1.6s ease-in-out infinite" }}
-              />
-              {guideText}
+          )}
+          {/* 3D ギャラクシーは独自の操作ヒント＋凡例を持つため、汎用の上部案内ピルは 2D 時のみ表示。
+              guideText が空なら案内ピル自体を出さない（ハブ/トピックのタップ導線は自明なので既定で非表示）。 */}
+          {mapMode !== "3d" && guideText.trim() && (
+            <div className="pointer-events-none absolute inset-x-0 top-16 z-20 hidden justify-center px-4 sm:top-20 sm:flex">
+              <div
+                className="flex items-center gap-2 rounded-full px-4 py-2 text-center text-[12px] font-medium text-white/90 sm:text-sm"
+                style={{
+                  background: "rgba(8,11,32,0.45)",
+                  border: "1px solid rgba(255,255,255,0.2)",
+                  backdropFilter: "blur(8px)",
+                }}
+              >
+                <Hand
+                  className="h-4 w-4 shrink-0 text-white/70"
+                  style={{ animation: "itmBob 1.6s ease-in-out infinite" }}
+                />
+                {guideText}
+              </div>
             </div>
-          </div>
+          )}
           {groupParam && (
             <button
               type="button"
@@ -580,7 +627,7 @@ export function InteropExplorer({
           />
           {/* 自由記入コミュニティトピック（ハブ下部フローティングストリップ） */}
           <div
-            className="absolute inset-x-0 bottom-5 z-30 flex items-center gap-2 overflow-x-auto px-4 pb-1 sm:bottom-7"
+            className="absolute inset-x-0 bottom-2 z-40 flex items-center gap-2 overflow-x-auto px-4 pb-1 sm:bottom-3"
             style={{ scrollbarWidth: "none" }}
           >
             <span className="flex-none whitespace-nowrap text-[11px] font-semibold text-white/45 pr-0.5">自由に書く</span>
@@ -608,7 +655,7 @@ export function InteropExplorer({
         <InteropSubOrbit
           centerLabel={view.topic.category}
           centerIcon={MessageCircle}
-          centerHint={`${view.topic.topics.length}つの論点 · タップで井戸端へ`}
+          centerHint={`${view.topic.topics.length}つの論点 · タップでひろばへ`}
           accent={view.topic.color}
           items={view.topic.topics.map((t, idx) => {
             const topicId = `${view.topic.roomId}-t${idx + 1}`;
@@ -633,25 +680,32 @@ export function InteropExplorer({
           <Loader2 className="h-6 w-6 animate-spin" />
         </div>
       ) : (
-        <InteropSubOrbit
-          centerLabel={view.cat.name}
-          centerIcon={iconFor(view.cat.slug)}
+        // 一般カテゴリ：アイコン中心の周回ではなく一覧表示。行タップで掲示板/論点（または外部リンク）へ。
+        <InteropCategoryList
+          title={view.cat.name}
           accent={view.cat.color || "#9fb4e8"}
-          items={subCategories.map((sub) => ({
-            id: sub.id,
-            name: sub.name,
-            icon: MessageCircle,
-            accentColor: view.cat.color || "#9fb4e8",
-            stats: activityBySub.get(sub.id) ?? EMPTY_STATS,
-            onActivate: () => router.push(interopBoardPath(sub.id)),
-          }))}
+          items={subCategories.map((sub) => {
+            const stats = activityBySub.get(sub.id) ?? EMPTY_STATS;
+            return {
+              id: sub.id,
+              name: sub.name,
+              description: sub.description,
+              postCount: stats.postCount,
+              participantCount: stats.participantCount,
+              isLink: !!sub.linkUrl?.trim(),
+            };
+          })}
+          onSelect={(item) => {
+            const sub = subCategories.find((s) => s.id === item.id);
+            if (sub) openSubCategory(sub);
+          }}
           backLabel="インタロップに戻る"
           onBack={() => setView({ kind: "hub" })}
         />
       )}
 
       {/* 来場者向けAIチャット（ログイン不要・全ビュー共通）。今見ているビューを文脈として渡す。
-          井戸端会議・ホーム埋め込みでは showChat=false で非表示（fixed配置のはみ出し回避）。 */}
+          教育のひろば・ホーム埋め込みでは showChat=false で非表示（fixed配置のはみ出し回避）。 */}
       {showChat && (
         <InteropChatWidget
           context={

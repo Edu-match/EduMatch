@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 
 export const metadata = {
-  title: "AIナビゲーターご利用上の留意点 | エデュマッチ",
+  title: "AIナビゲーターご利用上の留意点 | AIUEO BASE",
   description: "本サイトのAIナビゲーターのご利用にあたっての留意事項をご確認ください。",
 };
 
@@ -31,7 +31,7 @@ export default function AiNavigatorDisclaimerPage() {
         <CardContent className="p-6 md:p-8">
           <div className="prose prose-sm max-w-none text-foreground space-y-4">
             <p>
-              本サイトのAIナビゲーターは、エデュマッチが提供する教育サービス・ICTツール等の情報検索・相談支援の補助機能です。
+              本サイトのAIナビゲーターは、AIUEO BASEが提供する教育サービス・ICTツール等の情報検索・相談支援の補助機能です。
             </p>
             <p>
               本AIによる応答は、教育サービス選びや情報整理の参考を目的に自動生成されたものであり、内容の正確性・最新性・完全性を保証するものではありません。回答内容に基づく最終的な判断（資料請求・契約・導入等）は、必ず各サービス提供元の公式情報・担当者への確認を行ってください。

@@ -3,7 +3,8 @@ import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { effectiveIsCorporateProfile } from "@/lib/manual-profile-kind";
 import { syncExtensionTablesForRegistrationKind } from "@/lib/registration-profile";
-import { rateLimitResponse } from "@/lib/security";
+import { z } from "zod";
+import { rateLimitResponse, verifyOrigin } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
@@ -35,13 +36,30 @@ export const LOGIN_CREDENTIALS_HINT =
 
 const LOGIN_RATE_LIMIT = { windowMs: 15 * 60 * 1000, max: 5 };
 
+// 個別の未入力エラーメッセージは既存の手動チェックで返すため、ここでは型と上限のみ検証する
+const loginBodySchema = z.object({
+  email: z.string().max(320).optional(),
+  password: z.string().max(200).optional(),
+  userType: z.string().max(20).optional(),
+});
+
 export async function POST(request: NextRequest) {
+  const csrf = verifyOrigin(request);
+  if (csrf) return csrf;
+
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
   const rl = rateLimitResponse(`login:${ip}`, LOGIN_RATE_LIMIT);
   if (rl.limited) return rl.response;
 
   try {
-    const { email, password, userType } = await request.json();
+    const parsed = loginBodySchema.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "入力内容が正しくありません" },
+        { status: 400 }
+      );
+    }
+    const { email, password, userType } = parsed.data;
 
     if (!email || !password) {
       return NextResponse.json(

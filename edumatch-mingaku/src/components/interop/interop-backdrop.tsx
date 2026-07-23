@@ -5,28 +5,17 @@ import type { InteropThemeMode } from "@/lib/interop-settings";
 
 type Period = "dawn" | "day" | "dusk" | "night";
 
-// ── シティスケープ（24時間帯別リアルデータ棒グラフ×ビル型） ───────────
+// ── 丘陵シルエット（24時間帯別リアルデータ×木/花の高さ） ───────────
 
-type BuildPalette = { fill: string; stroke: string; window: string; glow: string; accent: string };
-const BUILD_PALETTES: Record<Period, BuildPalette> = {
-  night: { fill: "rgba(20,35,90,0.28)", stroke: "rgba(120,160,255,0.40)", window: "rgba(255,240,160,0.70)", glow: "rgba(80,120,255,0.14)", accent: "rgba(140,190,255,0.55)" },
-  dawn:  { fill: "rgba(80,40,60,0.22)", stroke: "rgba(255,170,140,0.40)", window: "rgba(255,230,150,0.65)", glow: "rgba(200,100,80,0.12)", accent: "rgba(255,190,150,0.55)" },
-  day:   { fill: "rgba(40,80,150,0.14)", stroke: "rgba(180,220,255,0.32)", window: "rgba(255,255,255,0.60)", glow: "rgba(120,180,255,0.10)", accent: "rgba(180,220,255,0.50)" },
-  dusk:  { fill: "rgba(60,30,80,0.24)", stroke: "rgba(240,130,80,0.40)", window: "rgba(255,200,120,0.65)", glow: "rgba(180,80,60,0.14)", accent: "rgba(240,150,90,0.55)" },
+type NaturePalette = { hill: string; hillEdge: string; tree: string; treeTrunk: string; flower: string; grass: string };
+const NATURE_PALETTES: Record<Period, NaturePalette> = {
+  night: { hill: "rgba(15,35,50,0.85)", hillEdge: "rgba(40,70,100,0.50)", tree: "rgba(20,50,60,0.80)", treeTrunk: "rgba(30,25,20,0.70)", flower: "rgba(180,200,255,0.50)", grass: "rgba(25,60,50,0.60)" },
+  dawn:  { hill: "rgba(60,90,50,0.75)", hillEdge: "rgba(140,180,90,0.45)", tree: "rgba(50,100,40,0.80)", treeTrunk: "rgba(80,55,30,0.75)", flower: "rgba(255,200,140,0.70)", grass: "rgba(80,130,60,0.55)" },
+  day:   { hill: "rgba(70,140,60,0.70)", hillEdge: "rgba(120,190,80,0.40)", tree: "rgba(40,120,50,0.75)", treeTrunk: "rgba(90,65,35,0.80)", flower: "rgba(255,180,200,0.70)", grass: "rgba(90,160,70,0.50)" },
+  dusk:  { hill: "rgba(80,60,50,0.75)", hillEdge: "rgba(180,120,70,0.45)", tree: "rgba(50,70,40,0.80)", treeTrunk: "rgba(70,45,25,0.75)", flower: "rgba(255,160,100,0.65)", grass: "rgba(70,100,50,0.55)" },
 };
 
-const BAR_W = 3.83;
-const BAR_GAP = 0.35;
-const MIN_H = 4;
-const MAX_H = 31;
-
-function formatHourLabel(hour: number): string {
-  const suffix = hour < 12 ? "AM" : "PM";
-  const h12 = hour % 12;
-  return `${h12 === 0 ? 12 : h12} ${suffix}`;
-}
-
-function CityscapeLayer({ period }: { period: Period }) {
+function HillscapeLayer({ period }: { period: Period }) {
   const [hourly, setHourly] = useState<number[] | null>(null);
   const currentHour = new Date().getHours();
 
@@ -41,12 +30,11 @@ function CityscapeLayer({ period }: { period: Period }) {
     return () => { cancelled = true; };
   }, []);
 
-  const bp = BUILD_PALETTES[period];
+  const np = NATURE_PALETTES[period];
 
-  // フォールバック: データ未到着時はデコラティブな固定高さ
   const fallback = useMemo(
     () => Array.from({ length: 24 }, (_, i) =>
-      MIN_H + ((i * 1234567 + 3456789) % 1000) / 1000 * (MAX_H - MIN_H) * 0.6
+      4 + ((i * 1234567 + 3456789) % 1000) / 1000 * 18
     ),
     []
   );
@@ -54,121 +42,67 @@ function CityscapeLayer({ period }: { period: Period }) {
   const data = hourly ?? fallback;
   const maxCount = Math.max(1, ...data);
 
-  const bars = data.map((count, i) => {
-    const h = MIN_H + (MAX_H - MIN_H) * (count / maxCount);
-    const x = i * (BAR_W + BAR_GAP);
-    const isCurrent = i === currentHour;
-    return { x, h, count, isCurrent };
-  });
-
-  const midY = 33 - MAX_H * 0.55;
-
   return (
     <svg
       className="pointer-events-none absolute inset-x-0 bottom-0 w-full"
-      viewBox="0 0 100 36"
+      viewBox="0 0 100 30"
       preserveAspectRatio="none"
-      style={{ height: "min(28vh, 260px)" }}
+      style={{ height: "min(22vh, 200px)" }}
       aria-hidden
     >
-      <defs>
-        <linearGradient id="bldFill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={bp.stroke} stopOpacity={0.60} />
-          <stop offset="55%" stopColor={bp.fill} stopOpacity={0.75} />
-          <stop offset="100%" stopColor={bp.fill} stopOpacity={0.92} />
-        </linearGradient>
-        <linearGradient id="bldFillHot" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={bp.accent} stopOpacity={0.85} />
-          <stop offset="50%" stopColor={bp.stroke} stopOpacity={0.70} />
-          <stop offset="100%" stopColor={bp.fill} stopOpacity={0.88} />
-        </linearGradient>
-        <linearGradient id="bldShine" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="rgba(255,255,255,0.22)" />
-          <stop offset="45%" stopColor="rgba(255,255,255,0.06)" />
-          <stop offset="100%" stopColor="rgba(255,255,255,0.00)" />
-        </linearGradient>
-        <filter id="bldGlow" x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation="0.3" />
-        </filter>
-      </defs>
+      {/* なだらかな丘陵（ベジェ曲線） */}
+      <path
+        d="M0,28 C8,22 15,18 25,20 C35,22 40,15 50,16 C60,17 65,12 75,14 C85,16 92,20 100,18 L100,30 L0,30 Z"
+        fill={np.hill}
+      />
+      <path
+        d="M0,28 C8,22 15,18 25,20 C35,22 40,15 50,16 C60,17 65,12 75,14 C85,16 92,20 100,18"
+        fill="none"
+        stroke={np.hillEdge}
+        strokeWidth={0.3}
+      />
 
-      {/* グロー層（SVGガウシアンブラーは描画が重いので不使用。現在時刻のバーのみ強調） */}
-      {bars.map(({ x, h, isCurrent }, i) => (
-        <rect
-          key={`g${i}`}
-          x={x - 0.4} y={33 - h * 0.5}
-          width={BAR_W + 0.8} height={h * 0.5}
-          fill={isCurrent ? bp.accent : bp.glow}
-          opacity={isCurrent ? 0.55 : 0.35}
-        />
-      ))}
+      {/* 手前の丘 */}
+      <path
+        d="M0,30 C10,25 20,23 30,26 C40,29 50,22 60,24 C70,26 80,23 90,25 C95,26 100,28 100,30 Z"
+        fill={np.grass}
+      />
 
-      {/* ビル本体 */}
-      {bars.map(({ x, h, isCurrent }, i) => (
-        <g key={`b${i}`}>
-          <rect
-            x={x} y={33 - h}
-            width={BAR_W} height={h}
-            fill={isCurrent ? "url(#bldFillHot)" : "url(#bldFill)"}
-          />
-          {/* 左縁シャイン */}
-          <rect
-            x={x} y={33 - h}
-            width={BAR_W * 0.28} height={h}
-            fill="url(#bldShine)"
-          />
-          {/* 上端ハイライト */}
-          <line
-            x1={x} y1={33 - h}
-            x2={x + BAR_W} y2={33 - h}
-            stroke={isCurrent ? bp.accent : bp.stroke}
-            strokeWidth={isCurrent ? 0.28 : 0.15}
-          />
-          {/* 各時間帯ラベル（棒の先端） */}
-          <text
-            x={x + BAR_W / 2}
-            y={33 - h - 0.55}
-            textAnchor="middle"
-            fontSize={isCurrent ? 1.25 : 0.95}
-            fill={bp.accent}
-            opacity={isCurrent ? 0.92 : 0.58}
-            fontFamily="system-ui, sans-serif"
-            fontWeight={isCurrent ? 700 : 500}
-          >
-            {formatHourLabel(i)}
-          </text>
-        </g>
-      ))}
+      {/* 木（アクティビティに応じた高さ） */}
+      {data.map((count, i) => {
+        const h = 3 + 10 * (count / maxCount);
+        const x = 2 + i * 4.05;
+        const isCurrent = i === currentHour;
+        const treeH = h * 0.7;
+        const trunkH = h * 0.3;
+        const baseY = 26 - Math.sin(i * 0.6 + 1) * 3;
 
-      {/* 中間グリッドライン */}
-      <line x1={0} y1={midY} x2={100} y2={midY} stroke={bp.stroke} strokeWidth={0.18} strokeDasharray="1.5 1.5" opacity={0.35} />
-
-      {/* ベースライン */}
-      <line x1={0} y1={33} x2={100} y2={33} stroke={bp.accent} strokeWidth={0.22} opacity={0.55} />
-
-      {/* 窓（点灯パターン）。矩形数を抑えて描画を軽量化（点灯した窓のみ描画） */}
-      {bars.map(({ x, h }, bi) => {
-        const cols = Math.max(1, Math.floor(BAR_W / 1.9));
-        const rows = Math.max(1, Math.floor(h / 8));
-        const wx = BAR_W / (cols + 1);
-        const wy = h / (rows + 1);
-        const cells: ReactElement[] = [];
-        for (let r = 0; r < rows; r++) {
-          for (let c = 0; c < cols; c++) {
-            if ((bi * 7 + r * 3 + c * 5) % 9 === 0) continue; // 消灯はそもそも描画しない
-            cells.push(
-              <rect
-                key={`w${bi}-${r}-${c}`}
-                x={x + wx * (c + 0.65)}
-                y={33 - h + wy * (r + 0.7)}
-                width={0.32} height={0.52}
-                fill={BUILD_PALETTES[period].window}
-                opacity={0.55}
+        return (
+          <g key={i}>
+            {/* 幹 */}
+            <rect
+              x={x + 0.8} y={baseY - trunkH}
+              width={0.4} height={trunkH + 1}
+              fill={np.treeTrunk}
+              opacity={isCurrent ? 1 : 0.7}
+            />
+            {/* 樹冠（丸い緑） */}
+            <ellipse
+              cx={x + 1} cy={baseY - trunkH - treeH * 0.4}
+              rx={treeH * 0.35} ry={treeH * 0.45}
+              fill={np.tree}
+              opacity={isCurrent ? 0.95 : 0.7}
+            />
+            {/* 花（アクティブな時間帯のみ） */}
+            {isCurrent && (
+              <circle
+                cx={x + 1} cy={baseY - trunkH - treeH * 0.4 - treeH * 0.2}
+                r={0.35}
+                fill={np.flower}
               />
-            );
-          }
-        }
-        return cells;
+            )}
+          </g>
+        );
       })}
     </svg>
   );
@@ -176,67 +110,78 @@ function CityscapeLayer({ period }: { period: Period }) {
 
 /** 現在時刻から時間帯を判定 */
 function periodFromHour(h: number): Period {
-  if (h >= 4 && h < 5)  return "dusk";  // 4〜5時: 夕方と同じ配色
-  if (h >= 5 && h < 10) return "dawn";  // 5〜10時: 朝
-  if (h >= 10 && h < 15) return "day";  // 10〜15時: 昼
-  if (h >= 15 && h < 17) return "dusk"; // 15〜17時: 夕方
-  return "night";                        // 17〜翌4時: 夜
+  if (h >= 4 && h < 5)  return "dusk";
+  if (h >= 5 && h < 10) return "dawn";
+  if (h >= 10 && h < 15) return "day";
+  if (h >= 15 && h < 17) return "dusk";
+  return "night";
 }
 
 type Palette = {
   sky: string;
   horizon: string;
   haze?: string;
-  star: number;
+  cloudOpacity: number;
+  starOpacity: number;
   vignette: string;
 };
 
 const PALETTES: Record<Period, Palette> = {
   dawn: {
-    sky: "linear-gradient(180deg, #1b2350 0%, #3a2f63 38%, #7d4a72 62%, #c9737a 80%, #f0a878 92%, #f7c98b 100%)",
-    horizon: "radial-gradient(120% 60% at 50% 100%, rgba(255,205,150,0.55) 0%, rgba(255,150,110,0.25) 35%, transparent 70%)",
-    haze: "radial-gradient(80% 40% at 50% 88%, rgba(255,180,120,0.35) 0%, transparent 60%)",
-    star: 0.35,
-    vignette: "radial-gradient(ellipse 95% 95% at 50% 40%, transparent 58%, rgba(12,10,32,0.5) 100%)",
+    sky: "linear-gradient(180deg, #2a4a7a 0%, #5a7ab0 30%, #d4a574 60%, #f0c896 80%, #fce4b8 100%)",
+    horizon: "radial-gradient(120% 60% at 50% 100%, rgba(255,220,170,0.55) 0%, rgba(255,180,140,0.25) 35%, transparent 70%)",
+    haze: "radial-gradient(80% 40% at 50% 88%, rgba(255,200,150,0.30) 0%, transparent 60%)",
+    cloudOpacity: 0.6,
+    starOpacity: 0.15,
+    vignette: "radial-gradient(ellipse 95% 95% at 50% 40%, transparent 62%, rgba(30,20,10,0.3) 100%)",
   },
   day: {
-    sky: "linear-gradient(180deg, #1f4ea0 0%, #2f6bc0 40%, #4f93d8 72%, #8fc1ea 100%)",
-    horizon: "radial-gradient(120% 55% at 50% 100%, rgba(200,230,255,0.4) 0%, transparent 65%)",
-    star: 0,
-    vignette: "radial-gradient(ellipse 95% 95% at 50% 45%, transparent 62%, rgba(10,30,70,0.4) 100%)",
+    sky: "linear-gradient(180deg, #3a8fd4 0%, #5aabee 35%, #7ec8f8 65%, #b8e0f8 85%, #e3f2fd 100%)",
+    horizon: "radial-gradient(120% 55% at 50% 100%, rgba(200,235,255,0.4) 0%, transparent 65%)",
+    cloudOpacity: 0.8,
+    starOpacity: 0,
+    vignette: "radial-gradient(ellipse 95% 95% at 50% 45%, transparent 65%, rgba(20,60,120,0.2) 100%)",
   },
   dusk: {
-    sky: "linear-gradient(180deg, #1a1f4a 0%, #45285f 32%, #8a3a63 54%, #d65a4e 74%, #f0894a 88%, #f6b35f 100%)",
-    horizon: "radial-gradient(130% 62% at 50% 100%, rgba(255,170,90,0.6) 0%, rgba(220,90,70,0.3) 38%, transparent 72%)",
-    haze: "radial-gradient(90% 45% at 50% 90%, rgba(255,140,80,0.4) 0%, transparent 62%)",
-    star: 0.4,
-    vignette: "radial-gradient(ellipse 95% 95% at 50% 42%, transparent 56%, rgba(14,8,30,0.55) 100%)",
+    sky: "linear-gradient(180deg, #3a4a8a 0%, #6a4a7a 28%, #c06858 54%, #e88a50 74%, #f0b060 88%, #fcd088 100%)",
+    horizon: "radial-gradient(130% 62% at 50% 100%, rgba(255,180,100,0.5) 0%, rgba(230,100,70,0.25) 38%, transparent 72%)",
+    haze: "radial-gradient(90% 45% at 50% 90%, rgba(255,160,100,0.35) 0%, transparent 62%)",
+    cloudOpacity: 0.5,
+    starOpacity: 0.2,
+    vignette: "radial-gradient(ellipse 95% 95% at 50% 42%, transparent 58%, rgba(30,15,10,0.4) 100%)",
   },
   night: {
-    sky: "linear-gradient(180deg, #05060f 0%, #070b1e 45%, #0b1030 75%, #121641 100%)",
-    horizon: "radial-gradient(120% 55% at 50% 100%, rgba(60,80,150,0.32) 0%, transparent 68%)",
-    star: 0.85,
-    vignette: "radial-gradient(ellipse 95% 95% at 50% 46%, transparent 60%, rgba(2,3,12,0.6) 100%)",
+    sky: "linear-gradient(180deg, #0c1a3a 0%, #152550 40%, #1e3a60 70%, #2a4a70 100%)",
+    horizon: "radial-gradient(120% 55% at 50% 100%, rgba(40,70,120,0.35) 0%, transparent 68%)",
+    cloudOpacity: 0.25,
+    starOpacity: 0.7,
+    vignette: "radial-gradient(ellipse 95% 95% at 50% 46%, transparent 60%, rgba(5,10,25,0.5) 100%)",
   },
 };
 
 const FX = `
-  @keyframes itmTwinkle { 0%,100% { opacity: 0.15; } 50% { opacity: 1; } }
-  @keyframes itmShoot {
-    0% { transform: translate(0,0) rotate(18deg); opacity: 0; }
-    8% { opacity: 1; }
-    20% { transform: translate(-220px,120px) rotate(18deg); opacity: 0; }
-    100% { transform: translate(-220px,120px) rotate(18deg); opacity: 0; }
+  @keyframes nlCloud {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+  @keyframes nlTwinkle { 0%,100% { opacity: 0.15; } 50% { opacity: 1; } }
+  @keyframes nlFirefly {
+    0%,100% { opacity: 0; transform: translateY(0); }
+    30% { opacity: 0.8; }
+    70% { opacity: 0.6; }
+    100% { transform: translateY(-20px); opacity: 0; }
+  }
+  @keyframes nlBird {
+    0% { transform: translateX(-20px); }
+    100% { transform: translateX(calc(100vw + 40px)); }
   }
 `;
 
-/** 時間帯で配色が変わる、朝日/夕陽/月の美しい背景 */
 export function InteropBackdrop({
   themeMode = "auto",
   showCityscape = true,
 }: {
   themeMode?: InteropThemeMode;
-  /** 下部のシティスケープ（時間帯別アクティビティの棒/ビル）を出すか。管理画面など可読性優先の面では false。 */
   showCityscape?: boolean;
 }) {
   const [period, setPeriod] = useState<Period>(
@@ -254,19 +199,37 @@ export function InteropBackdrop({
   }, [themeMode]);
 
   const pal = PALETTES[period];
-  const isNightLike = pal.star > 0;
+  const showStars = pal.starOpacity > 0;
+  const showClouds = pal.cloudOpacity > 0.1;
 
-  const stars = useMemo(
-    () =>
-      Array.from({ length: 40 }, () => ({
-        left: Math.random() * 100,
-        top: Math.random() * 72,
-        d: 0.8 + Math.random() * 1.7,
-        delay: Math.random() * 6,
-        dur: 3 + Math.random() * 4,
-      })),
-    []
-  );
+  const elements = useMemo(() => {
+    let seed = 42;
+    const rand = () => {
+      seed = (seed * 16807 + 0) % 2147483647;
+      return (seed - 1) / 2147483646;
+    };
+    const stars = Array.from({ length: 30 }, () => ({
+      left: rand() * 100,
+      top: rand() * 55,
+      d: 0.6 + rand() * 1.4,
+      delay: rand() * 6,
+      dur: 3 + rand() * 4,
+    }));
+    const clouds = Array.from({ length: 6 }, () => ({
+      top: 5 + rand() * 40,
+      w: 80 + rand() * 160,
+      h: 20 + rand() * 30,
+      speed: 60 + rand() * 80,
+      offset: rand() * 100,
+    }));
+    const fireflies = Array.from({ length: 8 }, () => ({
+      left: 10 + rand() * 80,
+      bottom: 5 + rand() * 25,
+      delay: rand() * 8,
+      dur: 4 + rand() * 5,
+    }));
+    return { stars, clouds, fireflies };
+  }, []);
 
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -275,42 +238,96 @@ export function InteropBackdrop({
       {/* 空 */}
       <div className="absolute inset-0 transition-[background] duration-1000" style={{ background: pal.sky }} />
 
-      {/* 星 */}
-      {isNightLike &&
-        stars.map((s, i) => (
+      {/* 雲 */}
+      {showClouds &&
+        elements.clouds.map((c, i) => (
+          <div
+            key={`cloud-${i}`}
+            className="absolute"
+            style={{
+              top: `${c.top}%`,
+              left: `${c.offset}%`,
+              width: c.w * 2,
+              animation: `nlCloud ${c.speed}s linear infinite`,
+            }}
+          >
+            <div
+              className="rounded-full"
+              style={{
+                width: c.w,
+                height: c.h,
+                background: `radial-gradient(ellipse at 50% 60%, rgba(255,255,255,${pal.cloudOpacity}) 0%, rgba(255,255,255,${pal.cloudOpacity * 0.3}) 60%, transparent 80%)`,
+                filter: "blur(4px)",
+              }}
+            />
+            <div
+              className="rounded-full -mt-3 ml-6"
+              style={{
+                width: c.w * 0.7,
+                height: c.h * 0.8,
+                background: `radial-gradient(ellipse at 50% 60%, rgba(255,255,255,${pal.cloudOpacity * 0.7}) 0%, transparent 75%)`,
+                filter: "blur(5px)",
+              }}
+            />
+          </div>
+        ))}
+
+      {/* 星（夜・夕方のみ） */}
+      {showStars &&
+        elements.stars.map((s, i) => (
           <span
-            key={i}
+            key={`star-${i}`}
             className="absolute rounded-full bg-white"
             style={{
               left: `${s.left}%`,
               top: `${s.top}%`,
               width: s.d,
               height: s.d,
-              opacity: pal.star,
-              animation: `itmTwinkle ${s.dur}s ease-in-out ${s.delay}s infinite`,
+              opacity: pal.starOpacity,
+              animation: `nlTwinkle ${s.dur}s ease-in-out ${s.delay}s infinite`,
             }}
           />
         ))}
 
-      {/* 流れ星 */}
-      {period === "night" && (
-        <span
-          className="absolute h-px w-24"
+      {/* 蛍（夜のみ） */}
+      {period === "night" &&
+        elements.fireflies.map((f, i) => (
+          <span
+            key={`fly-${i}`}
+            className="absolute rounded-full"
+            style={{
+              left: `${f.left}%`,
+              bottom: `${f.bottom}%`,
+              width: 4,
+              height: 4,
+              background: "radial-gradient(circle, rgba(180,255,160,0.9) 0%, rgba(120,255,100,0.3) 50%, transparent 70%)",
+              animation: `nlFirefly ${f.dur}s ease-in-out ${f.delay}s infinite`,
+            }}
+          />
+        ))}
+
+      {/* 鳥のシルエット（昼のみ） */}
+      {period === "day" && (
+        <div
+          className="absolute"
           style={{
-            left: "82%",
-            top: "16%",
-            background: "linear-gradient(90deg, rgba(255,255,255,0.9), transparent)",
-            animation: "itmShoot 9s ease-in 3s infinite",
+            top: "18%",
+            left: 0,
+            fontSize: 12,
+            opacity: 0.25,
+            animation: "nlBird 25s linear 5s infinite",
           }}
-        />
+        >
+          ~&nbsp;&nbsp;~
+        </div>
       )}
 
       {/* 地平線 */}
       <div className="absolute inset-0" style={{ background: pal.horizon }} />
       {pal.haze && <div className="absolute inset-0" style={{ background: pal.haze }} />}
 
-      {/* 24時間帯別リアルデータ シティスケープ（可読性優先の面では非表示） */}
-      {showCityscape && <CityscapeLayer period={period} />}
+      {/* 丘陵シルエット */}
+      {showCityscape && <HillscapeLayer period={period} />}
 
       {/* ビネット */}
       <div className="absolute inset-0" style={{ background: pal.vignette }} />

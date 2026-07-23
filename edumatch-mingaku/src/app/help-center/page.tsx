@@ -192,7 +192,7 @@ export default function HelpCenterPage() {
                 <Video className="h-12 w-12 text-muted-foreground" />
               </div>
               <p className="text-sm text-muted-foreground mb-4">
-                エデュマッチの使い方を動画でわかりやすく解説しています。
+                AIUEO BASEの使い方を動画でわかりやすく解説しています。
               </p>
               <Button variant="outline" className="w-full">
                 動画一覧を見る

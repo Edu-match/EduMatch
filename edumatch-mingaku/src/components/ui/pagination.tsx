@@ -46,12 +46,12 @@ export function Pagination({
         <span className="font-semibold text-foreground">{startItem}〜{endItem}</span> 件を表示
       </p>
 
-      <div className="flex items-center gap-1">
+      <div className="flex flex-wrap items-center justify-center gap-1.5">
         {/* 最初のページ */}
         <Button
           variant="outline"
           size="icon"
-          className="h-8 w-8"
+          className="size-11"
           onClick={() => onPageChange(1)}
           disabled={currentPage === 1}
         >
@@ -62,7 +62,7 @@ export function Pagination({
         <Button
           variant="outline"
           size="icon"
-          className="h-8 w-8"
+          className="size-11"
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
         >
@@ -80,7 +80,7 @@ export function Pagination({
               key={page}
               variant={currentPage === page ? "default" : "outline"}
               size="icon"
-              className="h-8 w-8 text-sm"
+              className="size-11 text-sm"
               onClick={() => onPageChange(page as number)}
             >
               {page}
@@ -92,7 +92,7 @@ export function Pagination({
         <Button
           variant="outline"
           size="icon"
-          className="h-8 w-8"
+          className="size-11"
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
         >
@@ -103,7 +103,7 @@ export function Pagination({
         <Button
           variant="outline"
           size="icon"
-          className="h-8 w-8"
+          className="size-11"
           onClick={() => onPageChange(totalPages)}
           disabled={currentPage === totalPages}
         >

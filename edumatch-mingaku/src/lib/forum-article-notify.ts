@@ -50,7 +50,7 @@ export async function buildForumTranscriptMarkdown(
     },
   });
 
-  let buf = `# 井戸端会議「${room.name}」\n\n`;
+  let buf = `# 教育のひろば「${room.name}」\n\n`;
   buf += `## 今週のお題\n${room.weekly_topic}\n\n---\n\n`;
   for (const p of posts) {
     if (p.author_name === FORUM_AI_FACILITATOR_NAME) continue;

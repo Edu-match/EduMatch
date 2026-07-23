@@ -120,7 +120,7 @@ export function FacesAdminClient() {
   return (
     <div className="container max-w-4xl space-y-6 py-8">
       <div>
-        <h1 className="text-xl font-bold">井戸端：面の固定コンテンツ・炎マーク</h1>
+        <h1 className="text-xl font-bold">ひろば：面の固定コンテンツ・炎マーク</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           大カテゴリ×面（記事/サービス/動画/イベント）に固定表示するコンテンツと、炎マークの手動設定を行います。
         </p>

@@ -13,6 +13,7 @@ import { Pagination } from "@/components/ui/pagination";
 import { Search, ExternalLink } from "lucide-react";
 import { AddToRequestListButton } from "@/components/request-list/add-to-request-list-button";
 import type { ServiceForList } from "./page";
+import { Reveal } from "@/components/home/reveal";
 import { isFreeServiceSortOrder } from "@/lib/service-material-request";
 import { ServiceCategoryBadges } from "@/components/services/service-category-badges";
 
@@ -76,9 +77,9 @@ export function ServicesClient({
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
       {/* ヘッダーセクション */}
       <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-background border-b">
-        <div className="container py-6 md:py-12">
+        <div className="container py-8 md:py-12">
           <div className="max-w-3xl">
-            <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold mb-2 md:mb-4 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+            <h1 className="display-title text-3xl md:text-4xl lg:text-5xl mb-2 md:mb-4 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
               {t("title")}
             </h1>
             <p className="text-base md:text-lg text-muted-foreground">
@@ -90,7 +91,8 @@ export function ServicesClient({
 
       <div className="container py-8">
         {/* 検索・フィルターエリア */}
-        <Card className="mb-6 shadow-lg border-2">
+        <Reveal variant="fade-in">
+        <Card className="mb-6 shadow-sm border">
           <CardContent className="p-4 md:p-6">
             <div className="space-y-4">
               {/* 検索バー */}
@@ -105,7 +107,8 @@ export function ServicesClient({
               </div>
 
               {/* カテゴリフィルター */}
-              <div className="flex items-center gap-2 pb-2 overflow-x-auto scrollbar-hide" style={{ WebkitOverflowScrolling: "touch" }}>
+              {/* 横スクロールのチップ列: スクロールバーは隠し、右端フェードで「続きがある」ことを示す */}
+              <div className="flex items-center gap-2 pb-2 overflow-x-auto scrollbar-hide [mask-image:linear-gradient(to_right,black_calc(100%-32px),transparent)]" style={{ WebkitOverflowScrolling: "touch" }}>
                 <span className="text-sm font-medium text-muted-foreground whitespace-nowrap flex-shrink-0">
                   {t("categoryLabel")}
                 </span>
@@ -113,7 +116,7 @@ export function ServicesClient({
                   variant={selectedCategory === "all" ? "default" : "outline"}
                   size="sm"
                   onClick={() => setSelectedCategory("all")}
-                  className="transition-all hover:scale-105 whitespace-nowrap flex-shrink-0"
+                  className="min-h-11 transition-all hover:scale-105 whitespace-nowrap flex-shrink-0"
                 >
                   {t("all")}
                 </Button>
@@ -123,7 +126,7 @@ export function ServicesClient({
                     variant={selectedCategory === category ? "default" : "outline"}
                     size="sm"
                     onClick={() => setSelectedCategory(category)}
-                    className="transition-all hover:scale-105 whitespace-nowrap flex-shrink-0"
+                    className="min-h-11 transition-all hover:scale-105 whitespace-nowrap flex-shrink-0"
                   >
                     {localizeServiceCategory(category, locale)}
                   </Button>
@@ -133,8 +136,7 @@ export function ServicesClient({
               {/* 検索結果件数 */}
               <div className="flex items-center justify-between text-sm pt-2 border-t">
                 <span className="text-muted-foreground">
-                  <span className="font-bold text-primary text-lg">{filteredServices.length}</span>
-                  <span className="ml-1">{t("foundCount")}</span>
+                  {t("foundCount", { count: filteredServices.length })}
                 </span>
                 {searchQuery && (
                   <Button
@@ -150,6 +152,7 @@ export function ServicesClient({
             </div>
           </CardContent>
         </Card>
+        </Reveal>
 
         {/* ページネーション（上部） */}
         <Pagination
@@ -163,14 +166,13 @@ export function ServicesClient({
         {/* サービス一覧グリッド */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6 mb-8">
           {paginatedServices.map((service, index) => (
+            <Reveal key={service.id} delay={index * 50} enabled={index < 6} className="h-full">
             <Link
-              key={service.id}
               href={`/services/${service.id}`}
               prefetch={false}
               className="group block h-full"
-              style={{ animationDelay: `${index * 0.05}s` }}
             >
-              <Card className="h-full overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 border-2 hover:border-primary/50 bg-card">
+              <Card className="card-lift h-full overflow-hidden border-2 hover:border-primary/50 bg-card">
                 {/* 画像エリア */}
                 <div className="relative w-full aspect-video overflow-hidden bg-muted flex items-center justify-center">
                   <ThumbnailOrTitle
@@ -246,6 +248,7 @@ export function ServicesClient({
                 </CardContent>
               </Card>
             </Link>
+            </Reveal>
           ))}
         </div>
 

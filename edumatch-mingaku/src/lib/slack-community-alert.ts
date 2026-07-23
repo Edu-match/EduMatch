@@ -1,11 +1,11 @@
 /**
- * 井戸端会議まわりのモデレーション通知用。
+ * 教育のひろばまわりのモデレーション通知用。
  * Slack の無料ワークスペースでも Incoming Webhooks は利用可能（ワークスペース管理者がアプリを承認する必要あり）。
  * 有料プランは不要。
  */
 
 export type SlackCommunityAlertPayload = {
-  /** 機能名（例: "井戸端会議" / "動画コメント"）。省略時は "井戸端会議" */
+  /** 機能名（例: "教育のひろば" / "動画コメント"）。省略時は "教育のひろば" */
   featureLabel?: string;
   kindLabel: string;
   /** 掲載可否に関わらず運営が知りたい要約（日本語） */
@@ -37,7 +37,7 @@ export async function sendSlackCommunityAlert(
   webhookUrl: string,
   payload: SlackCommunityAlertPayload
 ): Promise<void> {
-  const featureLabel = payload.featureLabel?.trim() || "井戸端会議";
+  const featureLabel = payload.featureLabel?.trim() || "教育のひろば";
   const toneJa = payload.toneFlag && payload.toneFlag !== "ok" ? TONE_LABEL_JA[payload.toneFlag] : null;
   const header = payload.blocked
     ? `【${featureLabel}】投稿ブロック`

@@ -8,7 +8,14 @@ import { SignupForm } from "@/components/auth/signup-form";
 import { getTranslations } from "next-intl/server";
 
 function safeRedirect(next: string | undefined): string {
-  if (typeof next !== "string" || !next.startsWith("/") || next.startsWith("//")) {
+  // "//host" のプロトコル相対URLに加え、ブラウザが "/" に正規化する "\" 混入も拒否する
+  // （例: "/\evil.com" は遷移時に "//evil.com" となり外部へ飛ぶオープンリダイレクトの余地）
+  if (
+    typeof next !== "string" ||
+    !next.startsWith("/") ||
+    next.startsWith("//") ||
+    next.includes("\\")
+  ) {
     return "/";
   }
   return next;
@@ -17,9 +24,11 @@ function safeRedirect(next: string | undefined): string {
 async function LoginPageContent({
   redirectTo,
   defaultTab,
+  message,
 }: {
   redirectTo: string;
   defaultTab: "login" | "signup";
+  message?: string;
 }) {
   const t = await getTranslations("auth");
   const tCommon = await getTranslations("common");
@@ -39,7 +48,13 @@ async function LoginPageContent({
           </p>
         </div>
 
-        <Card className="border shadow-lg rounded-xl overflow-hidden bg-card">
+        {message && (
+          <p className="mb-4 rounded-lg bg-accent/50 px-4 py-2 text-center text-sm font-medium text-accent-foreground">
+            {message}
+          </p>
+        )}
+
+        <Card className="border shadow-md rounded-xl overflow-hidden bg-card">
           <CardHeader className="space-y-1 pb-2 pt-6 px-6">
             <CardTitle className="text-center text-xl font-semibold">
               {t("cardTitle")}
@@ -84,10 +99,16 @@ async function LoginPageContent({
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string; tab?: string }>;
+  searchParams: Promise<{
+    next?: string;
+    redirect_to?: string;
+    tab?: string;
+    message?: string;
+  }>;
 }) {
   const sp = await searchParams;
-  const redirectTo = safeRedirect(sp.next);
+  // 戻り先は next を正とし、旧リンク互換のため redirect_to も受け付ける
+  const redirectTo = safeRedirect(sp.next ?? sp.redirect_to);
   const defaultTab = sp.tab === "signup" ? "signup" : "login";
 
   return (
@@ -98,7 +119,11 @@ export default async function LoginPage({
         </div>
       }
     >
-      <LoginPageContent redirectTo={redirectTo} defaultTab={defaultTab} />
+      <LoginPageContent
+        redirectTo={redirectTo}
+        defaultTab={defaultTab}
+        message={sp.message}
+      />
     </Suspense>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,17 @@ import { Search, Home, ArrowLeft, FileQuestion } from "lucide-react";
 
 export default function NotFound() {
   const router = useRouter();
-  
+  const [query, setQuery] = useState("");
+
+  const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const q = query.trim();
+    if (q) {
+      router.push(`/articles?q=${encodeURIComponent(q)}`);
+    }
+  };
+
+
   return (
     <div className="container py-16">
       <div className="max-w-2xl mx-auto text-center">
@@ -33,13 +44,19 @@ export default function NotFound() {
             <p className="text-sm text-muted-foreground mb-4">
               キーワードで検索
             </p>
-            <div className="flex gap-2">
+            <form onSubmit={handleSearch} className="flex gap-2">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="検索..." className="pl-10" />
+                <Input
+                  placeholder="検索..."
+                  className="pl-10"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  aria-label="記事を検索"
+                />
               </div>
-              <Button>検索</Button>
-            </div>
+              <Button type="submit">検索</Button>
+            </form>
           </CardContent>
         </Card>
 

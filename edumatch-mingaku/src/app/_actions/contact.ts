@@ -45,15 +45,15 @@ export async function submitContact(
     const resend = new Resend(apiKey);
     const fromRaw = process.env.RESEND_FROM_EMAIL?.trim();
     const from = fromRaw
-      ? (fromRaw.includes("<") ? fromRaw : `エデュマッチ <${fromRaw}>`)
-      : "エデュマッチ <onboarding@resend.dev>";
+      ? (fromRaw.includes("<") ? fromRaw : `AIUEO BASE <${fromRaw}>`)
+      : "AIUEO BASE <onboarding@resend.dev>";
 
     // 1. 運営への通知メール（reply_to で返信しやすくする）
     const adminResult = await resend.emails.send({
       from,
       to: EDUMATCH_INQUIRY_EMAIL,
       replyTo: email,
-      subject: `【エデュマッチ】お問い合わせ - ${category}（${inquiryId}）`,
+      subject: `【AIUEO BASE】お問い合わせ - ${category}（${inquiryId}）`,
       html: `
         <h2>お問い合わせがありました</h2>
         <p>以下の内容でお問い合わせが届いています。</p>
@@ -78,11 +78,11 @@ export async function submitContact(
     const userResult = await resend.emails.send({
       from,
       to: email,
-      subject: `【エデュマッチ】お問い合わせを受け付けました（${inquiryId}）`,
+      subject: `【AIUEO BASE】お問い合わせを受け付けました（${inquiryId}）`,
       html: `
         <h2>お問い合わせを受け付けました</h2>
         <p>${name} 様</p>
-        <p>エデュマッチへお問い合わせいただきありがとうございます。<br />以下の内容で受け付けました。</p>
+        <p>AIUEO BASEへお問い合わせいただきありがとうございます。<br />以下の内容で受け付けました。</p>
         <hr />
         <p><strong>問い合わせ番号：</strong> ${inquiryId}</p>
         <p><strong>種別：</strong> ${category}</p>
@@ -90,7 +90,7 @@ export async function submitContact(
         <div style="white-space: pre-wrap; background: #f5f5f5; padding: 12px; border-radius: 4px;">${message.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
         <hr />
         <p>担当者より、ご登録のメールアドレスに回答をお送りいたします。<br />通常2〜3営業日以内にご連絡いたします。</p>
-        <p style="color:#666;font-size:12px;margin-top:20px;">このメールはエデュマッチから自動送信されています。</p>
+        <p style="color:#666;font-size:12px;margin-top:20px;">このメールはAIUEO BASEから自動送信されています。</p>
       `,
     });
 

@@ -14,7 +14,7 @@ function safeRedirect(next: string | undefined): string {
   return next;
 }
 
-async function AuthLoginPageContent({ redirectTo }: { redirectTo: string }) {
+async function AuthLoginPageContent({ redirectTo, initialTab = "login" }: { redirectTo: string; initialTab?: "login" | "signup" }) {
   const t = await getTranslations("auth");
   const tCommon = await getTranslations("common");
 
@@ -28,16 +28,16 @@ async function AuthLoginPageContent({ redirectTo }: { redirectTo: string }) {
           >
             <span className="text-4xl font-bold text-primary tracking-tight">{tCommon("siteName")}</span>
           </Link>
-          <h1 className="text-2xl font-bold mb-2 text-foreground">{t("brandTitle")}</h1>
-          <p className="text-muted-foreground text-sm leading-relaxed">{t("brandSubtitle")}</p>
+          <h1 className="text-2xl font-bold mb-2 text-foreground">{initialTab === "signup" ? "新規登録" : t("brandTitle")}</h1>
+          <p className="text-muted-foreground text-sm leading-relaxed">{initialTab === "signup" ? "新しいアカウントを作成します" : t("brandSubtitle")}</p>
         </div>
 
         <Card className="border shadow-lg rounded-xl overflow-hidden bg-card">
           <CardHeader className="space-y-1 pb-2 pt-6 px-6">
-            <CardTitle className="text-center text-xl font-semibold">{t("cardTitle")}</CardTitle>
+            <CardTitle className="text-center text-xl font-semibold">{initialTab === "signup" ? "新規登録" : t("cardTitle")}</CardTitle>
           </CardHeader>
           <CardContent className="px-6 pb-6 pt-2">
-            <Tabs defaultValue="login" className="w-full">
+            <Tabs defaultValue={initialTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2 h-11 p-1 mb-6 rounded-lg bg-muted/60">
                 <TabsTrigger
                   value="login"
@@ -75,10 +75,11 @@ async function AuthLoginPageContent({ redirectTo }: { redirectTo: string }) {
 export default async function AuthLoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; tab?: string }>;
 }) {
   const sp = await searchParams;
   const redirectTo = safeRedirect(sp.next);
+  const initialTab = sp.tab === "signup" ? "signup" : "login";
 
   return (
     <Suspense
@@ -88,7 +89,7 @@ export default async function AuthLoginPage({
         </div>
       }
     >
-      <AuthLoginPageContent redirectTo={redirectTo} />
+      <AuthLoginPageContent redirectTo={redirectTo} initialTab={initialTab} />
     </Suspense>
   );
 }

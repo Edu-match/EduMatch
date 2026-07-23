@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentProfile } from "@/lib/auth";
+import { rateLimitResponse } from "@/lib/security";
+
+const AI_SUMMARY_RATE_LIMIT = { windowMs: 60 * 1000, max: 10 };
 import { fetchYoutubeMetadata } from "@/lib/youtube-metadata";
 import { fetchYoutubeCaptions } from "@/lib/youtube-transcript";
 import { fetchYoutubeVideoFrames } from "@/lib/youtube-video-frames";
@@ -35,6 +38,10 @@ export async function POST(
     if (!profile || profile.role !== "ADMIN") {
       return NextResponse.json({ error: "管理者権限が必要です" }, { status: 403 });
     }
+
+    // サマリー系レート制限（10回/分・ユーザー単位）
+    const rl = rateLimitResponse(`video-ai-summary:${profile.id}`, AI_SUMMARY_RATE_LIMIT);
+    if (rl.limited) return rl.response;
 
     const body = (await req.json().catch(() => ({}))) as {
       metadataOnly?: boolean;

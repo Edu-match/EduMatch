@@ -19,8 +19,8 @@ async function sendCertificateEmail(
   const resend = new Resend(apiKey)
   const fromRaw = process.env.RESEND_FROM_EMAIL?.trim()
   const from = fromRaw
-    ? fromRaw.includes('<') ? fromRaw : `エデュマッチ <${fromRaw}>`
-    : 'エデュマッチ <onboarding@resend.dev>'
+    ? fromRaw.includes('<') ? fromRaw : `AIUEO BASE <${fromRaw}>`
+    : 'AIUEO BASE <onboarding@resend.dev>'
 
   const certUrl = isPublic
     ? `${siteUrl}/ai-kentei/c/${shareSlug}`
@@ -56,7 +56,7 @@ async function sendCertificateEmail(
         </a>
 
         <p style="font-size: 13px; color: #9ca3af; margin-top: 32px;">
-          このメールはエデュマッチから自動送信されています。
+          このメールはAIUEO BASEから自動送信されています。
         </p>
       </div>
     `,

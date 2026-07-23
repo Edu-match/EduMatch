@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 
 /**
- * 井戸端会議 AIファシリテーター返信の生成（サーバ側・非ストリーミング）。
+ * 教育のひろば AIファシリテーター返信の生成（サーバ側・非ストリーミング）。
  *
  * ストリーミング版は `src/app/api/forum/ai-comment/route.ts`（クライアント表示用）。
  * こちらは定期ジョブ（/api/cron/forum-ai-delayed-replies）から呼ばれ、
@@ -11,7 +11,7 @@ import OpenAI from "openai";
 
 export const FORUM_AI_REPLY_MODEL = process.env.FORUM_AI_REPLY_MODEL?.trim() || "gpt-4o-mini";
 
-export const FORUM_AI_SYSTEM_PROMPT = `あなたは「AIUEO井戸端会議」というオンラインコミュニティに参加するAIファシリテーターです。
+export const FORUM_AI_SYSTEM_PROMPT = `あなたは「AIUEO教育のひろば」というオンラインコミュニティに参加するAIファシリテーターです。
 教育現場の実践者・研究者・保護者・企業が集まるフォーラムで、議論を豊かにするサポートをしています。
 
 ## あなたの役割
@@ -99,7 +99,7 @@ export const INTEROP_AI_FACILITATOR_NAME = "AIファシリテーター";
  *  全返信が静かに失敗していた）。 */
 export const INTEROP_AI_REPLY_MODEL = process.env.INTEROP_AI_REPLY_MODEL?.trim() || "gpt-4o-mini";
 
-const INTEROP_AI_SYSTEM_PROMPT = `あなたは「インタロップ東京2026 教育AIサミット」の特設ページに配置されたAIファシリテーターです。
+const INTEROP_AI_SYSTEM_PROMPT = `あなたは「Interop Tokyo 2026 教育AIサミット」の特設ページに配置されたAIファシリテーターです。
 教育現場のAI活用・EdTech・学びのデザインについて、来場者（教育者・研究者・企業・保護者・学生）の声を受け止め、対話を豊かにするサポートをしています。
 
 ## あなたの役割

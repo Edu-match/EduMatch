@@ -1,25 +1,32 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
+import { timingSafeCompare } from "@/lib/security";
 
 // --- Basic認証（本番公開前テスト用）---
 const BASIC_AUTH_ENABLED = process.env.NEXT_PUBLIC_IS_RELEASED !== "true";
 /** Vercel Preview（PR・ブランチURL）は環境変数未設定でもサイトを確認できるようにメンテ強制を外す */
 const SKIP_MAINTENANCE_FOR_VERCEL_PREVIEW =
   process.env.VERCEL_ENV === "preview";
-const BASIC_AUTH_USER = process.env.BASIC_AUTH_USER ?? "preview";
-const BASIC_AUTH_PASSWORD = process.env.BASIC_AUTH_PASSWORD ?? "preview2025";
+// 資格情報は環境変数必須。未設定時はデフォルト値にフォールバックせず常に認証拒否する
+const BASIC_AUTH_USER = process.env.BASIC_AUTH_USER;
+const BASIC_AUTH_PASSWORD = process.env.BASIC_AUTH_PASSWORD;
 const MAINTENANCE_BYPASS_COOKIE = "edumatch_maintenance_bypass";
 
-const AUTH_REALM = "EduMatch";
+const AUTH_REALM = "AIUEO BASE";
 
 function validateBasicAuth(request: NextRequest): boolean {
+  // 資格情報が未設定の場合は常に拒否
+  if (!BASIC_AUTH_USER || !BASIC_AUTH_PASSWORD) return false;
   const authHeader = request.headers.get("authorization");
   if (!authHeader?.startsWith("Basic ")) return false;
   try {
     const base64 = authHeader.slice(6);
     const decoded = atob(base64);
     const [user, password] = decoded.split(":", 2);
-    return user === BASIC_AUTH_USER && password === BASIC_AUTH_PASSWORD;
+    // 定数時間比較（タイミング攻撃対策）。両方を必ず評価する
+    const userOk = timingSafeCompare(user ?? "", BASIC_AUTH_USER);
+    const passOk = timingSafeCompare(password ?? "", BASIC_AUTH_PASSWORD);
+    return userOk && passOk;
   } catch {
     return false;
   }
@@ -60,6 +67,15 @@ function isNextSoftNavigation(request: NextRequest): boolean {
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  const host = request.headers.get("host") ?? "";
+
+  // Vercel プレビューURL (aiueo-base.vercel.app) → 本番カスタムドメイン (base.ai-ueo.org) へリダイレクト
+  if (host.includes("aiueo-base.vercel.app")) {
+    const url = request.nextUrl.clone();
+    url.host = "base.ai-ueo.org";
+    url.protocol = "https";
+    return NextResponse.redirect(url, { status: 301 });
+  }
 
   // 掲示板の正規URL /t/... → 実体 /interop/t/...（全ホスト共通）
   if (pathname === "/t" || pathname.startsWith("/t/")) {
@@ -70,7 +86,6 @@ export async function middleware(request: NextRequest) {
 
   // 特設サブドメイン（special.*）は常に総合案内所(/interop)を表示する。
   // 来場者向けの公開ページなので Basic認証/メンテナンスゲートはバイパスする。
-  const host = request.headers.get("host") ?? "";
   if (host.startsWith("special.")) {
     // URL を special.edu-match.com 側に寄せる：/interop と /interop/... へ来た来場者は
     // プレフィックスを取り除いた正規URLへ 308 リダイレクト（重複ページの混乱を解消）。
@@ -101,7 +116,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.rewrite(url);
   }
 
-  // 井戸端会議 常設ルート（/idobata）：実体は /interop と同一コンポーネント（並行ルート）。
+  // 教育のひろば 常設ルート（/idobata）：実体は /interop と同一コンポーネント（並行ルート）。
   // 段階移行のため /interop はそのまま残し、こちらは内部 rewrite のみ（URLは /idobata を維持）。
   if (pathname === "/idobata" || pathname.startsWith("/idobata/")) {
     const url = request.nextUrl.clone();
@@ -190,8 +205,9 @@ export async function middleware(request: NextRequest) {
 
   if (isProtectedPath && !user) {
     // 未認証ユーザーはログインページにリダイレクト
+    // （戻り先パラメータは他ページの /login?next= 慣例に統一）
     const redirectUrl = new URL("/login", request.url);
-    redirectUrl.searchParams.set("redirect_to", pathname);
+    redirectUrl.searchParams.set("next", pathname);
     redirectUrl.searchParams.set("message", "この機能を利用するにはログインが必要です");
     return NextResponse.redirect(redirectUrl);
   }

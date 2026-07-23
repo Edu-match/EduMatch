@@ -54,7 +54,7 @@ export default function ExamStartPage() {
     try {
       const response = await fetch('/api/ai-kentei/exam/start', { method: 'POST' })
       if (!response.ok) {
-        const data = await response.json()
+        const data = await response.json().catch(() => ({}))
         throw new Error(data.error ?? '試験の開始に失敗しました')
       }
       const data = await response.json()
@@ -166,7 +166,7 @@ export default function ExamStartPage() {
                   <li className="flex items-start gap-2">
                     <span className="text-primary mt-0.5">•</span>
                     <span>
-                      1問あたりの解答制限：<strong className="text-foreground font-semibold">{AI_KENTEI_QUESTION_TIME_SECONDS}秒</strong>
+                      1問あたりの制限時間：<strong className="text-foreground font-semibold">{AI_KENTEI_QUESTION_TIME_SECONDS}秒</strong>
                       （時間切れで自動的に次の問題へ進みます）
                     </span>
                   </li>

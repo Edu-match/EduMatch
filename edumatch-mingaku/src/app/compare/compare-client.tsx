@@ -20,7 +20,15 @@ import type { ServiceWithProvider } from "@/app/_actions/services";
 import { ThumbnailOrTitle } from "@/components/ui/thumbnail-or-title";
 
 // ─── チャートカラー ─────────────────────────────────────────────────────────
-const COLORS = ["#f97316", "#3b82f6", "#22c55e", "#a855f7", "#ef4444"] as const;
+// globals.css の --chart-1〜5（紫アンカー調和配色）と同値の oklch を移植し、
+// ブランド外の原色（オレンジ/緑/赤）ではなく紫基調に統一する。
+const COLORS = [
+  "oklch(0.48 0.24 278)",
+  "oklch(0.62 0.16 300)",
+  "oklch(0.58 0.14 250)",
+  "oklch(0.70 0.12 320)",
+  "oklch(0.55 0.10 230)",
+] as const;
 
 // ─── レーダーチャートの評価軸（6軸・AIスコア） ───────────────────────────────
 const AXES = [
@@ -68,12 +76,12 @@ function RadarChart({ scores, color, size = 180 }: { scores: Scores; color: stri
   return (
     <svg width={size} height={size} style={{ overflow: "visible" }}>
       {gridPolygons.map((pts, lvl) => (
-        <polygon key={lvl} points={pts} fill="none" stroke="#e5e7eb"
+        <polygon key={lvl} points={pts} fill="none" stroke="var(--border)"
           strokeWidth={lvl === levels - 1 ? 1.5 : 0.8} />
       ))}
       {AXES.map((_, i) => {
         const p = pt(i, r);
-        return <line key={i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke="#e5e7eb" strokeWidth={1} />;
+        return <line key={i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke="var(--border)" strokeWidth={1} />;
       })}
       <polygon points={dataPolygon} fill={color} fillOpacity={0.22}
         stroke={color} strokeWidth={2} strokeLinejoin="round" />
@@ -85,7 +93,7 @@ function RadarChart({ scores, color, size = 180 }: { scores: Scores; color: stri
         const p = pt(i, labelR);
         return (
           <text key={i} x={p.x} y={p.y} textAnchor="middle" dominantBaseline="middle"
-            fontSize={8} fontWeight="600" fill="#6b7280">
+            fontSize={10} fontWeight="600" fill="var(--muted-foreground)">
             {ax.label}
           </text>
         );
@@ -179,7 +187,7 @@ function ServiceSelector({
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
         <Input
-          placeholder="サービス名・説明で検索..."
+          placeholder="サービス名、機能、キーワードで検索..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-9"
@@ -194,7 +202,7 @@ function ServiceSelector({
             type="button"
             onClick={() => setCategory(cat)}
             className={cn(
-              "whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors border flex-shrink-0",
+              "whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors border flex-shrink-0 pointer-coarse:min-h-11",
               cat === category
                 ? "bg-primary text-primary-foreground border-primary"
                 : "bg-background text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
@@ -271,7 +279,7 @@ function ServiceSelector({
 
       {isFull && (
         <p className="text-xs text-center text-muted-foreground">
-          5つ選択済みです。カードをクリックすると解除できます。
+          5つのサービスを選択済みです（上限）。カードをクリックすると解除できます。
         </p>
       )}
     </div>
@@ -374,9 +382,12 @@ export default function CompareClientPage({ initialServices, variant = "full" }:
     const prevCaptureWidth = captureEl.style.width;
 
     // Step 1: テーブルのスクロールコンテナを展開
+    // （右端フェード用の mask も一時解除し、最終列が欠けないようにする）
     if (scrollEl) {
       scrollEl.style.overflow = "visible";
       scrollEl.style.width = "max-content";
+      scrollEl.style.setProperty("mask-image", "none");
+      scrollEl.style.setProperty("-webkit-mask-image", "none");
     }
 
     // Step 2: レイアウト更新を待つ
@@ -406,6 +417,8 @@ export default function CompareClientPage({ initialServices, variant = "full" }:
       if (scrollEl) {
         scrollEl.style.overflow = "";
         scrollEl.style.width = "";
+        scrollEl.style.removeProperty("mask-image");
+        scrollEl.style.removeProperty("-webkit-mask-image");
       }
       setExportingPng(false);
     }
@@ -521,9 +534,13 @@ export default function CompareClientPage({ initialServices, variant = "full" }:
                     <span className="text-[10px] font-normal text-muted-foreground">（AI分析中…）</span>
                   )}
                 </h2>
+                {/* モバイルは横スクロール、各カードは最低240px幅を確保して
+                    レーダーチャート(size=170)＋外周ラベルが潰れないようにする。
+                    sm以上は1frで均等分割し、これまで通り全カードを画面幅に収める。 */}
+                <div className="-mx-1 overflow-x-auto px-1">
                 <div
                   className="grid gap-4"
-                  style={{ gridTemplateColumns: `repeat(${Math.min(selected.length, 5)}, minmax(0, 1fr))` }}
+                  style={{ gridTemplateColumns: `repeat(${Math.min(selected.length, 5)}, minmax(240px, 1fr))` }}
                 >
                   {selected.map((s, i) => {
                     const sc = scoreFor(s.id);
@@ -538,7 +555,7 @@ export default function CompareClientPage({ initialServices, variant = "full" }:
                           {AXES.map((ax) => {
                             const val = sc[ax.key];
                             return (
-                              <div key={ax.key} className="flex items-center gap-1.5 text-[10px]">
+                              <div key={ax.key} className="flex items-center gap-1.5 text-[11px]">
                                 <span className="text-muted-foreground w-[4.5rem] flex-shrink-0 leading-tight">{ax.label}</span>
                                 <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
                                   <div className="h-full rounded-full" style={{ width: `${val}%`, background: COLORS[i] }} />
@@ -551,6 +568,7 @@ export default function CompareClientPage({ initialServices, variant = "full" }:
                       </div>
                     );
                   })}
+                </div>
                 </div>
                 <p className="mt-2 px-1 text-[10px] text-muted-foreground">
                   ※スコアは OpenAI により各サービスの掲載内容（概要・本文・価格・カテゴリ等）から項目ごとに 0〜100 で算出されます。情報が少ない場合は低めになることがあります。
@@ -565,7 +583,7 @@ export default function CompareClientPage({ initialServices, variant = "full" }:
                 </h2>
                 <div
                   ref={tableScrollRef}
-                  className="overflow-x-auto rounded-xl border bg-background shadow-sm"
+                  className="overflow-x-auto rounded-xl border bg-background shadow-sm [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)] sm:[mask-image:none]"
                 >
                   <table className="w-full" style={{ minWidth: `${200 + selected.length * 220}px` }}>
                     <thead>
@@ -642,7 +660,7 @@ export default function CompareClientPage({ initialServices, variant = "full" }:
                                 <Link href={`/services/${s.id}`}>詳細を見る</Link>
                               </Button>
                               <Button variant="outline" size="sm" className="w-full" asChild>
-                                <Link href={`/services/${s.id}#contact`}>資料請求</Link>
+                                <Link href={`/request-info?serviceId=${s.id}`}>資料請求</Link>
                               </Button>
                             </div>
                           </td>

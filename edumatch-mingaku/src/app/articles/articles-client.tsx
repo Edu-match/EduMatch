@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/ui/pagination";
 import { Search, Calendar, ExternalLink, FileText } from "lucide-react";
 import { AddToFavoritesButton } from "@/components/favorites/add-to-favorites-button";
+import { Reveal } from "@/components/home/reveal";
 import type { ArticleForList } from "./page";
 
 const PAGE_SIZE = 30;
@@ -21,13 +22,15 @@ const PAGE_SIZE = 30;
 export function ArticlesClient({
   articles,
   categoriesWithCount,
+  initialQuery = "",
 }: {
   articles: ArticleForList[];
   categoriesWithCount: string[];
+  initialQuery?: string;
 }) {
   const t = useTranslations("articlesList");
   const locale = useLocale() as Locale;
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -80,6 +83,7 @@ export function ArticlesClient({
 
       <div className="container py-8">
         {/* 検索・フィルターエリア */}
+        <Reveal variant="fade-in">
         <Card className="mb-6 shadow-lg border-2">
           <CardContent className="p-4 md:p-6">
             <div className="space-y-4">
@@ -145,6 +149,7 @@ export function ArticlesClient({
             </div>
           </CardContent>
         </Card>
+        </Reveal>
 
         {/* ページネーション（上部） */}
         <Pagination
@@ -158,11 +163,10 @@ export function ArticlesClient({
         {/* 記事一覧グリッド */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6 mb-8">
           {paginatedArticles.map((article, index) => (
+            <Reveal key={article.id} delay={index * 50} enabled={index < 6} className="h-full">
             <Link
-              key={article.id}
               href={`/articles/${article.id}`}
               className="group block h-full"
-              style={{ animationDelay: `${index * 0.05}s` }}
             >
               <Card className="h-full overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 border-2 hover:border-primary/50 bg-card">
                 {/* 画像エリア */}
@@ -245,6 +249,7 @@ export function ArticlesClient({
                 </CardContent>
               </Card>
             </Link>
+            </Reveal>
           ))}
         </div>
 

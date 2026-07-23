@@ -3,6 +3,9 @@
 
 export type InteropThemeMode = "auto" | "dawn" | "day" | "dusk" | "night";
 
+/** 議員会館イベントの正式名称。名称変更時はここ1箇所を直せば全画面に反映される。 */
+export const KAIKAN_EVENT_NAME = "教育AIサミット2026＠衆議院第一議員会館";
+
 /** 中心ハブをタップしたときに出る項目。リンク先遷移(link) か 投稿ページ(board) を選べる。 */
 export type CenterHubItem = {
   id: string;
@@ -78,7 +81,7 @@ export type InteropSettings = {
   exitMessage: string;
   /** 退出CTAの文言 */
   exitCtaLabel: string;
-  /** 退出CTAのリンク（エデュマッチ登録など） */
+  /** 退出CTAのリンク（AIUEO BASE登録など） */
   exitCtaUrl: string;
 };
 
@@ -89,7 +92,7 @@ export const DEFAULT_INTEROP_SETTINGS: InteropSettings = {
   registerUrl: "https://www.interop.jp/",
   registerLabel: "来場登録（無料）",
   guideText: "気になるエリアをタップして、セミナー・展示・登壇情報を探そう",
-  centerLabel: "教育AIサミット＠衆議院第一議員会館",
+  centerLabel: "教育AIサミット2026＠衆議院第一議員会館",
   centerHubItems: [],
   footerCredit: "青楓館高等学院 / みんがく / AI検定協会 / AI部 © 2026",
   themeMode: "auto",
@@ -107,7 +110,7 @@ export const DEFAULT_INTEROP_SETTINGS: InteropSettings = {
   venueRadiusM: 800,
   exitTitle: "また会いましょう。",
   exitMessage:
-    "教育AIサミットの世界は、ここでいったんお別れ。\nでも学びの冒険はまだ続きます。エデュマッチに登録すると、全国の教育コンテンツや、サミットの続きの体験がいつでもあなたのそばに。",
-  exitCtaLabel: "エデュマッチに無料登録",
+    "教育AIサミットの世界は、ここでいったんお別れ。\nでも学びの冒険はまだ続きます。AIUEO BASEに登録すると、全国の教育コンテンツや、サミットの続きの体験がいつでもあなたのそばに。",
+  exitCtaLabel: "AIUEO BASEに無料登録",
   exitCtaUrl: "https://edu-match.com/auth/login",
 };

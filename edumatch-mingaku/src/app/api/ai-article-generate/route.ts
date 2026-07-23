@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { parseThumbnailKind, type ThumbnailTemplateKind } from "@/lib/thumbnail-template";
+import { verifyOrigin, rateLimitResponse } from "@/lib/security";
+
+const ARTICLE_GENERATE_RATE_LIMIT = { windowMs: 60 * 1000, max: 5 };
+
+const requestBodySchema = z.object({
+  url: z.string().max(2000),
+  additionalPrompt: z.string().max(4000).optional(),
+});
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,7 +22,7 @@ const ARTICLE_CATEGORIES = [
   "事務局からのお知らせ", "未分類",
 ] as const;
 
-const SYSTEM_PROMPT = `あなたはEduMatch（教育EdTechマッチング）向けの記事ライターです。入力テキストをもとに、教員・塾・学校・EdTech担当者向けの記事をJSONで出力します。
+const SYSTEM_PROMPT = `あなたはAIUEO BASE（教育EdTechマッチング）向けの記事ライターです。入力テキストをもとに、教員・塾・学校・EdTech担当者向けの記事をJSONで出力します。
 
 ## 出力（このJSONのみ）
 
@@ -224,10 +233,16 @@ function extractTextFromContent(body: string, contentType: string): string {
 }
 
 export async function POST(req: NextRequest) {
+  const csrf = verifyOrigin(req);
+  if (csrf) return csrf;
+
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
   }
+
+  const rl = rateLimitResponse(`ai-article-generate:${user.id}`, ARTICLE_GENERATE_RATE_LIMIT);
+  if (rl.limited) return rl.response;
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
@@ -237,15 +252,13 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let body: { url?: string; additionalPrompt?: string };
-  try {
-    body = await req.json();
-  } catch {
+  const parsedBody = requestBodySchema.safeParse(await req.json().catch(() => null));
+  if (!parsedBody.success) {
     return NextResponse.json({ error: "リクエスト形式が無効です" }, { status: 400 });
   }
 
-  const { url, additionalPrompt } = body;
-  if (!url || typeof url !== "string") {
+  const { url, additionalPrompt } = parsedBody.data;
+  if (!url) {
     return NextResponse.json({ error: "URLが指定されていません" }, { status: 400 });
   }
 
@@ -368,7 +381,7 @@ export async function POST(req: NextRequest) {
         {
           role: "user",
           content: [
-            `以下のWebページ（URL: ${parsedUrl.toString()}）の内容を元に、EduMatch向け記事を生成してください。`,
+            `以下のWebページ（URL: ${parsedUrl.toString()}）の内容を元に、AIUEO BASE向け記事を生成してください。`,
             ...(additionalPrompt?.trim()
               ? [`\n## 追加条件・指示\n${additionalPrompt.trim()}`]
               : []),

@@ -67,9 +67,9 @@ export default async function ProfileDetailPage({
                     href={profile.website}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-primary hover:underline"
+                    className="inline-flex items-center gap-1.5 rounded text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                   >
-                    <Globe className="h-4 w-4" />
+                    <Globe className="h-4 w-4" aria-hidden />
                     公式サイト・SNS
                   </a>
                 )}

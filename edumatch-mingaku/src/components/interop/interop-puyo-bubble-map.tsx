@@ -562,7 +562,7 @@ function PuyoBubble({
     <button
       type="button"
       onClick={onActivate}
-      className="group absolute z-10 hover:z-50 focus:z-50 focus:outline-none"
+      className="group absolute z-10 hover:z-50 focus:z-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent rounded-full"
       style={{
         left: `${pos[0]}%`,
         top: `${pos[1]}%`,
@@ -1195,29 +1195,28 @@ export function InteropPuyoBubbleMap({
         }}
       >
 
-      {/* 2軸の線とラベル（現場↔制度 × 人間↔技術）。ミニマップ(compact)では渋滞回避のため非表示。 */}
-      {!compact && (
-        <>
-          <div
-            className="pointer-events-none absolute"
-            style={{
-              left: `${AXIS_CX}%`, top: "9%", bottom: "13%", width: 1,
-              transform: "translateX(-50%)",
-              background: "linear-gradient(rgba(255,255,255,0.02), rgba(255,255,255,0.15) 30%, rgba(255,255,255,0.15) 70%, rgba(255,255,255,0.02))",
-            }}
-          />
-          <div
-            className="pointer-events-none absolute"
-            style={{
-              top: `${AXIS_CY}%`, left: "6%", right: "6%", height: 1,
-              transform: "translateY(-50%)",
-              background: "linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.15) 30%, rgba(255,255,255,0.15) 70%, rgba(255,255,255,0.02))",
-            }}
-          />
-          {/* 軸ラベルはここ(パン領域内)では描かない。ドラッグで隠れないよう、
-              下のコンテナ固定オーバーレイで端に常時表示する。 */}
-        </>
-      )}
+      {/* 2軸の線（現場↔制度 × 人間↔技術）。玉より背面(z-[1])に置き、常時表示して分布の意味を伝える。
+          ミニマップ(compact)でも「分布の軸」が伝わるよう表示する（渋滞回避のためラベルのみ控えめに）。 */}
+      <div className="pointer-events-none absolute inset-0 z-[1]">
+        <div
+          className="pointer-events-none absolute"
+          style={{
+            left: `${AXIS_CX}%`, top: "9%", bottom: "13%", width: 1,
+            transform: "translateX(-50%)",
+            background: "linear-gradient(rgba(255,255,255,0.02), rgba(255,255,255,0.18) 30%, rgba(255,255,255,0.18) 70%, rgba(255,255,255,0.02))",
+          }}
+        />
+        <div
+          className="pointer-events-none absolute"
+          style={{
+            top: `${AXIS_CY}%`, left: "6%", right: "6%", height: 1,
+            transform: "translateY(-50%)",
+            background: "linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.18) 30%, rgba(255,255,255,0.18) 70%, rgba(255,255,255,0.02))",
+          }}
+        />
+        {/* 軸ラベルはここ(パン領域内)では描かない。ドラッグで隠れないよう、
+            下のコンテナ固定オーバーレイで端に常時表示する。 */}
+      </div>
 
       {/* 関連カテゴリのノード接続線 */}
       <svg className="pointer-events-none absolute inset-0 z-[4] h-full w-full">
@@ -1325,14 +1324,21 @@ export function InteropPuyoBubbleMap({
         <button
           type="button"
           onClick={() => onSelectCategory(interopCat)}
-          className="group absolute left-1/2 top-[46%] z-20 -translate-x-1/2 -translate-y-1/2 focus:outline-none"
+          className="group absolute left-1/2 top-[46%] z-20 -translate-x-1/2 -translate-y-1/2 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent rounded-full"
           style={{
             width: centerSize,
             height: centerSize,
-            animation: `centerPulse 8s ease-in-out infinite`,
           }}
           aria-label={centerLabel ?? interopCat?.name ?? "インタロップ"}
         >
+          {/* パルス(scale)は内側ラッパーに適用する。
+              ★ボタン自体に animation:scale を当てると keyframe の transform が
+                -translate-x/y-1/2（中央寄せ）を打ち消し、当たり判定が視覚位置からズレて
+                「中心が押しにくい」不具合になるため、ここで分離する。 */}
+          <span
+            className="pointer-events-none absolute inset-0"
+            style={{ animation: "centerPulse 8s ease-in-out infinite" }}
+          >
           {/* 放射するパルスリング（2本・時差） */}
           <span
             className="pointer-events-none absolute left-1/2 top-1/2 rounded-full"
@@ -1426,6 +1432,7 @@ export function InteropPuyoBubbleMap({
               );
             })()}
           </span>
+          </span>
         </button>
       )}
 
@@ -1443,7 +1450,7 @@ export function InteropPuyoBubbleMap({
             key={s.key}
             type="button"
             onClick={s.onActivate}
-            className="group absolute z-[24] flex -translate-x-1/2 -translate-y-1/2 flex-col items-center focus:outline-none transition-[left,top] duration-500 ease-out"
+            className="group absolute z-[24] flex -translate-x-1/2 -translate-y-1/2 flex-col items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent rounded-full transition-[left,top] duration-500 ease-out"
             style={{ left: placePos.left, top: placePos.top }}
             aria-label={s.label}
           >
@@ -1506,23 +1513,29 @@ export function InteropPuyoBubbleMap({
       </div>{/* /centeringラッパー */}
 
       {/* 2軸ラベル（現場↔制度 × 人間↔技術）。パン/ズームで隠れないよう、コンテナ端に固定表示。
-          ミニマップ(compact)では渋滞回避のため非表示。 */}
-      {!compact && (
-        <div className="pointer-events-none absolute inset-0 z-[15]">
-          <span className="absolute left-1/2 top-2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#070a1c]/55 px-2 py-0.5 text-[11px] font-bold tracking-wide text-white/65">↑ {axisConfig.yTop}</span>
-          <span className="absolute bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#070a1c]/55 px-2 py-0.5 text-[11px] font-bold tracking-wide text-white/65">{axisConfig.yBottom} ↓</span>
-          <span className="absolute left-2 top-1/2 -translate-y-1/2 whitespace-nowrap rounded-full bg-[#070a1c]/55 px-2 py-0.5 text-[11px] font-bold tracking-wide text-white/65">← {axisConfig.xLeft}</span>
-          <span className="absolute right-2 top-1/2 -translate-y-1/2 whitespace-nowrap rounded-full bg-[#070a1c]/55 px-2 py-0.5 text-[11px] font-bold tracking-wide text-white/65">{axisConfig.xRight} →</span>
-        </div>
-      )}
+          玉(z-10〜)より前面だが端に配置するため内容には被らない。ミニマップ(compact)では
+          小さめのフォントで控えめに、ただし分布の軸が伝わるよう常時表示する。 */}
+      <div className="pointer-events-none absolute inset-0 z-[15]">
+        {(() => {
+          const chip = `absolute whitespace-nowrap rounded-full bg-[#070a1c]/55 px-2 py-0.5 font-bold tracking-wide text-white/65 ${compact ? "text-[9.5px]" : "text-[11px]"}`;
+          return (
+            <>
+              <span className={`${chip} left-1/2 top-2 -translate-x-1/2`}>↑ {axisConfig.yTop}</span>
+              <span className={`${chip} bottom-2 left-1/2 -translate-x-1/2`}>{axisConfig.yBottom} ↓</span>
+              <span className={`${chip} left-2 top-1/2 -translate-y-1/2`}>← {axisConfig.xLeft}</span>
+              <span className={`${chip} right-2 top-1/2 -translate-y-1/2`}>{axisConfig.xRight} →</span>
+            </>
+          );
+        })()}
+      </div>
 
       {/* ズーム＆リセット操作（右下・固定）。AIバーがある時だけ左へ寄せる。ミニマップ(compact)では非表示 */}
       {!compact && (
-      <div ref={zoomRef} className={`absolute bottom-24 right-3 z-40 flex flex-col gap-1.5 md:bottom-6 ${aiBarReserved ? "md:right-16" : "md:right-6"}`}>
+      <div ref={zoomRef} className={`absolute bottom-24 right-3 z-40 flex flex-col gap-1.5 md:bottom-6 ${aiBarReserved ? "md:right-20" : "md:right-6"}`}>
         <button
           type="button"
           onClick={() => zoomAt(1.2, (containerRef.current?.getBoundingClientRect().left ?? 0) + (containerRef.current?.clientWidth ?? 0) / 2, (containerRef.current?.getBoundingClientRect().top ?? 0) + (containerRef.current?.clientHeight ?? 0) / 2)}
-          className="grid h-9 w-9 place-items-center rounded-xl border border-white/15 bg-[#0a1024]/80 text-white/80 backdrop-blur transition hover:bg-white/15 hover:text-white"
+          className="grid h-9 w-9 pointer-coarse:h-11 pointer-coarse:w-11 place-items-center rounded-lg border border-white/15 bg-[#0a1024]/80 text-white/80 backdrop-blur transition hover:bg-white/15 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
           aria-label="拡大"
         >
           <Plus className="h-4 w-4" />
@@ -1530,7 +1543,7 @@ export function InteropPuyoBubbleMap({
         <button
           type="button"
           onClick={() => zoomAt(1 / 1.2, (containerRef.current?.getBoundingClientRect().left ?? 0) + (containerRef.current?.clientWidth ?? 0) / 2, (containerRef.current?.getBoundingClientRect().top ?? 0) + (containerRef.current?.clientHeight ?? 0) / 2)}
-          className="grid h-9 w-9 place-items-center rounded-xl border border-white/15 bg-[#0a1024]/80 text-white/80 backdrop-blur transition hover:bg-white/15 hover:text-white"
+          className="grid h-9 w-9 pointer-coarse:h-11 pointer-coarse:w-11 place-items-center rounded-lg border border-white/15 bg-[#0a1024]/80 text-white/80 backdrop-blur transition hover:bg-white/15 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
           aria-label="縮小"
         >
           <Minus className="h-4 w-4" />
@@ -1538,7 +1551,7 @@ export function InteropPuyoBubbleMap({
         <button
           type="button"
           onClick={resetView}
-          className={`grid h-9 w-9 place-items-center rounded-xl border backdrop-blur transition ${
+          className={`grid h-9 w-9 pointer-coarse:h-11 pointer-coarse:w-11 place-items-center rounded-lg border backdrop-blur transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent ${
             view.scale !== 1 || view.x !== 0 || view.y !== 0
               ? "border-indigo-300/50 bg-indigo-500/30 text-white hover:bg-indigo-500/45"
               : "border-white/15 bg-[#0a1024]/80 text-white/60 hover:bg-white/15 hover:text-white"

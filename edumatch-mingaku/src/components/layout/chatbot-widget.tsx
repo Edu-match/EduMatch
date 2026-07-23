@@ -1,5 +1,6 @@
 "use client";
 
+import { sanitizeHtml } from "@/lib/sanitize-html";
 import {
   useCallback,
   useEffect,
@@ -9,6 +10,7 @@ import {
 } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   AlertTriangle,
   Bot,
@@ -126,12 +128,6 @@ const MODE_DESCRIPTIONS: Record<ChatMode, string> = {
   discussion: "テーマについて深く議論",
 };
 
-const PLACEHOLDERS: Record<ChatMode, string> = {
-  navigator: "教育ICTやこのサイトについてお聞きください",
-  debate: "あなたの立場と理由を教えてください",
-  discussion: "議論したいテーマや論点を教えてください",
-};
-
 const EXAMPLE_QUESTIONS: Record<ChatMode, string[]> = {
   navigator: [
     "ICT教材の選び方を教えてください",
@@ -139,9 +135,9 @@ const EXAMPLE_QUESTIONS: Record<ChatMode, string[]> = {
     "プログラミング教育の導入事例を知りたいです",
   ],
   debate: [
-    "学校へのスマートフォン持ち込みに賛成です。なぜなら・・・",
-    "AIを授業で使うことには反対です。なぜなら・・・",
-    "タブレット1人1台に賛成の立場です。なぜなら・・・",
+    "学校へのスマートフォン持ち込みに賛成です。なぜなら……",
+    "AIを授業で使うことには反対です。なぜなら……",
+    "タブレット1人1台に賛成の立場です。なぜなら……",
   ],
   discussion: [
     "GIGAスクール構想の成果と課題について議論したいです",
@@ -275,30 +271,21 @@ function AgreementScreen({
   agreeLoading: boolean;
   disclaimerPath: string;
 }) {
+  const t = useTranslations("aiNavigator.consent");
   const [checked, setChecked] = useState(false);
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
       <div className="px-4 pt-4 pb-2 border-b shrink-0">
-        <p className="text-sm font-semibold">AIナビゲーターご利用上の留意点</p>
-        <p className="text-xs text-muted-foreground mt-0.5">以下をご確認のうえ、同意してからご利用ください。</p>
+        <p className="text-sm font-semibold">{t("title")}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{t("subtitle")}</p>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-3 min-h-0 text-sm text-muted-foreground space-y-3 leading-relaxed">
-        <p>
-          本サイトのAIナビゲーターは、エデュマッチが提供する教育サービス・ICTツール等の情報検索・相談支援の補助機能です。
-        </p>
-        <p>
-          本AIによる応答は、教育サービス選びや情報整理の参考を目的に自動生成されたものであり、内容の正確性・最新性・完全性を保証するものではありません。
-        </p>
-        <p>
-          回答内容に基づく最終的な判断（資料請求・契約・導入等）は、必ず各サービス提供元の公式情報・担当者への確認を行ってください。
-        </p>
-        <p>
-          本AIの回答や解析内容により利用者または第三者に発生した損害について、当サイトおよび運営者は一切責任を負いません。
-        </p>
-        <p>
-          本AIはすべての利用ケースに対応するものではなく、AIが誤った情報を生成する可能性（いわゆる「ハルシネーション」）をご了承ください。
-        </p>
+        <p>{t("p1")}</p>
+        <p>{t("p2")}</p>
+        <p>{t("p3")}</p>
+        <p>{t("p4")}</p>
+        <p>{t("p5")}</p>
         <div className="pt-1">
           <Link
             href={disclaimerPath}
@@ -306,7 +293,7 @@ function AgreementScreen({
             rel="noopener noreferrer"
             className="text-xs text-primary underline hover:no-underline"
           >
-            留意点の全文を確認する →
+            {t("fullTextLink")}
           </Link>
         </div>
       </div>
@@ -320,7 +307,7 @@ function AgreementScreen({
             className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-primary cursor-pointer"
           />
           <span className="text-xs text-foreground leading-relaxed">
-            上記の留意点を確認しました
+            {t("checkboxLabel")}
           </span>
         </label>
         <Button
@@ -334,7 +321,7 @@ function AgreementScreen({
           ) : (
             <Check className="h-3.5 w-3.5 mr-1.5" />
           )}
-          {agreeLoading ? "保存中…" : "同意してチャットを開始する"}
+          {agreeLoading ? t("agreeSaving") : t("agreeButton")}
         </Button>
       </div>
     </div>
@@ -457,7 +444,7 @@ function MarkdownContent({ text }: { text: string }) {
   return (
     <div
       className="text-sm leading-relaxed min-w-0 max-w-full break-words [overflow-wrap:anywhere] [&_p]:mb-0.5 [&_p]:break-words [&_ul]:mb-1 [&_ol]:mb-1 [&_br]:leading-tight [&_a]:break-all prose prose-sm dark:prose-invert max-w-none"
-      dangerouslySetInnerHTML={{ __html: html }}
+      dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }}
     />
   );
 }
@@ -467,6 +454,7 @@ function MarkdownContent({ text }: { text: string }) {
 // -----------------------------------------------------------------------
 
 export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
+  const t = useTranslations("aiNavigator");
   const pathname = usePathname();
   const examBlocksChat = useAiKenteiExamBlocksChat();
   const {
@@ -484,6 +472,7 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [contextItems, setContextItems] = useState<ContextItem[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [viewHistory, setViewHistory] = useState<RecentViewItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [pendingHistorySelection, setPendingHistorySelection] = useState<string | null>(null);
@@ -503,6 +492,18 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
   const [openedRagRefsMessageId, setOpenedRagRefsMessageId] = useState<string | null>(null);
   const [expandedActivityMsgIds, setExpandedActivityMsgIds] = useState<Set<string>>(new Set());
   const [openedWebSourcesMsgId, setOpenedWebSourcesMsgId] = useState<string | null>(null);
+  // 参照（RAG）モード。ON=公的文書RAG＋サイト内情報を参照、OFF=モデル内部知識＋Web検索のみ。
+  const [ragEnabled, setRagEnabled] = useState(true);
+  // 設定を localStorage で永続化（初回マウント時に復元）。
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = window.localStorage.getItem("em-chat-rag-enabled");
+    if (saved === "0") setRagEnabled(false);
+  }, []);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("em-chat-rag-enabled", ragEnabled ? "1" : "0");
+  }, [ragEnabled]);
   const [forumComposeAssist, setForumComposeAssist] = useState<{
     active: boolean;
     topic: string;
@@ -548,7 +549,8 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
           setHasAgreed(false);
         }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setIsAuthLoading(false));
   }, []);
 
   useEffect(() => {
@@ -556,6 +558,8 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
   }, [fetchAuth]);
 
   useEffect(() => {
+    // 未ログイン時は 401 になるだけなので取得しない（匿名トラフィックの無駄なAPIコール防止）
+    if (isAuthLoading || !userId) return;
     fetch("/api/chat")
       .then((r) => r.json())
       .then((d) => {
@@ -564,7 +568,7 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
         }
       })
       .catch(() => {});
-  }, [messages.length]);
+  }, [messages.length, userId, isAuthLoading]);
 
   // AiPanelContext 経由で open-ai-chat イベントの詳細を受け取る
   useEffect(() => {
@@ -973,13 +977,13 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
       const resp = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: allMessages, contextItems: ctxPayload, mode: chatMode }),
+        body: JSON.stringify({ messages: allMessages, contextItems: ctxPayload, mode: chatMode, ragEnabled }),
         signal: controller.signal,
       });
 
       if (!resp.ok) {
-        const err = await resp.json().catch(() => ({ error: "通信エラー" }));
-        const message = err.error ?? "通信エラー";
+        const err = await resp.json().catch(() => ({ error: t("errors.generic") }));
+        const message = err.error ?? t("errors.generic");
         setMessages((prev) =>
           prev.map((m) => (m.id === botMsgId ? { ...m, content: message, streaming: false } : m))
         );
@@ -1124,14 +1128,16 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
         }
       }
 
-      fetch("/api/chat").then((r) => r.json()).then((d) => {
-        if (typeof d.used === "number" && typeof d.limit === "number") setUsage({ used: d.used, limit: d.limit, resetAt: d.resetAt ?? null });
-      }).catch(() => {});
+      if (userId) {
+        fetch("/api/chat").then((r) => r.json()).then((d) => {
+          if (typeof d.used === "number" && typeof d.limit === "number") setUsage({ used: d.used, limit: d.limit, resetAt: d.resetAt ?? null });
+        }).catch(() => {});
+      }
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === "AbortError") {
-        setMessages((prev) => prev.map((m) => (m.id === botMsgId ? { ...m, content: m.content || "（中断されました）", streaming: false } : m)));
+        setMessages((prev) => prev.map((m) => (m.id === botMsgId ? { ...m, content: m.content || t("errors.aborted"), streaming: false } : m)));
       } else {
-        setMessages((prev) => prev.map((m) => (m.id === botMsgId ? { ...m, content: "通信エラーが発生しました。もう一度お試しください。", streaming: false } : m)));
+        setMessages((prev) => prev.map((m) => (m.id === botMsgId ? { ...m, content: t("errors.network"), streaming: false } : m)));
       }
     } finally {
       setIsStreaming(false);
@@ -1180,7 +1186,7 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
           <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 shrink-0">
             <Bot className="h-4 w-4 text-primary" />
           </div>
-          <div className="min-w-0 flex-1 text-sm font-semibold truncate">AIナビゲーター</div>
+          <div className="min-w-0 flex-1 text-sm font-semibold truncate">{t("title")}</div>
           <Button
             variant="ghost"
             size="icon"
@@ -1218,7 +1224,7 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
         <div className="min-w-0 flex-1">
           <div className="text-sm font-semibold truncate leading-tight">
             {view === "chat"
-              ? "AIナビゲーター"
+              ? t("title")
               : view === "context-select"
                 ? "コンテキスト選択"
                 : view === "history-select"
@@ -1293,17 +1299,26 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
         </div>
       </div>
 
+      {/* ---- Auth Loading ---- */}
+      {view === "chat" && isAuthLoading && (
+        <div className="flex-1 flex flex-col items-center justify-center px-6 py-8">
+          <div className="h-12 w-12 rounded-full bg-muted animate-pulse mb-4" />
+          <div className="h-4 w-48 bg-muted animate-pulse rounded mb-2" />
+          <div className="h-4 w-32 bg-muted animate-pulse rounded" />
+        </div>
+      )}
+
       {/* ---- Unauthenticated ---- */}
-      {view === "chat" && !userId && (
+      {view === "chat" && !userId && !isAuthLoading && (
         <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 text-center min-h-0">
           <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 mb-4">
             <Bot className="h-6 w-6 text-primary" />
           </div>
           <p className="text-sm text-muted-foreground mb-4">
-            AIチャットは会員限定です。<br />ログインまたは会員登録するとご利用いただけます。
+            {t("gate.membersOnly")}<br />{t("gate.loginPrompt")}
           </p>
           <Button asChild size="sm">
-            <Link href="/auth/login">ログイン・会員登録</Link>
+            <Link href="/auth/login">{t("gate.loginButton")}</Link>
           </Button>
         </div>
       )}
@@ -1710,13 +1725,37 @@ export function ChatbotWidget({ isMobile = false }: { isMobile?: boolean }) {
               )}
             </div>
 
+            <div className="mb-2 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setRagEnabled((v) => !v)}
+                aria-pressed={ragEnabled}
+                title={
+                  ragEnabled
+                    ? "参照モードON：登録文書・サイト内情報を参照して回答します（クリックでOFF）"
+                    : "参照モードOFF：登録文書・サイト内情報を参照しません（クリックでON）"
+                }
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+                  ragEnabled
+                    ? "border-violet-300 bg-violet-50 text-violet-700 hover:bg-violet-100"
+                    : "border-input bg-muted/40 text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                <BookOpen className="h-3.5 w-3.5 shrink-0" />
+                参照{ragEnabled ? "ON" : "OFF"}
+              </button>
+              <span className="text-[11px] text-muted-foreground">
+                {ragEnabled ? "登録文書・サイト内情報を参照" : "Web検索とAIの知識のみで回答"}
+              </span>
+            </div>
+
             <div className="flex items-end gap-2">
               <textarea
                 ref={textareaRef}
                 value={input}
                 onChange={handleTextareaInput}
                 onKeyDown={handleKeyDown}
-                placeholder={PLACEHOLDERS[chatMode]}
+                placeholder={t(`placeholders.${chatMode}`)}
                 rows={1}
                 disabled={isStreaming}
                 className="flex-1 resize-none rounded-xl border border-input bg-background px-3 py-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-50 max-h-[220px] min-h-[52px] leading-[1.5]"

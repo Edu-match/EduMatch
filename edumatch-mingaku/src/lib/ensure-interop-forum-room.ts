@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { ForumRoom } from "@/lib/mock-forum";
+import { INTEROP_HUB_COMMUNITY_MAP } from "@/lib/interop-hub-community";
 
 const ROOM_DB_SELECT = {
   id: true,
@@ -77,16 +78,22 @@ export async function ensureInteropForumRoom(roomId: string): Promise<ForumRoom 
       where: { room_id: roomId, is_active: true },
       select: { name: true, topic1: true },
     });
-    if (!topic) return null;
 
-    const weekly = topic.topic1?.trim() || topic.name;
+    // ハブの「自由に書く」コミュニティ（interop-2026-*）は DB の topic に紐付かない
+    // 固定ルームなので、定数マップからフォールバックで自動作成する。
+    const community = INTEROP_HUB_COMMUNITY_MAP.get(roomId);
+    if (!topic && !community) return null;
+
+    const name = topic?.name ?? community?.name ?? "";
+    const weekly = topic?.topic1?.trim() || name;
+    const emoji = topic ? "💬" : community?.emoji ?? "💬";
     await prisma.forumRoom.create({
       data: {
         id: roomId,
-        name: topic.name,
+        name,
         description: weekly,
         weekly_topic: weekly,
-        emoji: "💬",
+        emoji,
         ai_discussion: true,
       },
     });

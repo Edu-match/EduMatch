@@ -1,0 +1,3 @@
+title,description,location,speaker,starts_at,ends_at,capacity,content_type,is_published
+"開会式","開会の挨拶と概要説明","大会議室","山田太郎（衆議院議員）",2026-08-07T10:00:00+09:00,2026-08-07T10:30:00+09:00,,session,true
+"AIと教育ワークショップ","手を動かして学ぶAI活用","第2会議室","佐藤花子（○○大学教授）／鈴木一郎（△△株式会社）",2026-08-07T11:00:00+09:00,2026-08-07T12:30:00+09:00,30,workshop,false
