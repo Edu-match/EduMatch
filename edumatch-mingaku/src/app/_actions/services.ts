@@ -216,6 +216,8 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     review_count: 0,
     show_material_request_button: false,
     request_notification_emails: [],
+    preview_token: null,
+    preview_token_issued_at: null,
     is_published: true,
     is_member_only: false,
     status: "APPROVED",
@@ -250,6 +252,8 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     review_count: 0,
     show_material_request_button: false,
     request_notification_emails: [],
+    preview_token: null,
+    preview_token_issued_at: null,
     is_published: true,
     is_member_only: false,
     status: "APPROVED",
@@ -284,6 +288,8 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     review_count: 0,
     show_material_request_button: false,
     request_notification_emails: [],
+    preview_token: null,
+    preview_token_issued_at: null,
     is_published: true,
     is_member_only: false,
     status: "APPROVED",
@@ -318,6 +324,8 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     review_count: 0,
     show_material_request_button: false,
     request_notification_emails: [],
+    preview_token: null,
+    preview_token_issued_at: null,
     is_published: true,
     is_member_only: false,
     status: "APPROVED",
@@ -352,6 +360,8 @@ const DEMO_SERVICES: ServiceWithProvider[] = [
     review_count: 0,
     show_material_request_button: false,
     request_notification_emails: [],
+    preview_token: null,
+    preview_token_issued_at: null,
     is_published: true,
     is_member_only: false,
     status: "APPROVED",
@@ -419,7 +429,10 @@ export async function getPopularServices(limit: number = 5): Promise<ServiceWith
  * サービスを1件取得
  * @param id サービスID
  */
-export async function getServiceById(id: string): Promise<ServiceWithProvider | null> {
+export async function getServiceById(
+  id: string,
+  opts?: { previewToken?: string },
+): Promise<ServiceWithProvider | null> {
   try {
     const service = await prisma.service.findUnique({
       where: { id },
@@ -440,9 +453,16 @@ export async function getServiceById(id: string): Promise<ServiceWithProvider | 
 
     if (!service) return null;
 
-    // 公開済み（APPROVED）以外は、投稿者本人 or 管理者のみ閲覧可
+    // プレビュートークンが一致し、かつ発行済みならアクセス許可
+    const isValidPreview =
+      opts?.previewToken &&
+      service.preview_token &&
+      service.preview_token_issued_at &&
+      opts.previewToken === service.preview_token;
+
+    // 公開済み（APPROVED）以外は、投稿者本人 or 管理者 or 有効なプレビュートークンのみ閲覧可
     const isPublic = service.status === "APPROVED" || service.is_published === true;
-    if (!isPublic) {
+    if (!isPublic && !isValidPreview) {
       const { user } = await requireAuthedUser();
       if (!user) return null;
 
@@ -457,8 +477,8 @@ export async function getServiceById(id: string): Promise<ServiceWithProvider | 
       }
     }
 
-    // 会員限定サービスは未ログインなら非公開
-    if (service.is_member_only) {
+    // 会員限定サービスは未ログインなら非公開（プレビューは除外）
+    if (service.is_member_only && !isValidPreview) {
       const { user } = await requireAuthedUser();
       if (!user) return null;
     }
@@ -479,6 +499,50 @@ export async function getServiceById(id: string): Promise<ServiceWithProvider | 
     }
     logServiceFetchError("getServiceById", error);
     return null;
+  }
+}
+
+/**
+ * プレビューリンクを明示的に発行する。発行すると preview_token_issued_at がセットされ、
+ * そのトークンを含むURLでのみ公開前サービスを閲覧できる。
+ */
+export async function issueServicePreviewLink(
+  serviceId: string,
+): Promise<{ success: boolean; url?: string; error?: string }> {
+  try {
+    const { user } = await requireAuthedUser();
+    if (!user) return { success: false, error: "認証が必要です" };
+
+    const service = await prisma.service.findUnique({
+      where: { id: serviceId },
+      select: { provider_id: true, preview_token: true },
+    });
+    if (!service) return { success: false, error: "サービスが見つかりません" };
+
+    if (user.id !== service.provider_id) {
+      const profile = await prisma.profile.findUnique({
+        where: { id: user.id },
+        select: { role: true },
+      });
+      if (!profile || profile.role !== ("ADMIN" as Role))
+        return { success: false, error: "権限がありません" };
+    }
+
+    const updated = await prisma.service.update({
+      where: { id: serviceId },
+      data: { preview_token_issued_at: new Date() },
+      select: { preview_token: true },
+    });
+
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+    const url = `${baseUrl}/services/${serviceId}?preview=${updated.preview_token}`;
+
+    return { success: true, url };
+  } catch (error) {
+    console.error("[issueServicePreviewLink]", error);
+    return { success: false, error: "プレビューリンクの発行に失敗しました" };
   }
 }
 

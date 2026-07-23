@@ -242,6 +242,10 @@ model Service {
   show_material_request_button Boolean              @default(true)
   /// 資料請求通知先メール（サービス単位・任意）。1件以上設定時は provider.email には送らない
   request_notification_emails  String[]             @default([])
+  /// 企業向けプレビューリンク用トークン
+  preview_token                String?              @unique @default(uuid()) @db.Uuid
+  /// プレビューリンクの発行日時。null = 未発行（リンク無効）
+  preview_token_issued_at      DateTime?
   material_requests            MaterialRequest[]
   reviews                      Review[]
   provider                     Profile              @relation(fields: [provider_id], references: [id], onDelete: Cascade)

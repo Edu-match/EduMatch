@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ContentEditorWithImport } from "@/components/content/content-editor-with-import";
 import { BlocksContentPreview } from "@/components/content/blocks-content-preview";
+import { IssuePreviewLinkButton } from "@/components/services/issue-preview-link-button";
 import { contentToBlocks } from "@/lib/markdown-to-blocks";
 import { blocksToMarkdown } from "@/lib/markdown-to-blocks";
 import { isImportedContent } from "@/lib/imported-content";
@@ -377,6 +378,7 @@ export default function ServiceCreatePage() {
             <span className={`text-sm ${canSubmit ? "text-muted-foreground" : "text-destructive"}`}>
               合計: {totalWordCount.toLocaleString()} 文字
             </span>
+            <IssuePreviewLinkButton serviceId={null} />
             <Button
               type="button"
               variant="ghost"

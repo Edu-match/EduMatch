@@ -50,6 +50,8 @@ type RawServiceRow = {
   provider_display_name: string | null;
   wp_product_id: number | null;
   review_count: number;
+  preview_token: string | null;
+  preview_token_issued_at: Date | null;
 };
 
 function mapRawService(row: RawServiceRow): Service {
@@ -85,6 +87,8 @@ function mapRawService(row: RawServiceRow): Service {
     review_count: row.review_count,
     show_material_request_button: true,
     request_notification_emails: [],
+    preview_token: row.preview_token ?? null,
+    preview_token_issued_at: row.preview_token_issued_at ?? null,
   };
 }
 

@@ -21,6 +21,7 @@ import { FEATURES } from "@/lib/features";
 import { ImageWithUrlError } from "@/components/ui/image-with-url-error";
 import { shouldShowMaterialRequestButton } from "@/lib/service-material-request";
 import { ServiceCategoryBadges } from "@/components/services/service-category-badges";
+import { ServiceListCardPreview } from "@/components/services/service-list-card-preview";
 
 export const dynamic = "force-dynamic";
 
@@ -35,12 +36,15 @@ function formatDate(date: Date, locale: string): string {
 
 export default async function ServiceDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ preview?: string }>;
 }) {
   unstable_noStore();
   const { id } = await params;
-  const rawService = await getServiceById(id);
+  const { preview } = await searchParams;
+  const rawService = await getServiceById(id, preview ? { previewToken: preview } : undefined);
 
   if (!rawService) {
     notFound();
@@ -61,6 +65,11 @@ export default async function ServiceDetailPage({
     await recordView(user.id, "SERVICE", id);
   }
   const canEdit = user && (user.id === service.provider_id || profile?.role === "ADMIN");
+  const isPreviewView =
+    !!preview &&
+    !!rawService.preview_token &&
+    !!rawService.preview_token_issued_at &&
+    preview === rawService.preview_token;
   const showMaterialRequestButton = shouldShowMaterialRequestButton(
     service.sort_order,
     service.show_material_request_button
@@ -90,6 +99,12 @@ export default async function ServiceDetailPage({
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/10">
+      {/* プレビューバナー */}
+      {isPreviewView && (
+        <div className="bg-amber-500 text-white text-center py-2 px-4 text-sm font-medium sticky top-0 z-20">
+          掲載プレビュー — このページはまだ公開されていません
+        </div>
+      )}
       {/* パンくずナビ */}
       <div className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="container py-4">
@@ -524,6 +539,20 @@ export default async function ServiceDetailPage({
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {/* プレビュー時: サービス一覧での表示イメージ */}
+        {isPreviewView && (
+          <div className="container mt-8 mb-12">
+            <h2 className="text-lg font-bold mb-4">サービス一覧での表示イメージ</h2>
+            <ServiceListCardPreview
+              title={service.title}
+              description={service.description}
+              thumbnailUrl={service.thumbnail_url}
+              category={service.category}
+              priceInfo={service.price_info}
+            />
+          </div>
         )}
       </div>
     </div>

@@ -13,6 +13,7 @@ import { ServiceCategoryBadges } from "@/components/services/service-category-ba
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ContentEditorWithImport } from "@/components/content/content-editor-with-import";
 import { BlocksContentPreview } from "@/components/content/blocks-content-preview";
+import { IssuePreviewLinkButton } from "@/components/services/issue-preview-link-button";
 import { contentToBlocks, blocksToMarkdown } from "@/lib/markdown-to-blocks";
 import {
   Image as ImageIcon,
@@ -281,6 +282,7 @@ export function ServiceEditForm({ serviceId, initialData }: ServiceEditFormProps
             <span className={`text-sm ${canSubmit ? "text-muted-foreground" : "text-destructive"}`}>
               合計: {totalWordCount.toLocaleString()} 文字
             </span>
+            <IssuePreviewLinkButton serviceId={serviceId} />
             <Button size="sm" onClick={() => submit()} disabled={isSubmitting || !canSubmit}>
               <Save className="h-4 w-4 mr-2" />
               保存
