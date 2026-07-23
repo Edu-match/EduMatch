@@ -3,7 +3,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
 /**
- * 「AIUEO BASE」サイトプレオープンのお知らせ以外の通知をクリアする
+ * 「エデュマッチ」サイトプレオープンのお知らせ以外の通知をクリアする
  */
 export async function POST() {
   try {
@@ -12,12 +12,12 @@ export async function POST() {
       return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
     }
 
-    // 「AIUEO BASE」または「プレオープン」を含む通知を取得
+    // 「エデュマッチ」または「プレオープン」を含む通知を取得
     const preOpenNotifications = await prisma.inAppNotification.findMany({
       where: {
         user_id: user.id,
         OR: [
-          { title: { contains: 'AIUEO BASE' } },
+          { title: { contains: 'エデュマッチ' } },
           { title: { contains: 'プレオープン' } },
         ],
       },

@@ -2,12 +2,11 @@ import { prisma } from "@/lib/prisma";
 import {
   DEFAULT_AXIS_CONFIG,
   DEFAULT_TOPIC_AXIS,
-  DEFAULT_AXIS3,
   type AxisConfig,
   type AxisPoint,
 } from "@/lib/interop-topic-axis";
 
-/** 軸定義（ラベル）を取得。週次の自動変更は廃止し、固定（初期値 or 管理画面で手動設定した値）を返す。 */
+/** 軸定義を取得（テーブル未作成・空なら初期値） */
 export async function getAxisConfig(): Promise<AxisConfig> {
   try {
     const rows = await prisma.$queryRaw<
@@ -21,16 +20,29 @@ export async function getAxisConfig(): Promise<AxisConfig> {
   }
 }
 
-/**
- * 各トピックの2軸座標を返す。
- * ※2軸は「固定」方針。週次/日次の自動再分布は廃止したため、常に設計済みの初期座標を返す。
- *   （動的分布は第3軸＝高さ のみが担う。interop_topic_axis3 を参照。）
- */
+/** 各トピックの座標を取得（空なら初期値） */
 export async function getTopicPositions(): Promise<Record<number, AxisPoint>> {
-  return DEFAULT_TOPIC_AXIS;
+  try {
+    const rows = await prisma.$queryRaw<
+      Array<{ topic_no: number; x: number; y: number }>
+    >`SELECT topic_no, x, y FROM interop_topic_position`;
+    const map: Record<number, AxisPoint> = {};
+    for (const r of rows) map[Number(r.topic_no)] = { x: Number(r.x), y: Number(r.y) };
+    return Object.keys(map).length > 0 ? map : DEFAULT_TOPIC_AXIS;
+  } catch {
+    return DEFAULT_TOPIC_AXIS;
+  }
 }
 
-/** 軸定義を更新（管理画面からの手動設定用。週次自動変更は廃止）。 */
+/** 1トピックの座標を upsert */
+export async function saveTopicPosition(no: number, x: number, y: number): Promise<void> {
+  await prisma.$executeRaw`
+    INSERT INTO interop_topic_position (topic_no, x, y, updated_at)
+    VALUES (${no}, ${x}, ${y}, now())
+    ON CONFLICT (topic_no) DO UPDATE SET x = ${x}, y = ${y}, updated_at = now()`;
+}
+
+/** 軸定義を更新 */
 export async function saveAxisConfig(c: AxisConfig): Promise<void> {
   await prisma.$executeRaw`
     UPDATE interop_axis_config
@@ -38,20 +50,9 @@ export async function saveAxisConfig(c: AxisConfig): Promise<void> {
     WHERE id = 1`;
 }
 
-// ───────────────────────── 第3軸（3Dビュー専用・固定） ─────────────────────────
-
-export type Axis3 = { label: string; values: Record<number, number> };
-
-/** 第3軸（固定）。interop-topic-axis.ts の DEFAULT_AXIS3 をそのまま返す。 */
-export async function getAxis3(): Promise<Axis3> {
-  return DEFAULT_AXIS3;
-}
-
-// ───────────────────────── トピック間ノード接続（内容ベース） ─────────────────────────
-
 export type TopicEdge = { a: number; b: number; weight: number };
 
-/** トピック間の内容ベース関連（週次でLLMが生成）。テーブル未作成なら空配列。 */
+/** トピック間の内容ベース関連（Gemmaが日次で生成）。テーブル未作成なら空配列。 */
 export async function getTopicEdges(): Promise<TopicEdge[]> {
   try {
     const rows = await prisma.$queryRaw<

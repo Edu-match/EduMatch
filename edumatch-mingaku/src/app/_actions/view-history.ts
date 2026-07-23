@@ -1,7 +1,6 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/auth";
 
 export type RecentViewItem = {
   id: string;
@@ -24,13 +23,6 @@ export async function recordView(
   contentId: string
 ): Promise<void> {
   try {
-    // 認証チェック：自分の閲覧履歴のみ記録できる
-    const currentUser = await getCurrentUser();
-    if (!currentUser || currentUser.id !== userId) {
-      console.error("recordView: unauthorized attempt to record view history");
-      return;
-    }
-
     // ユーザー存在チェック
     const userExists = await prisma.profile.findUnique({
       where: { id: userId },
@@ -73,12 +65,6 @@ export async function getRecentViewHistory(
   limit: number = 10
 ): Promise<RecentViewItem[]> {
   try {
-    // 認証チェック：自分の閲覧履歴のみ取得できる
-    const currentUser = await getCurrentUser();
-    if (!currentUser || currentUser.id !== userId) {
-      return [];
-    }
-
     const rows = await prisma.viewHistory.findMany({
       where: { user_id: userId },
       orderBy: { viewed_at: "desc" },

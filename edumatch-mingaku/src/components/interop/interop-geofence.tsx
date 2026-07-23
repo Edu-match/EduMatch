@@ -187,7 +187,7 @@ function ExitOverlay({ settings, onClose }: { settings: GeoSettings; onClose: ()
           rel="noopener noreferrer"
           className="mt-7 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-300 via-orange-400 to-rose-400 px-6 py-3.5 text-base font-bold text-[#3a1c10] shadow-xl shadow-orange-500/30 transition hover:brightness-110"
         >
-          {settings.exitCtaLabel || "AIUEO BASEに無料登録"}
+          {settings.exitCtaLabel || "エデュマッチに無料登録"}
         </a>
         <button onClick={onClose} className="mt-4 block w-full text-sm font-bold text-white/55 hover:text-white">
           まだ会場にいる／閉じる

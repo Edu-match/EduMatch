@@ -1,9 +1,6 @@
 export const TUTORIAL_DONE_STORAGE_KEY = "edu_match_tutorial_done"; // "completed" or "skipped"
 export const TUTORIAL_PROGRESS_STORAGE_KEY = "edu_match_tutorial_progress";
 export const TUTORIAL_SKIPPED_STORAGE_KEY = "edu_match_tutorial_skipped";
-// ログイン直後の「元いたページへの復帰」時にチュートリアル自動開始を一度だけ抑止するための
-// sessionStorage マーカー（ログインフォームで設定し、tutorial-provider で消費する）。
-export const TUTORIAL_SUPPRESS_ON_RETURN_KEY = "edu_match_tutorial_suppress_return";
 export const TUTORIAL_EVENT_NAME = "edumatch:tutorial:event";
 
 export type TutorialPageId =
@@ -16,7 +13,7 @@ export type TutorialPageId =
 export const TUTORIAL_PAGE_LABELS: Record<TutorialPageId, string> = {
   home: "ホーム",
   articles: "記事一覧",
-  forum: "教育のひろば",
+  forum: "井戸端会議",
   "ai-kentei": "AI検定",
   dashboard: "マイページ",
 };
@@ -62,10 +59,10 @@ export const TUTORIAL_PAGES: Record<TutorialPageId, TutorialPageDefinition> = {
     nextPageId: "articles",
     steps: [
       {
-        selector: '[data-tutorial="header-nav"], [data-tutorial="header-mobile-menu-trigger"]',
-        title: "📚 メニューでコンテンツを探そう",
+        selector: '[data-tutorial="side-menu"]',
+        title: "📚 左メニューでコンテンツを探そう",
         description:
-          "記事・サービス・イベント・教育のひろば・人材マッチングなど、教育に関するコンテンツがここから見つかります。",
+          "記事・サービス・イベント・井戸端会議・AI検定など、教育に関するコンテンツがここから見つかります。",
       },
       {
         selector:
@@ -109,7 +106,7 @@ export const TUTORIAL_PAGES: Record<TutorialPageId, TutorialPageDefinition> = {
         selector: '[data-tutorial="article-card-favorite"]',
         title: "❤️ お気に入りに保存",
         description: "ハートボタンで気になった記事をブックマークできます。",
-        nextLabel: "教育のひろばを見てみよう",
+        nextLabel: "井戸端会議を見てみよう",
       },
     ],
   },
@@ -121,7 +118,7 @@ export const TUTORIAL_PAGES: Record<TutorialPageId, TutorialPageDefinition> = {
     steps: [
       {
         selector: '[data-tutorial="forum-hero-section"]',
-        title: "💬 教育のひろばへようこそ",
+        title: "💬 井戸端会議へようこそ",
         description:
           "ここは教育に関する話題を、テーマ別の「部屋」で語り合うコミュニティです。教員・専門家・保護者・企業など、立場を超えてつながれます。",
       },
@@ -165,7 +162,7 @@ export const TUTORIAL_PAGES: Record<TutorialPageId, TutorialPageDefinition> = {
     nextPageId: "dashboard",
     steps: [
       {
-        selector: null,
+        selector: '[data-tutorial="side-menu-ai-kentei"]',
         title: "🏆 AI検定について",
         description:
           "AIに関する知識を問う検定です。クイズに挑戦してAIについてもっと学べます。",

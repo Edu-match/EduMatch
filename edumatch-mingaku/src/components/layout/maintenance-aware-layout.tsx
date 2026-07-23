@@ -4,26 +4,27 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Header } from "@/components/layout/header";
-import { SectionNav } from "@/components/layout/section-nav";
 import { Footer } from "@/components/layout/footer";
+import { SideMenu } from "@/components/layout/side-menu";
 import { ChatbotWidget } from "@/components/layout/chatbot-widget";
 import { SwipeNavigation } from "@/components/layout/swipe-navigation";
 import { AiPanelProvider, useAiPanel } from "@/components/layout/ai-panel-context";
 import { useAiKenteiExamBlocksChat } from "@/hooks/use-ai-kentei-exam-blocks-chat";
-import { Bot } from "lucide-react";
+import { Bot, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function AiPanelLayout({ children }: { children: React.ReactNode }) {
   const t = useTranslations("header");
   const { open, setOpen, mobileOpen, setMobileOpen } = useAiPanel();
   const examBlocksChat = useAiKenteiExamBlocksChat();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [panelWidth, setPanelWidth] = useState(360);
   const [resizing, setResizing] = useState(false);
 
   useEffect(() => {
     if (!resizing) return;
 
-    function onPointerMove(e: PointerEvent) {
+    function onMouseMove(e: MouseEvent) {
       const viewport = window.innerWidth;
       const next = viewport - e.clientX;
       const maxWidth = Math.min(760, Math.floor(viewport * 0.6));
@@ -31,7 +32,7 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
       setPanelWidth(clamped);
     }
 
-    function onPointerUp() {
+    function onMouseUp() {
       setResizing(false);
       document.body.style.userSelect = "";
       document.body.style.cursor = "";
@@ -39,13 +40,11 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
 
     document.body.style.userSelect = "none";
     document.body.style.cursor = "col-resize";
-    window.addEventListener("pointermove", onPointerMove);
-    window.addEventListener("pointerup", onPointerUp);
-    window.addEventListener("pointercancel", onPointerUp);
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
     return () => {
-      window.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("pointerup", onPointerUp);
-      window.removeEventListener("pointercancel", onPointerUp);
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
       document.body.style.userSelect = "";
       document.body.style.cursor = "";
     };
@@ -55,81 +54,99 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen flex-col w-full">
       <Header />
 
-      {/* セクションナビ（ヘッダー直下・スティッキー）＋ヘッダー分スペーサー */}
-      <SectionNav />
+      {/* Desktop + tablet content row */}
+      <div className="flex-1 flex min-w-0 pt-16">
 
-      {/* Desktop + tablet content row（左サイドバーは廃止し、ナビはヘッダー＋セクションナビに集約） */}
-      <div className="flex-1 flex min-w-0">
-
-        {/* Main content */}
-        {/* 浮遊AIナビゲーターが最終行のCTAを覆わないよう、ボタン表示時のみ下部に余白を確保 */}
-        <main
+        {/* Left sidebar（閉じたときは幅を詰めてメイン領域を広げる） */}
+        <aside
           className={cn(
-            "flex-1 min-w-0 [overflow-x:clip] pb-24",
-            !examBlocksChat && !open ? "lg:pb-28" : "lg:pb-0"
+            "hidden lg:block flex-shrink-0 pt-1 transition-[width,padding] duration-200 ease-out",
+            sidebarOpen ? "w-72 pr-4" : "w-12 pr-0"
           )}
         >
+          <div className={cn("sticky top-[4.2rem]", sidebarOpen ? "px-3" : "px-1")}>
+            {sidebarOpen ? (
+              <button
+                type="button"
+                onClick={() => setSidebarOpen(false)}
+                className="mb-2 flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                aria-label={t("closeSideMenu")}
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setSidebarOpen(true)}
+                className="mb-2 flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                aria-label={t("openSideMenu")}
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+            )}
+            <div
+              data-tutorial="side-menu"
+              className={cn(
+                "overflow-hidden transition-all duration-200 ease-out",
+                sidebarOpen
+                  ? "max-w-[300px] opacity-100 translate-x-0"
+                  : "max-w-0 opacity-0 -translate-x-3 pointer-events-none"
+              )}
+            >
+              <SideMenu />
+            </div>
+          </div>
+        </aside>
+
+        {/* Main content */}
+        <main className="flex-1 min-w-0 overflow-x-hidden">
           <div className="w-full">{children}</div>
         </main>
 
         {/* AI side panel – desktop (lg+) — AI検定受験中は非表示 */}
-        {!examBlocksChat && open && (
+        {!examBlocksChat && (
           <div
-            className="hidden lg:flex flex-col flex-shrink-0 transition-all duration-150 ease-in-out"
-            style={{ width: `${panelWidth}px` }}
+            className={cn(
+              "hidden lg:flex flex-col flex-shrink-0 transition-all duration-150 ease-in-out",
+              open ? "" : "lg:w-20"
+            )}
+            style={open ? { width: `${panelWidth}px` } : undefined}
           >
-            <div className="sticky top-[108px] z-20 h-[calc(100vh-108px)] flex flex-col">
-              <div
-                className="relative h-full flex flex-col border-l bg-background overflow-hidden"
-                data-tutorial="ai-navigator-panel"
-              >
+            <div className="sticky top-16 h-[calc(100vh-4rem)] flex flex-col">
+              {open ? (
                 <div
-                  className="absolute -left-1 top-0 h-full w-2 cursor-col-resize z-20 touch-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring"
-                  onPointerDown={(e) => {
-                    e.preventDefault();
-                    setResizing(true);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
-                    e.preventDefault();
-                    // パネルは右側に固定されているため、← で広く / → で狭くなる
-                    const delta = e.key === "ArrowLeft" ? 16 : -16;
-                    const maxWidth = Math.min(760, Math.floor(window.innerWidth * 0.6));
-                    setPanelWidth((w) => Math.max(320, Math.min(maxWidth, w + delta)));
-                  }}
-                  role="separator"
-                  tabIndex={0}
-                  aria-orientation="vertical"
-                  aria-valuenow={panelWidth}
-                  aria-valuemin={320}
-                  aria-valuemax={760}
-                  aria-label={t("resizeAiPanel")}
-                />
-                <ChatbotWidget />
-              </div>
+                  className="relative h-full flex flex-col border-l bg-background overflow-hidden"
+                  data-tutorial="ai-navigator-panel"
+                >
+                  <div
+                    className="absolute -left-1 top-0 h-full w-2 cursor-col-resize z-20"
+                    onMouseDown={() => setResizing(true)}
+                    role="separator"
+                    aria-label={t("resizeAiPanel")}
+                  />
+                  <ChatbotWidget />
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setOpen(true)}
+                  className="fixed right-0 top-16 bottom-0 z-30 w-20 flex flex-col items-center justify-center gap-4 border-l bg-orange-500 hover:bg-orange-400 text-white transition-all group"
+                  aria-label={t("openAiPanel")}
+                  data-tutorial="ai-navigator-open"
+                >
+                  <Bot className="h-8 w-8 group-hover:scale-110 transition-transform" />
+                  <span
+                    className="text-sm font-bold select-none tracking-widest"
+                    style={{ writingMode: "vertical-rl", textOrientation: "upright" }}
+                  >
+                    {t("aiNavigator")}
+                  </span>
+                </button>
+              )}
             </div>
           </div>
         )}
       </div>
-
-      {/* AIナビゲーター起動ボタン – desktop（閉状態のみ）
-          サイトの中核機能として目立たせる: グラデーション＋グロー＋常時ラベル表示 */}
-      {!examBlocksChat && !open && (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="group animate-ai-glow hidden lg:flex fixed bottom-6 right-6 z-40 items-center gap-3 rounded-full bg-gradient-to-br from-primary via-primary to-[oklch(0.58_0.24_300)] py-2.5 pl-2.5 pr-5 text-[0.95rem] font-semibold text-primary-foreground ring-1 ring-white/25 transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          aria-label={t("openAiNavigator")}
-          data-tutorial="ai-navigator-open"
-        >
-          <span className="grid h-11 w-11 place-items-center rounded-full bg-white/20 backdrop-blur-sm ring-1 ring-white/30">
-            <Bot className="h-6 w-6" strokeWidth={2.2} />
-          </span>
-          <span className="whitespace-nowrap tracking-wide drop-shadow-sm">
-            {t("aiNavigator")}
-          </span>
-        </button>
-      )}
 
       <Footer />
 
@@ -139,13 +156,13 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
           type="button"
           onClick={() => setMobileOpen(true)}
           className={cn(
-            "animate-ai-glow lg:hidden fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-5 z-40 h-16 w-16 rounded-full bg-gradient-to-br from-primary via-primary to-[oklch(0.58_0.24_300)] ring-1 ring-white/25 transition-transform active:scale-95 flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+            "lg:hidden fixed bottom-5 right-5 z-40 h-14 w-14 rounded-full bg-orange-500 hover:bg-orange-400 shadow-xl hover:shadow-2xl transition-all flex items-center justify-center",
             mobileOpen && "hidden"
           )}
           aria-label={t("openAiNavigator")}
           data-tutorial="ai-navigator-open"
         >
-          <Bot className="h-7 w-7 text-white drop-shadow-sm" strokeWidth={2.2} />
+          <Bot className="h-6 w-6 text-white" strokeWidth={2} />
         </button>
       )}
 
@@ -169,7 +186,7 @@ function AiPanelLayout({ children }: { children: React.ReactNode }) {
           aria-hidden={!mobileOpen}
           data-tutorial={mobileOpen ? "ai-navigator-panel" : undefined}
         >
-          <div className="bg-background rounded-t-2xl shadow-2xl border-t flex flex-col h-full overflow-hidden pb-[env(safe-area-inset-bottom)]">
+          <div className="bg-background rounded-t-2xl shadow-2xl border-t flex flex-col h-full overflow-hidden">
             <div className="flex items-center justify-center px-4 pt-2 pb-1 shrink-0">
               <div className="w-10 h-1 rounded-full bg-muted-foreground/20" />
             </div>
@@ -202,14 +219,12 @@ export function MaintenanceAwareLayout({
   // （特設のAIチャットと二重表示・別chromeになるのを防ぐ）。
   const [fromInterop, setFromInterop] = useState(false);
   useEffect(() => {
-    // URLクエリはReact外部の状態のため、マウント/遷移時の1回同期はやむを得ない
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setFromInterop(new URLSearchParams(window.location.search).get("from") === "interop");
   }, [pathname]);
   const isBareLayout =
     pathname === "/maintenance" ||
     !!pathname?.startsWith("/interop") ||
-    // 教育のひろば 常設ルート（middleware で /interop に内部 rewrite される並行ルート）
+    // 井戸端会議 常設ルート（middleware で /interop に内部 rewrite される並行ルート）
     !!pathname?.startsWith("/idobata") ||
     isSpecialHost;
   // 注: 以前は「/forum を ?from=interop で開くと bare（chrome無し）」にしていたが、

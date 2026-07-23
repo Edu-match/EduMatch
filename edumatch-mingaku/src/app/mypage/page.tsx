@@ -3,23 +3,20 @@ import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CancelSessionButton } from "@/components/kaikan/cancel-session-button";
-import { receiptNumberDisplay } from "@/lib/kaikan-receipt";
 import {
   Clock,
   FileBadge2,
   Star,
   Settings,
   ArrowRight,
+  Eye,
   Heart,
   User,
   ChevronRight,
   Award,
-  Ticket,
 } from "lucide-react";
 import { AiKenteiCertificatesCompact } from "@/components/ai-kentei/certificates-compact";
 import { requireAuth, getCurrentProfile } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 import { getRecentViewHistory } from "@/app/_actions";
 import { RequestListCompact } from "@/components/dashboard/request-list-compact";
 import { FavoritesCompact } from "@/components/dashboard/favorites-compact";
@@ -54,22 +51,6 @@ export default async function MyPage() {
 
   const recentlyViewed = await getRecentViewHistory(user.id, 5);
   const myReviews = FEATURES.REVIEWS ? await getMyReviews() : [];
-
-  // 電子チケット（議員会館）：ticket_token でまとめる
-  const myApps = await prisma.kaikanApplication.findMany({
-    where: { profile_id: user.id, status: { not: "cancelled" } },
-    select: { id: true, ticket_token: true, qr_token: true, status: true, created_at: true, content: { select: { title: true } } },
-    orderBy: { created_at: "desc" },
-  }).catch(() => [] as { id: string; ticket_token: string | null; qr_token: string; status: string; created_at: Date; content: { title: string } }[]);
-  const ticketMap = new Map<string, { token: string; apps: { id: string; title: string; status: string }[]; allChecked: boolean }>();
-  for (const a of myApps) {
-    const token = a.ticket_token ?? a.qr_token;
-    const g = ticketMap.get(token) ?? { token, apps: [], allChecked: true };
-    g.apps.push({ id: a.id, title: a.content.title, status: a.status });
-    if (a.status !== "checked_in") g.allChecked = false;
-    ticketMap.set(token, g);
-  }
-  const myTickets = [...ticketMap.values()];
 
   return (
     <div className="container py-8">
@@ -119,51 +100,6 @@ export default async function MyPage() {
         </p>
       </div>
 
-      {/* 電子チケット（議員会館イベント）: 常に表示。未取得時は導線を出す。 */}
-      <Card className="mb-6">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="flex items-center gap-2"><Ticket className="h-5 w-5" /> 電子チケット</CardTitle>
-            <Button variant="ghost" size="sm" asChild><Link href="/summit2026">コンテンツを探す<ArrowRight className="h-4 w-4 ml-1" /></Link></Button>
-          </CardHeader>
-          <CardContent>
-            {myTickets.length === 0 ? (
-              <div className="rounded-xl border border-dashed bg-muted/20 p-5 text-center">
-                <p className="text-sm text-muted-foreground">まだ電子チケットはありません。</p>
-                <Button size="sm" asChild className="mt-3"><Link href="/summit2026">教育AIサミット2026に申し込む<ArrowRight className="h-4 w-4 ml-1" /></Link></Button>
-              </div>
-            ) : (
-            <ul className="space-y-2">
-              {myTickets.map((t) => (
-                <li key={t.token} className="rounded-xl border p-3">
-                  <Link href={`/summit2026/ticket/${t.token}`} className="group flex min-h-[44px] items-center justify-between gap-3 transition">
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-bold">電子チケット（{t.apps.length}件）</span>
-                      <span className="block text-[11px] text-muted-foreground">受付番号 {receiptNumberDisplay(t.token)}・タップでQR表示</span>
-                    </span>
-                    <span className="flex shrink-0 items-center gap-2">
-                      <Badge variant={t.allChecked ? "default" : "secondary"} className={t.allChecked ? "bg-success/15 text-success" : ""}>{t.allChecked ? "受付済" : "受付前"}</Badge>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden />
-                    </span>
-                  </Link>
-                  <ul className="mt-2 space-y-1.5 border-t pt-2">
-                    {t.apps.map((p) => (
-                      <li key={p.id} className="flex items-center justify-between gap-2">
-                        <span className="min-w-0 flex-1 truncate text-xs">{p.title}</span>
-                        {p.status === "confirmed" ? (
-                          <CancelSessionButton id={p.id} ticketToken={t.token} title={p.title} label="申込をキャンセル" />
-                        ) : (
-                          <span className="shrink-0 text-[10px] font-bold text-emerald-600">受付済</span>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </li>
-              ))}
-            </ul>
-            )}
-          </CardContent>
-        </Card>
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* メインコンテンツ */}
         <div className="lg:col-span-2 space-y-6">
@@ -190,7 +126,7 @@ export default async function MyPage() {
                   <Link
                     key={`${item.type}-${item.id}`}
                     href={item.type === "service" ? `/services/${item.id}` : `/articles/${item.id}`}
-                    className="group flex min-h-[44px] items-center gap-4 p-3 rounded-lg hover:bg-primary/[0.04] transition-colors"
+                    className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted transition-colors"
                   >
                     <div className="relative w-20 flex-shrink-0 overflow-hidden rounded bg-muted aspect-video">
                       {item.image ? (
@@ -218,7 +154,7 @@ export default async function MyPage() {
                         {formatViewedAt(item.viewedAt)}
                       </p>
                     </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden />
+                    <Eye className="h-4 w-4 text-muted-foreground" />
                   </Link>
                 ))
                 )}
@@ -249,7 +185,7 @@ export default async function MyPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-2">
-                <Heart className="h-5 w-5 text-primary/70 fill-primary/70" />
+                <Heart className="h-5 w-5 text-red-500 fill-red-500" />
                 記事のお気に入り
               </CardTitle>
               <Button variant="ghost" size="sm" asChild>
@@ -269,7 +205,7 @@ export default async function MyPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Star className="h-5 w-5 text-primary/70" />
+                <Star className="h-5 w-5 text-yellow-500" />
                 自分の口コミ
               </CardTitle>
               <p className="text-xs text-muted-foreground">
@@ -286,7 +222,7 @@ export default async function MyPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-2">
-                <Award className="h-5 w-5 text-primary/70" />
+                <Award className="h-5 w-5 text-amber-500" />
                 AI検定 認定証
               </CardTitle>
               <Button variant="ghost" size="sm" asChild>

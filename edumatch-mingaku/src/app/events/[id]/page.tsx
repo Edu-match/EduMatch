@@ -51,12 +51,8 @@ export default async function EventDetailPage({ params }: PageProps) {
     translateText(event.company ?? "", locale),
   ]);
 
-  // 一覧側（todayString による日付文字列比較）と判定基準を揃えるため、
-  // event_date（'YYYY-MM-DD'）をローカル0時に正規化し、当日0時と比較する。
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
   const isUpcoming = event.event_date
-    ? new Date(event.event_date + "T00:00:00") >= today
+    ? new Date(event.event_date) >= new Date()
     : false;
 
   return (
@@ -82,7 +78,7 @@ export default async function EventDetailPage({ params }: PageProps) {
         <CardContent className="p-6 sm:p-8">
           <div className="flex flex-wrap gap-2 mb-4">
             {isUpcoming ? (
-              <Badge className="bg-success text-success-foreground hover:bg-success/90">{t("upcoming")}</Badge>
+              <Badge className="bg-green-500 hover:bg-green-600 text-white">{t("upcoming")}</Badge>
             ) : event.event_date ? (
               <Badge variant="secondary">{t("ended")}</Badge>
             ) : (
@@ -119,7 +115,7 @@ export default async function EventDetailPage({ params }: PageProps) {
 
           <div className="pt-4 border-t">
             <Button asChild>
-              <Link href={`/contact?subject=${encodeURIComponent(t("contactSubject"))}`} className="inline-flex items-center gap-2">
+              <Link href="/contact?subject=イベント問い合わせ" className="inline-flex items-center gap-2">
                 {t("applyViaContact")}
               </Link>
             </Button>

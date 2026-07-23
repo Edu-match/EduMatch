@@ -62,7 +62,7 @@ export async function generateMetadata({
   const video = await getVideo(id);
   if (!video) return {};
   return {
-    title: `${video.title} | 学びの動画 | AIUEO BASE`,
+    title: `${video.title} | 学びの動画 | エデュマッチ`,
     description: video.aiSummary?.slice(0, 140) || video.description.slice(0, 140) || undefined,
   };
 }

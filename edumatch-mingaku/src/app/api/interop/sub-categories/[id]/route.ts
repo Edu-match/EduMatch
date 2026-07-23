@@ -21,13 +21,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     contentKinds?: string[];
     contentQuery?: string;
     url?: string;
-    linkUrl?: string;
   };
 
   const ALLOWED_KINDS = ["article", "service", "media", "events-info"];
   const data: Record<string, unknown> = {};
   if (typeof body.url === "string") data.url = body.url.trim();
-  if (typeof body.linkUrl === "string") data.link_url = body.linkUrl.trim();
   if (typeof body.name === "string" && body.name.trim()) data.name = body.name.trim();
   if (typeof body.description === "string") data.description = body.description.trim();
   if (typeof body.sortOrder === "number") data.sort_order = body.sortOrder;
@@ -50,8 +48,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         name: s.name,
         slug: s.slug,
         description: s.description,
-        url: s.url,
-        linkUrl: s.link_url,
         sortOrder: s.sort_order,
         isActive: s.is_active,
         contentKinds: s.content_kinds,

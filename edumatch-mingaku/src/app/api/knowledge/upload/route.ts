@@ -287,8 +287,9 @@ export async function POST(req: NextRequest) {
       results.push({ index: i, title: docTitle, ...result });
       console.log(`[knowledge/upload] saved: "${docTitle}" (${result.chunk_count} chunks)`);
     } catch (e) {
-      console.error(`[knowledge/upload] error on file[${i}] "${docTitle}":`, e);
-      errors.push({ index: i, title: docTitle, error: "ファイルの処理に失敗しました" });
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(`[knowledge/upload] error on file[${i}] "${docTitle}":`, msg);
+      errors.push({ index: i, title: docTitle, error: msg });
     }
   }
 

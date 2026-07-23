@@ -30,35 +30,29 @@ function getProvidersInDisplayOrder(
 }
 
 export default async function CompaniesPage() {
-  let services: Awaited<ReturnType<typeof getAllServices>> = [];
-  try {
-    services = await getAllServices();
-  } catch (e) {
-    console.error("Failed to load services for companies page:", e);
-  }
+  const services = await getAllServices();
   const providers = getProvidersInDisplayOrder(services);
 
   return (
     <div className="container py-8">
       <div className="mb-8">
-        <h1 className="display-title text-3xl md:text-4xl mb-2">掲載企業一覧</h1>
+        <h1 className="text-3xl font-bold mb-2">掲載企業一覧</h1>
         <p className="text-muted-foreground">
-          AIUEO BASEに掲載している企業（サービス提供者）一覧です
+          エデュマッチに掲載している企業（サービス提供者）一覧です
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {providers.map((company) => (
-          <Card key={company.providerId} className="card-lift flex flex-col">
-            <CardContent className="p-4 flex flex-col flex-1">
+          <Card key={company.providerId} className="hover:shadow-lg transition-shadow">
+            <CardContent className="p-4">
               <div className="flex items-start gap-4">
-                <div className="relative w-16 h-16 shrink-0 overflow-hidden rounded-md border bg-muted flex items-center justify-center">
+                <div className="relative w-16 h-16 shrink-0 overflow-hidden rounded-lg border bg-muted flex items-center justify-center">
                   {company.avatarUrl ? (
                     <Image
                       src={company.avatarUrl}
                       alt={company.providerName}
                       fill
-                      sizes="64px"
                       className="object-cover"
                       unoptimized
                     />
@@ -67,17 +61,12 @@ export default async function CompaniesPage() {
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-base font-semibold tracking-[-0.01em] line-clamp-2">
-                    {company.providerName}
-                  </h3>
+                  <h3 className="font-semibold mb-2 line-clamp-2">{company.providerName}</h3>
                   {company.services.length > 0 && (
-                    <ul className="mt-1 text-sm text-muted-foreground">
+                    <ul className="text-sm text-muted-foreground space-y-1">
                       {company.services.map((sv) => (
                         <li key={sv.id}>
-                          <Link
-                            href={`/services/${sv.id}`}
-                            className="inline-flex items-center min-h-8 py-1 hover:underline hover:text-foreground"
-                          >
+                          <Link href={`/services/${sv.id}`} className="hover:underline hover:text-foreground">
                             {sv.title}
                           </Link>
                         </li>
@@ -86,10 +75,10 @@ export default async function CompaniesPage() {
                   )}
                 </div>
               </div>
-              <div className="mt-auto pt-4">
+              <div className="mt-4">
                 <Button asChild className="w-full" size="sm">
                   <Link href={`/profile/${company.providerId}`}>
-                    <ExternalLink className="h-4 w-4" />
+                    <ExternalLink className="h-4 w-4 mr-1" />
                     企業ページへ
                   </Link>
                 </Button>

@@ -1,7 +1,7 @@
 // クライアント・サーバー両用の型と定数（prisma 等のサーバー専用依存は持たない）。
 // 実データ取得は interop-content.server.ts を参照。
 
-/** 本体AIUEO BASEから引っ張るコンテンツ種別（fetchContentCandidates の contentKind と対応） */
+/** 本体エデュマッチから引っ張るコンテンツ種別（fetchContentCandidates の contentKind と対応） */
 export type InteropContentKind = "article" | "service" | "media" | "events-info";
 
 export const INTEROP_CONTENT_KINDS: { value: InteropContentKind; label: string }[] = [

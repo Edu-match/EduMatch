@@ -19,7 +19,6 @@ import {
   TUTORIAL_EVENT_NAME,
   TUTORIAL_PROGRESS_STORAGE_KEY,
   TUTORIAL_SKIPPED_STORAGE_KEY,
-  TUTORIAL_SUPPRESS_ON_RETURN_KEY,
   TUTORIAL_PAGES,
   getTutorialGlobalStepNumber,
   getTutorialPage,
@@ -297,13 +296,6 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     if (!currentPageId) return;
     if (window.localStorage.getItem(TUTORIAL_PROGRESS_STORAGE_KEY)) return;
 
-    // ログイン直後に元のページへ戻ってきた場合は、チュートリアルを自動起動しない。
-    // マーカーは一度だけ有効（消費してクリア）。
-    if (window.sessionStorage.getItem(TUTORIAL_SUPPRESS_ON_RETURN_KEY)) {
-      window.sessionStorage.removeItem(TUTORIAL_SUPPRESS_ON_RETURN_KEY);
-      return;
-    }
-
     startTutorial(currentPageId);
   }, [
     currentPageId,
@@ -432,7 +424,7 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
             <p className="text-3xl mb-2">🎉</p>
             <p className="text-lg font-bold text-white">チュートリアル完了！</p>
             <p className="text-sm text-orange-100 mt-1">
-              AIUEO BASEをお楽しみください
+              EduMatchをお楽しみください
             </p>
             <div className="mt-3">
               <Link

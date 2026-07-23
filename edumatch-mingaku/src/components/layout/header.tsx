@@ -1,21 +1,20 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
+import Image from "next/image";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { 
-  Menu, LogOut, User, LayoutDashboard, Settings,
+  Menu, LogOut, User, LayoutDashboard, Settings, 
   ChevronDown, UserPlus, LogIn, FileText, Bell,
   CheckCircle, Calendar, Newspaper, BookOpen, Bot, Activity, Flag, ArrowUpDown,
-  MessageSquare, CircleHelp, Pencil, QrCode, Sparkles, FilePlus, Briefcase
+  MessageSquare, CircleHelp, Pencil
 } from "lucide-react";
 import { useRequestList } from "@/components/request-list/request-list-context";
 import { useTextEdit } from "@/components/text-edit/text-edit-context";
-import { cn } from "@/lib/utils";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
@@ -39,44 +38,20 @@ import {
 } from "@/components/tutorial/tutorial-steps";
 import { useTutorial } from "@/components/tutorial/use-tutorial";
 
-/* ヘッダー通知バッジの共通スタイル
-   （数値バッジは赤が慣習。紫ヘッダー上でも顕著性を保ち、ring で下地から浮かせる） */
-const headerBadgeClass =
-  "absolute -top-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold leading-none text-destructive-foreground ring-2 ring-background";
-
-/* モバイルシート内の行内バッジ（未読数）。
-   ヘッダー数値バッジ(headerBadgeClass)と同じ円形トークンに寄せ、
-   絶対配置(-top/-right)と ring だけ外した派生版で形状を統一する。 */
-const mobileBadgeClass =
-  "inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[11px] font-bold leading-none text-destructive-foreground";
-
-/* モバイルシートメニューの行スタイル
-   （罫線の羅列でなく行ホバー＋グループ余白で区切る。グループ境界は border-t のみ） */
-const mobileMenuLinkClass =
-  "flex items-center gap-2 rounded-lg px-2 py-2.5 text-sm font-medium text-foreground/75 transition-colors hover:bg-accent/50 hover:text-foreground active:bg-accent/70 outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-inset";
-
 export function Header() {
   const t = useTranslations("header");
+  const tn = useTranslations("nav");
   const tc = useTranslations("common");
-  const tsm = useTranslations("sideMenu");
   const router = useRouter();
   const pathname = usePathname();
-  // ログイン後は元いたページへ戻れるよう、現在のパスを next として付与する。
-  // /login 自体からの遷移でループしないよう、login 系パスは付与しない。
-  const loginHref =
-    pathname && pathname.startsWith("/") && !pathname.startsWith("/login")
-      ? `/login?next=${encodeURIComponent(pathname)}`
-      : "/login";
   const { count: requestListCount } = useRequestList();
   const { startTutorial } = useTutorial();
   const { editMode, setEditMode } = useTextEdit();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
-  const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [notifications, setNotifications] = useState<{
     list: {
       id: string;
@@ -91,7 +66,6 @@ export function Header() {
     unreadCount: number;
   }>({ list: [], unreadCount: 0 });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [notifOpen, setNotifOpen] = useState(false);
 
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
@@ -102,24 +76,17 @@ export function Header() {
       } = await supabase.auth.getUser();
       setIsAuthenticated(!!user);
       setUserEmail(user?.email || null);
+      setUserName(user?.user_metadata?.name || null);
 
+      // ユーザーのroleを取得（API経由でPrismaから取得。Supabase RLSの影響を受けない）
       if (user) {
         try {
           const res = await fetch("/api/auth/me", { credentials: "include" });
           const data = await res.json();
           setUserRole(data?.profile?.role || null);
-          setUserName(data?.profile?.name || user?.user_metadata?.name || null);
-          setUserAvatarUrl(
-            data?.profile?.avatar_url ||
-              user?.user_metadata?.avatar_url ||
-              null
-          );
+          if (data?.profile?.name) setUserName(data.profile.name);
         } catch {
           setUserRole(null);
-          setUserName(user?.user_metadata?.name || null);
-          setUserAvatarUrl(user?.user_metadata?.avatar_url || null);
-        } finally {
-          setIsProfileLoading(false);
         }
 
         try {
@@ -134,10 +101,7 @@ export function Header() {
           setNotifications({ list: [], unreadCount: 0 });
         }
       } else {
-        setUserName(null);
-        setUserAvatarUrl(null);
         setUserRole(null);
-        setIsProfileLoading(false);
         setNotifications({ list: [], unreadCount: 0 });
       }
 
@@ -146,18 +110,17 @@ export function Header() {
 
     checkAuth();
 
-    // 認証状態の変更を監視（INITIAL_SESSION は上の checkAuth() と重複するためスキップ）
+    // 認証状態の変更を監視
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "INITIAL_SESSION") return;
+    } = supabase.auth.onAuthStateChange(() => {
       checkAuth();
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [pathname]);
 
   const handleLogout = async () => {
     const supabase = createSupabaseBrowserClient();
@@ -166,37 +129,14 @@ export function Header() {
     router.refresh();
   };
 
-  // 教育のひろばの段階移行フラグ：1 でナビの向き先を常設マップ版（/idobata）へ切替
+  // 井戸端会議の段階移行フラグ：1 でナビの向き先を常設マップ版（/idobata）へ切替
   const idobataNav = process.env.NEXT_PUBLIC_IDOBATA_NAV === "1";
-
-  // モバイルメニューは PC のサイドメニューと同じ一般項目を表示（PC版と揃える）。
-  const mobileNavLinks = [
-    { href: "/", label: tsm("home") },
-    { href: "/services", label: tsm("services") },
-    { href: "/articles", label: tsm("articles") },
-    { href: idobataNav ? "/idobata" : "/forum", label: tsm("forum") },
-    { href: "/videos", label: tsm("videos") },
-    { href: "/events", label: tsm("events") },
-    { href: "/companies", label: tsm("companies") },
-    { href: "/matching", label: tsm("matching") },
-    { href: "/compare", label: tsm("compare") },
-    { href: "/ai-kentei", label: tsm("aiKentei") },
-    { href: "/help", label: tsm("help") },
-  ];
-
-  // 管理者リンク（PCドロップダウン／モバイルシート共通の項目定義）
-  const adminLinks = [
-    { href: "/admin/kaikan?tab=checkin", icon: QrCode, label: t("kaikanCheckin") },
-    { href: "/admin/persona", icon: Sparkles, label: t("aiPersona") },
-    { href: "/admin/approvals", icon: CheckCircle, label: t("approvals") },
-    { href: "/admin/events", icon: Calendar, label: t("eventsAdmin") },
-    { href: "/admin/forum", icon: MessageSquare, label: t("forumAdmin") },
-    { href: "/admin/site-updates", icon: Newspaper, label: t("siteUpdatesAdmin") },
-    { href: "/dashboard/admin/knowledge", icon: BookOpen, label: t("knowledgeAdmin") },
-    { href: "/admin/ai-chat", icon: Bot, label: t("aiChatAdmin") },
-    { href: "/admin/services/display-order", icon: ArrowUpDown, label: t("serviceOrderAdmin") },
-    { href: "/admin/activity-log", icon: Activity, label: t("activityLog") },
-    { href: "/admin/user-reports", icon: Flag, label: t("userReports") },
+  const navLinks = [
+    { href: "/services", label: tn("services") },
+    { href: "/articles", label: tn("articles") },
+    { href: idobataNav ? "/idobata" : "/forum", label: tn("forum") },
+    { href: "/events", label: tn("events") },
+    { href: "/companies", label: tn("companies") },
   ];
 
   const displayName = userName || (userEmail ? userEmail.split("@")[0] : tc("user"));
@@ -218,7 +158,7 @@ export function Header() {
       type="button"
       variant="ghost"
       size="sm"
-      className="shrink-0 gap-1.5 px-2 text-foreground/70 hover:text-foreground pointer-coarse:min-h-11 pointer-coarse:min-w-11"
+      className="shrink-0 gap-1.5 px-2 text-foreground/70 hover:text-foreground"
       onClick={handleStartTutorial}
       title={t("tutorialTitle")}
       aria-label={t("tutorialTitle")}
@@ -230,35 +170,45 @@ export function Header() {
   );
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 w-full border-b border-border/60 bg-background/80 backdrop-blur-xl after:absolute after:inset-x-0 after:top-0 after:h-px after:bg-gradient-to-r after:from-transparent after:via-primary/40 after:to-transparent">
+    <header className="fixed top-0 left-0 right-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center gap-2 md:gap-3">
-        {/* Logo（AIUEO BASE 公式ロゴ・背景透過PNG） */}
-        <Link href="/" className="flex shrink-0 items-center hover:opacity-80 transition-opacity" aria-label={tc("siteName")}>
+        {/* Logo */}
+        <Link href="/" className="flex shrink-0 items-center hover:opacity-80 transition-opacity">
           <Image
-            src="/aiueo-base-logo.png"
+            src="/logo.png"
             alt={tc("siteName")}
-            width={1096}
-            height={99}
+            width={180}
+            height={44}
+            className="h-9 w-auto object-contain"
             priority
-            className="h-5 w-auto sm:h-6"
+            unoptimized
           />
         </Link>
 
-        {/* Desktop Navigation（セクション移動は SectionNav タブに集約。ここは機能系のみ） */}
-        <nav className="hidden md:flex min-w-0 flex-1 items-center justify-end gap-1.5 lg:gap-2.5">
-          <div className="flex min-w-0 items-center gap-1.5 lg:gap-2.5">
+        {/* Desktop Navigation */}
+        <nav
+          className="hidden md:flex min-w-0 flex-1 items-center justify-end gap-1.5 lg:gap-2.5"
+          data-tutorial="header-nav"
+        >
+          <div className="flex min-w-0 items-center gap-1.5 overflow-hidden lg:gap-2.5">
+          {navLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="shrink-0 whitespace-nowrap text-sm font-medium text-foreground/60 transition-colors hover:text-foreground"
+            >
+              {link.label}
+            </Link>
+          ))}
           <Link
             href="/request-info/list"
-            className={cn(
-              buttonVariants({ variant: "ghost", size: "sm" }),
-              "relative px-2.5 text-foreground/75 hover:text-foreground"
-            )}
+            className="relative flex shrink-0 items-center gap-1 whitespace-nowrap text-sm font-medium text-foreground/60 transition-colors hover:text-foreground"
           >
             <FileText className="h-4 w-4 shrink-0" />
             <span className="hidden lg:inline">{t("favoritesFull")}</span>
             <span className="lg:hidden">{t("favoritesShort")}</span>
             {requestListCount > 0 && (
-              <span className={headerBadgeClass}>
+              <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold px-1">
                 {requestListCount > 99 ? "99+" : requestListCount}
               </span>
             )}
@@ -272,9 +222,7 @@ export function Header() {
           {/* 通知ベル（全ログインユーザー・汎用） */}
           {isAuthenticated && (
             <DropdownMenu
-              open={notifOpen}
               onOpenChange={(open) => {
-                setNotifOpen(open);
                 if (!open) return;
                 void fetch("/api/notifications", { credentials: "include" })
                   .then((r) => r.json())
@@ -288,21 +236,10 @@ export function Header() {
               }}
             >
               <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="relative shrink-0"
-                  aria-label={
-                    notifications.unreadCount > 0
-                      ? t("notificationsWithUnread", {
-                          count: notifications.unreadCount,
-                        })
-                      : t("notifications")
-                  }
-                >
+                <Button variant="ghost" size="icon" className="relative shrink-0" aria-label={t("notifications")}>
                   <Bell className="h-5 w-5 text-foreground/70" />
                   {notifications.unreadCount > 0 && (
-                    <span className={headerBadgeClass}>
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
                       {notifications.unreadCount > 99 ? "99+" : notifications.unreadCount}
                     </span>
                   )}
@@ -316,10 +253,7 @@ export function Header() {
                       <Link
                         href="/notifications"
                         className="text-xs text-primary hover:underline"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setNotifOpen(false);
-                        }}
+                        onClick={(e) => e.stopPropagation()}
                       >
                         {t("viewAll")}
                       </Link>
@@ -341,36 +275,37 @@ export function Header() {
                             className="block px-4 py-3 hover:bg-muted/50 transition-colors text-left"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setNotifOpen(false);
                               const target = n.href ?? "/notifications";
-                              const isExternal =
-                                target.startsWith("http://") ||
-                                target.startsWith("https://");
                               if (
                                 n.inAppNotificationId &&
                                 n.read !== true
                               ) {
-                                // 既読化は fire-and-forget（失敗しても遷移は妨げない）
-                                void markInAppNotificationRead(
-                                  n.inAppNotificationId
-                                ).catch(() => {});
-                                setNotifications((prev) => ({
-                                  list: prev.list.map((item) =>
-                                    item.id === n.id
-                                      ? { ...item, read: true }
-                                      : item
-                                  ),
-                                  unreadCount: Math.max(0, prev.unreadCount - 1),
-                                }));
-                              }
-                              // 外部URLは既読/未読に関わらず常に新規タブで開く
-                              if (isExternal) {
                                 e.preventDefault();
-                                window.open(
-                                  target,
-                                  "_blank",
-                                  "noopener,noreferrer"
-                                );
+                                void (async () => {
+                                  await markInAppNotificationRead(
+                                    n.inAppNotificationId!
+                                  );
+                                  setNotifications((prev) => ({
+                                    list: prev.list.map((item) =>
+                                      item.id === n.id
+                                        ? { ...item, read: true }
+                                        : item
+                                    ),
+                                    unreadCount: Math.max(0, prev.unreadCount - 1),
+                                  }));
+                                  if (
+                                    target.startsWith("http://") ||
+                                    target.startsWith("https://")
+                                  ) {
+                                    window.open(
+                                      target,
+                                      "_blank",
+                                      "noopener,noreferrer"
+                                    );
+                                  } else {
+                                    router.push(target);
+                                  }
+                                })();
                               }
                             }}
                           >
@@ -398,7 +333,7 @@ export function Header() {
           )}
           
           <div className="flex shrink-0 items-center gap-1">
-          {(isLoading || isProfileLoading) ? (
+          {isLoading ? (
             <div className="h-9 w-20 animate-pulse rounded-md bg-muted" />
           ) : isAuthenticated ? (
             /* ログイン時: ユーザーメニュー */
@@ -410,18 +345,9 @@ export function Header() {
                   className="max-w-[140px] gap-1.5 px-2"
                   data-tutorial="header-user-menu-trigger"
                 >
-                  {userAvatarUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={userAvatarUrl}
-                      alt={displayName}
-                      className="h-6 w-6 shrink-0 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                      <User className="h-3.5 w-3.5 text-primary" />
-                    </div>
-                  )}
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                    <User className="h-3.5 w-3.5 text-primary" />
+                  </div>
                   <span className="hidden min-w-0 truncate sm:inline">{displayName}</span>
                   <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
                 </Button>
@@ -438,66 +364,100 @@ export function Header() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem
+                <DropdownMenuItem 
                   className="cursor-pointer"
                   onSelect={() => router.push("/mypage")}
                 >
                   <User className="mr-2 h-4 w-4" />
                   {t("mypage")}
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuLabel className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground px-2 py-1">
-                  {t("post")}
-                </DropdownMenuLabel>
-                <DropdownMenuItem
-                  className="cursor-pointer"
-                  onSelect={() => router.push("/articles/create")}
-                >
-                  <FilePlus className="mr-2 h-4 w-4" />
-                  {tsm("createArticle")}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="cursor-pointer"
-                  onSelect={() => router.push("/services/create")}
-                >
-                  <Briefcase className="mr-2 h-4 w-4" />
-                  {tsm("createService")}
-                </DropdownMenuItem>
                 {userRole === "ADMIN" && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      className="cursor-pointer"
-                      onSelect={() => router.push("/provider-dashboard")}
-                    >
-                      <LayoutDashboard className="mr-2 h-4 w-4" />
-                      {t("adminDashboard")}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="cursor-pointer"
-                      onSelect={() => setEditMode(!editMode)}
-                    >
-                      <Pencil className="mr-2 h-4 w-4" />
-                      {editMode ? t("editModeOff") : t("editModeOn")}
-                    </DropdownMenuItem>
-                  </>
+                  <DropdownMenuItem
+                    className="cursor-pointer"
+                    onSelect={() => router.push("/provider-dashboard")}
+                  >
+                    <LayoutDashboard className="mr-2 h-4 w-4" />
+                    {t("adminDashboard")}
+                  </DropdownMenuItem>
+                )}
+                {userRole === "ADMIN" && (
+                  <DropdownMenuItem
+                    className="cursor-pointer"
+                    onSelect={() => setEditMode(!editMode)}
+                  >
+                    <Pencil className="mr-2 h-4 w-4 text-orange-600" />
+                    {editMode ? t("editModeOff") : t("editModeOn")}
+                  </DropdownMenuItem>
                 )}
                 {userRole === "ADMIN" && (
                   <>
                     <DropdownMenuSeparator />
-                    <DropdownMenuLabel className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground px-2 py-1">
+                    <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-2 py-1">
                       {t("adminMenu")}
                     </DropdownMenuLabel>
-                    {adminLinks.map((link) => (
-                      <DropdownMenuItem
-                        key={link.href}
-                        className="cursor-pointer"
-                        onSelect={() => router.push(link.href)}
-                      >
-                        <link.icon className="mr-2 h-4 w-4" />
-                        {link.label}
-                      </DropdownMenuItem>
-                    ))}
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onSelect={() => router.push("/admin/approvals")}
+                    >
+                      <CheckCircle className="mr-2 h-4 w-4 text-amber-600" />
+                      {t("approvals")}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onSelect={() => router.push("/admin/events")}
+                    >
+                      <Calendar className="mr-2 h-4 w-4 text-emerald-600" />
+                      {t("eventsAdmin")}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onSelect={() => router.push("/admin/forum")}
+                    >
+                      <MessageSquare className="mr-2 h-4 w-4 text-blue-600" />
+                      {t("forumAdmin")}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onSelect={() => router.push("/admin/site-updates")}
+                    >
+                      <Newspaper className="mr-2 h-4 w-4 text-slate-600" />
+                      {t("siteUpdatesAdmin")}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onSelect={() => router.push("/dashboard/admin/knowledge")}
+                    >
+                      <BookOpen className="mr-2 h-4 w-4 text-indigo-600" />
+                      {t("knowledgeAdmin")}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onSelect={() => router.push("/admin/ai-chat")}
+                    >
+                      <Bot className="mr-2 h-4 w-4 text-violet-600" />
+                      {t("aiChatAdmin")}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onSelect={() => router.push("/admin/services/display-order")}
+                    >
+                      <ArrowUpDown className="mr-2 h-4 w-4 text-cyan-600" />
+                      {t("serviceOrderAdmin")}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onSelect={() => router.push("/admin/activity-log")}
+                    >
+                      <Activity className="mr-2 h-4 w-4 text-orange-600" />
+                      {t("activityLog")}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onSelect={() => router.push("/admin/user-reports")}
+                    >
+                      <Flag className="mr-2 h-4 w-4 text-rose-600" />
+                      {t("userReports")}
+                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
                   </>
                 )}
@@ -510,7 +470,7 @@ export function Header() {
                 </DropdownMenuItem>
                 <DropdownMenuItem 
                   onClick={handleLogout}
-                  className="cursor-pointer text-destructive focus:text-destructive"
+                  className="cursor-pointer text-red-600 focus:text-red-600"
                 >
                   <LogOut className="mr-2 h-4 w-4" />
                   {t("logout")}
@@ -521,10 +481,16 @@ export function Header() {
             /* 未ログイン時: ログイン/新規登録ボタン */
             <div className="flex items-center gap-2">
               <Button asChild variant="ghost" size="sm">
-                <Link href={loginHref}>{t("login")}</Link>
+                <Link href="/login">
+                  <LogIn className="h-4 w-4 mr-2" />
+                  {t("login")}
+                </Link>
               </Button>
               <Button asChild size="sm">
-                <Link href="/login?tab=signup">{t("register")}</Link>
+                <Link href="/login">
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  {t("register")}
+                </Link>
               </Button>
             </div>
           )}
@@ -532,7 +498,7 @@ export function Header() {
         </nav>
 
         {/* Mobile Navigation */}
-        <div className="ml-auto flex shrink-0 items-center gap-1 md:hidden">
+        <div className="flex shrink-0 items-center gap-1 md:hidden">
           {tutorialButton}
           <LanguageSwitcher />
         <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
@@ -540,7 +506,6 @@ export function Header() {
             <Button
               variant="ghost"
               size="icon"
-              aria-label={t("openMenu")}
               data-tutorial="header-mobile-menu-trigger"
             >
               <Menu className="h-5 w-5" />
@@ -552,12 +517,12 @@ export function Header() {
               <SheetTitle>{t("menu")}</SheetTitle>
             </SheetHeader>
             <nav className="flex flex-col px-4 pb-6">
-              {mobileNavLinks.map((link) => (
+              {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={mobileMenuLinkClass}
+                  className="flex items-center py-3 text-sm font-medium text-foreground/60 transition-colors hover:text-foreground border-b"
                 >
                   {link.label}
                 </Link>
@@ -565,64 +530,39 @@ export function Header() {
               <Link
                 href="/request-info/list"
                 onClick={() => setMobileMenuOpen(false)}
-                className={mobileMenuLinkClass}
+                className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b"
               >
                 <FileText className="h-4 w-4 flex-shrink-0" />
                 {t("favoritesFull")}
                 {requestListCount > 0 && (
-                  <span className={mobileBadgeClass}>
+                  <span className="rounded-full bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5">
                     {requestListCount}
                   </span>
                 )}
               </Link>
-              {/* 通知はログイン時のみ表示（デスクトップの通知ベルと挙動を揃える） */}
-              {isAuthenticated && (
-                <Link
-                  href="/notifications"
-                  onClick={() => setMobileMenuOpen(false)}
-                  aria-label={
-                    notifications.unreadCount > 0
-                      ? t("notificationsWithUnread", {
-                          count: notifications.unreadCount,
-                        })
-                      : t("notifications")
-                  }
-                  className={mobileMenuLinkClass}
-                >
-                  <Bell className="h-4 w-4 flex-shrink-0" />
-                  {t("notifications")}
-                  {notifications.unreadCount > 0 && (
-                    <span className={mobileBadgeClass}>
-                      {notifications.unreadCount}
-                    </span>
-                  )}
-                </Link>
-              )}
+              <Link
+                href="/notifications"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b"
+              >
+                <Bell className="h-4 w-4 flex-shrink-0" />
+                {t("notifications")}
+                {notifications.unreadCount > 0 && (
+                  <span className="rounded-full bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5">
+                    {notifications.unreadCount}
+                  </span>
+                )}
+              </Link>
 
               <div className="border-t pt-4 mt-4">
-                {(isLoading || isProfileLoading) ? (
-                  <div className="flex items-center gap-3 p-2 bg-muted/50 rounded-lg mb-3">
-                    <div className="w-10 h-10 rounded-full bg-muted animate-pulse flex-shrink-0" />
-                    <div className="flex-1 min-w-0 space-y-2">
-                      <div className="h-4 w-24 bg-muted animate-pulse rounded" />
-                      <div className="h-3 w-32 bg-muted animate-pulse rounded" />
-                    </div>
-                  </div>
+                {isLoading ? (
+                  <div className="text-sm text-muted-foreground">{tc("loading")}</div>
                 ) : isAuthenticated ? (
                   <div>
                     <div className="flex items-center gap-3 p-2 bg-muted/50 rounded-lg mb-3">
-                      {userAvatarUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={userAvatarUrl}
-                          alt={displayName}
-                          className="w-10 h-10 rounded-full object-cover flex-shrink-0"
-                        />
-                      ) : (
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                          <User className="h-5 w-5 text-primary" />
-                        </div>
-                      )}
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <User className="h-5 w-5 text-primary" />
+                      </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm truncate">{displayName}</p>
                         {userEmail && (
@@ -635,7 +575,7 @@ export function Header() {
                     <Link
                       href="/mypage"
                       onClick={() => setMobileMenuOpen(false)}
-                      className={mobileMenuLinkClass}
+                      className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b"
                     >
                       <User className="h-4 w-4 flex-shrink-0" />
                       {t("mypage")}
@@ -644,7 +584,7 @@ export function Header() {
                       <Link
                         href="/provider-dashboard"
                         onClick={() => setMobileMenuOpen(false)}
-                        className={mobileMenuLinkClass}
+                        className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b"
                       >
                         <LayoutDashboard className="h-4 w-4 flex-shrink-0" />
                         {t("adminDashboard")}
@@ -657,39 +597,55 @@ export function Header() {
                           setMobileMenuOpen(false);
                           setEditMode(!editMode);
                         }}
-                        className={cn(mobileMenuLinkClass, "w-full text-left")}
+                        className="flex w-full items-center gap-2 py-3 text-left text-sm font-medium text-foreground/60 hover:text-foreground border-b"
                       >
-                        <Pencil className="h-4 w-4 flex-shrink-0" />
+                        <Pencil className="h-4 w-4 flex-shrink-0 text-orange-600" />
                         {editMode ? t("editModeOff") : t("editModeOn")}
                       </button>
                     )}
                     {userRole === "ADMIN" && (
                       <div className="border-t pt-3 mt-2">
-                        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground pb-1">{t("adminMenu")}</p>
-                        {adminLinks.map((link) => (
-                          <Link
-                            key={link.href}
-                            href={link.href}
-                            onClick={() => setMobileMenuOpen(false)}
-                            className={mobileMenuLinkClass}
-                          >
-                            <link.icon className="h-4 w-4 flex-shrink-0" />
-                            {link.label}
-                          </Link>
-                        ))}
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground pb-1">{t("adminMenu")}</p>
+                        <Link href="/admin/approvals" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
+                          <CheckCircle className="h-4 w-4 text-amber-600 flex-shrink-0" />{t("approvals")}
+                        </Link>
+                        <Link href="/admin/events" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
+                          <Calendar className="h-4 w-4 text-emerald-600 flex-shrink-0" />{t("eventsAdmin")}
+                        </Link>
+                        <Link href="/admin/forum" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
+                          <MessageSquare className="h-4 w-4 text-blue-600 flex-shrink-0" />{t("forumAdmin")}
+                        </Link>
+                        <Link href="/admin/site-updates" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
+                          <Newspaper className="h-4 w-4 text-slate-600 flex-shrink-0" />{t("siteUpdatesAdmin")}
+                        </Link>
+                        <Link href="/dashboard/admin/knowledge" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
+                          <BookOpen className="h-4 w-4 text-indigo-600 flex-shrink-0" />{t("knowledgeAdmin")}
+                        </Link>
+                        <Link href="/admin/ai-chat" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
+                          <Bot className="h-4 w-4 text-violet-600 flex-shrink-0" />{t("aiChatAdmin")}
+                        </Link>
+                        <Link href="/admin/services/display-order" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
+                          <ArrowUpDown className="h-4 w-4 text-cyan-600 flex-shrink-0" />{t("serviceOrderAdmin")}
+                        </Link>
+                        <Link href="/admin/activity-log" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
+                          <Activity className="h-4 w-4 text-orange-600 flex-shrink-0" />{t("activityLog")}
+                        </Link>
+                        <Link href="/admin/user-reports" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b">
+                          <Flag className="h-4 w-4 text-rose-600 flex-shrink-0" />{t("userReports")}
+                        </Link>
                       </div>
                     )}
                     <Link
                       href="/profile/register"
                       onClick={() => setMobileMenuOpen(false)}
-                      className={mobileMenuLinkClass}
+                      className="flex items-center gap-2 py-3 text-sm font-medium text-foreground/60 hover:text-foreground border-b"
                     >
                       <Settings className="h-4 w-4 flex-shrink-0" />
                       {t("accountSettings")}
                     </Link>
                     <Button
                       variant="outline"
-                      className="w-full h-11 mt-3 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive dark:hover:bg-destructive/20"
+                      className="w-full h-11 text-red-600 border-red-200 hover:bg-red-50 mt-3"
                       onClick={() => { setMobileMenuOpen(false); void handleLogout(); }}
                     >
                       <LogOut className="h-4 w-4 mr-2" />
@@ -699,13 +655,13 @@ export function Header() {
                 ) : (
                   <div className="space-y-2">
                     <Button asChild variant="outline" className="w-full">
-                      <Link href={loginHref} onClick={() => setMobileMenuOpen(false)}>
+                      <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
                         <LogIn className="h-4 w-4 mr-2" />
                         {t("login")}
                       </Link>
                     </Button>
                     <Button asChild className="w-full">
-                      <Link href="/login?tab=signup" onClick={() => setMobileMenuOpen(false)}>
+                      <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
                         <UserPlus className="h-4 w-4 mr-2" />
                         {t("register")}
                       </Link>

@@ -35,19 +35,20 @@ export async function HeroNews() {
       <Link href={`/articles/${heroPost.id}`} className="block group">
         <div className="relative w-full aspect-video overflow-hidden bg-muted">
           <Image
-            src={heroPost.thumbnail_url || "https://placehold.co/800x450/ede9fe/6d28d9?text=No+Image"}
+            src={heroPost.thumbnail_url || "https://placehold.co/800x450/e0f2fe/0369a1?text=No+Image"}
             alt={heroPost.title}
             fill
             className="object-contain"
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 55vw"
             priority
+            unoptimized
           />
-          <Badge className="absolute top-3 left-3 bg-destructive hover:bg-destructive/90 text-destructive-foreground">
+          <Badge className="absolute top-3 left-3 bg-[#ef4444] hover:bg-[#dc2626] text-white">
             特集
           </Badge>
         </div>
         <div className="p-4 border-b">
-          <h2 className="text-lg font-bold mb-2 group-hover:text-primary transition-colors line-clamp-2">
+          <h2 className="text-lg font-bold mb-2 group-hover:text-[#1d4ed8] transition-colors line-clamp-2">
             {heroPost.title}
           </h2>
           <p className="text-xs text-muted-foreground">{formatDate(heroPost.created_at)}</p>
@@ -64,7 +65,7 @@ export async function HeroNews() {
                 <div className="flex-1 min-w-0">
                   <Link
                     href={`/articles/${post.id}`}
-                    className="text-sm hover:text-primary transition-colors line-clamp-2"
+                    className="text-sm hover:text-[#1d4ed8] transition-colors line-clamp-2"
                   >
                     {post.title}
                   </Link>

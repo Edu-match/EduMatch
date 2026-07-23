@@ -101,7 +101,6 @@ export {
   createArticle,
   updateArticle,
   deleteArticle,
-  generateThumbnailForArticle,
 } from "./articles";
 
 // Services Management (サービス管理)

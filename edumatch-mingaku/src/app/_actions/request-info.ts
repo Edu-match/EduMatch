@@ -60,7 +60,7 @@ export type SubmitMaterialRequestBatchResult = {
   userEmailFailed?: boolean;
 };
 
-/** 資料請求があったときにAIUEO BASE運営にも通知を送る宛先 */
+/** 資料請求があったときにエデュマッチ運営にも通知を送る宛先 */
 const EDUMATCH_NOTIFICATION_EMAIL = "info@edu-match.com";
 
 /**
@@ -126,8 +126,8 @@ export async function submitMaterialRequest(
         const resend = new Resend(apiKey);
         const fromRaw = process.env.RESEND_FROM_EMAIL?.trim();
         const from = fromRaw
-          ? (fromRaw.includes("<") ? fromRaw : `AIUEO BASE <${fromRaw}>`)
-          : "AIUEO BASE <onboarding@resend.dev>";
+          ? (fromRaw.includes("<") ? fromRaw : `エデュマッチ <${fromRaw}>`)
+          : "エデュマッチ <onboarding@resend.dev>";
 
         const reqId = req.id.slice(-8).toUpperCase();
         const svcTitle = escapeHtml(service.title);
@@ -146,13 +146,13 @@ export async function submitMaterialRequest(
 <body style="font-family: sans-serif; line-height: 1.6; color: #333;">
   <h2 style="color: #16a34a;">資料請求を受け付けました</h2>
   <p>${reqName} 様</p>
-  <p>AIUEO BASEをご利用いただきありがとうございます。<br />以下のサービスへの資料請求を受け付けました。</p>
+  <p>エデュマッチをご利用いただきありがとうございます。<br />以下のサービスへの資料請求を受け付けました。</p>
   <div style="background: #f0fdf4; padding: 16px; border-radius: 8px; margin: 16px 0;">
     <p style="margin: 0 0 4px;"><strong>サービス名：</strong> ${svcTitle}</p>
     <p style="margin: 0;"><strong>提供者：</strong> ${providerName}</p>
   </div>
   <p><strong>${providerName}</strong> より、ご登録のメールアドレス（${reqEmail}）宛てに資料をお送りします。<br />しばらくお待ちください。</p>
-  <p style="color: #64748b; font-size: 12px; margin-top: 24px;">※ このメールはAIUEO BASEから自動送信されています。請求番号: ${reqId}</p>
+  <p style="color: #64748b; font-size: 12px; margin-top: 24px;">※ このメールはエデュマッチから自動送信されています。請求番号: ${reqId}</p>
 </body>
 </html>`;
 
@@ -162,8 +162,8 @@ export async function submitMaterialRequest(
 <html>
 <head><meta charset="utf-8"></head>
 <body style="font-family: sans-serif; line-height: 1.6; color: #333;">
-  <h2 style="color: #2563eb;">【AIUEO BASE】資料請求の依頼がありました。</h2>
-  <p>AIUEO BASEにて、貴社サービス「${svcTitle}」への資料請求がありました。</p>
+  <h2 style="color: #2563eb;">【エデュマッチ】資料請求の依頼がありました。</h2>
+  <p>エデュマッチにて、貴社サービス「${svcTitle}」への資料請求がありました。</p>
   <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin: 16px 0;">
     <p style="margin: 0 0 8px;"><strong>請求者名：</strong> ${reqName}</p>
     <p style="margin: 0 0 8px;"><strong>塾名・学校名：</strong> ${reqOrg}</p>
@@ -172,7 +172,7 @@ export async function submitMaterialRequest(
     ${reqMessage ? `<p style="margin: 8px 0 0;"><strong>備考・ご要望：</strong><br />${reqMessage}</p>` : ""}
   </div>
   <p>ご対応をお願いいたします。</p>
-  <p style="color: #64748b; font-size: 12px; margin-top: 24px;">※ このメールはAIUEO BASE（<a href="https://edu-match.com">edu-match.com</a>）から自動送信されています。請求番号: ${reqId}</p>
+  <p style="color: #64748b; font-size: 12px; margin-top: 24px;">※ このメールはエデュマッチ（<a href="https://edu-match.com">edu-match.com</a>）から自動送信されています。請求番号: ${reqId}</p>
 </body>
 </html>`;
 
@@ -180,7 +180,7 @@ export async function submitMaterialRequest(
         const userResult = await resend.emails.send({
           from,
           to: deliveryEmail,
-          subject: `【AIUEO BASE】資料請求を受け付けました - ${service.title}`,
+          subject: `【エデュマッチ】資料請求を受け付けました - ${service.title}`,
           html: userHtml,
         });
         if (userResult.error) {
@@ -209,7 +209,7 @@ export async function submitMaterialRequest(
             from,
             to: providerEmailsUnique,
             replyTo: deliveryEmail,
-            subject: `【AIUEO BASE】資料請求がありました - ${service.title}`,
+            subject: `【エデュマッチ】資料請求がありました - ${service.title}`,
             html: providerHtml,
           });
           if (providerResult.error) {
@@ -248,7 +248,7 @@ export async function submitMaterialRequest(
           providerEmails: providerEmailsUnique,
           deliveryEmail,
           apiKeyPresent: !!apiKey,
-          fromEmail: process.env.RESEND_FROM_EMAIL ?? "AIUEO BASE <onboarding@resend.dev>",
+          fromEmail: process.env.RESEND_FROM_EMAIL ?? "エデュマッチ <onboarding@resend.dev>",
         });
         userEmailFailed = true;
         // 資料請求の保存は完了しているので success のまま返す

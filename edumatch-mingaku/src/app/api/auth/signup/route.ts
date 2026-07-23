@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import { createClient } from "@/utils/supabase/server";
 import { createServiceRoleClient } from "@/utils/supabase/server-admin";
 import { Role } from "@prisma/client";
@@ -17,6 +16,8 @@ function authErrorMessage(en: string): string {
     "weak password": "パスワードの強度が不足しています。8文字以上で英数字などを含めてください",
     "Signup requires a valid password": "有効なパスワードを設定してください",
     "Unable to validate email address: invalid format": "メールアドレスの形式が正しくありません",
+    "User already registered": "このメールアドレスは既に登録されています",
+    "A user with this email has already been registered": "このメールアドレスは既に登録されています",
     "Email rate limit exceeded": "メール送信の上限に達しました。しばらく待ってから再度お試しください",
     "Signup disabled": "新規登録は現在受け付けておりません",
     "Forbidden": "この操作は許可されていません",
@@ -29,38 +30,21 @@ function authErrorMessage(en: string): string {
   return "エラーが発生しました。入力内容を確認してもう一度お試しください。";
 }
 
-/** アカウント列挙防止: 既存メールを示唆する Supabase エラーかどうか */
-function isAlreadyRegisteredError(message: string): boolean {
-  const lower = message.toLowerCase();
-  return (
-    lower.includes("already registered") ||
-    lower.includes("already been registered") ||
-    lower.includes("user already exists")
-  );
-}
-
-const signupBodySchema = z.object({
-  email: z.string().trim().min(1).max(254).email(),
-  password: z.string().min(1).max(128),
-  userType: z.string().max(50).optional(),
-});
-
 export async function POST(request: NextRequest) {
   try {
-    const rawBody = await request.json().catch(() => null);
-    const parsed = signupBodySchema.safeParse(rawBody);
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: "メールアドレスとパスワードを入力してください" },
-        { status: 400 }
-      );
-    }
-    const { email, password, userType } = parsed.data;
+    const { email, password, userType } = await request.json();
 
     if (userType === "provider" && !FEATURES.PROVIDER_REGISTRATION) {
       return NextResponse.json(
         { error: "現在、事業者向けの新規登録は受け付けていません。" },
         { status: 403 }
+      );
+    }
+
+    if (!email || !password) {
+      return NextResponse.json(
+        { error: "メールアドレスとパスワードを入力してください" },
+        { status: 400 }
       );
     }
 
@@ -100,17 +84,6 @@ export async function POST(request: NextRequest) {
     });
 
     if (authError) {
-      // アカウント列挙防止:
-      // 既存メールの場合も成功時と同じレスポンス形式（200）を返し、
-      // 登録済みかどうかを外部から判別できないようにする。
-      if (isAlreadyRegisteredError(authError.message)) {
-        console.warn("Signup attempt for existing email (masked response)");
-        return NextResponse.json({
-          user: null,
-          session: null,
-          message: "会員登録が完了しました。",
-        });
-      }
       return NextResponse.json(
         { error: authErrorMessage(authError.message) },
         { status: 400 }

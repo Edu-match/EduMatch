@@ -13,12 +13,16 @@
       "schedule": "*/30 * * * *"
     },
     {
-      "path": "/api/cron/interop-axis3",
-      "schedule": "0 16 * * 1"
+      "path": "/api/cron/interop-axis-positions",
+      "schedule": "20 15 * * *"
     },
     {
       "path": "/api/cron/interop-topic-edges",
-      "schedule": "20 16 * * 1"
+      "schedule": "40 15 * * *"
+    },
+    {
+      "path": "/api/cron/interop-axis-config",
+      "schedule": "0 16 * * 1"
     }
   ]
 }

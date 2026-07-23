@@ -52,7 +52,7 @@ export function formatOrganizationTypeDisplay(
 
 const MAX_FORUM_AUTHOR_ROLE_LEN = 120;
 
-/** 教育のひろばの author_role 列に保存する文字列 */
+/** 井戸端会議の author_role 列に保存する文字列 */
 export function computeForumAuthorRoleStorage(
   orgType: string | null | undefined,
   orgOther: string | null | undefined

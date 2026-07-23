@@ -3,9 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Bot, ChevronDown, ChevronUp, CornerDownRight, Heart, Link2, Loader2, LogIn, MessageCircle, PenSquare, Pin, Send, X } from "lucide-react";
-import { useAuthUser } from "@/components/community/answer-section";
-import { formatOrganizationTypeDisplay } from "@/lib/organization-types";
+import { ArrowLeft, Bot, ChevronDown, ChevronUp, CornerDownRight, Heart, Link2, Loader2, MessageCircle, Pin, Send, X } from "lucide-react";
 import { getInteropVoterKey } from "@/lib/interop-voter";
 import { InteropBackdrop } from "@/components/interop/interop-backdrop";
 import { InteropContentCarousel } from "@/components/interop/interop-content-carousel";
@@ -73,7 +71,7 @@ function renderBodyWithMention(body: string): React.ReactNode {
 
 /** フロストグラス：時間帯背景を透かしつつ本文のコントラストを確保 */
 const POST_SURFACE = {
-  background: "linear-gradient(145deg, rgba(10,15,42,0.80) 0%, rgba(8,12,36,0.84) 100%)",
+  background: "linear-gradient(145deg, rgba(14,20,52,0.62) 0%, rgba(8,12,36,0.72) 100%)",
   backdropFilter: "blur(16px) saturate(1.15)",
   WebkitBackdropFilter: "blur(16px) saturate(1.15)",
   boxShadow: "0 8px 32px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.12)",
@@ -86,20 +84,15 @@ export function InteropBoard({
   topic,
   accent,
   themeMode = "auto",
-  showChat = false,
-  forumStyleForm = false,
 }: {
   sub: { id: string; name: string; description: string; url?: string; categoryId: string; categoryName: string; categorySlug?: string };
   topic?: { id: string; name: string; description: string; url?: string };
   accent: string;
   themeMode?: InteropThemeMode;
-  showChat?: boolean;
-  forumStyleForm?: boolean;
 }) {
   // interop 直下の「直行サテライト」（最新ニュース／登壇者への質問／ご意見BOX）は
   // トップマップから直接入るので、戻り先はハブではなくトップマップにする。
   const isSatellite = sub.categorySlug === "interop";
-  const auth = useAuthUser();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
@@ -108,8 +101,6 @@ export function InteropBoard({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  // AIモデレーション：投稿が審査保留になったとき、結果（診断中/公開/非公開/人手審査）を明示する常設カード
-  const [reviewPending, setReviewPending] = useState<string | null>(null);
   /** 返信スレッドを展開している投稿ID */
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
   /** 開いている返信フォーム（postId + 宛先名。宛先なし＝投稿者宛） */
@@ -211,9 +202,7 @@ export function InteropBoard({
     try { localStorage.setItem("interop_author_role", value); } catch { /* noop */ }
   };
 
-  const canSubmit = forumStyleForm
-    ? auth.isLoggedIn && !!bodyText.trim() && !submitting
-    : !!name.trim() && !!role.trim() && !!bodyText.trim() && !submitting;
+  const canSubmit = !!name.trim() && !!role.trim() && !!bodyText.trim() && !submitting;
 
   async function submit() {
     const trimmed = bodyText.trim();
@@ -236,13 +225,12 @@ export function InteropBoard({
       if (!res.ok) { setError(data.error || "投稿に失敗しました"); return; }
       setBodyText("");
       if (data.pendingReview || !data.post) {
-        // AIモデレーションで自動非表示 → 審査中を常設カードで明示（理由は晒さない）
+        // AIモデレーションで自動非表示 → 投稿者には確認中と伝える（理由は晒さない）
         setError(null);
-        setNotice(null);
-        setReviewPending(data.message || "投稿ありがとうございます。AIが内容を確認しています。");
+        setNotice(data.message || "投稿ありがとうございます。内容を確認のうえ公開されます。");
+        setTimeout(() => setNotice(null), 5000);
         return;
       }
-      setReviewPending(null);
       setPosts((prev) => [data.post, ...prev]);
       listTopRef.current?.scrollIntoView({ behavior: "smooth" });
     } catch {
@@ -310,7 +298,8 @@ export function InteropBoard({
       const data = await res.json();
       if (!res.ok) { setError(data.error || "返信に失敗しました"); return; }
       if (data.pendingReview || !data.post) {
-        setReviewPending(data.message || "返信ありがとうございます。AIが内容を確認しています。");
+        setNotice(data.message || "返信ありがとうございます。内容を確認のうえ公開されます。");
+        setTimeout(() => setNotice(null), 5000);
         closeReply();
         return;
       }
@@ -436,7 +425,7 @@ export function InteropBoard({
           );
         })()}
 
-        {/* ════ 関連コンテンツ（本体AIUEO BASEから検索） ════ */}
+        {/* ════ 関連コンテンツ（本体エデュマッチから検索） ════ */}
         <InteropContentCarousel subId={sub.id} topicId={topic?.id} accent={accent} />
 
         {/* ════ その下：投稿一覧 ════ */}
@@ -471,7 +460,7 @@ export function InteropBoard({
                         : { ...POST_SURFACE, borderColor: "rgba(255,255,255,0.16)" }
                   }>
                     <div className="px-4 py-3">
-                      <div className="flex items-center gap-2 text-xs text-white/70">
+                      <div className="flex items-center gap-2 text-xs text-white/55">
                         {p.isPinned && (
                           <span
                             className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold"
@@ -481,7 +470,7 @@ export function InteropBoard({
                           </span>
                         )}
                         <span className="font-bold text-white/85">{p.authorName}</span>
-                        {p.authorRole && <span className="text-white/60">· {p.authorRole}</span>}
+                        {p.authorRole && <span className="text-white/40">· {p.authorRole}</span>}
                         <span className="ml-auto shrink-0">{timeAgo(p.postedAt)}</span>
                       </div>
                       <p
@@ -495,7 +484,7 @@ export function InteropBoard({
                           type="button"
                           onClick={() => toggleLike(p.id)}
                           className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] transition ${
-                            p.liked ? "text-pink-400" : "text-white/60 hover:text-pink-300"
+                            p.liked ? "text-pink-400" : "text-white/40 hover:text-pink-300"
                           }`}
                           aria-pressed={p.liked}
                           aria-label={p.liked ? "いいねを取り消す" : "いいねする"}
@@ -673,181 +662,62 @@ export function InteropBoard({
         className="fixed inset-x-0 bottom-0 z-20 border-t border-white/10 bg-[#070a1c]/95 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur"
       >
         <div className="mx-auto w-full max-w-2xl px-4 py-3 sm:px-6">
-          {reviewPending && (
-            <div className="mb-2 flex items-start gap-2 rounded-xl border border-amber-300/30 bg-amber-400/10 px-3 py-2 text-[11px] leading-relaxed text-amber-100">
-              <Loader2 className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin text-amber-300" />
-              <div className="min-w-0 flex-1">
-                <p className="font-bold text-amber-200">AIが内容を診断中です</p>
-                <p className="text-amber-100/80">{reviewPending}</p>
-                <p className="mt-0.5 text-amber-100/60">問題なければ自動で公開されます。規約に反する場合は公開されないことがあり、判断が難しい内容は運営が確認します。</p>
-              </div>
-              <button type="button" onClick={() => setReviewPending(null)} className="shrink-0 rounded-full p-0.5 text-amber-200/70 hover:text-amber-100" aria-label="閉じる"><X className="h-3.5 w-3.5" /></button>
-            </div>
-          )}
           {error && <p className="mb-2 text-xs text-rose-300">{error}</p>}
           {notice && <p className="mb-2 text-xs text-emerald-300">{notice}</p>}
-          {forumStyleForm ? (
-            <ForumStyleComposeArea
-              auth={auth}
-              bodyText={bodyText}
-              setBodyText={setBodyText}
-              submitting={submitting}
-              accent={accent}
-              onSubmit={() => {
-                if (!auth.isLoggedIn || !bodyText.trim()) return;
-                const profileRole = auth.organizationType?.trim()
-                  ? formatOrganizationTypeDisplay(auth.organizationType, auth.organizationTypeOther ?? undefined)
-                  : "一般";
-                setName(auth.name);
-                setRole(profileRole);
-                submit();
-              }}
-            />
-          ) : (
-            <div className="flex items-end gap-2">
-              <div className="flex-1 space-y-2">
-                <div className="flex gap-2">
-                  <input
-                    value={name}
-                    onChange={(e) => updateName(e.target.value)}
-                    placeholder="ニックネーム（必須）"
-                    maxLength={40}
-                    className="w-full rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-white/30 focus:outline-none"
-                  />
-                  <input
-                    value={role}
-                    onChange={(e) => updateRole(e.target.value)}
-                    placeholder="肩書き（必須）"
-                    maxLength={60}
-                    className="w-full rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-white/30 focus:outline-none"
-                  />
-                </div>
-                <textarea
-                  value={bodyText}
-                  onChange={(e) => setBodyText(e.target.value)}
-                  onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") submit(); }}
-                  placeholder="ひとこと書く…"
-                  rows={2}
-                  maxLength={1000}
-                  className="w-full resize-none rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-white/30 focus:outline-none"
+          <div className="flex items-end gap-2">
+            <div className="flex-1 space-y-2">
+              <div className="flex gap-2">
+                <input
+                  value={name}
+                  onChange={(e) => updateName(e.target.value)}
+                  placeholder="ニックネーム（必須）"
+                  maxLength={40}
+                  className="w-full rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-white/30 focus:outline-none"
+                />
+                <input
+                  value={role}
+                  onChange={(e) => updateRole(e.target.value)}
+                  placeholder="肩書き（必須）"
+                  maxLength={60}
+                  className="w-full rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-white/30 focus:outline-none"
                 />
               </div>
-              <button
-                type="button"
-                onClick={submit}
-                disabled={!canSubmit}
-                className="grid h-11 w-11 shrink-0 place-items-center rounded-xl font-bold text-white transition disabled:opacity-40"
-                style={{ background: accent }}
-                aria-label="投稿する"
-              >
-                {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
-              </button>
+              <textarea
+                value={bodyText}
+                onChange={(e) => setBodyText(e.target.value)}
+                onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") submit(); }}
+                placeholder="ひとこと書く…"
+                rows={2}
+                maxLength={1000}
+                className="w-full resize-none rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-white/30 focus:outline-none"
+              />
             </div>
-          )}
+            <button
+              type="button"
+              onClick={submit}
+              disabled={!canSubmit}
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-xl font-bold text-white transition disabled:opacity-40"
+              style={{ background: accent }}
+              aria-label="投稿する"
+            >
+              {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+            </button>
+          </div>
         </div>
       </div>
 
       {/* どのページでもいつでも質問できるAIチャット（下部に投稿バーがあるので少し上げる）。
           今見ているページ（トピック・概要）に加え、ページ内の投稿・返信もアタッチして渡す */}
-      {showChat && (
-        <InteropChatWidget
-          mobileRaise
-          context={
-            topic
-              ? `${sub.categoryName}｜${sub.name}｜トピック「${topic.name}」${topic.description ? `（${topic.description}）` : ""}`
-              : `${sub.categoryName}｜${sub.name}${sub.description ? `（${sub.description}）` : ""}`
-          }
-          contextDetail={serializePostsForAi(posts)}
-        />
-      )}
-    </main>
-  );
-}
-
-function ForumStyleComposeArea({
-  auth,
-  bodyText,
-  setBodyText,
-  submitting,
-  accent,
-  onSubmit,
-}: {
-  auth: ReturnType<typeof useAuthUser>;
-  bodyText: string;
-  setBodyText: (v: string) => void;
-  submitting: boolean;
-  accent: string;
-  onSubmit: () => void;
-}) {
-  const MAX_BODY = 3000;
-  const remaining = MAX_BODY - bodyText.length;
-  const canSubmit = auth.isLoggedIn && bodyText.trim().length > 0 && bodyText.length <= MAX_BODY && !submitting;
-
-  if (auth.isLoading) {
-    return (
-      <div className="flex items-center justify-center py-4">
-        <Loader2 className="h-5 w-5 animate-spin text-white/40" />
-      </div>
-    );
-  }
-
-  if (!auth.isLoggedIn) {
-    return (
-      <div className="flex flex-col gap-3 rounded-xl border border-dashed border-white/20 bg-white/[0.04] p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm font-semibold text-white/90">投稿するにはログインしてください</p>
-          <p className="mt-1 text-xs text-white/55">会員限定の投稿機能です。</p>
-        </div>
-        <a
-          href="/auth/login"
-          className="inline-flex items-center gap-1.5 rounded-full px-5 py-2 text-sm font-bold text-white transition hover:brightness-110 active:brightness-95 outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-          style={{ background: accent }}
-        >
-          <LogIn className="h-4 w-4" />ログインする
-        </a>
-      </div>
-    );
-  }
-
-  const profileRole = auth.organizationType?.trim()
-    ? formatOrganizationTypeDisplay(auth.organizationType, auth.organizationTypeOther ?? undefined)
-    : "一般";
-
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2">
-        <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white/15 text-xs font-bold text-white">
-          {(auth.name || "?")[0]}
-        </div>
-        <span className="text-xs font-medium text-white/85">{auth.name}</span>
-        <span className="text-white/30">·</span>
-        <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-medium text-white/65">{profileRole}</span>
-      </div>
-      <textarea
-        value={bodyText}
-        onChange={(e) => setBodyText(e.target.value)}
-        onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") onSubmit(); }}
-        placeholder="あなたの意見や経験を書いてください…"
-        rows={4}
-        maxLength={MAX_BODY + 50}
-        className="w-full resize-none rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-sm leading-7 text-white placeholder:text-white/40 outline-none focus-visible:border-white/40 focus-visible:ring-2 focus-visible:ring-white/25"
+      <InteropChatWidget
+        mobileRaise
+        context={
+          topic
+            ? `${sub.categoryName}｜${sub.name}｜トピック「${topic.name}」${topic.description ? `（${topic.description}）` : ""}`
+            : `${sub.categoryName}｜${sub.name}${sub.description ? `（${sub.description}）` : ""}`
+        }
+        contextDetail={serializePostsForAi(posts)}
       />
-      <div className="flex items-center justify-end gap-3">
-        <span className={`text-[11px] tabular-nums ${remaining < 0 ? "text-rose-400 font-semibold" : remaining < 50 ? "text-amber-300" : "text-white/40"}`}>
-          {remaining}
-        </span>
-        <button
-          type="button"
-          onClick={onSubmit}
-          disabled={!canSubmit}
-          className="inline-flex items-center gap-1.5 rounded-full px-5 py-2 text-sm font-bold text-white transition disabled:opacity-40 hover:brightness-110 active:brightness-95 outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-          style={{ background: accent }}
-        >
-          {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PenSquare className="h-3.5 w-3.5" />}
-          投稿する
-        </button>
-      </div>
-    </div>
+    </main>
   );
 }
 

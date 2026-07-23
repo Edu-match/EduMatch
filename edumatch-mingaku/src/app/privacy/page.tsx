@@ -61,7 +61,7 @@ const DEFAULT_PRIVACY_CONTENT = (
     <h2>お問い合わせ窓口</h2>
     <p>ご意見、ご質問、苦情のお申出先その他利用者情報の取扱いに関するお問い合わせは、下記の窓口までお願い致します。</p>
     <ul>
-      <li>名称: 株式会社スタディパーク　AIUEO BASE事務局</li>
+      <li>名称: 株式会社スタディパーク　エデュマッチ事務局</li>
       <li>Email: <a href="mailto:info@edu-match.com">info@edu-match.com</a></li>
     </ul>
 

@@ -45,7 +45,6 @@ export function MainVisual() {
                   src={item.image}
                   alt={item.title}
                   fill
-                  sizes="(max-width: 640px) 100vw, 50vw"
                   className="object-contain"
                 />
               </div>

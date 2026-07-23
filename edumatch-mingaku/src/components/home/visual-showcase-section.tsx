@@ -71,6 +71,7 @@ export async function VisualShowcaseSection() {
                     className="object-contain transition-transform duration-500 group-hover:scale-105"
                     sizes="(max-width: 1280px) 100vw, 66vw"
                     priority
+                    unoptimized
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
                   <Badge className="absolute left-4 top-4 bg-primary text-primary-foreground">FEATURED</Badge>
@@ -95,6 +96,7 @@ export async function VisualShowcaseSection() {
                         fill
                         className="object-contain transition-transform duration-500 group-hover:scale-105"
                         sizes="(max-width: 768px) 100vw, 50vw"
+                        unoptimized
                       />
                     </div>
                     <div className="p-4">
@@ -135,6 +137,7 @@ export async function VisualShowcaseSection() {
                       fill
                       className="object-contain transition-transform duration-500 group-hover:scale-105"
                       sizes="(max-width: 1280px) 100vw, 33vw"
+                      unoptimized
                     />
                     <div className="absolute left-3 top-3 rounded-md bg-black/70 px-2 py-1 text-xs font-bold text-white">
                       #{index + 1}

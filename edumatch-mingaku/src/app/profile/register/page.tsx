@@ -23,7 +23,6 @@ export default async function ProfileRegisterPage({ searchParams }: Props) {
         organization_type: profile.organization_type ?? null,
         organization_type_other: profile.organization_type_other ?? null,
         job_title: profile.job_title ?? null,
-        position: profile.position ?? null,
         bio: profile.bio ?? null,
         website: profile.website ?? null,
         notification_email_2: profile.notification_email_2 ?? null,

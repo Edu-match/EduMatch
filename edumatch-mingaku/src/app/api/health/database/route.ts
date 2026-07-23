@@ -78,9 +78,9 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (e) {
-    console.error("[health/database]", e);
+    const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json(
-      { ok: false, prisma: "error", error: "Internal server error" },
+      { ok: false, prisma: "error", error: message },
       { status: 500 }
     );
   }

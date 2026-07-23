@@ -1,6 +1,5 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -32,10 +31,8 @@
   --color-muted: var(--muted);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
-  --color-secondary-hover: var(--secondary-hover);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
-  --color-primary-hover: var(--primary-hover);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -47,121 +44,75 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-success: var(--success);
-  --color-success-foreground: var(--success-foreground);
-  --color-warning: var(--warning);
-  --color-warning-foreground: var(--warning-foreground);
-  --color-surface-tint: var(--surface-tint);
-  /* 紫染めの影（黒ベース既定影はラベンダー背景上で濁るため一括上書き） */
-  --shadow-2xs: 0 1px 2px oklch(0.35 0.12 280 / 0.06);
-  --shadow-xs: 0 1px 2px oklch(0.35 0.12 280 / 0.08);
-  --shadow-sm: 0 1px 2px oklch(0.35 0.12 280 / 0.08), 0 2px 6px -1px oklch(0.35 0.12 280 / 0.08);
-  --shadow-md: 0 2px 4px oklch(0.35 0.12 280 / 0.08), 0 6px 16px -4px oklch(0.35 0.12 280 / 0.12);
-  --shadow-lg: 0 4px 8px oklch(0.35 0.12 280 / 0.08), 0 16px 32px -8px oklch(0.35 0.12 280 / 0.16);
 }
 
 :root {
-  --radius: 0.75rem;
-  /* 固定chromeの高さ（ヘッダー h-16 / セクションナビ h-11）。
-     sticky オフセット・scroll-padding-top はすべてここを参照して一元管理する */
-  --header-h: 4rem;
-  --sectionnav-h: 2.75rem;
-  /* IU紫系: はっきりラベンダー × ディープパープル */
-  --background: oklch(0.965 0.035 280);
-  --foreground: oklch(0.18 0.020 280);
-  --card: oklch(0.975 0.025 282);
-  --card-foreground: oklch(0.18 0.020 280);
-  --popover: oklch(0.975 0.025 282);
-  --popover-foreground: oklch(0.18 0.020 280);
-  --primary: oklch(0.48 0.24 278);
-  /* ホバー時の実色（半透明で下地が透けないよう一段暗い実色を定義） */
-  --primary-hover: oklch(0.43 0.23 278);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.915 0.050 280);
-  --secondary-foreground: oklch(0.25 0.020 280);
-  /* ホバー時の実色（透過(/80)だと薄い下地と混色して逆に明るくなるため、一段暗い実色で定義） */
-  --secondary-hover: oklch(0.875 0.055 280);
-  --muted: oklch(0.915 0.050 280);
-  --muted-foreground: oklch(0.48 0.025 280);
-  --accent: oklch(0.895 0.065 280);
-  --accent-foreground: oklch(0.28 0.14 280);
-  /* 表面ティント: カード上に敷く薄紫のグラデーション終端用（ハードコード violet-50 の代替） */
-  --surface-tint: oklch(0.955 0.030 281);
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.99 0 0);
-  /* 受付済など「成功」を意味する状態色（緑をブランド彩度に馴染ませたトーン） */
-  --success: oklch(0.58 0.14 155);
-  --success-foreground: oklch(0.99 0 0);
-  /* 管理者ブロック等の「注意/権限」を意味する状態色（琥珀を紫基調に馴染ませた彩度に抑えたトーン） */
-  --warning: oklch(0.72 0.14 75);
-  --warning-foreground: oklch(0.28 0.06 75);
-  --border: oklch(0.865 0.050 280);
-  /* input/outline ボタンの境界は装飾罫線(--border)より暗くし、
-     薄紫背景に対して WCAG 1.4.11 の非テキストコントラスト（約3:1）を確保する */
-  --input: oklch(0.72 0.055 280);
-  --ring: oklch(0.48 0.24 278);
-  /* チャート: 紫アンカーの調和配色（shadcn既定の雑多カラーを排除） */
-  --chart-1: oklch(0.48 0.24 278);
-  --chart-2: oklch(0.62 0.16 300);
-  --chart-3: oklch(0.58 0.14 250);
-  --chart-4: oklch(0.70 0.12 320);
-  --chart-5: oklch(0.55 0.10 230);
-  /* サイドバー: 本体トークンのラベンダー基調に揃える */
-  --sidebar: oklch(0.975 0.025 282);
-  --sidebar-foreground: oklch(0.18 0.020 280);
-  --sidebar-primary: oklch(0.48 0.24 278);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.895 0.065 280);
-  --sidebar-accent-foreground: oklch(0.28 0.14 280);
-  --sidebar-border: oklch(0.865 0.050 280);
-  --sidebar-ring: oklch(0.48 0.24 278);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
 }
 
 .dark {
-  --background: oklch(0.14 0.025 278);
-  --foreground: oklch(0.985 0.008 280);
-  --card: oklch(0.18 0.030 278);
-  --card-foreground: oklch(0.985 0.008 280);
-  --popover: oklch(0.18 0.030 278);
-  --popover-foreground: oklch(0.985 0.008 280);
-  --primary: oklch(0.72 0.18 278);
-  --primary-hover: oklch(0.77 0.17 278);
-  --primary-foreground: oklch(0.14 0.025 278);
-  --secondary: oklch(0.24 0.035 278);
-  --secondary-foreground: oklch(0.985 0.008 280);
-  /* ダークでは一段明るい実色でホバーを可視化 */
-  --secondary-hover: oklch(0.30 0.04 278);
-  --muted: oklch(0.24 0.035 278);
-  --muted-foreground: oklch(0.68 0.03 280);
-  --accent: oklch(0.24 0.035 278);
-  --accent-foreground: oklch(0.985 0.008 280);
-  --surface-tint: oklch(0.20 0.035 278);
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0.008 280);
-  --success: oklch(0.72 0.15 155);
-  --success-foreground: oklch(0.14 0.025 278);
-  /* ダークでは明度を上げて視認性を確保した琥珀トーン */
-  --warning: oklch(0.78 0.13 75);
-  --warning-foreground: oklch(0.16 0.03 75);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 18%);
-  --ring: oklch(0.65 0.15 278);
-  /* チャート: ダーク用に明度を上げた紫アンカー配色 */
-  --chart-1: oklch(0.72 0.18 278);
-  --chart-2: oklch(0.70 0.14 300);
-  --chart-3: oklch(0.68 0.12 250);
-  --chart-4: oklch(0.76 0.10 320);
-  --chart-5: oklch(0.66 0.09 230);
-  /* サイドバー: ダーク本体トークンに揃える */
-  --sidebar: oklch(0.18 0.030 278);
-  --sidebar-foreground: oklch(0.985 0.008 280);
-  --sidebar-primary: oklch(0.72 0.18 278);
-  --sidebar-primary-foreground: oklch(0.14 0.025 278);
-  --sidebar-accent: oklch(0.24 0.035 278);
-  --sidebar-accent-foreground: oklch(0.985 0.008 280);
-  --sidebar-border: oklch(1 0 0 / 12%);
-  --sidebar-ring: oklch(0.65 0.15 278);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
 }
 
 @layer base {
@@ -169,326 +120,60 @@
     @apply border-border outline-ring/50;
   }
   html {
-    scroll-behavior: smooth;
-    /* 固定ヘッダー(--header-h) + セクションナビ(--sectionnav-h) + 余白ぶんアンカー位置を下げる。
-       ニュースティッカー(約2.5rem)はトップページ限定のためグローバルには含めない
-       （含めるとティッカーの無いページでアンカーが約40px下にずれる）。
-       トップにアンカーを追加する場合は対象要素側に scroll-mt-10 を付与すること */
-    scroll-padding-top: calc(var(--header-h) + var(--sectionnav-h) + 0.5rem);
-    /* ダークモード未実装（.dark 切替機構なし）のためライト固定を明示し、
-       OS ダーク設定でフォーム部品・スクロールバーが UA によって暗色化されるのを防ぐ */
-    color-scheme: light;
+    overflow-x: hidden;
   }
   body {
-    @apply bg-background text-foreground antialiased;
-    line-height: 1.7; /* 和文本文の標準 */
-    min-height: 100vh;
-    overflow-x: clip;
+    @apply bg-background text-foreground;
+    overflow-x: hidden;
     max-width: 100vw;
-  }
-  /* 装飾グラデーションは viewport 固定レイヤーに分離
-     （body 直付けだと長いページで数千pxに引き伸ばされ、トップの紫ウォッシュが消えるため） */
-  body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-    background:
-      radial-gradient(ellipse 80% 50% at 20% 0%, oklch(0.85 0.08 280 / 0.35) 0%, transparent 60%),
-      radial-gradient(ellipse 60% 40% at 85% 15%, oklch(0.88 0.06 290 / 0.25) 0%, transparent 55%),
-      linear-gradient(180deg, oklch(0.940 0.055 278) 0%, oklch(0.960 0.038 282) 35%, oklch(0.950 0.048 280) 100%);
-  }
-  .dark body::before {
-    display: none;
   }
 }
 
 @layer utilities {
   .container {
-    /* サイドバー2カラムを考慮した上限幅。超ワイド画面で行長が無制限になるのを防ぐ */
-    @apply w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8;
-  }
-  /* Apple風の大見出し（トラッキング詰め・行間詰め・和文プロポーショナル）
-     letter-spacing -0.03em はディスプレイサイズ前提の詰め。
-     text-xl（20px）以上で使うこと。text-lg 以下では窮屈になり可読性が落ちるため使用しない */
-  .display-title {
-    @apply font-bold tracking-tight;
-    letter-spacing: -0.03em;
-    line-height: 1.1;
-    font-feature-settings: "palt" 1;
-  }
-  /* セクション見出し（body の本文用 line-height 1.7 を継承させない） */
-  .section-title {
-    @apply text-2xl sm:text-3xl font-bold tracking-tight;
-    letter-spacing: -0.02em;
-    line-height: 1.3;
-    font-feature-settings: "palt" 1;
-  }
-  /* 上品なカードホバー（浮き上がり）
-     影は影トークン（--shadow-sm → --shadow-lg）に一本化し、二重管理を避ける */
-  .card-lift {
-    @apply transition-all duration-300;
-    will-change: transform, box-shadow;
-    box-shadow: var(--shadow-sm);
-  }
-  .card-lift:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
-  }
-  /* ホバーで左から伸びる下線（見出しリンク用） */
-  .link-underline {
-    background-image: linear-gradient(currentColor, currentColor);
-    background-size: 0% 1.5px;
-    background-position: 0 100%;
-    background-repeat: no-repeat;
-    transition: background-size 0.35s cubic-bezier(0.22, 1, 0.36, 1);
-  }
-  .link-underline:hover,
-  a:hover .link-underline,
-  .group:hover .link-underline {
-    background-size: 100% 1.5px;
+    @apply w-full max-w-full mx-auto px-4 sm:px-6 lg:px-8;
   }
 }
 
-/* ===== アニメーション基盤 ===== */
-
-/* ロード時のフェードアップ（ヒーロー等・CSSのみ） */
-@keyframes em-fade-up {
-  from { opacity: 0; transform: translateY(18px); }
-  to { opacity: 1; transform: none; }
-}
-.animate-fade-up {
-  animation: em-fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-.animation-delay-100 { animation-delay: 100ms; }
-.animation-delay-200 { animation-delay: 200ms; }
-.animation-delay-300 { animation-delay: 300ms; }
-.animation-delay-400 { animation-delay: 400ms; }
-
-/* スクロールリビール（Reveal コンポーネントが is-visible を付与） */
-.reveal {
-  opacity: 0;
-  transform: translateY(20px);
-  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
-  transition-delay: var(--reveal-delay, 0ms);
-}
-.reveal.is-visible {
-  opacity: 1;
-  transform: none;
-}
-
-/* リビールバリアント（Apple風の多方向アニメーション） */
-.reveal--fade-in {
-  opacity: 0;
-  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1);
-  transition-delay: var(--reveal-delay, 0ms);
-}
-.reveal--fade-in.is-visible { opacity: 1; }
-
-.reveal--fade-left {
-  opacity: 0;
-  transform: translateX(24px);
-  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
-  transition-delay: var(--reveal-delay, 0ms);
-}
-.reveal--fade-left.is-visible { opacity: 1; transform: none; }
-
-.reveal--fade-right {
-  opacity: 0;
-  transform: translateX(-24px);
-  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
-  transition-delay: var(--reveal-delay, 0ms);
-}
-.reveal--fade-right.is-visible { opacity: 1; transform: none; }
-
-.reveal--scale-up {
-  opacity: 0;
-  transform: scale(0.96);
-  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
-  transition-delay: var(--reveal-delay, 0ms);
-}
-.reveal--scale-up.is-visible { opacity: 1; transform: none; }
-
-.reveal--blur-in {
-  opacity: 0;
-  filter: blur(8px);
-  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
-    filter 0.7s cubic-bezier(0.22, 1, 0.36, 1);
-  transition-delay: var(--reveal-delay, 0ms);
-}
-.reveal--blur-in.is-visible { opacity: 1; filter: blur(0); }
-
-/* ページ遷移のサブトルフェード */
-@keyframes em-page-enter {
-  from { opacity: 0.92; }
-  to { opacity: 1; }
-}
-main {
-  animation: em-page-enter 0.3s ease-out;
-}
-
-/* ニュースティッカー（無限ループ・ホバー/フォーカス/タッチで一時停止） */
-@keyframes em-ticker {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
-}
-.ticker-track {
-  display: flex;
-  width: max-content;
-  animation: em-ticker var(--ticker-duration, 45s) linear infinite;
-}
-.ticker-wrap:hover .ticker-track,
-.ticker-wrap:focus-within .ticker-track,
-.ticker-wrap:active .ticker-track {
-  animation-play-state: paused;
-}
-/* タッチデバイスは hover で停止できないため、速度を落として読める/押せる余地を作る */
-@media (pointer: coarse) {
-  .ticker-track {
-    animation-duration: calc(var(--ticker-duration, 45s) * 2);
-  }
-}
-
-/* ライブドット（教育のひろば「いま話題」用） */
-@keyframes em-pulse-dot {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.6); opacity: 0.5; }
-}
-.live-dot::before {
-  content: "";
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  border-radius: 9999px;
-  background: var(--destructive); /* アラート赤は destructive トークンに一本化 */
-  animation: em-pulse-dot 1.6s ease-in-out infinite;
-}
-
-/* AIナビゲーター起動ボタンの柔らかいグロー（中核機能として目立たせる） */
-@keyframes em-ai-glow {
-  0%, 100% {
-    box-shadow:
-      0 10px 30px -8px color-mix(in oklch, var(--primary) 60%, transparent),
-      0 0 0 0 color-mix(in oklch, var(--primary) 45%, transparent);
-  }
-  50% {
-    box-shadow:
-      0 14px 38px -8px color-mix(in oklch, var(--primary) 70%, transparent),
-      0 0 0 10px color-mix(in oklch, var(--primary) 0%, transparent);
-  }
-}
-.animate-ai-glow {
-  animation: em-ai-glow 2.6s ease-in-out infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  .animate-ai-glow { animation: none; }
-}
-
-/* カート追加ポップ（セッション詳細モーダルの「予定に追加する」ボタン用） */
-@keyframes em-cart-pop {
-  0% { transform: scale(1); }
-  35% { transform: scale(1.12); }
-  60% { transform: scale(0.96); }
-  100% { transform: scale(1); }
-}
-.animate-cart-pop {
-  animation: em-cart-pop 0.5s ease-out;
-}
-@media (prefers-reduced-motion: reduce) {
-  .animate-cart-pop { animation: none; }
-}
-
-/* スクロールバー非表示（横スクロールのチップ列・タブ列用） */
-@layer utilities {
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
-  }
-}
-
-/* 印刷時はリビール待ちの opacity:0 を解除（IntersectionObserver が発火しないため空白になる対策） */
-@media print {
-  .reveal,
-  .reveal--fade-in,
-  .reveal--fade-left,
-  .reveal--fade-right,
-  .reveal--scale-up,
-  .reveal--blur-in {
-    opacity: 1; transform: none; filter: none; transition: none;
-  }
-}
-
-/* 動きを抑えたい設定のユーザーにはアニメーションを無効化 */
-@media (prefers-reduced-motion: reduce) {
-  .animate-fade-up { animation: none; }
-  .reveal,
-  .reveal--fade-in,
-  .reveal--fade-left,
-  .reveal--fade-right,
-  .reveal--scale-up,
-  .reveal--blur-in {
-    opacity: 1; transform: none; filter: none; transition: none;
-  }
-  .ticker-track { animation: none; }
-  .live-dot::before { animation: none; }
-  .card-lift, .card-lift:hover { transform: none; }
-  main { animation: none; }
-}
-
-/* AI検定セクション用テーマ
-   ブランド統一のため primary / ring はサイト標準の紫系トークンに合わせる。
-   背景・muted はごく僅かに寒色寄りのニュートラルにして検定らしい落ち着きを保つが、
-   Button の primary・ヒーロー・バッジは他ページと同一の紫になる。 */
+/* AI検定セクション用ブルーテーマ（元のAI検定アプリの配色を再現） */
 .ai-kentei-theme {
-  --background: oklch(0.98 0.006 280);
-  --foreground: oklch(0.18 0.020 280);
+  --background: oklch(0.98 0.005 250);
+  --foreground: oklch(0.2 0.02 250);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.020 280);
+  --card-foreground: oklch(0.2 0.02 250);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.020 280);
-  --primary: oklch(0.48 0.24 278);
-  --primary-hover: oklch(0.43 0.23 278);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.915 0.050 280);
-  --secondary-foreground: oklch(0.25 0.020 280);
-  --secondary-hover: oklch(0.875 0.055 280);
-  --muted: oklch(0.94 0.012 280);
-  --muted-foreground: oklch(0.48 0.025 280);
-  --accent: oklch(0.895 0.065 280);
-  --accent-foreground: oklch(0.28 0.14 280);
+  --popover-foreground: oklch(0.2 0.02 250);
+  --primary: oklch(0.45 0.15 250);
+  --primary-foreground: oklch(0.98 0.005 250);
+  --secondary: oklch(0.95 0.01 250);
+  --secondary-foreground: oklch(0.3 0.02 250);
+  --muted: oklch(0.94 0.01 250);
+  --muted-foreground: oklch(0.5 0.02 250);
+  --accent: oklch(0.75 0.15 85);
+  --accent-foreground: oklch(0.25 0.05 85);
   --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(0.9 0.012 280);
-  --input: oklch(0.72 0.055 280);
-  --ring: oklch(0.48 0.24 278);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(0.9 0.01 250);
+  --input: oklch(0.92 0.01 250);
+  --ring: oklch(0.45 0.15 250);
 }
 
 .dark .ai-kentei-theme {
-  --background: oklch(0.15 0.020 278);
-  --foreground: oklch(0.95 0.008 280);
-  --card: oklch(0.18 0.025 278);
-  --card-foreground: oklch(0.95 0.008 280);
-  --primary: oklch(0.62 0.20 278);
-  --primary-hover: oklch(0.67 0.20 278);
-  --primary-foreground: oklch(0.15 0.020 278);
-  --secondary: oklch(0.25 0.020 278);
-  --secondary-foreground: oklch(0.9 0.008 280);
-  --secondary-hover: oklch(0.31 0.025 278);
-  --muted: oklch(0.25 0.020 278);
-  --muted-foreground: oklch(0.65 0.020 280);
-  --accent: oklch(0.30 0.060 280);
-  --accent-foreground: oklch(0.9 0.030 280);
-  --border: oklch(0.28 0.020 278);
-  --input: oklch(0.25 0.020 278);
-  --ring: oklch(0.62 0.20 278);
+  --background: oklch(0.15 0.02 250);
+  --foreground: oklch(0.95 0.005 250);
+  --card: oklch(0.18 0.02 250);
+  --card-foreground: oklch(0.95 0.005 250);
+  --primary: oklch(0.6 0.15 250);
+  --primary-foreground: oklch(0.15 0.02 250);
+  --secondary: oklch(0.25 0.02 250);
+  --secondary-foreground: oklch(0.9 0.005 250);
+  --muted: oklch(0.25 0.02 250);
+  --muted-foreground: oklch(0.65 0.02 250);
+  --accent: oklch(0.7 0.12 85);
+  --accent-foreground: oklch(0.15 0.02 250);
+  --border: oklch(0.28 0.02 250);
+  --input: oklch(0.25 0.02 250);
+  --ring: oklch(0.6 0.15 250);
 }
 
 @layer components {

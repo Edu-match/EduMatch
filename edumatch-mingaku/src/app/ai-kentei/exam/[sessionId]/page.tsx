@@ -56,17 +56,10 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
   const [timerStarted, setTimerStarted] = useState(false)
   const [autoSubmitTriggered, setAutoSubmitTriggered] = useState(false)
   const submittedRef = useRef(false)
-  const submittingRef = useRef(false)
-  const saveFailCountRef = useRef(0)
-  const saveErrorNotifiedRef = useRef(false)
   const answersRef = useRef(answers)
   answersRef.current = answers
   const currentIndexRef = useRef(currentIndex)
   currentIndexRef.current = currentIndex
-
-  useEffect(() => {
-    submittingRef.current = submitting
-  }, [submitting])
 
   useEffect(() => {
     const fetchExamData = async () => {
@@ -101,7 +94,7 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
     const abandonUrl = `/api/ai-kentei/exam/${sessionId}/abandon`
 
     const handleBeforeUnload = () => {
-      if (!submittedRef.current && !submittingRef.current) {
+      if (!submittedRef.current) {
         navigator.sendBeacon(abandonUrl)
       }
     }
@@ -110,8 +103,7 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload)
       // in-appナビゲーション（Reactコンポーネントのアンマウント）
-      // 提出処理中（submitting）は abandon を送らない。提出APIとの競合を避ける。
-      if (!submittedRef.current && !submittingRef.current) {
+      if (!submittedRef.current) {
         fetch(abandonUrl, { method: 'POST' }).catch(() => undefined)
       }
     }
@@ -154,22 +146,13 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
 
   const saveAnswers = async (newAnswers: Record<string, string>) => {
     try {
-      const response = await fetch(`/api/ai-kentei/exam/${resolvedParams.sessionId}`, {
+      await fetch(`/api/ai-kentei/exam/${resolvedParams.sessionId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ answers: newAnswers }),
       })
-      if (!response.ok) throw new Error('auto-save failed')
-      // 成功したら失敗カウントと通知フラグをリセット
-      saveFailCountRef.current = 0
-      saveErrorNotifiedRef.current = false
     } catch {
-      // 自動保存の失敗は基本的に握りつぶすが、連続で失敗した場合のみ一度だけ通知する
-      saveFailCountRef.current += 1
-      if (saveFailCountRef.current >= 2 && !saveErrorNotifiedRef.current) {
-        saveErrorNotifiedRef.current = true
-        toast.error('回答の自動保存に接続できません。通信環境をご確認ください。')
-      }
+      // Silent fail for auto-save
     }
   }
 
@@ -252,7 +235,7 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
       {/* サイドメニューを避けて、メイン領域にだけ固定表示 */}
       <header className="fixed left-0 right-0 top-16 z-40 border-b border-border/50 bg-background/95 shadow-sm backdrop-blur-sm lg:left-64">
         <div className="mx-auto flex max-w-4xl flex-col gap-2 px-4 py-3">
-          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+          <div className="flex items-center justify-between gap-3">
             <Link
               href="/ai-kentei"
               className="shrink-0 rounded-md px-2 py-1 text-sm font-medium text-primary hover:bg-muted/60"
@@ -282,7 +265,7 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
               <span className="text-sm font-semibold">秒</span>
             </div>
 
-            <span className="text-sm text-muted-foreground whitespace-nowrap">
+            <span className="shrink-0 text-sm text-muted-foreground">
               {answeredCount} / {examData.questions.length} 問回答済み
             </span>
           </div>
@@ -335,18 +318,20 @@ export default function ExamPage({ params }: { params: Promise<{ sessionId: stri
                 className="space-y-3"
               >
                 {currentQuestion.options.map((option, index) => (
-                  <Label
+                  <div
                     key={index}
-                    htmlFor={`option-${index}`}
-                    className={`flex items-start space-x-3 p-4 rounded-lg border transition-colors cursor-pointer leading-relaxed ${
+                    className={`flex items-start space-x-3 p-4 rounded-lg border transition-colors cursor-pointer ${
                       answers[currentQuestion.id] === option
                         ? 'border-primary bg-primary/5'
                         : 'border-border hover:border-primary/50 hover:bg-muted/50'
                     }`}
+                    onClick={() => handleAnswerChange(currentQuestion.id, option)}
                   >
                     <RadioGroupItem value={option} id={`option-${index}`} className="mt-0.5" />
-                    <span className="flex-1">{option}</span>
-                  </Label>
+                    <Label htmlFor={`option-${index}`} className="flex-1 cursor-pointer leading-relaxed">
+                      {option}
+                    </Label>
+                  </div>
                 ))}
               </RadioGroup>
             </CardContent>

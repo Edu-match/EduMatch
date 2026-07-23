@@ -33,13 +33,12 @@ import type { ContentBlock } from "@/components/editor/block-editor";
 import { contentToBlocks } from "@/lib/markdown-to-blocks";
 import { blocksToArticleContent, stripLeadText } from "@/lib/article-content";
 import { isImportedContent } from "@/lib/imported-content";
-import { generateThumbnailForArticle } from "@/app/_actions";
+import { generateArticleThumbnailPng } from "@/lib/article-thumbnail-canvas";
 import {
+  THUMBNAIL_TEMPLATE_KINDS,
+  THUMBNAIL_TEMPLATE_LABELS,
+  getThumbnailTemplateImageUrl,
   parseThumbnailKind,
-  THUMBNAIL_STYLE_KINDS,
-  THUMBNAIL_STYLE_META,
-  resolveThumbnailStyle,
-  type ThumbnailStyleKind,
   type ThumbnailTemplateKind,
 } from "@/lib/thumbnail-template";
 import {
@@ -130,7 +129,7 @@ export default function ArticleCreatePage() {
   const [thumbnailInput, setThumbnailInput] = useState("");
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
   const [thumbnailTemplateKind, setThumbnailTemplateKind] =
-    useState<ThumbnailTemplateKind>("gradient");
+    useState<ThumbnailTemplateKind>("domestic");
   const [thumbnailTemplateGenerating, setThumbnailTemplateGenerating] = useState(false);
   const thumbnailFileInputRef = useRef<HTMLInputElement | null>(null);
   const [content, setContent] = useState<string>(() => {
@@ -373,16 +372,19 @@ export default function ArticleCreatePage() {
       }
       setThumbnailTemplateGenerating(true);
       try {
-        const style = resolveThumbnailStyle(kind);
-        const res = await generateThumbnailForArticle(t, leadText?.trim() || undefined, style);
-        if (res.ok && res.url) {
-          setThumbnailUrl(res.url);
+        const blob = await generateArticleThumbnailPng({ templateKind: kind, title: t });
+        const file = new File([blob], "article-thumbnail.png", { type: "image/png" });
+        const formData = new FormData();
+        formData.append("file", file);
+        const result = await uploadImage(formData);
+        if (result.success && result.url) {
+          setThumbnailUrl(result.url);
           setThumbnailTemplateKind(kind);
           if (!options?.quiet) {
-            toast.success("AIがサムネイルを生成しました");
+            toast.success("サムネイルを生成して設定しました");
           }
         } else {
-          toast.error(res.error || "サムネイル生成に失敗しました");
+          toast.error(result.error || "アップロードに失敗しました");
         }
       } catch (e) {
         console.error(e);
@@ -391,7 +393,7 @@ export default function ArticleCreatePage() {
         setThumbnailTemplateGenerating(false);
       }
     },
-    [leadText]
+    []
   );
 
   const handleApplyGenerated = useCallback(async () => {
@@ -420,7 +422,7 @@ export default function ArticleCreatePage() {
     setTags("");
     setPublishType("draft");
     setThumbnailUrl("");
-    setThumbnailTemplateKind("gradient");
+    setThumbnailTemplateKind("domestic");
     setHomeNewsTab("NONE");
     setContent("");
     setGeneratedArticle(null);
@@ -684,35 +686,31 @@ export default function ArticleCreatePage() {
                     )}
 
                     <div className="pt-6 border-t space-y-3">
-                      <p className="text-sm font-medium">AIでサムネイル画像を生成</p>
-                      <p className="text-xs text-muted-foreground">
-                        記事の内容に合ったイラスト画像をAIが生成します（30秒ほどかかります）
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {THUMBNAIL_STYLE_KINDS.map((style) => {
-                          const meta = THUMBNAIL_STYLE_META[style];
-                          return (
-                            <button
-                              key={style}
-                              type="button"
-                              onClick={() => setThumbnailTemplateKind(style)}
-                              className={`group flex flex-col items-center gap-1 rounded-lg border p-1.5 transition ${
-                                resolveThumbnailStyle(thumbnailTemplateKind) === style
-                                  ? "border-primary ring-2 ring-primary/30"
-                                  : "border-input hover:border-primary/40"
-                              }`}
-                              style={{ width: 80 }}
-                            >
-                              <div
-                                className="h-11 w-full rounded-md"
-                                style={{ background: meta.previewBackground, backgroundSize: "20px 20px" }}
+                      <p className="text-sm font-medium">テンプレート背景＋タイトルでサムネイル</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {THUMBNAIL_TEMPLATE_KINDS.map((kind) => (
+                          <button
+                            key={kind}
+                            type="button"
+                            onClick={() => setThumbnailTemplateKind(kind)}
+                            className={`rounded-lg border-2 overflow-hidden p-1 transition-colors text-left flex flex-col gap-1 ${
+                              thumbnailTemplateKind === kind
+                                ? "border-primary ring-2 ring-primary/30"
+                                : "border-transparent hover:border-muted-foreground/30"
+                            }`}
+                          >
+                            <div className="relative w-full aspect-video rounded-sm overflow-hidden bg-muted/30">
+                              <img
+                                src={getThumbnailTemplateImageUrl(kind)}
+                                alt=""
+                                className="absolute inset-0 w-full h-full object-contain"
                               />
-                              <span className={`text-[10px] font-medium leading-tight ${
-                                resolveThumbnailStyle(thumbnailTemplateKind) === style ? "text-primary" : "text-muted-foreground"
-                              }`}>{meta.label}</span>
-                            </button>
-                          );
-                        })}
+                            </div>
+                            <span className="text-[10px] block text-center leading-tight text-muted-foreground">
+                              {THUMBNAIL_TEMPLATE_LABELS[kind]}
+                            </span>
+                          </button>
+                        ))}
                       </div>
                       <Button
                         type="button"
@@ -728,12 +726,12 @@ export default function ArticleCreatePage() {
                         {thumbnailTemplateGenerating ? (
                           <>
                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            AI画像を生成中...
+                            生成中...
                           </>
                         ) : (
                           <>
                             <ImageIcon className="h-4 w-4 mr-2" />
-                            AIでサムネイルを生成
+                            テンプレートでサムネイルを生成
                           </>
                         )}
                       </Button>

@@ -14,16 +14,16 @@ import { prisma } from "@/lib/prisma";
 /** ビルド時に DB 認証が無い環境でも静的生成を失敗させない */
 export const dynamic = "force-dynamic";
 
-const HELP_GUIDE_TITLE = "AIUEO BASE 利用ガイド";
+const HELP_GUIDE_TITLE = "エデュマッチ 利用ガイド";
 
 const faqCategories = [
   {
     title: "サービスについて",
     items: [
       {
-        question: "AIUEO BASEとは何ですか？",
+        question: "エデュマッチとは何ですか？",
         answer:
-          "AIUEO BASEは、教育現場とEdTechをつなぐマッチングプラットフォームです。最新の教育事例やEdTechツールを検索・比較し、最適なサービスを見つけることができます。",
+          "エデュマッチは、教育現場とEdTechをつなぐマッチングプラットフォームです。最新の教育事例やEdTechツールを検索・比較し、最適なサービスを見つけることができます。",
       },
       {
         question: "会員登録は必要ですか？",
@@ -33,7 +33,7 @@ const faqCategories = [
       {
         question: "サービスを利用するにはどうすればいいですか？",
         answer:
-          "AIUEO BASEのサービス詳細ページから、各サービスへの資料請求が可能です（会員登録が必要です）。また、提供元企業の公式サイトへアクセスして、お問い合わせや申し込みを直接行うこともできます。",
+          "エデュマッチのサービス詳細ページから、各サービスへの資料請求が可能です（会員登録が必要です）。また、提供元企業の公式サイトへアクセスして、お問い合わせや申し込みを直接行うこともできます。",
       },
     ],
   },
@@ -132,7 +132,7 @@ export default async function HelpPage() {
                 <p className="text-xs font-bold uppercase tracking-wider text-orange-600">まずはこちら</p>
                 <h2 className="mt-1 text-xl font-bold text-orange-950">{HELP_GUIDE_TITLE}</h2>
                 <p className="mt-1 text-sm text-orange-900/80">
-                  AIUEO BASEの基本操作や便利な使い方を、ステップごとにわかりやすく解説しています。
+                  エデュマッチの基本操作や便利な使い方を、ステップごとにわかりやすく解説しています。
                 </p>
               </div>
             </div>
@@ -238,7 +238,7 @@ export default async function HelpPage() {
                 className="flex items-center gap-2 text-sm hover:text-primary transition-colors"
               >
                 <BookOpen className="h-4 w-4" />
-                AIUEO BASEについて
+                エデュマッチについて
               </Link>
               <Link
                 href="/terms"

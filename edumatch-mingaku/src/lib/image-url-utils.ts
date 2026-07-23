@@ -3,25 +3,8 @@
  * 対応ホスティング: Google Drive, GitHub, Supabase Storage（アップロード）
  */
 
-/** Supabase Storage のホスト（アップロード画像）。接続先プロジェクトの環境変数から導出する */
-function supabaseStorageHost(): string | null {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!url) return null;
-  try {
-    return new URL(url).hostname.toLowerCase();
-  } catch {
-    return null;
-  }
-}
-const SUPABASE_STORAGE_HOST = supabaseStorageHost();
-
-/** Supabase Storage のURLか（接続先プロジェクトに加え、*.supabase.co の Storage パスを許可） */
-function isSupabaseStorageUrl(u: URL): boolean {
-  const host = u.hostname.toLowerCase();
-  if (!u.pathname.includes("/storage/")) return false;
-  if (SUPABASE_STORAGE_HOST && host === SUPABASE_STORAGE_HOST) return true;
-  return host.endsWith(".supabase.co");
-}
+/** Supabase Storage のホスト（アップロード画像） */
+const SUPABASE_STORAGE_HOST = "lyoesgwecpcoaylsyiys.supabase.co";
 
 /**
  * Google Drive 共有リンクをサムネイル表示用URLに変換
@@ -131,7 +114,7 @@ export function isAllowedImageUrl(url: string): boolean {
     const host = u.hostname.toLowerCase();
 
     // Supabase Storage（アップロード画像）
-    if (isSupabaseStorageUrl(u)) {
+    if (host === SUPABASE_STORAGE_HOST && u.pathname.includes("/storage/")) {
       return true;
     }
 

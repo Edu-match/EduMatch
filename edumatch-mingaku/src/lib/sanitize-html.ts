@@ -1,34 +1,40 @@
-import DOMPurify from "isomorphic-dompurify";
-
 /**
- * 記事本文などに含まれるHTMLを安全にサニタイズする（DOMPurifyベース）。
- * script/iframe/イベント属性/javascript: 等の危険な要素・属性を除去する。
- * サーバー（RSC/Route Handler）・クライアント両方で動作する。
+ * 記事本文などに含まれるHTMLを安全にサニタイズする
+ * script/イベント属性/javascript: を除去
  */
 export function sanitizeHtml(html: string): string {
   if (typeof html !== "string") return "";
 
-  return DOMPurify.sanitize(html, {
-    // 許可タグ: 記事系コンテンツで使う標準的なものに限定
-    ALLOWED_TAGS: [
-      "a", "abbr", "b", "blockquote", "br", "caption", "code", "col",
-      "colgroup", "dd", "del", "div", "dl", "dt", "em", "figcaption",
-      "figure", "h1", "h2", "h3", "h4", "h5", "h6", "hr", "i", "img",
-      "ins", "li", "mark", "ol", "p", "pre", "q", "s", "small", "span",
-      "strong", "sub", "sup", "table", "tbody", "td", "tfoot", "th",
-      "thead", "tr", "u", "ul",
-    ],
-    ALLOWED_ATTR: [
-      "href", "src", "srcset", "sizes", "alt", "title", "width", "height",
-      "loading", "decoding", "class", "id", "colspan", "rowspan", "scope",
-      "target", "rel", "lang", "dir", "start", "type", "datetime",
-    ],
-    // javascript:/vbscript: 等は既定で除去される。data: は画像（base64）用途があるため
-    // DOMPurify の既定ポリシー（img src の data: を許可）に従う
-    ALLOW_DATA_ATTR: false,
-    FORBID_TAGS: ["style", "form", "input", "button", "iframe", "object", "embed"],
-    FORBID_ATTR: ["style"],
+  let out = html
+    // コメント除去
+    .replace(/<!--[\s\S]*?-->/g, "")
+    // WordPressの空のブロックコメント除去
+    .replace(/<!--\s*\/?wp:[\s\S]*?-->/g, "");
+
+  // script, style, iframe, object, embed, form を中身ごと削除
+  out = out.replace(
+    /<(script|style|iframe|object|embed|form)[^>]*>[\s\S]*?<\/\1>/gi,
+    ""
+  );
+  // 自己閉じや単体タグも削除
+  out = out.replace(/<(script|style|iframe|object|embed|input|button)[^>]*\/?>/gi, "");
+
+  // on* イベント属性を削除
+  out = out.replace(/\s+on\w+=["'][^"']*["']/gi, "");
+  out = out.replace(/\s+on\w+=\s*[^\s>]+/gi, "");
+
+  // javascript: を無効化
+  out = out.replace(/javascript:/gi, "");
+
+  // data: URLをimgのsrc以外では危険なので、imgのsrcは許可するが data: は残す（多くの場合 base64 画像）
+  // その他の危険なプロトコル
+  out = out.replace(/(<(?:a|img)[^>]+)(href|src)=["']([^"']+)["']/gi, (_, before, attr, url) => {
+    const u = url.trim().toLowerCase();
+    if (u.startsWith("javascript:") || u.startsWith("vbscript:")) return before;
+    return before + attr + '="' + url + '"';
   });
+
+  return out;
 }
 
 /** 本文がWordPress由来のHTMLかどうか（タグがそのまま表示されないようHTMLとして扱うか） */

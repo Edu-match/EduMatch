@@ -25,16 +25,11 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Sparkles } from "lucide-react";
-import { createArticle, generateThumbnailForArticle } from "@/app/_actions";
+import { Loader2, Upload, Image as ImageIcon } from "lucide-react";
+import { createArticle } from "@/app/_actions";
 import { articleSchema, type ArticleFormData } from "@/lib/validations/article";
 import { SHARED_CATEGORIES } from "@/lib/categories";
 import { ImageWithUrlError } from "@/components/ui/image-with-url-error";
-import {
-  THUMBNAIL_STYLE_KINDS,
-  THUMBNAIL_STYLE_META,
-  type ThumbnailStyleKind,
-} from "@/lib/thumbnail-template";
 
 const guidelines = [
   "記事の内容は教育現場に役立つ実践的な情報にしてください。",
@@ -48,10 +43,6 @@ export function ArticleForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
-  const [generatingThumbnail, setGeneratingThumbnail] = useState(false);
-  const [thumbnailError, setThumbnailError] = useState<string | null>(null);
-  const [thumbnailMode, setThumbnailMode] = useState<"ai" | "url">("ai");
-  const [aiStyle, setAiStyle] = useState<ThumbnailStyleKind>("tech");
 
   const form = useForm<ArticleFormData>({
     resolver: zodResolver(articleSchema),
@@ -96,37 +87,11 @@ export function ArticleForm() {
   const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const url = e.target.value;
     form.setValue("thumbnail_url", url);
-
+    
     if (url && url.startsWith("http")) {
       setThumbnailPreview(url);
     } else {
       setThumbnailPreview(null);
-    }
-  };
-
-  const handleGenerateThumbnail = async () => {
-    const title = form.getValues("title");
-    const summary = form.getValues("summary");
-    if (!title.trim()) {
-      setThumbnailError("先に記事タイトルを入力してください");
-      return;
-    }
-
-    setGeneratingThumbnail(true);
-    setThumbnailError(null);
-    try {
-      const res = await generateThumbnailForArticle(title, summary || undefined, aiStyle);
-      if (res.ok && res.url) {
-        form.setValue("thumbnail_url", res.url, { shouldValidate: true });
-        setThumbnailPreview(res.url);
-      } else {
-        setThumbnailError(res.error || "サムネイル生成に失敗しました");
-      }
-    } catch (err) {
-      console.error("Thumbnail generation error:", err);
-      setThumbnailError("サムネイル生成に失敗しました");
-    } finally {
-      setGeneratingThumbnail(false);
     }
   };
 
@@ -217,10 +182,10 @@ export function ArticleForm() {
                   <FormItem>
                     <FormLabel>概要（リード文） *</FormLabel>
                     <FormControl>
-                      <Textarea
-                        placeholder="記事の内容を簡潔にまとめてください"
-                        rows={4}
-                        {...field}
+                      <Textarea 
+                        placeholder="記事の内容を簡潔にまとめてください" 
+                        rows={4} 
+                        {...field} 
                       />
                     </FormControl>
                     <FormDescription>
@@ -236,85 +201,17 @@ export function ArticleForm() {
                 name="thumbnail_url"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>サムネイル画像</FormLabel>
-                    <div className="flex flex-wrap gap-1 mb-2">
-                      {(["ai", "url"] as const).map((mode) => (
-                        <button
-                          key={mode}
-                          type="button"
-                          onClick={() => setThumbnailMode(mode)}
-                          className={`rounded-full px-3 py-1 text-xs font-medium transition ${thumbnailMode === mode ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
-                        >
-                          {mode === "ai" ? "AI生成" : "URL入力"}
-                        </button>
-                      ))}
-                    </div>
+                    <FormLabel>サムネイル画像URL</FormLabel>
                     <FormControl>
                       <div className="space-y-2">
-                        {thumbnailMode === "ai" && (
-                          <div className="space-y-3">
-                            <p className="text-xs text-muted-foreground">
-                              AIがイラスト付きのサムネイル画像を生成します（30秒ほどかかります）
-                            </p>
-                            <div className="flex flex-wrap gap-2">
-                              {THUMBNAIL_STYLE_KINDS.map((style) => {
-                                const meta = THUMBNAIL_STYLE_META[style];
-                                return (
-                                  <button
-                                    key={style}
-                                    type="button"
-                                    onClick={() => setAiStyle(style)}
-                                    aria-pressed={aiStyle === style}
-                                    className={`group flex flex-col items-center gap-1 rounded-lg border p-1.5 transition ${
-                                      aiStyle === style
-                                        ? "border-primary ring-2 ring-primary/30"
-                                        : "border-input hover:border-primary/40"
-                                    }`}
-                                    style={{ width: 80 }}
-                                  >
-                                    <div
-                                      className="h-11 w-full rounded-md"
-                                      style={{ background: meta.previewBackground, backgroundSize: "20px 20px" }}
-                                    />
-                                    <span className={`text-[10px] font-medium leading-tight ${
-                                      aiStyle === style ? "text-primary" : "text-muted-foreground"
-                                    }`}>{meta.label}</span>
-                                  </button>
-                                );
-                              })}
-                            </div>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={handleGenerateThumbnail}
-                              disabled={
-                                generatingThumbnail ||
-                                isSubmitting ||
-                                !form.watch("title").trim()
-                              }
-                            >
-                              {generatingThumbnail ? (
-                                <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />生成中…</>
-                              ) : (
-                                <><Sparkles className="mr-1.5 h-3.5 w-3.5" />生成する</>
-                              )}
-                            </Button>
-                          </div>
-                        )}
-                        {thumbnailMode === "url" && (
-                          <Input
-                            placeholder="https://example.com/image.jpg"
-                            {...field}
-                            onChange={(e) => {
-                              field.onChange(e);
-                              handleThumbnailChange(e);
-                            }}
-                          />
-                        )}
-                        {thumbnailError && (
-                          <p className="text-sm text-destructive">{thumbnailError}</p>
-                        )}
+                        <Input 
+                          placeholder="https://example.com/image.jpg" 
+                          {...field}
+                          onChange={(e) => {
+                            field.onChange(e);
+                            handleThumbnailChange(e);
+                          }}
+                        />
                         {thumbnailPreview && (
                           <div className="relative w-full aspect-video border rounded-lg overflow-hidden bg-muted">
                             <ImageWithUrlError
@@ -328,6 +225,9 @@ export function ArticleForm() {
                         )}
                       </div>
                     </FormControl>
+                    <FormDescription>
+                      画像ホスティングサービスにアップロードしたURLを入力してください
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -340,9 +240,9 @@ export function ArticleForm() {
                   <FormItem>
                     <FormLabel>YouTube動画URL</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="https://www.youtube.com/watch?v=..."
-                        {...field}
+                      <Input 
+                        placeholder="https://www.youtube.com/watch?v=..." 
+                        {...field} 
                       />
                     </FormControl>
                     <FormDescription>
@@ -360,10 +260,10 @@ export function ArticleForm() {
                   <FormItem>
                     <FormLabel>本文 *</FormLabel>
                     <FormControl>
-                      <Textarea
-                        placeholder="記事の本文を入力してください。Markdown記法に対応しています。"
-                        rows={15}
-                        {...field}
+                      <Textarea 
+                        placeholder="記事の本文を入力してください。Markdown記法に対応しています。" 
+                        rows={15} 
+                        {...field} 
                       />
                     </FormControl>
                     <FormDescription>
@@ -375,7 +275,7 @@ export function ArticleForm() {
               />
 
               <div className="flex items-center gap-3 pt-2">
-                <Button
+                <Button 
                   type="button"
                   onClick={form.handleSubmit((data) => onSubmit(data, false))}
                   disabled={isSubmitting}
@@ -389,7 +289,7 @@ export function ArticleForm() {
                     "投稿する"
                   )}
                 </Button>
-                <Button
+                <Button 
                   type="button"
                   variant="outline"
                   onClick={form.handleSubmit((data) => onSubmit(data, true))}
@@ -415,7 +315,7 @@ export function ArticleForm() {
                 ))}
               </CardContent>
             </Card>
-
+            
             <Card>
               <CardHeader>
                 <CardTitle>レビュー状況</CardTitle>

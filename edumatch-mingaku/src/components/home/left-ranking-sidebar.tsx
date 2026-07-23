@@ -43,6 +43,7 @@ export async function LeftRankingSidebar() {
                     fill
                     className="object-contain"
                     sizes="48px"
+                    unoptimized
                   />
                 </div>
                 <Link

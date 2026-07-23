@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server";
 import OpenAI from "openai";
-import { z } from "zod";
 import {
   getArticleContextForChat,
   getServiceContextForChat,
@@ -12,7 +11,7 @@ import type { Prisma } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAiChatPrompts } from "@/lib/ai-chat-prompts";
-import { checkPromptInjection, checkLlmOutput, verifyOrigin, rateLimitResponse } from "@/lib/security";
+import { checkPromptInjection, checkLlmOutput } from "@/lib/security";
 import { encodeSse, type RagDocRef, type WebSource } from "@/lib/ai-chat-stream";
 
 export const runtime = "nodejs";
@@ -41,49 +40,26 @@ function countInWindow(events: ChatUsageEvent[], cutoff: string): number {
   return events.filter((e) => e.at > cutoff).length;
 }
 
+type MessageRole = "user" | "assistant";
+
 type ChatMode = "navigator" | "debate" | "discussion";
 
-const requestBodySchema = z.object({
-  messages: z
-    .array(
-      z.object({
-        role: z.enum(["user", "assistant"]),
-        content: z.string().max(20000),
-      })
-    )
-    .min(1)
-    .max(100),
-  contextItems: z
-    .array(
-      z.object({
-        id: z.string().max(100),
-        type: z.enum(["article", "service"]),
-      })
-    )
-    .max(20)
-    .optional(),
-  // 不正な mode 値は 400 にせず既定（navigator）へフォールバックする（既存挙動の維持）
-  mode: z.enum(["navigator", "debate", "discussion"]).optional().catch(undefined),
-  /**
-   * 参照（RAG）モードの ON/OFF。
-   * - true（既定）: 公的文書RAG＋サイト内記事/サービス参照を有効化
-   * - false: 上記参照を停止し、モデル内部知識＋Web検索のみで回答
-   */
-  ragEnabled: z.boolean().optional().catch(undefined),
-});
-
-type RequestBody = z.infer<typeof requestBodySchema>;
+type RequestBody = {
+  messages: { role: MessageRole; content: string }[];
+  contextItems?: { id: string; type: "article" | "service" }[];
+  mode?: ChatMode;
+};
 
 // ─── システムプロンプト ───────────────────────────────────────────────────────
 
 const SYSTEM_PROMPTS: Record<ChatMode, string> = {
-  navigator: `あなたは教育ICT・EdTechに詳しいAIアシスタントです。このサイト（AIUEO BASE）は教育サービス・教材のマッチングプラットフォームです。
+  navigator: `あなたは教育ICT・EdTechに詳しいAIアシスタントです。このサイト（エデュマッチ）は教育サービス・教材のマッチングプラットフォームです。
 
 ## 回答の仕方
 - **ユーザーの質問に自然に答える**：まず質問の内容そのものに答える（例：「ICT教材の選び方」なら、選び方の観点やポイントを説明する）
 - **このシステムメッセージ内に「公的文書参照（RAG）」の抜粋が含まれる場合**、教育・校務・法令・指導要領・政策・ICT教育などの話題では、**一般説明より優先して**、該当する説明の箇所で **「〈文書名〉によれば」「〈文書名〉では」** を**日本語でそのまま**文中に含める（質問の言い回しが曖昧でも、抜粋に関連すれば必須に近い）。
 - **サイト内の関連サービス・記事**は、回答に自然に織り交ぜる。参照コンテンツがある場合はそれを活かす。無い場合や一般的な質問の場合は、まず質問に答えてから、末尾で「当サイトでは〇〇のようなサービスを探せます」と軽く補足する程度でよい
-- 「参照が提供されていないため…」「AIUEO BASEの〜」といった言い回しで回答を始めない。あくまで質問への答えが主体
+- 「参照が提供されていないため…」「エデュマッチの〜」といった言い回しで回答を始めない。あくまで質問への答えが主体
 - **冗長にしない**：原則は3〜6文、長くても箇条書き3点まで。前置きは短く、実務に使える要点を優先する
 - **会話感を重視**：断定説明だけで終えず、必要なら最後に1つだけ確認質問を返す
 - **確認質問をUI向けに出力**：追加情報が必要なときのみ、回答末尾に次の形式を追加する
@@ -97,7 +73,7 @@ const SYSTEM_PROMPTS: Record<ChatMode, string> = {
 - **ASKの選択肢ルール**：択数は内容に応じて2〜5個で可変。複数選択が妥当なときだけ \`複数選択: はい\` を使う。**「その他」は毎回必ず1つ入れる**。
 - Markdown形式で読みやすく。日本語で丁寧に。`,
 
-  debate: `あなたは「AIUEO BASE」のAIディベートパートナーです。
+  debate: `あなたは「エデュマッチ」のAIディベートパートナーです。
 
 ## 絶対ルール
 - ユーザーが示す立場・意見に対して **必ず正反対の立場** をとる（例外なし）
@@ -114,7 +90,7 @@ const SYSTEM_PROMPTS: Record<ChatMode, string> = {
 
 Markdown形式で論点を整理して返す。日本語で。`,
 
-  discussion: `あなたは「AIUEO BASE」のAIディスカッションパートナーです。
+  discussion: `あなたは「エデュマッチ」のAIディスカッションパートナーです。
 
 ## スタンス
 - まずユーザーの意見・感情を **共感・肯定** してから話を進める（「そうですね、〜という観点は重要ですね」）
@@ -330,9 +306,6 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const csrf = verifyOrigin(req);
-  if (csrf) return csrf;
-
   const user = await getCurrentUser();
   if (!user) {
     return new Response(
@@ -340,11 +313,6 @@ export async function POST(req: NextRequest) {
       { status: 401, headers: { "Content-Type": "application/json" } }
     );
   }
-
-  // チャット系レート制限（30回/分・ユーザー単位）
-  const rl = rateLimitResponse(`chat:${user.id}`, { windowMs: 60 * 1000, max: 30 });
-  if (rl.limited) return rl.response;
-
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     return new Response(
@@ -353,19 +321,25 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const parsed = requestBodySchema.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) {
+  let body: RequestBody;
+  try {
+    body = await req.json();
+  } catch {
     return new Response(JSON.stringify({ error: "Invalid request body" }), {
       status: 400,
       headers: { "Content-Type": "application/json" },
     });
   }
-  const body: RequestBody = parsed.data;
 
   const { messages, contextItems, mode: bodyMode } = body;
-  const mode: ChatMode = bodyMode ?? "navigator";
-  // 参照（RAG）モード。明示的に false のときだけ参照を停止（既定は ON）。
-  const ragEnabled = body.ragEnabled !== false;
+  const mode: ChatMode = bodyMode && ["navigator", "debate", "discussion"].includes(bodyMode) ? bodyMode : "navigator";
+
+  if (!messages || !Array.isArray(messages) || messages.length === 0) {
+    return new Response(JSON.stringify({ error: "Messages are required" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 
   // ─── 入力長バリデーション ──────────────────────────────────────────────────
   const MAX_INPUT_CHARS = 2000;
@@ -421,44 +395,24 @@ export async function POST(req: NextRequest) {
         controller.enqueue(encodeSse(event));
 
       try {
+        // ── 明示コンテキスト取得 ──────────────────────────────────────────
+        const explicitContexts: ChatContextItem[] = [];
+        if (contextItems && contextItems.length > 0) {
+          for (const item of contextItems.slice(0, 10)) {
+            const ctx =
+              item.type === "article"
+                ? await getArticleContextForChat(item.id)
+                : await getServiceContextForChat(item.id);
+            if (ctx) explicitContexts.push(ctx);
+          }
+        }
+
+        // ── 段階的コンテキスト検索（emit でステータスを逐次送信）────────────
         const lastUserMsg = messages.filter((m) => m.role === "user").at(-1)?.content ?? "";
         const activityEmit: ActivityEmit = (e) => emit(e);
 
-        // ── 参照（RAG）モード ──────────────────────────────────────────────
-        // ragEnabled=false のときは、公的文書RAG・サイト内記事/サービス参照を
-        // 一切行わず、モデル内部知識＋Web検索のみで回答する。
-        const explicitContexts: ChatContextItem[] = [];
-        let searchSvcs: ChatContextItem[] = [];
-        let searchArts: ChatContextItem[] = [];
-        let knowledgeHits: ChatContextItem[] = [];
-
-        if (ragEnabled) {
-          // ── 明示コンテキスト取得 ──────────────────────────────────────────
-          if (contextItems && contextItems.length > 0) {
-            for (const item of contextItems.slice(0, 10)) {
-              const ctx =
-                item.type === "article"
-                  ? await getArticleContextForChat(item.id)
-                  : await getServiceContextForChat(item.id);
-              if (ctx) explicitContexts.push(ctx);
-            }
-          }
-
-          // ── 段階的コンテキスト検索（emit でステータスを逐次送信）────────────
-          const retrieved = await retrieveChatContext(lastUserMsg, 5, activityEmit);
-          searchSvcs = retrieved.services;
-          searchArts = retrieved.articles;
-          knowledgeHits = retrieved.knowledge;
-        } else {
-          emit({
-            type: "status",
-            id: "rag-off",
-            phase: "prepare",
-            message: "参照モードOFF：登録文書・サイト内情報を参照せず回答します",
-            status: "active",
-          });
-          emit({ type: "status_update", id: "rag-off", status: "done" });
-        }
+        const { services: searchSvcs, articles: searchArts, knowledge: knowledgeHits } =
+          await retrieveChatContext(lastUserMsg, 5, activityEmit);
 
         const searchResults = [...searchSvcs, ...searchArts].filter(
           (r) => !explicitContexts.some((e) => e.id === r.id)
@@ -529,7 +483,7 @@ export async function POST(req: NextRequest) {
           : [];
 
         const responseStream = await openai.responses.create({
-          model: "gpt-5.4-mini",
+          model: "gpt-5.4",
           stream: true as const,
           instructions: systemPrompt,
           input: trimmedMessages,
@@ -654,7 +608,7 @@ export async function POST(req: NextRequest) {
         controller.close();
       } catch (err) {
         console.error("Chat stream error:", err);
-        const message = "AI response failed";
+        const message = err instanceof Error ? err.message : "AI response failed";
         try {
           emit({ type: "error", message });
           controller.close();

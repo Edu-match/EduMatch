@@ -26,9 +26,8 @@ export async function GET(request: NextRequest) {
     });
 
     if (error) {
-      console.error("Google OAuth signInWithOAuth error:", error);
       return NextResponse.json(
-        { error: "Googleログインの開始に失敗しました" },
+        { error: error.message },
         { status: 400 }
       );
     }

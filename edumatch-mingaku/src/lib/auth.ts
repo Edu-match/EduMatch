@@ -87,29 +87,6 @@ export async function requireAdmin() {
 }
 
 /**
- * 当日受付（チェックイン）用ガード。ADMIN またはイベントスタッフ（kaikan_staff 登録者）を許可。
- * それ以外はトップページへリダイレクトします。
- */
-export async function requireAdminOrKaikanStaff() {
-  const user = await requireAuth();
-  const profile = await getCurrentProfile();
-  if (!profile) {
-    redirect("/");
-  }
-  if (profile.role === "ADMIN") {
-    return { user, profile, isStaff: false };
-  }
-  const { prisma } = await import("@/lib/prisma");
-  const staff = await prisma.kaikanStaff
-    .findUnique({ where: { profile_id: profile.id }, select: { id: true } })
-    .catch(() => null);
-  if (!staff) {
-    redirect("/");
-  }
-  return { user, profile, isStaff: true };
-}
-
-/**
  * 記事・サービス投稿および投稿者ダッシュボード（運営 ADMIN のみ）。
  */
 export async function requireProvider() {

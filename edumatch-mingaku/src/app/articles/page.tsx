@@ -20,13 +20,8 @@ export type ArticleForList = {
   isNew: boolean;
 };
 
-export default async function ArticlesPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ q?: string }>;
-}) {
+export default async function ArticlesPage() {
   unstable_noStore();
-  const { q } = await searchParams;
   const [posts, categoryCounts] = await Promise.all([
     getLatestPosts(600),
     getArticleCategoryCounts(),
@@ -68,7 +63,6 @@ export default async function ArticlesPage({
     <ArticlesClient
       articles={articles}
       categoriesWithCount={categoriesWithCount}
-      initialQuery={q ?? ""}
     />
   );
 }

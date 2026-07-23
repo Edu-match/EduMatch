@@ -42,8 +42,7 @@ export async function getServiceReviews(serviceId: string): Promise<ReviewData[]
         created_at: true,
       },
     });
-    // service_id は service で絞り込み済みのため非null。型を ReviewData(string) に合わせる。
-    return reviews.map((r) => ({ ...r, service_id: r.service_id ?? serviceId }));
+    return reviews;
   } catch (error) {
     console.error("Failed to get service reviews:", error);
     return [];
@@ -159,13 +158,10 @@ export async function deleteReview(reviewId: string): Promise<{ success: boolean
     }
 
     await prisma.review.delete({ where: { id: reviewId } });
-    // 記事レビュー(service_id=null)ではサービスの集計を触らない
-    if (review.service_id) {
-      await prisma.service.update({
-        where: { id: review.service_id },
-        data: { review_count: { decrement: 1 } },
-      });
-    }
+    await prisma.service.update({
+      where: { id: review.service_id },
+      data: { review_count: { decrement: 1 } },
+    });
 
     revalidatePath("/mypage");
     revalidatePath(`/services/${review.service_id}`);

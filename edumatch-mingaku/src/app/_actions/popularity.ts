@@ -8,8 +8,6 @@ import { getCurrentUser } from "@/lib/auth";
  */
 export async function incrementServiceFavoriteCount(serviceId: string) {
   try {
-    const user = await getCurrentUser();
-    if (!user) return;
     await prisma.service.update({
       where: { id: serviceId },
       data: { favorite_count: { increment: 1 } },
@@ -24,8 +22,6 @@ export async function incrementServiceFavoriteCount(serviceId: string) {
  */
 export async function decrementServiceFavoriteCount(serviceId: string) {
   try {
-    const user = await getCurrentUser();
-    if (!user) return;
     await prisma.service.update({
       where: { id: serviceId },
       data: { favorite_count: { decrement: 1 } },
@@ -40,8 +36,6 @@ export async function decrementServiceFavoriteCount(serviceId: string) {
  */
 export async function incrementArticleFavoriteCount(articleId: string) {
   try {
-    const user = await getCurrentUser();
-    if (!user) return;
     await prisma.post.update({
       where: { id: articleId },
       data: { favorite_count: { increment: 1 } },
@@ -56,8 +50,6 @@ export async function incrementArticleFavoriteCount(articleId: string) {
  */
 export async function decrementArticleFavoriteCount(articleId: string) {
   try {
-    const user = await getCurrentUser();
-    if (!user) return;
     await prisma.post.update({
       where: { id: articleId },
       data: { favorite_count: { decrement: 1 } },
@@ -72,8 +64,6 @@ export async function decrementArticleFavoriteCount(articleId: string) {
  */
 export async function incrementServiceRequestCount(serviceId: string) {
   try {
-    const user = await getCurrentUser();
-    if (!user) return;
     await prisma.service.update({
       where: { id: serviceId },
       data: { request_count: { increment: 1 } },
@@ -88,8 +78,6 @@ export async function incrementServiceRequestCount(serviceId: string) {
  */
 export async function decrementServiceRequestCount(serviceId: string) {
   try {
-    const user = await getCurrentUser();
-    if (!user) return;
     await prisma.service.update({
       where: { id: serviceId },
       data: { request_count: { decrement: 1 } },

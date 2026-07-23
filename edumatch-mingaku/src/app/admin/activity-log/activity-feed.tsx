@@ -44,14 +44,14 @@ const ACTION_META: Record<string, { label: string; icon: React.ElementType; bg: 
   APPROVE: { label: "承認",   icon: CheckCircle,   bg: "bg-green-100",  text: "text-green-800" },
   REJECT:  { label: "却下",   icon: XCircle,       bg: "bg-rose-100",   text: "text-rose-800" },
   SUBMIT:  { label: "申請",   icon: SendHorizonal, bg: "bg-violet-100", text: "text-violet-800" },
-  HIDE:    { label: "非表示", icon: EyeOff,        bg: "bg-slate-100",  text: "text-slate-800" },
+  HIDE:    { label: "非表示", icon: EyeOff,        bg: "bg-slate-100",  text: "text-slate-700" },
   SHOW:    { label: "再表示", icon: Eye,           bg: "bg-teal-100",   text: "text-teal-800" },
 };
 
 const TARGET_LABELS: Record<string, string> = {
   POST: "記事", SERVICE: "サービス", SITE_PAGE: "固定ページ",
-  EVENT: "イベント", SITE_UPDATE: "運営記事", FORUM_POST: "教育のひろば投稿",
-  FORUM_ROOM: "教育のひろばルーム", AI_KENTEI_QUESTION: "AI検定問題",
+  EVENT: "イベント", SITE_UPDATE: "運営記事", FORUM_POST: "井戸端会議投稿",
+  FORUM_ROOM: "井戸端会議ルーム", AI_KENTEI_QUESTION: "AI検定問題",
   AI_CHAT_PROMPT: "AIチャット設定", HOME_SLIDER: "トップスライダー",
   HOME_TOPICS: "トップトピックス", TEXT_OVERRIDE: "文言編集",
 };
@@ -190,10 +190,9 @@ function CommentThread({ logId, initialCount, currentUserId }: {
                 <button
                   type="button"
                   onClick={() => void del(c.id)}
-                  aria-label="メモを削除"
-                  className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 p-1 text-muted-foreground hover:text-destructive transition-all shrink-0"
+                  className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-destructive transition-all shrink-0"
                 >
-                  <Trash className="h-3 w-3" aria-hidden />
+                  <Trash className="h-3 w-3" />
                 </button>
               )}
             </div>
@@ -214,10 +213,9 @@ function CommentThread({ logId, initialCount, currentUserId }: {
               type="button" size="sm"
               onClick={() => void submit()}
               disabled={sending || !body.trim()}
-              aria-label="メモを送信"
-              className="shrink-0 self-end h-9 px-2"
+              className="shrink-0 self-end h-8 px-2"
             >
-              <Send className="h-3.5 w-3.5" aria-hidden />
+              <Send className="h-3.5 w-3.5" />
             </Button>
           </div>
         </div>
@@ -229,7 +227,7 @@ function CommentThread({ logId, initialCount, currentUserId }: {
 // ── LogItem ───────────────────────────────────────────────────────────────
 function LogItem({ log, currentUserId }: { log: LogEntry; currentUserId: string }) {
   const meta = ACTION_META[log.action] ?? ACTION_META.UPDATE;
-  const Icon = meta.icon as React.ComponentType<{ className?: string }>;
+  const Icon = meta.icon;
   const targetHref = getTargetHref(log.target_type, log.target_id);
   const targetLabel = TARGET_LABELS[log.target_type] ?? log.target_type;
 
@@ -368,20 +366,19 @@ export function ActivityFeed({ currentUserId }: Props) {
               onChange={(e) => setSearchInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && applySearch()}
               placeholder="名前・タイトルで検索"
-              className="pl-8 h-9 text-xs"
+              className="pl-8 h-8 text-xs"
             />
             {searchInput && (
               <button
                 type="button"
                 onClick={() => { setSearchInput(""); setSearch(""); setPage(1); }}
-                aria-label="検索をクリア"
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
-                <X className="h-3.5 w-3.5" aria-hidden />
+                <X className="h-3.5 w-3.5" />
               </button>
             )}
           </div>
-          <Button size="sm" variant="outline" className="h-9 text-xs px-3" onClick={applySearch}>検索</Button>
+          <Button size="sm" variant="outline" className="h-8 text-xs px-2" onClick={applySearch}>検索</Button>
         </div>
 
         {/* Refresh controls */}
@@ -391,12 +388,11 @@ export function ActivityFeed({ currentUserId }: Props) {
           </span>
           <Button
             size="sm" variant="ghost"
-            className="h-9 w-9 p-0"
+            className="h-8 w-8 p-0"
             onClick={() => void fetchLogs()}
             title="今すぐ更新"
-            aria-label="今すぐ更新"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} aria-hidden />
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
           </Button>
           <button
             type="button"
@@ -417,7 +413,7 @@ export function ActivityFeed({ currentUserId }: Props) {
             key={t || "all"}
             type="button"
             onClick={() => applyFilter(t, undefined)}
-            className={`inline-flex min-h-[36px] items-center px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+            className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
               filterType === t ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
             }`}
           >
@@ -436,7 +432,7 @@ export function ActivityFeed({ currentUserId }: Props) {
               key={a || "all"}
               type="button"
               onClick={() => applyFilter(undefined, a)}
-              className={`inline-flex min-h-[36px] items-center px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+              className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
                 filterAction === a
                   ? (meta ? `${meta.bg} ${meta.text}` : "bg-primary text-primary-foreground")
                   : "bg-muted text-muted-foreground hover:bg-muted/80"

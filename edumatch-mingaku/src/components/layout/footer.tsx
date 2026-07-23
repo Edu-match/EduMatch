@@ -5,25 +5,17 @@ import { OPERATOR_INFO } from "@/lib/operator-info";
 export function Footer() {
   const t = useTranslations();
   const currentYear = new Date().getFullYear();
-  // 教育のひろばの段階移行フラグ：ヘッダー/セクションナビと向き先を揃える
-  const idobataNav = process.env.NEXT_PUBLIC_IDOBATA_NAV === "1";
 
   const footerLinks = {
     product: [
-      { href: "/services", label: t("nav.services") },
       { href: "/articles", label: t("nav.articles") },
-      { href: idobataNav ? "/idobata" : "/forum", label: t("nav.forum") },
+      { href: "/services", label: t("nav.services") },
       { href: "/events", label: t("nav.events") },
-      { href: "/matching", label: t("sideMenu.matching") },
-      { href: "/videos", label: t("sideMenu.videos") },
-      { href: "/compare", label: t("sideMenu.compare") },
-      { href: "/ai-kentei", label: t("sideMenu.aiKentei") },
+      { href: "/forum", label: t("nav.forum") },
     ],
     company: [
       { href: "/about", label: t("nav.about") },
-      { href: "/companies", label: t("nav.companies") },
       { href: "/contact", label: t("nav.contact") },
-      { href: "/help", label: t("sideMenu.help") },
     ],
     legal: [
       { href: "/terms", label: t("nav.terms") },
@@ -32,7 +24,7 @@ export function Footer() {
   };
 
   return (
-    <footer className="w-full border-t border-border/60 bg-secondary/40">
+    <footer className="w-full border-t bg-muted/40">
       <div className="container py-8 md:py-12 lg:py-16">
         <div className="grid grid-cols-2 gap-6 sm:gap-8 md:grid-cols-4">
           {/* Logo & Description */}
@@ -46,60 +38,60 @@ export function Footer() {
           </div>
 
           {/* Product Links */}
-          <nav className="space-y-4" aria-label={t("footer.product")}>
+          <div className="space-y-4">
             <h3 className="text-sm font-semibold">{t("footer.product")}</h3>
-            <ul>
+            <ul className="space-y-2">
               {footerLinks.product.map((link) => (
                 <li key={link.href}>
                   <Link
                     href={link.href}
-                    className="inline-flex min-h-11 items-center rounded-sm text-sm text-muted-foreground hover:text-foreground transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                   >
                     {link.label}
                   </Link>
                 </li>
               ))}
             </ul>
-          </nav>
+          </div>
 
           {/* Company Links */}
-          <nav className="space-y-4" aria-label={t("footer.company")}>
+          <div className="space-y-4">
             <h3 className="text-sm font-semibold">{t("footer.company")}</h3>
-            <ul>
+            <ul className="space-y-2">
               {footerLinks.company.map((link) => (
                 <li key={link.href}>
                   <Link
                     href={link.href}
-                    className="inline-flex min-h-11 items-center rounded-sm text-sm text-muted-foreground hover:text-foreground transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                   >
                     {link.label}
                   </Link>
                 </li>
               ))}
             </ul>
-          </nav>
+          </div>
 
           {/* Legal Links */}
-          <nav className="space-y-4" aria-label={t("footer.legal")}>
+          <div className="space-y-4">
             <h3 className="text-sm font-semibold">{t("footer.legal")}</h3>
-            <ul>
+            <ul className="space-y-2">
               {footerLinks.legal.map((link) => (
                 <li key={link.href}>
                   <Link
                     href={link.href}
-                    className="inline-flex min-h-11 items-center rounded-sm text-sm text-muted-foreground hover:text-foreground transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                   >
                     {link.label}
                   </Link>
                 </li>
               ))}
             </ul>
-          </nav>
+          </div>
         </div>
 
         {/* Copyright */}
-        <div className="mt-8 md:mt-12 border-t border-border/60 pt-6 md:pt-8">
-          <p className="text-center text-xs sm:text-sm text-muted-foreground" suppressHydrationWarning>
+        <div className="mt-8 md:mt-12 border-t pt-6 md:pt-8">
+          <p className="text-center text-xs sm:text-sm text-muted-foreground">
             {t("footer.copyright", {
               year: currentYear,
               operator: OPERATOR_INFO.operator,

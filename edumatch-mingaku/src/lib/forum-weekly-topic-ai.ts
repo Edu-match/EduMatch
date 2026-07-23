@@ -27,7 +27,7 @@ export async function generateForumWeeklyTopicTitle(params: {
       {
         role: "system",
         content:
-          "教育現場の教育のひろば向けに、議論の「今週のお題」を1つだけ提案する。出力JSONは {\"title\": \"...\"} のみ。titleは40文字以内、句点で終えないでよい。",
+          "教育現場の井戸端会議向けに、議論の「今週のお題」を1つだけ提案する。出力JSONは {\"title\": \"...\"} のみ。titleは40文字以内、句点で終えないでよい。",
       },
       {
         role: "user",

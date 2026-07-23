@@ -15,7 +15,7 @@ export async function generateMetadata({
   const result = await lookupCategoryRoom(categorySlug, subSlug);
   if (!result) return {};
   return {
-    title: `${result.room.name} | AIUEO 教育のひろば | AIUEO BASE`,
+    title: `${result.room.name} | AIUEO 井戸端会議 | エデュマッチ`,
     description: result.room.description,
   };
 }

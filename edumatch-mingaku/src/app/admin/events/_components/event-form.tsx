@@ -132,7 +132,7 @@ export function EventForm(props: EventFormProps) {
                   id="company"
                   value={values.company ?? ""}
                   onChange={set("company")}
-                  placeholder="例: 株式会社AIUEO BASE"
+                  placeholder="例: 株式会社エデュマッチ"
                 />
               </div>
             </div>

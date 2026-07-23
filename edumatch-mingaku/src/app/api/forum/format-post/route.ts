@@ -1,18 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { getCurrentUser } from "@/lib/auth";
-import { rateLimitResponse } from "@/lib/security";
-
-const FORMAT_POST_RATE_LIMIT = { windowMs: 60 * 1000, max: 10 };
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const rl = rateLimitResponse(`forum-format-post:${user.id}`, FORMAT_POST_RATE_LIMIT);
-  if (rl.limited) return rl.response;
 
   const { content, topic } = await req.json() as { content?: string; topic?: string };
   if (!content?.trim()) return NextResponse.json({ error: "content required" }, { status: 400 });

@@ -182,7 +182,7 @@ export function InteropTopBubbleMap({
 
       <div className="pointer-events-none absolute bottom-20 left-4 z-20 flex items-center gap-1.5 rounded-full border border-white/25 bg-white/15 px-3 py-1.5 text-[11px] text-white/85 shadow-sm backdrop-blur md:bottom-6">
         <Move className="h-3.5 w-3.5" />
-        中央のインタロップから展示情報へ · 外周の◎トピックはひろばへ
+        中央のインタロップから展示情報へ · 外周の◎トピックは井戸端へ
       </div>
     </div>
   );

@@ -515,7 +515,7 @@ export async function retrieveChatContext(
   try {
     // ── Step 1: 分析開始 ──────────────────────────────────────────────────────
     e({ type: "status", id: "analyze", phase: "analyze",
-      message: "ご質問の内容を分析し、AIUEO BASE内の関連情報を探しています…",
+      message: "ご質問の内容を分析し、エデュマッチ内の関連情報を探しています…",
       status: "active" });
     e({ type: "status_update", id: "analyze", status: "done" });
 
@@ -569,7 +569,7 @@ export async function retrieveChatContext(
     const totalSite = services.length + articles.length;
     if (totalSite > 0) {
       e({ type: "status", id: "site-done", phase: "site_done",
-        message: `AIUEO BASE内から ${totalSite} 件の関連情報を取得しました`,
+        message: `エデュマッチ内から ${totalSite} 件の関連情報を取得しました`,
         status: "active" });
       e({ type: "status_update", id: "site-done", status: "done" });
     } else {

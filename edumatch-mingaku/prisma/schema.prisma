@@ -19,8 +19,6 @@ model Profile {
   created_at                      DateTime             @default(now())
   updated_at                      DateTime             @updatedAt
   phone                           String?
-  postal_code                     String?
-  address                         String?
   bio                             String?
   website                         String?
   subscription_plan               String?
@@ -39,10 +37,8 @@ model Profile {
   manual_profile_kind             String?
   /// 初回プロフィール設定完了日時。null の間は OAuth 後も登録ウィザードへ誘導する
   onboarding_completed_at         DateTime?
-  /// AI検定合格フラグ（教育のひろば・人材マッチングのバッジ表示用）
+  /// AI検定合格フラグ（井戸端会議・人材マッチングのバッジ表示用）
   ai_kentei_passed                Boolean              @default(false)
-  /// 人材マッチング名鑑への掲載オプトイン（既定 false = 非掲載。本人の明示同意でのみ公開）
-  directory_opt_in                Boolean              @default(false)
   material_requests               MaterialRequest[]
   posts                           Post[]
   reviews                         Review[]
@@ -64,11 +60,9 @@ model Profile {
   video_comments                  VideoComment[]
   ai_persona                      UserAiPersona?
   interop_posts                   InteropPost[]        @relation("InteropPostAuthor")
-  kaikan_staff                    KaikanStaff?
 
   @@index([email])
   @@index([stripe_customer_id])
-  @@index([directory_opt_in])
 }
 
 /// 一般ユーザー向け拡張（所属・年代など）。Profile と 1:1
@@ -81,8 +75,6 @@ model GeneralProfile {
   organization_type           String?
   /// 所属の種類が「その他」のときの補足（任意）
   organization_type_other     String?
-  /// 役職・担当（議員会館サミット等のイベント登録用）
-  position                    String?
   /// 人材マッチングへの登録可否。公開ページは main では提供しない
   talent_matching_enabled     Boolean  @default(false)
   talent_matching_description String?
@@ -267,19 +259,12 @@ model Service {
 /// サービスへの口コミ・レビュー
 model Review {
   id            String   @id @default(cuid())
-  /// サービスへのレビュー対象。post_id と排他（アプリ側で保証）
-  service_id    String?
-  /// 記事(Post)へのレビュー対象。service_id と排他
-  post_id       String?
-  /// 返信スレッド用の親レビューID（トップレベルの口コミは null）
-  parent_id     String?
-  /// ログインユーザーのID（ゲスト投稿・AI返信は null）
+  service_id    String
+  /// ログインユーザーのID（ゲスト投稿は null）
   user_id       String?  @db.Uuid
   /// 投稿者表示名
   author_name   String
-  /// 立場バッジ・AI種別（"AI" / "AIペルソナ" / 教頭 等）。null=一般
-  author_role   String?
-  /// 評価（1〜5）。旧コメント・返信は null
+  /// 評価（1〜5）。旧コメントは null
   rating        Int?
   /// レビュー本文
   body          String
@@ -288,15 +273,10 @@ model Review {
   /// WordPress コメントID（重複インポート防止）
   wp_comment_id Int?
   created_at    DateTime @default(now()) @db.Timestamptz(6)
-  service       Service? @relation(fields: [service_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  post          Post?    @relation(fields: [post_id], references: [id], onDelete: Cascade)
-  parent        Review?  @relation("ReviewReplies", fields: [parent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  replies       Review[] @relation("ReviewReplies")
+  service       Service  @relation(fields: [service_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   user          Profile? @relation(fields: [user_id], references: [id], onUpdate: NoAction)
 
   @@index([service_id])
-  @@index([post_id])
-  @@index([parent_id])
   @@index([user_id])
   @@index([created_at(sort: Desc)])
 }
@@ -331,7 +311,6 @@ model Post {
   home_news_tab       HomeNewsTab        @default(NONE)
   home_slider_entries HomeSliderArticle?
   provider            Profile            @relation(fields: [provider_id], references: [id], onDelete: Cascade)
-  reviews             Review[]
 
   @@index([provider_id])
   @@index([category])
@@ -514,8 +493,6 @@ model InteropSubCategory {
   is_active     Boolean             @default(true)
   /// サテライト/掲示板の概要下にサムネ表示する参考URL（任意）
   url           String              @default("")
-  /// タップ時の遷移先。空=掲示板（投稿ページ）へ。設定時=この外部リンクへ遷移。
-  link_url      String              @default("")
   /// 本体エデュマッチから自動抽出する種別（article/service/media/events-info）。空なら自動抽出オフ。
   content_kinds String[]            @default([])
   /// 自動抽出のキーワード上書き（空ならカテゴリ名＋サブカテゴリ名）
@@ -658,29 +635,6 @@ model UserAiPersona {
   @@map("user_ai_personas")
 }
 
-/// 歴史上の人物などの「特別AIペルソナ」。ネット検索で人物像を調べて生成し、
-/// 生成前にAIによる法的チェック（著作権・肖像権・パブリシティ権・名誉等）の結果を保持する。
-model AiSpecialPersona {
-  id             String   @id @default(uuid()) @db.Uuid
-  name           String
-  persona_prompt String   @default("")
-  values_text    String   @default("")
-  expertise      String[] @default([])
-  avatar_url     String?
-  /// 生成元の種別（historical 等）
-  source         String   @default("historical")
-  /// AI法的チェック結果: ok / caution / blocked
-  legal_status   String   @default("ok")
-  legal_note     String   @default("")
-  is_active      Boolean  @default(true)
-  /// 作成した管理者（Profile.id）
-  created_by     String?  @db.Uuid
-  created_at     DateTime @default(now()) @db.Timestamptz(6)
-  updated_at     DateTime @updatedAt
-
-  @@map("ai_special_personas")
-}
-
 /// Interop掲示板の投稿いいね（来場者はログイン不要・voter_key で端末単位に1回）
 model InteropPostLike {
   id         String      @id @default(uuid()) @db.Uuid
@@ -707,125 +661,6 @@ model KaikanVoice {
 
   @@index([created_at])
   @@map("kaikan_voices")
-}
-
-model KaikanContent {
-  id           String              @id @default(uuid()) @db.Uuid
-  title        String
-  description  String              @default("")
-  location     String              @default("")
-  /// 登壇者（改行/スラッシュ区切りで複数可。任意）
-  speaker      String              @default("")
-  /// session | workshop | keynote
-  content_type String              @default("session")
-  /// 開催日時（任意）
-  starts_at    DateTime?           @db.Timestamptz(6)
-  /// 終了日時（任意。starts_at と合わせて時間重複の判定に使う）
-  ends_at      DateTime?           @db.Timestamptz(6)
-  /// 定員（null=無制限）
-  capacity     Int?
-  is_published Boolean             @default(false)
-  sort_order   Int                 @default(0)
-  created_at   DateTime            @default(now()) @db.Timestamptz(6)
-  updated_at   DateTime            @updatedAt
-  applications KaikanApplication[]
-
-  @@map("kaikan_contents")
-}
-
-model KaikanApplication {
-  id            String        @id @default(uuid()) @db.Uuid
-  content_id    String        @db.Uuid
-  content       KaikanContent @relation(fields: [content_id], references: [id], onDelete: Cascade)
-  /// 申込者（ログインユーザーなら Profile.id を保持。未ログイン申込は NULL）。relation は張らずカラムのみ。
-  profile_id    String?       @db.Uuid
-  name          String
-  email         String        @default("")
-  /// 事前質問・期待（イベント活性化のため任意）
-  note          String        @default("")
-  /// 受付QRに埋め込む不透明トークン
-  qr_token      String        @unique
-  /// 1回の申込で複数セッションをまとめる共有トークン（=チケットのQR）。単独申込でも付与。
-  ticket_token  String?
-  /// confirmed=確定 / checked_in=受付済 / cancelled=取消
-  status        String        @default("confirmed")
-  checked_in_at DateTime?     @db.Timestamptz(6)
-  created_at    DateTime      @default(now()) @db.Timestamptz(6)
-  /// イベント参加時の詳細情報（同意・属性・紹介者など）
-  event_response KaikanEventResponse?
-
-  @@index([content_id, created_at])
-  @@index([ticket_token])
-  @@map("kaikan_applications")
-}
-
-/// 議員会館サミット等イベント申込時の詳細情報（同意・属性・紹介者・きっかけ・連絡事項）
-model KaikanEventResponse {
-  id                   String             @id @default(uuid()) @db.Uuid
-  application_id       String             @unique @db.Uuid
-  application          KaikanApplication @relation(fields: [application_id], references: [id], onDelete: Cascade)
-  /// 参加規約への同意フラグ
-  consent_agreed       Boolean            @default(false)
-  /// 参加者属性：一般参加 / メディア関係者 / AIUEO関係者 / 共創メンバー希望
-  participant_type     String?
-  /// ご紹介者のお名前
-  referrer_name        String?
-  /// 本イベントを知ったきっかけ
-  event_discovery_source String?
-  /// その他連絡事項
-  additional_notes     String?
-  created_at           DateTime           @default(now()) @db.Timestamptz(6)
-  updated_at           DateTime           @updatedAt @db.Timestamptz(6)
-
-  @@map("kaikan_event_responses")
-}
-
-/// 議員会館サミットの招待コード。Peatixで全体申込した人へ手動メールで配布し、
-/// エデュマッチで入力するとコンテンツの電子チケットを申し込めるようになる（申込者ごとの使い捨て）。
-model KaikanInviteCode {
-  id          String    @id @default(uuid()) @db.Uuid
-  /// 入力用コード（例: ABCD-2F7K）。一意。
-  code        String    @unique
-  /// 宛先名などのメモ（任意・管理用）
-  note        String    @default("")
-  /// 無効化されたコードは使用不可（管理画面でトグル）
-  is_active   Boolean   @default(true)
-  /// @deprecated 旧: 単一ユーザー使用。新ロジックは redemptions テーブルを参照。
-  redeemed_by String?   @db.Uuid
-  redeemed_at DateTime? @db.Timestamptz(6)
-  created_at  DateTime  @default(now()) @db.Timestamptz(6)
-  redemptions KaikanInviteRedemption[]
-
-  @@index([redeemed_by])
-  @@map("kaikan_invite_codes")
-}
-
-model KaikanInviteRedemption {
-  id          String   @id @default(uuid()) @db.Uuid
-  code_id     String   @db.Uuid
-  profile_id  String   @db.Uuid
-  redeemed_at DateTime @default(now()) @db.Timestamptz(6)
-  code        KaikanInviteCode @relation(fields: [code_id], references: [id], onDelete: Cascade)
-
-  @@unique([code_id, profile_id])
-  @@index([profile_id])
-  @@index([code_id])
-  @@map("kaikan_invite_redemptions")
-}
-
-/// イベントスタッフ。管理者が付与し、当日受付（QRチェックイン）の権限を持つ。
-model KaikanStaff {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  profile_id String   @db.Uuid
-  name       String   @default("")
-  email      String   @default("")
-  note       String   @default("")
-  created_at DateTime @default(now()) @db.Timestamptz(6)
-
-  profile    Profile  @relation(fields: [profile_id], references: [id], onDelete: Cascade)
-
-  @@unique([profile_id])
-  @@map("kaikan_staff")
 }
 
 /// Interop特設ページのサイト設定（テキスト・テーマ等のkey-value）
@@ -908,24 +743,24 @@ model ForumPinnedContent {
 }
 
 model ForumRoom {
-  id                      String             @id
+  id                      String            @id
   name                    String
-  description             String             @default("")
-  emoji                   String             @default("")
-  weekly_topic            String             @default("")
-  ai_discussion           Boolean            @default(false)
-  ai_weekly_topic_enabled Boolean            @default(false)
-  is_hidden               Boolean            @default(false)
+  description             String            @default("")
+  emoji                   String            @default("")
+  weekly_topic            String            @default("")
+  ai_discussion           Boolean           @default(false)
+  ai_weekly_topic_enabled Boolean           @default(false)
+  is_hidden               Boolean           @default(false)
   /// 管理者による炎マークの手動上書き。null=自動判定 / true=強制ON / false=強制OFF
   hot_override            Boolean?
-  category_id             String?            @db.Uuid
-  sub_category_id         String?            @db.Uuid
-  created_by              String?            @db.Uuid
-  created_at              DateTime           @default(now())
-  updated_at              DateTime           @updatedAt
-  creator                 Profile?           @relation(fields: [created_by], references: [id], onDelete: SetNull)
-  category                ForumCategory?     @relation(fields: [category_id], references: [id], onDelete: SetNull)
-  subCategory             ForumSubCategory?  @relation(fields: [sub_category_id], references: [id], onDelete: SetNull)
+  category_id             String?           @db.Uuid
+  sub_category_id         String?           @db.Uuid
+  created_by              String?           @db.Uuid
+  created_at              DateTime          @default(now())
+  updated_at              DateTime          @updatedAt
+  creator                 Profile?          @relation(fields: [created_by], references: [id], onDelete: SetNull)
+  category                ForumCategory?    @relation(fields: [category_id], references: [id], onDelete: SetNull)
+  subCategory             ForumSubCategory? @relation(fields: [sub_category_id], references: [id], onDelete: SetNull)
   posts                   ForumPost[]
   roomTopics              ForumRoomTopic[]
   roomContent             ForumRoomContent[]

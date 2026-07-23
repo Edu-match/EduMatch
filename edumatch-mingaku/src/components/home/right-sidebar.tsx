@@ -35,7 +35,7 @@ export async function RightSidebar() {
           </p>
           <div className="flex flex-col gap-2">
             <Button asChild size="sm" className="w-full">
-              <Link href="/login?tab=signup">新規登録（無料）</Link>
+              <Link href="/login">新規登録（無料）</Link>
             </Button>
             <Button asChild size="sm" variant="outline" className="w-full">
               <Link href="/login">ログイン</Link>
@@ -67,6 +67,7 @@ export async function RightSidebar() {
                       fill
                       className="object-contain"
                       sizes="48px"
+                      unoptimized
                     />
                   </div>
                   <Link
@@ -119,7 +120,7 @@ export async function RightSidebar() {
             href="/about"
             className="block px-3 py-2.5 text-sm hover:bg-muted transition-colors"
           >
-            AIUEO BASEについて
+            エデュマッチについて
           </Link>
           <Link
             href="/terms"

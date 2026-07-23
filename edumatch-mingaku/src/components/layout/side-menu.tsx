@@ -15,18 +15,14 @@ import {
   FileText,
   ShieldCheck,
   Award,
+  ListChecks,
   BookOpen,
   Bot,
   Activity,
   ArrowUpDown,
   MessageSquare,
   Video,
-  Flag,
-  QrCode,
   Megaphone,
-  Sparkles,
-  ListChecks,
-  Users,
 } from "lucide-react";
 
 /** 一般ユーザー向けメニュー（全員閲覧用）。labelKey は sideMenu namespace のキー */
@@ -34,36 +30,33 @@ const generalItems = [
   { href: "/", labelKey: "home", icon: Home },
   { href: "/services", labelKey: "services", icon: Search },
   { href: "/articles", labelKey: "articles", icon: Newspaper },
-  // 教育のひろば：NEXT_PUBLIC_IDOBATA_NAV=1 で常設マップ版（/idobata）へ切替
+  // 井戸端会議：NEXT_PUBLIC_IDOBATA_NAV=1 で常設マップ版（/idobata）へ切替
   { href: process.env.NEXT_PUBLIC_IDOBATA_NAV === "1" ? "/idobata" : "/forum", labelKey: "forum", icon: MessageSquare },
   { href: "/videos", labelKey: "videos", icon: Video },
   { href: "/events", labelKey: "events", icon: Calendar },
   { href: "/companies", labelKey: "companies", icon: Building2 },
-  { href: "/matching", labelKey: "matching", icon: Users },
   { href: "/compare", labelKey: "compare", icon: Scale },
   { href: "/ai-kentei", labelKey: "aiKentei", icon: Award },
   { href: "/help", labelKey: "help", icon: HelpCircle },
 ];
 
-/** 投稿・管理者向けメニュー（下段: ADMIN のみ）。color はアイコン色（プルダウンと統一）。
- *  ※電子チケット読み取り(kaikan checkin)は下部で個別リンク表示するため配列には含めない。 */
+/** 投稿・管理者向けメニュー（下段: ADMIN のみ） */
 const bottomItems = [
-  { href: "/articles/create", labelKey: "createArticle", icon: PenSquare, roles: ["ADMIN"], color: "text-blue-600" },
-  { href: "/services/create", labelKey: "createService", icon: PenSquare, roles: ["ADMIN"], color: "text-cyan-600" },
-  { href: "/admin/approvals", labelKey: "approvals", icon: FileText, roles: ["ADMIN"], color: "text-amber-600" },
-  { href: "/admin/site-updates", labelKey: "writeSiteUpdate", icon: PenSquare, roles: ["ADMIN"], color: "text-slate-600" },
-  { href: "/admin/events", labelKey: "manageEvents", icon: Calendar, roles: ["ADMIN"], color: "text-emerald-600" },
-  { href: "/admin/forum", labelKey: "manageForum", icon: MessageSquare, roles: ["ADMIN"], color: "text-blue-600" },
-  { href: "/admin/videos", labelKey: "manageVideos", icon: Video, roles: ["ADMIN"], color: "text-rose-600" },
-  { href: "/admin/sponsors", labelKey: "manageSponsors", icon: Megaphone, roles: ["ADMIN"], color: "text-orange-600" },
-  { href: "/admin/pages", labelKey: "managePages", icon: FileText, roles: ["ADMIN"], color: "text-slate-600" },
-  // 「教育AIサミット管理(/admin/interop)」は教育のひろば 管理(/admin/forum)へ統合したため削除。
-  { href: "/admin/ai-kentei/questions", labelKey: "manageAiKentei", icon: ListChecks, roles: ["ADMIN"], color: "text-green-600" },
-  { href: "/dashboard/admin/knowledge", labelKey: "knowledge", icon: BookOpen, roles: ["ADMIN"], color: "text-indigo-600" },
-  { href: "/admin/ai-chat", labelKey: "aiChat", icon: Bot, roles: ["ADMIN"], color: "text-violet-600" },
-  { href: "/admin/services/display-order", labelKey: "serviceOrder", icon: ArrowUpDown, roles: ["ADMIN"], color: "text-cyan-600" },
-  { href: "/admin/activity-log", labelKey: "activityLog", icon: Activity, roles: ["ADMIN"], color: "text-orange-600" },
-  { href: "/admin/user-reports", labelKey: "userReports", icon: Flag, roles: ["ADMIN"], color: "text-red-600" },
+  { href: "/articles/create", labelKey: "createArticle", icon: PenSquare, roles: ["ADMIN"] },
+  { href: "/services/create", labelKey: "createService", icon: PenSquare, roles: ["ADMIN"] },
+  { href: "/admin/approvals", labelKey: "approvals", icon: FileText, roles: ["ADMIN"] },
+  { href: "/admin/site-updates", labelKey: "writeSiteUpdate", icon: PenSquare, roles: ["ADMIN"] },
+  { href: "/admin/events", labelKey: "manageEvents", icon: Calendar, roles: ["ADMIN"] },
+  { href: "/admin/forum", labelKey: "manageForum", icon: MessageSquare, roles: ["ADMIN"] },
+  { href: "/admin/videos", labelKey: "manageVideos", icon: Video, roles: ["ADMIN"] },
+  { href: "/admin/sponsors", labelKey: "manageSponsors", icon: Megaphone, roles: ["ADMIN"] },
+  { href: "/admin/pages", labelKey: "managePages", icon: FileText, roles: ["ADMIN"] },
+  // 「教育AIサミット管理(/admin/interop)」は井戸端会議 管理(/admin/forum)へ統合したため削除。
+  { href: "/admin/ai-kentei/questions", labelKey: "manageAiKentei", icon: ListChecks, roles: ["ADMIN"] },
+  { href: "/dashboard/admin/knowledge", labelKey: "knowledge", icon: BookOpen, roles: ["ADMIN"] },
+  { href: "/admin/ai-chat", labelKey: "aiChat", icon: Bot, roles: ["ADMIN"] },
+  { href: "/admin/services/display-order", labelKey: "serviceOrder", icon: ArrowUpDown, roles: ["ADMIN"] },
+  { href: "/admin/activity-log", labelKey: "activityLog", icon: Activity, roles: ["ADMIN"] },
 ];
 
 type MenuItem = (typeof generalItems)[number] | (typeof bottomItems)[number];
@@ -91,8 +84,8 @@ function MenuItemLink({
         hasBorder ? "border-b" : ""
       }`}
     >
-      <Icon className={`h-4 w-4 flex-shrink-0 ${"color" in item && item.color ? item.color : "text-muted-foreground"}`} />
-      <span className="hover:text-primary transition-colors">{t(item.labelKey)}</span>
+      <Icon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+      <span className="hover:text-[#1d4ed8] transition-colors">{t(item.labelKey)}</span>
     </Link>
   );
 }
@@ -100,7 +93,6 @@ function MenuItemLink({
 export function SideMenu() {
   const t = useTranslations("sideMenu");
   const [role, setRole] = useState<string | null>(null);
-  const [roleLoading, setRoleLoading] = useState(true);
 
   useEffect(() => {
     fetch("/api/auth/me", { credentials: "include" })
@@ -108,8 +100,7 @@ export function SideMenu() {
       .then((data) => {
         setRole(data?.profile?.role ?? null);
       })
-      .catch(() => setRole(null))
-      .finally(() => setRoleLoading(false));
+      .catch(() => setRole(null));
   }, []);
 
   const visibleBottomItems = bottomItems.filter(
@@ -135,42 +126,15 @@ export function SideMenu() {
       </div>
 
       {/* 投稿・管理者メニュー（ブロック）※ADMIN 向け */}
-      {roleLoading && (
-        <div className="border rounded-lg overflow-hidden">
-          <div className="h-10 bg-muted animate-pulse" />
-          <div className="p-3 space-y-2">
-            <div className="h-8 bg-muted/60 animate-pulse rounded" />
-            <div className="h-8 bg-muted/60 animate-pulse rounded" />
-          </div>
-        </div>
-      )}
-      {!roleLoading && visibleBottomItems.length > 0 && (
-        <div className="border border-warning rounded-lg bg-warning/10 overflow-hidden">
-          <div className="px-3 py-2.5 bg-warning flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-warning-foreground flex-shrink-0" />
-            <h2 className="text-sm font-bold text-warning-foreground">
+      {visibleBottomItems.length > 0 && (
+        <div className="border-2 border-amber-400 rounded-lg bg-amber-50 overflow-hidden">
+          <div className="px-3 py-2.5 bg-amber-400 flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-amber-900 flex-shrink-0" />
+            <h2 className="text-sm font-bold text-amber-900">
               {role === "ADMIN" ? t("adminMenu") : t("posterMenu")}
             </h2>
           </div>
           <nav>
-            {role === "ADMIN" && (
-              <Link
-                href="/admin/kaikan?tab=checkin"
-                className="flex w-full items-center gap-2 border-b border-warning/30 px-3 py-2.5 text-left text-sm transition-colors hover:bg-warning/15"
-              >
-                <QrCode className="h-4 w-4 flex-shrink-0 text-warning-foreground" />
-                <span className="hover:text-primary transition-colors">{t("kaikanCheckin")}</span>
-              </Link>
-            )}
-            {role === "ADMIN" && (
-              <Link
-                href="/admin/persona"
-                className="flex w-full items-center gap-2 border-b border-warning/30 px-3 py-2.5 text-left text-sm transition-colors hover:bg-warning/15"
-              >
-                <Sparkles className="h-4 w-4 flex-shrink-0 text-violet-700" />
-                <span className="hover:text-primary transition-colors">{t("aiPersona")}</span>
-              </Link>
-            )}
             {visibleBottomItems.map((item, index) => (
               <MenuItemLink
                 key={item.href}

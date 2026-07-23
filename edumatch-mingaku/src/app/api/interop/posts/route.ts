@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { after } from "next/server";
-import { z } from "zod";
-import { verifyOrigin } from "@/lib/security";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, getCurrentProfile } from "@/lib/auth";
 import { moderateAndNotify } from "@/lib/post-moderation";
@@ -14,20 +12,6 @@ export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 30;
 const MAX_BODY = 1000;
-
-// 未入力時の個別エラーメッセージは既存の手動チェックで返すため、ここでは型と上限のみ検証する
-const postBodySchema = z.object({
-  subCategoryId: z.string().max(100).optional(),
-  /** トピック設定があるサブカテゴリではトピックIDを指定 */
-  topicId: z.string().max(100).optional(),
-  /** 返信対象の投稿ID（指定時はその投稿への返信として保存） */
-  parentPostId: z.string().max(100).optional(),
-  authorName: z.string().max(200).optional(),
-  authorRole: z.string().max(200).optional(),
-  postBody: z.string().max(10000).optional(),
-  /** 管理者のみ：運営のお知らせ・記事として上部に固定する */
-  isPinned: z.boolean().optional(),
-});
 
 /** サブカテゴリ掲示板の投稿一覧（公開）
  *  ?subCategoryId=xxx 必須。
@@ -129,15 +113,19 @@ export async function GET(req: NextRequest) {
 
 /** 投稿作成（来場者向け・ログイン不要） */
 export async function POST(req: NextRequest) {
-  const csrf = verifyOrigin(req);
-  if (csrf) return csrf;
-
   try {
-    const parsed = postBodySchema.safeParse(await req.json().catch(() => null));
-    if (!parsed.success) {
-      return NextResponse.json({ error: "入力内容が正しくありません" }, { status: 400 });
-    }
-    const body = parsed.data;
+    const body = (await req.json()) as {
+      subCategoryId?: string;
+      /** トピック設定があるサブカテゴリではトピックIDを指定 */
+      topicId?: string;
+      /** 返信対象の投稿ID（指定時はその投稿への返信として保存） */
+      parentPostId?: string;
+      authorName?: string;
+      authorRole?: string;
+      postBody?: string;
+      /** 管理者のみ：運営のお知らせ・記事として上部に固定する */
+      isPinned?: boolean;
+    };
 
     if (!body.subCategoryId) {
       return NextResponse.json({ error: "subCategoryId is required" }, { status: 400 });

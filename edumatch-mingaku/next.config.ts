@@ -17,26 +17,23 @@ function supabaseStorageHostname(): string {
 }
 
 const SUPABASE_HOSTNAME = supabaseStorageHostname();
+const SUPABASE_PROJECT_ID = SUPABASE_HOSTNAME.split(".")[0];
 
 /**
- * Content-Security-Policy（enforce モード）
- * 違反するリソースはブロックされる。新規外部リソースを追加する際は要更新。
+ * Content-Security-Policy（report-only モード）
+ * コンソール違反が出なくなったら key を Content-Security-Policy に変更する。
  */
 function buildCsp(): string {
-  // NEXT_PUBLIC_SUPABASE_URL はカスタムドメイン（auth.ai-ueo.org）の場合があるため、
-  // ホスト名からプロジェクトIDを切り出さず、URL のオリジンをそのまま許可する。
-  // （*.supabase.co 直下のプロジェクトの場合も同じ式で正しいオリジンになる）
   const supabaseOrigin = `https://${SUPABASE_HOSTNAME}`;
-  const supabaseApiOrigin = supabaseOrigin;
-  const supabaseWs = `wss://${SUPABASE_HOSTNAME}`;
-  const isDev = process.env.NODE_ENV === "development";
+  const supabaseApiOrigin = `https://${SUPABASE_PROJECT_ID}.supabase.co`;
+  const supabaseWs = `wss://${SUPABASE_PROJECT_ID}.supabase.co`;
 
   const directives: Record<string, string> = {
     "default-src": "'self'",
     "script-src": [
       "'self'",
       "'unsafe-inline'",
-      ...(isDev ? ["'unsafe-eval'"] : []),
+      "'unsafe-eval'",
       "https://www.googletagmanager.com",
     ].join(" "),
     "style-src": "'self' 'unsafe-inline' https://fonts.googleapis.com",
@@ -46,7 +43,6 @@ function buildCsp(): string {
       "data:",
       "blob:",
       supabaseOrigin,
-      "https://*.supabase.co",
       "https://placehold.co",
       "https://drive.google.com",
       "https://lh3.googleusercontent.com",
@@ -79,7 +75,7 @@ function buildCsp(): string {
 }
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["pdf-parse", "pdfjs-dist", "isomorphic-dompurify", "jsdom"],
+  serverExternalPackages: ["pdf-parse", "pdfjs-dist"],
   async headers() {
     return [
       {
@@ -97,12 +93,10 @@ const nextConfig: NextConfig = {
             key: "Strict-Transport-Security",
             value: "max-age=63072000; includeSubDomains; preload",
           },
-          { key: "X-DNS-Prefetch-Control", value: "off" },
-          { key: "X-Download-Options", value: "noopen" },
-          { key: "X-Permitted-Cross-Domain-Policies", value: "none" },
           {
-            // enforce モード: ポリシー違反のリソースをブロックする
-            key: "Content-Security-Policy",
+            // report-only: 違反をコンソールに記録するがブロックしない
+            // 本番で問題なければ Content-Security-Policy へ変更する
+            key: "Content-Security-Policy-Report-Only",
             value: buildCsp(),
           },
         ],
@@ -138,12 +132,6 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        hostname: "*.supabase.co",
-        port: "",
-        pathname: "/storage/v1/object/public/**",
-      },
-      {
-        protocol: "https",
         hostname: "edu-match.com",
         port: "",
         pathname: "/wp-content/uploads/**",
@@ -166,24 +154,7 @@ const nextConfig: NextConfig = {
         port: "",
         pathname: "/**",
       },
-      {
-        protocol: "https",
-        hostname: "img.youtube.com",
-        port: "",
-        pathname: "/vi/**",
-      },
-      {
-        protocol: "https",
-        hostname: "i.ytimg.com",
-        port: "",
-        pathname: "/vi/**",
-      },
     ],
-    // placehold.co のフォールバック画像は SVG のため、最適化経由で配信できるよう許可する。
-    // sandbox CSP + attachment でスクリプト実行リスクを遮断（Next.js 公式推奨の安全設定）
-    dangerouslyAllowSVG: true,
-    contentDispositionType: "attachment",
-    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
 };
 

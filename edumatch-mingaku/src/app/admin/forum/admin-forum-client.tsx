@@ -332,10 +332,10 @@ export function AdminForumClient() {
           <Link href="/provider-dashboard"><ArrowLeft className="mr-1 h-4 w-4" />ダッシュボード</Link>
         </Button>
         <Button asChild variant="outline" size="sm">
-          <Link href="/forum" target="_blank"><ExternalLink className="mr-1 h-4 w-4" />教育のひろばを開く</Link>
+          <Link href="/forum" target="_blank"><ExternalLink className="mr-1 h-4 w-4" />井戸端会議を開く</Link>
         </Button>
       </div>
-      <h1 className="text-2xl font-bold">教育のひろば 管理</h1>
+      <h1 className="text-2xl font-bold">井戸端会議 管理</h1>
       <p className="mt-1 text-sm text-muted-foreground">部屋・サテライト・投稿・マップ・サイト設定・モデレーションをここで一括管理します。</p>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-4">

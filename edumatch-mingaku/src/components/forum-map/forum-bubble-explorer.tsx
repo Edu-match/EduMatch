@@ -151,7 +151,7 @@ export function ForumBubbleExplorer() {
       {view.kind === "top" ? (
         <>
           <ForumSubOrbit
-            centerLabel="教育のひろば"
+            centerLabel="井戸端会議"
             centerIcon={GraduationCap}
             accent={DEFAULT_ACCENT}
             items={categoryItems}

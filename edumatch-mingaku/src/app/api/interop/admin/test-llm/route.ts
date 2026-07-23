@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { getCurrentProfile } from "@/lib/auth";
-import { requireNonProduction } from "@/lib/security";
 import { getLocalLLM } from "@/lib/local-llm";
 
 export const dynamic = "force-dynamic";
@@ -12,9 +11,6 @@ export const maxDuration = 60;
  * モデル・応答時間・返答を返す。本番では管理者のみ。
  */
 export async function POST() {
-  const blocked = requireNonProduction();
-  if (blocked) return blocked;
-
   const profile = await getCurrentProfile().catch(() => null);
   if (process.env.NODE_ENV === "production" && profile?.role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

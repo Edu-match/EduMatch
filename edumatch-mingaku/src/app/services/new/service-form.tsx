@@ -180,7 +180,7 @@ export function ServiceForm() {
                       />
                     </FormControl>
                     <FormDescription>
-                      改行またはカンマ区切りで最大3件まで設定できます。1件以上設定すると、資料請求通知はこの宛先のみに送信され、作成者メールには送信されません。
+                      改行またはカンマ区切りで複数指定できます。1件以上設定すると、資料請求通知はこの宛先のみに送信され、作成者メールには送信されません。
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

@@ -84,7 +84,7 @@ const POST_SURFACE = {
   WebkitBackdropFilter: "blur(16px) saturate(1.15)",
   boxShadow: "0 8px 32px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.12)",
 } as const;
-/** アクセントカラー（教育のひろば＝インディゴ系） */
+/** アクセントカラー（井戸端会議＝インディゴ系） */
 const ACCENT = "#8da2e8";
 
 /** カテゴリルーム（大カテゴリ×サブカテゴリ）で上部に表示するコンテキスト */
@@ -969,7 +969,7 @@ function NewPostComposer({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold text-white/90">投稿するにはログインしてください</p>
-            <p className="mt-1 text-xs text-white/55">教育のひろばへの投稿は会員限定です。</p>
+            <p className="mt-1 text-xs text-white/55">井戸端会議への投稿は会員限定です。</p>
           </div>
           <Button asChild className="gap-1.5 border-0 text-white" style={{ background: ACCENT }}>
             <Link href="/auth/login"><LogIn className="h-4 w-4" />ログインする</Link>
@@ -1090,8 +1090,8 @@ function AiHelperSidebar({
         className="h-auto w-full justify-center gap-1.5 whitespace-normal py-2.5 text-xs leading-snug border-indigo-300/40 bg-indigo-400/10 text-indigo-100 hover:bg-indigo-400/20"
         initialMessage={
           body?.trim()
-            ? `以下の投稿下書きを、教育のひろば向けに深めたいです。\n\n${body.trim()}`
-            : `「${roomTheme}」について、教育のひろばへの投稿文を作るために議論を始めたいです。`
+            ? `以下の投稿下書きを、井戸端会議向けに深めたいです。\n\n${body.trim()}`
+            : `「${roomTheme}」について、井戸端会議への投稿文を作るために議論を始めたいです。`
         }
         preferredMode="discussion"
         launchContext="forum-compose"
@@ -1272,7 +1272,7 @@ export function ForumRoomClient({
             style={{ background: `${ACCENT}22`, borderColor: `${ACCENT}66` }}
           >
             <ArrowLeft className="h-3.5 w-3.5" />
-            {categoryContext ? "サブカテゴリの選択に戻る" : "AIUEO 教育のひろば"}
+            {categoryContext ? "サブカテゴリの選択に戻る" : "AIUEO 井戸端会議"}
           </Link>
 
           <header

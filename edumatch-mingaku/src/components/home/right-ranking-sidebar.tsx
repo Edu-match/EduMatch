@@ -16,8 +16,7 @@ export async function RightRankingSidebar() {
   ]);
 
   return (
-    // top: 固定chrome（ヘッダー64px + SectionNav 44px + ニュースティッカー約28px）に余白を加えた 140px
-    <aside className="lg:sticky lg:top-[8.75rem] flex flex-col gap-6 min-w-0 w-full">
+    <aside className="lg:sticky lg:top-20 flex flex-col gap-6 min-w-0 w-full">
       {/* 井戸端マップ（PR枠）— /forum の本物マップへ誘導 */}
       <ForumMapSidebarWidget />
 

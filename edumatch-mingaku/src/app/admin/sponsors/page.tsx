@@ -7,7 +7,7 @@ import { AdminSponsorsClient } from "@/components/admin/admin-sponsors-client";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "スポンサーPRを管理 | AIUEO BASE",
+  title: "スポンサーPRを管理 | エデュマッチ",
 };
 
 export default async function AdminSponsorsPage() {

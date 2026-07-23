@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { effectiveIsCorporateProfile } from "@/lib/manual-profile-kind";
 import { computeForumAuthorRoleStorage } from "@/lib/organization-types";
 
-/** ログインユーザーの教育のひろば author_role 保存値（プロフィールの職業・役職から算出） */
+/** ログインユーザーの井戸端会議 author_role 保存値（プロフィールの職業・役職から算出） */
 export async function getForumAuthorRoleForUser(userId: string): Promise<string> {
   const profile = await prisma.profile.findUnique({
     where: { id: userId },

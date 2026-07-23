@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { sanitizeHtml } from "@/lib/sanitize-html";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
 import { unstable_noStore } from "next/cache";
@@ -74,7 +73,7 @@ export default async function SiteUpdateDetailPage({
         {item.body && (
           <div className="prose prose-slate max-w-none dark:prose-invert">
             {item.body.trimStart().startsWith("<") ? (
-              <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.body) }} />
+              <div dangerouslySetInnerHTML={{ __html: item.body }} />
             ) : (
               <ContentRenderer content={item.body} />
             )}

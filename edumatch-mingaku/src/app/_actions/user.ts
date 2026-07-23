@@ -24,7 +24,6 @@ export type CurrentUserProfile = {
   organization: string | null;
   organization_type: string | null;
   job_title: string | null;
-  position: string | null;
   bio: string | null;
   website: string | null;
   notification_email_2: string | null;
@@ -100,7 +99,6 @@ export async function getCurrentUserProfile(): Promise<CurrentUserProfile | null
     organization,
     organization_type,
     job_title: is_corporate_profile ? (c?.job_title ?? null) : null,
-    position: g?.position ?? null,
     bio: full.bio,
     website: full.website,
     notification_email_2: is_corporate_profile ? (c?.notification_email_2 ?? null) : null,
@@ -193,8 +191,6 @@ export type UpdateProfileInput = {
   organization_type_other?: string | null;
   /** 企業登録時の役職・職種（その他自由記述を含む） */
   job_title?: string | null;
-  /** 役職・肩書（イベント登録用、全ユーザー） */
-  position?: string | null;
   bio?: string | null;
   website?: string | null;
   notification_email_2?: string | null;
@@ -249,8 +245,6 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
           ...(input.name != null && { name: input.name }),
           ...(input.avatar_url !== undefined && { avatar_url: input.avatar_url || null }),
           ...(input.phone !== undefined && { phone: input.phone || null }),
-          // 住所はアカウント基礎情報として全ユーザーの Profile にも保存（議員会館チケット申込等で参照）。
-          ...(input.address !== undefined && { address: input.address?.trim() || null }),
           ...(input.bio !== undefined && { bio: input.bio || null }),
           ...(input.website !== undefined && { website: input.website || null }),
           ...(input.interests !== undefined && { interests: input.interests }),
@@ -345,9 +339,6 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
             organization: input.organization?.trim() || null,
             organization_type: input.organization_type?.trim() || null,
             ...(orgOther !== undefined && { organization_type_other: orgOther }),
-            ...(input.position !== undefined && {
-              position: input.position?.trim() || null,
-            }),
             ...(talentData ?? {}),
           },
           update: {
@@ -362,9 +353,6 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
               organization_type: input.organization_type?.trim() || null,
             }),
             ...(orgOther !== undefined && { organization_type_other: orgOther }),
-            ...(input.position !== undefined && {
-              position: input.position?.trim() || null,
-            }),
             ...(talentData ?? {}),
           },
         });

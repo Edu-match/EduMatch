@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { Prisma } from "@prisma/client";
 import type { PublishStatus, Service, ServiceSortOrderTier } from "@prisma/client";
 
 export function isPrismaMissingColumn(err: unknown): boolean {
@@ -93,14 +92,10 @@ function mapRawService(row: RawServiceRow): Service {
 export async function findPublishedServicesLegacy(
   options: PublishedServiceOptions = {}
 ): Promise<Service[]> {
-  const memberFilter = options.memberOnlyPublic
-    ? Prisma.sql`AND is_member_only = false`
-    : Prisma.empty;
-  const limitSql = options.take
-    ? Prisma.sql`LIMIT ${options.take}`
-    : Prisma.empty;
+  const memberFilter = options.memberOnlyPublic ? "AND is_member_only = false" : "";
+  const limitSql = options.take ? `LIMIT ${options.take}` : "";
 
-  const rows = await prisma.$queryRaw<RawServiceRow[]>(Prisma.sql`
+  const rows = await prisma.$queryRawUnsafe<RawServiceRow[]>(`
     SELECT
       id, provider_id, title, description, content, thumbnail_url, category, price_info,
       is_published, created_at, updated_at, images, youtube_url, approved_at, rejected_at,

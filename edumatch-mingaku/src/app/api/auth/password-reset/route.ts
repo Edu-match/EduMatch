@@ -1,15 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import { createServiceRoleClient } from "@/utils/supabase/server-admin";
 import { getSiteOrigin } from "@/lib/site-url";
-import { verifyOrigin } from "@/lib/security";
 import { Resend } from "resend";
 
 export const dynamic = "force-dynamic";
-
-const requestBodySchema = z.object({
-  email: z.string().max(320).optional(),
-});
 
 /**
  * パスワードリセット用メール送信。
@@ -17,18 +11,9 @@ const requestBodySchema = z.object({
  * セキュリティのため、メールの有無に関わらず常に同じレスポンスを返す（ユーザー列挙の防止）。
  */
 export async function POST(request: NextRequest) {
-  const csrf = verifyOrigin(request);
-  if (csrf) return csrf;
-
   try {
-    const parsed = requestBodySchema.safeParse(await request.json().catch(() => null));
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: "入力内容が正しくありません" },
-        { status: 400 }
-      );
-    }
-    const email = parsed.data.email?.trim() ?? "";
+    const body = await request.json().catch(() => ({}));
+    const email = typeof body.email === "string" ? body.email.trim() : "";
 
     if (!email) {
       return NextResponse.json(
@@ -64,8 +49,8 @@ export async function POST(request: NextRequest) {
       const from = fromRaw
         ? fromRaw.includes("<")
           ? fromRaw
-          : `AIUEO BASE <${fromRaw}>`
-        : "AIUEO BASE <onboarding@resend.dev>";
+          : `エデュマッチ <${fromRaw}>`
+        : "エデュマッチ <onboarding@resend.dev>";
 
       if (apiKey) {
         const resend = new Resend(apiKey);
@@ -78,7 +63,7 @@ export async function POST(request: NextRequest) {
         const sendResult = await resend.emails.send({
           from,
           to: email,
-          subject: `【AIUEO BASE】パスワードの再設定（${sentAt}）`,
+          subject: `【エデュマッチ】パスワードの再設定（${sentAt}）`,
           html: `
             <h2>パスワードの再設定</h2>
             <p>パスワードを再設定するには、以下のリンクをクリックしてください。</p>

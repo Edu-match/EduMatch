@@ -49,7 +49,7 @@ export default async function AdminUserReportsPage({ searchParams }: Props) {
     <div className="container py-6 max-w-5xl">
       <div className="mb-6">
         <Button asChild variant="ghost" size="sm" className="-ml-2 -mt-1 mb-2">
-          <Link href="/dashboard">
+          <Link href="/provider-dashboard">
             <ArrowLeft className="h-4 w-4 mr-1" />
             ダッシュボード
           </Link>

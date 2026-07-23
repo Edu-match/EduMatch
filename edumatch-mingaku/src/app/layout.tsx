@@ -31,8 +31,8 @@ const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "AIUEO BASE - 教育の未来を見つける、つながる",
-    template: "%s | AIUEO BASE",
+    default: "エデュマッチ - 教育の未来を見つける、つながる",
+    template: "%s | エデュマッチ",
   },
   description:
     "教育現場とEdTechをつなぐマッチングプラットフォーム。最新の教育事例やEdTechツールを探せます。",
@@ -44,15 +44,15 @@ export const metadata: Metadata = {
     type: "website",
     locale: "ja_JP",
     url: SITE_URL,
-    siteName: "AIUEO BASE",
-    title: "AIUEO BASE - 教育の未来を見つける、つながる",
+    siteName: "エデュマッチ",
+    title: "エデュマッチ - 教育の未来を見つける、つながる",
     description:
       "教育現場とEdTechをつなぐマッチングプラットフォーム。最新の教育事例やEdTechツールを探せます。",
-    images: [{ url: "/logo.png", width: 674, height: 176, alt: "AIUEO BASEロゴ" }],
+    images: [{ url: "/logo.png", width: 674, height: 176, alt: "エデュマッチロゴ" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "AIUEO BASE - 教育の未来を見つける、つながる",
+    title: "エデュマッチ - 教育の未来を見つける、つながる",
     description:
       "教育現場とEdTechをつなぐマッチングプラットフォーム。最新の教育事例やEdTechツールを探せます。",
     images: ["/logo.png"],

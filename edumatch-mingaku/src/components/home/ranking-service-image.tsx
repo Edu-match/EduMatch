@@ -16,6 +16,7 @@ export function RankingServiceImage({
         title={alt}
         fill
         className="object-contain"
+        unoptimized
       />
     </div>
   );

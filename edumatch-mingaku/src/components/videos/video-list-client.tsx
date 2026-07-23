@@ -5,7 +5,6 @@ import Link from "next/link";
 import { Loader2, MessageSquare, PlayCircle, Sparkles } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { RelativeTime } from "@/components/community/relative-time";
 import { youtubeThumbnailUrl } from "@/lib/youtube";
 
@@ -50,7 +49,7 @@ export function VideoListClient() {
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
       <header className="space-y-2">
-        <h1 className="display-title text-2xl sm:text-3xl flex items-center gap-2">
+        <h1 className="text-2xl font-bold flex items-center gap-2">
           <PlayCircle className="h-6 w-6 text-primary" />
           学びの動画
         </h1>
@@ -74,15 +73,8 @@ export function VideoListClient() {
 
       {!loading && !error && videos.length === 0 && (
         <Card>
-          <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-            <PlayCircle className="h-10 w-10 text-muted-foreground/50" />
-            <p className="font-medium text-foreground">まだ動画が投稿されていません。</p>
-            <p className="max-w-sm text-sm text-muted-foreground">
-              運営が動画を追加すると、AI要約・コメント付きでここに表示されます。
-            </p>
-            <Button asChild variant="outline" size="sm" className="mt-1">
-              <Link href="/services">サービス一覧を見る</Link>
-            </Button>
+          <CardContent className="p-8 text-center text-sm text-muted-foreground">
+            まだ動画が投稿されていません。
           </CardContent>
         </Card>
       )}
@@ -90,18 +82,16 @@ export function VideoListClient() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {videos.map((v) => (
           <Link key={v.id} href={`/videos/${v.id}`} className="group block">
-            <Card className="card-lift overflow-hidden hover:border-primary/40 py-0">
+            <Card className="overflow-hidden transition-all hover:border-primary/40 hover:shadow-md py-0">
               <div className="relative aspect-video bg-muted overflow-hidden">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={youtubeThumbnailUrl(v.youtubeId)}
                   alt={v.title}
-                  width={480}
-                  height={270}
                   className="absolute inset-0 w-full h-full object-cover transition-transform group-hover:scale-105"
                   loading="lazy"
                 />
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-primary/25 transition-opacity">
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/30 transition-opacity">
                   <PlayCircle className="h-14 w-14 text-white drop-shadow" />
                 </div>
               </div>
@@ -110,9 +100,9 @@ export function VideoListClient() {
                   {v.title}
                 </h2>
                 {v.description && (
-                  <p className="text-sm text-muted-foreground line-clamp-2">{v.description}</p>
+                  <p className="text-xs text-muted-foreground line-clamp-2">{v.description}</p>
                 )}
-                <div className="flex items-center justify-between text-xs text-foreground/70">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <RelativeTime iso={v.createdAt} />
                   <div className="flex items-center gap-2">
                     {v.aiSummary && (

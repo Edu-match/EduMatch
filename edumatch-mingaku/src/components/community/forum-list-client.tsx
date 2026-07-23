@@ -199,7 +199,7 @@ export function ForumListClient() {
       <div className="border-b bg-background/80 backdrop-blur-sm" data-tutorial="forum-hero-section">
         <div className="container flex items-center gap-3 py-4">
           <MessageSquare className="h-5 w-5 text-primary" />
-          <h1 className="text-lg font-bold tracking-tight">教育のひろば</h1>
+          <h1 className="text-lg font-bold tracking-tight">井戸端会議</h1>
           <div className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
             <span><strong className="text-foreground">{rooms.length}</strong> 部屋</span>
             <span>投稿 <strong className="text-foreground">{totalPosts.toLocaleString()}</strong> 件</span>

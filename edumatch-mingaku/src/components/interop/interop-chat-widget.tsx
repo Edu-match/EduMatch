@@ -12,7 +12,7 @@ type ChatMsg = {
   ragDocRefs?: DocRef[];
 };
 
-// AIUEO BASE本サイトに合わせたオレンジ配色
+// エデュマッチ本サイトに合わせたオレンジ配色
 const ORANGE_GRAD = "linear-gradient(135deg, rgba(255,150,56,0.97) 0%, rgba(236,104,26,0.97) 100%)";
 
 // 思考プロセスの段階表示（リアルタイム検索→考え→回答）
@@ -191,7 +191,7 @@ export function InteropChatWidget({
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="ml-auto grid h-8 w-8 pointer-coarse:h-11 pointer-coarse:w-11 place-items-center rounded-full text-white/55 transition hover:bg-white/10 hover:text-white"
+              className="ml-auto grid h-8 w-8 place-items-center rounded-full text-white/55 transition hover:bg-white/10 hover:text-white"
               aria-label="閉じる"
             >
               <X className="h-4 w-4" />

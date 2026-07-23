@@ -129,7 +129,7 @@ export async function POST(req: NextRequest) {
       return new Response(
         JSON.stringify({
           success: false,
-          error: "Failed to insert chunks",
+          error: `Failed to insert chunks: ${insertError.message}`,
         }),
         { status: 500, headers: { "Content-Type": "application/json" } }
       );
@@ -148,7 +148,7 @@ export async function POST(req: NextRequest) {
     return new Response(
       JSON.stringify({
         success: false,
-        error: "Internal server error",
+        error: error instanceof Error ? error.message : "Unknown error",
       }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
@@ -260,8 +260,7 @@ async function generateChunksForContent(
         },
       });
 
-      // 記事レビュー(service なし)はサービス索引の対象外
-      if (!review || !review.service) return [];
+      if (!review) return [];
 
       const combined = chunksFromMultipleFields([
         `Review of ${review.service.title}`,

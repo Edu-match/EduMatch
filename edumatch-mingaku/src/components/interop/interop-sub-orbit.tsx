@@ -23,8 +23,6 @@ export type InteropSubCategory = {
   name: string;
   slug: string;
   description: string;
-  /** タップ時の遷移先。空=掲示板へ。設定時=この外部リンクへ。 */
-  linkUrl?: string;
 };
 
 /** 軌道に並べる汎用アイテム（ハブ＝展示カテゴリ／カテゴリ＝サブカテゴリ で共用） */
@@ -80,23 +78,19 @@ function SubTopicOrb({
   orbitRadius,
   accent,
   sizeScale = 1,
-  compact = false,
-  btnW = 150,
 }: {
   item: InteropOrbitItem;
   index: number;
   total: number;
   orbitRadius: number;
   accent: string;
+  /** コンテナに収めるための玉サイズ倍率（小さい枠ほど縮小） */
   sizeScale?: number;
-  compact?: boolean;
-  btnW?: number;
 }) {
   const pos = orbitPosition(index, total, orbitRadius);
   const stats = item.stats;
   const rawSize = item.topicOrb ? computeTopicOrbDiameter(stats) : computeSubOrbDiameter(stats);
-  // compact 時の縮小率(0.7)は親の sizeScale に織り込み済み
-  const baseSize = Math.max(compact ? 34 : 40, Math.round(rawSize * sizeScale));
+  const baseSize = Math.max(40, Math.round(rawSize * sizeScale));
   const hot = isInteropHot(stats);
   const isRecent = isInteropRecentPost(stats);
   const hint = formatActivityHint(stats);
@@ -115,13 +109,8 @@ function SubTopicOrb({
     <button
       type="button"
       onClick={item.onActivate}
-      className="group absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent rounded-full transition-[left,top] duration-500 ease-out"
-      style={{
-        left: `${pos.left}%`,
-        top: `${pos.top}%`,
-        width: btnW,
-        zIndex: 10 + Math.round(baseSize / 40),
-      }}
+      className="group absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center focus:outline-none transition-[left,top] duration-500 ease-out"
+      style={{ left: `${pos.left}%`, top: `${pos.top}%`, zIndex: 10 + Math.round(baseSize / 40) }}
       aria-label={`${item.name} を開く`}
     >
       {/* ホバーグロー */}
@@ -172,11 +161,7 @@ function SubTopicOrb({
         </span>
 
         <span
-          className={
-            compact
-              ? "mt-1 max-w-[min(22vw,100px)] rounded-lg px-2 py-0.5 text-center text-[10px] font-bold leading-snug text-white transition-all duration-200 group-hover:text-white line-clamp-2"
-              : "mt-1.5 max-w-[min(28vw,140px)] rounded-xl px-3 py-1 text-center text-[11.5px] font-bold leading-snug text-white transition-all duration-200 group-hover:text-white line-clamp-2"
-          }
+          className="mt-3 max-w-[min(34vw,148px)] rounded-xl px-3 py-1 text-center text-[11.5px] font-bold leading-snug text-white transition-all duration-200 group-hover:text-white"
           style={{
             background: hot
               ? "linear-gradient(135deg, rgba(12,18,44,0.92) 0%, rgba(90,50,0,0.52) 100%)"
@@ -240,45 +225,23 @@ export function InteropSubOrbit({
     return () => ro.disconnect();
   }, []);
 
-  // 埋め込み枠（トップページのフォーラム等）など小さいコンテナ向けの縮小モード
-  const compact = avail.w > 0 && avail.h > 0 && Math.min(avail.w, avail.h) < 450;
-
-  const btnW = compact ? 110 : 150;
   const { containerPx, orbScale } = useMemo(() => {
     const w = avail.w;
     const h = avail.h;
     if (!w || !h) return { containerPx: 0, orbScale: 1 };
     const radiusFrac = orbitRadius / 100;
     const availHalf = Math.min(w, h) / 2;
-    const labelH = compact ? 36 : 46;
-    const btnHalf = btnW / 2;
-    const gap = 10;
+    const labelH = 46; // 玉下のラベル＋余白
+    const gap = 10; // 玉どうしの最小間隔
     const n = Math.max(count, 1);
+    // リング上に n 個の玉が重ならず並べられる最大玉径（中心角ベース）
     const orbFitByRing = ((2 * Math.PI) / n) * (availHalf - labelH) / (1 + Math.PI / n) - gap;
-    const orbBase =
-      Math.min(maxOrbPx, Math.max(compact ? 34 : 40, orbFitByRing)) * (compact ? 0.7 : 1);
-    let orb = orbBase;
-    const solveS = (o: number) => {
-      const vertMargin = o / 2 + labelH;
-      const horizMargin = btnHalf;
-      const margin = Math.max(vertMargin, horizMargin);
-      let s = radiusFrac > 0 ? (availHalf - margin) / radiusFrac : availHalf * 2;
-      s = Math.max(compact ? 150 : 180, Math.min(s, 820));
-      if (compact) s = Math.min(s, Math.min(w, h) * 0.75);
-      return s;
-    };
-    let S = solveS(orb);
-    if (compact) {
-      const hubClear = 56;
-      const innerLabel = 30;
-      for (let i = 0; i < 3; i++) {
-        const radiusPx = radiusFrac * S;
-        orb = Math.min(orbBase, Math.max(30, 2 * (radiusPx - hubClear - innerLabel)));
-        S = solveS(orb);
-      }
-    }
+    const orb = Math.min(maxOrbPx, Math.max(40, orbFitByRing));
+    // その玉径で「玉の外縁＋ラベル」が枠内に収まる最大の正方形サイズ
+    let S = radiusFrac > 0 ? (availHalf - orb / 2 - labelH) / radiusFrac : availHalf * 2;
+    S = Math.max(180, Math.min(S, 820));
     return { containerPx: Math.round(S), orbScale: Math.min(1, orb / maxOrbPx) };
-  }, [avail, compact, count, maxOrbPx, orbitRadius, btnW]);
+  }, [avail, count, maxOrbPx, orbitRadius]);
 
   const hint =
     centerHint ??
@@ -289,18 +252,14 @@ export function InteropSubOrbit({
   return (
     <div
       ref={rootRef}
-      className={
-        compact
-          ? "absolute inset-0 flex items-center justify-center px-3 pb-16 pt-10"
-          : "absolute inset-0 flex items-center justify-center px-3 pb-16 pt-14 sm:pt-20"
-      }
+      className="absolute inset-0 flex items-center justify-center px-3 pb-6 pt-14 sm:pt-20"
       style={{ animation: "itmFadeIn 0.4s ease-out both" }}
     >
       <style>{FX_CSS}</style>
       <style>{INTEROP_PUYO_CSS}</style>
 
       <div
-        className="relative aspect-square shrink-0 overflow-visible"
+        className="relative aspect-square shrink-0"
         style={{ width: containerPx || "min(86vmin, 520px)", height: containerPx || "min(86vmin, 520px)" }}
       >
         {/* 軌道リング */}
@@ -324,13 +283,7 @@ export function InteropSubOrbit({
           }}
         />
 
-        <div
-          className={
-            compact
-              ? "absolute left-1/2 top-1/2 z-20 w-[min(30%,140px)] min-w-[84px] -translate-x-1/2 -translate-y-1/2"
-              : "absolute left-1/2 top-1/2 z-20 w-[min(36%,184px)] min-w-[104px] -translate-x-1/2 -translate-y-1/2"
-          }
-        >
+        <div className="absolute left-1/2 top-1/2 z-20 w-[min(36%,184px)] min-w-[104px] -translate-x-1/2 -translate-y-1/2">
           {/* 中央グロー */}
           <span
             className="pointer-events-none absolute inset-[-20px] rounded-full"
@@ -339,11 +292,7 @@ export function InteropSubOrbit({
           <button
             type="button"
             onClick={onBack}
-            className={
-              compact
-                ? "group relative w-full rounded-2xl px-2 py-2.5 text-center transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_0_32px_rgba(100,150,255,0.25)] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
-                : "group relative w-full rounded-2xl px-3 py-3.5 text-center transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_0_32px_rgba(100,150,255,0.25)] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
-            }
+            className="group relative w-full rounded-2xl px-3 py-3.5 text-center transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_0_32px_rgba(100,150,255,0.25)] focus:outline-none"
             style={{
               background: `linear-gradient(160deg, rgba(12,16,40,0.82) 0%, ${accent}18 100%)`,
               border: `1px solid ${accent}55`,
@@ -356,22 +305,10 @@ export function InteropSubOrbit({
               className="pointer-events-none absolute inset-x-4 top-0 h-px rounded-full"
               style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.40) 50%, transparent)" }}
             />
-            <CenterIcon
-              className={compact ? "mx-auto mb-1 h-5 w-5" : "mx-auto mb-1.5 h-6 w-6"}
-              style={{ color: accent, filter: `drop-shadow(0 0 6px ${accent}88)` }}
-              strokeWidth={1.5}
-            />
-            <p className={compact ? "text-[11px] font-bold text-white/90" : "text-[12px] font-bold text-white/90"}>{centerLabel}</p>
-            {centerHint && !compact && (
-              <p className="mt-0.5 text-[9.5px] leading-tight text-white/50">{centerHint}</p>
-            )}
-            <span
-              className={
-                compact
-                  ? "mt-1 inline-flex items-center gap-1 rounded-full border border-white/18 bg-white/[0.06] px-2 py-0.5 text-[9px] font-medium text-white/55 transition group-hover:bg-white/12 group-hover:text-white/80"
-                  : "mt-2.5 inline-flex items-center gap-1 rounded-full border border-white/18 bg-white/[0.06] px-2.5 py-0.5 text-[10px] font-medium text-white/55 transition group-hover:bg-white/12 group-hover:text-white/80"
-              }
-            >
+            <CenterIcon className="mx-auto mb-1.5 h-6 w-6" style={{ color: accent, filter: `drop-shadow(0 0 6px ${accent}88)` }} strokeWidth={1.5} />
+            <p className="text-[12px] font-bold text-white/90">{centerLabel}</p>
+            {centerHint && <p className="mt-0.5 text-[9.5px] leading-tight text-white/50">{centerHint}</p>}
+            <span className="mt-2.5 inline-flex items-center gap-1 rounded-full border border-white/18 bg-white/[0.06] px-2.5 py-0.5 text-[10px] font-medium text-white/55 transition group-hover:bg-white/12 group-hover:text-white/80">
               <ArrowLeft className="h-2.5 w-2.5" /> {backLabel}
             </span>
           </button>
@@ -386,8 +323,6 @@ export function InteropSubOrbit({
             orbitRadius={orbitRadius}
             accent={accent}
             sizeScale={orbScale}
-            compact={compact}
-            btnW={btnW}
           />
         ))}
       </div>

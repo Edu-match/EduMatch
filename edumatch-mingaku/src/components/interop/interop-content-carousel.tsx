@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { ExternalLink, ImageIcon, Sparkles, X } from "lucide-react";
 import type { InteropContentItem } from "@/lib/interop-content";
 
-/** サブカテゴリ／トピックの関連コンテンツ（本体AIUEO BASEから検索）をサムネ付きカードで横スクロール表示 */
+/** サブカテゴリ／トピックの関連コンテンツ（本体エデュマッチから検索）をサムネ付きカードで横スクロール表示 */
 export function InteropContentCarousel({ subId, topicId, accent }: { subId: string; topicId?: string; accent: string }) {
   const [items, setItems] = useState<InteropContentItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -146,7 +146,7 @@ export function InteropContentCarousel({ subId, topicId, accent }: { subId: stri
                 style={{ background: accent }}
               >
                 <ExternalLink className="h-4 w-4" />
-                {active.href.includes("edu-match.com") ? "記事全文を見る（AIUEO BASEへ）" : "記事全文を見る（外部サイトへ）"}
+                {active.href.includes("edu-match.com") ? "記事全文を見る（エデュマッチへ）" : "記事全文を見る（外部サイトへ）"}
               </a>
             </div>
           </div>

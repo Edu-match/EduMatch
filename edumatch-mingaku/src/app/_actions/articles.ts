@@ -6,32 +6,7 @@ import { canManageProviderContent } from "@/lib/provider-access";
 import { revalidatePath } from "next/cache";
 import { articleSchema, type ArticleFormData } from "@/lib/validations/article";
 import { normalizeImageUrl } from "@/lib/image-url-utils";
-import { generateArticleThumbnail } from "@/lib/article-thumbnail";
 import { logActivity } from "./activity-log";
-
-/**
- * 記事タイトル・概要からAIサムネイルを生成する
- */
-export async function generateThumbnailForArticle(
-  title: string,
-  description?: string,
-  style?: string,
-): Promise<{ ok: boolean; url?: string; error?: string }> {
-  try {
-    const profile = await getCurrentProfile();
-    if (!profile) return { ok: false, error: "ログインが必要です" };
-    if (!(await canManageProviderContent(profile)))
-      return { ok: false, error: "サムネイルを生成する権限がありません" };
-    if (!title.trim()) return { ok: false, error: "タイトルが必要です" };
-
-    const url = await generateArticleThumbnail(title.trim(), description?.trim(), style);
-    if (!url) return { ok: false, error: "サムネイル生成に失敗しました" };
-    return { ok: true, url };
-  } catch (e) {
-    console.error("generateThumbnailForArticle error:", e);
-    return { ok: false, error: "サムネイル生成に失敗しました" };
-  }
-}
 
 /**
  * 記事を作成する

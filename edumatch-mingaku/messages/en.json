@@ -1,6 +1,6 @@
 {
   "common": {
-    "siteName": "AIUEO BASE",
+    "siteName": "EduMatch",
     "tagline": "Discover and connect with the future of education",
     "loading": "Loading...",
     "user": "User"
@@ -22,18 +22,17 @@
     "tutorial": "Tutorial",
     "tutorialTitle": "View tutorial",
     "notifications": "Notifications",
-    "notificationsWithUnread": "Notifications ({count} unread)",
     "viewAll": "View all",
     "noNotifications": "No notifications",
     "openMenu": "Open menu",
     "menu": "Menu",
     "mypage": "My Page",
     "adminDashboard": "Admin Dashboard",
-    "editModeOn": "Start text edit mode",
+    "editModeOn": "Text edit mode",
     "editModeOff": "Exit text edit mode",
     "adminMenu": "Admin Menu",
     "approvals": "Approval Queue",
-    "eventsAdmin": "Manage Seminars & Events",
+    "eventsAdmin": "Manage Events",
     "forumAdmin": "Manage Community",
     "siteUpdatesAdmin": "Manage Announcements",
     "knowledgeAdmin": "Manage Knowledge Docs",
@@ -41,9 +40,6 @@
     "serviceOrderAdmin": "Manage Service Order",
     "activityLog": "Activity Log",
     "userReports": "User Reports",
-    "kaikanCheckin": "E-Ticket Check-in",
-    "post": "Post",
-    "aiPersona": "AI Persona",
     "accountSettings": "Account Settings",
     "logout": "Log out",
     "login": "Log in",
@@ -57,12 +53,11 @@
   },
   "footer": {
     "product": "Product",
-    "company": "About",
+    "company": "Company",
     "legal": "Legal",
-    "copyright": "© {year} AIUEO BASE (Organized by {organizer} / Operated by {operator}). All rights reserved."
+    "copyright": "© {year} EduMatch (Operated by {operator} / In cooperation with {organizer}). All rights reserved."
   },
   "home": {
-    "headlines": "HEADLINES",
     "topics": "Topics",
     "viewArticles": "View all articles",
     "prFeatured": "[PR] Featured Services",
@@ -73,12 +68,6 @@
     "tabAll": "All",
     "tabDomestic": "Domestic News",
     "tabInternational": "Global News",
-    "tabArticles": "Articles",
-    "tabNews": "News",
-    "tabServices": "Services",
-    "tabVideos": "Videos",
-    "noNews": "No news available",
-    "noVideos": "No videos available",
     "noArticles": "No articles available",
     "noDomestic": "No domestic news available",
     "noInternational": "No global news available",
@@ -91,22 +80,7 @@
     "slide": "Slide {n}",
     "typeAnnouncement": "Announcement",
     "typeArticle": "Article",
-    "typeService": "Service",
-    "heroTitle": "Education Community",
-    "heroSubtitle": "Talk about education, beyond your role.",
-    "openFullscreen": "Open full screen",
-    "kaikanTitle": "Education AI Summit 2026 @ House of Representatives First Members' Office Building",
-    "ticketOpen": "Tickets open → E-ticket (QR)",
-    "popularArticles": "Popular Articles",
-    "upcomingEvents": "Upcoming Events",
-    "noUpcomingEvents": "No upcoming events.",
-    "serviceMenu": "Service menu",
-    "navForumTitle": "Education Community",
-    "navForumSub": "Join the conversation",
-    "navMatchingTitle": "Talent Matching",
-    "navMatchingSub": "Browse the education directory",
-    "navAiKenteiTitle": "AI Certification",
-    "navAiKenteiSub": "Test your skills"
+    "typeService": "Service"
   },
   "sideMenu": {
     "menu": "Menu",
@@ -118,8 +92,7 @@
     "forum": "Community",
     "videos": "Learning Videos",
     "events": "Seminars & Events",
-    "companies": "Companies",
-    "matching": "Talent Matching",
+    "companies": "Listed Companies",
     "compare": "Compare Services",
     "aiKentei": "AI Certification",
     "help": "Help",
@@ -132,14 +105,12 @@
     "manageVideos": "Manage Learning Videos",
     "manageSponsors": "Manage Sponsor PR",
     "managePages": "Pages & Display Settings",
+    "manageInterop": "Manage AI Summit",
     "manageAiKentei": "Manage AI Certification Questions",
     "knowledge": "Manage Knowledge Docs",
     "aiChat": "Manage AI Chat",
     "serviceOrder": "Manage Service Order",
-    "activityLog": "Activity Log",
-    "userReports": "User Reports",
-    "kaikanCheckin": "E-Ticket Check-in",
-    "aiPersona": "AI Persona"
+    "activityLog": "Activity Log"
   },
   "events": {
     "title": "Seminars & Events",
@@ -156,7 +127,6 @@
     "upcoming": "Upcoming",
     "viewAndApply": "View details & apply",
     "contact": "Contact",
-    "contactSubject": "Event inquiry",
     "noResults": "No events matched your criteria",
     "noUpcoming": "There are currently no upcoming events",
     "prevWeek": "Previous week",
@@ -188,7 +158,7 @@
     "imageGallery": "Image Gallery",
     "author": "Author of this article",
     "relatedArticles": "Related Articles",
-    "officeName": "AIUEO BASE Team",
+    "officeName": "EduMatch Team",
     "imageAlt": "{title} - image {index}"
   },
   "articlesList": {
@@ -210,7 +180,7 @@
     "searchPlaceholder": "Search by service name, feature, or keyword...",
     "categoryLabel": "Category:",
     "all": "All",
-    "foundCount": "{count} services found",
+    "foundCount": "services found",
     "clearSearch": "Clear search",
     "price": "Price",
     "viewDetail": "View details",
@@ -222,7 +192,6 @@
     "backToList": "Back to services",
     "edit": "Edit",
     "requestMaterial": "Request materials (free)",
-    "priceTBD": "Contact for pricing",
     "detail": "Service Details",
     "imageGallery": "Image Gallery",
     "introVideo": "Service Intro Video",
@@ -302,10 +271,10 @@
   },
   "about": {
     "metaTitle": "About",
-    "metaDescription": "AIUEO BASE is a platform that connects classrooms with education services. We help solve the challenges schools face and support the creation of better learning environments.",
-    "heroTitle": "About",
+    "metaDescription": "EduMatch is a platform that connects classrooms with education services. We help solve the challenges schools face and support the creation of better learning environments.",
+    "heroTitle": "About us",
     "heroBody1": "Discover and connect with the future of education.",
-    "heroBody2": "AIUEO BASE is a platform that connects classrooms with education services.",
+    "heroBody2": "EduMatch is a platform that connects classrooms with education services.",
     "aboutSection": "About our operations",
     "companySection": "Company information",
     "edit": "Edit",
@@ -315,7 +284,7 @@
   },
   "contact": {
     "title": "Contact",
-    "subtitle": "Get in touch with the AIUEO BASE team here",
+    "subtitle": "Get in touch with the EduMatch team here",
     "formTitle": "Contact form",
     "name": "Name",
     "namePlaceholder": "John Doe",
@@ -411,7 +380,7 @@
   },
   "authRegisterComplete": {
     "title": "Registration complete",
-    "welcome": "Welcome to AIUEO BASE!",
+    "welcome": "Welcome to EduMatch!",
     "emailSent": "We sent a confirmation email to your registered address. Please click the link in the email to complete verification.",
     "noEmailTitle": "Didn't receive the confirmation email?",
     "noEmailBody": "Check your spam folder. If it still doesn't arrive after a few minutes, please ",
@@ -446,7 +415,7 @@
   },
   "faq": {
     "metaTitle": "FAQ",
-    "metaDescription": "Find answers to frequently asked questions about AIUEO BASE. Please check here before contacting us.",
+    "metaDescription": "Find answers to frequently asked questions about EduMatch. Please check here before contacting us.",
     "title": "FAQ",
     "subtitle": "Please check here before contacting us",
     "searchPlaceholder": "Search questions...",
@@ -463,36 +432,5 @@
     "organizer": "Organizer: ",
     "operator": "Operator: ",
     "established": "Established: "
-  },
-  "aiNavigator": {
-    "title": "AI Navigator",
-    "placeholders": {
-      "navigator": "Ask about educational ICT or this site",
-      "debate": "Share your position and the reasons behind it",
-      "discussion": "Tell us the theme or points you would like to discuss"
-    },
-    "consent": {
-      "title": "Before Using the AI Navigator",
-      "subtitle": "Please review and agree to the following before use.",
-      "p1": "The AI Navigator on this site is a supplementary feature provided by AIUEO BASE to help you search for and consult about educational services, ICT tools, and related information.",
-      "p2": "Responses generated by this AI are produced automatically for reference purposes, such as choosing educational services or organizing information, and their accuracy, currency, and completeness are not guaranteed.",
-      "p3": "For any final decisions based on the AI's responses (requesting materials, contracts, adoption, etc.), always confirm with the official information and representatives of each service provider.",
-      "p4": "This site and its operators accept no liability for any damages incurred by users or third parties as a result of the AI's responses or analysis.",
-      "p5": "This AI does not cover every use case, and please be aware that it may generate incorrect information (so-called \"hallucinations\").",
-      "fullTextLink": "Read the full terms of use →",
-      "checkboxLabel": "I have reviewed the points above",
-      "agreeButton": "Agree and start chatting",
-      "agreeSaving": "Saving…"
-    },
-    "errors": {
-      "generic": "Communication error",
-      "network": "A communication error occurred. Please try again.",
-      "aborted": "(Interrupted)"
-    },
-    "gate": {
-      "membersOnly": "AI chat is for members only.",
-      "loginPrompt": "Log in or sign up to use this feature.",
-      "loginButton": "Log in / Sign up"
-    }
   }
 }

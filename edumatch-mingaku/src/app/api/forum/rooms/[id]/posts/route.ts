@@ -205,7 +205,7 @@ export async function POST(
     const moderation = await moderateAndNotify({
       text: postBody.trim(),
       kind: "comment",
-      featureLabel: "教育のひろば",
+      featureLabel: "井戸端会議",
       userId: user.id,
       userName: profile.name || user.email?.split("@")[0] || "（不明）",
       contextUrl: `${origin}/forum/${roomId}`,

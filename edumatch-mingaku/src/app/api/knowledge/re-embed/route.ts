@@ -42,9 +42,8 @@ export async function POST() {
     .order("chunk_index");
 
   if (fetchErr) {
-    console.error("[knowledge/re-embed] fetch error:", fetchErr);
     return NextResponse.json(
-      { error: "チャンクの取得に失敗しました" },
+      { error: "チャンク取得エラー: " + fetchErr.message },
       { status: 500 }
     );
   }
@@ -73,8 +72,8 @@ export async function POST() {
         .sort((a, b) => a.index - b.index)
         .map((d) => d.embedding);
     } catch (e) {
-      console.error(`[knowledge/re-embed] embedding error at batch ${i}-${i + batch.length}:`, e);
-      errors.push(`batch ${i}-${i + batch.length}: embedding生成に失敗しました`);
+      const msg = e instanceof Error ? e.message : String(e);
+      errors.push(`batch ${i}-${i + batch.length}: ${msg}`);
       failed += batch.length;
       continue;
     }
@@ -95,8 +94,7 @@ export async function POST() {
         .eq("id", chunk.id);
 
       if (updateErr) {
-        console.error(`[knowledge/re-embed] update error for chunk ${chunk.id}:`, updateErr);
-        errors.push(`chunk ${chunk.id}: 更新に失敗しました`);
+        errors.push(`chunk ${chunk.id}: ${updateErr.message}`);
         failed++;
       } else {
         updated++;

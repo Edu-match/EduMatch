@@ -5,12 +5,7 @@ import { toast } from "sonner";
 import { AI_KENTEI_CHAT_BLOCKED_MESSAGE } from "@/lib/ai-kentei-exam-guard-shared";
 import { useAiKenteiExamBlocksChat } from "@/hooks/use-ai-kentei-exam-blocks-chat";
 
-// セッション内でユーザーが明示的に閉じたかを記憶するキー。
-// sessionStorage を使うことで「同一セッション中は再オープンしない」が、
-// 次回のセッション（新規タブ/再訪）では中核機能として再び開く。
-const SESSION_CLOSED_KEY = "edumatch-ai-panel-user-closed";
-// デスクトップ判定（この幅以上でパネルを既定オープン）
-const DESKTOP_QUERY = "(min-width: 1024px)";
+const STORAGE_KEY = "edumatch-ai-panel-open";
 
 export type AutoActivation = {
   articleId: string;
@@ -39,7 +34,7 @@ type AiPanelContextValue = {
 };
 
 const AiPanelContext = createContext<AiPanelContextValue>({
-  open: false,
+  open: true,
   setOpen: () => {},
   toggle: () => {},
   mobileOpen: false,
@@ -53,31 +48,22 @@ const AiPanelContext = createContext<AiPanelContextValue>({
 
 export function AiPanelProvider({ children }: { children: React.ReactNode }) {
   const examBlocksChat = useAiKenteiExamBlocksChat();
-  // SSR/初期レンダは閉じた状態から始め、マウント後の effect でデスクトップのみ既定オープンにする。
-  // （open=true を SSR で描画するとモバイルとの hydration 差異や一瞬のちらつきの原因になるため）
-  const [open, setOpenState] = useState(false);
+  const [open, setOpenState] = useState(true);
   const [mobileOpen, setMobileOpenState] = useState(false);
   const [pendingActivation, setPendingActivation] = useState<AutoActivation | null>(null);
   const [pendingChatLaunch, setPendingChatLaunch] = useState<ChatLaunchDetail | null>(null);
   const initialized = useRef(false);
 
-  // 初回マウント時のみ、デスクトップかつユーザーがこのセッションで閉じていなければ既定オープン。
-  // ルート遷移では Provider は再マウントされないため、再オープンが繰り返されることはない。
   useEffect(() => {
-    if (initialized.current) return;
-    initialized.current = true;
-    if (examBlocksChat) return; // AI検定受験中は開かない
-    try {
-      const userClosed = sessionStorage.getItem(SESSION_CLOSED_KEY) === "true";
-      const isDesktop = window.matchMedia(DESKTOP_QUERY).matches;
-      if (isDesktop && !userClosed) {
-        setOpenState(true);
+    if (!initialized.current) {
+      initialized.current = true;
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored === "false") setOpenState(false);
+      } catch {
+        // localStorage unavailable
       }
-    } catch {
-      // sessionStorage / matchMedia unavailable
     }
-    // examBlocksChat は初期値のみ参照（初回マウント時判定）。以降は別 effect が制御。
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -93,7 +79,7 @@ export function AiPanelProvider({ children }: { children: React.ReactNode }) {
       } else {
         setOpenState(true);
         try {
-          sessionStorage.removeItem(SESSION_CLOSED_KEY);
+          localStorage.setItem(STORAGE_KEY, "true");
         } catch {
           /* ignore */
         }
@@ -115,13 +101,7 @@ export function AiPanelProvider({ children }: { children: React.ReactNode }) {
   const setOpen = useCallback((next: boolean) => {
     setOpenState(next);
     try {
-      // ユーザーが明示的に閉じたら、このセッション中は自動オープンさせない。
-      // 開いた場合はフラグを解除する。
-      if (next) {
-        sessionStorage.removeItem(SESSION_CLOSED_KEY);
-      } else {
-        sessionStorage.setItem(SESSION_CLOSED_KEY, "true");
-      }
+      localStorage.setItem(STORAGE_KEY, String(next));
     } catch {
       // ignore
     }

@@ -14,7 +14,6 @@ import { toast } from 'sonner'
 import { CertificatePreview } from '@/components/ai-kentei/certificate-preview'
 import { CertificateDownloadButton } from '@/components/ai-kentei/certificate-download-button'
 import { createSupabaseBrowserClient } from '@/utils/supabase/client'
-import { AI_KENTEI_QUESTION_COUNT } from '@/lib/ai-kentei-constants'
 
 interface CertificateData {
   sessionId: string
@@ -92,7 +91,7 @@ export default function CertificatePage({ params }: { params: Promise<{ sessionI
         setCertificateData({
           sessionId: data.session.sessionId,
           score: data.session.score,
-          totalQuestions: data.questions.length > 0 ? data.questions.length : AI_KENTEI_QUESTION_COUNT,
+          totalQuestions: data.questions.length > 0 ? data.questions.length : 25,
           passedAt: new Date().toISOString(),
         })
 
@@ -396,21 +395,9 @@ export default function CertificatePage({ params }: { params: Promise<{ sessionI
 
                   <div className="flex flex-wrap items-center gap-4">
                     <div
-                      className="h-20 w-20 shrink-0 overflow-hidden rounded-full border-2 border-dashed border-border bg-muted flex items-center justify-center cursor-pointer hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors"
+                      className="h-20 w-20 shrink-0 overflow-hidden rounded-full border-2 border-dashed border-border bg-muted flex items-center justify-center cursor-pointer hover:border-primary/50 transition-colors"
                       onClick={() => !certificateId && photoSource === 'upload' && fileInputRef.current?.click()}
                       role={!certificateId && photoSource === 'upload' ? 'button' : undefined}
-                      tabIndex={!certificateId && photoSource === 'upload' ? 0 : undefined}
-                      aria-label={!certificateId && photoSource === 'upload' ? '写真を選択' : undefined}
-                      onKeyDown={(e) => {
-                        if (
-                          !certificateId &&
-                          photoSource === 'upload' &&
-                          (e.key === 'Enter' || e.key === ' ')
-                        ) {
-                          e.preventDefault()
-                          fileInputRef.current?.click()
-                        }
-                      }}
                     >
                       {effectivePhotoUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element

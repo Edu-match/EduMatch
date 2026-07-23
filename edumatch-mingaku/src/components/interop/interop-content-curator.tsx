@@ -235,7 +235,7 @@ export function InteropContentCurator({ onMsg }: { onMsg: (t: string, ok: boolea
             </div>
 
             <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
-              <p className="mb-2 text-sm font-semibold text-white/80">本体AIUEO BASEから探してピン留め</p>
+              <p className="mb-2 text-sm font-semibold text-white/80">本体エデュマッチから探してピン留め</p>
               <div className="mb-2 flex flex-wrap items-center gap-2">
                 {INTEROP_CONTENT_KINDS.map((k) => {
                   const on = kinds.includes(k.value);

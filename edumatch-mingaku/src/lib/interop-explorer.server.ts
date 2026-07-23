@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 
 /**
- * 教育のひろばマップ（InteropExplorer）の初回SSR用に活動量を先読みする。
+ * 井戸端会議マップ（InteropExplorer）の初回SSR用に活動量を先読みする。
  * /interop・/forum・トップページ埋め込みで共用。失敗しても null を返して描画を止めない。
  */
 // 返り値は InteropExplorer の initial*Activity props にそのまま渡す。
